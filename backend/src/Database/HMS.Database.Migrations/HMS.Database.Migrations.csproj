@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Identity\HMS.Modules.Identity\HMS.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
+    <ProjectReference Include="..\..\Modules\Appointments\HMS.Modules.Appointments\HMS.Modules.Appointments.csproj" />
+    <ProjectReference Include="..\..\Modules\Staff\HMS.Modules.Staff\HMS.Modules.Staff.csproj" />
+    <ProjectReference Include="..\..\Modules\Billing\HMS.Modules.Billing\HMS.Modules.Billing.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\HMS.Modules.Notifications\HMS.Modules.Notifications.csproj" />
+  </ItemGroup>
+
+</Project>

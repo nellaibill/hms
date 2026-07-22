@@ -1,0 +1,13 @@
+{
+  "name": "@hms/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-platform TypeScript code shared between the HMS web and mobile apps",
+  "scripts": {
+    "build": "TODO",
+    "test": "TODO",
+    "lint": "TODO"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,17 @@
+# Code Owners
+# Replace placeholder handles with actual GitHub usernames before relying on this file.
+# See docs/GitWorkflow.md for the review process this supports.
+
+# Default owner for anything not matched below
+*                           @nellaibill
+
+# Architecture-sensitive and cross-cutting changes require senior review
+/backend/HMS.sln            @nellaibill
+/backend/src/Shared/        @nellaibill
+/backend/src/Database/      @nellaibill
+/docs/Architecture.md       @nellaibill
+/docs/DecisionLog.md        @nellaibill
+
+# CI/CD changes
+/.github/workflows/         @nellaibill
+/cicd/                      @nellaibill

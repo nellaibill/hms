@@ -1,0 +1,15 @@
+{
+  "name": "@hms/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HMS mobile application (React Native)",
+  "scripts": {
+    "start": "TODO",
+    "android": "TODO",
+    "ios": "TODO",
+    "test": "TODO",
+    "lint": "TODO"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

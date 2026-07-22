@@ -1,0 +1,49 @@
+# =========================
+# .NET
+# =========================
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# =========================
+# Node / TypeScript
+# =========================
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# React Native
+# =========================
+frontend/mobile/android/build/
+frontend/mobile/android/.gradle/
+frontend/mobile/android/local.properties
+frontend/mobile/ios/Pods/
+frontend/mobile/ios/build/
+frontend/mobile/ios/DerivedData/
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# IDE
+# =========================
+.idea/
+*.swp
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db

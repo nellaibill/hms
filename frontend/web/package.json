@@ -1,0 +1,14 @@
+{
+  "name": "@hms/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HMS web application (React)",
+  "scripts": {
+    "dev": "TODO",
+    "build": "TODO",
+    "test": "TODO",
+    "lint": "TODO"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
