@@ -3,13 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "description": "HMS mobile application (React Native)",
+  "main": "expo/AppEntry.js",
   "scripts": {
-    "start": "TODO",
-    "android": "TODO",
-    "ios": "TODO",
-    "test": "TODO",
-    "lint": "TODO"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "TODO"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "expo": "^52.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@eslint/js": "^9.15.0",
+    "@types/react": "~18.3.12",
+    "eslint": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.15.0"
+  }
 }

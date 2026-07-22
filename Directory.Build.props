@@ -1,0 +1,15 @@
+<Project>
+
+  <!--
+    Centralizes MSBuild properties shared by every backend project so they
+    are not repeated in each .csproj. See docs/Architecture.md.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+</Project>

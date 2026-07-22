@@ -9,5 +9,15 @@
     "skipLibCheck": true,
     "outDir": "dist"
   },
-  "include": ["types", "api-client", "validation", "constants", "utils"]
+  "include": [
+    "types",
+    "api-client",
+    "auth-client",
+    "dtos",
+    "enums",
+    "validation",
+    "constants",
+    "errors",
+    "utils"
+  ]
 }
