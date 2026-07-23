@@ -7,6 +7,7 @@ import { getAllLeaves } from '../config/navigation';
 
 // Route-level code splitting (docs/FrontendArchitecture.md §4).
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
+const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'));
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'));
 const UsersListPage = lazy(() => import('../pages/users/UsersListPage'));
 const UserCreatePage = lazy(() => import('../pages/users/UserCreatePage'));
@@ -19,15 +20,17 @@ const shellFallback = (
 
 const withSuspense = (element: React.ReactNode) => <Suspense fallback={shellFallback}>{element}</Suspense>;
 
-// Settings is the one nav leaf with a real page (linking to Users, below) —
-// every other leaf renders the shared PlaceholderPage generated from the nav
+// Dashboard and Settings are the two nav leaves with a real page — every
+// other leaf renders the shared PlaceholderPage generated from the nav
 // config, keeping that config the single source of truth for the sidebar.
+const specialPages: Record<string, React.ReactNode> = {
+  '/dashboard': withSuspense(<DashboardPage />),
+  '/admin/settings': withSuspense(<SettingsPage />),
+};
+
 const moduleRoutes = getAllLeaves().map((leaf) => ({
   path: leaf.path.slice(1),
-  element:
-    leaf.path === '/admin/settings'
-      ? withSuspense(<SettingsPage />)
-      : <PlaceholderPage title={leaf.label} description={leaf.description} icon={leaf.icon} />,
+  element: specialPages[leaf.path] ?? <PlaceholderPage title={leaf.label} description={leaf.description} icon={leaf.icon} />,
 }));
 
 // Users (HMS.Modules.Identity) is the one reference module with a real,
