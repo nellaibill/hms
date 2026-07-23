@@ -18,6 +18,9 @@ Covers an index of every document in `docs/` with a one-line description of what
 
 ## Index
 
+### Start Here
+- [DeveloperHandbook.md](DeveloperHandbook.md) — The official developer handbook: every architectural decision, layer, convention, and lesson learned while building the Users reference module, plus a step-by-step blueprint for building the next one.
+
 ### Architecture & Structure
 - [Architecture.md](Architecture.md) — High-level system architecture, style, and module boundaries.
 - [FolderStructure.md](FolderStructure.md) — Approved repository folder layout.
