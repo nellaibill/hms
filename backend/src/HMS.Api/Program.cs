@@ -20,11 +20,19 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddHmsModules(builder.Configuration);
 builder.Services.AddHmsSwagger();
+builder.Services.AddHmsCors(builder.Configuration);
 
 var app = builder.Build();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
+
+// Must run before MapControllers(): CORS has to sit between routing and endpoint
+// execution so it can short-circuit browser preflight OPTIONS requests (no controller
+// action handles OPTIONS) and attach Access-Control-* headers to every real response
+// before it's written. Registered after UseExceptionHandler so a CORS-preflight or
+// rejected request still gets a properly-shaped error response, not a raw failure.
+app.UseHmsCors();
 app.UseHmsSwagger();
 
 app.MapControllers();
