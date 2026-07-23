@@ -27,6 +27,7 @@ Covers an index of every document in `docs/` with a one-line description of what
 - [InformationArchitecture.md](InformationArchitecture.md) — Navigation, module hierarchy, search, notifications, and profile architecture for the HMS.
 - [ScreenInventory.md](ScreenInventory.md) — Complete screen catalog per module: main, create, edit, view, search, dashboard, reports, settings, dialogs, popups, print/export views.
 - [DesignSystem.md](DesignSystem.md) — Enterprise design system spec: tokens (typography, spacing, grid, color, elevation, radius, icons), components, accessibility (WCAG 2.2 AA), dark mode.
+- [LayoutFramework.md](LayoutFramework.md) — Structural layout spec: nav, sidebar, drawers, sticky behavior, z-index stacking, and responsive/multi-monitor rules with measurements.
 
 ### Standards & Conventions
 - [CodingStandards.md](CodingStandards.md) — Code style and quality expectations.
