@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <!-- Needed for HttpContext/middleware types used by the correlation-id plumbing below. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
   </ItemGroup>
 

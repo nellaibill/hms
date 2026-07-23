@@ -1,6 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!-- Direct pin, not just a transitive dependency: forces resolution of the patched
+         System.Security.Cryptography.Xml version pulled in by EF Core Design's tooling
+         dependencies — see Directory.Packages.props for why. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Modules\Identity\HMS.Modules.Identity\HMS.Modules.Identity.csproj" />
     <ProjectReference Include="..\..\Modules\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
     <ProjectReference Include="..\..\Modules\Appointments\HMS.Modules.Appointments\HMS.Modules.Appointments.csproj" />

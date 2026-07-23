@@ -1,5 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <!-- Lets Swashbuckle pull controller/action <summary> text into Swagger UI. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment on a public member) isn't useful here: most public
+         members in this host project are DI/hosting plumbing, not HTTP-facing API surface. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Modules\Identity\HMS.Modules.Identity\HMS.Modules.Identity.csproj" />
     <ProjectReference Include="..\Modules\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />

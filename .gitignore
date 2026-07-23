@@ -32,15 +32,24 @@ frontend/mobile/ios/DerivedData/
 # =========================
 # Environment / secrets
 # =========================
+# .env.development and .env.test hold non-secret local/test defaults and are meant to be
+# committed (docs/Configuration.md); .env and any *.local variant are per-developer and
+# are never committed.
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
+!.env.development
+!.env.test
 
 # =========================
 # IDE
 # =========================
 .idea/
 *.swp
+
+# Claude Code: per-session/local permission grants, not shared team config.
+.claude/settings.local.json
 
 # =========================
 # OS

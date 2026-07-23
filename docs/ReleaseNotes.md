@@ -20,7 +20,21 @@ Covers user- and team-facing summaries of changes per release (features, fixes, 
 ---
 
 ## Unreleased
-_To be documented._
+
+**Added**
+- Users module (Identity) — the first complete reference module, end to end: `identity.users` PostgreSQL table with audit columns and soft delete; full backend (entity, repository, service, FluentValidation, controller, DI registration, global exception handling); Create/Update/Delete(soft)/Get-by-ID/Get-paged(sort/search/filter)/Activate/Deactivate APIs; shared TypeScript package additions (DTOs, HTTP client, error models, validation); a complete React web feature (list, create, edit, view, delete-confirm, activate/deactivate, routing, pagination, search, sorting); a feature-parity React Native mobile implementation; and unit/integration/architecture tests.
+- Central Package Management (`Directory.Packages.props`) for the backend solution.
+
+**Changed**
+- N/A
+
+**Fixed**
+- Shared HTTP client (`frontend/shared/api-client/httpClient.ts`) no longer swallows `AbortError` into a generic network error, and both web and mobile query clients use `networkMode: 'always'` — a failed request now reliably surfaces as an error instead of occasionally hanging in a loading state (see [DecisionLog.md](DecisionLog.md) ADR-007).
+
+**Removed**
+- N/A
+
+**Known limitations** (see the Users module's Phase 10 checklist for the full list): the backend has not been built/restored/migrated against a real .NET SDK or PostgreSQL instance in this environment; the EF Core migration's tool-generated Designer/Snapshot files still need to be produced via `dotnet ef`; React Native has been type-checked but not bundled through Metro/Expo.
 
 ## Release Entry Template
 

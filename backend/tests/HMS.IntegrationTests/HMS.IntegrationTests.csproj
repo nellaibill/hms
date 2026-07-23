@@ -12,6 +12,11 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="coverlet.collector" />
+    <!-- Direct pin, not just a transitive dependency: forces resolution of the patched
+         System.Security.Cryptography.Xml version pulled in by Testcontainers/Docker.DotNet
+         (and by this project's EF Core Design dependency via HMS.Api) — see
+         Directory.Packages.props for why. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
 
   <ItemGroup>

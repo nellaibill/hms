@@ -1,2 +1,1 @@
-// Placeholder module — request/response DTOs per backend module will live here.
-export {};
+export * from './identity/user';
