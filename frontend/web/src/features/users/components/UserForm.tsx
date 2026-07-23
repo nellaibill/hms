@@ -2,6 +2,9 @@ import { ApiError, userProfileSchema, type UserProfileFormValues } from '@hms/sh
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface UserFormProps {
   defaultValues?: Partial<UserProfileFormValues>;
@@ -44,36 +47,40 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
   const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      {generalError && <p className="form-error-banner">{generalError}</p>}
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex max-w-lg flex-col gap-4">
+      {generalError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {generalError}
+        </p>
+      )}
 
-      <div className="form-field">
-        <label htmlFor="firstName">First name</label>
-        <input id="firstName" autoComplete="given-name" {...register('firstName')} />
-        {errors.firstName && <p className="form-error">{errors.firstName.message}</p>}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="firstName">First name</Label>
+        <Input id="firstName" autoComplete="given-name" {...register('firstName')} />
+        {errors.firstName && <p className="text-sm text-destructive">{errors.firstName.message}</p>}
       </div>
 
-      <div className="form-field">
-        <label htmlFor="lastName">Last name</label>
-        <input id="lastName" autoComplete="family-name" {...register('lastName')} />
-        {errors.lastName && <p className="form-error">{errors.lastName.message}</p>}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="lastName">Last name</Label>
+        <Input id="lastName" autoComplete="family-name" {...register('lastName')} />
+        {errors.lastName && <p className="text-sm text-destructive">{errors.lastName.message}</p>}
       </div>
 
-      <div className="form-field">
-        <label htmlFor="email">Email</label>
-        <input id="email" type="email" autoComplete="email" {...register('email')} />
-        {errors.email && <p className="form-error">{errors.email.message}</p>}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" type="email" autoComplete="email" {...register('email')} />
+        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
 
-      <div className="form-field">
-        <label htmlFor="phoneNumber">Phone number</label>
-        <input id="phoneNumber" autoComplete="tel" {...register('phoneNumber')} />
-        {errors.phoneNumber && <p className="form-error">{errors.phoneNumber.message}</p>}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="phoneNumber">Phone number</Label>
+        <Input id="phoneNumber" autoComplete="tel" {...register('phoneNumber')} />
+        {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>}
       </div>
 
-      <button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="mt-2 self-start">
         {isSubmitting ? 'Saving…' : submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

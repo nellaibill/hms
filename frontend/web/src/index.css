@@ -1,151 +1,112 @@
-* {
-  box-sizing: border-box;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Color tokens are HSL triples (no hsl() wrapper) so Tailwind's
+ * `hsl(var(--x))` pattern in tailwind.config.ts can apply opacity modifiers.
+ * Values are mapped from docs/DesignSystem.md §4 (Color Palette) and §29
+ * (Dark Mode) — this file is the token *implementation*, not the source of
+ * truth for what the values should be.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%; /* gray-100 #161616 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+
+    --primary: 221 83% 53%; /* brand-50 #0F62FE */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%; /* gray-10 #F4F4F4 */
+    --secondary-foreground: 0 0% 9%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 32%; /* gray-70 #525252 */
+
+    --accent: 221 83% 96%;
+    --accent-foreground: 221 83% 30%;
+
+    --destructive: 355 78% 48%; /* error/critical #DA1E28 */
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 66% 39%; /* #24A148 */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
+
+    --border: 0 0% 88%; /* gray-20 #E0E0E0 */
+    --input: 0 0% 88%;
+    --ring: 221 83% 53%;
+
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 88%;
+    --sidebar-accent: 221 83% 96%;
+
+    --radius: 0.5rem; /* radius-md, 8px — Design System §6 */
+  }
+
+  .dark {
+    --background: 0 0% 9%; /* gray-100 #161616 */
+    --foreground: 0 0% 96%; /* gray-10 #F4F4F4 */
+
+    --card: 0 0% 15%; /* gray-90 #262626 */
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 221 100% 66%; /* brightened brand-40 #4589FF */
+    --primary-foreground: 0 0% 9%;
+
+    --secondary: 0 0% 22%; /* gray-80 #393939 */
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 0 0% 22%;
+    --muted-foreground: 0 0% 78%; /* gray-30 #C6C6C6 */
+
+    --accent: 221 60% 22%;
+    --accent-foreground: 221 100% 85%;
+
+    --destructive: 355 90% 66%; /* brightened error #FA4D56 */
+    --destructive-foreground: 0 0% 9%;
+
+    --success: 142 55% 55%;
+    --success-foreground: 0 0% 9%;
+
+    --warning: 42 96% 62%;
+    --warning-foreground: 0 0% 9%;
+
+    --border: 0 0% 22%; /* gray-80 #393939 */
+    --input: 0 0% 22%;
+    --ring: 221 100% 66%;
+
+    --sidebar: 0 0% 12%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 22%;
+    --sidebar-accent: 221 60% 22%;
+  }
 }
 
-body {
-  margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
-  color: #1a1a1a;
-  background: #f7f7f8;
-}
+@layer base {
+  * {
+    @apply border-border;
+  }
 
-.app-shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-header {
-  padding: 1rem 1.5rem;
-  background: #1f2a44;
-}
-
-.app-title {
-  color: #fff;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.app-main {
-  flex: 1;
-  padding: 1.5rem;
-  max-width: 960px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid #e5e5e5;
-}
-
-th button {
-  background: none;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-}
-
-.form-field {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.form-field input {
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.form-error {
-  color: #b3261e;
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.form-error-banner {
-  background: #fdecea;
-  color: #b3261e;
-  padding: 0.6rem 0.8rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-}
-
-.toolbar {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-
-.badge {
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-}
-
-.badge-active {
-  background: #e3f6e8;
-  color: #1e7a34;
-}
-
-.badge-inactive {
-  background: #f0f0f0;
-  color: #666;
-}
-
-.empty-state {
-  padding: 2rem;
-  text-align: center;
-  color: #666;
-  background: #fff;
-  border-radius: 6px;
-}
-
-.pagination {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-top: 1rem;
-}
-
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dialog {
-  background: #fff;
-  padding: 1.5rem;
-  border-radius: 8px;
-  max-width: 400px;
-  width: 100%;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      Inter,
+      'Segoe UI',
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
 }

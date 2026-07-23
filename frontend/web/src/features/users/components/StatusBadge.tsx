@@ -1,11 +1,9 @@
+import { Badge } from '@/components/ui/badge';
+
 interface StatusBadgeProps {
   isActive: boolean;
 }
 
 export function StatusBadge({ isActive }: StatusBadgeProps) {
-  return (
-    <span className={isActive ? 'badge badge-active' : 'badge badge-inactive'}>
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
+  return <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>;
 }

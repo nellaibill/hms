@@ -1,4 +1,6 @@
 import type { User } from '@hms/shared';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface DeleteUserDialogProps {
   user: User;
@@ -9,28 +11,24 @@ interface DeleteUserDialogProps {
 
 export function DeleteUserDialog({ user, isDeleting, onConfirm, onCancel }: DeleteUserDialogProps) {
   return (
-    <div className="dialog-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-user-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="delete-user-title">Delete user?</h2>
-        <p>
-          This will remove <strong>{user.firstName} {user.lastName}</strong> ({user.email}) from active lists. The
-          record is retained (soft delete) — see docs/DatabaseArchitecture.md §6.
-        </p>
-        <div className="dialog-actions">
-          <button type="button" onClick={onCancel} disabled={isDeleting}>
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent role="alertdialog" aria-labelledby="delete-user-title">
+        <DialogHeader>
+          <DialogTitle id="delete-user-title">Delete user?</DialogTitle>
+          <DialogDescription>
+            This will remove <strong className="text-foreground">{user.firstName} {user.lastName}</strong> ({user.email}
+            ) from active lists. The record is retained (soft delete) — see docs/DatabaseArchitecture.md §6.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={isDeleting}>
             Cancel
-          </button>
-          <button type="button" onClick={onConfirm} disabled={isDeleting}>
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
             {isDeleting ? 'Deleting…' : 'Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

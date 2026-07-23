@@ -1,5 +1,7 @@
 import type { User } from '@hms/shared';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from './StatusBadge';
 
 interface UserTableProps {
@@ -30,46 +32,60 @@ export function UserTable({ users, sort, onSortChange, onDeleteRequested, onTogg
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column.field}>
-              <button type="button" onClick={() => toggleSort(column.field)}>
-                {column.label}
-                {currentField === column.field ? (isDescending ? ' ▼' : ' ▲') : ''}
-              </button>
-            </th>
-          ))}
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {users.map((user) => (
-          <tr key={user.id}>
-            <td>
-              <Link to={`/users/${user.id}`}>
-                {user.firstName} {user.lastName}
-              </Link>
-            </td>
-            <td>{user.email}</td>
-            <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-            <td>
-              <StatusBadge isActive={user.isActive} />
-            </td>
-            <td>
-              <Link to={`/users/${user.id}/edit`}>Edit</Link>{' '}
-              <button type="button" onClick={() => onToggleActive(user)} disabled={isTogglingId === user.id}>
-                {user.isActive ? 'Deactivate' : 'Activate'}
-              </button>{' '}
-              <button type="button" onClick={() => onDeleteRequested(user)}>
-                Delete
-              </button>
-            </td>
+    <div className="overflow-hidden rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <tr>
+            {columns.map((column) => (
+              <th key={column.field} className="px-4 py-2.5">
+                <button type="button" onClick={() => toggleSort(column.field)} className="inline-flex items-center gap-1 hover:text-foreground">
+                  {column.label}
+                  {currentField === column.field &&
+                    (isDescending ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />)}
+                </button>
+              </th>
+            ))}
+            <th className="px-4 py-2.5">Status</th>
+            <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {users.map((user) => (
+            <tr key={user.id} className="hover:bg-muted/30">
+              <td className="px-4 py-3">
+                <Link to={`/users/${user.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                  {user.firstName} {user.lastName}
+                </Link>
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                {new Date(user.createdAt).toLocaleDateString()}
+              </td>
+              <td className="px-4 py-3">
+                <StatusBadge isActive={user.isActive} />
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex justify-end gap-1.5">
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to={`/users/${user.id}/edit`}>Edit</Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onToggleActive(user)}
+                    disabled={isTogglingId === user.id}
+                  >
+                    {user.isActive ? 'Deactivate' : 'Activate'}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(user)}>
+                    Delete
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

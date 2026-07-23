@@ -1,0 +1,119 @@
+import { useState, type FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { HospitalLogo } from '@/components/shell/HospitalLogo';
+import { ThemeToggle } from '@/components/shell/ThemeToggle';
+import { useAuth } from '@/features/auth/AuthContext';
+import { roleDefinitions } from '@/features/auth/mockUsers';
+import type { Role } from '@/features/auth/types';
+
+interface LocationState {
+  from?: string;
+}
+
+export default function LoginPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [role, setRole] = useState<Role>('doctor');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!username.trim() || !password.trim()) {
+      setError('Enter a username and password to continue.');
+      return;
+    }
+
+    // Mock authentication only — no credential verification, no API call.
+    setError(null);
+    login(role, username.trim());
+    const from = (location.state as LocationState | null)?.from ?? '/dashboard';
+    navigate(from, { replace: true });
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
+
+      <Card className="w-full max-w-md">
+        <CardHeader className="items-center text-center">
+          <HospitalLogo className="mb-2" />
+          <CardTitle className="mt-2">Sign in</CardTitle>
+          <CardDescription>Enterprise Hospital Management Information System</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="role">Sign in as</Label>
+              <Select value={role} onValueChange={(value) => setRole(value as Role)}>
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleDefinitions.map((definition) => (
+                    <SelectItem key={definition.id} value={definition.id}>
+                      {definition.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {roleDefinitions.find((definition) => definition.id === role)?.description}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                autoComplete="username"
+                placeholder="e.g. dr.menon"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+
+            {error && (
+              <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+
+            <Button type="submit" size="lg" className="mt-1">
+              Sign in
+            </Button>
+
+            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Demo shell — any username/password is accepted for the selected role.
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

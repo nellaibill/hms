@@ -1,5 +1,7 @@
 import type { User } from '@hms/shared';
+import { Loader2, Users as UsersIcon } from 'lucide-react';
 import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DeleteUserDialog,
   Pagination,
@@ -72,8 +74,18 @@ export default function UsersListPage() {
   }
 
   return (
-    <section>
-      <h1>Users</h1>
+    <div className="flex flex-1 flex-col gap-6 p-6">
+      <div className="flex items-start gap-3 border-b border-border pb-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <UsersIcon className="h-5 w-5" />
+        </span>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Users</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Manage system accounts — the Identity reference module, connected live to the HMS.Api backend.
+          </p>
+        </div>
+      </div>
 
       <UserListToolbar
         search={search}
@@ -82,18 +94,32 @@ export default function UsersListPage() {
         onIsActiveChange={handleIsActiveChange}
       />
 
-      {isPending && <p>Loading users…</p>}
-
-      {isError && <p className="form-error-banner">{error instanceof Error ? error.message : 'Failed to load users.'}</p>}
-
-      {!isPending && !isError && data && data.items.length === 0 && (
-        <div className="empty-state">
-          <p>No users found{debouncedSearch ? ` for "${debouncedSearch}"` : ''}.</p>
+      {isPending && (
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading users…
         </div>
       )}
 
+      {isError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error instanceof Error ? error.message : 'Failed to load users.'}
+        </p>
+      )}
+
+      {!isPending && !isError && data && data.items.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+            <p className="text-sm font-medium text-foreground">No users found</p>
+            <p className="text-sm text-muted-foreground">
+              {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Create the first user account to get started.'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {!isPending && !isError && data && data.items.length > 0 && (
-        <>
+        <div className="flex flex-col gap-3">
           <UserTable
             users={data.items}
             sort={sort}
@@ -103,7 +129,7 @@ export default function UsersListPage() {
             isTogglingId={isTogglingId}
           />
           <Pagination meta={data.meta} onPageChange={setPage} />
-        </>
+        </div>
       )}
 
       {userPendingDelete && (
@@ -114,6 +140,6 @@ export default function UsersListPage() {
           onCancel={() => setUserPendingDelete(null)}
         />
       )}
-    </section>
+    </div>
   );
 }

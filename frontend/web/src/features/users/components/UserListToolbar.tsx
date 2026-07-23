@@ -1,4 +1,8 @@
+import { Plus, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface UserListToolbarProps {
   search: string;
@@ -9,29 +13,39 @@ interface UserListToolbarProps {
 
 export function UserListToolbar({ search, onSearchChange, isActive, onIsActiveChange }: UserListToolbarProps) {
   return (
-    <div className="toolbar">
-      <input
-        type="search"
-        placeholder="Search by name or email…"
-        value={search}
-        onChange={(event) => onSearchChange(event.target.value)}
-        aria-label="Search users"
-      />
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="relative w-64">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Search by name or email…"
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          aria-label="Search users"
+          className="pl-9"
+        />
+      </div>
 
-      <select
+      <Select
         value={isActive === undefined ? 'all' : String(isActive)}
-        onChange={(event) => {
-          const value = event.target.value;
-          onIsActiveChange(value === 'all' ? undefined : value === 'true');
-        }}
-        aria-label="Filter by status"
+        onValueChange={(value) => onIsActiveChange(value === 'all' ? undefined : value === 'true')}
       >
-        <option value="all">All statuses</option>
-        <option value="true">Active only</option>
-        <option value="false">Inactive only</option>
-      </select>
+        <SelectTrigger className="w-44" aria-label="Filter by status">
+          <SelectValue placeholder="All statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All statuses</SelectItem>
+          <SelectItem value="true">Active only</SelectItem>
+          <SelectItem value="false">Inactive only</SelectItem>
+        </SelectContent>
+      </Select>
 
-      <Link to="/users/new">New User</Link>
+      <Button asChild className="ml-auto gap-1.5">
+        <Link to="/users/new">
+          <Plus className="h-4 w-4" />
+          New User
+        </Link>
+      </Button>
     </div>
   );
 }

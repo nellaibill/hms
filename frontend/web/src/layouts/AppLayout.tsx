@@ -1,19 +1,26 @@
-import { Suspense } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { AppSidebar } from '@/components/shell/AppSidebar';
+import { TopHeader } from '@/components/shell/TopHeader';
+import { Breadcrumbs } from '@/components/shell/Breadcrumbs';
+import { AppFooter } from '@/components/shell/AppFooter';
 
+// Assembles the six structural regions from docs/LayoutFramework.md:
+// Sidebar · Top Navigation · Breadcrumb · Page content · Footer.
 export function AppLayout() {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <Link to="/users" className="app-title">
-          HMS
-        </Link>
-      </header>
-      <main className="app-main">
-        <Suspense fallback={<p>Loading…</p>}>
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((prev) => !prev)} />
+      <div className="flex min-h-screen flex-1 flex-col">
+        <TopHeader />
+        <Breadcrumbs />
+        <main className="flex flex-1 flex-col">
           <Outlet />
-        </Suspense>
-      </main>
+        </main>
+        <AppFooter />
+      </div>
     </div>
   );
 }
