@@ -43,7 +43,7 @@ export function TopHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-[1000] flex h-14 items-center gap-3 border-b border-border bg-background px-4">
+    <header className="sticky top-0 z-[1000] flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       {/* Mobile nav trigger — sidebar collapses to a drawer below md, per docs/LayoutFramework.md §14 */}
       <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation">
         <Menu className="h-5 w-5" />

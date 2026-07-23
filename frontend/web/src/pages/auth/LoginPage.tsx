@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { HospitalLogo } from '@/components/shell/HospitalLogo';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
+import { branding } from '@/config/branding';
 import { useAuth } from '@/features/auth/AuthContext';
 import { roleDefinitions } from '@/features/auth/mockUsers';
 import type { Role } from '@/features/auth/types';
@@ -42,16 +43,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-muted/30 px-4">
+      {/* Soft brand-tinted backdrop — derives from --primary, so it re-tints automatically on a brand/color change. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(60% 50% at 50% 0%, hsl(var(--primary) / 0.10), transparent), radial-gradient(40% 35% at 100% 100%, hsl(var(--primary) / 0.06), transparent)',
+        }}
+      />
+
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
 
-      <Card className="w-full max-w-md">
+      <Card className="relative w-full max-w-md shadow-soft-lg">
         <CardHeader className="items-center text-center">
           <HospitalLogo className="mb-2" />
           <CardTitle className="mt-2">Sign in</CardTitle>
-          <CardDescription>Enterprise Hospital Management Information System</CardDescription>
+          <CardDescription>{branding.systemName}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>

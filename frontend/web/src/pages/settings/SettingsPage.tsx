@@ -54,7 +54,11 @@ export default function SettingsPage() {
           const content = (
             <Card
               key={section.title}
-              className={section.status === 'available' ? 'transition-colors hover:border-primary/40 hover:bg-accent/40' : 'border-dashed'}
+              className={
+                section.status === 'available'
+                  ? 'transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-md'
+                  : 'border-dashed'
+              }
             >
               <CardHeader>
                 <div className="flex items-center justify-between">

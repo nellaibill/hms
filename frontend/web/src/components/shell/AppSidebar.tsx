@@ -16,13 +16,12 @@ export function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 md:flex',
+        'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-soft transition-[width] duration-200 md:flex',
         collapsed ? 'w-[72px]' : 'w-[240px]',
       )}
     >
       <div className={cn('flex h-14 items-center border-b border-sidebar-border px-3', collapsed && 'justify-center px-0')}>
-        {!collapsed && <HospitalLogo showName={false} className="px-1" />}
-        {collapsed && <HospitalLogo showName={false} />}
+        <HospitalLogo showName={!collapsed} />
       </div>
 
       <ScrollArea className="flex-1 py-3">

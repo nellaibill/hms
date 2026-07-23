@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { applyBrandingTokens } from '@/lib/apply-branding';
 
 type Theme = 'light' | 'dark';
 
@@ -26,6 +27,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.toggle('dark', theme === 'dark');
     root.setAttribute('data-theme', theme);
     localStorage.setItem(STORAGE_KEY, theme);
+    applyBrandingTokens(theme);
   }, [theme]);
 
   const setTheme = (next: Theme) => setThemeState(next);

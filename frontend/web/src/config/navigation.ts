@@ -35,6 +35,8 @@ export interface NavLeaf {
   icon: LucideIcon;
   description: string;
   roles: Role[] | 'all';
+  /** Section header rendered above this item in the sidebar — top-level items only. */
+  section?: string;
 }
 
 export interface NavGroup {
@@ -43,6 +45,8 @@ export interface NavGroup {
   icon: LucideIcon;
   roles: Role[] | 'all';
   children: NavLeaf[];
+  /** Section header rendered above this item in the sidebar — top-level items only. */
+  section?: string;
 }
 
 export type NavNode = NavLeaf | NavGroup;
@@ -55,11 +59,13 @@ export const navigationTree: NavNode[] = [
     icon: LayoutDashboard,
     description: 'Executive overview — census, income & expense, HR presence, and plans/projects status.',
     roles: 'all',
+    section: 'Overview',
   },
   {
     type: 'group',
     label: 'Patient Management',
     icon: Search,
+    section: 'Clinical',
     roles: ['receptionist', 'doctor', 'nurse'],
     children: [
       {
@@ -85,6 +91,7 @@ export const navigationTree: NavNode[] = [
     label: 'Clinical Care',
     icon: Stethoscope,
     roles: ['doctor', 'nurse'],
+    section: 'Clinical',
     children: [
       {
         type: 'leaf',
@@ -117,6 +124,7 @@ export const navigationTree: NavNode[] = [
     label: 'Diagnostics & Ancillary',
     icon: FlaskConical,
     roles: ['labTechnician', 'radiologist', 'doctor'],
+    section: 'Clinical',
     children: [
       {
         type: 'leaf',
@@ -151,12 +159,14 @@ export const navigationTree: NavNode[] = [
     icon: Pill,
     description: 'Prescription fulfillment queue, drug master, and stock/batch/expiry tracking.',
     roles: ['pharmacist', 'doctor'],
+    section: 'Clinical',
   },
   {
     type: 'group',
     label: 'Support Services',
     icon: Truck,
     roles: ['admin'],
+    section: 'Operations',
     children: [
       {
         type: 'leaf',
@@ -183,12 +193,14 @@ export const navigationTree: NavNode[] = [
     icon: Wallet,
     description: 'Unified invoice ledger, payments & refunds, insurance/TPA claims, and financial reports.',
     roles: ['accounts', 'receptionist'],
+    section: 'Operations',
   },
   {
     type: 'group',
     label: 'Records & Compliance',
     icon: FileBadge,
     roles: ['doctor', 'admin'],
+    section: 'Operations',
     children: [
       {
         type: 'leaf',
@@ -213,6 +225,7 @@ export const navigationTree: NavNode[] = [
     label: 'Workforce & Administration',
     icon: UsersRound,
     roles: ['hr', 'admin'],
+    section: 'Administration',
     children: [
       {
         type: 'leaf',
@@ -245,6 +258,7 @@ export const navigationTree: NavNode[] = [
     label: 'Engagement',
     icon: CalendarDays,
     roles: 'all',
+    section: 'Administration',
     children: [
       {
         type: 'leaf',
@@ -271,6 +285,7 @@ export const navigationTree: NavNode[] = [
     icon: BarChart3,
     description: 'Operational, clinical, financial, and statutory/regulatory reports.',
     roles: ['admin', 'accounts', 'hr'],
+    section: 'Administration',
   },
 ];
 

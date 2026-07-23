@@ -30,6 +30,8 @@ const config: Config = {
         muted: {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
+          tertiary: 'hsl(var(--text-tertiary))',
+          disabled: 'hsl(var(--text-disabled))',
         },
         accent: {
           DEFAULT: 'hsl(var(--accent))',
@@ -47,6 +49,10 @@ const config: Config = {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
         },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
+        },
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
@@ -60,7 +66,17 @@ const config: Config = {
           foreground: 'hsl(var(--sidebar-foreground))',
           border: 'hsl(var(--sidebar-border))',
           accent: 'hsl(var(--sidebar-accent))',
+          active: {
+            DEFAULT: 'hsl(var(--sidebar-active-bg))',
+            foreground: 'hsl(var(--sidebar-active-fg))',
+          },
         },
+      },
+      boxShadow: {
+        soft: '0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06)',
+        'soft-md': '0 2px 6px 0 rgb(15 23 42 / 0.06), 0 4px 10px -2px rgb(15 23 42 / 0.06)',
+        'soft-lg': '0 8px 24px -4px rgb(15 23 42 / 0.10), 0 4px 10px -4px rgb(15 23 42 / 0.06)',
+        'brand-glow': '0 4px 14px 0 hsl(var(--primary) / 0.24)',
       },
       borderRadius: {
         lg: 'var(--radius)',

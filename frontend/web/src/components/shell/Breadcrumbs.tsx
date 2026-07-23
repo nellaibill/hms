@@ -32,7 +32,7 @@ export function Breadcrumbs() {
       <Link
         to="/dashboard"
         aria-current={isHome ? 'page' : undefined}
-        className={cn('flex items-center gap-1 hover:text-foreground', isHome && 'font-medium text-foreground')}
+        className={cn('flex items-center gap-1 transition-colors hover:text-primary', isHome && 'font-medium text-foreground')}
       >
         <Home className="h-3.5 w-3.5" />
         Home
@@ -40,7 +40,7 @@ export function Breadcrumbs() {
       {!isHome &&
         trail.map((segment, index) => (
           <span key={segment} className="flex items-center gap-1.5">
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             <span
               aria-current={index === trail.length - 1 ? 'page' : undefined}
               className={index === trail.length - 1 ? 'font-medium text-foreground' : undefined}
