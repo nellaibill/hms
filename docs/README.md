@@ -24,6 +24,9 @@ Covers an index of every document in `docs/` with a one-line description of what
 ### Architecture & Structure
 - [Architecture.md](Architecture.md) — High-level system architecture, style, and module boundaries.
 - [FolderStructure.md](FolderStructure.md) — Approved repository folder layout.
+- [InformationArchitecture.md](InformationArchitecture.md) — Navigation, module hierarchy, search, notifications, and profile architecture for the HMS.
+- [ScreenInventory.md](ScreenInventory.md) — Complete screen catalog per module: main, create, edit, view, search, dashboard, reports, settings, dialogs, popups, print/export views.
+- [DesignSystem.md](DesignSystem.md) — Enterprise design system spec: tokens (typography, spacing, grid, color, elevation, radius, icons), components, accessibility (WCAG 2.2 AA), dark mode.
 
 ### Standards & Conventions
 - [CodingStandards.md](CodingStandards.md) — Code style and quality expectations.
@@ -48,6 +51,8 @@ Covers an index of every document in `docs/` with a one-line description of what
 - [Deployment.md](Deployment.md) — Build and deployment process.
 
 ### Project History & Tracking
+- [BusinessRequirementsAnalysis.md](BusinessRequirementsAnalysis.md) — BA/architect analysis of the client HMS requirement brief: modules, actors, entities, gaps, risks.
+- [UserJourneyMaps.md](UserJourneyMaps.md) — End-to-end UX journey maps for the nine primary HMS personas (goals, pain points, actions, errors, success states).
 - [ReleaseNotes.md](ReleaseNotes.md) — What shipped in each release.
 - [DecisionLog.md](DecisionLog.md) — Architecture Decision Records.
 - [BugFixes.md](BugFixes.md) — Log of notable bug fixes.
