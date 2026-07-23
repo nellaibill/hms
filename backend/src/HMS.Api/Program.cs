@@ -53,9 +53,18 @@ if (app.Environment.IsDevelopment())
     // MVP convenience only — see docs/Deployment.md for the real deployment-time
     // migration step.
     using var scope = app.Services.CreateScope();
-    scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.Migrate();
-    scope.ServiceProvider.GetRequiredService<PatientsDbContext>().Database.Migrate();
-    scope.ServiceProvider.GetRequiredService<BrandingDbContext>().Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<IdentityDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<PatientsDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<BrandingDbContext>()
+        .Database.Migrate();
 }
 
 app.Run();

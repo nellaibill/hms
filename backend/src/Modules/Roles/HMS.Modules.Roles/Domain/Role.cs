@@ -1,0 +1,109 @@
+using HMS.Shared.Kernel;
+
+namespace HMS.Modules.Roles.Domain;
+
+/// <summary>
+/// Represents a hospital role that can be assigned to users.
+/// Examples: Super Admin, Doctor, Receptionist.
+/// </summary>
+internal class Role : Entity
+{
+    public string Name { get; private set; } = null!;
+
+    public string Code { get; private set; } = null!;
+
+    public string? Description { get; private set; }
+
+    public bool IsSystemRole { get; private set; }
+
+    public int DisplayOrder { get; private set; }
+
+    public bool IsActive { get; private set; }
+
+    // Required by EF Core materialization.
+    private Role()
+    {
+    }
+
+    private Role(
+        Guid id,
+        string name,
+        string code,
+        string? description,
+        bool isSystemRole,
+        int displayOrder,
+        Guid? createdBy)
+        : base(id, createdBy)
+    {
+        Name = name;
+        Code = code;
+        Description = description;
+        IsSystemRole = isSystemRole;
+        DisplayOrder = displayOrder;
+        IsActive = true;
+    }
+
+    public static Role Create(
+        string name,
+        string code,
+        string? description,
+        bool isSystemRole,
+        int displayOrder,
+        Guid? createdBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(name, nameof(name));
+        Guard.AgainstNullOrWhiteSpace(code, nameof(code));
+
+        return new Role(
+            Guid.CreateVersion7(),
+            name.Trim(),
+            NormalizeCode(code),
+            description?.Trim(),
+            isSystemRole,
+            displayOrder,
+            createdBy);
+    }
+
+    public void Update(
+        string name,
+        string code,
+        string? description,
+        int displayOrder,
+        Guid? updatedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(name, nameof(name));
+        Guard.AgainstNullOrWhiteSpace(code, nameof(code));
+
+        Name = name.Trim();
+        Code = NormalizeCode(code);
+        Description = description?.Trim();
+        DisplayOrder = displayOrder;
+
+        MarkUpdated(updatedBy);
+    }
+
+    public void Activate(Guid? updatedBy)
+    {
+        if (IsActive)
+        {
+            return;
+        }
+
+        IsActive = true;
+        MarkUpdated(updatedBy);
+    }
+
+    public void Deactivate(Guid? updatedBy)
+    {
+        if (!IsActive)
+        {
+            return;
+        }
+
+        IsActive = false;
+        MarkUpdated(updatedBy);
+    }
+
+    private static string NormalizeCode(string code)
+        => code.Trim().ToUpperInvariant();
+}
