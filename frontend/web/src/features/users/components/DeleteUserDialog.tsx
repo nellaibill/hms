@@ -17,7 +17,7 @@ export function DeleteUserDialog({ user, isDeleting, onConfirm, onCancel }: Dele
           <DialogTitle id="delete-user-title">Delete user?</DialogTitle>
           <DialogDescription>
             This will remove <strong className="text-foreground">{user.firstName} {user.lastName}</strong> ({user.email}
-            ) from active lists. The record is retained (soft delete) — see docs/DatabaseArchitecture.md §6.
+            ) from active lists. The record is retained (soft delete)
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
