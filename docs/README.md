@@ -29,6 +29,7 @@ Covers an index of every document in `docs/` with a one-line description of what
 - [DesignSystem.md](DesignSystem.md) — Enterprise design system spec: tokens (typography, spacing, grid, color, elevation, radius, icons), components, accessibility (WCAG 2.2 AA), dark mode.
 - [LayoutFramework.md](LayoutFramework.md) — Structural layout spec: nav, sidebar, drawers, sticky behavior, z-index stacking, and responsive/multi-monitor rules with measurements.
 - [DashboardSpecifications.md](DashboardSpecifications.md) — KPIs, widgets, charts, alerts, and empty/loading states for all 10 role-based HMS dashboards.
+- [PatientRegistrationModule.md](PatientRegistrationModule.md) — Full UX spec for Patient Registration: search-gate, duplicate detection, merge, emergency registration, auto save, audit trail.
 
 ### Standards & Conventions
 - [CodingStandards.md](CodingStandards.md) — Code style and quality expectations.
