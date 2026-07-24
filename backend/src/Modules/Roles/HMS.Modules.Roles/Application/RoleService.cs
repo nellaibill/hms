@@ -128,7 +128,6 @@ internal class RoleService : IRoleService
             request.Name,
             request.Code,
             request.Description,
-            request.IsSystemRole,
             request.DisplayOrder,
             actorId);
 

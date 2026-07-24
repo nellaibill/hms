@@ -1,6 +1,8 @@
 using FluentValidation;
+using FluentValidation.Results;
 using HMS.Modules.Roles.Application;
 using HMS.Modules.Roles.Contracts;
+using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +11,7 @@ namespace HMS.Modules.Roles.Endpoints;
 
 [ApiController]
 [Route("api/v1/roles")]
-internal sealed class RolesController : ControllerBase
+public sealed class RolesController : ControllerBase
 {
     private readonly IRoleService _service;
     private readonly IValidator<CreateRoleRequest> _createValidator;
@@ -65,7 +67,7 @@ internal sealed class RolesController : ControllerBase
 
         if (!validation.IsValid)
         {
-            return ValidationProblem(validation.ToDictionary());
+            return BadRequest(BuildValidationError(validation));
         }
 
         Guid? actorId = null;
@@ -94,7 +96,7 @@ internal sealed class RolesController : ControllerBase
 
         if (!validation.IsValid)
         {
-            return ValidationProblem(validation.ToDictionary());
+             return BadRequest(BuildValidationError(validation));
         }
 
         Guid? actorId = null;
@@ -186,4 +188,18 @@ internal sealed class RolesController : ControllerBase
             Timestamp = DateTime.UtcNow
         });
     }
+    private ApiErrorResponse BuildValidationError(ValidationResult validation) => new()
+    {
+        ErrorCode = "VALIDATION.FAILED",
+        Message = "One or more validation errors occurred.",
+        ValidationErrors = validation.Errors
+            .Select(e => new ValidationErrorItem
+            {
+                Field = e.PropertyName,
+                Message = e.ErrorMessage
+            })
+            .ToList(),
+        CorrelationId = HttpContext.GetCorrelationId(),
+        Timestamp = DateTime.UtcNow,
+    };
 }

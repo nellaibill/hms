@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Modules\Identity\HMS.Modules.Identity\HMS.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Roles\HMS.Modules.Roles\HMS.Modules.Roles.csproj" />
     <ProjectReference Include="..\..\Modules\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
     <ProjectReference Include="..\..\Modules\Branding\HMS.Modules.Branding\HMS.Modules.Branding.csproj" />
     <ProjectReference Include="..\..\Modules\Appointments\HMS.Modules.Appointments\HMS.Modules.Appointments.csproj" />
