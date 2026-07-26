@@ -10,11 +10,6 @@ interface RoleTableProps {
   onSortChange: (sort: string) => void;
 }
 
-const columns: Array<{ field: string; label: string }> = [
-  { field: 'name', label: 'Name' },
-  { field: 'updatedAt', label: 'Last Updated' },
-];
-
 export function RoleTable({ roles, sort, onSortChange }: RoleTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
