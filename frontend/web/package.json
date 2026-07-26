@@ -9,8 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "test": "TODO"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@hms/shared": "file:../shared",

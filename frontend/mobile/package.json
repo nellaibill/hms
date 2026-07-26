@@ -10,8 +10,7 @@
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "test": "TODO"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@hms/shared": "file:../shared",
