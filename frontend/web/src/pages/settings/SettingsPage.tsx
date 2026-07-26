@@ -22,7 +22,8 @@ const sections: SettingsSection[] = [
     title: 'Roles & Permissions',
     description: 'Role-based access control and the permission matrix for every module.',
     icon: ShieldCheck,
-    status: 'placeholder',
+    path: '/admin/roles',
+    status: 'available',
   },
   {
     title: 'Master Data',

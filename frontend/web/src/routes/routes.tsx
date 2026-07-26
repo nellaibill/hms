@@ -17,6 +17,8 @@ const PatientsListPage = lazy(() => import('../pages/patients/PatientsListPage')
 const PatientRegistrationCreatePage = lazy(() => import('../pages/patients/PatientRegistrationCreatePage'));
 const PatientViewPage = lazy(() => import('../pages/patients/PatientViewPage'));
 const PatientEditPage = lazy(() => import('../pages/patients/PatientEditPage'));
+const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
+const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -58,6 +60,15 @@ const patientRoutes = [
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
 ];
 
+// Roles Management (UI-only, mock data — no backend module yet) — reachable from the
+// Settings page ("Roles & Permissions"), mirroring how Users is wired in above.
+const roleRoutes = [
+  { path: 'admin/roles', element: withSuspense(<RolesListPage />) },
+  { path: 'admin/roles/new', element: withSuspense(<RoleFormPage mode="create" />) },
+  { path: 'admin/roles/:id', element: withSuspense(<RoleFormPage mode="view" />) },
+  { path: 'admin/roles/:id/edit', element: withSuspense(<RoleFormPage mode="edit" />) },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -75,6 +86,7 @@ export const router = createBrowserRouter(
             ...moduleRoutes,
             ...userRoutes,
             ...patientRoutes,
+            ...roleRoutes,
           ],
         },
       ],
