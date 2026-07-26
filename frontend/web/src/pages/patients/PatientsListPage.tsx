@@ -50,16 +50,23 @@ export default function PatientsListPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-start gap-3 border-b border-border pb-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+      <div className="flex items-start gap-3 border-b border-border pb-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <UserPlus2 className="h-5 w-5" />
         </span>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Reception &amp; Registration</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Register new patients or search existing ones by name, UHID, or phone.
-          </p>
+        <div className="flex flex-1 items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Reception &amp; Registration</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Register new patients or search existing ones by name, UHID, or phone.
+            </p>
+          </div>
+          {data?.source === 'mock' && (
+            <span className="mt-0.5 shrink-0 rounded-full bg-warning/15 px-2.5 py-1 text-xs font-medium text-warning">
+              Demo data — API not connected
+            </span>
+          )}
         </div>
       </div>
 

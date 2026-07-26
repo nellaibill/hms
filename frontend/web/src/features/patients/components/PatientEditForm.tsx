@@ -26,6 +26,7 @@ interface PatientEditFormProps {
   isSubmitting: boolean;
   apiError: ApiError | null;
   onSubmit: (values: PatientEditUiFormValues) => void;
+  onCancel: () => void;
 }
 
 const sections: SectionNavItem[] = [
@@ -37,7 +38,7 @@ const sections: SectionNavItem[] = [
 ];
 
 /** Updates a patient's demographic/master-data fields only — the encounter is not editable here (see docs/DecisionLog.md's MVP-scope ADR). */
-export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmit }: PatientEditFormProps) {
+export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
   const {
     register,
     control,
@@ -56,10 +57,11 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   return (
-    <div className="flex max-w-5xl gap-8">
-      <SectionNav sections={sections} className="hidden w-52 shrink-0 lg:flex" />
+    <div className="mx-auto flex w-full max-w-[1920px] gap-4">
+      <SectionNav sections={sections} className="hidden w-44 shrink-0 lg:flex" />
+      <div aria-hidden="true" className="hidden w-px shrink-0 bg-border lg:block" />
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-6">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -74,8 +76,8 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
         )}
 
         <FormSection id="demographics" title="Patient Identification & Demographics">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Title" htmlFor="title">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -95,22 +97,29 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
                 )}
               />
             </Field>
-            <Field label="First name" htmlFor="firstName" error={errors.firstName?.message} className="flex flex-col gap-1.5 sm:col-span-2">
+            <Field
+              label="First name"
+              htmlFor="firstName"
+              error={errors.firstName?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="firstName" {...register('firstName')} />
             </Field>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Last name" htmlFor="lastName" error={errors.lastName?.message} className="flex flex-col gap-1.5 sm:col-span-2">
+            <Field
+              label="Last name"
+              htmlFor="lastName"
+              error={errors.lastName?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message}>
+            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-44">
               <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Gender" htmlFor="gender">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Gender" htmlFor="gender" className="flex w-full flex-col gap-1 sm:w-36">
               <Controller
                 name="gender"
                 control={control}
@@ -130,7 +139,7 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
                 )}
               />
             </Field>
-            <Field label="Blood group" htmlFor="bloodGroup">
+            <Field label="Blood group" htmlFor="bloodGroup" className="flex w-full flex-col gap-1 sm:w-32">
               <Controller
                 name="bloodGroup"
                 control={control}
@@ -154,40 +163,51 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
         </FormSection>
 
         <FormSection id="address" title="Address">
-          <Field label="Address line 1 (door no. & building name)" htmlFor="addressLine1" error={errors.addressLine1?.message}>
-            <Input id="addressLine1" {...register('addressLine1')} />
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Address line 2 (street)" htmlFor="addressLine2">
+          <div className="flex flex-wrap gap-3">
+            <Field
+              label="Address line 1 (door no. & building name)"
+              htmlFor="addressLine1"
+              error={errors.addressLine1?.message}
+              className="flex min-w-[260px] flex-1 flex-col gap-1"
+            >
+              <Input id="addressLine1" {...register('addressLine1')} />
+            </Field>
+            <Field label="Address line 2 (street)" htmlFor="addressLine2" className="flex min-w-[220px] flex-1 flex-col gap-1">
               <Input id="addressLine2" {...register('addressLine2')} />
             </Field>
-            <Field label="Address line 3 (city)" htmlFor="addressLine3">
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="District" htmlFor="district" error={errors.district?.message}>
+            <Field
+              label="District"
+              htmlFor="district"
+              error={errors.district?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="district" {...register('district')} />
             </Field>
-            <Field label="State" htmlFor="state" error={errors.state?.message}>
+            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="state" {...register('state')} />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message}>
+            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
         </FormSection>
 
-        <FormSection
-          id="contact"
-          title="Contact Details"
-          description="Primary number is required; up to two additional numbers can be added, each with its own relation to the patient."
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Primary phone" htmlFor="primaryPhoneNumber" error={errors.primaryPhone?.number?.message}>
+        <FormSection id="contact" title="Contact Details" description="Primary phone required. Add up to two additional numbers.">
+          <div className="flex flex-wrap gap-3">
+            <Field
+              label="Primary phone"
+              htmlFor="primaryPhoneNumber"
+              error={errors.primaryPhone?.number?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="primaryPhoneNumber" {...register('primaryPhone.number')} />
             </Field>
-            <Field label="Relation" htmlFor="primaryPhoneRelation">
+            <Field label="Relation" htmlFor="primaryPhoneRelation" className="flex w-full flex-col gap-1 sm:w-44">
               <Controller
                 name="primaryPhone.relation"
                 control={control}
@@ -207,14 +227,24 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
                 )}
               />
             </Field>
+            <Field label="Email" htmlFor="email" error={errors.email?.message} className="flex min-w-[180px] flex-1 flex-col gap-1">
+              <Input id="email" type="email" {...register('email')} />
+            </Field>
+            <Field label="Profession" htmlFor="profession" className="flex min-w-[160px] flex-1 flex-col gap-1">
+              <Input id="profession" {...register('profession')} />
+            </Field>
           </div>
 
           {additionalPhones.fields.map((field, index) => (
-            <div key={field.id} className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-              <Field label={`Additional phone ${index + 1}`} htmlFor={`additionalPhones.${index}.number`}>
+            <div key={field.id} className="flex flex-wrap items-end gap-3">
+              <Field
+                label={`Additional phone ${index + 1}`}
+                htmlFor={`additionalPhones.${index}.number`}
+                className="flex min-w-[160px] flex-1 flex-col gap-1"
+              >
                 <Input id={`additionalPhones.${index}.number`} {...register(`additionalPhones.${index}.number` as const)} />
               </Field>
-              <Field label="Relation" htmlFor={`additionalPhones.${index}.relation`}>
+              <Field label="Relation" htmlFor={`additionalPhones.${index}.relation`} className="flex w-full flex-col gap-1 sm:w-44">
                 <Controller
                   name={`additionalPhones.${index}.relation` as const}
                   control={control}
@@ -252,20 +282,11 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
               Add another number
             </Button>
           )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Email" htmlFor="email" error={errors.email?.message}>
-              <Input id="email" type="email" {...register('email')} />
-            </Field>
-            <Field label="Profession" htmlFor="profession">
-              <Input id="profession" {...register('profession')} />
-            </Field>
-          </div>
         </FormSection>
 
         <FormSection id="emergency-contact" title="Emergency Contact">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Relationship" htmlFor="emergencyContactRelationship">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Relationship" htmlFor="emergencyContactRelationship" className="flex w-full flex-col gap-1 sm:w-44">
               <Controller
                 name="emergencyContactRelationship"
                 control={control}
@@ -285,10 +306,20 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
                 )}
               />
             </Field>
-            <Field label="Name" htmlFor="emergencyContactName" error={errors.emergencyContactName?.message}>
+            <Field
+              label="Name"
+              htmlFor="emergencyContactName"
+              error={errors.emergencyContactName?.message}
+              className="flex min-w-[180px] flex-1 flex-col gap-1"
+            >
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
             </Field>
-            <Field label="Phone" htmlFor="emergencyContactPhone" error={errors.emergencyContactPhone?.message}>
+            <Field
+              label="Phone"
+              htmlFor="emergencyContactPhone"
+              error={errors.emergencyContactPhone?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
             </Field>
           </div>
@@ -302,8 +333,8 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
             </label>
           </div>
           {hasKnownAllergy && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message}>
+            <div className="flex flex-wrap gap-3">
+              <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message} className="flex w-full flex-col gap-1 sm:w-40">
                 <Controller
                   name="allergyCategory"
                   control={control}
@@ -323,14 +354,14 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
                   )}
                 />
               </Field>
-              <Field label="Specify" htmlFor="allergySpecify" className="flex flex-col gap-1.5 sm:col-span-2">
+              <Field label="Specify" htmlFor="allergySpecify" className="flex min-w-[200px] flex-1 flex-col gap-1">
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
               </Field>
               <Field
                 label="Severity"
                 htmlFor="allergySeverity"
                 error={errors.allergySeverity?.message}
-                className="flex flex-col gap-1.5 sm:col-span-3 sm:w-1/3"
+                className="flex w-full flex-col gap-1 sm:w-60"
               >
                 <Controller
                   name="allergySeverity"
@@ -355,9 +386,14 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
           )}
         </FormSection>
 
-        <Button type="submit" disabled={isSubmitting} className="self-start">
-          {isSubmitting ? 'Saving…' : 'Save Changes'}
-        </Button>
+        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
       </form>
     </div>
   );

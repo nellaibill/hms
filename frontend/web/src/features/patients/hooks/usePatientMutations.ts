@@ -1,6 +1,8 @@
 import type { CreatePatientRequest, IdProofType, UpdatePatientRequest } from '@hms/shared';
+import { NetworkError } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '../../../services/apiClient';
+import { createMockPatient, deleteMockPatient, updateMockPatient } from '../mockPatientsStore';
 
 function useInvalidatePatients() {
   const queryClient = useQueryClient();
@@ -10,7 +12,16 @@ function useInvalidatePatients() {
 export function useCreatePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: (request: CreatePatientRequest) => patientsApi.createPatient(request),
+    mutationFn: async (request: CreatePatientRequest) => {
+      try {
+        return await patientsApi.createPatient(request);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return createMockPatient(request);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidatePatients,
   });
 }
@@ -18,7 +29,16 @@ export function useCreatePatientMutation() {
 export function useUpdatePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: ({ id, request }: { id: string; request: UpdatePatientRequest }) => patientsApi.updatePatient(id, request),
+    mutationFn: async ({ id, request }: { id: string; request: UpdatePatientRequest }) => {
+      try {
+        return await patientsApi.updatePatient(id, request);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return updateMockPatient(id, request);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidatePatients,
   });
 }
@@ -26,7 +46,17 @@ export function useUpdatePatientMutation() {
 export function useDeletePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: (id: string) => patientsApi.deletePatient(id),
+    mutationFn: async (id: string) => {
+      try {
+        await patientsApi.deletePatient(id);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          deleteMockPatient(id);
+          return;
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidatePatients,
   });
 }

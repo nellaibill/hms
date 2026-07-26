@@ -8,7 +8,7 @@ interface PatientDetailsProps {
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 py-3">
+    <div className="flex flex-col gap-0.5 py-2.5">
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="text-sm text-foreground">{value}</dd>
     </div>
@@ -19,7 +19,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div className="flex flex-col gap-1">
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-      <dl className="grid grid-cols-1 divide-y divide-border rounded-lg border border-border px-4 sm:grid-cols-2 sm:divide-y-0 sm:divide-x sm:px-0 sm:[&>*]:px-6">
+      <dl className="grid grid-cols-1 divide-y divide-border rounded-lg border border-border px-4 sm:grid-cols-2 sm:divide-y-0 sm:divide-x sm:px-0 sm:[&>*]:px-5 xl:grid-cols-3">
         {children}
       </dl>
     </div>

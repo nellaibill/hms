@@ -20,6 +20,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, X } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -92,6 +93,7 @@ const defaultValues: PatientRegistrationUiFormValues = {
  * persist into yet and are composed/defaulted/dropped there until backend Phase 2.
  */
 export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: PatientRegistrationFormProps) {
+  const navigate = useNavigate();
   const {
     register,
     control,
@@ -124,10 +126,11 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   return (
-    <div className="flex max-w-5xl gap-8">
-      <SectionNav sections={sections} className="hidden w-52 shrink-0 lg:flex" />
+    <div className="mx-auto flex w-full max-w-[1920px] gap-4">
+      <SectionNav sections={sections} className="hidden w-44 shrink-0 lg:flex" />
+      <div aria-hidden="true" className="hidden w-px shrink-0 bg-border lg:block" />
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-6">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -142,8 +145,8 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
         )}
 
         <FormSection id="demographics" title="Patient Identification & Demographics">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Title" htmlFor="title">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -163,22 +166,29 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 )}
               />
             </Field>
-            <Field label="First name" htmlFor="firstName" error={errors.firstName?.message} className="flex flex-col gap-1.5 sm:col-span-2">
+            <Field
+              label="First name"
+              htmlFor="firstName"
+              error={errors.firstName?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="firstName" {...register('firstName')} />
             </Field>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Last name" htmlFor="lastName" error={errors.lastName?.message} className="flex flex-col gap-1.5 sm:col-span-2">
+            <Field
+              label="Last name"
+              htmlFor="lastName"
+              error={errors.lastName?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message}>
+            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-44">
               <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Gender" htmlFor="gender">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Gender" htmlFor="gender" className="flex w-full flex-col gap-1 sm:w-36">
               <Controller
                 name="gender"
                 control={control}
@@ -198,7 +208,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 )}
               />
             </Field>
-            <Field label="Blood group" htmlFor="bloodGroup">
+            <Field label="Blood group" htmlFor="bloodGroup" className="flex w-full flex-col gap-1 sm:w-32">
               <Controller
                 name="bloodGroup"
                 control={control}
@@ -222,40 +232,51 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
         </FormSection>
 
         <FormSection id="address" title="Address">
-          <Field label="Address line 1 (door no. & building name)" htmlFor="addressLine1" error={errors.addressLine1?.message}>
-            <Input id="addressLine1" {...register('addressLine1')} />
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Address line 2 (street)" htmlFor="addressLine2">
+          <div className="flex flex-wrap gap-3">
+            <Field
+              label="Address line 1 (door no. & building name)"
+              htmlFor="addressLine1"
+              error={errors.addressLine1?.message}
+              className="flex min-w-[260px] flex-1 flex-col gap-1"
+            >
+              <Input id="addressLine1" {...register('addressLine1')} />
+            </Field>
+            <Field label="Address line 2 (street)" htmlFor="addressLine2" className="flex min-w-[220px] flex-1 flex-col gap-1">
               <Input id="addressLine2" {...register('addressLine2')} />
             </Field>
-            <Field label="Address line 3 (city)" htmlFor="addressLine3">
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="District" htmlFor="district" error={errors.district?.message}>
+            <Field
+              label="District"
+              htmlFor="district"
+              error={errors.district?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="district" {...register('district')} />
             </Field>
-            <Field label="State" htmlFor="state" error={errors.state?.message}>
+            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="state" {...register('state')} />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message}>
+            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
         </FormSection>
 
-        <FormSection
-          id="contact"
-          title="Contact Details"
-          description="Primary number is required; up to two additional numbers can be added, each with its own relation to the patient."
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Primary phone" htmlFor="primaryPhoneNumber" error={errors.primaryPhone?.number?.message}>
+        <FormSection id="contact" title="Contact Details" description="Primary phone required. Add up to two additional numbers.">
+          <div className="flex flex-wrap gap-3">
+            <Field
+              label="Primary phone"
+              htmlFor="primaryPhoneNumber"
+              error={errors.primaryPhone?.number?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="primaryPhoneNumber" {...register('primaryPhone.number')} />
             </Field>
-            <Field label="Relation" htmlFor="primaryPhoneRelation">
+            <Field label="Relation" htmlFor="primaryPhoneRelation" className="flex w-full flex-col gap-1 sm:w-44">
               <Controller
                 name="primaryPhone.relation"
                 control={control}
@@ -275,14 +296,24 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 )}
               />
             </Field>
+            <Field label="Email" htmlFor="email" error={errors.email?.message} className="flex min-w-[180px] flex-1 flex-col gap-1">
+              <Input id="email" type="email" {...register('email')} />
+            </Field>
+            <Field label="Profession" htmlFor="profession" className="flex min-w-[160px] flex-1 flex-col gap-1">
+              <Input id="profession" {...register('profession')} />
+            </Field>
           </div>
 
           {additionalPhones.fields.map((field, index) => (
-            <div key={field.id} className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-              <Field label={`Additional phone ${index + 1}`} htmlFor={`additionalPhones.${index}.number`}>
+            <div key={field.id} className="flex flex-wrap items-end gap-3">
+              <Field
+                label={`Additional phone ${index + 1}`}
+                htmlFor={`additionalPhones.${index}.number`}
+                className="flex min-w-[160px] flex-1 flex-col gap-1"
+              >
                 <Input id={`additionalPhones.${index}.number`} {...register(`additionalPhones.${index}.number` as const)} />
               </Field>
-              <Field label="Relation" htmlFor={`additionalPhones.${index}.relation`}>
+              <Field label="Relation" htmlFor={`additionalPhones.${index}.relation`} className="flex w-full flex-col gap-1 sm:w-44">
                 <Controller
                   name={`additionalPhones.${index}.relation` as const}
                   control={control}
@@ -320,20 +351,11 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               Add another number
             </Button>
           )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Email" htmlFor="email" error={errors.email?.message}>
-              <Input id="email" type="email" {...register('email')} />
-            </Field>
-            <Field label="Profession" htmlFor="profession">
-              <Input id="profession" {...register('profession')} />
-            </Field>
-          </div>
         </FormSection>
 
         <FormSection id="emergency-contact" title="Emergency Contact">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Relationship" htmlFor="emergencyContactRelationship">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Relationship" htmlFor="emergencyContactRelationship" className="flex w-full flex-col gap-1 sm:w-44">
               <Controller
                 name="emergencyContactRelationship"
                 control={control}
@@ -353,10 +375,20 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 )}
               />
             </Field>
-            <Field label="Name" htmlFor="emergencyContactName" error={errors.emergencyContactName?.message}>
+            <Field
+              label="Name"
+              htmlFor="emergencyContactName"
+              error={errors.emergencyContactName?.message}
+              className="flex min-w-[180px] flex-1 flex-col gap-1"
+            >
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
             </Field>
-            <Field label="Phone" htmlFor="emergencyContactPhone" error={errors.emergencyContactPhone?.message}>
+            <Field
+              label="Phone"
+              htmlFor="emergencyContactPhone"
+              error={errors.emergencyContactPhone?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
             </Field>
           </div>
@@ -370,8 +402,8 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             </label>
           </div>
           {hasKnownAllergy && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message}>
+            <div className="flex flex-wrap gap-3">
+              <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message} className="flex w-full flex-col gap-1 sm:w-40">
                 <Controller
                   name="allergyCategory"
                   control={control}
@@ -391,10 +423,15 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   )}
                 />
               </Field>
-              <Field label="Specify" htmlFor="allergySpecify" className="flex flex-col gap-1.5 sm:col-span-2">
+              <Field label="Specify" htmlFor="allergySpecify" className="flex min-w-[200px] flex-1 flex-col gap-1">
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
               </Field>
-              <Field label="Severity" htmlFor="allergySeverity" error={errors.allergySeverity?.message} className="flex flex-col gap-1.5 sm:col-span-3 sm:w-1/3">
+              <Field
+                label="Severity"
+                htmlFor="allergySeverity"
+                error={errors.allergySeverity?.message}
+                className="flex w-full flex-col gap-1 sm:w-60"
+              >
                 <Controller
                   name="allergySeverity"
                   control={control}
@@ -418,152 +455,173 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           )}
         </FormSection>
 
-        <FormSection
-          id="mode-of-arrival"
-          title="Mode of Arrival"
-          description="How the patient found or was referred to the hospital (per the Patient Mode of Arrival Form)."
-        >
-          <Field label="Source" htmlFor="arrivalCategory" className="flex flex-col gap-1.5 sm:w-1/2">
-            <Controller
-              name="arrivalSource.category"
-              control={control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="arrivalCategory" aria-label="Mode of arrival source">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ARRIVAL_SOURCE_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {humanize(c)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </Field>
+        <FormSection id="mode-of-arrival" title="Mode of Arrival" description="How the patient found or was referred to the hospital.">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Source" htmlFor="arrivalCategory" className="flex w-full flex-col gap-1 sm:w-56">
+              <Controller
+                name="arrivalSource.category"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="arrivalCategory" aria-label="Mode of arrival source">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ARRIVAL_SOURCE_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {humanize(c)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
 
-          {arrivalCategory === 'DoctorReferral' && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field
-                label="Doctor name"
-                htmlFor="doctorReferralName"
-                error={errors.arrivalSource?.doctorReferral?.doctorName?.message}
-              >
-                <Input id="doctorReferralName" {...register('arrivalSource.doctorReferral.doctorName')} />
-              </Field>
-              <Field label="Department" htmlFor="doctorReferralDepartment">
-                <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
-              </Field>
-              <Field label="Hospital" htmlFor="doctorReferralHospital">
-                <Input id="doctorReferralHospital" {...register('arrivalSource.doctorReferral.hospital')} />
-              </Field>
-            </div>
-          )}
-
-          {arrivalCategory === 'PatientOrRelativeReferral' && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field
-                label="Source"
-                htmlFor="patientRelativeSource"
-                error={errors.arrivalSource?.patientRelativeReferral?.source?.message}
-              >
-                <Controller
-                  name="arrivalSource.patientRelativeReferral.source"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="patientRelativeSource" aria-label="Patient or relative referral source">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PATIENT_RELATIVE_REFERRAL_SOURCES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {humanize(s)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-              {patientRelativeSource === 'Other' && (
+            {arrivalCategory === 'DoctorReferral' && (
+              <>
                 <Field
-                  label="Please specify"
-                  htmlFor="patientRelativeDetails"
-                  error={errors.arrivalSource?.patientRelativeReferral?.details?.message}
+                  label="Doctor name"
+                  htmlFor="doctorReferralName"
+                  error={errors.arrivalSource?.doctorReferral?.doctorName?.message}
+                  className="flex min-w-[160px] flex-1 flex-col gap-1"
                 >
-                  <Input id="patientRelativeDetails" {...register('arrivalSource.patientRelativeReferral.details')} />
+                  <Input id="doctorReferralName" {...register('arrivalSource.doctorReferral.doctorName')} />
                 </Field>
-              )}
-            </div>
-          )}
+                <Field label="Department" htmlFor="doctorReferralDepartment" className="flex min-w-[160px] flex-1 flex-col gap-1">
+                  <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
+                </Field>
+                <Field label="Hospital" htmlFor="doctorReferralHospital" className="flex min-w-[160px] flex-1 flex-col gap-1">
+                  <Input id="doctorReferralHospital" {...register('arrivalSource.doctorReferral.hospital')} />
+                </Field>
+              </>
+            )}
 
-          {arrivalCategory === 'OnlineAdvertisement' && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Channel" htmlFor="onlineChannel" error={errors.arrivalSource?.onlineAd?.channel?.message}>
-                <Controller
-                  name="arrivalSource.onlineAd.channel"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="onlineChannel" aria-label="Online advertisement channel">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ONLINE_AD_CHANNELS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {humanize(c)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-              {onlineChannel === 'Other' && (
-                <Field label="Please specify" htmlFor="onlineDetails" error={errors.arrivalSource?.onlineAd?.details?.message}>
-                  <Input id="onlineDetails" {...register('arrivalSource.onlineAd.details')} />
+            {arrivalCategory === 'PatientOrRelativeReferral' && (
+              <>
+                <Field
+                  label="Source"
+                  htmlFor="patientRelativeSource"
+                  error={errors.arrivalSource?.patientRelativeReferral?.source?.message}
+                  className="flex w-full flex-col gap-1 sm:w-48"
+                >
+                  <Controller
+                    name="arrivalSource.patientRelativeReferral.source"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="patientRelativeSource" aria-label="Patient or relative referral source">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PATIENT_RELATIVE_REFERRAL_SOURCES.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {humanize(s)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </Field>
-              )}
-            </div>
-          )}
+                {patientRelativeSource === 'Other' && (
+                  <Field
+                    label="Please specify"
+                    htmlFor="patientRelativeDetails"
+                    error={errors.arrivalSource?.patientRelativeReferral?.details?.message}
+                    className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
+                  >
+                    <Input id="patientRelativeDetails" {...register('arrivalSource.patientRelativeReferral.details')} />
+                  </Field>
+                )}
+              </>
+            )}
 
-          {arrivalCategory === 'OfflineAdvertisement' && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Channel" htmlFor="offlineChannel" error={errors.arrivalSource?.offlineAd?.channel?.message}>
-                <Controller
-                  name="arrivalSource.offlineAd.channel"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="offlineChannel" aria-label="Offline advertisement channel">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {OFFLINE_AD_CHANNELS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {humanize(c)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-              {offlineChannel === 'Other' && (
-                <Field label="Please specify" htmlFor="offlineDetails" error={errors.arrivalSource?.offlineAd?.details?.message}>
-                  <Input id="offlineDetails" {...register('arrivalSource.offlineAd.details')} />
+            {arrivalCategory === 'OnlineAdvertisement' && (
+              <>
+                <Field
+                  label="Channel"
+                  htmlFor="onlineChannel"
+                  error={errors.arrivalSource?.onlineAd?.channel?.message}
+                  className="flex w-full flex-col gap-1 sm:w-48"
+                >
+                  <Controller
+                    name="arrivalSource.onlineAd.channel"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="onlineChannel" aria-label="Online advertisement channel">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ONLINE_AD_CHANNELS.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {humanize(c)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </Field>
-              )}
-            </div>
-          )}
+                {onlineChannel === 'Other' && (
+                  <Field
+                    label="Please specify"
+                    htmlFor="onlineDetails"
+                    error={errors.arrivalSource?.onlineAd?.details?.message}
+                    className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
+                  >
+                    <Input id="onlineDetails" {...register('arrivalSource.onlineAd.details')} />
+                  </Field>
+                )}
+              </>
+            )}
+
+            {arrivalCategory === 'OfflineAdvertisement' && (
+              <>
+                <Field
+                  label="Channel"
+                  htmlFor="offlineChannel"
+                  error={errors.arrivalSource?.offlineAd?.channel?.message}
+                  className="flex w-full flex-col gap-1 sm:w-56"
+                >
+                  <Controller
+                    name="arrivalSource.offlineAd.channel"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="offlineChannel" aria-label="Offline advertisement channel">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OFFLINE_AD_CHANNELS.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {humanize(c)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                {offlineChannel === 'Other' && (
+                  <Field
+                    label="Please specify"
+                    htmlFor="offlineDetails"
+                    error={errors.arrivalSource?.offlineAd?.details?.message}
+                    className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
+                  >
+                    <Input id="offlineDetails" {...register('arrivalSource.offlineAd.details')} />
+                  </Field>
+                )}
+              </>
+            )}
+          </div>
         </FormSection>
 
         <FormSection id="registration-details" title="Registration / Encounter Details">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Encounter type" htmlFor="encounterType">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Encounter type" htmlFor="encounterType" className="flex w-full flex-col gap-1 sm:w-56">
               <Controller
                 name="registration.encounterType"
                 control={control}
@@ -584,28 +642,33 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               />
             </Field>
             {encounterType === 'OP' && (
-              <Field label="Appointment type" htmlFor="appointmentType">
+              <Field label="Appointment type" htmlFor="appointmentType" className="flex min-w-[160px] flex-1 flex-col gap-1">
                 <Input id="appointmentType" {...register('registration.appointmentType')} />
               </Field>
             )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Department" htmlFor="department" error={errors.registration?.department?.message}>
+            <Field
+              label="Department"
+              htmlFor="department"
+              error={errors.registration?.department?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="department" {...register('registration.department')} />
             </Field>
-            <Field label="Consultant" htmlFor="consultant" error={errors.registration?.consultant?.message}>
+            <Field
+              label="Consultant"
+              htmlFor="consultant"
+              error={errors.registration?.consultant?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="consultant" {...register('registration.consultant')} />
             </Field>
-          </div>
-
-          {/* Progressive disclosure: Admission (IP/Emergency) / Observation (Day-care) type only applies beyond OP. */}
-          {showReferralColumn && (
-            <div className="flex flex-col gap-1.5 sm:w-1/2">
+            {/* Progressive disclosure: Admission (IP/Emergency) / Observation (Day-care) type only applies beyond OP. */}
+            {showReferralColumn && (
               <Field
                 label={isDayCare ? 'Observation type' : 'Admission type'}
                 htmlFor="admissionType"
                 error={errors.registration?.admissionType?.message}
+                className="flex w-full flex-col gap-1 sm:w-40"
               >
                 <Controller
                   name="registration.admissionType"
@@ -626,12 +689,17 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   )}
                 />
               </Field>
-            </div>
-          )}
+            )}
+            {showReferralColumn && (
+              <Field label="Category" htmlFor="category" className="flex w-full flex-col gap-1 sm:w-56">
+                <Input id="category" {...register('registration.category')} />
+              </Field>
+            )}
+          </div>
 
           {showReferralColumn && (
-            <div className="grid grid-cols-1 gap-4 rounded-md border border-dashed border-border p-4 sm:grid-cols-3">
-              <Field label="Referral category" htmlFor="referralCategory" className="flex flex-col gap-1.5 sm:col-span-1">
+            <div className="flex flex-wrap gap-3 rounded-md border border-dashed border-border p-3">
+              <Field label="Referral category" htmlFor="referralCategory" className="flex w-full flex-col gap-1 sm:w-36">
                 <Controller
                   name="registration.referral.category"
                   control={control}
@@ -651,25 +719,28 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   )}
                 />
               </Field>
-              <Field label="Details" htmlFor="referralDetails">
+              <Field label="Details" htmlFor="referralDetails" className="flex min-w-[160px] flex-1 flex-col gap-1 sm:max-w-md">
                 <Input id="referralDetails" {...register('registration.referral.details')} />
               </Field>
-              <Field label="Contact number" htmlFor="referralContactNumber">
+              <Field
+                label="Contact number"
+                htmlFor="referralContactNumber"
+                className="flex w-full flex-col gap-1 sm:w-48"
+              >
                 <Input id="referralContactNumber" {...register('registration.referral.contactNumber')} />
               </Field>
             </div>
           )}
-
-          {showReferralColumn && (
-            <Field label="Category" htmlFor="category" className="flex flex-col gap-1.5 sm:w-1/2">
-              <Input id="category" {...register('registration.category')} />
-            </Field>
-          )}
         </FormSection>
 
-        <Button type="submit" disabled={isSubmitting} className="self-start">
-          {isSubmitting ? 'Registering…' : 'Register Patient'}
-        </Button>
+        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <Button type="button" variant="outline" onClick={() => navigate('/patients/registration')}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Registering…' : 'Register Patient'}
+          </Button>
+        </div>
       </form>
     </div>
   );

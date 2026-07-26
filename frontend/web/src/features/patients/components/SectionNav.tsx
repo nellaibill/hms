@@ -64,10 +64,10 @@ export function SectionNav({ sections, className }: SectionNavProps) {
             aria-current={isActive ? 'true' : undefined}
             onClick={(event) => handleClick(event, section.id)}
             className={cn(
-              'rounded-md px-3 py-2 text-sm transition-colors',
+              'rounded-md border-l-2 px-2.5 py-1.5 text-[13px] leading-tight transition-colors',
               isActive
-                ? 'bg-primary/10 font-medium text-primary'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                ? 'border-primary bg-primary/10 font-medium text-primary'
+                : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
             )}
           >
             {section.label}

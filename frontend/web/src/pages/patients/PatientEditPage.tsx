@@ -114,7 +114,7 @@ export default function PatientEditPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
       <div>
         <Link
           to={`/patients/registration/${id}`}
@@ -123,8 +123,8 @@ export default function PatientEditPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to patient
         </Link>
-        <div className="mt-3 flex items-start gap-3 border-b border-border pb-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <div className="mt-2 flex items-start gap-3 border-b border-border pb-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
             <UserCog className="h-5 w-5" />
           </span>
           <div>
@@ -141,6 +141,7 @@ export default function PatientEditPage() {
         apiError={mutation.error instanceof ApiError ? mutation.error : null}
         defaultValues={toDefaultValues(patient)}
         onSubmit={handleSubmit}
+        onCancel={() => navigate(`/patients/registration/${id}`)}
       />
     </div>
   );
