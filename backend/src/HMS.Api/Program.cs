@@ -1,6 +1,8 @@
+using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
 using HMS.Api.Middleware;
 using HMS.Modules.Identity.Infrastructure;
+using HMS.Modules.Patients.Infrastructure;
 using HMS.Shared.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +16,11 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.SuppressModelStateInvalidFilter = true;
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    // Patients is the first module with enum fields (Title, Gender, EncounterType, ...) —
+    // serialize them as their string names, not the default integer ordinal, so the JSON
+    // contract is self-describing for Swagger and every frontend consumer.
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -35,6 +41,10 @@ app.UseExceptionHandler();
 app.UseHmsCors();
 app.UseHmsSwagger();
 
+// Serves patient photos/ID proofs saved by PatientFileStorage under wwwroot/uploads —
+// the app's first static-file surface (see docs/DecisionLog.md's file-upload ADR).
+app.UseStaticFiles();
+
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())
@@ -43,6 +53,7 @@ if (app.Environment.IsDevelopment())
     // migration step.
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.Migrate();
+    scope.ServiceProvider.GetRequiredService<PatientsDbContext>().Database.Migrate();
 }
 
 app.Run();

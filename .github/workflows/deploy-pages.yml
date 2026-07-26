@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+# Deploys frontend/web as a static site for client UI review. The app's real API calls
+# fail against a live backend (there isn't one here) and fall back to in-app demo data —
+# see frontend/web/src/features/patients/mockPatientsStore.ts.
+on:
+  push:
+    branches: [feature/patient-registration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build @hms/shared
+        working-directory: frontend/shared
+        run: |
+          npm install
+          npm run build
+
+      - name: Install web dependencies
+        working-directory: frontend/web
+        run: npm install
+
+      - name: Build web app
+        working-directory: frontend/web
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /hms/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

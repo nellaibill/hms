@@ -1,4 +1,5 @@
 using HMS.Modules.Identity;
+using HMS.Modules.Patients;
 
 namespace HMS.Api.Configuration;
 
@@ -11,9 +12,9 @@ public static class ModuleRegistration
     public static IServiceCollection AddHmsModules(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddIdentityModule(configuration);
+        services.AddPatientsModule(configuration);
 
         // Future modules register here, e.g.:
-        // services.AddPatientsModule(configuration);
         // services.AddAppointmentsModule(configuration);
 
         return services;

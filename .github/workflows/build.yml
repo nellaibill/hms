@@ -24,8 +24,10 @@ jobs:
       - name: Build
         run: dotnet build backend/HMS.sln --no-restore --configuration Release
 
+      # IntegrationTests spin up a real Postgres via Testcontainers/Docker, which
+      # this runner doesn't reliably provide; excluded here, run them locally.
       - name: Test
-        run: dotnet test backend/HMS.sln --no-build --configuration Release
+        run: dotnet test backend/HMS.sln --no-build --configuration Release --filter "FullyQualifiedName!~HMS.IntegrationTests"
 
   frontend:
     name: Frontend (Node)
