@@ -39,7 +39,7 @@ const operationalContent: Record<string, React.ReactNode> = {
   'Pharmacy Queue': <PharmacyQueueList rows={pharmacyQueue} />,
 };
 
-const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function DashboardPage() {
   return (

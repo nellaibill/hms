@@ -21,8 +21,8 @@ export function UserDetails({ user }: UserDetailsProps) {
       <Field label="Email" value={user.email} />
       <Field label="Phone number" value={user.phoneNumber || '—'} />
       <Field label="Status" value={<StatusBadge isActive={user.isActive} />} />
-      <Field label="Created" value={new Date(user.createdAt).toLocaleString()} />
-      {user.updatedAt && <Field label="Last updated" value={new Date(user.updatedAt).toLocaleString()} />}
+      <Field label="Created" value={new Date(user.createdAt).toLocaleString('en-IN')} />
+      {user.updatedAt && <Field label="Last updated" value={new Date(user.updatedAt).toLocaleString('en-IN')} />}
     </dl>
   );
 }

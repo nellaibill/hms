@@ -14,17 +14,19 @@ export const roleDefinitions: RoleDefinition[] = [
   { id: 'accounts', label: 'Accounts Officer', description: 'Billing, payments, and financial reports' },
 ];
 
+// Doctor entries reuse names from config/hospitalData.ts's DOCTORS roster so the same
+// consultants recur across login, the topbar "signed in as", patients, and the dashboard.
 export const mockUsers: MockUser[] = [
-  { id: 'u-1', name: 'Ananya Rao', role: 'superAdmin', username: 'superadmin', department: 'Administration' },
-  { id: 'u-2', name: 'Vikram Shetty', role: 'admin', username: 'admin', department: 'Administration' },
-  { id: 'u-3', name: 'Priya Nair', role: 'receptionist', username: 'reception1', department: 'Front Desk' },
-  { id: 'u-4', name: 'Dr. Arjun Menon', role: 'doctor', username: 'dr.menon', department: 'General Medicine' },
-  { id: 'u-5', name: 'Sr. Lakshmi Pillai', role: 'nurse', username: 'nurse.pillai', department: 'IPD — Ward 3' },
-  { id: 'u-6', name: 'Karthik Iyer', role: 'labTechnician', username: 'lab.karthik', department: 'Central Laboratory' },
-  { id: 'u-7', name: 'Dr. Meera Krishnan', role: 'radiologist', username: 'dr.krishnan', department: 'Radiology' },
-  { id: 'u-8', name: 'Suresh Kumar', role: 'pharmacist', username: 'pharmacy.suresh', department: 'Pharmacy' },
-  { id: 'u-9', name: 'Divya Balan', role: 'hr', username: 'hr.divya', department: 'Human Resources' },
-  { id: 'u-10', name: 'Ramesh Pillai', role: 'accounts', username: 'accounts.ramesh', department: 'Accounts & Finance' },
+  { id: 'u-1', name: 'Kalaivani Ramasamy', role: 'superAdmin', username: 'superadmin', department: 'Administration' },
+  { id: 'u-2', name: 'Muthuraman Pillai', role: 'admin', username: 'admin', department: 'Administration' },
+  { id: 'u-3', name: 'Anitha Selvaraj', role: 'receptionist', username: 'reception1', department: 'Front Desk' },
+  { id: 'u-4', name: 'Dr. Karthikeyan', role: 'doctor', username: 'dr.karthikeyan', department: 'General Medicine' },
+  { id: 'u-5', name: 'Sr. Kalaiselvi Nadar', role: 'nurse', username: 'nurse.kalaiselvi', department: 'IPD — Ward 2' },
+  { id: 'u-6', name: 'Elango Raj', role: 'labTechnician', username: 'lab.elango', department: 'Central Laboratory' },
+  { id: 'u-7', name: 'Dr. Nirmala', role: 'radiologist', username: 'dr.nirmala', department: 'Radiology' },
+  { id: 'u-8', name: 'Murugesan Pillai', role: 'pharmacist', username: 'pharmacy.murugesan', department: 'Pharmacy' },
+  { id: 'u-9', name: 'Deepa Rajendran', role: 'hr', username: 'hr.deepa', department: 'Human Resources' },
+  { id: 'u-10', name: 'Balamurugan Chettiar', role: 'accounts', username: 'accounts.bala', department: 'Accounts & Finance' },
 ];
 
 export function findMockUserByRole(role: string): MockUser | undefined {
