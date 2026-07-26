@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>HMS</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages (MIT) — https://github.com/rafgraph/spa-github-pages
+      // GitHub Pages serves this for any unknown path; it re-encodes the path into a query
+      // string and redirects to the app root, where the matching script in index.html decodes
+      // it back into a real route before React Router mounts. Lets deep links and hard
+      // refreshes work on Pages' static (no server-side rewrites) hosting.
+      var pathSegmentsToKeep = 1; // keep "/hms" — the GitHub Pages project-site subpath
+
+      var l = window.location;
+      l.replace(
+        l.protocol +
+          '//' +
+          l.hostname +
+          (l.port ? ':' + l.port : '') +
+          l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') +
+          '/?/' +
+          l.pathname.slice(1 + pathSegmentsToKeep).split('/').join('/').replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash,
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

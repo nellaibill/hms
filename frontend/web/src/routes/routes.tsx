@@ -58,28 +58,33 @@ const patientRoutes = [
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
 ];
 
-export const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: withSuspense(<LoginPage />),
-  },
-  {
-    element: <ProtectedRoute />,
-    children: [
-      {
-        path: '/',
-        element: <AppLayout />,
-        children: [
-          { index: true, element: <Navigate to="/dashboard" replace /> },
-          ...moduleRoutes,
-          ...userRoutes,
-          ...patientRoutes,
-        ],
-      },
-    ],
-  },
-  {
-    path: '*',
-    element: <Navigate to="/dashboard" replace />,
-  },
-]);
+export const router = createBrowserRouter(
+  [
+    {
+      path: '/login',
+      element: withSuspense(<LoginPage />),
+    },
+    {
+      element: <ProtectedRoute />,
+      children: [
+        {
+          path: '/',
+          element: <AppLayout />,
+          children: [
+            { index: true, element: <Navigate to="/dashboard" replace /> },
+            ...moduleRoutes,
+            ...userRoutes,
+            ...patientRoutes,
+          ],
+        },
+      ],
+    },
+    {
+      path: '*',
+      element: <Navigate to="/dashboard" replace />,
+    },
+  ],
+  // Matches Vite's configured `base` (see vite.config.ts) — '/' locally, '/<repo>/' on
+  // GitHub Pages — so route paths don't need the subpath baked into every href.
+  { basename: import.meta.env.BASE_URL },
+);
