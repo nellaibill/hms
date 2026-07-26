@@ -110,7 +110,7 @@ export function createMockPatient(request: CreatePatientRequest): Patient {
   const now = new Date().toISOString();
   const patient: Patient = {
     id: `mock-${String(seq).padStart(3, '0')}`,
-    uhid: `LH2026${String(seq).padStart(4, '0')}`,
+    uhid: `NH2026${String(seq).padStart(4, '0')}`,
     title: request.title,
     firstName: request.firstName,
     lastName: request.lastName,

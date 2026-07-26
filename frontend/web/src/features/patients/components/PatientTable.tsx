@@ -60,7 +60,7 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
                 </Link>
               </td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                {new Date(patient.createdAt).toLocaleDateString()}
+                {new Date(patient.createdAt).toLocaleDateString('en-IN')}
               </td>
               <td className="px-4 py-3 text-muted-foreground">{patient.primaryPhone}</td>
               <td className="px-4 py-3 text-muted-foreground">{patient.currentRegistration?.encounterType ?? '—'}</td>

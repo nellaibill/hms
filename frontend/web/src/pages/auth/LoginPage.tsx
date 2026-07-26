@@ -90,7 +90,7 @@ export default function LoginPage() {
               <Input
                 id="username"
                 autoComplete="username"
-                placeholder="e.g. dr.menon"
+                placeholder="e.g. dr.karthikeyan"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
               />

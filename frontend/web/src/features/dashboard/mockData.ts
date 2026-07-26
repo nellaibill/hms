@@ -43,12 +43,14 @@ export interface AppointmentRow {
   type: string;
 }
 
+// Patient names match records in features/patients/mockPatients.ts and doctors match
+// config/hospitalData.ts's DOCTORS roster, so the same people recur across the app.
 export const todaysAppointments: AppointmentRow[] = [
-  { time: '09:00', patient: 'Ravi Kumar', doctor: 'Dr. Menon', type: 'Follow-up' },
-  { time: '09:30', patient: 'Sita Iyer', doctor: 'Dr. Krishnan', type: 'New consult' },
-  { time: '10:15', patient: 'Farhan Ali', doctor: 'Dr. Menon', type: 'Follow-up' },
-  { time: '11:00', patient: 'Meera Nair', doctor: 'Dr. Rao', type: 'Procedure review' },
-  { time: '11:45', patient: 'Ashok Pillai', doctor: 'Dr. Krishnan', type: 'New consult' },
+  { time: '09:00', patient: 'Aravind Nadar', doctor: 'Dr. Revathi', type: 'Follow-up' },
+  { time: '09:30', patient: 'Kavitha Pillai', doctor: 'Dr. Suresh Kumar', type: 'New consult' },
+  { time: '10:15', patient: 'Nandhini Thevar', doctor: 'Dr. Karthikeyan', type: 'Follow-up' },
+  { time: '11:00', patient: 'Gomathi Raj', doctor: 'Dr. Balasubramanian', type: 'Procedure review' },
+  { time: '11:45', patient: 'Karthik Selvam', doctor: 'Dr. Revathi', type: 'New consult' },
 ];
 
 export interface LabPendingRow {
@@ -58,11 +60,11 @@ export interface LabPendingRow {
 }
 
 export const labPending: LabPendingRow[] = [
-  { test: 'CBC + ESR', patient: 'Ravi Kumar', priority: 'Routine' },
-  { test: 'Lipid Profile', patient: 'Meera Nair', priority: 'Routine' },
-  { test: 'Troponin-I', patient: 'Ashok Pillai', priority: 'Critical' },
-  { test: 'Blood Culture', patient: 'Farhan Ali', priority: 'Urgent' },
-  { test: 'HbA1c', patient: 'Sita Iyer', priority: 'Routine' },
+  { test: 'CBC + ESR', patient: 'Aravind Nadar', priority: 'Routine' },
+  { test: 'Lipid Profile', patient: 'Gomathi Raj', priority: 'Routine' },
+  { test: 'Troponin-I', patient: 'Karthik Selvam', priority: 'Critical' },
+  { test: 'Blood Culture', patient: 'Nandhini Thevar', priority: 'Urgent' },
+  { test: 'HbA1c', patient: 'Kavitha Pillai', priority: 'Routine' },
 ];
 
 export interface RadiologyRow {
@@ -72,10 +74,10 @@ export interface RadiologyRow {
 }
 
 export const radiologyQueue: RadiologyRow[] = [
-  { study: 'Chest PA View', patient: 'Farhan Ali', modality: 'X-Ray' },
-  { study: 'Abdomen Plain', patient: 'Meera Nair', modality: 'USG' },
-  { study: 'Brain w/ Contrast', patient: 'Ashok Pillai', modality: 'MRI' },
-  { study: 'Spine Screening', patient: 'Ravi Kumar', modality: 'CT' },
+  { study: 'Chest PA View', patient: 'Nandhini Thevar', modality: 'X-Ray' },
+  { study: 'Abdomen Plain', patient: 'Gomathi Raj', modality: 'USG' },
+  { study: 'Brain w/ Contrast', patient: 'Karthik Selvam', modality: 'MRI' },
+  { study: 'Spine Screening', patient: 'Aravind Nadar', modality: 'CT' },
 ];
 
 export interface OtScheduleRow {
@@ -86,9 +88,9 @@ export interface OtScheduleRow {
 }
 
 export const otSchedule: OtScheduleRow[] = [
-  { time: '08:30', procedure: 'Appendectomy', surgeon: 'Dr. Varma', room: 'OT-1' },
-  { time: '10:00', procedure: 'Knee Arthroscopy', surgeon: 'Dr. Rao', room: 'OT-2' },
-  { time: '13:00', procedure: 'Cataract Surgery', surgeon: 'Dr. Krishnan', room: 'OT-1' },
+  { time: '08:30', procedure: 'Appendectomy', surgeon: 'Dr. Arun Kumar', room: 'OT-1' },
+  { time: '10:00', procedure: 'Knee Arthroscopy', surgeon: 'Dr. Suresh Kumar', room: 'OT-2' },
+  { time: '13:00', procedure: 'Tonsillectomy', surgeon: 'Dr. Lakshmi', room: 'OT-1' },
 ];
 
 export interface AmbulanceRow {
@@ -99,8 +101,8 @@ export interface AmbulanceRow {
 
 export const ambulanceStatus: AmbulanceRow[] = [
   { vehicle: 'AMB-01', status: 'Available', location: 'Main Bay' },
-  { vehicle: 'AMB-02', status: 'On Trip', location: 'Enroute — MG Road' },
-  { vehicle: 'AMB-03', status: 'Returning', location: 'City Hospital' },
+  { vehicle: 'AMB-02', status: 'On Trip', location: 'Enroute — Trivandrum Road' },
+  { vehicle: 'AMB-03', status: 'Returning', location: 'Tirunelveli Junction' },
   { vehicle: 'AMB-04', status: 'Available', location: 'Main Bay' },
 ];
 
@@ -111,10 +113,10 @@ export interface PharmacyRow {
 }
 
 export const pharmacyQueue: PharmacyRow[] = [
-  { rx: 'RX-10231', patient: 'Ravi Kumar', items: 3 },
-  { rx: 'RX-10232', patient: 'Sita Iyer', items: 1 },
-  { rx: 'RX-10233', patient: 'Ashok Pillai', items: 5 },
-  { rx: 'RX-10234', patient: 'Meera Nair', items: 2 },
+  { rx: 'RX-10231', patient: 'Aravind Nadar', items: 3 },
+  { rx: 'RX-10232', patient: 'Nandhini Thevar', items: 1 },
+  { rx: 'RX-10233', patient: 'Karthik Selvam', items: 5 },
+  { rx: 'RX-10234', patient: 'Gomathi Raj', items: 2 },
 ];
 
 export const operationalWidgets = [
@@ -183,11 +185,11 @@ export interface DoctorAvailabilityRow {
 }
 
 export const doctorAvailability: DoctorAvailabilityRow[] = [
-  { name: 'Dr. Arjun Menon', specialty: 'General Medicine', status: 'In Consultation' },
-  { name: 'Dr. Meera Krishnan', specialty: 'Radiology', status: 'Available' },
-  { name: 'Dr. Priya Rao', specialty: 'Orthopedics', status: 'Available' },
-  { name: 'Dr. Suresh Varma', specialty: 'Surgery', status: 'In Consultation' },
-  { name: 'Dr. Kavya Nair', specialty: 'Pediatrics', status: 'On Leave' },
+  { name: 'Dr. Karthikeyan', specialty: 'General Medicine', status: 'In Consultation' },
+  { name: 'Dr. Nirmala', specialty: 'Radiology', status: 'Available' },
+  { name: 'Dr. Suresh Kumar', specialty: 'Orthopedics', status: 'Available' },
+  { name: 'Dr. Arun Kumar', specialty: 'General Surgery', status: 'In Consultation' },
+  { name: 'Dr. Meenakshi', specialty: 'Pediatrics', status: 'On Leave' },
 ];
 
 /* -------------------------------- Productivity ------------------------------ */
@@ -200,7 +202,7 @@ export interface CalendarEvent {
 export const calendarEvents: CalendarEvent[] = [
   { date: 5, label: 'Board Review' },
   { date: 14, label: 'NABH Audit' },
-  { date: 23, label: 'Blood Donation Camp' },
+  { date: 23, label: 'Blood Donation Camp — Palayamkottai' },
 ];
 
 export interface DashboardNotification {
@@ -212,7 +214,7 @@ export interface DashboardNotification {
 }
 
 export const dashboardNotifications: DashboardNotification[] = [
-  { id: 'dn-1', title: 'Critical lab value', detail: 'Troponin-I flagged for Ashok Pillai', time: '4 min ago', severity: 'critical' },
+  { id: 'dn-1', title: 'Critical lab value', detail: 'Troponin-I flagged for Karthik Selvam', time: '4 min ago', severity: 'critical' },
   { id: 'dn-2', title: 'Discount approval requested', detail: 'Reception requested 15% off Invoice #2291', time: '22 min ago', severity: 'warning' },
   { id: 'dn-3', title: 'Roster published', detail: "Next week's nursing roster is live", time: '1 hr ago', severity: 'info' },
   { id: 'dn-4', title: 'Blood stock low', detail: 'O-negative below reorder threshold', time: '2 hr ago', severity: 'warning' },
@@ -229,7 +231,7 @@ export const pendingTasks: PendingTask[] = [
   { id: 'pt-1', title: 'Approve pharmacy purchase order #PO-448', due: 'Today, 4:00 PM', priority: 'High' },
   { id: 'pt-2', title: 'Review discount request — Invoice #2291', due: 'Today, 5:30 PM', priority: 'Medium' },
   { id: 'pt-3', title: 'Sign off nursing roster — Ward 3', due: 'Tomorrow', priority: 'Medium' },
-  { id: 'pt-4', title: 'Renew Dr. Varma’s license record', due: 'In 3 days', priority: 'Low' },
+  { id: 'pt-4', title: 'Renew Dr. Senthil Kumar’s license record', due: 'In 3 days', priority: 'Low' },
 ];
 
 export interface RecentActivity {
@@ -240,9 +242,9 @@ export interface RecentActivity {
 }
 
 export const recentActivities: RecentActivity[] = [
-  { id: 'ra-1', actor: 'Priya Nair', action: 'Registered new patient — Grace Hopper (UHID 000512)', time: '6 min ago' },
-  { id: 'ra-2', actor: 'Dr. Menon', action: 'Completed consultation for Ravi Kumar', time: '18 min ago' },
-  { id: 'ra-3', actor: 'Suresh Kumar', action: 'Dispensed RX-10229 from Pharmacy', time: '35 min ago' },
+  { id: 'ra-1', actor: 'Anitha Selvaraj', action: 'Registered new patient — Deepika Elango (UHID NH20260016)', time: '6 min ago' },
+  { id: 'ra-2', actor: 'Dr. Karthikeyan', action: 'Completed consultation for Vignesh Rajan', time: '18 min ago' },
+  { id: 'ra-3', actor: 'Murugesan Pillai', action: 'Dispensed RX-10229 from Pharmacy', time: '35 min ago' },
   { id: 'ra-4', actor: 'System', action: 'Nightly bed-occupancy report generated', time: '2 hr ago' },
-  { id: 'ra-5', actor: 'Ramesh Pillai', action: 'Reconciled 42 invoices for yesterday', time: '3 hr ago' },
+  { id: 'ra-5', actor: 'Balamurugan Chettiar', action: 'Reconciled 42 invoices for yesterday', time: '3 hr ago' },
 ];

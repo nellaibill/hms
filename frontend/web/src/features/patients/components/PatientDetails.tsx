@@ -42,7 +42,7 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
       <Section title="Demographics">
         <Field label="UHID" value={<span className="font-mono">{patient.uhid}</span>} />
         <Field label="Name" value={`${patient.title} ${patient.firstName} ${patient.lastName}`} />
-        <Field label="Date of birth" value={new Date(patient.dateOfBirth).toLocaleDateString()} />
+        <Field label="Date of birth" value={new Date(patient.dateOfBirth).toLocaleDateString('en-IN')} />
         <Field label="Age" value={patient.age} />
         <Field label="Gender" value={patient.gender} />
         <Field label="Blood group" value={patient.bloodGroup ? bloodGroupLabel(patient.bloodGroup) : '—'} />

@@ -63,7 +63,7 @@ export function RoleTable({ roles, sort, onSortChange }: RoleTableProps) {
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                   {granted} / {total}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(role.updatedAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(role.updatedAt).toLocaleDateString('en-IN')}</td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1.5">
                     <Button asChild variant="ghost" size="sm">

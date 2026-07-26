@@ -9,7 +9,7 @@ export function MiniCalendarCard() {
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
-  const monthLabel = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = today.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();

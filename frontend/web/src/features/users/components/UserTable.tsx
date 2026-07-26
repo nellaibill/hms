@@ -59,7 +59,7 @@ export function UserTable({ users, sort, onSortChange, onDeleteRequested, onTogg
               </td>
               <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                {new Date(user.createdAt).toLocaleDateString()}
+                {new Date(user.createdAt).toLocaleDateString('en-IN')}
               </td>
               <td className="px-4 py-3">
                 <StatusBadge isActive={user.isActive} />
