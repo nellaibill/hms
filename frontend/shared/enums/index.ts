@@ -1,2 +1,2 @@
-// Placeholder module — shared enums mirroring backend enums will live here.
-export {};
+export * from './patients';
+export * from './patientRegistrationUi';

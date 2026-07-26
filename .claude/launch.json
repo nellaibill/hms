@@ -7,6 +7,13 @@
       "runtimeArgs": ["--prefix", "frontend/web", "run", "dev"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "hms-api-dev",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "backend/src/HMS.Api", "--urls", "http://localhost:58158"],
+      "port": 58158,
+      "url": "http://localhost:58158"
     }
   ]
 }

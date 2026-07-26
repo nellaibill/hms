@@ -59,6 +59,44 @@ export class HttpClient {
     return this.request<T>('DELETE', path, undefined, options);
   }
 
+  /**
+   * Multipart file upload (e.g. Patients module's photo/ID-proof endpoints) — bypasses
+   * request()'s JSON body handling since FormData sets its own Content-Type (with
+   * boundary) and must never be JSON.stringify'd.
+   */
+  async postFormData<T>(path: string, formData: FormData, options?: RequestOptions): Promise<ApiResponseEnvelope<T>> {
+    const url = buildUrl(this.config.baseUrl, path, options?.query);
+    const headers: Record<string, string> = { Accept: 'application/json' };
+
+    const token = this.config.getAuthToken?.();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const correlationId = this.config.getCorrelationId?.();
+    if (correlationId) {
+      headers['X-Correlation-Id'] = correlationId;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(url, { method: 'POST', headers, body: formData, signal: options?.signal });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw err;
+      }
+      throw new NetworkError();
+    }
+
+    const payload = await response.json().catch(() => undefined);
+
+    if (!response.ok) {
+      throw new ApiError(response.status, payload as ApiErrorResponse);
+    }
+
+    return payload as ApiResponseEnvelope<T>;
+  }
+
   private async request<T>(
     method: string,
     path: string,

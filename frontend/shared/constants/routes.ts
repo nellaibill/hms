@@ -6,4 +6,10 @@ export const API_ROUTES = {
     activate: (id: string) => `/api/v1/users/${id}/activate`,
     deactivate: (id: string) => `/api/v1/users/${id}/deactivate`,
   },
+  patients: {
+    base: '/api/v1/patients',
+    byId: (id: string) => `/api/v1/patients/${id}`,
+    photo: (id: string) => `/api/v1/patients/${id}/photo`,
+    idProof: (id: string) => `/api/v1/patients/${id}/id-proof`,
+  },
 } as const;
