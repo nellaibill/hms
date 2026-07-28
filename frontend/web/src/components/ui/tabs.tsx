@@ -27,15 +27,22 @@ function Tabs({ value, defaultValue, onValueChange, className, children }: TabsP
   const [internalValue, setInternalValue] = React.useState(defaultValue ?? '');
   const isControlled = value !== undefined;
   const current = isControlled ? value : internalValue;
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const setValue = (next: string) => {
     if (!isControlled) setInternalValue(next);
     onValueChange?.(next);
+    // Switching tabs (via a trigger click or Previous/Next) swaps the panel in place —
+    // without this, a user scrolled down on a long tab lands on the new tab wherever
+    // they happened to be scrolled to, possibly past its content entirely.
+    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
     <TabsContext.Provider value={{ value: current, setValue }}>
-      <div className={className}>{children}</div>
+      <div ref={containerRef} className={cn('scroll-mt-20', className)}>
+        {children}
+      </div>
     </TabsContext.Provider>
   );
 }
@@ -52,9 +59,11 @@ TabsList.displayName = 'TabsList';
 
 interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   value: string;
+  /** Shows a small red dot — this tab's fields have a validation error the user hasn't seen yet. */
+  hasError?: boolean;
 }
 
-const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(({ className, value, children, ...props }, ref) => {
+const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(({ className, value, hasError, children, ...props }, ref) => {
   const { value: active, setValue } = useTabsContext('TabsTrigger');
   const isActive = active === value;
 
@@ -66,7 +75,7 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(({ cla
       aria-selected={isActive}
       onClick={() => setValue(value)}
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+        'relative inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
         isActive
           ? 'border-primary text-primary'
           : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -75,6 +84,7 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(({ cla
       {...props}
     >
       {children}
+      {hasError && <span aria-label="This section has errors" className="absolute right-0.5 top-1.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
     </button>
   );
 });

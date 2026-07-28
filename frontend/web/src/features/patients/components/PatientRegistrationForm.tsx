@@ -18,8 +18,9 @@ import {
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
+import { useState } from 'react';
+import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,37 @@ interface PatientRegistrationFormProps {
   isSubmitting: boolean;
   apiError: ApiError | null;
   onSubmit: (values: PatientRegistrationUiFormValues) => void;
+}
+
+const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details'] as const;
+type TabId = (typeof TAB_ORDER)[number];
+
+// Which top-level form fields live on each tab — used to jump to the first tab with an
+// error on a failed submit, and to flag tabs with a red dot so an error on a tab the user
+// isn't currently viewing doesn't silently block submission with no visible cause.
+const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientRegistrationUiFormValues)[]> = {
+  'patient-info': ['title', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'bloodGroup'],
+  'contact-info': [
+    'addressLine1',
+    'addressLine2',
+    'addressLine3',
+    'district',
+    'state',
+    'pincode',
+    'primaryPhone',
+    'additionalPhones',
+    'email',
+    'profession',
+    'emergencyContactRelationship',
+    'emergencyContactName',
+    'emergencyContactPhone',
+  ],
+  'medical-info': ['hasKnownAllergy', 'allergyCategory', 'allergySpecify', 'allergySeverity', 'arrivalSource'],
+  'registration-details': ['registration'],
+};
+
+function tabWithFirstError(errors: FieldErrors<PatientRegistrationUiFormValues>): TabId | null {
+  return TAB_ORDER.find((tab) => TAB_ERROR_FIELDS[tab].some((field) => Boolean(errors[field]))) ?? null;
 }
 
 const defaultValues: PatientRegistrationUiFormValues = {
@@ -98,6 +130,20 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
 
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
 
+  const [activeTab, setActiveTab] = useState<TabId>('patient-info');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const activeTabIndex = TAB_ORDER.indexOf(activeTab);
+  const isFirstTab = activeTabIndex === 0;
+  const isLastTab = activeTabIndex === TAB_ORDER.length - 1;
+  const goToPreviousTab = () => setActiveTab(TAB_ORDER[activeTabIndex - 1]);
+  const goToNextTab = () => setActiveTab(TAB_ORDER[activeTabIndex + 1]);
+
+  const onInvalid = (invalidFields: FieldErrors<PatientRegistrationUiFormValues>) => {
+    setHasAttemptedSubmit(true);
+    const firstErroredTab = tabWithFirstError(invalidFields);
+    if (firstErroredTab) setActiveTab(firstErroredTab);
+  };
+
   const dateOfBirth = watch('dateOfBirth');
   const detailedAge = dateOfBirth ? calculateDetailedAge(dateOfBirth) : null;
 
@@ -120,8 +166,8 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-4">
+    <div className="flex w-full max-w-6xl flex-col gap-5">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -135,21 +181,24 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           </div>
         )}
 
-      <Tabs defaultValue="patient-info">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)}>
         <TabsList>
-          <TabsTrigger value="patient-info">
+          <TabsTrigger value="patient-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
             <User className="h-4 w-4" />
             Patient Information
           </TabsTrigger>
-          <TabsTrigger value="contact-info">
+          <TabsTrigger value="contact-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
             <MapPin className="h-4 w-4" />
             Contact Information
           </TabsTrigger>
-          <TabsTrigger value="medical-info">
+          <TabsTrigger value="medical-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))}>
             <Stethoscope className="h-4 w-4" />
             Medical Information
           </TabsTrigger>
-          <TabsTrigger value="registration-details">
+          <TabsTrigger
+            value="registration-details"
+            hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['registration-details'].some((f) => Boolean(errors[f]))}
+          >
             <ClipboardList className="h-4 w-4" />
             Registration Details
           </TabsTrigger>
@@ -754,13 +803,29 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
         </TabsContent>
       </Tabs>
 
-        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <Button type="button" variant="outline" onClick={() => navigate('/patients/registration')}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Registering…' : 'Register Patient'}
-          </Button>
+          <div className="flex gap-3">
+            {!isFirstTab && (
+              <Button type="button" variant="outline" onClick={goToPreviousTab}>
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+            )}
+            {!isLastTab && (
+              <Button type="button" onClick={goToNextTab}>
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+            {isLastTab && (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Registering…' : 'Register Patient'}
+              </Button>
+            )}
+          </div>
         </div>
       </form>
     </div>

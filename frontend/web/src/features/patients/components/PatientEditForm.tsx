@@ -11,8 +11,9 @@ import {
   type PatientEditUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
+import { useState } from 'react';
+import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +29,36 @@ interface PatientEditFormProps {
   apiError: ApiError | null;
   onSubmit: (values: PatientEditUiFormValues) => void;
   onCancel: () => void;
+}
+
+const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info'] as const;
+type TabId = (typeof TAB_ORDER)[number];
+
+// Which top-level form fields live on each tab — used to jump to the first tab with an
+// error on a failed submit, and to flag tabs with a red dot so an error on a tab the user
+// isn't currently viewing doesn't silently block submission with no visible cause.
+const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientEditUiFormValues)[]> = {
+  'patient-info': ['title', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'bloodGroup'],
+  'contact-info': [
+    'addressLine1',
+    'addressLine2',
+    'addressLine3',
+    'district',
+    'state',
+    'pincode',
+    'primaryPhone',
+    'additionalPhones',
+    'email',
+    'profession',
+    'emergencyContactRelationship',
+    'emergencyContactName',
+    'emergencyContactPhone',
+  ],
+  'medical-info': ['hasKnownAllergy', 'allergyCategory', 'allergySpecify', 'allergySeverity'],
+};
+
+function tabWithFirstError(errors: FieldErrors<PatientEditUiFormValues>): TabId | null {
+  return TAB_ORDER.find((tab) => TAB_ERROR_FIELDS[tab].some((field) => Boolean(errors[field]))) ?? null;
 }
 
 /** Updates a patient's demographic/master-data fields only — the encounter is not editable here (see docs/DecisionLog.md's MVP-scope ADR). */
@@ -46,6 +77,20 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
   const hasKnownAllergy = watch('hasKnownAllergy');
 
+  const [activeTab, setActiveTab] = useState<TabId>('patient-info');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const activeTabIndex = TAB_ORDER.indexOf(activeTab);
+  const isFirstTab = activeTabIndex === 0;
+  const isLastTab = activeTabIndex === TAB_ORDER.length - 1;
+  const goToPreviousTab = () => setActiveTab(TAB_ORDER[activeTabIndex - 1]);
+  const goToNextTab = () => setActiveTab(TAB_ORDER[activeTabIndex + 1]);
+
+  const onInvalid = (invalidFields: FieldErrors<PatientEditUiFormValues>) => {
+    setHasAttemptedSubmit(true);
+    const firstErroredTab = tabWithFirstError(invalidFields);
+    if (firstErroredTab) setActiveTab(firstErroredTab);
+  };
+
   const dateOfBirth = watch('dateOfBirth');
   const detailedAge = dateOfBirth ? calculateDetailedAge(dateOfBirth) : null;
 
@@ -53,8 +98,8 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-4">
+    <div className="flex w-full max-w-6xl flex-col gap-5">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -68,17 +113,17 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
           </div>
         )}
 
-      <Tabs defaultValue="patient-info">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)}>
         <TabsList>
-          <TabsTrigger value="patient-info">
+          <TabsTrigger value="patient-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
             <User className="h-4 w-4" />
             Patient Information
           </TabsTrigger>
-          <TabsTrigger value="contact-info">
+          <TabsTrigger value="contact-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
             <MapPin className="h-4 w-4" />
             Contact Information
           </TabsTrigger>
-          <TabsTrigger value="medical-info">
+          <TabsTrigger value="medical-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))}>
             <Stethoscope className="h-4 w-4" />
             Medical Information
           </TabsTrigger>
@@ -403,13 +448,29 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
         </TabsContent>
       </Tabs>
 
-        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save Changes'}
-          </Button>
+          <div className="flex gap-3">
+            {!isFirstTab && (
+              <Button type="button" variant="outline" onClick={goToPreviousTab}>
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+            )}
+            {!isLastTab && (
+              <Button type="button" onClick={goToNextTab}>
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+            {isLastTab && (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving…' : 'Save Changes'}
+              </Button>
+            )}
+          </div>
         </div>
       </form>
     </div>
