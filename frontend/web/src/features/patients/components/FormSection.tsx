@@ -11,8 +11,8 @@ interface FormSectionProps {
 export function FormSection({ id, title, description, children }: FormSectionProps) {
   return (
     <fieldset id={id} className="scroll-mt-24 rounded-lg border border-border bg-card p-5 shadow-soft-md sm:p-6">
-      <legend className="px-1 text-lg font-semibold text-foreground">{title}</legend>
-      {description && <p className="mb-3 mt-0.5 text-xs text-muted-foreground">{description}</p>}
+      <legend className="w-full border-b border-border px-1 pb-3 text-lg font-semibold text-primary">{title}</legend>
+      {description && <p className="mb-3 mt-2 text-xs text-muted-foreground">{description}</p>}
       <div className={description ? 'flex flex-col gap-4' : 'mt-3 flex flex-col gap-4'}>{children}</div>
     </fieldset>
   );
