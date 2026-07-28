@@ -1,0 +1,99 @@
+import * as React from 'react';
+import { cn } from '@/lib/utils';
+
+interface TabsContextValue {
+  value: string;
+  setValue: (value: string) => void;
+}
+
+const TabsContext = React.createContext<TabsContextValue | null>(null);
+
+function useTabsContext(component: string) {
+  const ctx = React.useContext(TabsContext);
+  if (!ctx) throw new Error(`<${component} /> must be used within <Tabs>`);
+  return ctx;
+}
+
+interface TabsProps {
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  className?: string;
+  children: React.ReactNode;
+}
+
+/** Plain, dependency-free tabs (no Radix Tabs installed) — same controlled/uncontrolled API shape as shadcn's. */
+function Tabs({ value, defaultValue, onValueChange, className, children }: TabsProps) {
+  const [internalValue, setInternalValue] = React.useState(defaultValue ?? '');
+  const isControlled = value !== undefined;
+  const current = isControlled ? value : internalValue;
+
+  const setValue = (next: string) => {
+    if (!isControlled) setInternalValue(next);
+    onValueChange?.(next);
+  };
+
+  return (
+    <TabsContext.Provider value={{ value: current, setValue }}>
+      <div className={className}>{children}</div>
+    </TabsContext.Provider>
+  );
+}
+
+const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    role="tablist"
+    className={cn('flex items-center gap-1 overflow-x-auto border-b border-border [&>*]:shrink-0', className)}
+    {...props}
+  />
+));
+TabsList.displayName = 'TabsList';
+
+interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  value: string;
+}
+
+const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(({ className, value, children, ...props }, ref) => {
+  const { value: active, setValue } = useTabsContext('TabsTrigger');
+  const isActive = active === value;
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      onClick={() => setValue(value)}
+      className={cn(
+        'inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+        isActive
+          ? 'border-primary text-primary'
+          : 'border-transparent text-muted-foreground hover:text-foreground',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+});
+TabsTrigger.displayName = 'TabsTrigger';
+
+interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string;
+}
+
+const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(({ className, value, children, ...props }, ref) => {
+  const { value: active } = useTabsContext('TabsContent');
+  if (active !== value) return null;
+
+  return (
+    <div ref={ref} role="tabpanel" className={cn('flex flex-col gap-4', className)} {...props}>
+      {children}
+    </div>
+  );
+});
+TabsContent.displayName = 'TabsContent';
+
+export { Tabs, TabsList, TabsTrigger, TabsContent };

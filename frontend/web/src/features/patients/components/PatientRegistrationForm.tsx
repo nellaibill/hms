@@ -18,32 +18,23 @@ import {
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, X } from 'lucide-react';
+import { ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Field, FormSection } from './FormSection';
 import { bloodGroupLabel } from '../bloodGroupLabel';
+import { calculateDetailedAge } from '../detailedAge';
 import { humanize } from '../humanize';
-import { SectionNav, type SectionNavItem } from './SectionNav';
 
 interface PatientRegistrationFormProps {
   isSubmitting: boolean;
   apiError: ApiError | null;
   onSubmit: (values: PatientRegistrationUiFormValues) => void;
 }
-
-const sections: SectionNavItem[] = [
-  { id: 'demographics', label: 'Demographics' },
-  { id: 'address', label: 'Address' },
-  { id: 'contact', label: 'Contact Details' },
-  { id: 'emergency-contact', label: 'Emergency Contact' },
-  { id: 'allergy', label: 'Allergy Details' },
-  { id: 'mode-of-arrival', label: 'Mode of Arrival' },
-  { id: 'registration-details', label: 'Registration Details' },
-];
 
 const defaultValues: PatientRegistrationUiFormValues = {
   title: 'Mr',
@@ -82,9 +73,9 @@ const defaultValues: PatientRegistrationUiFormValues = {
 
 /**
  * New Patient Registration — matches LH Software.docx's Reception & Registration table
- * and the standalone Patient Mode of Arrival Form field-for-field. Still one scrolling
- * form (not the full spec's hard-gated/autosaving wizard — see docs/DecisionLog.md), with
- * a lightweight SectionNav for quick jumping between the seven sections below.
+ * and the standalone Patient Mode of Arrival Form field-for-field. Grouped into four top
+ * tabs (Patient / Contact / Medical / Registration Details) rather than one long scrolling
+ * page (not the full spec's hard-gated/autosaving wizard — see docs/DecisionLog.md).
  *
  * UI-only per the current phase: the submitted request is bridged to the *existing*
  * backend Contracts by the caller's toRequest() (see PatientRegistrationCreatePage) —
@@ -107,6 +98,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
 
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
 
+  const dateOfBirth = watch('dateOfBirth');
+  const detailedAge = dateOfBirth ? calculateDetailedAge(dateOfBirth) : null;
+
   const hasKnownAllergy = watch('hasKnownAllergy');
   const arrivalCategory = watch('arrivalSource.category');
   const patientRelativeSource = watch('arrivalSource.patientRelativeReferral.source');
@@ -126,10 +120,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1920px] gap-4">
-      <SectionNav sections={sections} className="hidden w-44 shrink-0 lg:flex" />
-      <div aria-hidden="true" className="hidden w-px shrink-0 bg-border lg:block" />
-
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -144,6 +135,27 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           </div>
         )}
 
+      <Tabs defaultValue="patient-info">
+        <TabsList>
+          <TabsTrigger value="patient-info">
+            <User className="h-4 w-4" />
+            Patient Information
+          </TabsTrigger>
+          <TabsTrigger value="contact-info">
+            <MapPin className="h-4 w-4" />
+            Contact Information
+          </TabsTrigger>
+          <TabsTrigger value="medical-info">
+            <Stethoscope className="h-4 w-4" />
+            Medical Information
+          </TabsTrigger>
+          <TabsTrigger value="registration-details">
+            <ClipboardList className="h-4 w-4" />
+            Registration Details
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="patient-info" className="pt-4">
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
             <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
@@ -182,8 +194,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-44">
+            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-48">
               <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+              {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>
 
@@ -230,7 +243,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             </Field>
           </div>
         </FormSection>
+        </TabsContent>
 
+        <TabsContent value="contact-info" className="pt-4">
         <FormSection id="address" title="Address">
           <div className="flex flex-wrap gap-3">
             <Field
@@ -393,7 +408,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             </Field>
           </div>
         </FormSection>
+        </TabsContent>
 
+        <TabsContent value="medical-info" className="pt-4">
         <FormSection id="allergy" title="Allergy Details">
           <div className="flex items-center gap-2">
             <input id="hasKnownAllergy" type="checkbox" className="h-4 w-4 rounded border-input" {...register('hasKnownAllergy')} />
@@ -618,7 +635,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             )}
           </div>
         </FormSection>
+        </TabsContent>
 
+        <TabsContent value="registration-details" className="pt-4">
         <FormSection id="registration-details" title="Registration / Encounter Details">
           <div className="flex flex-wrap gap-3">
             <Field label="Encounter type" htmlFor="encounterType" className="flex w-full flex-col gap-1 sm:w-56">
@@ -732,6 +751,8 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             </div>
           )}
         </FormSection>
+        </TabsContent>
+      </Tabs>
 
         <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <Button type="button" variant="outline" onClick={() => navigate('/patients/registration')}>

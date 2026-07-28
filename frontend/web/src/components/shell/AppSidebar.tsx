@@ -2,7 +2,6 @@ import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { HospitalLogo } from '@/components/shell/HospitalLogo';
 import { SidebarNav } from '@/components/shell/SidebarNav';
 import { cn } from '@/lib/utils';
 
@@ -20,9 +19,8 @@ export function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarProps) {
         collapsed ? 'w-[72px]' : 'w-[240px]',
       )}
     >
-      <div className={cn('flex h-14 items-center border-b border-sidebar-border px-3', collapsed && 'justify-center px-0')}>
-        <HospitalLogo showName={!collapsed} />
-      </div>
+      {/* Spacer matching the header's height — branding now lives only in the top header (see TopHeader.tsx) to avoid showing the logo twice. */}
+      <div className="h-14 shrink-0 border-b border-sidebar-border" />
 
       <ScrollArea className="flex-1 py-3">
         <SidebarNav collapsed={collapsed} />
