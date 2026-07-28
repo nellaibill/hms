@@ -26,6 +26,14 @@ export function applyBrandingTokens(theme: Theme) {
   root.setProperty('--primary-foreground', primaryForeground);
   root.setProperty('--ring', primary);
 
+  // The top app bar always uses the *light-mode* brand color, regardless of
+  // the active theme — a banner that pales out in dark mode reads as
+  // unbranded/washed-out, unlike buttons and accents which intentionally
+  // lighten for contrast against a dark page.
+  const headerBg = branding.primaryColor.light;
+  root.setProperty('--header-bg', headerBg);
+  root.setProperty('--header-foreground', contrastForeground(headerBg, '222 47% 11%', '0 0% 100%'));
+
   // Light, translucent brand tint used for hover/active surfaces (sidebar
   // hover, hoverable cards) — derived, not hand-picked, so it always
   // harmonizes with whatever primary color branding.ts specifies.

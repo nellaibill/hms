@@ -38,7 +38,7 @@ export function TopHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-[1000] flex h-16 items-center gap-4 border-b border-primary-foreground/15 bg-primary px-6 text-primary-foreground shadow-soft-md">
+    <header className="sticky top-0 z-[1000] flex h-16 items-center gap-6 border-b border-header-foreground/15 bg-header px-6 text-header-foreground shadow-soft-md">
       {/* Mobile nav trigger — sidebar collapses to a drawer below md, per docs/LayoutFramework.md §14 */}
       <Button variant="ghost" size="icon" className="shrink-0 md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation">
         <Menu className="h-5 w-5" />
@@ -62,8 +62,8 @@ export function TopHeader() {
         </div>
       </div>
 
-      {/* Icon actions — equally spaced, icon-only with a hover tooltip; the row itself (not its icons) shrinks and scrolls horizontally rather than clipping on narrow viewports. */}
-      <div className="ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto [&>*]:shrink-0">
+      {/* Icon actions — equally spaced, icon-only with a hover tooltip, vertically centered; the row itself (not its icons) shrinks and scrolls horizontally rather than clipping on narrow viewports. */}
+      <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0">
         <LanguageMenu />
         <NotificationsMenu />
         <HeaderLinkIcon to="/engagement/programmes" label="Calendar" icon={CalendarIcon} />
