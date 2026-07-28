@@ -63,7 +63,7 @@ export function TopHeader() {
       </div>
 
       {/* Icon actions — equally spaced, icon-only with a hover tooltip, vertically centered; the row itself (not its icons) shrinks and scrolls horizontally rather than clipping on narrow viewports. */}
-      <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0">
+      <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto py-3 [&>*]:shrink-0">
         <LanguageMenu />
         <NotificationsMenu />
         <HeaderLinkIcon to="/engagement/programmes" label="Calendar" icon={CalendarIcon} />
