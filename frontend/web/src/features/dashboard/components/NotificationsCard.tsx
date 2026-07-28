@@ -11,7 +11,7 @@ const severityMeta: Record<DashboardNotification['severity'], { icon: typeof Inf
 
 export function NotificationsCard() {
   return (
-    <Card className="flex h-full flex-col transition-shadow hover:shadow-soft-md">
+    <Card className="flex h-full flex-col transition-shadow hover:shadow-soft-lg">
       <CardHeader className="flex-row items-center gap-2.5 space-y-0 pb-3">
         <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Bell className="h-4 w-4" />

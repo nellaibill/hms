@@ -39,7 +39,7 @@ export function BedOccupancyCard() {
   const overallPct = Math.round((totalOccupied / totalBeds) * 100);
 
   return (
-    <Card className="transition-shadow hover:shadow-soft-md">
+    <Card className="transition-shadow hover:shadow-soft-lg">
       <CardHeader className="flex-row items-center gap-2.5 space-y-0 pb-3">
         <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
           <BedDouble className="h-4 w-4" />

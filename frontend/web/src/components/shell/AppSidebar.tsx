@@ -10,18 +10,17 @@ interface AppSidebarProps {
   onToggleCollapse: () => void;
 }
 
-// Widths (72px collapsed / 240px expanded) follow docs/LayoutFramework.md §2.
+// Widths (80px collapsed / 280px expanded) — a Material "permanent drawer"
+// sized a touch wider than the 256px spec default for breathing room.
+// Sits below the full-width TopHeader (h-16 = 4rem) rather than beside it.
 export function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-soft transition-[width] duration-200 md:flex',
-        collapsed ? 'w-[72px]' : 'w-[240px]',
+        'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-soft transition-[width] duration-200 md:flex',
+        collapsed ? 'w-20' : 'w-[280px]',
       )}
     >
-      {/* Spacer matching the header's height — branding now lives only in the top header (see TopHeader.tsx) to avoid showing the logo twice. */}
-      <div className="h-14 shrink-0 border-b border-sidebar-border" />
-
       <ScrollArea className="flex-1 py-3">
         <SidebarNav collapsed={collapsed} />
       </ScrollArea>

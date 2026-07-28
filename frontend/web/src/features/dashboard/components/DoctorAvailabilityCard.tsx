@@ -22,7 +22,7 @@ function initialsOf(name: string) {
 
 export function DoctorAvailabilityCard() {
   return (
-    <Card className="transition-shadow hover:shadow-soft-md">
+    <Card className="transition-shadow hover:shadow-soft-lg">
       <CardHeader className="flex-row items-center gap-2.5 space-y-0 pb-3">
         <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Stethoscope className="h-4 w-4" />

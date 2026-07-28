@@ -76,7 +76,7 @@ export default function RoleFormPage({ mode }: RoleFormPageProps) {
   const backTo = isNew || mode === 'view' ? '/admin/roles' : `/admin/roles/${id}`;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+    <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       <div>
         <Link to={backTo} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />

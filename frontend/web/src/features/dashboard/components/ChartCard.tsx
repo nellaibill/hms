@@ -10,7 +10,7 @@ interface ChartCardProps {
 
 export function ChartCard({ title, description, legend, children }: ChartCardProps) {
   return (
-    <Card className="transition-shadow hover:shadow-soft-md">
+    <Card className="transition-shadow hover:shadow-soft-lg">
       <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
         <div>
           <CardTitle className="text-base">{title}</CardTitle>

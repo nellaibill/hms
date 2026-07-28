@@ -74,7 +74,7 @@ export default function UsersListPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
       <div className="flex items-start gap-3 border-b border-border pb-4">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <UsersIcon className="h-5 w-5" />

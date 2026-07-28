@@ -41,7 +41,7 @@ const sections: SettingsSection[] = [
 
 export default function SettingsPage() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
       <div className="border-b border-border pb-4">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Settings</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
@@ -57,7 +57,7 @@ export default function SettingsPage() {
               key={section.title}
               className={
                 section.status === 'available'
-                  ? 'transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-md'
+                  ? 'transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg'
                   : 'border-dashed'
               }
             >

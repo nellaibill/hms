@@ -14,8 +14,8 @@ interface HospitalLogoProps {
 export function HospitalLogo({ className, showName = true, invert = false, imageClassName }: HospitalLogoProps) {
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
-      <span className={cn('flex shrink-0 items-center rounded-md', invert && 'bg-white px-2 py-1 shadow-soft')}>
-        <img src={logoUrl} alt={branding.hospitalName} className={cn('h-8 w-auto', imageClassName)} />
+      <span className={cn('flex shrink-0 items-center rounded-md', invert && 'bg-white px-2.5 py-1.5 shadow-soft')}>
+        <img src={logoUrl} alt={branding.hospitalName} className={cn('h-9 w-auto', imageClassName)} />
       </span>
       {showName && (
         <span

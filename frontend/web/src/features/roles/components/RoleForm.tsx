@@ -34,7 +34,7 @@ export function RoleForm({ mode, defaultValues, isSubmitting, onSubmit, onCancel
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mx-auto flex w-full max-w-5xl flex-col gap-5">
       <RoleInfoCard register={register} control={control} errors={errors} readOnly={readOnly} />
       <PermissionMatrix permissions={permissions} onChange={handlePermissionChange} readOnly={readOnly} />
 
