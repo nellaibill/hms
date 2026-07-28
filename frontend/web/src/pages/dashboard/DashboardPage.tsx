@@ -1,43 +1,12 @@
 import { LayoutDashboard } from 'lucide-react';
-import { BedOccupancyCard } from '@/features/dashboard/components/BedOccupancyCard';
-import { DepartmentPerformanceCard } from '@/features/dashboard/components/DepartmentPerformanceCard';
-import { DoctorAvailabilityCard } from '@/features/dashboard/components/DoctorAvailabilityCard';
-import { KpiCard } from '@/features/dashboard/components/KpiCard';
+import { DepartmentFinanceChart } from '@/features/dashboard/components/DepartmentFinanceChart';
+import { DepartmentGoalsCard } from '@/features/dashboard/components/DepartmentGoalsCard';
 import { MiniCalendarCard } from '@/features/dashboard/components/MiniCalendarCard';
+import { MonthlyCensusChart } from '@/features/dashboard/components/MonthlyCensusChart';
 import { NotificationsCard } from '@/features/dashboard/components/NotificationsCard';
-import {
-  AmbulanceStatusList,
-  AppointmentsList,
-  LabPendingList,
-  OtScheduleList,
-  PharmacyQueueList,
-  RadiologyQueueList,
-} from '@/features/dashboard/components/OperationalLists';
-import { OperationalWidgetCard } from '@/features/dashboard/components/OperationalWidgetCard';
-import { OpIpTrendChart } from '@/features/dashboard/components/OpIpTrendChart';
-import { PendingTasksCard } from '@/features/dashboard/components/PendingTasksCard';
-import { RecentActivityCard } from '@/features/dashboard/components/RecentActivityCard';
+import { PresentHrCard } from '@/features/dashboard/components/PresentHrCard';
 import { RevenueExpenseChart } from '@/features/dashboard/components/RevenueExpenseChart';
 import { SectionHeader } from '@/features/dashboard/components/SectionHeader';
-import {
-  ambulanceStatus,
-  kpiData,
-  labPending,
-  operationalWidgets,
-  otSchedule,
-  pharmacyQueue,
-  radiologyQueue,
-  todaysAppointments,
-} from '@/features/dashboard/mockData';
-
-const operationalContent: Record<string, React.ReactNode> = {
-  "Today's Appointments": <AppointmentsList rows={todaysAppointments} />,
-  'Lab Pending': <LabPendingList rows={labPending} />,
-  'Radiology Queue': <RadiologyQueueList rows={radiologyQueue} />,
-  'OT Schedule': <OtScheduleList rows={otSchedule} />,
-  'Ambulance Status': <AmbulanceStatusList rows={ambulanceStatus} />,
-  'Pharmacy Queue': <PharmacyQueueList rows={pharmacyQueue} />,
-};
 
 const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -57,62 +26,39 @@ export default function DashboardPage() {
         <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{today}</span>
       </div>
 
-      {/* Section 1 — Executive KPI Cards */}
+      {/* Section 1 — Statistical Data */}
       <section>
-        <SectionHeader title="Executive Overview" description="Hospital-wide performance at a glance" />
+        <SectionHeader title="Statistical Data" description="Monthly patient OP/IP census" />
         <div className="grid grid-cols-12 gap-5">
-          {kpiData.map((kpi) => (
-            <div key={kpi.id} className="col-span-12 sm:col-span-6 lg:col-span-4">
-              <KpiCard kpi={kpi} />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Section 2 — Operational Widgets */}
-      <section>
-        <SectionHeader title="Operations Today" description="Live queues across clinical and support services" />
-        <div className="grid grid-cols-12 gap-5">
-          {operationalWidgets.map((widget) => (
-            <div key={widget.title} className="col-span-12 sm:col-span-6 lg:col-span-4">
-              <OperationalWidgetCard {...widget}>{operationalContent[widget.title]}</OperationalWidgetCard>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Section 3 — Analytics */}
-      <section>
-        <SectionHeader title="Analytics" description="Volume and financial trends" />
-        <div className="grid grid-cols-12 gap-5">
-          <div className="col-span-12 lg:col-span-6">
-            <OpIpTrendChart />
+          <div className="col-span-12">
+            <MonthlyCensusChart />
           </div>
-          <div className="col-span-12 lg:col-span-6">
+        </div>
+      </section>
+
+      {/* Section 2 — Department-wise Income & Expenses */}
+      <section>
+        <SectionHeader title="Department-wise Income & Expenses" description="Revenue and expense by department, with chart" />
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12">
+            <DepartmentFinanceChart />
+          </div>
+        </div>
+      </section>
+
+      {/* Section 3 — Month-wise Income & Expense Chart */}
+      <section>
+        <SectionHeader title="Month-wise Income & Expense" description="Hospital-wide financial trend" />
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12">
             <RevenueExpenseChart />
           </div>
         </div>
       </section>
 
-      {/* Section 4 — Hospital Overview */}
+      {/* Section 4 — Calendar, Notifications and Events */}
       <section>
-        <SectionHeader title="Hospital Overview" description="Departments, beds, and consultant availability" />
-        <div className="grid grid-cols-12 gap-5">
-          <div className="col-span-12 lg:col-span-4">
-            <DepartmentPerformanceCard />
-          </div>
-          <div className="col-span-12 lg:col-span-4">
-            <BedOccupancyCard />
-          </div>
-          <div className="col-span-12 lg:col-span-4">
-            <DoctorAvailabilityCard />
-          </div>
-        </div>
-      </section>
-
-      {/* Section 5 — Productivity */}
-      <section>
-        <SectionHeader title="Productivity" description="Your calendar, alerts, tasks, and system activity" />
+        <SectionHeader title="Calendar – Notifications and Events" description="This month's schedule and the latest alerts" />
         <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12 lg:col-span-6">
             <MiniCalendarCard />
@@ -120,11 +66,25 @@ export default function DashboardPage() {
           <div className="col-span-12 lg:col-span-6">
             <NotificationsCard />
           </div>
-          <div className="col-span-12 lg:col-span-6">
-            <PendingTasksCard />
+        </div>
+      </section>
+
+      {/* Section 5 — Present HR */}
+      <section>
+        <SectionHeader title="Present HR" description="Staff attendance today" />
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12">
+            <PresentHrCard />
           </div>
-          <div className="col-span-12 lg:col-span-6">
-            <RecentActivityCard />
+        </div>
+      </section>
+
+      {/* Section 6 — Plans and Projects */}
+      <section>
+        <SectionHeader title="Plans and Projects – Status" description="Department goals and targets" />
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12">
+            <DepartmentGoalsCard />
           </div>
         </div>
       </section>
