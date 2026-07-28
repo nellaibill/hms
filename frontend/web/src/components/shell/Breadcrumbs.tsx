@@ -14,6 +14,14 @@ function usersTrailSegments(pathname: string): string[] | undefined {
   return undefined;
 }
 
+// /patients/enquiry isn't in the nav tree either — it's the Reception & Registration hub's
+// "Old Patient Registration" card, not a sidebar entry of its own — so its breadcrumb trail
+// is defined explicitly too, same reasoning as usersTrailSegments above.
+function patientEnquiryTrailSegments(pathname: string): string[] | undefined {
+  if (pathname === '/patients/enquiry') return ['Reception & Registration', 'Old Patient Registration'];
+  return undefined;
+}
+
 // Location-based breadcrumb (Home > Domain > Module) per docs/InformationArchitecture.md
 // §Breadcrumb Strategy — reflects the nav tree, never the click history.
 export function Breadcrumbs() {
@@ -21,11 +29,12 @@ export function Breadcrumbs() {
   const leaf = findLeafByPath(location.pathname);
   const group = findGroupForPath(location.pathname);
   const usersTrail = usersTrailSegments(location.pathname);
+  const patientEnquiryTrail = patientEnquiryTrailSegments(location.pathname);
 
-  if (!leaf && !usersTrail) return null;
+  if (!leaf && !usersTrail && !patientEnquiryTrail) return null;
 
   const isHome = leaf?.path === '/dashboard';
-  const trail = usersTrail ?? (group ? [group.label, leaf!.label] : [leaf!.label]);
+  const trail = usersTrail ?? patientEnquiryTrail ?? (group ? [group.label, leaf!.label] : [leaf!.label]);
 
   return (
     <nav aria-label="Breadcrumb" className="flex h-8 items-center gap-1.5 border-b border-border px-6 text-sm text-muted-foreground">

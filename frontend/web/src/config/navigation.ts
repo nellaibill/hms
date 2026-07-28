@@ -1,6 +1,5 @@
 import {
   LayoutDashboard,
-  Search,
   ClipboardList,
   Stethoscope,
   BedDouble,
@@ -62,29 +61,13 @@ export const navigationTree: NavNode[] = [
     section: 'Overview',
   },
   {
-    type: 'group',
-    label: 'Patient Management',
-    icon: Search,
-    section: 'Clinical',
+    type: 'leaf',
+    label: 'Reception & Registration',
+    path: '/patients/registration',
+    icon: ClipboardList,
+    description: 'Register a new patient or find an existing one to update their registration.',
     roles: ['receptionist', 'doctor', 'nurse'],
-    children: [
-      {
-        type: 'leaf',
-        label: 'Patient Enquiry',
-        path: '/patients/enquiry',
-        icon: Search,
-        description: 'Search patients by name, age, UHID, or phone, and view the aggregated Patient 360 record.',
-        roles: 'all',
-      },
-      {
-        type: 'leaf',
-        label: 'Reception & Registration',
-        path: '/patients/registration',
-        icon: ClipboardList,
-        description: 'Register new patients or update existing ones, capturing demographics, contacts, and encounter details.',
-        roles: 'all',
-      },
-    ],
+    section: 'Clinical',
   },
   {
     type: 'group',

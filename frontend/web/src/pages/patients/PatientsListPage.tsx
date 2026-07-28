@@ -12,7 +12,7 @@ import {
 } from '../../features/patients';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
-/** Registration Landing screen (docs/ScreenInventory.md) — list + search + "New Patient" entry point. */
+/** "Old Patient Registration" — the Reception & Registration hub's existing-patient search + list (docs/ScreenInventory.md). */
 export default function PatientsListPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -57,9 +57,9 @@ export default function PatientsListPage() {
         </span>
         <div className="flex flex-1 items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Reception &amp; Registration</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-primary">Old Patient Registration</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Register new patients or search existing ones by name, UHID, or phone.
+              Find an existing patient by name, UHID, or phone to view or update their registration.
             </p>
           </div>
           {data?.source === 'mock' && (
