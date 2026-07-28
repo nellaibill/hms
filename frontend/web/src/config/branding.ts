@@ -21,7 +21,11 @@ export const branding: BrandingConfig = {
   systemName: 'Hospital Management Information System',
   logoIcon: HeartPulse,
   primaryColor: {
+    // Dark theme intentionally matches light's blue exactly (rather than the
+    // paler tint dark UIs often use for accents) — buttons, links, and
+    // rings should read as the same confident enterprise blue in both
+    // themes instead of washing out to a pastel tone at night.
     light: '210 82% 45%',
-    dark: '210 90% 64%',
+    dark: '210 82% 45%',
   },
 };
