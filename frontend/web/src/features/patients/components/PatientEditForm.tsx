@@ -11,15 +11,16 @@ import {
   type PatientEditUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, X } from 'lucide-react';
+import { MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { bloodGroupLabel } from '../bloodGroupLabel';
+import { calculateDetailedAge } from '../detailedAge';
 import { humanize } from '../humanize';
 import { Field, FormSection } from './FormSection';
-import { SectionNav, type SectionNavItem } from './SectionNav';
 
 interface PatientEditFormProps {
   defaultValues: PatientEditUiFormValues;
@@ -28,14 +29,6 @@ interface PatientEditFormProps {
   onSubmit: (values: PatientEditUiFormValues) => void;
   onCancel: () => void;
 }
-
-const sections: SectionNavItem[] = [
-  { id: 'demographics', label: 'Demographics' },
-  { id: 'address', label: 'Address' },
-  { id: 'contact', label: 'Contact Details' },
-  { id: 'emergency-contact', label: 'Emergency Contact' },
-  { id: 'allergy', label: 'Allergy Details' },
-];
 
 /** Updates a patient's demographic/master-data fields only — the encounter is not editable here (see docs/DecisionLog.md's MVP-scope ADR). */
 export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
@@ -53,14 +46,14 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
   const hasKnownAllergy = watch('hasKnownAllergy');
 
+  const dateOfBirth = watch('dateOfBirth');
+  const detailedAge = dateOfBirth ? calculateDetailedAge(dateOfBirth) : null;
+
   const generalError = apiError?.message ?? null;
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1920px] gap-4">
-      <SectionNav sections={sections} className="hidden w-44 shrink-0 lg:flex" />
-      <div aria-hidden="true" className="hidden w-px shrink-0 bg-border lg:block" />
-
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -75,6 +68,23 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
           </div>
         )}
 
+      <Tabs defaultValue="patient-info">
+        <TabsList>
+          <TabsTrigger value="patient-info">
+            <User className="h-4 w-4" />
+            Patient Information
+          </TabsTrigger>
+          <TabsTrigger value="contact-info">
+            <MapPin className="h-4 w-4" />
+            Contact Information
+          </TabsTrigger>
+          <TabsTrigger value="medical-info">
+            <Stethoscope className="h-4 w-4" />
+            Medical Information
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="patient-info" className="pt-4">
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
             <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
@@ -113,8 +123,9 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
             >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-44">
+            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-48">
               <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+              {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>
 
@@ -161,7 +172,9 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
             </Field>
           </div>
         </FormSection>
+        </TabsContent>
 
+        <TabsContent value="contact-info" className="pt-4">
         <FormSection id="address" title="Address">
           <div className="flex flex-wrap gap-3">
             <Field
@@ -324,7 +337,9 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
             </Field>
           </div>
         </FormSection>
+        </TabsContent>
 
+        <TabsContent value="medical-info" className="pt-4">
         <FormSection id="allergy" title="Allergy Details">
           <div className="flex items-center gap-2">
             <input id="hasKnownAllergy" type="checkbox" className="h-4 w-4 rounded border-input" {...register('hasKnownAllergy')} />
@@ -385,6 +400,8 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
             </div>
           )}
         </FormSection>
+        </TabsContent>
+      </Tabs>
 
         <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <Button type="button" variant="outline" onClick={onCancel}>

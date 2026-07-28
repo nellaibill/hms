@@ -1,18 +1,30 @@
+import logoUrl from '@/assets/logo.png';
 import { branding } from '@/config/branding';
 import { cn } from '@/lib/utils';
 
-export function HospitalLogo({ className, showName = true }: { className?: string; showName?: boolean }) {
-  const Icon = branding.logoIcon;
+interface HospitalLogoProps {
+  className?: string;
+  /** Show branding.systemName next to the logo image (the image itself already has "Lakshmi Hospitals" baked in). */
+  showName?: boolean;
+  /** Use on a solid `bg-primary` surface (e.g. the top header) — wraps the logo in a white chip (its artwork assumes a light backing) and lightens the system-name text. */
+  invert?: boolean;
+  imageClassName?: string;
+}
 
+export function HospitalLogo({ className, showName = true, invert = false, imageClassName }: HospitalLogoProps) {
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-soft">
-        <Icon className="h-5 w-5" />
+      <span className={cn('flex shrink-0 items-center rounded-md', invert && 'bg-white px-2 py-1 shadow-soft')}>
+        <img src={logoUrl} alt={branding.hospitalName} className={cn('h-8 w-auto', imageClassName)} />
       </span>
       {showName && (
-        <span className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold tracking-tight text-foreground">{branding.hospitalName}</span>
-          <span className="text-[11px] text-muted-foreground">{branding.systemName}</span>
+        <span
+          className={cn(
+            'hidden text-xs font-medium leading-tight sm:inline',
+            invert ? 'text-primary-foreground/85' : 'text-muted-foreground',
+          )}
+        >
+          {branding.systemName}
         </span>
       )}
     </div>
