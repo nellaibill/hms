@@ -1,15 +1,15 @@
-using HMS.Modules.Roles.Application.Abstractions;
-using HMS.Modules.Roles.Contracts;
-using HMS.Modules.Roles.Domain;
+using HMS.Modules.Identity.Application.Abstractions;
+using HMS.Modules.Identity.Contracts;
+using HMS.Modules.Identity.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace HMS.Modules.Roles.Infrastructure.Repositories;
+namespace HMS.Modules.Identity.Infrastructure.Repositories;
 
 internal class RoleRepository : IRoleRepository
 {
-    private readonly RolesDbContext _dbContext;
+    private readonly IdentityDbContext _dbContext;
 
-    public RoleRepository(RolesDbContext dbContext)
+    public RoleRepository(IdentityDbContext dbContext)
     {
         _dbContext = dbContext;
     }

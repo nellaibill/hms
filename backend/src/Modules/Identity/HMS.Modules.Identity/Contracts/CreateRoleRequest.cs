@@ -1,6 +1,6 @@
-namespace HMS.Modules.Roles.Contracts;
+namespace HMS.Modules.Identity.Contracts;
 
-public record UpdateRoleRequest
+public record CreateRoleRequest
 {
     public string Name { get; init; } = string.Empty;
 

@@ -1,11 +1,11 @@
-using HMS.Modules.Roles.Application.Abstractions;
-using HMS.Modules.Roles.Application.Mapping;
-using HMS.Modules.Roles.Contracts;
-using HMS.Modules.Roles.Domain;
+using HMS.Modules.Identity.Application.Abstractions;
+using HMS.Modules.Identity.Application.Mapping;
+using HMS.Modules.Identity.Contracts;
+using HMS.Modules.Identity.Domain;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.Logging;
 
-namespace HMS.Modules.Roles.Application;
+namespace HMS.Modules.Identity.Application;
 
 internal class RoleService : IRoleService
 {

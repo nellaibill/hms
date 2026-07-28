@@ -1,6 +1,6 @@
 using HMS.Shared.Kernel;
 
-namespace HMS.Modules.Roles.Contracts;
+namespace HMS.Modules.Identity.Contracts;
 
 /// <summary>
 /// Query parameters for GET /api/v1/roles.

@@ -1,7 +1,7 @@
-using HMS.Modules.Roles.Contracts;
+using HMS.Modules.Identity.Contracts;
 using HMS.Shared.Kernel;
 
-namespace HMS.Modules.Roles.Application;
+namespace HMS.Modules.Identity.Application;
 
 public interface IRoleService
 {

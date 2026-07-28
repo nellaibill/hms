@@ -1,9 +1,7 @@
-namespace HMS.Modules.Roles.Contracts;
+namespace HMS.Modules.Identity.Contracts;
 
-public record RoleResponse
+public record UpdateRoleRequest
 {
-    public Guid Id { get; init; }
-
     public string Name { get; init; } = string.Empty;
 
     public string Code { get; init; } = string.Empty;
@@ -12,11 +10,5 @@ public record RoleResponse
 
     public bool IsSystemRole { get; init; }
 
-    public bool IsActive { get; init; }
-
     public int DisplayOrder { get; init; }
-
-    public DateTime CreatedAt { get; init; }
-
-    public DateTime? UpdatedAt { get; init; }
 }

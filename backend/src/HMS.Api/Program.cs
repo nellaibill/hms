@@ -3,7 +3,10 @@ using HMS.Api.Configuration;
 using HMS.Api.Middleware;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.Identity.Infrastructure;
+<<<<<<< HEAD
 using HMS.Modules.Patients.Infrastructure;
+=======
+>>>>>>> c2c8cec (refactor(identity): move roles into identity module)
 using HMS.Shared.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

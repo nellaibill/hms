@@ -1,6 +1,6 @@
 using HMS.Shared.Kernel;
 
-namespace HMS.Modules.Roles.Domain;
+namespace HMS.Modules.Identity.Domain;
 
 /// <summary>
 /// Represents a hospital role that can be assigned to users.

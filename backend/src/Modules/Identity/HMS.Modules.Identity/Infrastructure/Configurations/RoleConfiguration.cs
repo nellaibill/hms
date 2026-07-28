@@ -1,14 +1,14 @@
-using HMS.Modules.Roles.Domain;
+using HMS.Modules.Identity.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace HMS.Modules.Roles.Infrastructure.Configurations;
+namespace HMS.Modules.Identity.Infrastructure.Configurations;
 
 internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
 {
     public void Configure(EntityTypeBuilder<Role> builder)
     {
-        builder.ToTable("roles", RolesDbContext.SchemaName);
+        builder.ToTable("roles", IdentityDbContext.SchemaName);
 
         builder.HasKey(x => x.Id);
 

@@ -1,13 +1,13 @@
 using FluentValidation;
 using FluentValidation.Results;
-using HMS.Modules.Roles.Application;
-using HMS.Modules.Roles.Contracts;
+using HMS.Modules.Identity.Application;
+using HMS.Modules.Identity.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace HMS.Modules.Roles.Endpoints;
+namespace HMS.Modules.Identity.Endpoints;
 
 [ApiController]
 [Route("api/v1/roles")]

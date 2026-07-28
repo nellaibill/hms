@@ -1,4 +1,4 @@
-namespace HMS.Modules.Roles.Application;
+namespace HMS.Modules.Identity.Application;
 
 internal static class RoleErrorCodes
 {

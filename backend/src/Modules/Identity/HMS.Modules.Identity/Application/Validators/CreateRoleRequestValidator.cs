@@ -1,7 +1,7 @@
 using FluentValidation;
-using HMS.Modules.Roles.Contracts;
+using HMS.Modules.Identity.Contracts;
 
-namespace HMS.Modules.Roles.Application.Validators;
+namespace HMS.Modules.Identity.Application.Validators;
 
 internal class CreateRoleRequestValidator : AbstractValidator<CreateRoleRequest>
 {

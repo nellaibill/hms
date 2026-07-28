@@ -3,25 +3,21 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace HMS.Database.Migrations.Migrations
+namespace HMS.Database.Migrations.Identity.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialRoles : Migration
+    public partial class AddRolesToIdentity : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.EnsureSchema(
-                name: "roles");
-
             migrationBuilder.CreateTable(
                 name: "roles",
-                schema: "roles",
+                schema: "identity",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     IsSystemRole = table.Column<bool>(type: "boolean", nullable: false),
                     DisplayOrder = table.Column<int>(type: "integer", nullable: false),
@@ -40,15 +36,8 @@ namespace HMS.Database.Migrations.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_roles_Code",
-                schema: "roles",
-                table: "roles",
-                column: "Code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_roles_Name",
-                schema: "roles",
+                schema: "identity",
                 table: "roles",
                 column: "Name",
                 unique: true);
@@ -59,7 +48,7 @@ namespace HMS.Database.Migrations.Migrations
         {
             migrationBuilder.DropTable(
                 name: "roles",
-                schema: "roles");
+                schema: "identity");
         }
     }
 }

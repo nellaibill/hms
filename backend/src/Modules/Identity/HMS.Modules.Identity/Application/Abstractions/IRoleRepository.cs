@@ -1,7 +1,7 @@
-using HMS.Modules.Roles.Contracts;
-using HMS.Modules.Roles.Domain;
+using HMS.Modules.Identity.Contracts;
+using HMS.Modules.Identity.Domain;
 
-namespace HMS.Modules.Roles.Application.Abstractions;
+namespace HMS.Modules.Identity.Application.Abstractions;
 
 /// <summary>
 /// Defined here (Application) and implemented in Infrastructure, per the dependency
