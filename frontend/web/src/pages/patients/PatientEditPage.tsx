@@ -128,7 +128,7 @@ export default function PatientEditPage() {
             <UserCog className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-xl font-semibold tracking-tight text-primary">
               Edit {patient.firstName} {patient.lastName}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Update this patient's demographic details.</p>

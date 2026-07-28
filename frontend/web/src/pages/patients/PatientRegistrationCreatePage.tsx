@@ -94,7 +94,7 @@ export default function PatientRegistrationCreatePage() {
             <UserPlus className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">New Patient Registration</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-primary">New Patient Registration</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Capture demographics, contacts, and encounter details. A UHID and registration number are assigned automatically.
             </p>
