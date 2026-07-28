@@ -13,6 +13,7 @@ const UsersListPage = lazy(() => import('../pages/users/UsersListPage'));
 const UserCreatePage = lazy(() => import('../pages/users/UserCreatePage'));
 const UserViewPage = lazy(() => import('../pages/users/UserViewPage'));
 const UserEditPage = lazy(() => import('../pages/users/UserEditPage'));
+const PatientRegistrationHubPage = lazy(() => import('../pages/patients/PatientRegistrationHubPage'));
 const PatientsListPage = lazy(() => import('../pages/patients/PatientsListPage'));
 const PatientRegistrationCreatePage = lazy(() => import('../pages/patients/PatientRegistrationCreatePage'));
 const PatientViewPage = lazy(() => import('../pages/patients/PatientViewPage'));
@@ -32,7 +33,7 @@ const withSuspense = (element: React.ReactNode) => <Suspense fallback={shellFall
 const specialPages: Record<string, React.ReactNode> = {
   '/dashboard': withSuspense(<DashboardPage />),
   '/admin/settings': withSuspense(<SettingsPage />),
-  '/patients/registration': withSuspense(<PatientsListPage />),
+  '/patients/registration': withSuspense(<PatientRegistrationHubPage />),
 };
 
 const moduleRoutes = getAllLeaves().map((leaf) => ({
@@ -52,10 +53,13 @@ const userRoutes = [
 
 // Patients (HMS.Modules.Patients) — New Patient Registration, the MVP core-form slice of
 // docs/PatientRegistrationModule.md (see docs/DecisionLog.md for what's deferred). The
-// landing list ('patients/registration') is already wired via specialPages above; these
-// cover the create/view/edit sub-routes, mirroring userRoutes' shape.
+// landing hub ('patients/registration') is already wired via specialPages above; these
+// cover the create/search/view/edit sub-routes, mirroring userRoutes' shape.
+// 'patients/enquiry' is the hub's "Old Patient Registration" destination — not a nav leaf
+// itself (only reachable from the hub page), hence added here rather than via navigation.ts.
 const patientRoutes = [
   { path: 'patients/registration/new', element: withSuspense(<PatientRegistrationCreatePage />) },
+  { path: 'patients/enquiry', element: withSuspense(<PatientsListPage />) },
   { path: 'patients/registration/:id', element: withSuspense(<PatientViewPage />) },
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
 ];
