@@ -43,7 +43,7 @@ const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'n
 
 export default function DashboardPage() {
   return (
-    <div className="flex flex-1 flex-col gap-8 p-6">
+    <div className="flex flex-1 flex-col gap-8 p-6 lg:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -60,7 +60,7 @@ export default function DashboardPage() {
       {/* Section 1 — Executive KPI Cards */}
       <section>
         <SectionHeader title="Executive Overview" description="Hospital-wide performance at a glance" />
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-5">
           {kpiData.map((kpi) => (
             <div key={kpi.id} className="col-span-12 sm:col-span-6 lg:col-span-4">
               <KpiCard kpi={kpi} />
@@ -72,7 +72,7 @@ export default function DashboardPage() {
       {/* Section 2 — Operational Widgets */}
       <section>
         <SectionHeader title="Operations Today" description="Live queues across clinical and support services" />
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-5">
           {operationalWidgets.map((widget) => (
             <div key={widget.title} className="col-span-12 sm:col-span-6 lg:col-span-4">
               <OperationalWidgetCard {...widget}>{operationalContent[widget.title]}</OperationalWidgetCard>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
       {/* Section 3 — Analytics */}
       <section>
         <SectionHeader title="Analytics" description="Volume and financial trends" />
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12 lg:col-span-6">
             <OpIpTrendChart />
           </div>
@@ -97,7 +97,7 @@ export default function DashboardPage() {
       {/* Section 4 — Hospital Overview */}
       <section>
         <SectionHeader title="Hospital Overview" description="Departments, beds, and consultant availability" />
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12 lg:col-span-4">
             <DepartmentPerformanceCard />
           </div>
@@ -113,7 +113,7 @@ export default function DashboardPage() {
       {/* Section 5 — Productivity */}
       <section>
         <SectionHeader title="Productivity" description="Your calendar, alerts, tasks, and system activity" />
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12 lg:col-span-6">
             <MiniCalendarCard />
           </div>

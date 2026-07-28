@@ -21,7 +21,7 @@ export function KpiCard({ kpi }: KpiCardProps) {
       : 'bg-warning/10 text-warning';
 
   return (
-    <Card className="transition-shadow hover:shadow-soft-md">
+    <Card className="transition-shadow hover:shadow-soft-lg">
       <CardContent className="flex flex-col gap-3 p-5">
         <div className="flex items-start justify-between">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">

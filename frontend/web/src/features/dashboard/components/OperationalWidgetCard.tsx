@@ -14,7 +14,7 @@ interface OperationalWidgetCardProps {
 
 export function OperationalWidgetCard({ title, icon: Icon, count, countLabel, link, children }: OperationalWidgetCardProps) {
   return (
-    <Card className="flex h-full flex-col transition-shadow hover:shadow-soft-md">
+    <Card className="flex h-full flex-col transition-shadow hover:shadow-soft-lg">
       <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 pb-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">

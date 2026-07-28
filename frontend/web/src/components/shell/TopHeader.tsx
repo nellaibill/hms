@@ -38,14 +38,14 @@ export function TopHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-[1000] flex h-14 items-center gap-3 border-b border-primary-foreground/15 bg-primary px-4 text-primary-foreground shadow-soft">
+    <header className="sticky top-0 z-[1000] flex h-16 items-center gap-4 border-b border-primary-foreground/15 bg-primary px-6 text-primary-foreground shadow-soft-md">
       {/* Mobile nav trigger — sidebar collapses to a drawer below md, per docs/LayoutFramework.md §14 */}
       <Button variant="ghost" size="icon" className="shrink-0 md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation">
         <Menu className="h-5 w-5" />
       </Button>
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="flex flex-col p-0">
-          <div className="flex h-14 items-center border-b border-border px-4">
+          <div className="flex h-16 items-center border-b border-border px-4">
             <HospitalLogo />
           </div>
           <div className="flex-1 overflow-y-auto py-3">
@@ -57,13 +57,13 @@ export function TopHeader() {
       <HospitalLogo invert className="shrink-0" />
 
       <div className="hidden flex-1 justify-center sm:flex">
-        <div className="w-full max-w-xl">
+        <div className="w-full max-w-2xl">
           <HeaderSearchBox />
         </div>
       </div>
 
       {/* Icon actions — equally spaced, icon-only with a hover tooltip; the row itself (not its icons) shrinks and scrolls horizontally rather than clipping on narrow viewports. */}
-      <div className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto [&>*]:shrink-0">
+      <div className="ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto [&>*]:shrink-0">
         <LanguageMenu />
         <NotificationsMenu />
         <HeaderLinkIcon to="/engagement/programmes" label="Calendar" icon={CalendarIcon} />

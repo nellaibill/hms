@@ -10,10 +10,10 @@ interface FormSectionProps {
 /** Consistent card-styled `<fieldset>` used by every section of the registration/edit forms — keeps spacing, headings, and borders uniform. */
 export function FormSection({ id, title, description, children }: FormSectionProps) {
   return (
-    <fieldset id={id} className="scroll-mt-24 rounded-lg border border-border bg-card p-4 shadow-soft">
+    <fieldset id={id} className="scroll-mt-24 rounded-lg border border-border bg-card p-5 shadow-soft-md sm:p-6">
       <legend className="px-1 text-lg font-semibold text-foreground">{title}</legend>
       {description && <p className="mb-3 mt-0.5 text-xs text-muted-foreground">{description}</p>}
-      <div className={description ? 'flex flex-col gap-3' : 'mt-3 flex flex-col gap-3'}>{children}</div>
+      <div className={description ? 'flex flex-col gap-4' : 'mt-3 flex flex-col gap-4'}>{children}</div>
     </fieldset>
   );
 }
