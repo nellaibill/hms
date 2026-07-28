@@ -13,15 +13,16 @@ interface HospitalLogoProps {
 
 export function HospitalLogo({ className, showName = true, invert = false, imageClassName }: HospitalLogoProps) {
   return (
-    <div className={cn('flex items-center gap-2.5', className)}>
-      <span className={cn('flex shrink-0 items-center rounded-md', invert && 'bg-white px-2.5 py-1.5 shadow-soft')}>
-        <img src={logoUrl} alt={branding.hospitalName} className={cn('h-9 w-auto', imageClassName)} />
+    <div className={cn('flex items-center gap-4', className)}>
+      <span className={cn('flex shrink-0 items-center justify-center rounded-md', invert && 'bg-white px-3 shadow-soft')}>
+        {/* Fixed width (not height) so the ~3.3:1 landscape logo scales up without distortion — h-auto keeps its natural aspect ratio. */}
+        <img src={logoUrl} alt={branding.hospitalName} className={cn('h-auto w-48 object-contain', imageClassName)} />
       </span>
       {showName && (
         <span
           className={cn(
-            'hidden text-xs font-medium leading-tight sm:inline',
-            invert ? 'text-primary-foreground/85' : 'text-muted-foreground',
+            'hidden text-sm font-semibold leading-tight sm:inline',
+            invert ? 'text-header-foreground/90' : 'text-muted-foreground',
           )}
         >
           {branding.systemName}

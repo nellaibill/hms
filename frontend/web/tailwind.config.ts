@@ -71,6 +71,10 @@ const config: Config = {
             foreground: 'hsl(var(--sidebar-active-fg))',
           },
         },
+        header: {
+          DEFAULT: 'hsl(var(--header-bg))',
+          foreground: 'hsl(var(--header-foreground))',
+        },
       },
       boxShadow: {
         soft: '0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06)',

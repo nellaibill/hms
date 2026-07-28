@@ -12,11 +12,11 @@ export function HeaderSearchBox() {
   const [scope, setScope] = useState<SearchScope>('patient');
 
   return (
-    <div className="flex w-full items-stretch overflow-hidden rounded-md border border-input bg-background shadow-sm">
+    <div className="flex w-full items-stretch overflow-hidden rounded-md border border-transparent bg-white shadow-sm">
       <Select value={scope} onValueChange={(value) => setScope(value as SearchScope)}>
         <SelectTrigger
           aria-label="Search scope"
-          className="w-[9.5rem] shrink-0 rounded-none border-0 border-r border-input bg-transparent shadow-none focus:ring-0 focus:ring-offset-0"
+          className="w-[9.5rem] shrink-0 rounded-none border-0 border-r border-slate-200 bg-transparent text-slate-700 shadow-none focus:ring-0 focus:ring-offset-0"
         >
           <SelectValue />
         </SelectTrigger>
@@ -26,12 +26,12 @@ export function HeaderSearchBox() {
         </SelectContent>
       </Select>
       <div className="relative flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
           type="search"
           placeholder={SEARCH_PLACEHOLDER}
           aria-label={scope === 'patient' ? 'Patient search' : 'Doctor search'}
-          className="h-full rounded-none border-0 pl-9 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-full rounded-none border-0 bg-transparent pl-9 text-slate-900 shadow-none placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
         />
       </div>
     </div>

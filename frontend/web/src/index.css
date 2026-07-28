@@ -65,6 +65,12 @@
     --sidebar-active-bg: 210 82% 95%;
     --sidebar-active-fg: 210 82% 40%;
 
+    /* Top app bar keeps a fixed enterprise-blue identity in both themes
+       (set from applyBrandingTokens using the light-mode brand color) —
+       it should never wash out to the paler, dark-theme accent tint. */
+    --header-bg: 210 82% 45%;
+    --header-foreground: 0 0% 100%;
+
     --radius: 0.625rem;
   }
 
