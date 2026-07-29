@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } from './DocumentUploadStaging';
 import { Field, FormSection } from './FormSection';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge } from '../detailedAge';
@@ -34,7 +35,7 @@ import { humanize } from '../humanize';
 interface PatientRegistrationFormProps {
   isSubmitting: boolean;
   apiError: ApiError | null;
-  onSubmit: (values: PatientRegistrationUiFormValues) => void;
+  onSubmit: (values: PatientRegistrationUiFormValues, documents: StagedDocuments) => void;
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details'] as const;
@@ -129,6 +130,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   });
 
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
+  const [documents, setDocuments] = useState<StagedDocuments>(emptyStagedDocuments);
 
   const [activeTab, setActiveTab] = useState<TabId>('patient-info');
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -167,7 +169,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
 
   return (
     <div className="flex w-full max-w-6xl flex-col gap-5">
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
+      <form onSubmit={handleSubmit((values) => onSubmit(values, documents), onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -683,6 +685,10 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               </>
             )}
           </div>
+        </FormSection>
+
+        <FormSection id="document-upload" title="Document Upload" description="Optional — the patient photo and ID proof are uploaded once the record is saved.">
+          <DocumentUploadStaging value={documents} onChange={setDocuments} />
         </FormSection>
         </TabsContent>
 

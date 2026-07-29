@@ -9,7 +9,7 @@ export const patientsQueryKey = (query: PatientListQuery) => ['patients', 'list'
 /** Result carries `source` so the UI can flag when it's showing offline demo data. */
 export type PagedPatientsResult = PagedPatients & { source: 'live' | 'mock' };
 
-export function usePatientsQuery(query: PatientListQuery) {
+export function usePatientsQuery(query: PatientListQuery, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: patientsQueryKey(query),
     queryFn: async (): Promise<PagedPatientsResult> => {
@@ -25,6 +25,7 @@ export function usePatientsQuery(query: PatientListQuery) {
         throw err;
       }
     },
+    enabled: options?.enabled ?? true,
     placeholderData: (previous) => previous,
   });
 }

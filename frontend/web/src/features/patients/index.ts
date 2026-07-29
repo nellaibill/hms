@@ -1,4 +1,5 @@
 export * from './components/DeletePatientDialog';
+export * from './components/DocumentUploadStaging';
 export * from './components/Pagination';
 export * from './components/PatientDetails';
 export * from './components/PatientDocumentUpload';

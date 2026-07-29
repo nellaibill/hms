@@ -76,13 +76,25 @@ function compareBy(field: string, direction: 1 | -1) {
 export function listMockPatients(query: PatientListQuery): PagedPatients {
   const page = query.page ?? 1;
   const pageSize = query.pageSize ?? 20;
-  const search = query.search?.trim().toLowerCase();
+  const name = query.name?.trim().toLowerCase();
+  const uhid = query.uhid?.trim().toLowerCase();
+  const phone = query.phone?.trim().toLowerCase();
+  const age = query.age;
 
+  // Each provided field narrows the result further (AND, not OR) — matches "search using
+  // any one or a combination" rather than the old single fuzzy search box.
   let items = patients;
-  if (search) {
-    items = items.filter((p) =>
-      [p.firstName, p.lastName, p.uhid, p.primaryPhone].some((field) => field.toLowerCase().includes(search)),
-    );
+  if (name) {
+    items = items.filter((p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(name));
+  }
+  if (uhid) {
+    items = items.filter((p) => p.uhid.toLowerCase().includes(uhid));
+  }
+  if (phone) {
+    items = items.filter((p) => p.primaryPhone.toLowerCase().includes(phone));
+  }
+  if (age !== undefined && !Number.isNaN(age)) {
+    items = items.filter((p) => p.age === age);
   }
 
   const sort = query.sort ?? '-createdAt';

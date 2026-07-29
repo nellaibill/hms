@@ -147,5 +147,10 @@ export interface PatientListQuery {
   page?: number;
   pageSize?: number;
   sort?: string;
+  /** @deprecated superseded by the separate name/age/uhid/phone fields below. */
   search?: string;
+  name?: string;
+  age?: number;
+  uhid?: string;
+  phone?: string;
 }
