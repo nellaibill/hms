@@ -50,8 +50,8 @@ export interface Locality {
   pincode: string;
 }
 
-/** Tirunelveli city localities plus nearby towns — Sankarankovil and Tenkasi fall under the
- * neighbouring Tenkasi district (carved out of Tirunelveli district in 2021). */
+/** Tirunelveli city localities plus nearby towns — Sankarankovil, Tenkasi, and Alangulam fall
+ * under the neighbouring Tenkasi district (carved out of Tirunelveli district in 2021). */
 export const LOCALITIES: Locality[] = [
   { area: 'Tirunelveli Town', district: 'Tirunelveli', pincode: '627001' },
   { area: 'Palayamkottai', district: 'Tirunelveli', pincode: '627002' },
@@ -60,7 +60,12 @@ export const LOCALITIES: Locality[] = [
   { area: 'Ambasamudram', district: 'Tirunelveli', pincode: '627401' },
   { area: 'Cheranmahadevi', district: 'Tirunelveli', pincode: '627105' },
   { area: 'Nanguneri', district: 'Tirunelveli', pincode: '627106' },
-  { area: 'Vallioor', district: 'Tirunelveli', pincode: '627117' },
+  { area: 'Valliyur', district: 'Tirunelveli', pincode: '627117' },
+  { area: 'Radhapuram', district: 'Tirunelveli', pincode: '627111' },
+  { area: 'Thisayanvilai', district: 'Tirunelveli', pincode: '627657' },
+  { area: 'Kadayam', district: 'Tirunelveli', pincode: '627415' },
+  { area: 'Kalakkad', district: 'Tirunelveli', pincode: '627501' },
   { area: 'Sankarankovil', district: 'Tenkasi', pincode: '627756' },
   { area: 'Tenkasi', district: 'Tenkasi', pincode: '627811' },
+  { area: 'Alangulam', district: 'Tenkasi', pincode: '627851' },
 ];
