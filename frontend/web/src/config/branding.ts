@@ -18,7 +18,7 @@ export interface BrandingConfig {
 
 export const branding: BrandingConfig = {
   hospitalName: 'Lakshmi Hospitals',
-  systemName: 'Hospital Management Information System',
+  systemName: 'Hospital Management Information System (HMIS)',
   logoIcon: HeartPulse,
   primaryColor: {
     // Dark theme intentionally matches light's blue exactly (rather than the

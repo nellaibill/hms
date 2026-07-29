@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { HeaderCalculator } from '@/components/shell/HeaderCalculator';
 import { HeaderSearchBox } from '@/components/shell/HeaderSearchBox';
 import { HospitalLogo } from '@/components/shell/HospitalLogo';
+import { branding } from '@/config/branding';
 import { LanguageMenu } from '@/components/shell/LanguageMenu';
 import { NotificationsMenu } from '@/components/shell/NotificationsMenu';
 import { PendingTasksMenu } from '@/components/shell/PendingTasksMenu';
@@ -54,7 +55,12 @@ export function TopHeader() {
         </SheetContent>
       </Sheet>
 
-      <HospitalLogo invert className="shrink-0" />
+      <div className="flex shrink-0 items-center gap-3">
+        <HospitalLogo invert showName={false} />
+        <span className="hidden truncate text-base font-bold leading-tight tracking-tight text-header-foreground sm:inline lg:text-lg">
+          {branding.systemName}
+        </span>
+      </div>
 
       <div className="hidden flex-1 justify-center sm:flex">
         <div className="w-full max-w-2xl">

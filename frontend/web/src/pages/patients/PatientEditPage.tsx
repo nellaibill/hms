@@ -137,6 +137,7 @@ export default function PatientEditPage() {
       </div>
 
       <PatientEditForm
+        patientId={id as string}
         isSubmitting={mutation.isPending}
         apiError={mutation.error instanceof ApiError ? mutation.error : null}
         defaultValues={toDefaultValues(patient)}

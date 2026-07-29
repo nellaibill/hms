@@ -6,6 +6,8 @@ import { useUploadPatientIdProofMutation, useUploadPatientPhotoMutation } from '
 
 interface PatientDocumentUploadProps {
   patientId: string;
+  /** Skip the component's own card border + heading — use when it's already inside a FormSection (the registration/edit forms). */
+  bare?: boolean;
 }
 
 /**
@@ -13,7 +15,7 @@ interface PatientDocumentUploadProps {
  * drag-drop zone, no webcam capture (§13 is deferred, see docs/DecisionLog.md). Uploaded
  * only after the patient record exists, since both endpoints attach to a patient id.
  */
-export function PatientDocumentUpload({ patientId }: PatientDocumentUploadProps) {
+export function PatientDocumentUpload({ patientId, bare = false }: PatientDocumentUploadProps) {
   const [idProofType, setIdProofType] = useState<IdProofType>('Aadhaar');
   const photoMutation = useUploadPatientPhotoMutation();
   const idProofMutation = useUploadPatientIdProofMutation();
@@ -34,10 +36,8 @@ export function PatientDocumentUpload({ patientId }: PatientDocumentUploadProps)
     event.target.value = '';
   }
 
-  return (
-    <div className="flex flex-col gap-4 rounded-lg border border-border p-4">
-      <h2 className="text-sm font-semibold text-foreground">Document Upload</h2>
-
+  const fields = (
+    <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="photo-upload">Patient photo (JPG/PNG, max 5MB)</Label>
         <input
@@ -81,6 +81,17 @@ export function PatientDocumentUpload({ patientId }: PatientDocumentUploadProps)
         {idProofMutation.isPending && <p className="text-xs text-muted-foreground">Uploading…</p>}
         {idProofMutation.isError && <p className="text-sm text-destructive">Failed to upload ID proof.</p>}
       </div>
+    </>
+  );
+
+  if (bare) {
+    return <div className="flex flex-col gap-4">{fields}</div>;
+  }
+
+  return (
+    <div className="flex flex-col gap-4 rounded-lg border border-border p-4">
+      <h2 className="text-sm font-semibold text-foreground">Document Upload</h2>
+      {fields}
     </div>
   );
 }

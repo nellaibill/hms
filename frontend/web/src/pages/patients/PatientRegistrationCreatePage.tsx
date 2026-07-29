@@ -1,7 +1,13 @@
 import { ApiError, type CreatePatientRequest, type PatientRegistrationUiFormValues } from '@hms/shared';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PatientRegistrationForm, useCreatePatientMutation } from '../../features/patients';
+import {
+  PatientRegistrationForm,
+  useCreatePatientMutation,
+  useUploadPatientIdProofMutation,
+  useUploadPatientPhotoMutation,
+  type StagedDocuments,
+} from '../../features/patients';
 import { toAllergyType, toBackendGender, toPhoneRelationLabel, toRelationshipLabel } from '../../features/patients/bridging';
 import { humanize } from '../../features/patients/humanize';
 
@@ -72,10 +78,18 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
 export default function PatientRegistrationCreatePage() {
   const navigate = useNavigate();
   const mutation = useCreatePatientMutation();
+  const photoMutation = useUploadPatientPhotoMutation();
+  const idProofMutation = useUploadPatientIdProofMutation();
 
-  function handleSubmit(values: PatientRegistrationUiFormValues) {
+  function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments) {
     mutation.mutate(toRequest(values), {
-      onSuccess: (patient) => navigate(`/patients/registration/${patient.id}`),
+      onSuccess: (patient) => {
+        if (documents.photo) photoMutation.mutate({ id: patient.id, file: documents.photo });
+        if (documents.idProofFile) {
+          idProofMutation.mutate({ id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile });
+        }
+        navigate(`/patients/registration/${patient.id}`);
+      },
     });
   }
 

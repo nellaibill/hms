@@ -27,13 +27,15 @@ const shellFallback = (
 
 const withSuspense = (element: React.ReactNode) => <Suspense fallback={shellFallback}>{element}</Suspense>;
 
-// Dashboard and Settings are the two nav leaves with a real page — every
-// other leaf renders the shared PlaceholderPage generated from the nav
-// config, keeping that config the single source of truth for the sidebar.
+// Dashboard, Settings, Reception & Registration, and Patient Enquiry are the
+// nav leaves with a real page — every other leaf renders the shared
+// PlaceholderPage generated from the nav config, keeping that config the
+// single source of truth for the sidebar.
 const specialPages: Record<string, React.ReactNode> = {
   '/dashboard': withSuspense(<DashboardPage />),
   '/admin/settings': withSuspense(<SettingsPage />),
   '/patients/registration': withSuspense(<PatientRegistrationHubPage />),
+  '/patients/enquiry': withSuspense(<PatientsListPage />),
 };
 
 const moduleRoutes = getAllLeaves().map((leaf) => ({
@@ -53,13 +55,10 @@ const userRoutes = [
 
 // Patients (HMS.Modules.Patients) — New Patient Registration, the MVP core-form slice of
 // docs/PatientRegistrationModule.md (see docs/DecisionLog.md for what's deferred). The
-// landing hub ('patients/registration') is already wired via specialPages above; these
-// cover the create/search/view/edit sub-routes, mirroring userRoutes' shape.
-// 'patients/enquiry' is the hub's "Old Patient Registration" destination — not a nav leaf
-// itself (only reachable from the hub page), hence added here rather than via navigation.ts.
+// landing hub ('patients/registration') and 'patients/enquiry' are already wired via
+// specialPages above; these cover the create/view/edit sub-routes, mirroring userRoutes' shape.
 const patientRoutes = [
   { path: 'patients/registration/new', element: withSuspense(<PatientRegistrationCreatePage />) },
-  { path: 'patients/enquiry', element: withSuspense(<PatientsListPage />) },
   { path: 'patients/registration/:id', element: withSuspense(<PatientViewPage />) },
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
 ];

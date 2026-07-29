@@ -22,8 +22,10 @@ import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge } from '../detailedAge';
 import { humanize } from '../humanize';
 import { Field, FormSection } from './FormSection';
+import { PatientDocumentUpload } from './PatientDocumentUpload';
 
 interface PatientEditFormProps {
+  patientId: string;
   defaultValues: PatientEditUiFormValues;
   isSubmitting: boolean;
   apiError: ApiError | null;
@@ -62,7 +64,7 @@ function tabWithFirstError(errors: FieldErrors<PatientEditUiFormValues>): TabId 
 }
 
 /** Updates a patient's demographic/master-data fields only — the encounter is not editable here (see docs/DecisionLog.md's MVP-scope ADR). */
-export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
+export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
   const {
     register,
     control,
@@ -444,6 +446,10 @@ export function PatientEditForm({ defaultValues, isSubmitting, apiError, onSubmi
               </Field>
             </div>
           )}
+        </FormSection>
+
+        <FormSection id="document-upload" title="Document Upload" description="Upload or replace the patient's photo and ID proof.">
+          <PatientDocumentUpload patientId={patientId} bare />
         </FormSection>
         </TabsContent>
       </Tabs>
