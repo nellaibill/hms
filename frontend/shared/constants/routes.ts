@@ -12,4 +12,8 @@ export const API_ROUTES = {
     photo: (id: string) => `/api/v1/patients/${id}/photo`,
     idProof: (id: string) => `/api/v1/patients/${id}/id-proof`,
   },
+  branding: {
+    base: '/api/v1/branding',
+    logo: '/api/v1/branding/logo',
+  },
 } as const;

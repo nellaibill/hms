@@ -1,3 +1,4 @@
+using HMS.Modules.Branding;
 using HMS.Modules.Identity;
 using HMS.Modules.Patients;
 
@@ -13,6 +14,7 @@ public static class ModuleRegistration
     {
         services.AddIdentityModule(configuration);
         services.AddPatientsModule(configuration);
+        services.AddBrandingModule(configuration);
 
         // Future modules register here, e.g.:
         // services.AddAppointmentsModule(configuration);
