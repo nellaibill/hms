@@ -56,6 +56,16 @@ const config: Config = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+          header: {
+            DEFAULT: 'hsl(var(--card-header-bg))',
+            foreground: 'hsl(var(--card-header-foreground))',
+          },
+        },
+        link: 'hsl(var(--link))',
+        icon: 'hsl(var(--icon))',
+        'page-banner': {
+          DEFAULT: 'hsl(var(--page-banner-bg))',
+          foreground: 'hsl(var(--page-banner-foreground))',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -88,7 +98,7 @@ const config: Config = {
         sm: 'calc(var(--radius) - 8px)',
       },
       fontFamily: {
-        sans: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
       },
       spacing: {

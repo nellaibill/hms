@@ -74,19 +74,22 @@ export default function UsersListPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-      <div className="flex items-start gap-3 border-b border-border pb-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <UsersIcon className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Users</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Manage system accounts — the Identity reference module, connected live to the HMS.Api backend.
-          </p>
+    <div className="flex flex-1 flex-col">
+      {/* Centered, brand-colored banner — matches the Page banner style used
+          across module pages (Theme & Branding → Section headers). */}
+      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
+            <UsersIcon className="h-5 w-5" />
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight">Users</h1>
         </div>
+        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
+          Manage system accounts — the Identity reference module, connected live to the HMS.Api backend.
+        </p>
       </div>
 
+      <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
       <UserListToolbar
         search={search}
         onSearchChange={handleSearchChange}
@@ -140,6 +143,7 @@ export default function UsersListPage() {
           onCancel={() => setUserPendingDelete(null)}
         />
       )}
+      </div>
     </div>
   );
 }

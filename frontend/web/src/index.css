@@ -25,6 +25,17 @@
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
+    /* Section/card header — new token, seeded identical to --card so
+       introducing it is a zero-visual-diff change; admin-editable via
+       Theme & Branding settings. */
+    --card-header-bg: 0 0% 100%;
+    --card-header-foreground: 222 47% 11%;
+
+    /* Page banner (e.g. Reception & Registration hub) — new token, seeded to
+       match the color that page previously hardcoded (bg-[#39bff0]). */
+    --page-banner-bg: 196 86% 58%;
+    --page-banner-foreground: 0 0% 100%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
@@ -58,6 +69,15 @@
     --input: 214 28% 91%;
     --ring: 210 82% 45%;
 
+    /* Link and generic/neutral chrome icon color — new tokens, seeded to
+       match today's hardcoded text-primary / text-muted-foreground usage. */
+    --link: 210 82% 45%;
+    --icon: 215 16% 47%;
+
+    /* Typography — admin-editable font family/size (Theme & Branding settings). */
+    --font-sans: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-size-base: 16px;
+
     --sidebar: 210 33% 99%;
     --sidebar-foreground: 222 40% 18%;
     --sidebar-border: 214 28% 91%;
@@ -80,6 +100,12 @@
 
     --card: 222 40% 10%;
     --card-foreground: 210 40% 98%;
+
+    --card-header-bg: 222 40% 10%;
+    --card-header-foreground: 210 40% 98%;
+
+    --page-banner-bg: 196 86% 58%;
+    --page-banner-foreground: 0 0% 100%;
 
     --popover: 222 40% 10%;
     --popover-foreground: 210 40% 98%;
@@ -114,6 +140,9 @@
     --input: 217 24% 20%;
     --ring: 210 82% 45%;
 
+    --link: 210 82% 45%;
+    --icon: 215 18% 68%;
+
     --sidebar: 222 44% 8%;
     --sidebar-foreground: 210 30% 92%;
     --sidebar-border: 217 24% 20%;
@@ -128,13 +157,12 @@
     @apply border-border;
   }
 
+  html {
+    font-size: var(--font-size-base, 16px);
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family:
-      Inter,
-      'Segoe UI',
-      system-ui,
-      -apple-system,
-      sans-serif;
+    font-family: var(--font-sans, Inter, 'Segoe UI', system-ui, -apple-system, sans-serif);
   }
 }

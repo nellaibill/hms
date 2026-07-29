@@ -10,6 +10,7 @@ import { HospitalLogo } from '@/components/shell/HospitalLogo';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { branding } from '@/config/branding';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { roleDefinitions } from '@/features/auth/mockUsers';
 import type { Role } from '@/features/auth/types';
 
@@ -21,6 +22,8 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: brandingConfig } = useBrandingQuery();
+  const appTitle = brandingConfig?.appTitle ?? branding.systemName;
 
   const [role, setRole] = useState<Role>('doctor');
   const [username, setUsername] = useState('');
@@ -62,7 +65,7 @@ export default function LoginPage() {
         <CardHeader className="items-center text-center">
           <HospitalLogo className="mb-2" />
           <CardTitle className="mt-2">Sign in</CardTitle>
-          <CardDescription>{branding.systemName}</CardDescription>
+          <CardDescription>{appTitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>

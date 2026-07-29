@@ -12,20 +12,23 @@ const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'n
 
 export default function DashboardPage() {
   return (
-    <div className="flex flex-1 flex-col gap-8 p-6 lg:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+    <div className="flex flex-1 flex-col">
+      {/* Centered, brand-colored banner — matches the Page banner style used
+          across module pages (Theme & Branding → Section headers). */}
+      <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
+        <span className="absolute right-6 top-5 hidden rounded-full bg-page-banner-foreground/15 px-3 py-1 text-xs font-medium sm:inline-block">
+          {today}
+        </span>
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
             <LayoutDashboard className="h-5 w-5" />
           </span>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Executive Dashboard</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Live overview across every department, updated in real time.</p>
-          </div>
+          <h1 className="text-xl font-semibold tracking-tight">Executive Dashboard</h1>
         </div>
-        <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{today}</span>
+        <p className="max-w-2xl text-sm text-page-banner-foreground/85">Live overview across every department, updated in real time.</p>
       </div>
 
+      <div className="flex flex-1 flex-col gap-8 p-6 lg:p-8">
       {/* Section 1 — Statistical Data */}
       <section>
         <SectionHeader title="Statistical Data" description="Monthly patient OP/IP census" />
@@ -88,6 +91,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+      </div>
     </div>
   );
 }

@@ -94,8 +94,8 @@ export default function PatientRegistrationCreatePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-      <div>
+    <div className="flex flex-1 flex-col">
+      <div className="px-6 pt-4 lg:px-8">
         <Link
           to="/patients/registration"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -103,24 +103,29 @@ export default function PatientRegistrationCreatePage() {
           <ArrowLeft className="h-4 w-4" />
           Back to registration
         </Link>
-        <div className="mt-2 flex items-start gap-3 border-b border-border pb-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <UserPlus className="h-5 w-5" />
-          </span>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-primary">New Patient Registration</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Capture demographics, contacts, and encounter details. A UHID and registration number are assigned automatically.
-            </p>
-          </div>
-        </div>
       </div>
 
+      {/* Centered, brand-colored banner — matches the Page banner style used
+          across module pages (Theme & Branding → Section headers). */}
+      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
+            <UserPlus className="h-5 w-5" />
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight">New Patient Registration</h1>
+        </div>
+        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
+          Capture demographics, contacts, and encounter details. A UHID and registration number are assigned automatically.
+        </p>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       <PatientRegistrationForm
         isSubmitting={mutation.isPending}
         apiError={mutation.error instanceof ApiError ? mutation.error : null}
         onSubmit={handleSubmit}
       />
+      </div>
     </div>
   );
 }
