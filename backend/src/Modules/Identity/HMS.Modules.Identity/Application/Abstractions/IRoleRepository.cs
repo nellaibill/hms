@@ -15,8 +15,6 @@ internal interface IRoleRepository
 
     Task<Role?> GetByNameAsync(string name, CancellationToken cancellationToken);
 
-    Task<Role?> GetByCodeAsync(string code, CancellationToken cancellationToken);
-
     Task<(IReadOnlyList<Role> Items, int TotalCount)> GetPagedAsync(
         RoleListQuery query,
         CancellationToken cancellationToken);

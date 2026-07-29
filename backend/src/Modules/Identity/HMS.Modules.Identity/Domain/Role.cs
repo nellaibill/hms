@@ -12,8 +12,6 @@ internal sealed class Role : Entity
 
     public string Name { get; private set; } = null!;
 
-    public string Code { get; private set; } = null!;
-
     public string? Description { get; private set; }
 
     public bool IsSystemRole { get; private set; }
@@ -36,7 +34,6 @@ internal sealed class Role : Entity
     private Role(
         Guid id,
         string name,
-        string code,
         string? description,
         bool isSystemRole,
         int displayOrder,
@@ -44,7 +41,6 @@ internal sealed class Role : Entity
         : base(id, createdBy)
     {
         Name = name;
-        Code = code;
         Description = description;
         IsSystemRole = isSystemRole;
         DisplayOrder = displayOrder;
@@ -53,19 +49,16 @@ internal sealed class Role : Entity
 
     public static Role Create(
         string name,
-        string code,
         string? description,
         bool isSystemRole,
         int displayOrder,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
-        Guard.AgainstNullOrWhiteSpace(code, nameof(code));
 
         return new Role(
             Guid.CreateVersion7(),
             name.Trim(),
-            NormalizeCode(code),
             description?.Trim(),
             isSystemRole,
             displayOrder,
@@ -74,16 +67,13 @@ internal sealed class Role : Entity
 
     public void Update(
         string name,
-        string code,
         string? description,
         int displayOrder,
         Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
-        Guard.AgainstNullOrWhiteSpace(code, nameof(code));
 
         Name = name.Trim();
-        Code = NormalizeCode(code);
         Description = description?.Trim();
         DisplayOrder = displayOrder;
 
@@ -121,7 +111,4 @@ internal sealed class Role : Entity
             _rolePermissions.Add(RolePermission.Create(Id, permissionId));
         }
     }
-
-    private static string NormalizeCode(string code)
-        => code.Trim().ToUpperInvariant();
 }

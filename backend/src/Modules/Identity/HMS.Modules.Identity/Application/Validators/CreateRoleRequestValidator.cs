@@ -8,12 +8,6 @@ internal sealed class CreateRoleRequestValidator
 {
     public CreateRoleRequestValidator()
     {
-        RuleFor(x => x.Code)
-            .NotEmpty()
-            .MaximumLength(50)
-            .Matches("^[A-Z0-9_]+$")
-            .WithMessage("Code may contain only uppercase letters, numbers and underscores.");
-
         RoleValidationRules.ApplyRoleRules(
             this,
             x => x.Name,

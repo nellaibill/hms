@@ -12,7 +12,6 @@ internal static class RoleMappingExtensions
         {
             Id = role.Id,
             Name = role.Name,
-            Code = role.Code,
             Description = role.Description,
             IsSystemRole = role.IsSystemRole,
             IsActive = role.IsActive,

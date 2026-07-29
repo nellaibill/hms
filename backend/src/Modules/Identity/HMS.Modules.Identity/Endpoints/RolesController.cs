@@ -176,7 +176,6 @@ public sealed class RolesController : ControllerBase
             RoleErrorCodes.NotFound => StatusCodes.Status404NotFound,
 
             RoleErrorCodes.DuplicateName => StatusCodes.Status409Conflict,
-            RoleErrorCodes.DuplicateCode => StatusCodes.Status409Conflict,
             RoleErrorCodes.SystemRoleDeletionForbidden => StatusCodes.Status409Conflict,
 
             RoleErrorCodes.InvalidPermission => StatusCodes.Status400BadRequest,

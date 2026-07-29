@@ -40,23 +40,11 @@ internal class RoleService : IRoleService
                 $"A role with name '{request.Name}' already exists.");
         }
 
-        var existingCode =
-            await _roleRepository.GetByCodeAsync(
-                request.Code,
-                cancellationToken);
-
-        if (existingCode is not null)
-        {
-            return Result<RoleResponse>.Failure(
-                RoleErrorCodes.DuplicateCode,
-                $"A role with code '{request.Code}' already exists.");
-        }
-
+        // Public API never creates system roles; those are seeded/provisioned internally.
         var role = Role.Create(
             request.Name,
-            request.Code,
             request.Description,
-            request.IsSystemRole,
+            isSystemRole: false,
             request.DisplayOrder,
             actorId);
 
@@ -129,28 +117,8 @@ internal class RoleService : IRoleService
             }
         }
 
-        if (!string.Equals(
-                role.Code,
-                request.Code.Trim(),
-                StringComparison.OrdinalIgnoreCase))
-        {
-            var existing =
-                await _roleRepository.GetByCodeAsync(
-                    request.Code,
-                    cancellationToken);
-
-            if (existing is not null &&
-                existing.Id != id)
-            {
-                return Result<RoleResponse>.Failure(
-                    RoleErrorCodes.DuplicateCode,
-                    $"A role with code '{request.Code}' already exists.");
-            }
-        }
-
         role.Update(
             request.Name,
-            request.Code,
             request.Description,
             request.DisplayOrder,
             actorId);

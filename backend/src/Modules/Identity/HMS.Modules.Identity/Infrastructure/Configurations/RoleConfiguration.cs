@@ -16,10 +16,6 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.Property(x => x.Code)
-            .HasMaxLength(50)
-            .IsRequired();
-
         builder.Property(x => x.Description)
             .HasMaxLength(500);
 
@@ -42,9 +38,6 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
             .HasMaxLength(100);
 
         builder.HasIndex(x => x.Name)
-            .IsUnique();
-
-        builder.HasIndex(x => x.Code)
             .IsUnique();
     }
 }

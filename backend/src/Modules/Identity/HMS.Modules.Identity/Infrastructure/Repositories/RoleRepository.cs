@@ -47,15 +47,6 @@ internal sealed class RoleRepository : IRoleRepository
                 cancellationToken);
     }
 
-    public Task<Role?> GetByCodeAsync(string code, CancellationToken cancellationToken)
-    {
-        var normalized = code.Trim().ToUpperInvariant();
-
-        return _dbContext.Roles.FirstOrDefaultAsync(
-            r => r.Code == normalized,
-            cancellationToken);
-    }
-
     public async Task<(IReadOnlyList<Role> Items, int TotalCount)> GetPagedAsync(
         RoleListQuery query,
         CancellationToken cancellationToken)
@@ -73,7 +64,6 @@ internal sealed class RoleRepository : IRoleRepository
 
             roles = roles.Where(r =>
                 EF.Functions.ILike(r.Name, term) ||
-                EF.Functions.ILike(r.Code, term) ||
                 EF.Functions.ILike(r.Description!, term));
         }
 
@@ -113,11 +103,6 @@ internal sealed class RoleRepository : IRoleRepository
                 descending
                     ? roles.OrderByDescending(r => r.Name)
                     : roles.OrderBy(r => r.Name),
-
-            "code" =>
-                descending
-                    ? roles.OrderByDescending(r => r.Code)
-                    : roles.OrderBy(r => r.Code),
 
             "displayorder" =>
                 descending
