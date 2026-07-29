@@ -52,3 +52,62 @@ export function contrastForeground(triple: string, darkText: string, lightText: 
   const { l } = parseHsl(triple);
   return l > 55 ? darkText : lightText;
 }
+
+/** Converts an "H S% L%" triple to a "#rrggbb" hex string — for <input type="color"> in the Theme & Branding form. */
+export function hslTripleToHex(triple: string): string {
+  const { h, s, l } = parseHsl(triple);
+  const sNorm = s / 100;
+  const lNorm = l / 100;
+  const c = (1 - Math.abs(2 * lNorm - 1)) * sNorm;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = lNorm - c / 2;
+
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+
+  const toHex = (channel: number) =>
+    Math.round((channel + m) * 255)
+      .toString(16)
+      .padStart(2, '0');
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+/** Converts a "#rrggbb" hex string to an "H S% L%" triple — the inverse of hslTripleToHex. */
+export function hexToHslTriple(hex: string): string {
+  const normalized = hex.replace('#', '');
+  const r = Number.parseInt(normalized.slice(0, 2), 16) / 255;
+  const g = Number.parseInt(normalized.slice(2, 4), 16) / 255;
+  const b = Number.parseInt(normalized.slice(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const delta = max - min;
+
+  let h = 0;
+  let s = 0;
+  if (delta !== 0) {
+    s = delta / (1 - Math.abs(2 * l - 1));
+    switch (max) {
+      case r:
+        h = 60 * (((g - b) / delta) % 6);
+        break;
+      case g:
+        h = 60 * ((b - r) / delta + 2);
+        break;
+      default:
+        h = 60 * ((r - g) / delta + 4);
+    }
+  }
+  if (h < 0) h += 360;
+
+  return toHslString({ h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) });
+}

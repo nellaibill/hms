@@ -70,26 +70,27 @@ export default function PatientsListPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-      <div className="flex items-start gap-3 border-b border-border pb-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <UserPlus2 className="h-5 w-5" />
-        </span>
-        <div className="flex flex-1 items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-primary">Old Patient Registration</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Find an existing patient by name, age, UHID, or phone to view or update their registration.
-            </p>
-          </div>
-          {data?.source === 'mock' && (
-            <span className="mt-0.5 shrink-0 rounded-full bg-warning/15 px-2.5 py-1 text-xs font-medium text-warning">
-              Demo data — API not connected
-            </span>
-          )}
+    <div className="flex flex-1 flex-col">
+      {/* Centered, brand-colored banner — matches the Page banner style used
+          across module pages (Theme & Branding → Section headers). */}
+      <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
+        {data?.source === 'mock' && (
+          <span className="absolute right-6 top-5 hidden rounded-full bg-page-banner-foreground/15 px-2.5 py-1 text-xs font-medium sm:inline-block">
+            Demo data — API not connected
+          </span>
+        )}
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
+            <UserPlus2 className="h-5 w-5" />
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight">Old Patient Registration</h1>
         </div>
+        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
+          Find an existing patient by name, age, UHID, or phone to view or update their registration.
+        </p>
       </div>
 
+      <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       <PatientListToolbar filters={filters} onFilterChange={handleFilterChange} onSearch={handleSearch} onClear={handleClear} />
 
       {!hasSearched && (
@@ -143,6 +144,7 @@ export default function PatientsListPage() {
           onCancel={() => setPatientPendingDelete(null)}
         />
       )}
+      </div>
     </div>
   );
 }

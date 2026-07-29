@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../layouts/AppLayout';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
+import { RequireRole } from '../features/auth/RequireRole';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { getAllLeaves } from '../config/navigation';
 
@@ -20,6 +21,7 @@ const PatientViewPage = lazy(() => import('../pages/patients/PatientViewPage'));
 const PatientEditPage = lazy(() => import('../pages/patients/PatientEditPage'));
 const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
 const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
+const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettingsPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -72,6 +74,16 @@ const roleRoutes = [
   { path: 'admin/roles/:id/edit', element: withSuspense(<RoleFormPage mode="edit" />) },
 ];
 
+// Theme & Branding — reachable from the Settings page ("System Configuration"),
+// route-gated to admin/superAdmin via RequireRole since ProtectedRoute alone
+// only checks authentication, not role.
+const brandingRoutes = [
+  {
+    element: <RequireRole roles={['admin', 'superAdmin']} />,
+    children: [{ path: 'admin/settings/branding', element: withSuspense(<BrandingSettingsPage />) }],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -90,6 +102,7 @@ export const router = createBrowserRouter(
             ...userRoutes,
             ...patientRoutes,
             ...roleRoutes,
+            ...brandingRoutes,
           ],
         },
       ],

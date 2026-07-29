@@ -8,6 +8,7 @@ import { HeaderCalculator } from '@/components/shell/HeaderCalculator';
 import { HeaderSearchBox } from '@/components/shell/HeaderSearchBox';
 import { HospitalLogo } from '@/components/shell/HospitalLogo';
 import { branding } from '@/config/branding';
+import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { LanguageMenu } from '@/components/shell/LanguageMenu';
 import { NotificationsMenu } from '@/components/shell/NotificationsMenu';
 import { PendingTasksMenu } from '@/components/shell/PendingTasksMenu';
@@ -37,6 +38,8 @@ function HeaderLinkIcon({ to, label, icon: Icon }: HeaderLinkIconProps) {
 
 export function TopHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { data: brandingConfig } = useBrandingQuery();
+  const appTitle = brandingConfig?.appTitle ?? branding.systemName;
 
   return (
     <header className="sticky top-0 z-[1000] flex h-16 items-center gap-6 border-b border-header-foreground/15 bg-header px-6 text-header-foreground shadow-soft-md">
@@ -58,7 +61,7 @@ export function TopHeader() {
       <div className="flex shrink-0 items-center gap-3">
         <HospitalLogo invert showName={false} />
         <span className="hidden truncate text-base font-bold leading-tight tracking-tight text-header-foreground sm:inline lg:text-lg">
-          {branding.systemName}
+          {appTitle}
         </span>
       </div>
 

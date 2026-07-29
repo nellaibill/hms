@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { applyBrandingTokens } from '@/lib/apply-branding';
+import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 
 type Theme = 'light' | 'dark';
 
@@ -21,14 +22,18 @@ function getInitialTheme(): Theme {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  // Admin-configured branding (colors, fonts, logo) — falls back to the
+  // static config/branding.ts defaults while loading or if unavailable, so
+  // the app is never left unstyled. See lib/apply-branding.ts.
+  const { data: brandingConfig } = useBrandingQuery();
 
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle('dark', theme === 'dark');
     root.setAttribute('data-theme', theme);
     localStorage.setItem(STORAGE_KEY, theme);
-    applyBrandingTokens(theme);
-  }, [theme]);
+    applyBrandingTokens(theme, brandingConfig);
+  }, [theme, brandingConfig]);
 
   const setTheme = (next: Theme) => setThemeState(next);
   const toggleTheme = () => setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));

@@ -8,14 +8,14 @@ import { AuthProvider } from '../features/auth/AuthContext';
 
 export function App() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
         <AuthProvider>
           <TooltipProvider delayDuration={200}>
             <RouterProvider router={router} />
           </TooltipProvider>
         </AuthProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }

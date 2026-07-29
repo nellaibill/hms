@@ -1,4 +1,4 @@
-import { ArrowRight, Database, ShieldCheck, SlidersHorizontal, Users as UsersIcon, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Database, Palette, Settings as SettingsIcon, ShieldCheck, Users as UsersIcon, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -32,23 +32,32 @@ const sections: SettingsSection[] = [
     status: 'placeholder',
   },
   {
-    title: 'System Configuration',
-    description: 'Global configuration values and environment-level settings.',
-    icon: SlidersHorizontal,
-    status: 'placeholder',
+    title: 'Theme & Branding',
+    description: 'Colors, fonts, logo, and hospital identity — applied across the app immediately, no code changes needed.',
+    icon: Palette,
+    path: '/admin/settings/branding',
+    status: 'available',
   },
 ];
 
 export default function SettingsPage() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-      <div className="border-b border-border pb-4">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Settings</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+    <div className="flex flex-1 flex-col">
+      {/* Centered, brand-colored banner — matches the Page banner style used
+          across module pages (Theme & Branding → Section headers). */}
+      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
+            <SettingsIcon className="h-5 w-5" />
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
+        </div>
+        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
           Roles &amp; permissions, master data, and system configuration.
         </p>
       </div>
 
+      <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sections.map((section) => {
           const Icon = section.icon;
@@ -88,6 +97,7 @@ export default function SettingsPage() {
             <div key={section.title}>{content}</div>
           );
         })}
+      </div>
       </div>
     </div>
   );
