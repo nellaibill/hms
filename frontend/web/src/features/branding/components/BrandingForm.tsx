@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ApiError } from '@hms/shared';
 import { hexToHslTriple, hslTripleToHex } from '@/lib/color';
 import { useBrandingQuery } from '../hooks/useBrandingQuery';
 import { useResetBrandingMutation, useUpdateBrandingMutation, useUploadLogoMutation } from '../hooks/useBrandingMutations';
@@ -154,7 +155,11 @@ export function BrandingForm() {
       const result = await uploadLogoMutation.mutateAsync(file);
       setPreviewLogoUrl(result.logoUrl);
     } catch (error) {
-      setLogoError(error instanceof LogoTooLargeError ? error.message : 'Failed to upload logo. Try a different image.');
+      if (error instanceof LogoTooLargeError || error instanceof ApiError) {
+        setLogoError(error.message);
+      } else {
+        setLogoError('Failed to upload logo. Try a different image.');
+      }
     }
   };
 

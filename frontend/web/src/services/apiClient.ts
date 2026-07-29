@@ -1,4 +1,4 @@
-import { HttpClient, PatientsApi, UsersApi } from '@hms/shared';
+import { BrandingApi, HttpClient, PatientsApi, UsersApi } from '@hms/shared';
 import { env } from '../config/env';
 
 export const httpClient = new HttpClient({
@@ -7,3 +7,4 @@ export const httpClient = new HttpClient({
 
 export const usersApi = new UsersApi(httpClient);
 export const patientsApi = new PatientsApi(httpClient);
+export const brandingApi = new BrandingApi(httpClient);
