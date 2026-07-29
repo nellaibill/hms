@@ -19,4 +19,13 @@ public record RoleResponse
     public DateTime CreatedAt { get; init; }
 
     public DateTime? UpdatedAt { get; init; }
+
+    /// <summary>
+    /// Permission keys assigned to this role.
+    /// Example:
+    /// patient-management.view
+    /// patient-management.create
+    /// </summary>
+    public IReadOnlyCollection<string> PermissionKeys { get; init; }
+        = [];
 }

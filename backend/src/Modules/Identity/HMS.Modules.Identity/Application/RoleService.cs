@@ -9,14 +9,17 @@ namespace HMS.Modules.Identity.Application;
 
 internal class RoleService : IRoleService
 {
-    private readonly IRoleRepository _repository;
+    private readonly IRoleRepository _roleRepository;
+    private readonly IPermissionRepository _permissionRepository;
     private readonly ILogger<RoleService> _logger;
 
     public RoleService(
-        IRoleRepository repository,
+        IRoleRepository roleRepository,
+        IPermissionRepository permissionRepository,
         ILogger<RoleService> logger)
     {
-        _repository = repository;
+        _roleRepository = roleRepository;
+        _permissionRepository = permissionRepository;
         _logger = logger;
     }
 
@@ -26,7 +29,7 @@ internal class RoleService : IRoleService
         CancellationToken cancellationToken)
     {
         var existingName =
-            await _repository.GetByNameAsync(
+            await _roleRepository.GetByNameAsync(
                 request.Name,
                 cancellationToken);
 
@@ -38,7 +41,7 @@ internal class RoleService : IRoleService
         }
 
         var existingCode =
-            await _repository.GetByCodeAsync(
+            await _roleRepository.GetByCodeAsync(
                 request.Code,
                 cancellationToken);
 
@@ -57,8 +60,29 @@ internal class RoleService : IRoleService
             request.DisplayOrder,
             actorId);
 
-        await _repository.AddAsync(role, cancellationToken);
-        await _repository.SaveChangesAsync(cancellationToken);
+        var requestedKeys = request.PermissionKeys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var permissions =
+            await _permissionRepository.GetActiveByKeysAsync(
+                requestedKeys,
+                cancellationToken);
+
+        if (permissions.Count != requestedKeys.Count)
+        {
+            return Result<RoleResponse>.Failure(
+                RoleErrorCodes.InvalidPermission,
+                "One or more selected permissions are invalid.");
+        }
+
+        role.ReplacePermissions(
+            permissions.Select(p => p.Id));
+
+        await _roleRepository.AddAsync(role, cancellationToken);
+        await _roleRepository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Created role {RoleId}",
@@ -75,7 +99,7 @@ internal class RoleService : IRoleService
         CancellationToken cancellationToken)
     {
         var role =
-            await _repository.GetByIdAsync(
+            await _roleRepository.GetByIdAsync(
                 id,
                 cancellationToken);
 
@@ -92,7 +116,7 @@ internal class RoleService : IRoleService
                 StringComparison.OrdinalIgnoreCase))
         {
             var existing =
-                await _repository.GetByNameAsync(
+                await _roleRepository.GetByNameAsync(
                     request.Name,
                     cancellationToken);
 
@@ -111,7 +135,7 @@ internal class RoleService : IRoleService
                 StringComparison.OrdinalIgnoreCase))
         {
             var existing =
-                await _repository.GetByCodeAsync(
+                await _roleRepository.GetByCodeAsync(
                     request.Code,
                     cancellationToken);
 
@@ -131,7 +155,28 @@ internal class RoleService : IRoleService
             request.DisplayOrder,
             actorId);
 
-        await _repository.SaveChangesAsync(cancellationToken);
+        var requestedKeys = request.PermissionKeys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+            
+        var permissions =
+            await _permissionRepository.GetActiveByKeysAsync(
+                requestedKeys,
+                cancellationToken);
+
+        if (permissions.Count != requestedKeys.Count)
+        {
+            return Result<RoleResponse>.Failure(
+                RoleErrorCodes.InvalidPermission,
+                "One or more selected permissions are invalid.");
+        }
+
+        role.ReplacePermissions(
+            permissions.Select(p => p.Id));
+
+        await _roleRepository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Updated role {RoleId}",
@@ -147,7 +192,7 @@ internal class RoleService : IRoleService
         CancellationToken cancellationToken)
     {
         var role =
-            await _repository.GetByIdAsync(
+            await _roleRepository.GetByIdAsync(
                 id,
                 cancellationToken);
 
@@ -167,7 +212,7 @@ internal class RoleService : IRoleService
 
         role.SoftDelete(actorId);
 
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _roleRepository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Deleted role {RoleId}",
@@ -181,7 +226,7 @@ internal class RoleService : IRoleService
         CancellationToken cancellationToken)
     {
         var role =
-            await _repository.GetByIdAsync(
+            await _roleRepository.GetByIdAsync(
                 id,
                 cancellationToken);
 
@@ -198,7 +243,7 @@ internal class RoleService : IRoleService
         CancellationToken cancellationToken)
     {
         var (items, totalCount) =
-            await _repository.GetPagedAsync(
+            await _roleRepository.GetPagedAsync(
                 query,
                 cancellationToken);
 
@@ -218,7 +263,7 @@ internal class RoleService : IRoleService
         CancellationToken cancellationToken)
     {
         var role =
-            await _repository.GetByIdAsync(id, cancellationToken);
+            await _roleRepository.GetByIdAsync(id, cancellationToken);
 
         if (role is null)
         {
@@ -229,7 +274,7 @@ internal class RoleService : IRoleService
 
         role.Activate(actorId);
 
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _roleRepository.SaveChangesAsync(cancellationToken);
 
         return Result<RoleResponse>.Success(role.ToResponse());
     }
@@ -240,7 +285,7 @@ internal class RoleService : IRoleService
         CancellationToken cancellationToken)
     {
         var role =
-            await _repository.GetByIdAsync(id, cancellationToken);
+            await _roleRepository.GetByIdAsync(id, cancellationToken);
 
         if (role is null)
         {
@@ -251,7 +296,7 @@ internal class RoleService : IRoleService
 
         role.Deactivate(actorId);
 
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _roleRepository.SaveChangesAsync(cancellationToken);
 
         return Result<RoleResponse>.Success(role.ToResponse());
     }

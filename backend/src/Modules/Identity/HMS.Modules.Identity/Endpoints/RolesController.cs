@@ -170,13 +170,17 @@ public sealed class RolesController : ControllerBase
         };
 
     private IActionResult MapFailure(string errorCode, string message)
-    {
+{
         var status = errorCode switch
         {
             RoleErrorCodes.NotFound => StatusCodes.Status404NotFound,
+
             RoleErrorCodes.DuplicateName => StatusCodes.Status409Conflict,
             RoleErrorCodes.DuplicateCode => StatusCodes.Status409Conflict,
             RoleErrorCodes.SystemRoleDeletionForbidden => StatusCodes.Status409Conflict,
+
+            RoleErrorCodes.InvalidPermission => StatusCodes.Status400BadRequest,
+
             _ => StatusCodes.Status400BadRequest
         };
 
@@ -187,7 +191,7 @@ public sealed class RolesController : ControllerBase
             CorrelationId = HttpContext.TraceIdentifier,
             Timestamp = DateTime.UtcNow
         });
-    }
+}
     private ApiErrorResponse BuildValidationError(ValidationResult validation) => new()
     {
         ErrorCode = "VALIDATION.FAILED",

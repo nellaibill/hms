@@ -112,6 +112,16 @@ internal sealed class Role : Entity
         MarkUpdated(updatedBy);
     }
 
+    public void ReplacePermissions(IEnumerable<Guid> permissionIds)
+    {
+        _rolePermissions.Clear();
+
+        foreach (var permissionId in permissionIds.Distinct())
+        {
+            _rolePermissions.Add(RolePermission.Create(Id, permissionId));
+        }
+    }
+
     private static string NormalizeCode(string code)
         => code.Trim().ToUpperInvariant();
 }

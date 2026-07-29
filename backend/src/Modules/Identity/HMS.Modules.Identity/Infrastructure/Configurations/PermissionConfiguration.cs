@@ -1,4 +1,5 @@
 using HMS.Modules.Identity.Domain;
+using HMS.Modules.Identity.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -27,6 +28,12 @@ internal sealed class PermissionConfiguration : IEntityTypeConfiguration<Permiss
         builder.HasIndex(x => x.Key)
             .IsUnique();
 
+        builder.HasIndex(x => new
+        {
+            x.Module,
+            x.Action
+        }).IsUnique();
+
         builder.Property(x => x.Label)
             .HasMaxLength(200)
             .IsRequired();
@@ -52,5 +59,7 @@ internal sealed class PermissionConfiguration : IEntityTypeConfiguration<Permiss
         builder.Property(x => x.DeletedAt);
 
         builder.Property(x => x.DeletedBy);
+
+        builder.HasData(PermissionSeedData.GetPermissions());
     }
 }

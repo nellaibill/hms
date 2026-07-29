@@ -32,12 +32,12 @@ public sealed class RolePermission
     /// <summary>
     /// Navigation property to the Role.
     /// </summary>
-    public Role Role { get; private set; } = null!;
+    internal Role Role { get; private set; } = null!;
 
     /// <summary>
     /// Navigation property to the Permission.
     /// </summary>
-    public Permission Permission { get; private set; } = null!;
+    internal Permission Permission { get; private set; } = null!;
 
     /// <summary>
     /// Creates a new RolePermission assignment.

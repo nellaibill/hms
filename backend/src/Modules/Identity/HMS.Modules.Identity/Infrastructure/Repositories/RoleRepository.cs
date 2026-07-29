@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HMS.Modules.Identity.Infrastructure.Repositories;
 
-internal class RoleRepository : IRoleRepository
+internal sealed class RoleRepository : IRoleRepository
 {
     private readonly IdentityDbContext _dbContext;
 
@@ -14,19 +14,37 @@ internal class RoleRepository : IRoleRepository
         _dbContext = dbContext;
     }
 
-    public async Task AddAsync(Role role, CancellationToken cancellationToken)
-        => await _dbContext.Roles.AddAsync(role, cancellationToken);
+    public async Task AddAsync(
+        Role role,
+        CancellationToken cancellationToken)
+    {
+        await _dbContext.Roles.AddAsync(role, cancellationToken);
+    }
 
-    public Task<Role?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        => _dbContext.Roles.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+    public Task<Role?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return _dbContext.Roles
+            .Include(r => r.RolePermissions)
+                .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(
+                r => r.Id == id,
+                cancellationToken);
+    }
 
-    public Task<Role?> GetByNameAsync(string name, CancellationToken cancellationToken)
+    public Task<Role?> GetByNameAsync(
+        string name,
+        CancellationToken cancellationToken)
     {
         var normalized = name.Trim();
 
-        return _dbContext.Roles.FirstOrDefaultAsync(
-            r => r.Name == normalized,
-            cancellationToken);
+        return _dbContext.Roles
+            .Include(r => r.RolePermissions)
+                .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(
+                r => r.Name == normalized,
+                cancellationToken);
     }
 
     public Task<Role?> GetByCodeAsync(string code, CancellationToken cancellationToken)
@@ -71,10 +89,15 @@ internal class RoleRepository : IRoleRepository
         return (items, totalCount);
     }
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken)
-        => _dbContext.SaveChangesAsync(cancellationToken);
+    public Task SaveChangesAsync(
+        CancellationToken cancellationToken)
+    {
+        return _dbContext.SaveChangesAsync(cancellationToken);
+    }
 
-    private static IQueryable<Role> ApplySort(IQueryable<Role> roles, string? sort)
+    private static IQueryable<Role> ApplySort(
+        IQueryable<Role> roles,
+        string? sort)
     {
         if (string.IsNullOrWhiteSpace(sort))
         {

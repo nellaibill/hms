@@ -20,12 +20,12 @@ internal sealed class RolePermissionConfiguration
         builder.Property(x => x.PermissionId)
             .IsRequired();
 
-        builder.HasOne<Role>()
+        builder.HasOne(x => x.Role)
             .WithMany(r => r.RolePermissions)
             .HasForeignKey(x => x.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<Permission>()
+        builder.HasOne(x => x.Permission)
             .WithMany()
             .HasForeignKey(x => x.PermissionId)
             .OnDelete(DeleteBehavior.Cascade);

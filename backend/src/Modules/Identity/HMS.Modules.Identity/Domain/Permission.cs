@@ -4,7 +4,7 @@ namespace HMS.Modules.Identity.Domain;
 
 /// <summary>
 /// Represents a system permission.
-/// Permissions are seeded by the system and assigned to Roles.
+/// Permissions are seeded by the system and assigned to roles.
 /// </summary>
 public sealed class Permission : Entity
 {
@@ -20,7 +20,7 @@ public sealed class Permission : Entity
         string label,
         int displayOrder,
         bool isActive)
-        : base(id)
+        : base(id, null)
     {
         Module = module;
         Action = action;
@@ -42,6 +42,9 @@ public sealed class Permission : Entity
 
     public bool IsActive { get; private set; }
 
+    /// <summary>
+    /// Creates a new permission at runtime.
+    /// </summary>
     public static Permission Create(
         string module,
         string action,
@@ -50,7 +53,28 @@ public sealed class Permission : Entity
         int displayOrder)
     {
         return new Permission(
-            Guid.NewGuid(),
+            Guid.CreateVersion7(),
+            module,
+            action,
+            key,
+            label,
+            displayOrder,
+            true);
+    }
+
+    /// <summary>
+    /// Creates a permission with a fixed identifier for EF Core seed data.
+    /// </summary>
+    internal static Permission CreateSeed(
+        Guid id,
+        string module,
+        string action,
+        string key,
+        string label,
+        int displayOrder)
+    {
+        return new Permission(
+            id,
             module,
             action,
             key,

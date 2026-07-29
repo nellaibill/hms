@@ -13,4 +13,7 @@ internal static class RoleErrorCodes
 
     public const string SystemRoleDeletionForbidden =
         "ROLES.SYSTEM_ROLE_DELETE_FORBIDDEN";
+
+    public const string InvalidPermission = 
+        "ROLES.INVALID_PERMISSION";
 }

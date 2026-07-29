@@ -3,25 +3,22 @@ using HMS.Modules.Identity.Contracts;
 
 namespace HMS.Modules.Identity.Application.Validators;
 
-internal class UpdateRoleRequestValidator : AbstractValidator<UpdateRoleRequest>
+internal sealed class UpdateRoleRequestValidator
+    : AbstractValidator<UpdateRoleRequest>
 {
     public UpdateRoleRequestValidator()
     {
-        RuleFor(x => x.Name)
-            .NotEmpty()
-            .MaximumLength(100);
-
         RuleFor(x => x.Code)
             .NotEmpty()
             .MaximumLength(50)
             .Matches("^[A-Z0-9_]+$")
             .WithMessage("Code may contain only uppercase letters, numbers and underscores.");
 
-        RuleFor(x => x.Description)
-            .MaximumLength(500)
-            .When(x => !string.IsNullOrWhiteSpace(x.Description));
-
-        RuleFor(x => x.DisplayOrder)
-            .GreaterThanOrEqualTo(0);
+        RoleValidationRules.ApplyRoleRules(
+            this,
+            x => x.Name,
+            x => x.Description,
+            x => x.DisplayOrder,
+            x => x.PermissionKeys);
     }
 }

@@ -11,4 +11,13 @@ public record UpdateRoleRequest
     public bool IsSystemRole { get; init; }
 
     public int DisplayOrder { get; init; }
+
+    /// <summary>
+    /// Selected permission keys.
+    /// Example:
+    /// patient-management.view
+    /// patient-management.create
+    /// </summary>
+    public IReadOnlyCollection<string> PermissionKeys { get; init; }
+        = [];
 }

@@ -5,7 +5,8 @@ namespace HMS.Modules.Identity.Application.Mapping;
 
 internal static class RoleMappingExtensions
 {
-    public static RoleResponse ToResponse(this Role role)
+    public static RoleResponse ToResponse(
+        this Role role)
     {
         return new RoleResponse
         {
@@ -16,8 +17,14 @@ internal static class RoleMappingExtensions
             IsSystemRole = role.IsSystemRole,
             IsActive = role.IsActive,
             DisplayOrder = role.DisplayOrder,
+
             CreatedAt = role.CreatedAt,
-            UpdatedAt = role.UpdatedAt
+            UpdatedAt = role.UpdatedAt,
+
+            PermissionKeys = role.RolePermissions
+                .Select(rp => rp.Permission.Key)
+                .OrderBy(k => k)
+                .ToList()
         };
     }
 }
