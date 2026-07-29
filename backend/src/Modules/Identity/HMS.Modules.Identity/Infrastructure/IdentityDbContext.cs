@@ -23,6 +23,10 @@ public class IdentityDbContext : DbContext
 
     internal DbSet<Role> Roles => Set<Role>();
 
+    internal DbSet<Permission> Permissions => Set<Permission>();
+
+    internal DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);

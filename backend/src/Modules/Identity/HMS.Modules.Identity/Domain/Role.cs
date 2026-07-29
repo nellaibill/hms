@@ -6,8 +6,10 @@ namespace HMS.Modules.Identity.Domain;
 /// Represents a hospital role that can be assigned to users.
 /// Examples: Super Admin, Doctor, Receptionist.
 /// </summary>
-internal class Role : Entity
+internal sealed class Role : Entity
 {
+    private readonly List<RolePermission> _rolePermissions = [];
+
     public string Name { get; private set; } = null!;
 
     public string Code { get; private set; } = null!;
@@ -19,6 +21,12 @@ internal class Role : Entity
     public int DisplayOrder { get; private set; }
 
     public bool IsActive { get; private set; }
+
+    /// <summary>
+    /// Permissions assigned to this role.
+    /// </summary>
+    public IReadOnlyCollection<RolePermission> RolePermissions =>
+        _rolePermissions.AsReadOnly();
 
     // Required by EF Core materialization.
     private Role()
