@@ -1,4 +1,5 @@
 import type { CreatePatientRequest, PagedPatients, Patient, PatientListQuery, UpdatePatientRequest } from '@hms/shared';
+import { calculateAge } from './detailedAge';
 import { MOCK_PATIENTS } from './mockPatients';
 
 /**
@@ -9,6 +10,15 @@ import { MOCK_PATIENTS } from './mockPatients';
  * backend is live.
  */
 const STORAGE_KEY = 'hms-mock-patients';
+
+// Age is never trusted from storage — same invariant as the backend's Patient.Age computed
+// property ("always derived from DateOfBirth, never stored"). Whatever age a record was
+// saved with can go stale the moment a birthday passes, so every patient that leaves this
+// module (list results, single lookups) gets its age recalculated fresh from dateOfBirth
+// first, keeping age search/display correct no matter how long ago the record was seeded.
+function withCurrentAge(patient: Patient): Patient {
+  return { ...patient, age: calculateAge(patient.dateOfBirth) };
+}
 
 function loadPatients(): Patient[] {
   try {
@@ -35,20 +45,6 @@ function persist() {
 
 let patients: Patient[] = loadPatients();
 let nextSeq = patients.reduce((max, p) => Math.max(max, Number(p.id.replace('mock-', '')) || 0), 0) + 1;
-
-function ageFromDob(dateOfBirth: string): number {
-  const dob = new Date(dateOfBirth);
-  if (Number.isNaN(dob.getTime())) {
-    return 0;
-  }
-  const now = new Date();
-  let age = now.getFullYear() - dob.getFullYear();
-  const monthDiff = now.getMonth() - dob.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
-    age -= 1;
-  }
-  return Math.max(age, 0);
-}
 
 function compareBy(field: string, direction: 1 | -1) {
   return (a: Patient, b: Patient) => {
@@ -83,7 +79,7 @@ export function listMockPatients(query: PatientListQuery): PagedPatients {
 
   // Each provided field narrows the result further (AND, not OR) — matches "search using
   // any one or a combination" rather than the old single fuzzy search box.
-  let items = patients;
+  let items = patients.map(withCurrentAge);
   if (name) {
     items = items.filter((p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(name));
   }
@@ -114,7 +110,8 @@ export function listMockPatients(query: PatientListQuery): PagedPatients {
 }
 
 export function getMockPatientById(id: string): Patient | undefined {
-  return patients.find((p) => p.id === id);
+  const patient = patients.find((p) => p.id === id);
+  return patient && withCurrentAge(patient);
 }
 
 export function createMockPatient(request: CreatePatientRequest): Patient {
@@ -127,7 +124,7 @@ export function createMockPatient(request: CreatePatientRequest): Patient {
     firstName: request.firstName,
     lastName: request.lastName,
     dateOfBirth: request.dateOfBirth,
-    age: ageFromDob(request.dateOfBirth),
+    age: calculateAge(request.dateOfBirth),
     gender: request.gender,
     bloodGroup: request.bloodGroup,
     addressLine1: request.addressLine1,
@@ -174,7 +171,7 @@ export function updateMockPatient(id: string, request: UpdatePatientRequest): Pa
   const updated: Patient = {
     ...existing,
     ...request,
-    age: ageFromDob(request.dateOfBirth),
+    age: calculateAge(request.dateOfBirth),
     updatedAt: new Date().toISOString(),
   };
   patients = patients.map((p) => (p.id === id ? updated : p));
