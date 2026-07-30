@@ -27,9 +27,10 @@ const sections: SettingsSection[] = [
   },
   {
     title: 'Master Data',
-    description: 'Departments, consultants, and shared dropdown reference data.',
+    description: 'Product classification, brands, units, tax, warehouses, business partners, and finance reference data.',
     icon: Database,
-    status: 'placeholder',
+    path: '/admin/masters',
+    status: 'available',
   },
   {
     title: 'Theme & Branding',

@@ -22,6 +22,9 @@ const PatientEditPage = lazy(() => import('../pages/patients/PatientEditPage'));
 const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
 const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
 const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettingsPage'));
+const MastersHubPage = lazy(() => import('../pages/masters/MastersHubPage'));
+const MasterListPage = lazy(() => import('../pages/masters/MasterListPage'));
+const MasterFormPage = lazy(() => import('../pages/masters/MasterFormPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -84,6 +87,17 @@ const brandingRoutes = [
   },
 ];
 
+// Masters (Reference Data) — UI-only, mock data (see features/masters), reachable from the
+// Settings page ("Master Data"). One generic list/form pair driven by an :entityKey route
+// param covers all ~16 entities from docs/03_Masters_ERD instead of per-entity page code.
+const mastersRoutes = [
+  { path: 'admin/masters', element: withSuspense(<MastersHubPage />) },
+  { path: 'admin/masters/:entityKey', element: withSuspense(<MasterListPage />) },
+  { path: 'admin/masters/:entityKey/new', element: withSuspense(<MasterFormPage mode="create" />) },
+  { path: 'admin/masters/:entityKey/:id', element: withSuspense(<MasterFormPage mode="view" />) },
+  { path: 'admin/masters/:entityKey/:id/edit', element: withSuspense(<MasterFormPage mode="edit" />) },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -103,6 +117,7 @@ export const router = createBrowserRouter(
             ...patientRoutes,
             ...roleRoutes,
             ...brandingRoutes,
+            ...mastersRoutes,
           ],
         },
       ],
