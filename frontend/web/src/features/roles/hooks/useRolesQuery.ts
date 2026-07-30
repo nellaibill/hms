@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { listMockRoles, type PagedRoles } from '../mockRolesStore';
+import { listRoles, type PagedRoles } from '../apiRoleRepository';
 import type { RoleListQuery } from '../types';
 
 export const rolesQueryKey = (query: RoleListQuery) => ['roles', 'list', query] as const;
@@ -7,7 +7,7 @@ export const rolesQueryKey = (query: RoleListQuery) => ['roles', 'list', query] 
 export function useRolesQuery(query: RoleListQuery) {
   return useQuery<PagedRoles>({
     queryKey: rolesQueryKey(query),
-    queryFn: () => listMockRoles(query),
+    queryFn: () => listRoles(query),
     placeholderData: (previous) => previous,
   });
 }

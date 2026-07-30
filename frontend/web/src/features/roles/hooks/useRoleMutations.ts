@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createMockRole, updateMockRole } from '../mockRolesStore';
+import { createRole, updateRole } from '../apiRoleRepository';
 import type { RoleFormValues } from '../types';
 
 function useInvalidateRoles() {
@@ -10,7 +10,7 @@ function useInvalidateRoles() {
 export function useCreateRoleMutation() {
   const invalidateRoles = useInvalidateRoles();
   return useMutation({
-    mutationFn: async (values: RoleFormValues) => createMockRole(values),
+    mutationFn: async (values: RoleFormValues) => createRole(values),
     onSuccess: invalidateRoles,
   });
 }
@@ -18,7 +18,7 @@ export function useCreateRoleMutation() {
 export function useUpdateRoleMutation() {
   const invalidateRoles = useInvalidateRoles();
   return useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: RoleFormValues }) => updateMockRole(id, values),
+    mutationFn: async ({ id, values }: { id: string; values: RoleFormValues }) => updateRole(id, values),
     onSuccess: invalidateRoles,
   });
 }
