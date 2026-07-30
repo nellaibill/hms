@@ -1,5 +1,6 @@
 using HMS.Modules.Branding;
 using HMS.Modules.Identity;
+using HMS.Modules.Masters;
 using HMS.Modules.Patients;
 
 namespace HMS.Api.Configuration;
@@ -15,6 +16,7 @@ public static class ModuleRegistration
         services.AddIdentityModule(configuration);
         services.AddPatientsModule(configuration);
         services.AddBrandingModule(configuration);
+        services.AddMastersModule(configuration);
 
         // Future modules register here, e.g.:
         // services.AddAppointmentsModule(configuration);
