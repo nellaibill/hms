@@ -1,10 +1,13 @@
 /** Mirrors HMS.Modules.Identity.Contracts.UserResponse. */
 export interface User {
   id: string;
+  username: string;
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber?: string | null;
+  emailVerified: boolean;
+  lastLoginAt?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt?: string | null;
@@ -12,6 +15,7 @@ export interface User {
 
 /** Mirrors HMS.Modules.Identity.Contracts.CreateUserRequest. */
 export interface CreateUserRequest {
+  username: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -20,6 +24,7 @@ export interface CreateUserRequest {
 
 /** Mirrors HMS.Modules.Identity.Contracts.UpdateUserRequest. */
 export interface UpdateUserRequest {
+  username: string;
   firstName: string;
   lastName: string;
   email: string;

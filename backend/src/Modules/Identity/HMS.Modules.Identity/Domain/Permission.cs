@@ -6,7 +6,7 @@ namespace HMS.Modules.Identity.Domain;
 /// Represents a system permission.
 /// Permissions are seeded by the system and assigned to roles.
 /// </summary>
-public sealed class Permission : Entity
+internal sealed class Permission : Entity
 {
     private Permission()
     {

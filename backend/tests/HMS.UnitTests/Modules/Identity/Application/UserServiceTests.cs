@@ -20,12 +20,14 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_WithNewEmail_CreatesUserAndReturnsSuccess()
+    public async Task CreateAsync_WithNewUsernameAndEmail_CreatesUserAndReturnsSuccess()
     {
+        _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
         _repository.GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
 
         var request = new CreateUserRequest
         {
+            Username = "ada.lovelace",
             FirstName = "Ada",
             LastName = "Lovelace",
             Email = "ada@example.com",
@@ -34,20 +36,44 @@ public class UserServiceTests
         var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Email.Should().Be("ada@example.com");
+        result.Value!.Username.Should().Be("ada.lovelace");
+        result.Value.Email.Should().Be("ada@example.com");
         result.Value.IsActive.Should().BeTrue();
         await _repository.Received(1).AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
+    public async Task CreateAsync_WithDuplicateUsername_ReturnsDuplicateUsernameFailure()
+    {
+        var existing = User.Create("ada.lovelace", "Grace", "Hopper", "grace@example.com", null, null);
+        _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(existing);
+
+        var request = new CreateUserRequest
+        {
+            Username = "ada.lovelace",
+            FirstName = "Ada",
+            LastName = "Lovelace",
+            Email = "ada@example.com",
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(UserErrorCodes.DuplicateUsername);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateAsync_WithDuplicateEmail_ReturnsDuplicateEmailFailure()
     {
-        var existing = User.Create("Grace", "Hopper", "ada@example.com", null, null);
+        var existing = User.Create("grace.hopper", "Grace", "Hopper", "ada@example.com", null, null);
+        _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
         _repository.GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(existing);
 
         var request = new CreateUserRequest
         {
+            Username = "ada.lovelace",
             FirstName = "Ada",
             LastName = "Lovelace",
             Email = "ada@example.com",
@@ -65,7 +91,7 @@ public class UserServiceTests
     {
         _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((User?)null);
 
-        var request = new UpdateUserRequest { FirstName = "Grace", LastName = "Hopper", Email = "grace@example.com" };
+        var request = new UpdateUserRequest { Username = "grace.hopper", FirstName = "Grace", LastName = "Hopper", Email = "grace@example.com" };
 
         var result = await _sut.UpdateAsync(Guid.NewGuid(), request, actorId: null, CancellationToken.None);
 
@@ -74,15 +100,32 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_WhenUsernameChangedToAnotherUsersUsername_ReturnsDuplicateUsernameFailure()
+    {
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null);
+        var otherUser = User.Create("grace.hopper", "Grace", "Hopper", "grace@example.com", null, null);
+
+        _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        _repository.GetByUsernameAsync("grace.hopper", Arg.Any<CancellationToken>()).Returns(otherUser);
+
+        var request = new UpdateUserRequest { Username = "grace.hopper", FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com" };
+
+        var result = await _sut.UpdateAsync(user.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(UserErrorCodes.DuplicateUsername);
+    }
+
+    [Fact]
     public async Task UpdateAsync_WhenEmailChangedToAnotherUsersEmail_ReturnsDuplicateEmailFailure()
     {
-        var user = User.Create("Ada", "Lovelace", "ada@example.com", null, null);
-        var otherUser = User.Create("Grace", "Hopper", "grace@example.com", null, null);
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null);
+        var otherUser = User.Create("grace.hopper", "Grace", "Hopper", "grace@example.com", null, null);
 
         _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
         _repository.GetByEmailAsync("grace@example.com", Arg.Any<CancellationToken>()).Returns(otherUser);
 
-        var request = new UpdateUserRequest { FirstName = "Ada", LastName = "Lovelace", Email = "grace@example.com" };
+        var request = new UpdateUserRequest { Username = "ada.lovelace", FirstName = "Ada", LastName = "Lovelace", Email = "grace@example.com" };
 
         var result = await _sut.UpdateAsync(user.Id, request, actorId: null, CancellationToken.None);
 
@@ -93,10 +136,10 @@ public class UserServiceTests
     [Fact]
     public async Task UpdateAsync_WhenValid_UpdatesProfileAndReturnsSuccess()
     {
-        var user = User.Create("Ada", "Lovelace", "ada@example.com", null, null);
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null);
         _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
-        var request = new UpdateUserRequest { FirstName = "Ada Marie", LastName = "Lovelace", Email = "ada@example.com" };
+        var request = new UpdateUserRequest { Username = "ada.lovelace", FirstName = "Ada Marie", LastName = "Lovelace", Email = "ada@example.com" };
 
         var result = await _sut.UpdateAsync(user.Id, request, actorId: null, CancellationToken.None);
 
@@ -119,7 +162,7 @@ public class UserServiceTests
     [Fact]
     public async Task DeleteAsync_WhenFound_SoftDeletesAndReturnsSuccess()
     {
-        var user = User.Create("Ada", "Lovelace", "ada@example.com", null, null);
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null);
         _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
         var result = await _sut.DeleteAsync(user.Id, actorId: null, CancellationToken.None);
@@ -143,7 +186,7 @@ public class UserServiceTests
     [Fact]
     public async Task GetByIdAsync_WhenFound_ReturnsMappedResponse()
     {
-        var user = User.Create("Ada", "Lovelace", "ada@example.com", null, null);
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null);
         _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
         var result = await _sut.GetByIdAsync(user.Id, CancellationToken.None);
@@ -158,8 +201,8 @@ public class UserServiceTests
     {
         var users = new List<User>
         {
-            User.Create("Ada", "Lovelace", "ada@example.com", null, null),
-            User.Create("Grace", "Hopper", "grace@example.com", null, null),
+            User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null),
+            User.Create("grace.hopper", "Grace", "Hopper", "grace@example.com", null, null),
         };
 
         _repository.GetPagedAsync(Arg.Any<UserListQuery>(), Arg.Any<CancellationToken>())
@@ -177,7 +220,7 @@ public class UserServiceTests
     [Fact]
     public async Task ActivateAsync_WhenFound_ActivatesAndReturnsSuccess()
     {
-        var user = User.Create("Ada", "Lovelace", "ada@example.com", null, null);
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null);
         user.Deactivate(null);
         _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
@@ -190,7 +233,7 @@ public class UserServiceTests
     [Fact]
     public async Task DeactivateAsync_WhenFound_DeactivatesAndReturnsSuccess()
     {
-        var user = User.Create("Ada", "Lovelace", "ada@example.com", null, null);
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, null);
         _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
         var result = await _sut.DeactivateAsync(user.Id, actorId: null, CancellationToken.None);

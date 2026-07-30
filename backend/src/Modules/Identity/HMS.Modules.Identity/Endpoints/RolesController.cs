@@ -28,14 +28,22 @@ public sealed class RolesController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<RoleResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<RoleResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] RoleListQuery query,
         CancellationToken cancellationToken)
     {
         var result = await _service.GetPagedAsync(query, cancellationToken);
 
-        return Ok(Envelope(result));
+        var meta = new PaginationMeta
+        {
+            Page = result.Page,
+            PageSize = result.PageSize,
+            TotalCount = result.TotalCount,
+            TotalPages = result.TotalPages,
+        };
+
+        return Ok(new ApiResponse<IReadOnlyList<RoleResponse>> { Data = result.Items, Meta = meta });
     }
 
     [HttpGet("{id:guid}")]

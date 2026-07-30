@@ -42,6 +42,7 @@ public static class IdentityModule
         services.AddScoped<IRoleService, RoleService>();
 
         services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<IPermissionService, PermissionService>();
 
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations (confirmed empirically —

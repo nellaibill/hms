@@ -5,7 +5,7 @@ namespace HMS.Modules.Identity.Domain;
 /// This is the junction entity that implements the many-to-many
 /// relationship between Roles and Permissions.
 /// </summary>
-public sealed class RolePermission
+internal sealed class RolePermission
 {
     private RolePermission()
     {

@@ -12,6 +12,11 @@ internal class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 {
     public CreateUserRequestValidator()
     {
+        RuleFor(x => x.Username)
+            .NotEmpty()
+            .MaximumLength(100)
+            .Matches(@"^[a-zA-Z0-9._-]+$")
+            .WithMessage("Username may contain only letters, numbers, dots, underscores and hyphens.");
         RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.LastName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);

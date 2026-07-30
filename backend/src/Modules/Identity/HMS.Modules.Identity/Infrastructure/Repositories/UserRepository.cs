@@ -26,6 +26,12 @@ internal class UserRepository : IUserRepository
         return _dbContext.Users.FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
     }
 
+    public Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken)
+    {
+        var normalized = username.Trim().ToLowerInvariant();
+        return _dbContext.Users.FirstOrDefaultAsync(u => u.Username == normalized, cancellationToken);
+    }
+
     public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(UserListQuery query, CancellationToken cancellationToken)
     {
         var users = _dbContext.Users.AsQueryable();
@@ -39,6 +45,7 @@ internal class UserRepository : IUserRepository
         {
             var term = $"%{query.Search.Trim()}%";
             users = users.Where(u =>
+                EF.Functions.ILike(u.Username, term) ||
                 EF.Functions.ILike(u.FirstName, term) ||
                 EF.Functions.ILike(u.LastName, term) ||
                 EF.Functions.ILike(u.Email, term));
@@ -71,6 +78,7 @@ internal class UserRepository : IUserRepository
 
         return field.ToLowerInvariant() switch
         {
+            "username" => descending ? users.OrderByDescending(u => u.Username) : users.OrderBy(u => u.Username),
             "firstname" => descending ? users.OrderByDescending(u => u.FirstName) : users.OrderBy(u => u.FirstName),
             "lastname" => descending ? users.OrderByDescending(u => u.LastName) : users.OrderBy(u => u.LastName),
             "email" => descending ? users.OrderByDescending(u => u.Email) : users.OrderBy(u => u.Email),

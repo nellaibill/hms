@@ -33,6 +33,7 @@ export default function UserEditPage() {
       {
         id: id as string,
         request: {
+          username: values.username,
           firstName: values.firstName,
           lastName: values.lastName,
           email: values.email,
@@ -74,6 +75,7 @@ export default function UserEditPage() {
         isSubmitting={mutation.isPending}
         apiError={mutation.error instanceof ApiError ? mutation.error : null}
         defaultValues={{
+          username: user.username,
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,

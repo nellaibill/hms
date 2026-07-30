@@ -48,6 +48,11 @@ internal class RoleService : IRoleService
             request.DisplayOrder,
             actorId);
 
+        if (!request.IsActive)
+            {
+                role.Deactivate(actorId);
+            }
+
         var requestedKeys = request.PermissionKeys
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .Select(k => k.Trim())
@@ -122,6 +127,15 @@ internal class RoleService : IRoleService
             request.Description,
             request.DisplayOrder,
             actorId);
+
+        if (request.IsActive)
+            {
+                role.Activate(actorId);
+            }
+        else
+            {
+                role.Deactivate(actorId);
+            }
 
         var requestedKeys = request.PermissionKeys
             .Where(k => !string.IsNullOrWhiteSpace(k))

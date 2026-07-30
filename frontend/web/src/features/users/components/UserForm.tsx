@@ -23,6 +23,7 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
   } = useForm<UserProfileFormValues>({
     resolver: zodResolver(userProfileSchema),
     defaultValues: {
+      username: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -53,6 +54,12 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
           {generalError}
         </p>
       )}
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="username">Username</Label>
+        <Input id="username" autoComplete="username" {...register('username')} />
+        {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="firstName">First name</Label>

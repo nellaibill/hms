@@ -14,6 +14,7 @@ interface UserTableProps {
 }
 
 const columns: Array<{ field: string; label: string }> = [
+  { field: 'username', label: 'Username' },
   { field: 'lastName', label: 'Name' },
   { field: 'email', label: 'Email' },
   { field: 'createdAt', label: 'Created' },
@@ -52,6 +53,7 @@ export function UserTable({ users, sort, onSortChange, onDeleteRequested, onTogg
         <tbody className="divide-y divide-border">
           {users.map((user) => (
             <tr key={user.id} className="hover:bg-muted/30">
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{user.username}</td>
               <td className="px-4 py-3">
                 <Link to={`/users/${user.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
                   {user.firstName} {user.lastName}

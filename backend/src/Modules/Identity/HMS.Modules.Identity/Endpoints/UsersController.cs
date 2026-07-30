@@ -40,7 +40,7 @@ public class UsersController : ControllerBase
     /// <summary>Creates a new user.</summary>
     /// <response code="201">The user was created.</response>
     /// <response code="400">The request failed validation.</response>
-    /// <response code="409">A user with the given email already exists.</response>
+    /// <response code="409">A user with the given username or email already exists.</response>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
     {
@@ -148,6 +148,7 @@ public class UsersController : ControllerBase
         {
             UserErrorCodes.NotFound => StatusCodes.Status404NotFound,
             UserErrorCodes.DuplicateEmail => StatusCodes.Status409Conflict,
+            UserErrorCodes.DuplicateUsername => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

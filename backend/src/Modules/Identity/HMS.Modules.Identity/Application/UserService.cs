@@ -25,6 +25,14 @@ internal class UserService : IUserService
 
     public async Task<Result<UserResponse>> CreateAsync(CreateUserRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
+        var existingUsername = await _repository.GetByUsernameAsync(request.Username, cancellationToken);
+        if (existingUsername is not null)
+        {
+            return Result<UserResponse>.Failure(
+                UserErrorCodes.DuplicateUsername,
+                $"A user with username '{request.Username}' already exists.");
+        }
+
         var existing = await _repository.GetByEmailAsync(request.Email, cancellationToken);
         if (existing is not null)
         {
@@ -33,7 +41,7 @@ internal class UserService : IUserService
                 $"A user with email '{request.Email}' already exists.");
         }
 
-        var user = User.Create(request.FirstName, request.LastName, request.Email, request.PhoneNumber, actorId);
+        var user = User.Create(request.Username, request.FirstName, request.LastName, request.Email, request.PhoneNumber, actorId);
         await _repository.AddAsync(user, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
@@ -48,6 +56,19 @@ internal class UserService : IUserService
         if (user is null)
         {
             return Result<UserResponse>.Failure(UserErrorCodes.NotFound, $"User '{id}' was not found.");
+        }
+
+        if (!string.Equals(user.Username, request.Username.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            var existingUsername = await _repository.GetByUsernameAsync(request.Username, cancellationToken);
+            if (existingUsername is not null && existingUsername.Id != id)
+            {
+                return Result<UserResponse>.Failure(
+                    UserErrorCodes.DuplicateUsername,
+                    $"A user with username '{request.Username}' already exists.");
+            }
+
+            user.ChangeUsername(request.Username, actorId);
         }
 
         if (!string.Equals(user.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase))

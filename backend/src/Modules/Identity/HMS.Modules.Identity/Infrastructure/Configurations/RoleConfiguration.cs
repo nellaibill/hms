@@ -31,11 +31,9 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(x => x.CreatedAt)
             .IsRequired();
 
-        builder.Property(x => x.CreatedBy)
-            .HasMaxLength(100);
+        builder.Property(x => x.CreatedBy);
 
-        builder.Property(x => x.UpdatedBy)
-            .HasMaxLength(100);
+        builder.Property(x => x.UpdatedBy);
 
         builder.HasIndex(x => x.Name)
             .IsUnique();

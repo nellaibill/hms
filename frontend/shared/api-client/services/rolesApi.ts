@@ -11,25 +11,12 @@ export interface PagedRoles {
 /**
  * Typed API service for the Roles module, built on the shared HTTP client. Feature code
  * (web/mobile) calls this, never the HTTP client directly — docs/FrontendArchitecture.md §6.
- *
- * RolesController.GetPaged doesn't yet follow the `{ data: T[], meta }` convention every
- * other list endpoint (Users, Patients) uses — it nests the whole PagedResult (items plus
- * paging fields) under `data` with no top-level `meta` at all. getRoles() unwraps that
- * shape as-is so the client works against the API that actually exists today; if
- * RolesController is ever normalized to match the other modules, only the destructuring
- * below needs to change; the PagedRoles the caller sees stays the same either way.
  */
 export class RolesApi {
   constructor(private readonly client: HttpClient) {}
 
   async getRoles(query: RoleListQuery = {}): Promise<PagedRoles> {
-    const response = await this.client.get<{
-      items: RoleResponse[];
-      page: number;
-      pageSize: number;
-      totalCount: number;
-      totalPages: number;
-    }>(API_ROUTES.roles.base, {
+    const response = await this.client.get<RoleResponse[]>(API_ROUTES.roles.base, {
       query: {
         page: query.page,
         pageSize: query.pageSize,
@@ -40,13 +27,8 @@ export class RolesApi {
     });
 
     return {
-      items: response.data.items,
-      meta: {
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-      },
+      items: response.data,
+      meta: response.meta as PaginationMeta,
     };
   }
 

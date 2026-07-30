@@ -15,6 +15,8 @@ internal interface IUserRepository
 
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken);
 
+    Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(UserListQuery query, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

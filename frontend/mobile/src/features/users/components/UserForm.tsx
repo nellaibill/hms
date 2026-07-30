@@ -21,6 +21,7 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
   } = useForm<UserProfileFormValues>({
     resolver: zodResolver(userProfileSchema),
     defaultValues: {
+      username: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -46,6 +47,25 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
   return (
     <View style={styles.form}>
       {generalError && <Text style={styles.bannerError}>{generalError}</Text>}
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Username</Text>
+        <Controller
+          control={control}
+          name="username"
+          render={({ field }) => (
+            <TextInput
+              style={styles.input}
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              autoCapitalize="none"
+              autoComplete="username"
+            />
+          )}
+        />
+        {errors.username && <Text style={styles.fieldError}>{errors.username.message}</Text>}
+      </View>
 
       <View style={styles.field}>
         <Text style={styles.label}>First name</Text>

@@ -6,8 +6,10 @@ import { z } from 'zod';
  * authoritative (docs/ApiStandards.md §7, docs/FrontendArchitecture.md §9).
  */
 const phonePattern = /^[0-9+\-() ]*$/;
+const usernamePattern = /^[a-zA-Z0-9._-]+$/;
 
 export const userProfileSchema = z.object({
+  username: z.string().trim().min(1, 'Username is required').max(100).regex(usernamePattern, 'Username may contain only letters, numbers, dots, underscores and hyphens'),
   firstName: z.string().trim().min(1, 'First name is required').max(100),
   lastName: z.string().trim().min(1, 'Last name is required').max(100),
   email: z.string().trim().min(1, 'Email is required').email('Enter a valid email address').max(256),

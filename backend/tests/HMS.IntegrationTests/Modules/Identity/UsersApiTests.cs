@@ -21,12 +21,17 @@ public class UsersApiTests : IClassFixture<UsersApiFactory>
         _client = factory.CreateClient();
     }
 
-    private static object NewUserPayload(string? email = null) => new
+    private static object NewUserPayload(string? email = null, string? username = null)
     {
-        firstName = "Ada",
-        lastName = "Lovelace",
-        email = email ?? $"ada-{Guid.NewGuid():N}@example.com",
-    };
+        var suffix = Guid.NewGuid().ToString("N");
+        return new
+        {
+            username = username ?? $"ada-{suffix}",
+            firstName = "Ada",
+            lastName = "Lovelace",
+            email = email ?? $"ada-{suffix}@example.com",
+        };
+    }
 
     [Fact]
     public async Task CreateThenGetById_ReturnsTheCreatedUser()
@@ -53,6 +58,21 @@ public class UsersApiTests : IClassFixture<UsersApiFactory>
         second.StatusCode.Should().Be(HttpStatusCode.Conflict);
         var error = await second.Content.ReadFromJsonAsync<ApiErrorResponse>();
         error!.ErrorCode.Should().Be("IDENTITY.USER_EMAIL_DUPLICATE");
+        error.CorrelationId.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Create_WithDuplicateUsername_ReturnsConflict()
+    {
+        var username = $"ada-{Guid.NewGuid():N}";
+
+        (await _client.PostAsJsonAsync("/api/v1/users", NewUserPayload(username: username)))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+        var second = await _client.PostAsJsonAsync("/api/v1/users", NewUserPayload(username: username));
+
+        second.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await second.Content.ReadFromJsonAsync<ApiErrorResponse>();
+        error!.ErrorCode.Should().Be("IDENTITY.USER_USERNAME_DUPLICATE");
         error.CorrelationId.Should().NotBeNullOrEmpty();
     }
 

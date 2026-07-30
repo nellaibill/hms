@@ -24,6 +24,7 @@ export function UserEditScreen({ route, navigation }: Props) {
       {
         id,
         request: {
+          username: values.username,
           firstName: values.firstName,
           lastName: values.lastName,
           email: values.email,
@@ -43,6 +44,7 @@ export function UserEditScreen({ route, navigation }: Props) {
         isSubmitting={mutation.isPending}
         apiError={mutation.error instanceof ApiError ? mutation.error : null}
         defaultValues={{
+          username: user.username,
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,

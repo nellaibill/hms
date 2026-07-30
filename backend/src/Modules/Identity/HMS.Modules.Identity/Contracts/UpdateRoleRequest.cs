@@ -6,6 +6,8 @@ public record UpdateRoleRequest
 
     public string? Description { get; init; }
 
+    public bool IsActive { get; init; }
+
     public int DisplayOrder { get; init; }
 
     /// <summary>

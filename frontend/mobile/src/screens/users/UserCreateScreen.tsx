@@ -12,6 +12,7 @@ export function UserCreateScreen({ navigation }: Props) {
   function handleSubmit(values: UserProfileFormValues) {
     mutation.mutate(
       {
+        username: values.username,
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,

@@ -51,7 +51,10 @@ internal sealed class RoleRepository : IRoleRepository
         RoleListQuery query,
         CancellationToken cancellationToken)
     {
-        var roles = _dbContext.Roles.AsQueryable();
+        var roles = _dbContext.Roles
+            .Include(r => r.RolePermissions)
+                .ThenInclude(rp => rp.Permission)
+            .AsQueryable();
 
         if (query.IsActive.HasValue)
         {
