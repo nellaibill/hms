@@ -36,6 +36,7 @@ public static class IdentityModule
             }));
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserFileStorage, UserFileStorage>();
         services.AddScoped<IUserService, UserService>();
 
         services.AddScoped<IRoleRepository, RoleRepository>();
@@ -43,6 +44,10 @@ public static class IdentityModule
 
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IPermissionService, PermissionService>();
+
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
 
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations (confirmed empirically —
@@ -57,6 +62,9 @@ public static class IdentityModule
 
         services.AddScoped<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
         services.AddScoped<IValidator<UpdateRoleRequest>, UpdateRoleRequestValidator>();
+
+        services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
+        services.AddScoped<IValidator<SetPasswordRequest>, SetPasswordRequestValidator>();
 
         return services;
     }

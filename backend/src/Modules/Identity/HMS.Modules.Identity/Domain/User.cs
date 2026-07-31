@@ -18,6 +18,8 @@ internal class User : Entity
     public string LastName { get; private set; } = null!;
     public string Email { get; private set; } = null!;
     public string? PhoneNumber { get; private set; }
+    public Guid RoleId { get; private set; }
+    public Role Role { get; private set; } = null!;
 
     /// <summary>
     /// Never a plaintext password — the hash of one, written only via
@@ -32,12 +34,27 @@ internal class User : Entity
 
     public bool IsActive { get; private set; }
 
+    /// <summary>
+    /// Relative path under wwwroot (e.g. "uploads/users/{id}.jpg"), written only via
+    /// <see cref="SetProfilePhoto"/>. Null until an admin uploads one from the User Details
+    /// page — never set at creation time (see UsersController.UploadProfilePhoto).
+    /// </summary>
+    public string? ProfilePhotoUrl { get; private set; }
+
     // Required by EF Core materialization.
     private User()
     {
     }
 
-    private User(Guid id, string username, string firstName, string lastName, string email, string? phoneNumber, Guid? createdBy)
+    private User(
+        Guid id,
+        string username,
+        string firstName,
+        string lastName,
+        string email,
+        string? phoneNumber,
+        Guid roleId,
+        Guid? createdBy)
         : base(id, createdBy)
     {
         Username = username;
@@ -45,11 +62,19 @@ internal class User : Entity
         LastName = lastName;
         Email = email;
         PhoneNumber = phoneNumber;
+        RoleId = roleId;
         EmailVerified = false;
         IsActive = true;
     }
 
-    public static User Create(string username, string firstName, string lastName, string email, string? phoneNumber, Guid? createdBy)
+    public static User Create(
+        string username,
+        string firstName,
+        string lastName,
+        string email,
+        string? phoneNumber,
+        Guid roleId,
+        Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(username, nameof(username));
         Guard.AgainstNullOrWhiteSpace(firstName, nameof(firstName));
@@ -65,6 +90,7 @@ internal class User : Entity
             lastName.Trim(),
             NormalizeEmail(email),
             phoneNumber,
+            roleId,
             createdBy);
     }
 
@@ -94,6 +120,19 @@ internal class User : Entity
         // A changed email address is unverified until proven again — same reasoning a
         // changed password would invalidate an existing session, once sessions exist.
         EmailVerified = false;
+        MarkUpdated(updatedBy);
+    }
+
+    public void ChangeRole(Guid roleId, Guid? updatedBy)
+    {
+        RoleId = roleId;
+        MarkUpdated(updatedBy);
+    }
+
+    public void SetProfilePhoto(string profilePhotoUrl, Guid? updatedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(profilePhotoUrl, nameof(profilePhotoUrl));
+        ProfilePhotoUrl = profilePhotoUrl;
         MarkUpdated(updatedBy);
     }
 

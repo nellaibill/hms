@@ -28,6 +28,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHmsModules(builder.Configuration);
 builder.Services.AddHmsSwagger();
 builder.Services.AddHmsCors(builder.Configuration);
+builder.Services.AddHmsJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
@@ -45,6 +46,11 @@ app.UseHmsSwagger();
 // Serves patient photos/ID proofs saved by PatientFileStorage under wwwroot/uploads —
 // the app's first static-file surface (see docs/DecisionLog.md's file-upload ADR).
 app.UseStaticFiles();
+
+// Must run after CORS and before MapControllers, in that order: Authentication decides
+// who the caller is, Authorization then checks [Authorize] on the matched endpoint.
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

@@ -28,6 +28,10 @@
          implementations (this module's validators are internal by design), so it would
          be dead weight — validators are registered explicitly in IdentityModule instead. -->
     <PackageReference Include="FluentValidation" />
+    <!-- Only for signing/reading JWTs in JwtTokenGenerator. The heavier
+         Microsoft.AspNetCore.Authentication.JwtBearer package (bearer-token validation
+         middleware) belongs in HMS.Api, which owns the hosting pipeline. -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
   </ItemGroup>
 
   <ItemGroup>

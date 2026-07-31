@@ -28,6 +28,14 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(256).IsRequired();
         builder.Property(u => u.PhoneNumber).HasColumnName("phone_number").HasMaxLength(30);
+        builder.Property(u => u.ProfilePhotoUrl).HasColumnName("profile_photo_url").HasMaxLength(500);
+
+        builder.Property(u => u.RoleId).HasColumnName("role_id").IsRequired();
+
+        builder.HasOne(u => u.Role)
+            .WithMany()
+            .HasForeignKey(u => u.RoleId)
+            .OnDelete(DeleteBehavior.Restrict); // A role in use by a user cannot be deleted out from under them.
 
         // Additive credential-support columns per ADR-001 (docs/DecisionLog.md) — see the
         // doc comment on User itself. PasswordHash is nullable/unset until Authentication
@@ -71,5 +79,7 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
             .HasFilter("is_deleted = false");
 
         builder.HasIndex(u => u.IsActive).HasDatabaseName("ix_users_is_active");
+
+        builder.HasIndex(u => u.RoleId).HasDatabaseName("ix_users_role_id");
     }
 }

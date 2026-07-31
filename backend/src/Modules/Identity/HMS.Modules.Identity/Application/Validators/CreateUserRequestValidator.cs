@@ -21,8 +21,14 @@ internal class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
         RuleFor(x => x.LastName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
         RuleFor(x => x.PhoneNumber)
-            .MaximumLength(30)
-            .Matches(@"^[0-9+\-() ]*$")
-            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
+            .NotEmpty()
+            .WithMessage("Phone number is required.")
+            .Length(10)
+            .WithMessage("Phone number must be exactly 10 digits.")
+            .Matches(@"^\d+$")
+            .WithMessage("Phone number can contain digits only.");
+        RuleFor(x => x.RoleId)
+            .NotEmpty()
+            .WithMessage("Role is required.");
     }
 }

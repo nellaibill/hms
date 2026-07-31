@@ -22,17 +22,18 @@ public class IdentityModuleBoundaryTests
     /// <see cref="System.Type.Name"/>, not the namespace-qualified name) that must stay
     /// public despite living in an otherwise-internal namespace, each for a hard technical
     /// reason rather than convenience:
-    /// - IUserService, IRoleService, IPermissionService: each module controller —
-    ///   UsersController, RolesController, PermissionsController — which ASP.NET Core
-    ///   requires to be a public class with a public constructor for controller
-    ///   discovery/DI activation — takes its respective service as a constructor
-    ///   dependency; a public constructor cannot have an internal parameter type (CS0051).
-    ///   These are this module's deliberate seams between its public HTTP boundary and its
-    ///   internal Application/Domain/Infrastructure layers.
+    /// - IUserService, IRoleService, IPermissionService, IAuthenticationService: each
+    ///   module controller — UsersController, RolesController, PermissionsController,
+    ///   AuthenticationController — which ASP.NET Core requires to be a public class with
+    ///   a public constructor for controller discovery/DI activation — takes its
+    ///   respective service as a constructor dependency; a public constructor cannot have
+    ///   an internal parameter type (CS0051). These are this module's deliberate seams
+    ///   between its public HTTP boundary and its internal Application/Domain/
+    ///   Infrastructure layers.
     /// - IdentityDbContext: resolved by type from HMS.Api's Program.cs (a different
     ///   assembly, with no InternalsVisibleTo grant) for the startup-time migration call.
     /// </summary>
-    private const string AllowedPublicTypeNamePattern = "^(IUserService|IRoleService|IPermissionService|IdentityDbContext)$";
+    private const string AllowedPublicTypeNamePattern = "^(IUserService|IRoleService|IPermissionService|IAuthenticationService|IdentityDbContext)$";
 
     [Theory]
     [InlineData("HMS.Modules.Identity.Domain")]

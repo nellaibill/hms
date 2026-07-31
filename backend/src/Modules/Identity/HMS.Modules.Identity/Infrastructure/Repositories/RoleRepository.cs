@@ -47,6 +47,22 @@ internal sealed class RoleRepository : IRoleRepository
                 cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Role>> GetManyByIdsAsync(
+        IEnumerable<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        var distinctIds = ids.Distinct().ToList();
+
+        if (distinctIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await _dbContext.Roles
+            .Where(r => distinctIds.Contains(r.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<(IReadOnlyList<Role> Items, int TotalCount)> GetPagedAsync(
         RoleListQuery query,
         CancellationToken cancellationToken)
