@@ -1,3 +1,4 @@
+import { useQueries } from '@tanstack/react-query';
 import { ArrowRight, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,13 +7,20 @@ import { getAllMasterConfigs, getMasterStore, MASTER_SECTIONS } from '@/features
 export default function MastersHubPage() {
   const configs = getAllMasterConfigs();
 
+  // Cheap per-entity count for the hub cards below — only meta.totalCount is needed, so a
+  // pageSize of 1 keeps this to 16 lightweight requests instead of fetching every record.
+  const countQueries = useQueries({
+    queries: configs.map((config) => ({
+      queryKey: ['masters', config.key, 'count'],
+      queryFn: async () => (await getMasterStore(config.key)?.list({ page: 1, pageSize: 1 }))?.meta.totalCount ?? 0,
+    })),
+  });
+  const countByKey = new Map(configs.map((config, index) => [config.key, countQueries[index].data]));
+
   return (
     <div className="flex flex-1 flex-col">
       {/* Centered, brand-colored banner — matches the Page banner style used across module pages (Theme & Branding → Section headers). */}
       <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <span className="absolute right-6 top-5 hidden rounded-full bg-page-banner-foreground/15 px-2.5 py-1 text-xs font-medium sm:inline-block">
-          Demo data — no backend yet
-        </span>
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
             <Database className="h-5 w-5" />
@@ -36,7 +44,7 @@ export default function MastersHubPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {sectionConfigs.map((config) => {
                   const Icon = config.icon;
-                  const count = getMasterStore(config.key)?.getAll().length ?? 0;
+                  const count = countByKey.get(config.key);
                   return (
                     <Link key={config.key} to={`/admin/masters/${config.key}`} className="block">
                       <Card className="h-full transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
@@ -47,7 +55,7 @@ export default function MastersHubPage() {
                             </span>
                             <div className="flex items-center gap-2">
                               <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                                {count} record{count === 1 ? '' : 's'}
+                                {count === undefined ? '…' : `${count} record${count === 1 ? '' : 's'}`}
                               </span>
                               <ArrowRight className="h-4 w-4 text-muted-foreground" />
                             </div>

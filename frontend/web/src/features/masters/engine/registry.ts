@@ -14,7 +14,7 @@ import { taxConfig } from '../configs/tax';
 import { unitConversionConfig } from '../configs/unitConversion';
 import { unitOfMeasureConfig } from '../configs/unitOfMeasure';
 import { warehouseConfig } from '../configs/warehouse';
-import { createMasterStore, type MasterStore } from './masterStoreFactory';
+import { createMasterHttpStore, type MasterStore } from './masterStoreFactory';
 import type { MasterEntityConfig, MasterRecord } from './types';
 
 /**
@@ -53,7 +53,7 @@ export const MASTER_SECTIONS = [
 ];
 
 const configByKey = new Map(MASTER_CONFIGS.map((config) => [config.key, config]));
-const storeByKey = new Map<string, MasterStore>(MASTER_CONFIGS.map((config) => [config.key, createMasterStore(config)]));
+const storeByKey = new Map<string, MasterStore>(MASTER_CONFIGS.map((config) => [config.key, createMasterHttpStore(config)]));
 
 export function getMasterConfig(key: string | undefined): MasterEntityConfig | undefined {
   return key ? configByKey.get(key) : undefined;
@@ -74,13 +74,27 @@ export function getDisplayLabel(config: MasterEntityConfig, record: MasterRecord
   return record.id;
 }
 
-/** Resolves a reference field's id to a human-readable label, for table columns and form context. */
+/**
+ * In-memory cache of records-by-id per entity, primed by useMasterOptionsQuery/
+ * useMasterReferenceOptions as their react-query fetches resolve. resolveRecordLabel reads
+ * from this cache rather than the (now async, HTTP-backed) store directly, since it's called
+ * synchronously during render (table columns, reference <Select> option labels).
+ */
+const referenceCache = new Map<string, Map<string, MasterRecord>>();
+
+export function primeReferenceCache(entityKey: string, records: MasterRecord[]): void {
+  referenceCache.set(entityKey, new Map(records.map((record) => [record.id, record])));
+}
+
+/**
+ * Resolves a reference field's id to a human-readable label, for table columns and form
+ * context. Falls back to the raw id if the referenced entity's options haven't been fetched
+ * yet — self-corrects on the next render once the priming query resolves.
+ */
 export function resolveRecordLabel(entityKey: string, id: string | undefined | null): string {
   if (!id) return '—';
   const config = configByKey.get(entityKey);
-  const store = storeByKey.get(entityKey);
-  if (!config || !store) return String(id);
-  const record = store.getById(id);
-  if (!record) return String(id);
+  const record = referenceCache.get(entityKey)?.get(id);
+  if (!config || !record) return String(id);
   return getDisplayLabel(config, record);
 }

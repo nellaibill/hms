@@ -15,10 +15,4 @@ export const paymentMethodConfig: MasterEntityConfig = {
     { key: 'methodName', label: 'Method Name', type: 'text', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
   ],
-  seed: [
-    { id: 'payment-method-001', methodCode: 'CASH', methodName: 'Cash' },
-    { id: 'payment-method-002', methodCode: 'CARD', methodName: 'Card' },
-    { id: 'payment-method-003', methodCode: 'BANK', methodName: 'Bank Transfer' },
-    { id: 'payment-method-004', methodCode: 'CHEQUE', methodName: 'Cheque' },
-  ],
 };

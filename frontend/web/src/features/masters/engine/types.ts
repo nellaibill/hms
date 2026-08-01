@@ -66,8 +66,6 @@ export interface MasterEntityConfig {
   /** Cross-field rule beyond single-field validation (e.g. unit_conversion's from != to). Return an error message, or undefined if valid. */
   validateForm?: (values: Record<string, unknown>) => string | undefined;
   fields: MasterFieldDef[];
-  /** Seed rows — id/isActive/createdAt/updatedAt are populated automatically if omitted. */
-  seed: Array<Record<string, unknown> & { id: string }>;
 }
 
 /** Every Masters record shares these columns regardless of entity — mirrors HMS.Shared.Kernel.Entity's audit/soft-delete columns, minus the actor/version columns which aren't user-editable. */
