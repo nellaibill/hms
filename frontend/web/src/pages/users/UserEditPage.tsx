@@ -37,7 +37,8 @@ export default function UserEditPage() {
           firstName: values.firstName,
           lastName: values.lastName,
           email: values.email,
-          phoneNumber: values.phoneNumber || undefined,
+          phoneNumber: values.phoneNumber,
+          roleId: values.roleId,
         },
       },
       {
@@ -80,6 +81,7 @@ export default function UserEditPage() {
           lastName: user.lastName,
           email: user.email,
           phoneNumber: user.phoneNumber ?? '',
+          roleId: user.roleId,
         }}
         onSubmit={handleSubmit}
       />

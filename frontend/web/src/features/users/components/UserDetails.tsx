@@ -21,6 +21,7 @@ export function UserDetails({ user }: UserDetailsProps) {
       <Field label="Name" value={`${user.firstName} ${user.lastName}`} />
       <Field label="Email" value={user.email} />
       <Field label="Phone number" value={user.phoneNumber || '—'} />
+      <Field label="Role" value={user.roleName} />
       <Field label="Status" value={<StatusBadge isActive={user.isActive} />} />
       <Field label="Created" value={new Date(user.createdAt).toLocaleString('en-IN')} />
       {user.updatedAt && <Field label="Last updated" value={new Date(user.updatedAt).toLocaleString('en-IN')} />}

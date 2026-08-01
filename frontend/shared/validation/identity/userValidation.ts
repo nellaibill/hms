@@ -5,7 +5,7 @@ import { z } from 'zod';
  * UpdateUserRequestValidator — client-side convenience only, the backend remains
  * authoritative (docs/ApiStandards.md §7, docs/FrontendArchitecture.md §9).
  */
-const phonePattern = /^[0-9+\-() ]*$/;
+const phoneDigitsPattern = /^\d+$/;
 const usernamePattern = /^[a-zA-Z0-9._-]+$/;
 
 export const userProfileSchema = z.object({
@@ -15,10 +15,10 @@ export const userProfileSchema = z.object({
   email: z.string().trim().min(1, 'Email is required').email('Enter a valid email address').max(256),
   phoneNumber: z
     .string()
-    .max(30)
-    .regex(phonePattern, 'Enter a valid phone number')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'Phone number is required')
+    .length(10, 'Phone number must be exactly 10 digits')
+    .regex(phoneDigitsPattern, 'Phone number can contain digits only'),
+  roleId: z.string().trim().min(1, 'Role is required'),
 });
 
 export const createUserSchema = userProfileSchema;

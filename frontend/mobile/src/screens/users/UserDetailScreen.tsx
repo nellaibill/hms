@@ -40,6 +40,11 @@ export function UserDetailScreen({ route, navigation }: Props) {
       </View>
 
       <View style={styles.field}>
+        <Text style={styles.label}>Role</Text>
+        <Text>{user.roleName}</Text>
+      </View>
+
+      <View style={styles.field}>
         <Text style={styles.label}>Created</Text>
         <Text>{new Date(user.createdAt).toLocaleString()}</Text>
       </View>

@@ -6,6 +6,8 @@ export interface User {
   lastName: string;
   email: string;
   phoneNumber?: string | null;
+  roleId: string;
+  roleName: string;
   emailVerified: boolean;
   lastLoginAt?: string | null;
   isActive: boolean;
@@ -20,6 +22,7 @@ export interface CreateUserRequest {
   lastName: string;
   email: string;
   phoneNumber?: string | null;
+  roleId: string;
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.UpdateUserRequest. */
@@ -29,6 +32,7 @@ export interface UpdateUserRequest {
   lastName: string;
   email: string;
   phoneNumber?: string | null;
+  roleId: string;
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.UserListQuery. */

@@ -1,4 +1,4 @@
-import { HttpClient, UsersApi } from '@hms/shared';
+import { HttpClient, RolesApi, UsersApi } from '@hms/shared';
 import { env } from '../config/env';
 
 export const httpClient = new HttpClient({
@@ -6,3 +6,4 @@ export const httpClient = new HttpClient({
 });
 
 export const usersApi = new UsersApi(httpClient);
+export const rolesApi = new RolesApi(httpClient);

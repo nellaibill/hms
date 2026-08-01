@@ -20,6 +20,9 @@ const columns: Array<{ field: string; label: string }> = [
   { field: 'createdAt', label: 'Created' },
 ];
 
+// Role isn't a backend sort field on GET /api/v1/users (RoleName is resolved separately
+// from RoleId, per UserService), so it's shown as a plain column, not a sortable header.
+
 export function UserTable({ users, sort, onSortChange, onDeleteRequested, onToggleActive, isTogglingId }: UserTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
@@ -46,6 +49,7 @@ export function UserTable({ users, sort, onSortChange, onDeleteRequested, onTogg
                 </button>
               </th>
             ))}
+            <th className="px-4 py-2.5">Role</th>
             <th className="px-4 py-2.5">Status</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
@@ -63,6 +67,7 @@ export function UserTable({ users, sort, onSortChange, onDeleteRequested, onTogg
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                 {new Date(user.createdAt).toLocaleDateString('en-IN')}
               </td>
+              <td className="px-4 py-3 text-muted-foreground">{user.roleName}</td>
               <td className="px-4 py-3">
                 <StatusBadge isActive={user.isActive} />
               </td>

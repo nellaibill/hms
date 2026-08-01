@@ -14,7 +14,8 @@ export default function UserCreatePage() {
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
-        phoneNumber: values.phoneNumber || undefined,
+        phoneNumber: values.phoneNumber,
+        roleId: values.roleId,
       },
       {
         onSuccess: (user) => navigate(`/users/${user.id}`),
