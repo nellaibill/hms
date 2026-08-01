@@ -63,7 +63,7 @@ function tabWithFirstError(errors: FieldErrors<PatientEditUiFormValues>): TabId 
   return TAB_ORDER.find((tab) => TAB_ERROR_FIELDS[tab].some((field) => Boolean(errors[field]))) ?? null;
 }
 
-/** Updates a patient's demographic/master-data fields only — the encounter is not editable here (see docs/DecisionLog.md's MVP-scope ADR). */
+/** Updates a patient's demographic/master-data fields only — Registration Details and Billing are intentionally not editable here (see docs/DecisionLog.md ADR-008). */
 export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
   const {
     register,
