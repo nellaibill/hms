@@ -1,6 +1,7 @@
 import { ApiError, type CreatePatientRequest, type PatientRegistrationUiFormValues } from '@hms/shared';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { saveBillingForPatient, type BillingFormValues } from '../../features/billing';
 import {
   PatientRegistrationForm,
   useCreatePatientMutation,
@@ -82,7 +83,7 @@ export default function PatientRegistrationCreatePage() {
   const photoMutation = useUploadPatientPhotoMutation();
   const idProofMutation = useUploadPatientIdProofMutation();
 
-  function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments) {
+  function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments, billing: BillingFormValues) {
     mutation.mutate(toRequest(values), {
       onSuccess: (patient) => {
         clearRegistrationDraft();
@@ -90,6 +91,10 @@ export default function PatientRegistrationCreatePage() {
         if (documents.idProofFile) {
           idProofMutation.mutate({ id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile });
         }
+        // No Billing API yet — parked in the offline mock store (see mockBillingStore.ts)
+        // the same way patient records were ahead of the Patients API, until Billing has a
+        // backend endpoint of its own.
+        saveBillingForPatient(patient.id, patient.currentRegistration?.id ?? patient.id, billing);
         navigate(`/patients/registration/${patient.id}`);
       },
     });

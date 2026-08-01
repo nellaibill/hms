@@ -1,0 +1,130 @@
+import { isConsultationEntryActive, isServiceEntryActive } from './billingActivity';
+import type { BillingFormValues, ConsultationBillingFormValues, ServiceBillingCategory, ServiceBillingRowFormValues } from './billingValidation';
+import type { BillingItem, BillingType, PaymentStatus } from './types';
+
+export function formatCurrency(amount: number): string {
+  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
+}
+
+export interface BillingSummaryLine {
+  billingType: BillingType;
+  label: string;
+  charge: number;
+  discount: number;
+  net: number;
+  /** How many active (non-empty) entries make up this line — mainly meaningful for the array-based service categories. */
+  count: number;
+  active: boolean;
+}
+
+export interface BillingSummary {
+  lines: BillingSummaryLine[];
+  grossTotal: number;
+  discountTotal: number;
+  netTotal: number;
+}
+
+const SERVICE_LABELS: Record<ServiceBillingCategory, string> = {
+  radiology: 'Radiology',
+  laboratory: 'Laboratory',
+  procedure: 'Procedure',
+};
+
+const SERVICE_BILLING_TYPES: Record<ServiceBillingCategory, BillingType> = {
+  radiology: 'Radiology',
+  laboratory: 'Laboratory',
+  procedure: 'Procedure',
+};
+
+function summarizeServiceRows(rows: ServiceBillingRowFormValues[]) {
+  const activeRows = rows.filter(isServiceEntryActive);
+  const charge = activeRows.reduce((sum, row) => sum + row.charge, 0);
+  const discount = activeRows.reduce((sum, row) => sum + row.discount, 0);
+  return { charge, discount, count: activeRows.length };
+}
+
+/** Recomputed from current form values on every change — never cached, so it can't drift out of sync with the cards. */
+export function summarizeBilling(values: BillingFormValues): BillingSummary {
+  const consultationActive = isConsultationEntryActive(values.consultation);
+  const lines: BillingSummaryLine[] = [
+    {
+      billingType: 'Consultation',
+      label: 'Consultation',
+      charge: values.consultation.charge,
+      discount: values.consultation.discount,
+      net: Math.max(values.consultation.charge - values.consultation.discount, 0),
+      count: consultationActive ? 1 : 0,
+      active: consultationActive,
+    },
+    ...(Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).map((category) => {
+      const { charge, discount, count } = summarizeServiceRows(values[category]);
+      return {
+        billingType: SERVICE_BILLING_TYPES[category],
+        label: SERVICE_LABELS[category],
+        charge,
+        discount,
+        net: Math.max(charge - discount, 0),
+        count,
+        active: count > 0,
+      };
+    }),
+  ];
+
+  const activeLines = lines.filter((line) => line.active);
+  const grossTotal = activeLines.reduce((sum, line) => sum + line.charge, 0);
+  const discountTotal = activeLines.reduce((sum, line) => sum + line.discount, 0);
+  const netTotal = Math.max(grossTotal - discountTotal, 0);
+
+  return { lines, grossTotal, discountTotal, netTotal };
+}
+
+function consultationToBillingItem(entry: ConsultationBillingFormValues): BillingItem {
+  return {
+    id: 'consultation',
+    billingType: 'Consultation',
+    departmentId: entry.departmentId,
+    consultantId: entry.consultantId,
+    serviceId: entry.consultationTypeId,
+    quantity: 1,
+    unitPrice: entry.charge,
+    discount: entry.discount,
+    discountApproved: entry.discountApproved,
+    discountApprovedBy: entry.discountApprovedBy || undefined,
+    paymentStatus: (entry.paymentStatus || 'Pending') as PaymentStatus,
+    total: Math.max(entry.charge - entry.discount, 0),
+  };
+}
+
+function serviceRowToBillingItem(category: ServiceBillingCategory, entry: ServiceBillingRowFormValues, index: number): BillingItem {
+  return {
+    id: `${category}-${index}`,
+    billingType: SERVICE_BILLING_TYPES[category],
+    consultantId: entry.consultantId,
+    serviceId: entry.serviceId,
+    quantity: 1,
+    unitPrice: entry.charge,
+    discount: entry.discount,
+    discountApproved: entry.discountApproved,
+    discountApprovedBy: entry.discountApprovedBy || undefined,
+    paymentStatus: (entry.paymentStatus || 'Pending') as PaymentStatus,
+    total: Math.max(entry.charge - entry.discount, 0),
+  };
+}
+
+/** Flattens the form's per-category shape into the normalized BillingItem[] model — only entries actually in use produce a line, and a service category can contribute more than one. */
+export function toBillingItems(values: BillingFormValues): BillingItem[] {
+  const items: BillingItem[] = [];
+
+  if (isConsultationEntryActive(values.consultation)) {
+    items.push(consultationToBillingItem(values.consultation));
+  }
+
+  (Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).forEach((category) => {
+    values[category].forEach((row, index) => {
+      if (!isServiceEntryActive(row)) return;
+      items.push(serviceRowToBillingItem(category, row, index));
+    });
+  });
+
+  return items;
+}

@@ -18,7 +18,7 @@ import {
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Receipt, Stethoscope, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BillingStep, defaultBillingFormValues, type BillingFormValues, type BillingStepHandle } from '@/features/billing';
 import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } from './DocumentUploadStaging';
 import { Field, FormSection } from './FormSection';
 import { bloodGroupLabel } from '../bloodGroupLabel';
@@ -36,16 +37,18 @@ import { loadRegistrationDraft, saveRegistrationDraft } from '../registrationDra
 interface PatientRegistrationFormProps {
   isSubmitting: boolean;
   apiError: ApiError | null;
-  onSubmit: (values: PatientRegistrationUiFormValues, documents: StagedDocuments) => void;
+  onSubmit: (values: PatientRegistrationUiFormValues, documents: StagedDocuments, billing: BillingFormValues) => void;
 }
 
-const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details'] as const;
+const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details', 'billing'] as const;
 type TabId = (typeof TAB_ORDER)[number];
 
-// Which top-level form fields live on each tab — used to jump to the first tab with an
-// error on a failed submit, and to flag tabs with a red dot so an error on a tab the user
-// isn't currently viewing doesn't silently block submission with no visible cause.
-const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientRegistrationUiFormValues)[]> = {
+// Which top-level form fields live on each of the four *patient* tabs — used to jump to the
+// first tab with an error on a failed submit, and to flag tabs with a red dot so an error on
+// a tab the user isn't currently viewing doesn't silently block submission with no visible
+// cause. Billing lives in its own useForm (see BillingStep) and is validated/flagged
+// separately — see billingStepRef and billingTabHasError below.
+const TAB_ERROR_FIELDS: Record<Exclude<TabId, 'billing'>, (keyof PatientRegistrationUiFormValues)[]> = {
   'patient-info': ['title', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'bloodGroup'],
   'contact-info': [
     'addressLine1',
@@ -66,8 +69,10 @@ const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientRegistrationUiFormValues)[]>
   'registration-details': ['registration'],
 };
 
+const PATIENT_TAB_ORDER = TAB_ORDER.filter((tab): tab is Exclude<TabId, 'billing'> => tab !== 'billing');
+
 function tabWithFirstError(errors: FieldErrors<PatientRegistrationUiFormValues>): TabId | null {
-  return TAB_ORDER.find((tab) => TAB_ERROR_FIELDS[tab].some((field) => Boolean(errors[field]))) ?? null;
+  return PATIENT_TAB_ORDER.find((tab) => TAB_ERROR_FIELDS[tab].some((field) => Boolean(errors[field]))) ?? null;
 }
 
 function isTabId(value: string): value is TabId {
@@ -124,6 +129,10 @@ const defaultValues: PatientRegistrationUiFormValues = {
  * OP appointment type, structured referral/arrival-source) don't have a backend field to
  * persist into yet and are composed/defaulted/dropped there until backend Phase 2.
  */
+function isPatientTabId(value: TabId): value is Exclude<TabId, 'billing'> {
+  return value !== 'billing';
+}
+
 export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: PatientRegistrationFormProps) {
   const navigate = useNavigate();
 
@@ -147,6 +156,15 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
   const [documents, setDocuments] = useState<StagedDocuments>(emptyStagedDocuments);
 
+  // Billing (step 5) owns its own useForm — see BillingStep — so it's driven through this
+  // imperative handle (validate/getValues) rather than being a field on this form's schema.
+  const billingStepRef = useRef<BillingStepHandle>(null);
+  const [billingTabHasError, setBillingTabHasError] = useState(false);
+  // Shown only right after a submit attempt gets blocked by invalid Billing sections — a
+  // silent tab-jump doesn't tell a first-time user *why* they landed back on Billing.
+  // Cleared as soon as the user starts fixing it (see handleBillingChange).
+  const [billingBlockedSubmit, setBillingBlockedSubmit] = useState(false);
+
   const [activeTab, setActiveTab] = useState<TabId>(
     initialDraft && isTabId(initialDraft.activeTab) ? initialDraft.activeTab : 'patient-info',
   );
@@ -159,33 +177,51 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const isLastTab = activeTabIndex === TAB_ORDER.length - 1;
   const goToPreviousTab = () => setActiveTab(TAB_ORDER[activeTabIndex - 1]);
 
-  // Autosave the draft — a debounced write on every field change, plus an immediate write
-  // whenever the active tab changes (so refreshing right after clicking Next doesn't lose
-  // the step position even before the next keystroke on the new tab).
+  // Autosave the draft — a debounced write on every field change (from either the patient
+  // form or the separate billing form), plus an immediate write whenever the active tab
+  // changes (so refreshing right after clicking Next doesn't lose the step position even
+  // before the next keystroke on the new tab). Both forms write into the same draftRef so a
+  // single JSON blob always reflects the latest of both.
+  const draftRef = useRef({
+    values: initialDraft?.values ?? defaultValues,
+    billing: initialDraft?.billing ?? defaultBillingFormValues,
+  });
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const scheduleDraftSave = () => {
+    clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveRegistrationDraft(draftRef.current.values, draftRef.current.billing, activeTabRef.current);
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+  };
   useEffect(() => {
-    const saveTimeout = { current: undefined as ReturnType<typeof setTimeout> | undefined };
     const subscription = watch((values) => {
-      clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(() => {
-        saveRegistrationDraft(values as PatientRegistrationUiFormValues, activeTabRef.current);
-      }, DRAFT_SAVE_DEBOUNCE_MS);
+      draftRef.current.values = values as PatientRegistrationUiFormValues;
+      scheduleDraftSave();
     });
     return () => {
-      clearTimeout(saveTimeout.current);
+      clearTimeout(saveTimeoutRef.current);
       subscription.unsubscribe();
     };
   }, [watch]);
+  const handleBillingChange = (values: BillingFormValues) => {
+    draftRef.current.billing = values;
+    scheduleDraftSave();
+    // The user is actively fixing Billing — the "you were sent back here" banner has done its job.
+    setBillingBlockedSubmit(false);
+  };
   useEffect(() => {
-    saveRegistrationDraft(getValues(), activeTab);
+    saveRegistrationDraft(getValues(), draftRef.current.billing, activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-save immediately on a tab change, not on every getValues identity change.
   }, [activeTab]);
 
-  // Validates every tab from the current one up to (but not including) the target before
-  // landing on it — covers both the Next button and clicking a tab header directly, so
-  // jumping straight to "Registration Details" doesn't skip validating the tabs in between.
-  // Moving backward to an already-visited tab is always allowed with no validation.
+  // Validates every *patient* tab from the current one up to (but not including) the target
+  // before landing on it — covers both the Next button and clicking a tab header directly,
+  // so jumping straight to "Registration Details" doesn't skip validating the tabs in
+  // between. Moving backward to an already-visited tab is always allowed with no validation.
+  // Billing has no fields on this form, so it's simply skipped here — its own validation
+  // gate runs separately, on final submit (see onValidSubmit below).
   const goToTab = async (target: TabId) => {
     const targetIndex = TAB_ORDER.indexOf(target);
     if (targetIndex <= activeTabIndex) {
@@ -194,6 +230,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
     }
     for (let i = activeTabIndex; i < targetIndex; i++) {
       const tab = TAB_ORDER[i];
+      if (!isPatientTabId(tab)) continue;
       const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
       setAttemptedTabs((prev) => new Set(prev).add(tab));
       if (!isTabValid) {
@@ -211,6 +248,20 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
     setAttemptedTabs(new Set(TAB_ORDER));
     const firstErroredTab = tabWithFirstError(invalidFields);
     if (firstErroredTab) setActiveTab(firstErroredTab);
+  };
+
+  // Runs once the *patient* form itself is valid — still needs to gate on Billing (its own
+  // form) before actually registering, since Billing can't proceed with invalid expanded
+  // cards either. On a billing error, jump there and let its own error dots take over.
+  const onValidSubmit = async (values: PatientRegistrationUiFormValues) => {
+    const billingValid = await billingStepRef.current?.validate();
+    if (!billingValid) {
+      setActiveTab('billing');
+      setBillingBlockedSubmit(true);
+      return;
+    }
+    setBillingBlockedSubmit(false);
+    onSubmit(values, documents, billingStepRef.current!.getValues());
   };
 
   const dateOfBirth = watch('dateOfBirth');
@@ -236,7 +287,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
 
   return (
     <div className="flex w-full max-w-6xl flex-col gap-5">
-      <form onSubmit={handleSubmit((values) => onSubmit(values, documents), onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
+      <form onSubmit={handleSubmit(onValidSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -270,6 +321,10 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           >
             <ClipboardList className="h-4 w-4" />
             Registration Details
+          </TabsTrigger>
+          <TabsTrigger value="billing" hasError={billingTabHasError}>
+            <Receipt className="h-4 w-4" />
+            Billing
           </TabsTrigger>
         </TabsList>
 
@@ -873,6 +928,20 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             </div>
           )}
         </FormSection>
+        </TabsContent>
+
+        <TabsContent value="billing" className="pt-4">
+          {billingBlockedSubmit && (
+            <div role="alert" className="mb-4 rounded-md bg-warning/15 px-3 py-2 text-sm text-foreground">
+              Complete the highlighted billing sections below before registering the patient.
+            </div>
+          )}
+          <BillingStep
+            defaultValues={initialDraft?.billing}
+            onChange={handleBillingChange}
+            onErrorStateChange={setBillingTabHasError}
+            ref={billingStepRef}
+          />
         </TabsContent>
       </Tabs>
 
