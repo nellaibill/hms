@@ -1,7 +1,6 @@
 import { ArrowRight, ClipboardList, UserPlus, UserSearch } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 
 const sections = [
   {
@@ -34,34 +33,33 @@ export default function PatientRegistrationHubPage() {
         </p>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 md:grid-cols-2">
-        {sections.map((section, index) => {
-          const Icon = section.icon;
-          return (
-            <div
-              key={section.title}
-              className={cn(
-                'flex items-center justify-center p-6 lg:p-8',
-                index === 0 && 'md:border-r md:border-border',
-              )}
-            >
-              <Link to={section.path} className="block w-full max-w-sm">
-                <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <CardTitle className="text-base">{section.title}</CardTitle>
-                    <CardDescription>{section.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </div>
-          );
-        })}
+      {/* Centered as one pair (not a full-width 50/50 split, which centered each card
+          independently within its own half — spreading them apart the wider the
+          viewport instead of reading as a single centered choice). */}
+      <div className="flex flex-1 items-center justify-center p-6 lg:p-8">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-border">
+          {sections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <div key={section.title} className="flex items-center justify-center px-0 py-0 sm:px-10">
+                <Link to={section.path} className="block w-full max-w-sm">
+                  <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <CardTitle className="text-base">{section.title}</CardTitle>
+                      <CardDescription>{section.description}</CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

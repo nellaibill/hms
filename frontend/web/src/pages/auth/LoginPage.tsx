@@ -63,7 +63,11 @@ export default function LoginPage() {
 
       <Card className="relative w-full max-w-md shadow-soft-lg">
         <CardHeader className="items-center text-center">
-          <HospitalLogo className="mb-2" />
+          {/* showName=false — the app title is already shown once below as the CardDescription;
+              showing it a second time next to the logo also skewed this row off-center
+              (a wide fixed-width logo image + separate text block don't read as one
+              centered unit the way the logo alone does). */}
+          <HospitalLogo className="mb-2" showName={false} />
           <CardTitle className="mt-2">Sign in</CardTitle>
           <CardDescription>{appTitle}</CardDescription>
         </CardHeader>
