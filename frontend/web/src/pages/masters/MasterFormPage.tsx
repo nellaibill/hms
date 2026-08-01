@@ -1,3 +1,4 @@
+import type { ApiError } from '@hms/shared';
 import { ArrowLeft, Loader2, Pencil } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -117,6 +118,7 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
           recordId={isNew ? undefined : id}
           defaultValues={isNew ? {} : (record as Record<string, unknown>)}
           isSubmitting={createMutation.isPending || updateMutation.isPending}
+          apiError={(createMutation.error ?? updateMutation.error) as ApiError | null}
           onSubmit={handleSubmit}
           onCancel={() => navigate(backTo)}
         />
