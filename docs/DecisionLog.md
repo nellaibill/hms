@@ -37,6 +37,19 @@ _To be documented._
 
 ## Decisions
 
+### ADR-008: Patient Edit form is scoped to demographic/contact/medical fields only — encounter and billing are not editable there
+**Date:** 2026-08-01
+**Status:** Accepted
+
+**Context**
+`PatientEditForm.tsx` referenced "the MVP-scope ADR" in a code comment without one actually existing in this log — a dangling reference. The underlying scope decision itself is real and was reaffirmed while reviewing the registration wizard: `PatientRegistrationForm.tsx` collects four things a returning edit shouldn't casually touch — Registration Details (encounter type, department, consultant, admission type) and Billing (charges, discounts, payment status) both have consequences beyond the patient record itself (an encounter is tied to a specific visit; a bill is tied to a specific `Billing`/`BillingItem` record created once at registration — see `frontend/web/src/features/billing/`). Folding either into a general-purpose "edit patient" form invites silent, hard-to-audit changes to data that other flows depend on.
+
+**Decision**
+`PatientEditForm` stays limited to Patient Information, Contact Information, and Medical Information — the same three tabs it has today. Registration Details and Billing are not exposed there, now or as part of any near-term follow-up; changes to either belong in their own dedicated flows (e.g., a future "amend registration" or "adjust billing" action scoped and audited on its own terms), not bolted onto patient demographic edits.
+
+**Consequences**
+`PatientEditForm` intentionally has no draft-persistence or Billing step, unlike `PatientRegistrationForm` — that asymmetry is by design, not a gap to close. Anyone tempted to add a fifth tab to the edit form should treat that as a new decision requiring its own review, not a natural extension of this one.
+
 ### ADR-007: Frontend HTTP client must not swallow `AbortError`, and queries use `networkMode: 'always'`
 **Date:** 2026-07-23
 **Status:** Accepted

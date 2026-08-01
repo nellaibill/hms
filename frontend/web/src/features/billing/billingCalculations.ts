@@ -1,4 +1,15 @@
 import { isConsultationEntryActive, isServiceEntryActive } from './billingActivity';
+import {
+  CONSULTATION_CONSULTANTS,
+  CONSULTATION_DEPARTMENTS,
+  CONSULTATION_TYPES,
+  LABORATORY_CONSULTANTS,
+  LABORATORY_SERVICES,
+  PROCEDURE_CONSULTANTS,
+  PROCEDURE_SERVICES,
+  RADIOLOGY_CONSULTANTS,
+  RADIOLOGY_SERVICES,
+} from './billingCatalog';
 import type { BillingFormValues, ConsultationBillingFormValues, ServiceBillingCategory, ServiceBillingRowFormValues } from './billingValidation';
 import type { BillingItem, BillingType, PaymentStatus } from './types';
 
@@ -127,4 +138,41 @@ export function toBillingItems(values: BillingFormValues): BillingItem[] {
   });
 
   return items;
+}
+
+const SERVICE_CATALOGS = {
+  Radiology: RADIOLOGY_SERVICES,
+  Laboratory: LABORATORY_SERVICES,
+  Procedure: PROCEDURE_SERVICES,
+} as const;
+
+const SERVICE_CONSULTANT_CATALOGS = {
+  Radiology: RADIOLOGY_CONSULTANTS,
+  Laboratory: LABORATORY_CONSULTANTS,
+  Procedure: PROCEDURE_CONSULTANTS,
+} as const;
+
+export interface BillingItemDescription {
+  serviceLabel: string;
+  consultantName: string;
+}
+
+/** A saved BillingItem only stores catalog IDs (department/service/consultant) — this resolves them back to display names using the same catalogs the Billing step itself reads from, for read-only views like the patient detail page. */
+export function describeBillingItem(item: BillingItem): BillingItemDescription {
+  if (item.billingType === 'Consultation') {
+    const department = CONSULTATION_DEPARTMENTS.find((d) => d.id === item.departmentId);
+    const type = CONSULTATION_TYPES.find((t) => t.id === item.serviceId);
+    const consultant = CONSULTATION_CONSULTANTS.find((c) => c.id === item.consultantId);
+    return {
+      serviceLabel: [department?.name, type?.name].filter(Boolean).join(' — ') || 'Consultation',
+      consultantName: consultant?.name ?? '—',
+    };
+  }
+
+  const service = SERVICE_CATALOGS[item.billingType].find((s) => s.id === item.serviceId);
+  const consultant = SERVICE_CONSULTANT_CATALOGS[item.billingType].find((c) => c.id === item.consultantId);
+  return {
+    serviceLabel: service?.name ?? item.billingType,
+    consultantName: consultant?.name ?? '—',
+  };
 }
