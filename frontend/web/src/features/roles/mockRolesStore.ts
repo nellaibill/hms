@@ -3,9 +3,9 @@ import { MOCK_ROLES } from './mockRoles';
 import type { Role, RoleFormValues, RoleListQuery } from './types';
 
 /**
- * Roles Management has no backend yet — this is the only data source (not an offline
- * fallback like mockPatientsStore.ts). Persisted to localStorage so the demo survives
- * page refreshes.
+ * Offline fallback store used only when the real API is unreachable (see the NetworkError
+ * catch in apiRoleRepository.ts) — mirrors features/patients/mockPatientsStore.ts.
+ * Persisted to localStorage so the demo survives page refreshes.
  */
 const STORAGE_KEY = 'hms-mock-roles';
 
