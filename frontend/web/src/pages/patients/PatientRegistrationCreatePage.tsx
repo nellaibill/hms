@@ -10,6 +10,7 @@ import {
 } from '../../features/patients';
 import { toAllergyType, toBackendGender, toPhoneRelationLabel, toRelationshipLabel } from '../../features/patients/bridging';
 import { humanize } from '../../features/patients/humanize';
+import { clearRegistrationDraft } from '../../features/patients/registrationDraft';
 
 /**
  * Bridges the source-doc-accurate form shape to the *current* backend Contracts, which
@@ -84,6 +85,7 @@ export default function PatientRegistrationCreatePage() {
   function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments) {
     mutation.mutate(toRequest(values), {
       onSuccess: (patient) => {
+        clearRegistrationDraft();
         if (documents.photo) photoMutation.mutate({ id: patient.id, file: documents.photo });
         if (documents.idProofFile) {
           idProofMutation.mutate({ id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile });
