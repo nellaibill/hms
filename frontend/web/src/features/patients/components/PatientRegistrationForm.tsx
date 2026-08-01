@@ -19,7 +19,7 @@ import {
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import { Field, FormSection } from './FormSection';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge } from '../detailedAge';
 import { humanize } from '../humanize';
+import { loadRegistrationDraft, saveRegistrationDraft } from '../registrationDraft';
 
 interface PatientRegistrationFormProps {
   isSubmitting: boolean;
@@ -68,6 +69,13 @@ const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientRegistrationUiFormValues)[]>
 function tabWithFirstError(errors: FieldErrors<PatientRegistrationUiFormValues>): TabId | null {
   return TAB_ORDER.find((tab) => TAB_ERROR_FIELDS[tab].some((field) => Boolean(errors[field]))) ?? null;
 }
+
+function isTabId(value: string): value is TabId {
+  return (TAB_ORDER as readonly string[]).includes(value);
+}
+
+/** How long to wait after the user stops typing before writing the draft to localStorage — avoids a write on every keystroke. */
+const DRAFT_SAVE_DEBOUNCE_MS = 400;
 
 const defaultValues: PatientRegistrationUiFormValues = {
   title: 'Mr',
@@ -118,30 +126,89 @@ const defaultValues: PatientRegistrationUiFormValues = {
  */
 export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: PatientRegistrationFormProps) {
   const navigate = useNavigate();
+
+  // Loaded once per mount — a fresh visit to "New Patient Registration" picks up any draft
+  // left behind by a refresh or accidental navigation away, so nothing already entered is lost.
+  const [initialDraft] = useState(() => loadRegistrationDraft());
+
   const {
     register,
     control,
     handleSubmit,
     watch,
+    trigger,
+    getValues,
     formState: { errors },
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
-    defaultValues,
+    defaultValues: initialDraft?.values ?? defaultValues,
   });
 
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
   const [documents, setDocuments] = useState<StagedDocuments>(emptyStagedDocuments);
 
-  const [activeTab, setActiveTab] = useState<TabId>('patient-info');
-  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>(
+    initialDraft && isTabId(initialDraft.activeTab) ? initialDraft.activeTab : 'patient-info',
+  );
+  // Tabs the user has actually tried to leave (via Next) or a final submit attempt — a tab
+  // the user hasn't reached yet shouldn't show an error dot just because its untouched
+  // required fields are technically invalid.
+  const [attemptedTabs, setAttemptedTabs] = useState<ReadonlySet<TabId>>(new Set());
   const activeTabIndex = TAB_ORDER.indexOf(activeTab);
   const isFirstTab = activeTabIndex === 0;
   const isLastTab = activeTabIndex === TAB_ORDER.length - 1;
   const goToPreviousTab = () => setActiveTab(TAB_ORDER[activeTabIndex - 1]);
-  const goToNextTab = () => setActiveTab(TAB_ORDER[activeTabIndex + 1]);
+
+  // Autosave the draft — a debounced write on every field change, plus an immediate write
+  // whenever the active tab changes (so refreshing right after clicking Next doesn't lose
+  // the step position even before the next keystroke on the new tab).
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  useEffect(() => {
+    const saveTimeout = { current: undefined as ReturnType<typeof setTimeout> | undefined };
+    const subscription = watch((values) => {
+      clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(() => {
+        saveRegistrationDraft(values as PatientRegistrationUiFormValues, activeTabRef.current);
+      }, DRAFT_SAVE_DEBOUNCE_MS);
+    });
+    return () => {
+      clearTimeout(saveTimeout.current);
+      subscription.unsubscribe();
+    };
+  }, [watch]);
+  useEffect(() => {
+    saveRegistrationDraft(getValues(), activeTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-save immediately on a tab change, not on every getValues identity change.
+  }, [activeTab]);
+
+  // Validates every tab from the current one up to (but not including) the target before
+  // landing on it — covers both the Next button and clicking a tab header directly, so
+  // jumping straight to "Registration Details" doesn't skip validating the tabs in between.
+  // Moving backward to an already-visited tab is always allowed with no validation.
+  const goToTab = async (target: TabId) => {
+    const targetIndex = TAB_ORDER.indexOf(target);
+    if (targetIndex <= activeTabIndex) {
+      setActiveTab(target);
+      return;
+    }
+    for (let i = activeTabIndex; i < targetIndex; i++) {
+      const tab = TAB_ORDER[i];
+      const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
+      setAttemptedTabs((prev) => new Set(prev).add(tab));
+      if (!isTabValid) {
+        setActiveTab(tab);
+        return;
+      }
+    }
+    setActiveTab(target);
+  };
+  const goToNextTab = () => goToTab(TAB_ORDER[activeTabIndex + 1]);
 
   const onInvalid = (invalidFields: FieldErrors<PatientRegistrationUiFormValues>) => {
-    setHasAttemptedSubmit(true);
+    // A submit attempt validates the whole form, so every tab is now "attempted" regardless
+    // of whether the user ever visited it via Next.
+    setAttemptedTabs(new Set(TAB_ORDER));
     const firstErroredTab = tabWithFirstError(invalidFields);
     if (firstErroredTab) setActiveTab(firstErroredTab);
   };
@@ -183,23 +250,23 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           </div>
         )}
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)}>
+      <Tabs value={activeTab} onValueChange={(value) => isTabId(value) && void goToTab(value)}>
         <TabsList>
-          <TabsTrigger value="patient-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
+          <TabsTrigger value="patient-info" hasError={attemptedTabs.has('patient-info') && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
             <User className="h-4 w-4" />
             Patient Information
           </TabsTrigger>
-          <TabsTrigger value="contact-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
+          <TabsTrigger value="contact-info" hasError={attemptedTabs.has('contact-info') && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
             <MapPin className="h-4 w-4" />
             Contact Information
           </TabsTrigger>
-          <TabsTrigger value="medical-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))}>
+          <TabsTrigger value="medical-info" hasError={attemptedTabs.has('medical-info') && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))}>
             <Stethoscope className="h-4 w-4" />
             Medical Information
           </TabsTrigger>
           <TabsTrigger
             value="registration-details"
-            hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['registration-details'].some((f) => Boolean(errors[f]))}
+            hasError={attemptedTabs.has('registration-details') && TAB_ERROR_FIELDS['registration-details'].some((f) => Boolean(errors[f]))}
           >
             <ClipboardList className="h-4 w-4" />
             Registration Details
