@@ -9,7 +9,7 @@ const legend = (
       Income
     </span>
     <span className="flex items-center gap-1.5">
-      <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+      <span className="h-2 w-2 rounded-full bg-destructive" />
       Expense
     </span>
   </div>
@@ -43,7 +43,7 @@ export function DepartmentFinanceChart() {
             }}
           />
           <Bar dataKey="income" name="Income" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={28} />
-          <Bar dataKey="expense" name="Expense" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} maxBarSize={28} fillOpacity={0.5} />
+          <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} maxBarSize={28} fillOpacity={0.85} />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
