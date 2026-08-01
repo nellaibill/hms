@@ -19,4 +19,16 @@ export const customerConfig: MasterEntityConfig = {
     { key: 'country', label: 'Country', type: 'text', helpText: 'Free-text for now — no Country master exists yet.' },
     { key: 'paymentTermId', label: 'Payment Terms', type: 'reference', referenceEntityKey: 'paymentTerms' },
   ],
+  seed: [
+    {
+      id: 'customer-001',
+      customerCode: 'CUST-INS01',
+      customerName: 'Sunrise Insurance TPA',
+      contactPerson: 'Divya Menon',
+      phone: '+91 44 1122 3344',
+      email: 'claims@sunriseinsurance.example',
+      country: 'India',
+      paymentTermId: 'payment-terms-001',
+    },
+  ],
 };

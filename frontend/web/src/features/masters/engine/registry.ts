@@ -14,7 +14,7 @@ import { taxConfig } from '../configs/tax';
 import { unitConversionConfig } from '../configs/unitConversion';
 import { unitOfMeasureConfig } from '../configs/unitOfMeasure';
 import { warehouseConfig } from '../configs/warehouse';
-import { createMasterHttpStore, type MasterStore } from './masterStoreFactory';
+import { createMasterStore, type MasterStore } from './masterStoreFactory';
 import type { MasterEntityConfig, MasterRecord } from './types';
 
 /**
@@ -53,7 +53,7 @@ export const MASTER_SECTIONS = [
 ];
 
 const configByKey = new Map(MASTER_CONFIGS.map((config) => [config.key, config]));
-const storeByKey = new Map<string, MasterStore>(MASTER_CONFIGS.map((config) => [config.key, createMasterHttpStore(config)]));
+const storeByKey = new Map<string, MasterStore>(MASTER_CONFIGS.map((config) => [config.key, createMasterStore(config)]));
 
 export function getMasterConfig(key: string | undefined): MasterEntityConfig | undefined {
   return key ? configByKey.get(key) : undefined;
