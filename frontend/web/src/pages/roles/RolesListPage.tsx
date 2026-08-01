@@ -40,9 +40,6 @@ export default function RolesListPage() {
       {/* Centered, brand-colored banner — matches the Page banner style used
           across module pages (Theme & Branding → Section headers). */}
       <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <span className="absolute right-6 top-5 hidden rounded-full bg-page-banner-foreground/15 px-2.5 py-1 text-xs font-medium sm:inline-block">
-          Demo data — no backend yet
-        </span>
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
             <ShieldCheck className="h-5 w-5" />

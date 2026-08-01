@@ -1,10 +1,12 @@
 import { ApiError, userProfileSchema, type UserProfileFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRolesForSelect } from '../hooks/useRolesForSelect';
 
 interface UserFormProps {
   defaultValues?: Partial<UserProfileFormValues>;
@@ -15,18 +17,23 @@ interface UserFormProps {
 }
 
 export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, apiError }: UserFormProps) {
+  const { data: roles } = useRolesForSelect();
+
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors },
   } = useForm<UserProfileFormValues>({
     resolver: zodResolver(userProfileSchema),
     defaultValues: {
+      username: '',
       firstName: '',
       lastName: '',
       email: '',
       phoneNumber: '',
+      roleId: '',
       ...defaultValues,
     },
   });
@@ -55,6 +62,12 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
       )}
 
       <div className="flex flex-col gap-1.5">
+        <Label htmlFor="username">Username</Label>
+        <Input id="username" autoComplete="username" {...register('username')} />
+        {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="firstName">First name</Label>
         <Input id="firstName" autoComplete="given-name" {...register('firstName')} />
         {errors.firstName && <p className="text-sm text-destructive">{errors.firstName.message}</p>}
@@ -76,6 +89,29 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
         <Label htmlFor="phoneNumber">Phone number</Label>
         <Input id="phoneNumber" autoComplete="tel" {...register('phoneNumber')} />
         {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="roleId">Role</Label>
+        <Controller
+          control={control}
+          name="roleId"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger id="roleId" aria-label="Role">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles?.items.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    {role.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {errors.roleId && <p className="text-sm text-destructive">{errors.roleId.message}</p>}
       </div>
 
       <Button type="submit" disabled={isSubmitting} className="mt-2 self-start">

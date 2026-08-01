@@ -23,24 +23,27 @@ public class UsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly IValidator<CreateUserRequest> _createValidator;
     private readonly IValidator<UpdateUserRequest> _updateValidator;
+    private readonly IValidator<SetPasswordRequest> _setPasswordValidator;
     private readonly ILogger<UsersController> _logger;
 
     public UsersController(
         IUserService userService,
         IValidator<CreateUserRequest> createValidator,
         IValidator<UpdateUserRequest> updateValidator,
+        IValidator<SetPasswordRequest> setPasswordValidator,
         ILogger<UsersController> logger)
     {
         _userService = userService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _setPasswordValidator = setPasswordValidator;
         _logger = logger;
     }
 
     /// <summary>Creates a new user.</summary>
     /// <response code="201">The user was created.</response>
     /// <response code="400">The request failed validation.</response>
-    /// <response code="409">A user with the given email already exists.</response>
+    /// <response code="409">A user with the given username or email already exists.</response>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
     {
@@ -140,7 +143,51 @@ public class UsersController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Uploads/replaces a user's profile photo (JPG/PNG/WEBP, max 2MB). Never set at creation — always a later, separate step from the User Details page.</summary>
+    /// <response code="200">The profile photo was uploaded.</response>
+    /// <response code="400">The file failed validation.</response>
+    /// <response code="404">No user was found for the given id.</response>
+    [HttpPost("{id:guid}/profile-photo")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadProfilePhoto(Guid id, IFormFile photo, CancellationToken cancellationToken)
+    {
+        if (photo is null || photo.Length == 0)
+        {
+            return BadRequest(BuildFileRequiredError());
+        }
+
+        await using var stream = photo.OpenReadStream();
+        var result = await _userService.UploadProfilePhotoAsync(id, stream, photo.FileName, photo.ContentType, photo.Length, actorId: null, cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Sets or resets a user's password (admin action). The only way a user ever
+    /// gets a PasswordHash — user creation has no credential step.</summary>
+    /// <response code="200">The password was set.</response>
+    /// <response code="400">The request failed validation.</response>
+    /// <response code="404">No user was found for the given id.</response>
+    [HttpPost("{id:guid}/password")]
+    public async Task<IActionResult> SetPassword(Guid id, [FromBody] SetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var validation = await _setPasswordValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return BadRequest(BuildValidationError(validation));
+        }
+
+        var result = await _userService.SetPasswordAsync(id, request.Password, actorId: null, cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     private static ApiResponse<UserResponse> Envelope(UserResponse? data) => new() { Data = data };
+
+    private ApiErrorResponse BuildFileRequiredError() => new()
+    {
+        ErrorCode = "VALIDATION.FAILED",
+        Message = "A file is required.",
+        CorrelationId = HttpContext.GetCorrelationId(),
+        Timestamp = DateTime.UtcNow,
+    };
 
     private IActionResult MapFailure(string errorCode, string message)
     {
@@ -148,6 +195,9 @@ public class UsersController : ControllerBase
         {
             UserErrorCodes.NotFound => StatusCodes.Status404NotFound,
             UserErrorCodes.DuplicateEmail => StatusCodes.Status409Conflict,
+            UserErrorCodes.DuplicateUsername => StatusCodes.Status409Conflict,
+            UserErrorCodes.InvalidRole => StatusCodes.Status400BadRequest,
+            UserErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

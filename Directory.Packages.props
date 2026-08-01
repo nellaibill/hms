@@ -33,6 +33,13 @@
     <!-- API documentation -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
 
+    <!-- Authentication -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
+    <!-- Test-only: builds an in-memory IConfiguration for JwtTokenGeneratorTests, without
+         pulling in the full Microsoft.AspNetCore.App shared framework just for tests. -->
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+
     <!-- Transitive-only pin: Microsoft.EntityFrameworkCore.Design 10.0.0 (and, via
          Testcontainers, Docker.DotNet) drag in System.Security.Cryptography.Xml 9.0.0,
          which has several published high-severity CVEs (NU1903). Pinned up to the first

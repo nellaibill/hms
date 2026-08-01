@@ -12,7 +12,9 @@ namespace HMS.Api.Configuration;
 /// </summary>
 public static class ModuleRegistration
 {
-    public static IServiceCollection AddHmsModules(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddHmsModules(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         services.AddIdentityModule(configuration);
         services.AddPatientsModule(configuration);

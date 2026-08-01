@@ -12,10 +12,12 @@ export function UserCreateScreen({ navigation }: Props) {
   function handleSubmit(values: UserProfileFormValues) {
     mutation.mutate(
       {
+        username: values.username,
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
-        phoneNumber: values.phoneNumber || undefined,
+        phoneNumber: values.phoneNumber,
+        roleId: values.roleId,
       },
       {
         onSuccess: (user) => navigation.replace('UserDetail', { id: user.id }),

@@ -25,6 +25,11 @@ export function UserDetailScreen({ route, navigation }: Props) {
       <StatusBadge isActive={user.isActive} />
 
       <View style={styles.field}>
+        <Text style={styles.label}>Username</Text>
+        <Text>{user.username}</Text>
+      </View>
+
+      <View style={styles.field}>
         <Text style={styles.label}>Email</Text>
         <Text>{user.email}</Text>
       </View>
@@ -32,6 +37,11 @@ export function UserDetailScreen({ route, navigation }: Props) {
       <View style={styles.field}>
         <Text style={styles.label}>Phone number</Text>
         <Text>{user.phoneNumber || '—'}</Text>
+      </View>
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Role</Text>
+        <Text>{user.roleName}</Text>
       </View>
 
       <View style={styles.field}>

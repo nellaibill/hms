@@ -30,6 +30,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHmsModules(builder.Configuration);
 builder.Services.AddHmsSwagger();
 builder.Services.AddHmsCors(builder.Configuration);
+builder.Services.AddHmsJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
@@ -48,6 +49,11 @@ app.UseHmsSwagger();
 // the app's first static-file surface (see docs/DecisionLog.md's file-upload ADR).
 app.UseStaticFiles();
 
+// Must run after CORS and before MapControllers, in that order: Authentication decides
+// who the caller is, Authorization then checks [Authorize] on the matched endpoint.
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())
@@ -55,11 +61,26 @@ if (app.Environment.IsDevelopment())
     // MVP convenience only — see docs/Deployment.md for the real deployment-time
     // migration step.
     using var scope = app.Services.CreateScope();
-    scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.Migrate();
-    scope.ServiceProvider.GetRequiredService<PatientsDbContext>().Database.Migrate();
-    scope.ServiceProvider.GetRequiredService<BrandingDbContext>().Database.Migrate();
-    scope.ServiceProvider.GetRequiredService<MastersDbContext>().Database.Migrate();
-    scope.ServiceProvider.GetRequiredService<ProductsDbContext>().Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<IdentityDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<PatientsDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<BrandingDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<MastersDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<ProductsDbContext>()
+        .Database.Migrate();
 }
 
 app.Run();

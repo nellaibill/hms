@@ -5,6 +5,7 @@ export * from './components/UserDetails';
 export * from './components/UserForm';
 export * from './components/UserListToolbar';
 export * from './components/UserTable';
+export * from './hooks/useRolesForSelect';
 export * from './hooks/useUserMutations';
 export * from './hooks/useUserQuery';
 export * from './hooks/useUsersQuery';

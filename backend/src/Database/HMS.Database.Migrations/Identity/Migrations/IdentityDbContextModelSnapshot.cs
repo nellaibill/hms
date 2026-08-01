@@ -23,6 +23,620 @@ namespace HMS.Database.Migrations.Identity.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("HMS.Modules.Identity.Domain.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.HasIndex("Module", "Action")
+                        .IsUnique();
+
+                    b.ToTable("permissions", "identity");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("db3b17d7-811d-422a-a221-bb65a5037676"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "patient-management.view",
+                            Label = "View",
+                            Module = "patient-management"
+                        },
+                        new
+                        {
+                            Id = new Guid("bb83e3bc-a4c0-42a8-a15e-3603132d08b6"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "patient-management.create",
+                            Label = "Create",
+                            Module = "patient-management"
+                        },
+                        new
+                        {
+                            Id = new Guid("50adeda0-6191-4777-9430-6c4b359eff9d"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "patient-management.edit",
+                            Label = "Edit",
+                            Module = "patient-management"
+                        },
+                        new
+                        {
+                            Id = new Guid("bdb7a1ff-cfa7-4475-927d-ab389b0a06a8"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "patient-management.delete",
+                            Label = "Delete",
+                            Module = "patient-management"
+                        },
+                        new
+                        {
+                            Id = new Guid("2be079ff-aa89-4c47-bbda-cc8778209472"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "clinical-care.view",
+                            Label = "View",
+                            Module = "clinical-care"
+                        },
+                        new
+                        {
+                            Id = new Guid("e71663b9-79ae-40ad-bf94-b8f402898658"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "clinical-care.create",
+                            Label = "Create",
+                            Module = "clinical-care"
+                        },
+                        new
+                        {
+                            Id = new Guid("21ff0f71-fae5-4a0b-a7f8-ff08be7ff7bc"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "clinical-care.edit",
+                            Label = "Edit",
+                            Module = "clinical-care"
+                        },
+                        new
+                        {
+                            Id = new Guid("466d8793-d6b3-4e44-a20b-6688faef4f9f"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "clinical-care.delete",
+                            Label = "Delete",
+                            Module = "clinical-care"
+                        },
+                        new
+                        {
+                            Id = new Guid("1ef728c0-3cd0-46cb-b4d8-fa12101a2509"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "diagnostics.view",
+                            Label = "View",
+                            Module = "diagnostics"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0ad8c77-4d81-4773-9155-7c217e0877e6"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "diagnostics.create",
+                            Label = "Create",
+                            Module = "diagnostics"
+                        },
+                        new
+                        {
+                            Id = new Guid("8509d991-b281-4259-bdb2-89ed75ec2f0d"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "diagnostics.edit",
+                            Label = "Edit",
+                            Module = "diagnostics"
+                        },
+                        new
+                        {
+                            Id = new Guid("8273002e-4bf7-4a05-84e5-3680154420e4"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "diagnostics.delete",
+                            Label = "Delete",
+                            Module = "diagnostics"
+                        },
+                        new
+                        {
+                            Id = new Guid("fbeecdff-38a9-42b1-98f2-c477d4c1af31"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "pharmacy.view",
+                            Label = "View",
+                            Module = "pharmacy"
+                        },
+                        new
+                        {
+                            Id = new Guid("1cfc6580-0e9c-4055-b7de-3e9efcfdc306"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "pharmacy.create",
+                            Label = "Create",
+                            Module = "pharmacy"
+                        },
+                        new
+                        {
+                            Id = new Guid("ef1023c8-e81a-4354-8994-6808089c4d2c"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "pharmacy.edit",
+                            Label = "Edit",
+                            Module = "pharmacy"
+                        },
+                        new
+                        {
+                            Id = new Guid("7dfefecb-3b08-4652-91d6-cf6de25ce057"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "pharmacy.delete",
+                            Label = "Delete",
+                            Module = "pharmacy"
+                        },
+                        new
+                        {
+                            Id = new Guid("e40d8eaf-ed39-4f76-b6f9-055db294d653"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "support-services.view",
+                            Label = "View",
+                            Module = "support-services"
+                        },
+                        new
+                        {
+                            Id = new Guid("27964465-0e51-4494-8330-49fc7e66b084"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "support-services.create",
+                            Label = "Create",
+                            Module = "support-services"
+                        },
+                        new
+                        {
+                            Id = new Guid("f477dc55-4359-4489-9d4c-b59003284609"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "support-services.edit",
+                            Label = "Edit",
+                            Module = "support-services"
+                        },
+                        new
+                        {
+                            Id = new Guid("47f91d93-a7ef-4156-966f-756b4142ba52"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "support-services.delete",
+                            Label = "Delete",
+                            Module = "support-services"
+                        },
+                        new
+                        {
+                            Id = new Guid("8cb7e9d1-1c22-44b0-9874-3d21e61e0e59"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "finance-billing.view",
+                            Label = "View",
+                            Module = "finance-billing"
+                        },
+                        new
+                        {
+                            Id = new Guid("93d8f89c-edef-4580-8e0d-4419a9b1e0f7"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "finance-billing.create",
+                            Label = "Create",
+                            Module = "finance-billing"
+                        },
+                        new
+                        {
+                            Id = new Guid("2542c897-7242-4423-9547-f7accb795a66"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "finance-billing.edit",
+                            Label = "Edit",
+                            Module = "finance-billing"
+                        },
+                        new
+                        {
+                            Id = new Guid("3bd21acb-54fe-44a4-80db-7b7d79768114"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "finance-billing.delete",
+                            Label = "Delete",
+                            Module = "finance-billing"
+                        },
+                        new
+                        {
+                            Id = new Guid("844e1456-87a8-4dca-8469-bb19117c7cb4"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 7,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "records-compliance.view",
+                            Label = "View",
+                            Module = "records-compliance"
+                        },
+                        new
+                        {
+                            Id = new Guid("e1f0e24d-bdb1-48f1-a37d-bdfda4055886"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 7,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "records-compliance.create",
+                            Label = "Create",
+                            Module = "records-compliance"
+                        },
+                        new
+                        {
+                            Id = new Guid("734f5ff4-48cf-4c78-8614-0c017a38eec6"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 7,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "records-compliance.edit",
+                            Label = "Edit",
+                            Module = "records-compliance"
+                        },
+                        new
+                        {
+                            Id = new Guid("200db0f5-cb8b-4ec6-bb4a-e380744dc7be"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 7,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "records-compliance.delete",
+                            Label = "Delete",
+                            Module = "records-compliance"
+                        },
+                        new
+                        {
+                            Id = new Guid("7d114d49-dd3f-422e-b920-8f42c105595f"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 8,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "workforce-admin.view",
+                            Label = "View",
+                            Module = "workforce-admin"
+                        },
+                        new
+                        {
+                            Id = new Guid("113bf692-b2a7-4d56-9a20-e196bbab0cb6"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 8,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "workforce-admin.create",
+                            Label = "Create",
+                            Module = "workforce-admin"
+                        },
+                        new
+                        {
+                            Id = new Guid("d90b82d1-e86d-44ae-a85d-64c4eef8cbae"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 8,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "workforce-admin.edit",
+                            Label = "Edit",
+                            Module = "workforce-admin"
+                        },
+                        new
+                        {
+                            Id = new Guid("7e6ef2e4-94d5-4741-9a73-cd9ce5a6d69f"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 8,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "workforce-admin.delete",
+                            Label = "Delete",
+                            Module = "workforce-admin"
+                        },
+                        new
+                        {
+                            Id = new Guid("ec1f3291-ebb5-4b79-abfe-bf6a8702f895"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 9,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "engagement.view",
+                            Label = "View",
+                            Module = "engagement"
+                        },
+                        new
+                        {
+                            Id = new Guid("46eb9271-252f-428e-bdbd-756c36d39203"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 9,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "engagement.create",
+                            Label = "Create",
+                            Module = "engagement"
+                        },
+                        new
+                        {
+                            Id = new Guid("4852ff8b-e34b-42fc-8beb-944d4f0143d8"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 9,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "engagement.edit",
+                            Label = "Edit",
+                            Module = "engagement"
+                        },
+                        new
+                        {
+                            Id = new Guid("256f8ba6-c0bb-45ab-a9ad-018a4bfaa5ee"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 9,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "engagement.delete",
+                            Label = "Delete",
+                            Module = "engagement"
+                        },
+                        new
+                        {
+                            Id = new Guid("9558c7d8-d90e-44cc-b361-4f897230103a"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 10,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "reports-analytics.view",
+                            Label = "View",
+                            Module = "reports-analytics"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7bd020c-bf4f-4e36-a501-b4f68dd1a096"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 10,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "reports-analytics.create",
+                            Label = "Create",
+                            Module = "reports-analytics"
+                        },
+                        new
+                        {
+                            Id = new Guid("3dca5a94-952c-427b-919b-206a9183bda5"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 10,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "reports-analytics.edit",
+                            Label = "Edit",
+                            Module = "reports-analytics"
+                        },
+                        new
+                        {
+                            Id = new Guid("54ae37a9-186d-466a-b5df-70b7c68a7679"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 10,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "reports-analytics.delete",
+                            Label = "Delete",
+                            Module = "reports-analytics"
+                        });
+                });
+
+            modelBuilder.Entity("HMS.Modules.Identity.Domain.Role", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystemRole")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("roles", "identity");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Identity.Domain.RolePermission", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("role_permissions", "identity");
+                });
+
             modelBuilder.Entity("HMS.Modules.Identity.Domain.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -51,6 +665,12 @@ namespace HMS.Database.Migrations.Identity.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("email");
 
+                    b.Property<bool>("EmailVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("email_verified");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -67,16 +687,34 @@ namespace HMS.Database.Migrations.Identity.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_login_at");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("password_hash");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
                         .HasColumnName("phone_number");
+
+                    b.Property<string>("ProfilePhotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("profile_photo_url");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -85,6 +723,12 @@ namespace HMS.Database.Migrations.Identity.Migrations
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("username");
 
                     b.Property<uint>("xmin")
                         .IsConcurrencyToken()
@@ -103,7 +747,50 @@ namespace HMS.Database.Migrations.Identity.Migrations
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_users_is_active");
 
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_users_role_id");
+
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("ux_users_username")
+                        .HasFilter("is_deleted = false");
+
                     b.ToTable("users", "identity");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Identity.Domain.RolePermission", b =>
+                {
+                    b.HasOne("HMS.Modules.Identity.Domain.Permission", "Permission")
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HMS.Modules.Identity.Domain.Role", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Identity.Domain.User", b =>
+                {
+                    b.HasOne("HMS.Modules.Identity.Domain.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Identity.Domain.Role", b =>
+                {
+                    b.Navigation("RolePermissions");
                 });
 #pragma warning restore 612, 618
         }

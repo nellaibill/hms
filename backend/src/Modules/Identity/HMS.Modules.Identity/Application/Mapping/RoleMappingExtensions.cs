@@ -1,0 +1,29 @@
+using HMS.Modules.Identity.Contracts;
+using HMS.Modules.Identity.Domain;
+
+namespace HMS.Modules.Identity.Application.Mapping;
+
+internal static class RoleMappingExtensions
+{
+    public static RoleResponse ToResponse(
+        this Role role)
+    {
+        return new RoleResponse
+        {
+            Id = role.Id,
+            Name = role.Name,
+            Description = role.Description,
+            IsSystemRole = role.IsSystemRole,
+            IsActive = role.IsActive,
+            DisplayOrder = role.DisplayOrder,
+
+            CreatedAt = role.CreatedAt,
+            UpdatedAt = role.UpdatedAt,
+
+            PermissionKeys = role.RolePermissions
+                .Select(rp => rp.Permission.Key)
+                .OrderBy(k => k)
+                .ToList()
+        };
+    }
+}

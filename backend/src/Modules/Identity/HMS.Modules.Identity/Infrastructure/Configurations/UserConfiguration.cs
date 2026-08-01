@@ -23,10 +23,27 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("id")
             .ValueGeneratedNever(); // Generated in the domain (User.Create), not by the database.
 
+        builder.Property(u => u.Username).HasColumnName("username").HasMaxLength(100).IsRequired();
         builder.Property(u => u.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
         builder.Property(u => u.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(256).IsRequired();
         builder.Property(u => u.PhoneNumber).HasColumnName("phone_number").HasMaxLength(30);
+        builder.Property(u => u.ProfilePhotoUrl).HasColumnName("profile_photo_url").HasMaxLength(500);
+
+        builder.Property(u => u.RoleId).HasColumnName("role_id").IsRequired();
+
+        builder.HasOne(u => u.Role)
+            .WithMany()
+            .HasForeignKey(u => u.RoleId)
+            .OnDelete(DeleteBehavior.Restrict); // A role in use by a user cannot be deleted out from under them.
+
+        // Additive credential-support columns per ADR-001 (docs/DecisionLog.md) — see the
+        // doc comment on User itself. PasswordHash is nullable/unset until Authentication
+        // ships; no column here stores a plaintext password.
+        builder.Property(u => u.PasswordHash).HasColumnName("password_hash").HasMaxLength(255);
+        builder.Property(u => u.EmailVerified).HasColumnName("email_verified").IsRequired().HasDefaultValue(false);
+        builder.Property(u => u.LastLoginAt).HasColumnName("last_login_at");
+
         builder.Property(u => u.IsActive).HasColumnName("is_active").IsRequired();
 
         // Standard audit columns (docs/DatabaseArchitecture.md §5).
@@ -56,6 +73,13 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDatabaseName("ux_users_email")
             .HasFilter("is_deleted = false");
 
+        builder.HasIndex(u => u.Username)
+            .IsUnique()
+            .HasDatabaseName("ux_users_username")
+            .HasFilter("is_deleted = false");
+
         builder.HasIndex(u => u.IsActive).HasDatabaseName("ix_users_is_active");
+
+        builder.HasIndex(u => u.RoleId).HasDatabaseName("ix_users_role_id");
     }
 }

@@ -17,7 +17,9 @@ export function UserListItem({ user, onPress, onToggleActive, onDelete, isToggli
         <Text style={styles.name}>
           {user.firstName} {user.lastName}
         </Text>
+        <Text style={styles.email}>@{user.username}</Text>
         <Text style={styles.email}>{user.email}</Text>
+        <Text style={styles.email}>{user.roleName}</Text>
         <StatusBadge isActive={user.isActive} />
       </View>
       <View style={styles.actions}>

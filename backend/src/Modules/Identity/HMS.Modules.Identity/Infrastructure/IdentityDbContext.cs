@@ -21,6 +21,12 @@ public class IdentityDbContext : DbContext
     // but this DbSet is only ever queried from within this module (UserRepository).
     internal DbSet<User> Users => Set<User>();
 
+    internal DbSet<Role> Roles => Set<Role>();
+
+    internal DbSet<Permission> Permissions => Set<Permission>();
+
+    internal DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);

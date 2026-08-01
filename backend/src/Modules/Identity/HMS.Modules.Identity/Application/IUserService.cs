@@ -28,4 +28,8 @@ public interface IUserService
     Task<Result<UserResponse>> ActivateAsync(Guid id, Guid? actorId, CancellationToken cancellationToken);
 
     Task<Result<UserResponse>> DeactivateAsync(Guid id, Guid? actorId, CancellationToken cancellationToken);
+
+    Task<Result<UserResponse>> UploadProfilePhotoAsync(Guid id, Stream content, string fileName, string contentType, long length, Guid? actorId, CancellationToken cancellationToken);
+
+    Task<Result<UserResponse>> SetPasswordAsync(Guid id, string password, Guid? actorId, CancellationToken cancellationToken);
 }

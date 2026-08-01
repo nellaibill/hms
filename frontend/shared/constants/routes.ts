@@ -13,6 +13,12 @@ export const API_ROUTES = {
     activate: (id: string) => `/api/v1/users/${id}/activate`,
     deactivate: (id: string) => `/api/v1/users/${id}/deactivate`,
   },
+  roles: {
+    base: '/api/v1/roles',
+    byId: (id: string) => `/api/v1/roles/${id}`,
+    activate: (id: string) => `/api/v1/roles/${id}/activate`,
+    deactivate: (id: string) => `/api/v1/roles/${id}/deactivate`,
+  },
   patients: {
     base: '/api/v1/patients',
     byId: (id: string) => `/api/v1/patients/${id}`,

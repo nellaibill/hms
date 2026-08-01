@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRolesForSelect } from '../hooks/useRolesForSelect';
 
 interface UserFormProps {
   defaultValues?: Partial<UserProfileFormValues>;
@@ -13,6 +14,8 @@ interface UserFormProps {
 }
 
 export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, apiError }: UserFormProps) {
+  const { data: roles } = useRolesForSelect();
+
   const {
     control,
     handleSubmit,
@@ -21,10 +24,12 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
   } = useForm<UserProfileFormValues>({
     resolver: zodResolver(userProfileSchema),
     defaultValues: {
+      username: '',
       firstName: '',
       lastName: '',
       email: '',
       phoneNumber: '',
+      roleId: '',
       ...defaultValues,
     },
   });
@@ -46,6 +51,25 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
   return (
     <View style={styles.form}>
       {generalError && <Text style={styles.bannerError}>{generalError}</Text>}
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Username</Text>
+        <Controller
+          control={control}
+          name="username"
+          render={({ field }) => (
+            <TextInput
+              style={styles.input}
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              autoCapitalize="none"
+              autoComplete="username"
+            />
+          )}
+        />
+        {errors.username && <Text style={styles.fieldError}>{errors.username.message}</Text>}
+      </View>
 
       <View style={styles.field}>
         <Text style={styles.label}>First name</Text>
@@ -122,6 +146,30 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, submitLabel, a
         {errors.phoneNumber && <Text style={styles.fieldError}>{errors.phoneNumber.message}</Text>}
       </View>
 
+      <View style={styles.field}>
+        <Text style={styles.label}>Role</Text>
+        <Controller
+          control={control}
+          name="roleId"
+          render={({ field }) => (
+            <View style={styles.roleList}>
+              {roles?.items.map((role) => (
+                <Pressable
+                  key={role.id}
+                  style={[styles.roleChip, field.value === role.id && styles.roleChipSelected]}
+                  onPress={() => field.onChange(role.id)}
+                >
+                  <Text style={[styles.roleChipText, field.value === role.id && styles.roleChipTextSelected]}>
+                    {role.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        />
+        {errors.roleId && <Text style={styles.fieldError}>{errors.roleId.message}</Text>}
+      </View>
+
       <Pressable
         style={[styles.button, isSubmitting && styles.buttonDisabled]}
         onPress={handleSubmit(onSubmit)}
@@ -139,6 +187,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, marginBottom: 4, color: '#333' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 10 },
   fieldError: { color: '#b3261e', fontSize: 12, marginTop: 4 },
+  roleList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  roleChip: { borderWidth: 1, borderColor: '#ccc', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
+  roleChipSelected: { backgroundColor: '#1f2a44', borderColor: '#1f2a44' },
+  roleChipText: { color: '#333', fontSize: 13 },
+  roleChipTextSelected: { color: '#fff' },
   bannerError: { color: '#b3261e', backgroundColor: '#fdecea', padding: 10, borderRadius: 6, marginBottom: 12 },
   button: { backgroundColor: '#1f2a44', padding: 14, borderRadius: 6, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
