@@ -10,7 +10,7 @@ export function PresentHrCard() {
   return (
     <Card className="transition-shadow hover:shadow-soft-lg">
       <CardHeader className="flex-row items-center gap-2.5 space-y-0 pb-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-success/10 text-success">
           <UserCheck className="h-4 w-4" />
         </span>
         <div>
@@ -24,7 +24,7 @@ export function PresentHrCard() {
             <span className="text-3xl font-semibold tabular-nums text-foreground">{present}</span>
             <span className="text-sm text-muted-foreground">of {total} present</span>
           </div>
-          <ProgressBar value={pct} />
+          <ProgressBar value={pct} barClassName="bg-success" />
           <p className="text-xs text-muted-foreground">
             {pct}% present · {onLeave} on leave
           </p>
@@ -39,7 +39,7 @@ export function PresentHrCard() {
                   {row.present}/{row.total}
                 </span>
               </div>
-              <ProgressBar value={row.present} max={row.total} />
+              <ProgressBar value={row.present} max={row.total} barClassName="bg-success" />
             </div>
           ))}
         </div>

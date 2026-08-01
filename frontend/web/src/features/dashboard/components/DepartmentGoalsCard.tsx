@@ -12,6 +12,15 @@ const statusVariant: Record<DepartmentGoalStatus, 'success' | 'warning' | 'destr
   Completed: 'outline',
 };
 
+// The progress bar under each goal echoes its status color — a blue bar under an
+// "At Risk" badge read as contradictory (calm blue under an amber warning).
+const statusBarClass: Record<DepartmentGoalStatus, string> = {
+  'On Track': 'bg-success',
+  'At Risk': 'bg-warning',
+  Delayed: 'bg-destructive',
+  Completed: 'bg-success',
+};
+
 export function DepartmentGoalsCard() {
   return (
     <Card className="transition-shadow hover:shadow-soft-lg">
@@ -37,7 +46,7 @@ export function DepartmentGoalsCard() {
                 {goal.status}
               </Badge>
             </div>
-            <ProgressBar value={goal.progress} />
+            <ProgressBar value={goal.progress} barClassName={statusBarClass[goal.status]} />
           </div>
         ))}
       </CardContent>

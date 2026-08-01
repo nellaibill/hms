@@ -9,7 +9,7 @@ const legend = (
       OP
     </span>
     <span className="flex items-center gap-1.5">
-      <span className="h-2 w-2 rounded-full bg-info" />
+      <span className="h-2 w-2 rounded-full bg-success" />
       IP
     </span>
   </div>
@@ -26,8 +26,8 @@ export function MonthlyCensusChart() {
               <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="ipGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="hsl(var(--info))" stopOpacity={0.28} />
-              <stop offset="100%" stopColor="hsl(var(--info))" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
@@ -43,7 +43,7 @@ export function MonthlyCensusChart() {
             }}
           />
           <Area type="monotone" dataKey="op" name="OP" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#opGradient)" />
-          <Area type="monotone" dataKey="ip" name="IP" stroke="hsl(var(--info))" strokeWidth={2} fill="url(#ipGradient)" />
+          <Area type="monotone" dataKey="ip" name="IP" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#ipGradient)" />
         </AreaChart>
       </ResponsiveContainer>
     </ChartCard>
