@@ -14,4 +14,10 @@ export const paymentTermsConfig: MasterEntityConfig = {
     { key: 'days', label: 'Days', type: 'number', required: true, min: 0, step: 1 },
     { key: 'description', label: 'Description', type: 'textarea' },
   ],
+  seed: [
+    { id: 'payment-terms-001', termName: 'Due on Receipt', days: 0 },
+    { id: 'payment-terms-002', termName: 'Net 15', days: 15 },
+    { id: 'payment-terms-003', termName: 'Net 30', days: 30 },
+    { id: 'payment-terms-004', termName: 'Net 45', days: 45 },
+  ],
 };

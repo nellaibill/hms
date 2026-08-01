@@ -25,4 +25,9 @@ export const taxConfig: MasterEntityConfig = {
     { key: 'ratePercent', label: 'Rate (%)', type: 'decimal', required: true, min: 0.01, step: 0.01, helpText: 'Rate must be greater than 0.' },
     { key: 'isInclusive', label: 'Inclusive of Price', type: 'boolean', defaultValue: false },
   ],
+  seed: [
+    { id: 'tax-001', taxCode: 'GST5', taxName: 'GST 5%', taxType: 'GST', ratePercent: 5, isInclusive: false },
+    { id: 'tax-002', taxCode: 'GST12', taxName: 'GST 12%', taxType: 'GST', ratePercent: 12, isInclusive: false },
+    { id: 'tax-003', taxCode: 'GST18', taxName: 'GST 18%', taxType: 'GST', ratePercent: 18, isInclusive: false },
+  ],
 };
