@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Controllers live in this module (not HMS.Api), so their <summary> comments
+         must be generated here for Swashbuckle to include them in Swagger UI. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment on a public member) is not useful here: this module is
+         internal-by-default (see docs/DeveloperHandbook.md §4), so its few public members
+         are a deliberate narrow seam, not a fully-documented public API. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needed for ControllerBase/[ApiController]/IActionResult in Endpoints/, since this
+         module is a plain class library, not an ASP.NET Core Web SDK project. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- Product Management FKs into Masters reference data (categories, brands, uom,
+         currencies, taxes, ...). This module depends only on Masters' public seam — the
+         I{Entity}Service interfaces called out in MastersModuleBoundaryTests' allowlist —
+         never its Domain/Infrastructure internals. See ProductsModuleBoundaryTests. -->
+    <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
+  </ItemGroup>
+
+</Project>

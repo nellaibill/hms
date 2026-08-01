@@ -51,6 +51,7 @@ MVP is single-tenant (one hospital/organization). Three paths exist if multi-ten
 | `staff` | Doctor/nurse/staff directory and roster data. | MVP |
 | `billing` | Invoices, payments, and billing line items. | MVP |
 | `notifications` | Notification templates, delivery logs, and reminder scheduling data. | MVP |
+| `products` | Product/item master catalog — barcodes, batches, prices, images, dynamic attributes, and tax mappings (docs/04_Product_Management_ERD). FKs into `masters` for classification/unit reference data. | MVP |
 | `pharmacy` | Medication inventory and dispensing records. | Reserved — post-MVP module |
 | `laboratory` | Lab test orders and results. | Reserved — post-MVP module |
 | `inventory` | General hospital supply/equipment inventory (distinct from pharmacy stock). | Reserved — post-MVP module |

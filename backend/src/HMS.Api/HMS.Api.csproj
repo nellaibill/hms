@@ -24,6 +24,7 @@
     <ProjectReference Include="..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\Database\HMS.Database.Migrations\HMS.Database.Migrations.csproj" />
     <ProjectReference Include="..\Modules\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
+    <ProjectReference Include="..\Modules\Products\HMS.Modules.Products\HMS.Modules.Products.csproj" />
   </ItemGroup>
 
 </Project>
