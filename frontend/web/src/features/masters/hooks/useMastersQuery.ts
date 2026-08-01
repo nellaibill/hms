@@ -7,7 +7,7 @@ export const mastersQueryKey = (entityKey: string, query: MasterListQuery) => ['
 export function useMastersQuery(entityKey: string, query: MasterListQuery) {
   return useQuery<PagedMasters>({
     queryKey: mastersQueryKey(entityKey, query),
-    queryFn: () => {
+    queryFn: async () => {
       const store = getMasterStore(entityKey);
       if (!store) throw new Error(`Unknown Masters entity "${entityKey}".`);
       return store.list(query);

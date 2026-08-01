@@ -25,6 +25,10 @@ const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettin
 const MastersHubPage = lazy(() => import('../pages/masters/MastersHubPage'));
 const MasterListPage = lazy(() => import('../pages/masters/MasterListPage'));
 const MasterFormPage = lazy(() => import('../pages/masters/MasterFormPage'));
+const ProductsListPage = lazy(() => import('../pages/products/ProductsListPage'));
+const ProductCreatePage = lazy(() => import('../pages/products/ProductCreatePage'));
+const ProductViewPage = lazy(() => import('../pages/products/ProductViewPage'));
+const ProductEditPage = lazy(() => import('../pages/products/ProductEditPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -41,6 +45,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/admin/settings': withSuspense(<SettingsPage />),
   '/patients/registration': withSuspense(<PatientRegistrationHubPage />),
   '/patients/enquiry': withSuspense(<PatientsListPage />),
+  '/support/inventory': withSuspense(<ProductsListPage />),
 };
 
 const moduleRoutes = getAllLeaves().map((leaf) => ({
@@ -87,15 +92,25 @@ const brandingRoutes = [
   },
 ];
 
-// Masters (Reference Data) — UI-only, mock data (see features/masters), reachable from the
-// Settings page ("Master Data"). One generic list/form pair driven by an :entityKey route
-// param covers all ~16 entities from docs/03_Masters_ERD instead of per-entity page code.
+// Masters (Reference Data) — reachable from the Settings page ("Master Data"). One generic
+// list/form pair driven by an :entityKey route param covers all ~16 entities from
+// docs/03_Masters_ERD instead of per-entity page code.
 const mastersRoutes = [
   { path: 'admin/masters', element: withSuspense(<MastersHubPage />) },
   { path: 'admin/masters/:entityKey', element: withSuspense(<MasterListPage />) },
   { path: 'admin/masters/:entityKey/new', element: withSuspense(<MasterFormPage mode="create" />) },
   { path: 'admin/masters/:entityKey/:id', element: withSuspense(<MasterFormPage mode="view" />) },
   { path: 'admin/masters/:entityKey/:id/edit', element: withSuspense(<MasterFormPage mode="edit" />) },
+];
+
+// Products (HMS.Modules.Products) — core Product CRUD, reachable from the "Hospital
+// Inventory Management" nav leaf ('support/inventory', wired via specialPages above). Sub-
+// resources (batches, barcodes, images, prices, tax mappings) are a future pass — see
+// ProductDetails.tsx's "coming soon" section. Mirrors userRoutes' shape.
+const productRoutes = [
+  { path: 'support/inventory/new', element: withSuspense(<ProductCreatePage />) },
+  { path: 'support/inventory/:id', element: withSuspense(<ProductViewPage />) },
+  { path: 'support/inventory/:id/edit', element: withSuspense(<ProductEditPage />) },
 ];
 
 export const router = createBrowserRouter(
@@ -118,6 +133,7 @@ export const router = createBrowserRouter(
             ...roleRoutes,
             ...brandingRoutes,
             ...mastersRoutes,
+            ...productRoutes,
           ],
         },
       ],

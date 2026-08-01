@@ -1,11 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
 
 /**
- * Masters (Reference Data) has no backend yet (see docs/03_Masters_ERD) — this whole
- * engine is a config-driven mock scaffold, mirroring how Roles Management
- * (features/roles) works without an API. Every entity from the ERD is described by a
- * MasterEntityConfig and rendered through the same generic list/form pages; there is
- * no per-entity page code.
+ * Masters (Reference Data, see docs/03_Masters_ERD) is a config-driven engine — every
+ * entity from the ERD is described by a MasterEntityConfig and rendered through the same
+ * generic list/form pages; there is no per-entity page code. The data layer
+ * (engine/masterStoreFactory.ts) talks to the real /api/v1/masters/* backend and falls
+ * back to a seeded localStorage mock (this config's `seed`) only when that backend is
+ * unreachable — see the NetworkError catch there.
  */
 
 export type MasterFieldType = 'text' | 'textarea' | 'number' | 'decimal' | 'boolean' | 'select' | 'reference';
@@ -66,7 +67,7 @@ export interface MasterEntityConfig {
   /** Cross-field rule beyond single-field validation (e.g. unit_conversion's from != to). Return an error message, or undefined if valid. */
   validateForm?: (values: Record<string, unknown>) => string | undefined;
   fields: MasterFieldDef[];
-  /** Seed rows — id/isActive/createdAt/updatedAt are populated automatically if omitted. */
+  /** Seed rows for the offline mock fallback — id/isActive/createdAt/updatedAt are populated automatically if omitted. */
   seed: Array<Record<string, unknown> & { id: string }>;
 }
 
@@ -97,4 +98,6 @@ export interface PaginationMeta {
 export interface PagedMasters {
   items: MasterRecord[];
   meta: PaginationMeta;
+  /** 'mock' when the real backend was unreachable and this list came from the offline fallback — see engine/masterStoreFactory.ts. */
+  source: 'live' | 'mock';
 }

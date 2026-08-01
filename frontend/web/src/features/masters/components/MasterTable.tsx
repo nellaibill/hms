@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { getDisplayLabel, resolveRecordLabel } from '../engine/registry';
 import type { MasterEntityConfig, MasterFieldDef, MasterRecord } from '../engine/types';
+import { useMasterReferenceOptions } from '../hooks/useMasterQuery';
 import { MasterStatusBadge } from './MasterStatusBadge';
 
 interface MasterTableProps {
@@ -31,6 +32,11 @@ function renderFieldValue(field: MasterFieldDef, record: MasterRecord): ReactNod
 }
 
 export function MasterTable({ config, records, sort, onSortChange }: MasterTableProps) {
+  // Primes the reference cache for any entity this config's reference-type fields point at,
+  // so resolveRecordLabel (used for both the primary row label and reference columns below)
+  // resolves to a friendly label instead of a raw id once these queries settle.
+  useMasterReferenceOptions(config);
+
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
 

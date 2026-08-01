@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import type { ApiError } from '@hms/shared';
+import { useEffect, useState } from 'react';
 import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ interface MasterFormProps {
   recordId?: string;
   defaultValues: Record<string, unknown>;
   isSubmitting?: boolean;
+  apiError?: ApiError | null;
   onSubmit: (values: Record<string, unknown>) => void;
   onCancel: () => void;
 }
@@ -187,7 +189,7 @@ function FieldControl({ field, register, control, errors, readOnly, recordId, sc
   );
 }
 
-export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting, onSubmit, onCancel }: MasterFormProps) {
+export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: MasterFormProps) {
   const readOnly = mode === 'view';
   const existingRecordsQuery = useMasterOptionsQuery(config.key);
   const existingRecords: MasterRecord[] = existingRecordsQuery.data ?? [];
@@ -198,8 +200,24 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
     control,
     handleSubmit,
     watch,
+    setError,
     formState: { errors },
   } = useForm<Record<string, unknown>>({ defaultValues: toFormDefaults(config, defaultValues) });
+
+  // Server-side validation failures (backend Update*Request DTOs are authoritative — client
+  // validation here is convenience only) are mapped onto the same field-level display client
+  // validation uses, mirroring UserForm.tsx's pattern.
+  useEffect(() => {
+    if (!apiError?.validationErrors) {
+      return;
+    }
+    for (const issue of apiError.validationErrors) {
+      const fieldName = issue.field.charAt(0).toLowerCase() + issue.field.slice(1);
+      setError(fieldName, { type: 'server', message: issue.message });
+    }
+  }, [apiError, setError]);
+
+  const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
 
   function makeCodeUniquenessValidator(field: MasterFieldDef) {
     return (value: unknown): string | true => {
@@ -245,7 +263,10 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
                 register={register}
                 control={control}
                 errors={errors}
-                readOnly={readOnly}
+                // The code field is immutable after creation server-side (Update*Request DTOs
+                // never include it) — disable it in edit mode too, not just view, so the UI
+                // doesn't look editable for a change that would silently no-op.
+                readOnly={readOnly || (mode === 'edit' && field.key === config.codeField)}
                 recordId={recordId}
                 scopeValue={field.referenceScopeField ? watch(field.referenceScopeField) : undefined}
                 validate={field.key === (config.codeField ?? config.nameField) ? makeCodeUniquenessValidator(field) : undefined}
@@ -285,6 +306,12 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
           ))}
         </CardContent>
       </Card>
+
+      {generalError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {generalError}
+        </p>
+      )}
 
       {crossFieldError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
