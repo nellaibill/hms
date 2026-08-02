@@ -11,7 +11,6 @@ import type { BillingFormValues } from '../billingValidation';
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
 import { DiscountApprovalControl } from './DiscountApprovalControl';
-import { PaymentStatusControl } from './PaymentStatusControl';
 
 interface ConsultationBillingCardProps {
   expanded: boolean;
@@ -33,7 +32,6 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
   const consultationTypeId = watch('consultation.consultationTypeId');
   const discount = watch('consultation.discount');
   const charge = watch('consultation.charge');
-  const paymentStatus = watch('consultation.paymentStatus');
   const discountApproved = watch('consultation.discountApproved');
   const discountApprovedBy = watch('consultation.discountApprovedBy');
 
@@ -53,7 +51,7 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
   }, [departmentId]);
 
   const err = errors.consultation;
-  const isActive = isConsultationEntryActive({ departmentId, consultantId, consultationTypeId, paymentStatus, discount });
+  const isActive = isConsultationEntryActive({ departmentId, consultantId, consultationTypeId, discount });
 
   return (
     <CollapsibleCard
@@ -162,12 +160,6 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
             )}
           />
         </Field>
-        <PaymentStatusControl
-          id="consultation-payment-status"
-          value={paymentStatus}
-          onChange={(status) => setValue('consultation.paymentStatus', status, { shouldValidate: true })}
-          error={err?.paymentStatus?.message}
-        />
       </div>
       <DiscountApprovalControl
         id="consultation-discount-approved"

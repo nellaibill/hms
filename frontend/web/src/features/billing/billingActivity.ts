@@ -8,21 +8,19 @@ interface ConsultationEntryLike {
   departmentId: string;
   consultantId: string;
   consultationTypeId: string;
-  paymentStatus: string;
   discount: number;
 }
 
 interface ServiceEntryLike {
   serviceId: string;
   consultantId: string;
-  paymentStatus: string;
   discount: number;
 }
 
 export function isConsultationEntryActive(entry: ConsultationEntryLike): boolean {
-  return Boolean(entry.departmentId || entry.consultantId || entry.consultationTypeId || entry.paymentStatus || entry.discount > 0);
+  return Boolean(entry.departmentId || entry.consultantId || entry.consultationTypeId || entry.discount > 0);
 }
 
 export function isServiceEntryActive(entry: ServiceEntryLike): boolean {
-  return Boolean(entry.serviceId || entry.consultantId || entry.paymentStatus || entry.discount > 0);
+  return Boolean(entry.serviceId || entry.consultantId || entry.discount > 0);
 }

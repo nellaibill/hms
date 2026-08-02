@@ -13,9 +13,12 @@ import { PAYMENT_STATUSES } from './types';
  * Radiology/Laboratory/Procedure are arrays (a visit can need several lab tests or several
  * procedures); Consultation stays a single entry — one primary consultation per
  * registration is the realistic case, and multi-consultation is a separate future step.
+ *
+ * Payment status is deliberately *not* a per-line field — a visit is settled in one
+ * transaction at the counter, not per category, so asking Pending/Paid four separate times
+ * read as confusing/redundant. It's a single top-level field on billingFormSchema instead
+ * (see the Billing Summary card), applied to every line item the bill produces.
  */
-const paymentStatusFieldSchema = z.enum(['', PAYMENT_STATUSES[0], PAYMENT_STATUSES[1]]).default('');
-
 export const consultationBillingSchema = z
   .object({
     departmentId: z.string().default(''),
@@ -25,7 +28,6 @@ export const consultationBillingSchema = z
     discount: z.number().min(0).default(0),
     discountApproved: z.boolean().default(false),
     discountApprovedBy: z.string().default(''),
-    paymentStatus: paymentStatusFieldSchema,
   })
   .superRefine((data, ctx) => {
     if (!isConsultationEntryActive(data)) return;
@@ -34,7 +36,6 @@ export const consultationBillingSchema = z
     if (!data.consultationTypeId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['consultationTypeId'], message: 'Consultation type is required' });
     }
-    if (!data.paymentStatus) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentStatus'], message: 'Payment status is required' });
     if (data.discount > data.charge) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
     }
@@ -48,13 +49,11 @@ export const serviceBillingSchema = z
     discount: z.number().min(0).default(0),
     discountApproved: z.boolean().default(false),
     discountApprovedBy: z.string().default(''),
-    paymentStatus: paymentStatusFieldSchema,
   })
   .superRefine((data, ctx) => {
     if (!isServiceEntryActive(data)) return;
     if (!data.serviceId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['serviceId'], message: 'Service is required' });
     if (!data.consultantId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['consultantId'], message: 'Consultant is required' });
-    if (!data.paymentStatus) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentStatus'], message: 'Payment status is required' });
     if (data.discount > data.charge) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
     }
@@ -65,6 +64,7 @@ export const billingFormSchema = z.object({
   radiology: z.array(serviceBillingSchema).default([]),
   laboratory: z.array(serviceBillingSchema).default([]),
   procedure: z.array(serviceBillingSchema).default([]),
+  paymentStatus: z.enum(PAYMENT_STATUSES).default('Pending'),
 });
 
 export type BillingFormValues = z.infer<typeof billingFormSchema>;
@@ -80,7 +80,6 @@ const emptyConsultation: ConsultationBillingFormValues = {
   discount: 0,
   discountApproved: false,
   discountApprovedBy: '',
-  paymentStatus: '',
 };
 
 export const emptyServiceRow: ServiceBillingRowFormValues = {
@@ -90,7 +89,6 @@ export const emptyServiceRow: ServiceBillingRowFormValues = {
   discount: 0,
   discountApproved: false,
   discountApprovedBy: '',
-  paymentStatus: '',
 };
 
 export const defaultBillingFormValues: BillingFormValues = {
@@ -98,4 +96,5 @@ export const defaultBillingFormValues: BillingFormValues = {
   radiology: [{ ...emptyServiceRow }],
   laboratory: [{ ...emptyServiceRow }],
   procedure: [{ ...emptyServiceRow }],
+  paymentStatus: 'Pending',
 };

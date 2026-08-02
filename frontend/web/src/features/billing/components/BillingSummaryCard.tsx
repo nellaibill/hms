@@ -2,15 +2,25 @@ import { Receipt } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { formatCurrency, summarizeBilling } from '../billingCalculations';
+import { describeBillingItem, formatCurrency, summarizeBilling, toBillingItems } from '../billingCalculations';
 import type { BillingFormValues } from '../billingValidation';
+import { PaymentStatusControl } from './PaymentStatusControl';
 
-/** Read-only — always visible, recomputed live from the four category cards. Sticky on large screens so it stays in view while a long bill is being built up. */
+/**
+ * Recomputed live from the four category cards, plus the one whole-bill Payment status
+ * control — a visit is settled in a single transaction at the counter, not per category,
+ * so this replaced four separate per-card Pending/Paid toggles that read as confusing.
+ * Sticky on large screens so it stays in view while a long bill is being built up.
+ *
+ * Lines itemize by service (not just "Laboratory (2)") — reuses describeBillingItem, the
+ * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
+ * name reads identically everywhere it's shown.
+ */
 export function BillingSummaryCard() {
-  const { watch } = useFormContext<BillingFormValues>();
+  const { watch, setValue } = useFormContext<BillingFormValues>();
   const values = watch();
   const summary = summarizeBilling(values);
-  const activeLines = summary.lines.filter((line) => line.active);
+  const items = toBillingItems(values);
 
   return (
     <Card className="lg:sticky lg:top-20">
@@ -24,19 +34,21 @@ export function BillingSummaryCard() {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 pt-0">
-        {activeLines.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">No billing items added yet.</p>
         ) : (
           <div className="flex flex-col gap-2 text-sm">
-            {activeLines.map((line) => (
-              <div key={line.billingType} className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">
-                  {line.label}
-                  {line.count > 1 ? ` (${line.count})` : ''}
-                </span>
-                <span className="font-medium text-foreground">{formatCurrency(line.charge)}</span>
-              </div>
-            ))}
+            {items.map((item) => {
+              const { serviceLabel } = describeBillingItem(item);
+              return (
+                <div key={item.id} className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">
+                    {item.billingType} — {serviceLabel}
+                  </span>
+                  <span className="font-medium text-foreground">{formatCurrency(item.unitPrice)}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -58,6 +70,14 @@ export function BillingSummaryCard() {
             <span className="text-base font-bold text-primary">{formatCurrency(summary.netTotal)}</span>
           </div>
         </div>
+
+        <Separator />
+
+        <PaymentStatusControl
+          id="billing-payment-status"
+          value={values.paymentStatus}
+          onChange={(status) => setValue('paymentStatus', status, { shouldValidate: true })}
+        />
       </CardContent>
     </Card>
   );
