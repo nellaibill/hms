@@ -52,7 +52,11 @@ export function TopHeader() {
           <div className="flex h-16 items-center border-b border-border px-4">
             <HospitalLogo />
           </div>
-          <div className="flex-1 overflow-y-auto py-3">
+          {/* Extra bottom clearance (well beyond safe-area-inset-bottom alone) — a mobile
+              browser's own bottom toolbar isn't covered by the safe-area env vars, only
+              device notches/home-indicators are, so the last item or two in a tall list
+              can end up under real, un-tappable browser chrome without this. */}
+          <div className="flex-1 overflow-y-auto py-3 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
           </div>
         </SheetContent>
