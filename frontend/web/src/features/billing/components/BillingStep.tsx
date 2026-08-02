@@ -44,6 +44,7 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
   const methods = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
     defaultValues: defaultValues ?? defaultBillingFormValues,
+    mode: 'onChange',
   });
   const {
     trigger,
