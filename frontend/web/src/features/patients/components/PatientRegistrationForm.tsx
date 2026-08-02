@@ -151,6 +151,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
     defaultValues: initialDraft?.values ?? defaultValues,
+    mode: 'onChange',
   });
 
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });

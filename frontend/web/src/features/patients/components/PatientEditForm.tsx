@@ -63,6 +63,10 @@ function tabWithFirstError(errors: FieldErrors<PatientEditUiFormValues>): TabId 
   return TAB_ORDER.find((tab) => TAB_ERROR_FIELDS[tab].some((field) => Boolean(errors[field]))) ?? null;
 }
 
+function isTabId(value: string): value is TabId {
+  return (TAB_ORDER as readonly string[]).includes(value);
+}
+
 /** Updates a patient's demographic/master-data fields only — Registration Details and Billing are intentionally not editable here (see docs/DecisionLog.md ADR-008). */
 export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
   const {
@@ -70,25 +74,52 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
     control,
     handleSubmit,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<PatientEditUiFormValues>({
     resolver: zodResolver(patientEditUiSchema),
     defaultValues,
+    mode: 'onChange',
   });
 
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
   const hasKnownAllergy = watch('hasKnownAllergy');
 
   const [activeTab, setActiveTab] = useState<TabId>('patient-info');
-  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  // Tabs the user has actually tried to leave (via Next) or a final submit attempt — a tab
+  // the user hasn't reached yet shouldn't show an error dot just because its untouched
+  // required fields are technically invalid. Mirrors PatientRegistrationForm's gating so
+  // the two forms behave identically.
+  const [attemptedTabs, setAttemptedTabs] = useState<ReadonlySet<TabId>>(new Set());
   const activeTabIndex = TAB_ORDER.indexOf(activeTab);
   const isFirstTab = activeTabIndex === 0;
   const isLastTab = activeTabIndex === TAB_ORDER.length - 1;
   const goToPreviousTab = () => setActiveTab(TAB_ORDER[activeTabIndex - 1]);
-  const goToNextTab = () => setActiveTab(TAB_ORDER[activeTabIndex + 1]);
+
+  // Validates every tab from the current one up to (but not including) the target before
+  // landing on it — covers both the Next button and clicking a tab header directly.
+  // Moving backward to an already-visited tab is always allowed with no validation.
+  const goToTab = async (target: TabId) => {
+    const targetIndex = TAB_ORDER.indexOf(target);
+    if (targetIndex <= activeTabIndex) {
+      setActiveTab(target);
+      return;
+    }
+    for (let i = activeTabIndex; i < targetIndex; i++) {
+      const tab = TAB_ORDER[i];
+      const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
+      setAttemptedTabs((prev) => new Set(prev).add(tab));
+      if (!isTabValid) {
+        setActiveTab(tab);
+        return;
+      }
+    }
+    setActiveTab(target);
+  };
+  const goToNextTab = () => goToTab(TAB_ORDER[activeTabIndex + 1]);
 
   const onInvalid = (invalidFields: FieldErrors<PatientEditUiFormValues>) => {
-    setHasAttemptedSubmit(true);
+    setAttemptedTabs(new Set(TAB_ORDER));
     const firstErroredTab = tabWithFirstError(invalidFields);
     if (firstErroredTab) setActiveTab(firstErroredTab);
   };
@@ -115,17 +146,17 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
           </div>
         )}
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)}>
+      <Tabs value={activeTab} onValueChange={(value) => isTabId(value) && void goToTab(value)}>
         <TabsList>
-          <TabsTrigger value="patient-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
+          <TabsTrigger value="patient-info" hasError={attemptedTabs.has('patient-info') && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
             <User className="h-4 w-4" />
             Patient Information
           </TabsTrigger>
-          <TabsTrigger value="contact-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
+          <TabsTrigger value="contact-info" hasError={attemptedTabs.has('contact-info') && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
             <MapPin className="h-4 w-4" />
             Contact Information
           </TabsTrigger>
-          <TabsTrigger value="medical-info" hasError={hasAttemptedSubmit && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))}>
+          <TabsTrigger value="medical-info" hasError={attemptedTabs.has('medical-info') && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))}>
             <Stethoscope className="h-4 w-4" />
             Medical Information
           </TabsTrigger>
