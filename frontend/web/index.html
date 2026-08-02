@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover lets env(safe-area-inset-*) resolve to a real value on notched/gesture-bar
+         devices (iOS home indicator, etc.) instead of always being 0 — needed for the mobile nav
+         drawer's bottom padding (see TopHeader.tsx) to actually clear the device's own UI. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>HMS</title>
     <script type="text/javascript">
       // Single Page Apps for GitHub Pages (MIT) — https://github.com/rafgraph/spa-github-pages
