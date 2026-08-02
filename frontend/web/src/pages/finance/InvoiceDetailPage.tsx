@@ -53,7 +53,9 @@ export default function InvoiceDetailPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <div className="mx-auto w-full max-w-3xl">
+        {/* Left-aligned, not centered — matches PatientRegistrationForm/InvoiceCreatePage
+            rather than leaving a large empty gutter before the card. */}
+        <div className="w-full max-w-3xl">
           <InvoiceDetailCard billing={billing} onRecordPayment={setItemPendingPayment} />
         </div>
       </div>
