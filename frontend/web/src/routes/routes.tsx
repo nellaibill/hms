@@ -31,6 +31,7 @@ const ProductViewPage = lazy(() => import('../pages/products/ProductViewPage'));
 const ProductEditPage = lazy(() => import('../pages/products/ProductEditPage'));
 const InvoiceLedgerPage = lazy(() => import('../pages/finance/InvoiceLedgerPage'));
 const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'));
+const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -119,7 +120,10 @@ const productRoutes = [
 // Finance & Billing (UI-only, mock data — no backend module yet, mirrors Roles Management).
 // The landing ledger ('finance/accounts') is already wired via specialPages above; this
 // covers the detail sub-route, mirroring userRoutes'/roleRoutes' shape.
-const financeRoutes = [{ path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) }];
+const financeRoutes = [
+  { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
+  { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
+];
 
 export const router = createBrowserRouter(
   [

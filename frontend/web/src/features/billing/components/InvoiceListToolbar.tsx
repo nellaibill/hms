@@ -1,4 +1,6 @@
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PaymentStatus } from '../types';
@@ -38,6 +40,13 @@ export function InvoiceListToolbar({ search, onSearchChange, paymentStatus, onPa
           <SelectItem value="Pending">Pending only</SelectItem>
         </SelectContent>
       </Select>
+
+      <Button asChild className="ml-auto gap-1.5">
+        <Link to="/finance/accounts/new">
+          <Plus className="h-4 w-4" />
+          New Invoice
+        </Link>
+      </Button>
     </div>
   );
 }
