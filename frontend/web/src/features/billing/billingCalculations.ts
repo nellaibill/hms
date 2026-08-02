@@ -17,6 +17,11 @@ export function formatCurrency(amount: number): string {
   return `₹${Math.round(amount).toLocaleString('en-IN')}`;
 }
 
+/** An invoice with several line items has one status only once every item is Paid — any Pending item keeps the whole invoice Pending, matching how the Ledger and its filter should read it. */
+export function getOverallPaymentStatus(items: BillingItem[]): PaymentStatus {
+  return items.length > 0 && items.every((item) => item.paymentStatus === 'Paid') ? 'Paid' : 'Pending';
+}
+
 export interface BillingSummaryLine {
   billingType: BillingType;
   label: string;
