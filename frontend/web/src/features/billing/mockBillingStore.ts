@@ -273,6 +273,11 @@ export function getBillingForPatient(patientId: string): Billing[] {
   return billings.filter((b) => b.patientId === patientId);
 }
 
+/** Unpaginated, unfiltered — for report aggregation (features/reports), which needs every invoice to compute totals/date-range filters itself rather than a single page of them. */
+export function getAllMockBillings(): Billing[] {
+  return billings;
+}
+
 export interface BillingListQuery {
   page?: number;
   pageSize?: number;

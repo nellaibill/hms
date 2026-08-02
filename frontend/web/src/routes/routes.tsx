@@ -32,6 +32,7 @@ const ProductEditPage = lazy(() => import('../pages/products/ProductEditPage'));
 const InvoiceLedgerPage = lazy(() => import('../pages/finance/InvoiceLedgerPage'));
 const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'));
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
+const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -122,6 +123,7 @@ const productRoutes = [
 // covers the detail sub-route, mirroring userRoutes'/roleRoutes' shape.
 const financeRoutes = [
   { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
+  { path: 'finance/accounts/reports', element: withSuspense(<IncomeExpenseReportPage />) },
   { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
 ];
 

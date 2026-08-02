@@ -1,4 +1,4 @@
-import { Plus, Search } from 'lucide-react';
+import { FileBarChart2, Plus, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +41,14 @@ export function InvoiceListToolbar({ search, onSearchChange, paymentStatus, onPa
         </SelectContent>
       </Select>
 
-      <Button asChild className="ml-auto gap-1.5">
+      <Button asChild variant="outline" className="ml-auto gap-1.5">
+        <Link to="/finance/accounts/reports">
+          <FileBarChart2 className="h-4 w-4" />
+          Reports
+        </Link>
+      </Button>
+
+      <Button asChild className="gap-1.5">
         <Link to="/finance/accounts/new">
           <Plus className="h-4 w-4" />
           New Invoice
