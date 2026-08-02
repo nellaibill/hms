@@ -94,7 +94,10 @@ export default function PatientRegistrationCreatePage() {
         // No Billing API yet — parked in the offline mock store (see mockBillingStore.ts)
         // the same way patient records were ahead of the Patients API, until Billing has a
         // backend endpoint of its own.
-        saveBillingForPatient(patient.id, patient.currentRegistration?.id ?? patient.id, billing);
+        saveBillingForPatient(patient.id, patient.currentRegistration?.id ?? patient.id, billing, {
+          name: `${patient.firstName} ${patient.lastName}`,
+          uhid: patient.uhid,
+        });
         navigate(`/patients/registration/${patient.id}`);
       },
     });

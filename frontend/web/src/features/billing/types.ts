@@ -31,6 +31,14 @@ export interface Billing {
   id: string;
   patientId: string;
   visitId: string;
+  /**
+   * Patient name/UHID snapshotted at billing time — not a live join to the patient record.
+   * An invoice should keep showing who it was billed to at the time, even if the patient's
+   * demographic record is edited later (see docs/DecisionLog.md ADR-008 on billing/edit scope).
+   */
+  patientName: string;
+  patientUhid: string;
+  createdAt: string;
   items: BillingItem[];
   grossAmount: number;
   totalDiscount: number;

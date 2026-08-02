@@ -17,6 +17,11 @@ export function formatCurrency(amount: number): string {
   return `₹${Math.round(amount).toLocaleString('en-IN')}`;
 }
 
+/** An invoice with several line items has one status only once every item is Paid — any Pending item keeps the whole invoice Pending, matching how the Ledger and its filter should read it. */
+export function getOverallPaymentStatus(items: BillingItem[]): PaymentStatus {
+  return items.length > 0 && items.every((item) => item.paymentStatus === 'Paid') ? 'Paid' : 'Pending';
+}
+
 export interface BillingSummaryLine {
   billingType: BillingType;
   label: string;
@@ -89,7 +94,7 @@ export function summarizeBilling(values: BillingFormValues): BillingSummary {
   return { lines, grossTotal, discountTotal, netTotal };
 }
 
-function consultationToBillingItem(entry: ConsultationBillingFormValues): BillingItem {
+function consultationToBillingItem(entry: ConsultationBillingFormValues, paymentStatus: PaymentStatus): BillingItem {
   return {
     id: 'consultation',
     billingType: 'Consultation',
@@ -101,12 +106,17 @@ function consultationToBillingItem(entry: ConsultationBillingFormValues): Billin
     discount: entry.discount,
     discountApproved: entry.discountApproved,
     discountApprovedBy: entry.discountApprovedBy || undefined,
-    paymentStatus: (entry.paymentStatus || 'Pending') as PaymentStatus,
+    paymentStatus,
     total: Math.max(entry.charge - entry.discount, 0),
   };
 }
 
-function serviceRowToBillingItem(category: ServiceBillingCategory, entry: ServiceBillingRowFormValues, index: number): BillingItem {
+function serviceRowToBillingItem(
+  category: ServiceBillingCategory,
+  entry: ServiceBillingRowFormValues,
+  index: number,
+  paymentStatus: PaymentStatus,
+): BillingItem {
   return {
     id: `${category}-${index}`,
     billingType: SERVICE_BILLING_TYPES[category],
@@ -117,23 +127,29 @@ function serviceRowToBillingItem(category: ServiceBillingCategory, entry: Servic
     discount: entry.discount,
     discountApproved: entry.discountApproved,
     discountApprovedBy: entry.discountApprovedBy || undefined,
-    paymentStatus: (entry.paymentStatus || 'Pending') as PaymentStatus,
+    paymentStatus,
     total: Math.max(entry.charge - entry.discount, 0),
   };
 }
 
-/** Flattens the form's per-category shape into the normalized BillingItem[] model — only entries actually in use produce a line, and a service category can contribute more than one. */
+/**
+ * Flattens the form's per-category shape into the normalized BillingItem[] model — only
+ * entries actually in use produce a line, and a service category can contribute more than
+ * one. `values.paymentStatus` is the single whole-bill status (see billingValidation.ts);
+ * every produced line starts there and can only diverge later via the Record Payment
+ * action on an already-saved invoice, not at creation time.
+ */
 export function toBillingItems(values: BillingFormValues): BillingItem[] {
   const items: BillingItem[] = [];
 
   if (isConsultationEntryActive(values.consultation)) {
-    items.push(consultationToBillingItem(values.consultation));
+    items.push(consultationToBillingItem(values.consultation, values.paymentStatus));
   }
 
   (Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).forEach((category) => {
     values[category].forEach((row, index) => {
       if (!isServiceEntryActive(row)) return;
-      items.push(serviceRowToBillingItem(category, row, index));
+      items.push(serviceRowToBillingItem(category, row, index, values.paymentStatus));
     });
   });
 

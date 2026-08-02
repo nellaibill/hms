@@ -14,7 +14,6 @@ import { emptyServiceRow, type BillingFormValues, type ServiceBillingCategory } 
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
 import { DiscountApprovalControl } from './DiscountApprovalControl';
-import { PaymentStatusControl } from './PaymentStatusControl';
 
 interface ServiceBillingCardProps {
   category: ServiceBillingCategory;
@@ -114,7 +113,6 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
   const serviceId = watch(`${basePath}.serviceId`);
   const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);
-  const paymentStatus = watch(`${basePath}.paymentStatus`);
   const discountApproved = watch(`${basePath}.discountApproved`);
   const discountApprovedBy = watch(`${basePath}.discountApprovedBy`);
 
@@ -210,12 +208,6 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
             )}
           />
         </Field>
-        <PaymentStatusControl
-          id={`${basePath}-payment-status`}
-          value={paymentStatus}
-          onChange={(status) => setValue(`${basePath}.paymentStatus`, status, { shouldValidate: true })}
-          error={rowErrors?.paymentStatus?.message}
-        />
       </div>
       <DiscountApprovalControl
         id={`${basePath}-discount-approved`}
