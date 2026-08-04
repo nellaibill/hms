@@ -1,5 +1,7 @@
+import { NetworkError } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { listMockShiftAssignments } from '@/features/shiftAssignments/mockShiftAssignmentsStore';
 import { shiftAssignmentsApi } from '../../../services/apiClient';
 
 interface ShiftAssignmentSelectProps {
@@ -14,7 +16,16 @@ interface ShiftAssignmentSelectProps {
 export function ShiftAssignmentSelect({ id, value, onValueChange, ariaLabel = 'Shift assignment' }: ShiftAssignmentSelectProps) {
   const { data } = useQuery({
     queryKey: ['shiftAssignments', 'select-list'],
-    queryFn: () => shiftAssignmentsApi.getShiftAssignments({ pageSize: 100 }),
+    queryFn: async () => {
+      try {
+        return await shiftAssignmentsApi.getShiftAssignments({ pageSize: 100 });
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return listMockShiftAssignments({ pageSize: 100 });
+        }
+        throw err;
+      }
+    },
   });
 
   const options = (data?.items ?? []).map((assignment) => ({
