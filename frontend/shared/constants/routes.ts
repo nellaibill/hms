@@ -81,4 +81,9 @@ export const API_ROUTES = {
     copy: (id: string) => `/api/v1/weekly-rosters/${id}/copy`,
     monthly: '/api/v1/weekly-rosters/monthly',
   },
+  /** Mirrors HMS.Modules.HR.Endpoints.ShiftAssignmentsController. */
+  shiftAssignments: {
+    base: '/api/v1/shift-assignments',
+    byId: (id: string) => `/api/v1/shift-assignments/${id}`,
+  },
 } as const;

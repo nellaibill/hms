@@ -6,6 +6,7 @@ import {
   PatientsApi,
   ProductsApi,
   RolesApi,
+  ShiftAssignmentsApi,
   ShiftsApi,
   StaffAvailabilityApi,
   UsersApi,
@@ -37,3 +38,4 @@ export const productsApi = new ProductsApi(httpClient);
 export const shiftsApi = new ShiftsApi(httpClient);
 export const staffAvailabilityApi = new StaffAvailabilityApi(httpClient);
 export const weeklyRostersApi = new WeeklyRostersApi(httpClient);
+export const shiftAssignmentsApi = new ShiftAssignmentsApi(httpClient);

@@ -46,6 +46,10 @@ const WeeklyRostersListPage = lazy(() => import('../pages/hr/WeeklyRostersListPa
 const WeeklyRosterCreatePage = lazy(() => import('../pages/hr/WeeklyRosterCreatePage'));
 const WeeklyRosterViewPage = lazy(() => import('../pages/hr/WeeklyRosterViewPage'));
 const WeeklyRosterEditPage = lazy(() => import('../pages/hr/WeeklyRosterEditPage'));
+const ShiftAssignmentsListPage = lazy(() => import('../pages/hr/ShiftAssignmentsListPage'));
+const ShiftAssignmentCreatePage = lazy(() => import('../pages/hr/ShiftAssignmentCreatePage'));
+const ShiftAssignmentViewPage = lazy(() => import('../pages/hr/ShiftAssignmentViewPage'));
+const ShiftAssignmentEditPage = lazy(() => import('../pages/hr/ShiftAssignmentEditPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -160,6 +164,10 @@ const hrRoutes = [
       { path: 'admin/hr/weekly-rosters/new', element: withSuspense(<WeeklyRosterCreatePage />) },
       { path: 'admin/hr/weekly-rosters/:id', element: withSuspense(<WeeklyRosterViewPage />) },
       { path: 'admin/hr/weekly-rosters/:id/edit', element: withSuspense(<WeeklyRosterEditPage />) },
+      { path: 'admin/hr/shift-assignments', element: withSuspense(<ShiftAssignmentsListPage />) },
+      { path: 'admin/hr/shift-assignments/new', element: withSuspense(<ShiftAssignmentCreatePage />) },
+      { path: 'admin/hr/shift-assignments/:id', element: withSuspense(<ShiftAssignmentViewPage />) },
+      { path: 'admin/hr/shift-assignments/:id/edit', element: withSuspense(<ShiftAssignmentEditPage />) },
     ],
   },
 ];
