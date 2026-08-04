@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
     <ProjectReference Include="..\..\src\Modules\Products\HMS.Modules.Products\HMS.Modules.Products.csproj" />
+    <ProjectReference Include="..\..\src\Modules\HR\HMS.Modules.HR\HMS.Modules.HR.csproj" />
   </ItemGroup>
 
 </Project>

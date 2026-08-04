@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
 using HMS.Api.Middleware;
 using HMS.Modules.Branding.Infrastructure;
+using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Modules.Patients.Infrastructure;
@@ -80,6 +81,10 @@ if (app.Environment.IsDevelopment())
 
     scope.ServiceProvider
         .GetRequiredService<ProductsDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<HRDbContext>()
         .Database.Migrate();
 }
 
