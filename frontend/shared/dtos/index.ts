@@ -4,3 +4,8 @@ export * from './identity/auth';
 export * from './patients/patient';
 export * from './branding/branding';
 export * from './products/product';
+export * from './hr/shift';
+export * from './hr/staffAvailability';
+export * from './hr/weeklyRoster';
+export * from './hr/shiftAssignment';
+export * from './hr/shiftSwapRequest';

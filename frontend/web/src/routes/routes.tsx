@@ -33,6 +33,28 @@ const InvoiceLedgerPage = lazy(() => import('../pages/finance/InvoiceLedgerPage'
 const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'));
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
+const HrHubPage = lazy(() => import('../pages/hr/HrHubPage'));
+const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
+const ShiftCreatePage = lazy(() => import('../pages/hr/ShiftCreatePage'));
+const ShiftViewPage = lazy(() => import('../pages/hr/ShiftViewPage'));
+const ShiftEditPage = lazy(() => import('../pages/hr/ShiftEditPage'));
+const StaffAvailabilityListPage = lazy(() => import('../pages/hr/StaffAvailabilityListPage'));
+const StaffAvailabilityCreatePage = lazy(() => import('../pages/hr/StaffAvailabilityCreatePage'));
+const StaffAvailabilityViewPage = lazy(() => import('../pages/hr/StaffAvailabilityViewPage'));
+const StaffAvailabilityEditPage = lazy(() => import('../pages/hr/StaffAvailabilityEditPage'));
+const WeeklyRostersListPage = lazy(() => import('../pages/hr/WeeklyRostersListPage'));
+const WeeklyRosterCreatePage = lazy(() => import('../pages/hr/WeeklyRosterCreatePage'));
+const WeeklyRosterViewPage = lazy(() => import('../pages/hr/WeeklyRosterViewPage'));
+const WeeklyRosterEditPage = lazy(() => import('../pages/hr/WeeklyRosterEditPage'));
+const ShiftAssignmentsListPage = lazy(() => import('../pages/hr/ShiftAssignmentsListPage'));
+const ShiftAssignmentCreatePage = lazy(() => import('../pages/hr/ShiftAssignmentCreatePage'));
+const ShiftAssignmentViewPage = lazy(() => import('../pages/hr/ShiftAssignmentViewPage'));
+const ShiftAssignmentEditPage = lazy(() => import('../pages/hr/ShiftAssignmentEditPage'));
+const ShiftSwapRequestsListPage = lazy(() => import('../pages/hr/ShiftSwapRequestsListPage'));
+const ShiftSwapRequestCreatePage = lazy(() => import('../pages/hr/ShiftSwapRequestCreatePage'));
+const ShiftSwapRequestViewPage = lazy(() => import('../pages/hr/ShiftSwapRequestViewPage'));
+const ShiftSwapRequestEditPage = lazy(() => import('../pages/hr/ShiftSwapRequestEditPage'));
+const MonthlyRosterCalendarPage = lazy(() => import('../pages/hr/MonthlyRosterCalendarPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -51,6 +73,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/patients/enquiry': withSuspense(<PatientsListPage />),
   '/support/inventory': withSuspense(<ProductsListPage />),
   '/finance/accounts': withSuspense(<InvoiceLedgerPage />),
+  '/admin/hr': withSuspense(<HrHubPage />),
 };
 
 const moduleRoutes = getAllLeaves().map((leaf) => ({
@@ -127,6 +150,42 @@ const financeRoutes = [
   { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
 ];
 
+// Human Resource Management — Duty Roster (HMS.Modules.HR), reachable from the '/admin/hr'
+// nav leaf (wired via specialPages above). Route-gated via RequireRole since the nav-level
+// role filter alone doesn't block direct URL access. Includes superAdmin alongside the nav
+// leaf's own ['hr','admin'] — filterNavigationForRole (config/navigation.ts) already treats
+// superAdmin/admin as seeing every leaf regardless of its roles list, so the route guard
+// must honor that same bypass (mirrors brandingRoutes' ['admin','superAdmin']), or a
+// superAdmin who clicks the visible sidebar item gets redirected away.
+const hrRoutes = [
+  {
+    element: <RequireRole roles={['hr', 'admin', 'superAdmin']} />,
+    children: [
+      { path: 'admin/hr/shifts', element: withSuspense(<ShiftsListPage />) },
+      { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
+      { path: 'admin/hr/shifts/:id', element: withSuspense(<ShiftViewPage />) },
+      { path: 'admin/hr/shifts/:id/edit', element: withSuspense(<ShiftEditPage />) },
+      { path: 'admin/hr/staff-availability', element: withSuspense(<StaffAvailabilityListPage />) },
+      { path: 'admin/hr/staff-availability/new', element: withSuspense(<StaffAvailabilityCreatePage />) },
+      { path: 'admin/hr/staff-availability/:id', element: withSuspense(<StaffAvailabilityViewPage />) },
+      { path: 'admin/hr/staff-availability/:id/edit', element: withSuspense(<StaffAvailabilityEditPage />) },
+      { path: 'admin/hr/weekly-rosters', element: withSuspense(<WeeklyRostersListPage />) },
+      { path: 'admin/hr/weekly-rosters/new', element: withSuspense(<WeeklyRosterCreatePage />) },
+      { path: 'admin/hr/weekly-rosters/:id', element: withSuspense(<WeeklyRosterViewPage />) },
+      { path: 'admin/hr/weekly-rosters/:id/edit', element: withSuspense(<WeeklyRosterEditPage />) },
+      { path: 'admin/hr/shift-assignments', element: withSuspense(<ShiftAssignmentsListPage />) },
+      { path: 'admin/hr/shift-assignments/new', element: withSuspense(<ShiftAssignmentCreatePage />) },
+      { path: 'admin/hr/shift-assignments/:id', element: withSuspense(<ShiftAssignmentViewPage />) },
+      { path: 'admin/hr/shift-assignments/:id/edit', element: withSuspense(<ShiftAssignmentEditPage />) },
+      { path: 'admin/hr/shift-swap-requests', element: withSuspense(<ShiftSwapRequestsListPage />) },
+      { path: 'admin/hr/shift-swap-requests/new', element: withSuspense(<ShiftSwapRequestCreatePage />) },
+      { path: 'admin/hr/shift-swap-requests/:id', element: withSuspense(<ShiftSwapRequestViewPage />) },
+      { path: 'admin/hr/shift-swap-requests/:id/edit', element: withSuspense(<ShiftSwapRequestEditPage />) },
+      { path: 'admin/hr/monthly-calendar', element: withSuspense(<MonthlyRosterCalendarPage />) },
+    ],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -149,6 +208,7 @@ export const router = createBrowserRouter(
             ...mastersRoutes,
             ...productRoutes,
             ...financeRoutes,
+            ...hrRoutes,
           ],
         },
       ],

@@ -63,4 +63,32 @@ export const API_ROUTES = {
     base: '/api/v1/products',
     byId: (id: string) => `/api/v1/products/${id}`,
   },
+  /** Mirrors HMS.Modules.HR.Endpoints.ShiftsController. */
+  shifts: {
+    base: '/api/v1/shifts',
+    byId: (id: string) => `/api/v1/shifts/${id}`,
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.StaffAvailabilityController (singular route segment, per the backend's own doc comment). */
+  staffAvailability: {
+    base: '/api/v1/staff-availability',
+    byId: (id: string) => `/api/v1/staff-availability/${id}`,
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.WeeklyRostersController. */
+  weeklyRosters: {
+    base: '/api/v1/weekly-rosters',
+    byId: (id: string) => `/api/v1/weekly-rosters/${id}`,
+    publish: (id: string) => `/api/v1/weekly-rosters/${id}/publish`,
+    copy: (id: string) => `/api/v1/weekly-rosters/${id}/copy`,
+    monthly: '/api/v1/weekly-rosters/monthly',
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.ShiftAssignmentsController. */
+  shiftAssignments: {
+    base: '/api/v1/shift-assignments',
+    byId: (id: string) => `/api/v1/shift-assignments/${id}`,
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.ShiftSwapRequestsController. */
+  shiftSwapRequests: {
+    base: '/api/v1/shift-swap-requests',
+    byId: (id: string) => `/api/v1/shift-swap-requests/${id}`,
+  },
 } as const;
