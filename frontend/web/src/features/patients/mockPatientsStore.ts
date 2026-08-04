@@ -1,4 +1,4 @@
-import type { CreatePatientRequest, PagedPatients, Patient, PatientListQuery, UpdatePatientRequest } from '@hms/shared';
+import type { CreatePatientRequest, IdProofType, PagedPatients, Patient, PatientListQuery, UpdatePatientRequest } from '@hms/shared';
 import { calculateAge } from './detailedAge';
 import { MOCK_PATIENTS } from './mockPatients';
 
@@ -182,4 +182,37 @@ export function updateMockPatient(id: string, request: UpdatePatientRequest): Pa
 export function deleteMockPatient(id: string): void {
   patients = patients.filter((p) => p.id !== id);
   persist();
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function uploadMockPatientPhoto(id: string, file: File): Promise<Patient> {
+  const existing = getMockPatientById(id);
+  if (!existing) {
+    throw new Error(`Mock patient ${id} not found.`);
+  }
+  const photoPath = await readFileAsDataUrl(file);
+  const updated: Patient = { ...existing, photoPath, updatedAt: new Date().toISOString() };
+  patients = patients.map((p) => (p.id === id ? updated : p));
+  persist();
+  return updated;
+}
+
+export async function uploadMockPatientIdProof(id: string, idProofType: IdProofType, file: File): Promise<Patient> {
+  const existing = getMockPatientById(id);
+  if (!existing) {
+    throw new Error(`Mock patient ${id} not found.`);
+  }
+  const idProofPath = await readFileAsDataUrl(file);
+  const updated: Patient = { ...existing, idProofType, idProofPath, updatedAt: new Date().toISOString() };
+  patients = patients.map((p) => (p.id === id ? updated : p));
+  persist();
+  return updated;
 }

@@ -2,7 +2,13 @@ import type { CreatePatientRequest, IdProofType, UpdatePatientRequest } from '@h
 import { NetworkError } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '../../../services/apiClient';
-import { createMockPatient, deleteMockPatient, updateMockPatient } from '../mockPatientsStore';
+import {
+  createMockPatient,
+  deleteMockPatient,
+  updateMockPatient,
+  uploadMockPatientIdProof,
+  uploadMockPatientPhoto,
+} from '../mockPatientsStore';
 
 function useInvalidatePatients() {
   const queryClient = useQueryClient();
@@ -64,7 +70,16 @@ export function useDeletePatientMutation() {
 export function useUploadPatientPhotoMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File }) => patientsApi.uploadPhoto(id, file),
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      try {
+        return await patientsApi.uploadPhoto(id, file);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return uploadMockPatientPhoto(id, file);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidatePatients,
   });
 }
@@ -72,8 +87,16 @@ export function useUploadPatientPhotoMutation() {
 export function useUploadPatientIdProofMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: ({ id, idProofType, file }: { id: string; idProofType: IdProofType; file: File }) =>
-      patientsApi.uploadIdProof(id, idProofType, file),
+    mutationFn: async ({ id, idProofType, file }: { id: string; idProofType: IdProofType; file: File }) => {
+      try {
+        return await patientsApi.uploadIdProof(id, idProofType, file);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return uploadMockPatientIdProof(id, idProofType, file);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidatePatients,
   });
 }
