@@ -1,11 +1,13 @@
 name: Deploy to GitHub Pages
 
-# Deploys frontend/web as a static site for client UI review. The app's real API calls
-# fail against a live backend (there isn't one here) and fall back to in-app demo data —
-# see frontend/web/src/features/patients/mockPatientsStore.ts.
+# Deploys frontend/web as a static site for client UI review. There's no live backend behind
+# this deploy, so the app runs entirely on in-app demo data — see
+# frontend/shared/api-client/offlineHttpClient.ts (feature/demo-ui-with-mock-data forces this
+# unconditionally); other branches fall back to the same demo data only when a real backend
+# happens to be unreachable (e.g. frontend/web/src/features/patients/mockPatientsStore.ts).
 on:
   push:
-    branches: [feature/patient-registration]
+    branches: [feature/patient-registration, feature/demo-ui-with-mock-data]
   workflow_dispatch:
 
 permissions:
