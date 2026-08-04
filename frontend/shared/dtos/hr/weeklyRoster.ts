@@ -41,3 +41,15 @@ export interface WeeklyRosterListQuery {
 export interface CopyWeeklyRosterRequest {
   targetWeekStartDate: string;
 }
+
+/** Mirrors HMS.Modules.HR.Contracts.MonthlyWeeklyRosterQuery — GET /weekly-rosters/monthly's
+ * query. A read-only view over the existing WeeklyRoster aggregate (rosters whose
+ * WeekStartDate falls in the given month), not a new entity. */
+export interface MonthlyWeeklyRosterQuery {
+  year: number;
+  month: number;
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  search?: string;
+}

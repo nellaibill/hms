@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarCheck2, CalendarClock, CalendarRange, Clock, Repeat, UsersRound } from 'lucide-react';
+import { ArrowRight, CalendarCheck2, CalendarClock, CalendarDays, CalendarRange, Clock, Repeat, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useShiftAssignmentsQuery } from '@/features/shiftAssignments';
@@ -13,7 +13,9 @@ interface HubCard {
   description: string;
   icon: typeof Clock;
   path: string;
-  count: number | undefined;
+  /** undefined while a count query is loading; omitted entirely (no badge) for cards that
+   * aren't a record count, e.g. Monthly Calendar (a filtered view, not its own resource). */
+  count?: number;
 }
 
 export default function HrHubPage() {
@@ -65,6 +67,13 @@ export default function HrHubPage() {
       path: '/admin/hr/shift-swap-requests',
       count: swapRequestsCount.data?.meta.totalCount,
     },
+    {
+      key: 'monthly-calendar',
+      label: 'Monthly Calendar',
+      description: 'Weekly rosters whose week falls within a selected month.',
+      icon: CalendarDays,
+      path: '/admin/hr/monthly-calendar',
+    },
   ];
 
   return (
@@ -96,9 +105,11 @@ export default function HrHubPage() {
                           <Icon className="h-4.5 w-4.5" />
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                            {card.count === undefined ? '…' : `${card.count} record${card.count === 1 ? '' : 's'}`}
-                          </span>
+                          {'count' in card && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                              {card.count === undefined ? '…' : `${card.count} record${card.count === 1 ? '' : 's'}`}
+                            </span>
+                          )}
                           <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         </div>
                       </div>

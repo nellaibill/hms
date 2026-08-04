@@ -1,5 +1,12 @@
 import { API_ROUTES } from '../../constants';
-import type { CopyWeeklyRosterRequest, CreateWeeklyRosterRequest, UpdateWeeklyRosterRequest, WeeklyRoster, WeeklyRosterListQuery } from '../../dtos';
+import type {
+  CopyWeeklyRosterRequest,
+  CreateWeeklyRosterRequest,
+  MonthlyWeeklyRosterQuery,
+  UpdateWeeklyRosterRequest,
+  WeeklyRoster,
+  WeeklyRosterListQuery,
+} from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -60,5 +67,24 @@ export class WeeklyRostersApi {
   async copyWeeklyRoster(id: string, request: CopyWeeklyRosterRequest): Promise<WeeklyRoster> {
     const response = await this.client.post<WeeklyRoster>(API_ROUTES.weeklyRosters.copy(id), request);
     return response.data;
+  }
+
+  /** Rosters whose WeekStartDate falls within the given calendar month — a read-only view
+   * over this same aggregate, not a separate resource. */
+  async getMonthlyWeeklyRosters(query: MonthlyWeeklyRosterQuery): Promise<PagedWeeklyRosters> {
+    const response = await this.client.get<WeeklyRoster[]>(API_ROUTES.weeklyRosters.monthly, {
+      query: {
+        year: query.year,
+        month: query.month,
+        page: query.page,
+        pageSize: query.pageSize,
+        sort: query.sort,
+        search: query.search,
+      },
+    });
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
   }
 }
