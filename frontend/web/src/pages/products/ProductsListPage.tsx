@@ -51,7 +51,7 @@ export default function ProductsListPage() {
           <h1 className="text-xl font-semibold tracking-tight">Products</h1>
         </div>
         <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Item master — the Products reference module, connected live to the HMS.Api backend.
+          Item master — the Products reference module.
         </p>
       </div>
 

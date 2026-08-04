@@ -90,7 +90,7 @@ export default function UsersListPage() {
           <h1 className="text-xl font-semibold tracking-tight">Users</h1>
         </div>
         <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Manage system accounts — the Identity reference module, connected live to the HMS.Api backend.
+          Manage system accounts — the Identity reference module.
         </p>
       </div>
 

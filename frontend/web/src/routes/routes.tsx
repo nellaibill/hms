@@ -101,8 +101,9 @@ const patientRoutes = [
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
 ];
 
-// Roles Management (UI-only, mock data — no backend module yet) — reachable from the
-// Settings page ("Roles & Permissions"), mirroring how Users is wired in above.
+// Roles Management — reachable from the Settings page ("Roles & Permissions"), mirroring
+// how Users is wired in above. Has a real HMS.Modules.Identity backend (apiRoleRepository.ts
+// falls back to mockRolesStore.ts only when that backend is unreachable).
 const roleRoutes = [
   { path: 'admin/roles', element: withSuspense(<RolesListPage />) },
   { path: 'admin/roles/new', element: withSuspense(<RoleFormPage mode="create" />) },
