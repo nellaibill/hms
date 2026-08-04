@@ -73,4 +73,12 @@ export const API_ROUTES = {
     base: '/api/v1/staff-availability',
     byId: (id: string) => `/api/v1/staff-availability/${id}`,
   },
+  /** Mirrors HMS.Modules.HR.Endpoints.WeeklyRostersController. */
+  weeklyRosters: {
+    base: '/api/v1/weekly-rosters',
+    byId: (id: string) => `/api/v1/weekly-rosters/${id}`,
+    publish: (id: string) => `/api/v1/weekly-rosters/${id}/publish`,
+    copy: (id: string) => `/api/v1/weekly-rosters/${id}/copy`,
+    monthly: '/api/v1/weekly-rosters/monthly',
+  },
 } as const;

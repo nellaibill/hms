@@ -42,6 +42,10 @@ const StaffAvailabilityListPage = lazy(() => import('../pages/hr/StaffAvailabili
 const StaffAvailabilityCreatePage = lazy(() => import('../pages/hr/StaffAvailabilityCreatePage'));
 const StaffAvailabilityViewPage = lazy(() => import('../pages/hr/StaffAvailabilityViewPage'));
 const StaffAvailabilityEditPage = lazy(() => import('../pages/hr/StaffAvailabilityEditPage'));
+const WeeklyRostersListPage = lazy(() => import('../pages/hr/WeeklyRostersListPage'));
+const WeeklyRosterCreatePage = lazy(() => import('../pages/hr/WeeklyRosterCreatePage'));
+const WeeklyRosterViewPage = lazy(() => import('../pages/hr/WeeklyRosterViewPage'));
+const WeeklyRosterEditPage = lazy(() => import('../pages/hr/WeeklyRosterEditPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -152,6 +156,10 @@ const hrRoutes = [
       { path: 'admin/hr/staff-availability/new', element: withSuspense(<StaffAvailabilityCreatePage />) },
       { path: 'admin/hr/staff-availability/:id', element: withSuspense(<StaffAvailabilityViewPage />) },
       { path: 'admin/hr/staff-availability/:id/edit', element: withSuspense(<StaffAvailabilityEditPage />) },
+      { path: 'admin/hr/weekly-rosters', element: withSuspense(<WeeklyRostersListPage />) },
+      { path: 'admin/hr/weekly-rosters/new', element: withSuspense(<WeeklyRosterCreatePage />) },
+      { path: 'admin/hr/weekly-rosters/:id', element: withSuspense(<WeeklyRosterViewPage />) },
+      { path: 'admin/hr/weekly-rosters/:id/edit', element: withSuspense(<WeeklyRosterEditPage />) },
     ],
   },
 ];

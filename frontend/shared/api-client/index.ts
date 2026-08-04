@@ -8,3 +8,4 @@ export * from './services/mastersApi';
 export * from './services/productsApi';
 export * from './services/shiftsApi';
 export * from './services/staffAvailabilityApi';
+export * from './services/weeklyRostersApi';

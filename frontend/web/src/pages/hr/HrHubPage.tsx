@@ -1,8 +1,9 @@
-import { ArrowRight, CalendarClock, Clock, UsersRound } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarRange, Clock, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useShiftsQuery } from '@/features/shifts';
 import { useStaffAvailabilityQuery } from '@/features/staffAvailability';
+import { useWeeklyRostersQuery } from '@/features/weeklyRosters';
 
 interface HubCard {
   key: string;
@@ -16,9 +17,10 @@ interface HubCard {
 export default function HrHubPage() {
   const shiftsCount = useShiftsQuery({ page: 1, pageSize: 1 });
   const staffAvailabilityCount = useStaffAvailabilityQuery({ page: 1, pageSize: 1 });
+  const weeklyRostersCount = useWeeklyRostersQuery({ page: 1, pageSize: 1 });
 
-  // Extended with a card per phase as each Duty Roster area ships (Weekly Roster, Shift
-  // Assignments, Shift Swap Requests, Monthly Calendar).
+  // Extended with a card per phase as each Duty Roster area ships (Shift Assignments,
+  // Shift Swap Requests, Monthly Calendar).
   const cards: HubCard[] = [
     {
       key: 'shifts',
@@ -35,6 +37,14 @@ export default function HrHubPage() {
       icon: CalendarClock,
       path: '/admin/hr/staff-availability',
       count: staffAvailabilityCount.data?.meta.totalCount,
+    },
+    {
+      key: 'weekly-rosters',
+      label: 'Weekly Roster',
+      description: 'Manage per-department weekly roster headers and publish state.',
+      icon: CalendarRange,
+      path: '/admin/hr/weekly-rosters',
+      count: weeklyRostersCount.data?.meta.totalCount,
     },
   ];
 
