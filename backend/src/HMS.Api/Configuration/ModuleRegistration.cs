@@ -1,4 +1,5 @@
 using HMS.Modules.Branding;
+using HMS.Modules.HR;
 using HMS.Modules.Identity;
 using HMS.Modules.Masters;
 using HMS.Modules.Patients;
@@ -23,6 +24,7 @@ public static class ModuleRegistration
         // Products depends on Masters' public service seam (classification/unit reference
         // validation), so it must register after AddMastersModule.
         services.AddProductsModule(configuration);
+        services.AddHRModule(configuration);
 
         // Future modules register here, e.g.:
         // services.AddAppointmentsModule(configuration);
