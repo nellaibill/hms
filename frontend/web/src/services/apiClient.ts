@@ -1,4 +1,4 @@
-import { AuthApi, BrandingApi, HttpClient, MastersApi, PatientsApi, ProductsApi, RolesApi, ShiftsApi, UsersApi } from '@hms/shared';
+import { AuthApi, BrandingApi, HttpClient, MastersApi, PatientsApi, ProductsApi, RolesApi, ShiftsApi, StaffAvailabilityApi, UsersApi } from '@hms/shared';
 import { env } from '../config/env';
 
 // Module-level token holder — the HttpClient instance below is created once at import
@@ -23,3 +23,4 @@ export const brandingApi = new BrandingApi(httpClient);
 export const mastersApi = new MastersApi(httpClient);
 export const productsApi = new ProductsApi(httpClient);
 export const shiftsApi = new ShiftsApi(httpClient);
+export const staffAvailabilityApi = new StaffAvailabilityApi(httpClient);

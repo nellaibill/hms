@@ -1,7 +1,8 @@
-import { ArrowRight, Clock, UsersRound } from 'lucide-react';
+import { ArrowRight, CalendarClock, Clock, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useShiftsQuery } from '@/features/shifts';
+import { useStaffAvailabilityQuery } from '@/features/staffAvailability';
 
 interface HubCard {
   key: string;
@@ -14,9 +15,10 @@ interface HubCard {
 
 export default function HrHubPage() {
   const shiftsCount = useShiftsQuery({ page: 1, pageSize: 1 });
+  const staffAvailabilityCount = useStaffAvailabilityQuery({ page: 1, pageSize: 1 });
 
-  // Extended with a card per phase as each Duty Roster area ships (Staff Availability,
-  // Weekly Roster, Shift Assignments, Shift Swap Requests, Monthly Calendar).
+  // Extended with a card per phase as each Duty Roster area ships (Weekly Roster, Shift
+  // Assignments, Shift Swap Requests, Monthly Calendar).
   const cards: HubCard[] = [
     {
       key: 'shifts',
@@ -25,6 +27,14 @@ export default function HrHubPage() {
       icon: Clock,
       path: '/admin/hr/shifts',
       count: shiftsCount.data?.meta.totalCount,
+    },
+    {
+      key: 'staff-availability',
+      label: 'Staff Availability',
+      description: 'Track when staff are available or unavailable, and why.',
+      icon: CalendarClock,
+      path: '/admin/hr/staff-availability',
+      count: staffAvailabilityCount.data?.meta.totalCount,
     },
   ];
 

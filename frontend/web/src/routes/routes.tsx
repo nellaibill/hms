@@ -38,6 +38,10 @@ const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
 const ShiftCreatePage = lazy(() => import('../pages/hr/ShiftCreatePage'));
 const ShiftViewPage = lazy(() => import('../pages/hr/ShiftViewPage'));
 const ShiftEditPage = lazy(() => import('../pages/hr/ShiftEditPage'));
+const StaffAvailabilityListPage = lazy(() => import('../pages/hr/StaffAvailabilityListPage'));
+const StaffAvailabilityCreatePage = lazy(() => import('../pages/hr/StaffAvailabilityCreatePage'));
+const StaffAvailabilityViewPage = lazy(() => import('../pages/hr/StaffAvailabilityViewPage'));
+const StaffAvailabilityEditPage = lazy(() => import('../pages/hr/StaffAvailabilityEditPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -144,6 +148,10 @@ const hrRoutes = [
       { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
       { path: 'admin/hr/shifts/:id', element: withSuspense(<ShiftViewPage />) },
       { path: 'admin/hr/shifts/:id/edit', element: withSuspense(<ShiftEditPage />) },
+      { path: 'admin/hr/staff-availability', element: withSuspense(<StaffAvailabilityListPage />) },
+      { path: 'admin/hr/staff-availability/new', element: withSuspense(<StaffAvailabilityCreatePage />) },
+      { path: 'admin/hr/staff-availability/:id', element: withSuspense(<StaffAvailabilityViewPage />) },
+      { path: 'admin/hr/staff-availability/:id/edit', element: withSuspense(<StaffAvailabilityEditPage />) },
     ],
   },
 ];

@@ -5,3 +5,4 @@ export * from './patients/patient';
 export * from './branding/branding';
 export * from './products/product';
 export * from './hr/shift';
+export * from './hr/staffAvailability';
