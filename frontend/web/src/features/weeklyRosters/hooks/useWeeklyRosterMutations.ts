@@ -1,6 +1,14 @@
 import type { CopyWeeklyRosterRequest, CreateWeeklyRosterRequest, UpdateWeeklyRosterRequest } from '@hms/shared';
+import { NetworkError } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { weeklyRostersApi } from '../../../services/apiClient';
+import {
+  copyMockWeeklyRoster,
+  createMockWeeklyRoster,
+  deleteMockWeeklyRoster,
+  publishMockWeeklyRoster,
+  updateMockWeeklyRoster,
+} from '../mockWeeklyRostersStore';
 
 export function useInvalidateWeeklyRosters() {
   const queryClient = useQueryClient();
@@ -10,7 +18,16 @@ export function useInvalidateWeeklyRosters() {
 export function useCreateWeeklyRosterMutation() {
   const invalidate = useInvalidateWeeklyRosters();
   return useMutation({
-    mutationFn: (request: CreateWeeklyRosterRequest) => weeklyRostersApi.createWeeklyRoster(request),
+    mutationFn: async (request: CreateWeeklyRosterRequest) => {
+      try {
+        return await weeklyRostersApi.createWeeklyRoster(request);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return createMockWeeklyRoster(request);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
@@ -18,7 +35,16 @@ export function useCreateWeeklyRosterMutation() {
 export function useUpdateWeeklyRosterMutation() {
   const invalidate = useInvalidateWeeklyRosters();
   return useMutation({
-    mutationFn: ({ id, request }: { id: string; request: UpdateWeeklyRosterRequest }) => weeklyRostersApi.updateWeeklyRoster(id, request),
+    mutationFn: async ({ id, request }: { id: string; request: UpdateWeeklyRosterRequest }) => {
+      try {
+        return await weeklyRostersApi.updateWeeklyRoster(id, request);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return updateMockWeeklyRoster(id, request);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
@@ -26,7 +52,17 @@ export function useUpdateWeeklyRosterMutation() {
 export function useDeleteWeeklyRosterMutation() {
   const invalidate = useInvalidateWeeklyRosters();
   return useMutation({
-    mutationFn: (id: string) => weeklyRostersApi.deleteWeeklyRoster(id),
+    mutationFn: async (id: string) => {
+      try {
+        await weeklyRostersApi.deleteWeeklyRoster(id);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          deleteMockWeeklyRoster(id);
+          return;
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
@@ -34,7 +70,16 @@ export function useDeleteWeeklyRosterMutation() {
 export function usePublishWeeklyRosterMutation() {
   const invalidate = useInvalidateWeeklyRosters();
   return useMutation({
-    mutationFn: (id: string) => weeklyRostersApi.publishWeeklyRoster(id),
+    mutationFn: async (id: string) => {
+      try {
+        return await weeklyRostersApi.publishWeeklyRoster(id);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return publishMockWeeklyRoster(id);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
@@ -42,7 +87,16 @@ export function usePublishWeeklyRosterMutation() {
 export function useCopyWeeklyRosterMutation() {
   const invalidate = useInvalidateWeeklyRosters();
   return useMutation({
-    mutationFn: ({ id, request }: { id: string; request: CopyWeeklyRosterRequest }) => weeklyRostersApi.copyWeeklyRoster(id, request),
+    mutationFn: async ({ id, request }: { id: string; request: CopyWeeklyRosterRequest }) => {
+      try {
+        return await weeklyRostersApi.copyWeeklyRoster(id, request);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return copyMockWeeklyRoster(id, request);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
