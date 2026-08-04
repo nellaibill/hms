@@ -1,7 +1,13 @@
 import { ApiError, type SwapRequestFormValues } from '@hms/shared';
 import { ArrowLeft, Loader2, Repeat } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ShiftSwapRequestForm, useSwapRequestQuery, useUpdateSwapRequestMutation } from '../../features/shiftSwapRequests';
+import {
+  ShiftSwapRequestForm,
+  toDateTimeLocalInput,
+  toUtcIso,
+  useSwapRequestQuery,
+  useUpdateSwapRequestMutation,
+} from '../../features/shiftSwapRequests';
 
 export default function ShiftSwapRequestEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,7 +40,8 @@ export default function ShiftSwapRequestEditPage() {
         id: id as string,
         request: {
           ...values,
-          approvedDate: values.approvedDate || undefined,
+          requestedDate: toUtcIso(values.requestedDate),
+          approvedDate: values.approvedDate ? toUtcIso(values.approvedDate) : undefined,
           approvedBy: values.approvedBy || undefined,
           remarks: values.remarks || undefined,
         },
@@ -76,8 +83,8 @@ export default function ShiftSwapRequestEditPage() {
             currentShiftAssignmentId: request.currentShiftAssignmentId,
             requestedShiftAssignmentId: request.requestedShiftAssignmentId,
             status: request.status,
-            requestedDate: request.requestedDate,
-            approvedDate: request.approvedDate ?? '',
+            requestedDate: toDateTimeLocalInput(request.requestedDate),
+            approvedDate: request.approvedDate ? toDateTimeLocalInput(request.approvedDate) : '',
             approvedBy: request.approvedBy ?? '',
             remarks: request.remarks ?? '',
           }}

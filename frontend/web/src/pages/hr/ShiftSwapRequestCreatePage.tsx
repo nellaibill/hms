@@ -1,7 +1,7 @@
 import { ApiError, type SwapRequestFormValues } from '@hms/shared';
 import { ArrowLeft, Repeat } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShiftSwapRequestForm, useCreateSwapRequestMutation } from '../../features/shiftSwapRequests';
+import { ShiftSwapRequestForm, toUtcIso, useCreateSwapRequestMutation } from '../../features/shiftSwapRequests';
 
 export default function ShiftSwapRequestCreatePage() {
   const navigate = useNavigate();
@@ -11,7 +11,8 @@ export default function ShiftSwapRequestCreatePage() {
     mutation.mutate(
       {
         ...values,
-        approvedDate: values.approvedDate || undefined,
+        requestedDate: toUtcIso(values.requestedDate),
+        approvedDate: values.approvedDate ? toUtcIso(values.approvedDate) : undefined,
         approvedBy: values.approvedBy || undefined,
         remarks: values.remarks || undefined,
       },
