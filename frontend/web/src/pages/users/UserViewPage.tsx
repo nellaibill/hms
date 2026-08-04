@@ -1,15 +1,30 @@
 import { ApiError } from '@hms/shared';
-import { ArrowLeft, KeyRound, Loader2, Pencil, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, KeyRound, Loader2, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { SetPasswordDialog, UserDetails, useSetPasswordMutation, useUserQuery } from '../../features/users';
+import { env } from '@/config/env';
+import {
+  SetPasswordDialog,
+  UploadProfilePhotoDialog,
+  UserDetails,
+  useSetPasswordMutation,
+  useUploadProfilePhotoMutation,
+  useUserQuery,
+} from '../../features/users';
+
+function initialsOf(firstName: string, lastName: string) {
+  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
+}
 
 export default function UserViewPage() {
   const { id } = useParams<{ id: string }>();
   const { data: user, isPending, isError } = useUserQuery(id);
   const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const setPasswordMutation = useSetPasswordMutation();
+  const uploadPhotoMutation = useUploadProfilePhotoMutation();
 
   function handleSetPassword(password: string) {
     if (!id) return;
@@ -17,6 +32,11 @@ export default function UserViewPage() {
       { id, request: { password } },
       { onSuccess: () => setIsSettingPassword(false) },
     );
+  }
+
+  function handleUploadPhoto(file: File) {
+    if (!id) return;
+    uploadPhotoMutation.mutate({ id, file }, { onSuccess: () => setIsUploadingPhoto(false) });
   }
 
   if (isPending) {
@@ -71,9 +91,25 @@ export default function UserViewPage() {
           </Button>
         </div>
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <UserRound className="h-5 w-5" />
-          </span>
+          <div className="relative shrink-0">
+            <Avatar className="h-12 w-12 border-2 border-page-banner-foreground/20">
+              <AvatarImage
+                src={user.profilePhotoUrl ? `${env.apiBaseUrl}/${user.profilePhotoUrl}` : undefined}
+                alt=""
+              />
+              <AvatarFallback className="bg-page-banner-foreground/15 text-page-banner-foreground">
+                {initialsOf(user.firstName, user.lastName)}
+              </AvatarFallback>
+            </Avatar>
+            <button
+              type="button"
+              aria-label="Change profile photo"
+              onClick={() => setIsUploadingPhoto(true)}
+              className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-page-banner-foreground/30 bg-page-banner text-page-banner-foreground hover:bg-page-banner-foreground/20"
+            >
+              <Camera className="h-3 w-3" />
+            </button>
+          </div>
           <h1 className="text-xl font-semibold tracking-tight">
             {user.firstName} {user.lastName}
           </h1>
@@ -94,6 +130,19 @@ export default function UserViewPage() {
           onCancel={() => {
             setPasswordMutation.reset();
             setIsSettingPassword(false);
+          }}
+        />
+      )}
+
+      {isUploadingPhoto && (
+        <UploadProfilePhotoDialog
+          user={user}
+          isSubmitting={uploadPhotoMutation.isPending}
+          apiError={uploadPhotoMutation.error instanceof ApiError ? uploadPhotoMutation.error : null}
+          onSubmit={handleUploadPhoto}
+          onCancel={() => {
+            uploadPhotoMutation.reset();
+            setIsUploadingPhoto(false);
           }}
         />
       )}

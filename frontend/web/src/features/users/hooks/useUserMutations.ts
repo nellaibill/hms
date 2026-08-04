@@ -54,3 +54,11 @@ export function useSetPasswordMutation() {
     onSuccess: invalidateUsers,
   });
 }
+
+export function useUploadProfilePhotoMutation() {
+  const invalidateUsers = useInvalidateUsers();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => usersApi.uploadProfilePhoto(id, file),
+    onSuccess: invalidateUsers,
+  });
+}

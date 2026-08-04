@@ -17,6 +17,7 @@ export const API_ROUTES = {
     activate: (id: string) => `/api/v1/users/${id}/activate`,
     deactivate: (id: string) => `/api/v1/users/${id}/deactivate`,
     password: (id: string) => `/api/v1/users/${id}/password`,
+    profilePhoto: (id: string) => `/api/v1/users/${id}/profile-photo`,
   },
   roles: {
     base: '/api/v1/roles',
