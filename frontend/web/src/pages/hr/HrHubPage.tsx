@@ -1,8 +1,9 @@
-import { ArrowRight, CalendarCheck2, CalendarClock, CalendarRange, Clock, UsersRound } from 'lucide-react';
+import { ArrowRight, CalendarCheck2, CalendarClock, CalendarRange, Clock, Repeat, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useShiftAssignmentsQuery } from '@/features/shiftAssignments';
 import { useShiftsQuery } from '@/features/shifts';
+import { useSwapRequestsQuery } from '@/features/shiftSwapRequests';
 import { useStaffAvailabilityQuery } from '@/features/staffAvailability';
 import { useWeeklyRostersQuery } from '@/features/weeklyRosters';
 
@@ -20,9 +21,9 @@ export default function HrHubPage() {
   const staffAvailabilityCount = useStaffAvailabilityQuery({ page: 1, pageSize: 1 });
   const weeklyRostersCount = useWeeklyRostersQuery({ page: 1, pageSize: 1 });
   const shiftAssignmentsCount = useShiftAssignmentsQuery({ page: 1, pageSize: 1 });
+  const swapRequestsCount = useSwapRequestsQuery({ page: 1, pageSize: 1 });
 
-  // Extended with a card per phase as each Duty Roster area ships (Shift Swap Requests,
-  // Monthly Calendar).
+  // Extended with a card per phase as each Duty Roster area ships (Monthly Calendar).
   const cards: HubCard[] = [
     {
       key: 'shifts',
@@ -55,6 +56,14 @@ export default function HrHubPage() {
       icon: CalendarCheck2,
       path: '/admin/hr/shift-assignments',
       count: shiftAssignmentsCount.data?.meta.totalCount,
+    },
+    {
+      key: 'shift-swap-requests',
+      label: 'Shift Swap Requests',
+      description: 'Requests for staff to swap shift assignments.',
+      icon: Repeat,
+      path: '/admin/hr/shift-swap-requests',
+      count: swapRequestsCount.data?.meta.totalCount,
     },
   ];
 

@@ -86,4 +86,9 @@ export const API_ROUTES = {
     base: '/api/v1/shift-assignments',
     byId: (id: string) => `/api/v1/shift-assignments/${id}`,
   },
+  /** Mirrors HMS.Modules.HR.Endpoints.ShiftSwapRequestsController. */
+  shiftSwapRequests: {
+    base: '/api/v1/shift-swap-requests',
+    byId: (id: string) => `/api/v1/shift-swap-requests/${id}`,
+  },
 } as const;

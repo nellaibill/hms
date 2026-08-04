@@ -50,6 +50,10 @@ const ShiftAssignmentsListPage = lazy(() => import('../pages/hr/ShiftAssignments
 const ShiftAssignmentCreatePage = lazy(() => import('../pages/hr/ShiftAssignmentCreatePage'));
 const ShiftAssignmentViewPage = lazy(() => import('../pages/hr/ShiftAssignmentViewPage'));
 const ShiftAssignmentEditPage = lazy(() => import('../pages/hr/ShiftAssignmentEditPage'));
+const ShiftSwapRequestsListPage = lazy(() => import('../pages/hr/ShiftSwapRequestsListPage'));
+const ShiftSwapRequestCreatePage = lazy(() => import('../pages/hr/ShiftSwapRequestCreatePage'));
+const ShiftSwapRequestViewPage = lazy(() => import('../pages/hr/ShiftSwapRequestViewPage'));
+const ShiftSwapRequestEditPage = lazy(() => import('../pages/hr/ShiftSwapRequestEditPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -168,6 +172,10 @@ const hrRoutes = [
       { path: 'admin/hr/shift-assignments/new', element: withSuspense(<ShiftAssignmentCreatePage />) },
       { path: 'admin/hr/shift-assignments/:id', element: withSuspense(<ShiftAssignmentViewPage />) },
       { path: 'admin/hr/shift-assignments/:id/edit', element: withSuspense(<ShiftAssignmentEditPage />) },
+      { path: 'admin/hr/shift-swap-requests', element: withSuspense(<ShiftSwapRequestsListPage />) },
+      { path: 'admin/hr/shift-swap-requests/new', element: withSuspense(<ShiftSwapRequestCreatePage />) },
+      { path: 'admin/hr/shift-swap-requests/:id', element: withSuspense(<ShiftSwapRequestViewPage />) },
+      { path: 'admin/hr/shift-swap-requests/:id/edit', element: withSuspense(<ShiftSwapRequestEditPage />) },
     ],
   },
 ];

@@ -8,3 +8,4 @@ export * from './hr/shift';
 export * from './hr/staffAvailability';
 export * from './hr/weeklyRoster';
 export * from './hr/shiftAssignment';
+export * from './hr/shiftSwapRequest';

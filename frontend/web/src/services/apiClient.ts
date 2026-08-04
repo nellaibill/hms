@@ -8,6 +8,7 @@ import {
   RolesApi,
   ShiftAssignmentsApi,
   ShiftsApi,
+  ShiftSwapRequestsApi,
   StaffAvailabilityApi,
   UsersApi,
   WeeklyRostersApi,
@@ -39,3 +40,4 @@ export const shiftsApi = new ShiftsApi(httpClient);
 export const staffAvailabilityApi = new StaffAvailabilityApi(httpClient);
 export const weeklyRostersApi = new WeeklyRostersApi(httpClient);
 export const shiftAssignmentsApi = new ShiftAssignmentsApi(httpClient);
+export const shiftSwapRequestsApi = new ShiftSwapRequestsApi(httpClient);
