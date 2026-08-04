@@ -1,6 +1,8 @@
 import type { CreateSwapRequest, UpdateSwapRequest } from '@hms/shared';
+import { NetworkError } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { shiftSwapRequestsApi } from '../../../services/apiClient';
+import { createMockSwapRequest, deleteMockSwapRequest, updateMockSwapRequest } from '../mockShiftSwapRequestsStore';
 
 function useInvalidateSwapRequests() {
   const queryClient = useQueryClient();
@@ -10,7 +12,16 @@ function useInvalidateSwapRequests() {
 export function useCreateSwapRequestMutation() {
   const invalidate = useInvalidateSwapRequests();
   return useMutation({
-    mutationFn: (request: CreateSwapRequest) => shiftSwapRequestsApi.createSwapRequest(request),
+    mutationFn: async (request: CreateSwapRequest) => {
+      try {
+        return await shiftSwapRequestsApi.createSwapRequest(request);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return createMockSwapRequest(request);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
@@ -18,7 +29,16 @@ export function useCreateSwapRequestMutation() {
 export function useUpdateSwapRequestMutation() {
   const invalidate = useInvalidateSwapRequests();
   return useMutation({
-    mutationFn: ({ id, request }: { id: string; request: UpdateSwapRequest }) => shiftSwapRequestsApi.updateSwapRequest(id, request),
+    mutationFn: async ({ id, request }: { id: string; request: UpdateSwapRequest }) => {
+      try {
+        return await shiftSwapRequestsApi.updateSwapRequest(id, request);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return updateMockSwapRequest(id, request);
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
@@ -26,7 +46,17 @@ export function useUpdateSwapRequestMutation() {
 export function useDeleteSwapRequestMutation() {
   const invalidate = useInvalidateSwapRequests();
   return useMutation({
-    mutationFn: (id: string) => shiftSwapRequestsApi.deleteSwapRequest(id),
+    mutationFn: async (id: string) => {
+      try {
+        await shiftSwapRequestsApi.deleteSwapRequest(id);
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          deleteMockSwapRequest(id);
+          return;
+        }
+        throw err;
+      }
+    },
     onSuccess: invalidate,
   });
 }
