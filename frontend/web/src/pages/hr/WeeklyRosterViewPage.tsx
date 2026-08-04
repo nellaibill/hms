@@ -1,13 +1,20 @@
-import { ArrowLeft, CalendarRange, Loader2, Pencil } from 'lucide-react';
+import { ArrowLeft, CalendarRange, Loader2, Pencil, Send } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useWeeklyRosterQuery } from '../../features/weeklyRosters';
+import { usePublishWeeklyRosterMutation, useWeeklyRosterQuery } from '../../features/weeklyRosters';
 
 export default function WeeklyRosterViewPage() {
   const { id } = useParams<{ id: string }>();
   const { data: roster, isPending, isError } = useWeeklyRosterQuery(id);
+  const publishMutation = usePublishWeeklyRosterMutation();
+
+  function handlePublish() {
+    if (id) {
+      publishMutation.mutate(id);
+    }
+  }
 
   if (isPending) {
     return (
@@ -39,6 +46,17 @@ export default function WeeklyRosterViewPage() {
 
       <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
         <div className="absolute right-6 top-1/2 flex -translate-y-1/2 items-center gap-2">
+          {!roster.published && (
+            <Button
+              variant="outline"
+              className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+              onClick={handlePublish}
+              disabled={publishMutation.isPending}
+            >
+              <Send className="h-4 w-4" />
+              {publishMutation.isPending ? 'Publishing…' : 'Publish'}
+            </Button>
+          )}
           <Button
             asChild
             variant="outline"
@@ -60,6 +78,12 @@ export default function WeeklyRosterViewPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
+        {publishMutation.isError && (
+          <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {publishMutation.error instanceof Error ? publishMutation.error.message : 'Failed to publish roster.'}
+          </p>
+        )}
+
         <Card>
           <CardContent className="grid grid-cols-1 gap-4 py-6 sm:grid-cols-2">
             <div>

@@ -9,11 +9,13 @@ interface WeeklyRosterTableProps {
   sort: string;
   onSortChange: (sort: string) => void;
   onDeleteRequested: (roster: WeeklyRoster) => void;
+  onPublishRequested: (roster: WeeklyRoster) => void;
+  isPublishingId: string | undefined;
 }
 
 const columns: Array<{ field: string; label: string }> = [{ field: 'weekStartDate', label: 'Week Start' }];
 
-export function WeeklyRosterTable({ rosters, sort, onSortChange, onDeleteRequested }: WeeklyRosterTableProps) {
+export function WeeklyRosterTable({ rosters, sort, onSortChange, onDeleteRequested, onPublishRequested, isPublishingId }: WeeklyRosterTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
 
@@ -58,6 +60,16 @@ export function WeeklyRosterTable({ rosters, sort, onSortChange, onDeleteRequest
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
+                  {!roster.published && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onPublishRequested(roster)}
+                      disabled={isPublishingId === roster.id}
+                    >
+                      {isPublishingId === roster.id ? 'Publishing…' : 'Publish'}
+                    </Button>
+                  )}
                   <Button asChild variant="ghost" size="sm">
                     <Link to={`/admin/hr/weekly-rosters/${roster.id}/edit`}>Edit</Link>
                   </Button>

@@ -48,4 +48,10 @@ export class WeeklyRostersApi {
   async deleteWeeklyRoster(id: string): Promise<void> {
     await this.client.delete(API_ROUTES.weeklyRosters.byId(id));
   }
+
+  /** Idempotent per the backend's own doc comment — publishing an already-published roster is a no-op, not an error. */
+  async publishWeeklyRoster(id: string): Promise<WeeklyRoster> {
+    const response = await this.client.post<WeeklyRoster>(API_ROUTES.weeklyRosters.publish(id));
+    return response.data;
+  }
 }

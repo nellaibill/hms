@@ -9,6 +9,7 @@ import {
   WeeklyRosterListToolbar,
   WeeklyRosterTable,
   useDeleteWeeklyRosterMutation,
+  usePublishWeeklyRosterMutation,
   useWeeklyRostersQuery,
 } from '../../features/weeklyRosters';
 
@@ -19,6 +20,7 @@ export default function WeeklyRostersListPage() {
 
   const { data, isPending, isError, error } = useWeeklyRostersQuery({ page, pageSize: 20, sort });
   const deleteMutation = useDeleteWeeklyRosterMutation();
+  const publishMutation = usePublishWeeklyRosterMutation();
 
   function handleSortChange(value: string) {
     setSort(value);
@@ -79,7 +81,14 @@ export default function WeeklyRostersListPage() {
 
         {!isPending && !isError && data && data.items.length > 0 && (
           <div className="flex flex-col gap-3">
-            <WeeklyRosterTable rosters={data.items} sort={sort} onSortChange={handleSortChange} onDeleteRequested={setRosterPendingDelete} />
+            <WeeklyRosterTable
+              rosters={data.items}
+              sort={sort}
+              onSortChange={handleSortChange}
+              onDeleteRequested={setRosterPendingDelete}
+              onPublishRequested={(roster) => publishMutation.mutate(roster.id)}
+              isPublishingId={publishMutation.isPending ? (publishMutation.variables as string | undefined) : undefined}
+            />
             <Pagination meta={data.meta} onPageChange={setPage} />
           </div>
         )}

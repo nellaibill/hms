@@ -30,3 +30,11 @@ export function useDeleteWeeklyRosterMutation() {
     onSuccess: invalidate,
   });
 }
+
+export function usePublishWeeklyRosterMutation() {
+  const invalidate = useInvalidateWeeklyRosters();
+  return useMutation({
+    mutationFn: (id: string) => weeklyRostersApi.publishWeeklyRoster(id),
+    onSuccess: invalidate,
+  });
+}
