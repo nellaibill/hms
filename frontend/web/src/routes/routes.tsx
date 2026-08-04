@@ -33,6 +33,11 @@ const InvoiceLedgerPage = lazy(() => import('../pages/finance/InvoiceLedgerPage'
 const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'));
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
+const HrHubPage = lazy(() => import('../pages/hr/HrHubPage'));
+const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
+const ShiftCreatePage = lazy(() => import('../pages/hr/ShiftCreatePage'));
+const ShiftViewPage = lazy(() => import('../pages/hr/ShiftViewPage'));
+const ShiftEditPage = lazy(() => import('../pages/hr/ShiftEditPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -51,6 +56,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/patients/enquiry': withSuspense(<PatientsListPage />),
   '/support/inventory': withSuspense(<ProductsListPage />),
   '/finance/accounts': withSuspense(<InvoiceLedgerPage />),
+  '/admin/hr': withSuspense(<HrHubPage />),
 };
 
 const moduleRoutes = getAllLeaves().map((leaf) => ({
@@ -127,6 +133,21 @@ const financeRoutes = [
   { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
 ];
 
+// Human Resource Management — Duty Roster (HMS.Modules.HR), reachable from the '/admin/hr'
+// nav leaf (wired via specialPages above). Route-gated to hr/admin via RequireRole, mirroring
+// brandingRoutes, since the nav-level role filter alone doesn't block direct URL access.
+const hrRoutes = [
+  {
+    element: <RequireRole roles={['hr', 'admin']} />,
+    children: [
+      { path: 'admin/hr/shifts', element: withSuspense(<ShiftsListPage />) },
+      { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
+      { path: 'admin/hr/shifts/:id', element: withSuspense(<ShiftViewPage />) },
+      { path: 'admin/hr/shifts/:id/edit', element: withSuspense(<ShiftEditPage />) },
+    ],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -149,6 +170,7 @@ export const router = createBrowserRouter(
             ...mastersRoutes,
             ...productRoutes,
             ...financeRoutes,
+            ...hrRoutes,
           ],
         },
       ],
