@@ -1,8 +1,8 @@
 import {
   AuthApi,
   BrandingApi,
-  HttpClient,
   MastersApi,
+  OfflineHttpClient,
   PatientsApi,
   ProductsApi,
   RolesApi,
@@ -13,8 +13,6 @@ import {
   UsersApi,
   WeeklyRostersApi,
 } from '@hms/shared';
-import { env } from '../config/env';
-
 // Module-level token holder — the HttpClient instance below is created once at import
 // time, before AuthProvider mounts, so it reads the current token through this indirection
 // rather than a value captured at construction. AuthContext is the only writer.
@@ -24,10 +22,15 @@ export function setAuthToken(token: string | null) {
   authToken = token;
 }
 
-export const httpClient = new HttpClient({
-  baseUrl: env.apiBaseUrl,
-  getAuthToken: () => authToken,
-});
+// Demo branch (feature/demo-ui-with-mock-data): every *Api call below must always use
+// in-app mock data, regardless of whether a real backend happens to be reachable — not
+// just as a fallback when it isn't. OfflineHttpClient never calls fetch; it immediately
+// rejects every request with NetworkError, so every module's existing NetworkError-catch
+// mock fallback (mockRolesStore.ts, masterStoreFactory.ts, mockProductsStore.ts, etc.) is
+// always taken. See docs note in offlineHttpClient.ts. getAuthToken is wired through
+// unchanged (even though this client never actually calls fetch) so AuthContext's existing
+// setAuthToken flow keeps working exactly as it does for a real backend.
+export const httpClient = new OfflineHttpClient({ getAuthToken: () => authToken });
 
 export const authApi = new AuthApi(httpClient);
 export const usersApi = new UsersApi(httpClient);

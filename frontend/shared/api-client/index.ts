@@ -1,4 +1,5 @@
 export * from './httpClient';
+export * from './offlineHttpClient';
 export * from './services/authApi';
 export * from './services/usersApi';
 export * from './services/rolesApi';
