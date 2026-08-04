@@ -7,11 +7,16 @@ function mastersEntity(segment: string) {
 
 /** API route paths for the Users module — mirrors HMS.Modules.Identity.Endpoints.UsersController. */
 export const API_ROUTES = {
+  auth: {
+    login: '/api/v1/auth/login',
+    me: '/api/v1/auth/me',
+  },
   users: {
     base: '/api/v1/users',
     byId: (id: string) => `/api/v1/users/${id}`,
     activate: (id: string) => `/api/v1/users/${id}/activate`,
     deactivate: (id: string) => `/api/v1/users/${id}/deactivate`,
+    password: (id: string) => `/api/v1/users/${id}/password`,
   },
   roles: {
     base: '/api/v1/roles',

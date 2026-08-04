@@ -1,11 +1,23 @@
-import { ArrowLeft, Loader2, Pencil, UserRound } from 'lucide-react';
+import { ApiError } from '@hms/shared';
+import { ArrowLeft, KeyRound, Loader2, Pencil, UserRound } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { UserDetails, useUserQuery } from '../../features/users';
+import { SetPasswordDialog, UserDetails, useSetPasswordMutation, useUserQuery } from '../../features/users';
 
 export default function UserViewPage() {
   const { id } = useParams<{ id: string }>();
   const { data: user, isPending, isError } = useUserQuery(id);
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const setPasswordMutation = useSetPasswordMutation();
+
+  function handleSetPassword(password: string) {
+    if (!id) return;
+    setPasswordMutation.mutate(
+      { id, request: { password } },
+      { onSuccess: () => setIsSettingPassword(false) },
+    );
+  }
 
   if (isPending) {
     return (
@@ -38,16 +50,26 @@ export default function UserViewPage() {
       {/* Centered, brand-colored banner — matches the Page banner style used
           across module pages (Theme & Branding → Section headers). */}
       <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <Button
-          asChild
-          variant="outline"
-          className="absolute right-6 top-1/2 -translate-y-1/2 gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-        >
-          <Link to={`/users/${user.id}/edit`}>
-            <Pencil className="h-4 w-4" />
-            Edit
-          </Link>
-        </Button>
+        <div className="absolute right-6 top-1/2 flex -translate-y-1/2 items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+            onClick={() => setIsSettingPassword(true)}
+          >
+            <KeyRound className="h-4 w-4" />
+            Set password
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+          >
+            <Link to={`/users/${user.id}/edit`}>
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
+        </div>
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
             <UserRound className="h-5 w-5" />
@@ -62,6 +84,19 @@ export default function UserViewPage() {
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
       <UserDetails user={user} />
       </div>
+
+      {isSettingPassword && (
+        <SetPasswordDialog
+          user={user}
+          isSubmitting={setPasswordMutation.isPending}
+          apiError={setPasswordMutation.error instanceof ApiError ? setPasswordMutation.error : null}
+          onSubmit={handleSetPassword}
+          onCancel={() => {
+            setPasswordMutation.reset();
+            setIsSettingPassword(false);
+          }}
+        />
+      )}
     </div>
   );
 }

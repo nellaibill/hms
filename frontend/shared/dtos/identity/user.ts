@@ -43,3 +43,8 @@ export interface UserListQuery {
   search?: string;
   isActive?: boolean;
 }
+
+/** Mirrors HMS.Modules.Identity.Contracts.SetPasswordRequest. */
+export interface SetPasswordRequest {
+  password: string;
+}

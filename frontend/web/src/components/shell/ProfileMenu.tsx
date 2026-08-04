@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/features/auth/AuthContext';
-import { roleDefinitions } from '@/features/auth/mockUsers';
+import { roleDefinitions } from '@/features/auth/roleDefinitions';
 import { useTheme } from '@/lib/theme-provider';
 
 function initialsOf(name: string) {
@@ -47,7 +47,6 @@ export function ProfileMenu() {
         <DropdownMenuLabel>
           <span className="block text-sm font-medium">{user?.name}</span>
           <span className="block text-xs font-normal text-muted-foreground">{roleLabel}</span>
-          <span className="block text-xs font-normal text-muted-foreground">{user?.department}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem>My Profile</DropdownMenuItem>

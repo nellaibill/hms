@@ -1,5 +1,6 @@
 export * from './components/DeleteUserDialog';
 export * from './components/Pagination';
+export * from './components/SetPasswordDialog';
 export * from './components/StatusBadge';
 export * from './components/UserDetails';
 export * from './components/UserForm';
