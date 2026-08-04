@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { LoginResponse } from '@hms/shared';
+import { NetworkError, type LoginResponse } from '@hms/shared';
 import { authApi, setAuthToken } from '../../services/apiClient';
+import { mockLogin } from './mockAuthStore';
 import type { AuthUser, Role } from './types';
 
 const STORAGE_KEY = 'hms-session';
@@ -57,7 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(initialSession?.user ?? null);
 
   const login = async (role: Role, username: string, password: string) => {
-    const response = await authApi.login({ loginType: role, username, password });
+    let response: LoginResponse;
+    try {
+      response = await authApi.login({ loginType: role, username, password });
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        response = mockLogin({ loginType: role, username, password });
+      } else {
+        throw err;
+      }
+    }
     const session: StoredSession = {
       token: response.token,
       expiresAt: Date.now() + response.expiresIn * 1000,
