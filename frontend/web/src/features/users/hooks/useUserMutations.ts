@@ -1,4 +1,4 @@
-import type { CreateUserRequest, UpdateUserRequest } from '@hms/shared';
+import type { CreateUserRequest, SetPasswordRequest, UpdateUserRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '../../../services/apiClient';
 
@@ -43,6 +43,22 @@ export function useDeactivateUserMutation() {
   const invalidateUsers = useInvalidateUsers();
   return useMutation({
     mutationFn: (id: string) => usersApi.deactivateUser(id),
+    onSuccess: invalidateUsers,
+  });
+}
+
+export function useSetPasswordMutation() {
+  const invalidateUsers = useInvalidateUsers();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: SetPasswordRequest }) => usersApi.setPassword(id, request),
+    onSuccess: invalidateUsers,
+  });
+}
+
+export function useUploadProfilePhotoMutation() {
+  const invalidateUsers = useInvalidateUsers();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => usersApi.uploadProfilePhoto(id, file),
     onSuccess: invalidateUsers,
   });
 }

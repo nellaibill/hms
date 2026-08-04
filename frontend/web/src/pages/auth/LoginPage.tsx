@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { ApiError } from '@hms/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { branding } from '@/config/branding';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
-import { roleDefinitions } from '@/features/auth/mockUsers';
+import { roleDefinitions } from '@/features/auth/roleDefinitions';
 import type { Role } from '@/features/auth/types';
 
 interface LocationState {
@@ -29,8 +29,9 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!username.trim() || !password.trim()) {
@@ -38,11 +39,17 @@ export default function LoginPage() {
       return;
     }
 
-    // Mock authentication only — no credential verification, no API call.
     setError(null);
-    login(role, username.trim());
-    const from = (location.state as LocationState | null)?.from ?? '/dashboard';
-    navigate(from, { replace: true });
+    setIsSubmitting(true);
+    try {
+      await login(role, username.trim(), password);
+      const from = (location.state as LocationState | null)?.from ?? '/dashboard';
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -121,14 +128,9 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button type="submit" size="lg" className="mt-1">
-              Sign in
+            <Button type="submit" size="lg" className="mt-1" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
             </Button>
-
-            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Demo shell — any username/password is accepted for the selected role.
-            </p>
           </form>
         </CardContent>
       </Card>

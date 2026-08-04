@@ -16,14 +16,14 @@ export interface RoleDefinition {
   description: string;
 }
 
-export interface MockUser {
+/** The signed-in principal, derived from HMS.Modules.Identity.Contracts.LoginUserResponse. */
+export interface AuthUser {
   id: string;
   name: string;
+  /** The Login Type selected at sign-in (validated server-side to match the user's assigned role). */
   role: Role;
   username: string;
-  department?: string;
-}
-
-export interface AuthState {
-  user: MockUser | null;
+  email: string;
+  /** The freeform Role name from the Roles module (e.g. "Doctor / Consultant") — display only. */
+  roleName: string;
 }
