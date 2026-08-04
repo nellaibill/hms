@@ -1,4 +1,6 @@
+import { NetworkError } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
+import { listMockShifts } from '@/features/shifts/mockShiftsStore';
 import { shiftsApi } from '../../../services/apiClient';
 
 interface ShiftNameProps {
@@ -10,7 +12,16 @@ interface ShiftNameProps {
 export function ShiftName({ shiftId }: ShiftNameProps) {
   const { data } = useQuery({
     queryKey: ['shifts', 'select-list'],
-    queryFn: () => shiftsApi.getShifts({ pageSize: 100, isActive: true }),
+    queryFn: async () => {
+      try {
+        return await shiftsApi.getShifts({ pageSize: 100, isActive: true });
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return listMockShifts({ pageSize: 100, isActive: true });
+        }
+        throw err;
+      }
+    },
   });
 
   const shift = data?.items.find((item) => item.id === shiftId);

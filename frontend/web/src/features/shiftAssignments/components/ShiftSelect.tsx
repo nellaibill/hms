@@ -1,5 +1,7 @@
+import { NetworkError } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { listMockShifts } from '@/features/shifts/mockShiftsStore';
 import { shiftsApi } from '../../../services/apiClient';
 
 interface ShiftSelectProps {
@@ -14,7 +16,16 @@ interface ShiftSelectProps {
 export function ShiftSelect({ id, value, onValueChange, ariaLabel = 'Shift' }: ShiftSelectProps) {
   const { data } = useQuery({
     queryKey: ['shifts', 'select-list'],
-    queryFn: () => shiftsApi.getShifts({ pageSize: 100, isActive: true }),
+    queryFn: async () => {
+      try {
+        return await shiftsApi.getShifts({ pageSize: 100, isActive: true });
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return listMockShifts({ pageSize: 100, isActive: true });
+        }
+        throw err;
+      }
+    },
   });
 
   const options = (data?.items ?? []).map((shift) => ({
