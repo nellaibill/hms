@@ -1,19 +1,37 @@
-import { ArrowLeft, CalendarRange, Loader2, Pencil, Send } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { ApiError } from '@hms/shared';
+import { ArrowLeft, CalendarRange, Copy, Loader2, Pencil, Send } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { usePublishWeeklyRosterMutation, useWeeklyRosterQuery } from '../../features/weeklyRosters';
+import { CopyWeeklyRosterDialog, useCopyWeeklyRosterMutation, usePublishWeeklyRosterMutation, useWeeklyRosterQuery } from '../../features/weeklyRosters';
 
 export default function WeeklyRosterViewPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: roster, isPending, isError } = useWeeklyRosterQuery(id);
   const publishMutation = usePublishWeeklyRosterMutation();
+  const copyMutation = useCopyWeeklyRosterMutation();
+  const [isCopying, setIsCopying] = useState(false);
 
   function handlePublish() {
     if (id) {
       publishMutation.mutate(id);
     }
+  }
+
+  function handleCopy(values: { targetWeekStartDate: string }) {
+    if (!id) return;
+    copyMutation.mutate(
+      { id, request: values },
+      {
+        onSuccess: (newRoster) => {
+          setIsCopying(false);
+          navigate(`/admin/hr/weekly-rosters/${newRoster.id}`);
+        },
+      },
+    );
   }
 
   if (isPending) {
@@ -57,6 +75,14 @@ export default function WeeklyRosterViewPage() {
               {publishMutation.isPending ? 'Publishing…' : 'Publish'}
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+            onClick={() => setIsCopying(true)}
+          >
+            <Copy className="h-4 w-4" />
+            Copy
+          </Button>
           <Button
             asChild
             variant="outline"
@@ -109,6 +135,19 @@ export default function WeeklyRosterViewPage() {
           </CardContent>
         </Card>
       </div>
+
+      {isCopying && (
+        <CopyWeeklyRosterDialog
+          roster={roster}
+          isSubmitting={copyMutation.isPending}
+          apiError={copyMutation.error instanceof ApiError ? copyMutation.error : null}
+          onSubmit={handleCopy}
+          onCancel={() => {
+            copyMutation.reset();
+            setIsCopying(false);
+          }}
+        />
+      )}
     </div>
   );
 }

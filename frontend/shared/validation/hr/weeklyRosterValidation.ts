@@ -21,3 +21,11 @@ export const createWeeklyRosterSchema = weeklyRosterSchema;
 export const updateWeeklyRosterSchema = weeklyRosterSchema;
 
 export type WeeklyRosterFormValues = z.infer<typeof weeklyRosterSchema>;
+
+/** Mirrors CopyWeeklyRosterRequestValidator — the only field on the copy request, and the
+ * only thing that needs validating: the caller must explicitly choose a destination week. */
+export const copyWeeklyRosterSchema = z.object({
+  targetWeekStartDate: z.string().trim().min(1, 'Target week start date is required'),
+});
+
+export type CopyWeeklyRosterFormValues = z.infer<typeof copyWeeklyRosterSchema>;

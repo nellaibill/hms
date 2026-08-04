@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateWeeklyRosterRequest, UpdateWeeklyRosterRequest, WeeklyRoster, WeeklyRosterListQuery } from '../../dtos';
+import type { CopyWeeklyRosterRequest, CreateWeeklyRosterRequest, UpdateWeeklyRosterRequest, WeeklyRoster, WeeklyRosterListQuery } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -52,6 +52,13 @@ export class WeeklyRostersApi {
   /** Idempotent per the backend's own doc comment — publishing an already-published roster is a no-op, not an error. */
   async publishWeeklyRoster(id: string): Promise<WeeklyRoster> {
     const response = await this.client.post<WeeklyRoster>(API_ROUTES.weeklyRosters.publish(id));
+    return response.data;
+  }
+
+  /** Duplicates the roster's metadata (DepartmentId) onto a new, unpublished roster for the
+   * caller-chosen target week. Does not copy ShiftAssignments. */
+  async copyWeeklyRoster(id: string, request: CopyWeeklyRosterRequest): Promise<WeeklyRoster> {
+    const response = await this.client.post<WeeklyRoster>(API_ROUTES.weeklyRosters.copy(id), request);
     return response.data;
   }
 }

@@ -34,3 +34,10 @@ export interface WeeklyRosterListQuery {
   sort?: string;
   search?: string;
 }
+
+/** Mirrors HMS.Modules.HR.Contracts.CopyWeeklyRosterRequest — POST /weekly-rosters/{id}/copy's
+ * body. The caller explicitly chooses the destination week rather than the endpoint
+ * silently adding 7 days to the source roster's week. */
+export interface CopyWeeklyRosterRequest {
+  targetWeekStartDate: string;
+}

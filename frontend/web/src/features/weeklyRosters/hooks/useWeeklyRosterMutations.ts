@@ -1,4 +1,4 @@
-import type { CreateWeeklyRosterRequest, UpdateWeeklyRosterRequest } from '@hms/shared';
+import type { CopyWeeklyRosterRequest, CreateWeeklyRosterRequest, UpdateWeeklyRosterRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { weeklyRostersApi } from '../../../services/apiClient';
 
@@ -35,6 +35,14 @@ export function usePublishWeeklyRosterMutation() {
   const invalidate = useInvalidateWeeklyRosters();
   return useMutation({
     mutationFn: (id: string) => weeklyRostersApi.publishWeeklyRoster(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCopyWeeklyRosterMutation() {
+  const invalidate = useInvalidateWeeklyRosters();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: CopyWeeklyRosterRequest }) => weeklyRostersApi.copyWeeklyRoster(id, request),
     onSuccess: invalidate,
   });
 }

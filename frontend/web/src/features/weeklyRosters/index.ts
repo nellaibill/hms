@@ -1,3 +1,4 @@
+export * from './components/CopyWeeklyRosterDialog';
 export * from './components/DeleteWeeklyRosterDialog';
 export * from './components/WeeklyRosterForm';
 export * from './components/WeeklyRosterListToolbar';
