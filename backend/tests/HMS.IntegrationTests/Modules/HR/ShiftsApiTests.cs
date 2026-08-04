@@ -185,4 +185,105 @@ public class ShiftsApiTests : IClassFixture<UsersApiFactory>
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<ShiftResponse>>>();
         body!.Data.Should().ContainSingle(s => s.Name == uniqueName);
     }
+
+    [Fact]
+    public async Task Create_WithIsNightShiftTrue_ButTimesDoNotCrossMidnight_ReturnsBadRequest()
+    {
+        var response = await _client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            code = $"shift-{Guid.NewGuid():N}",
+            name = "Morning Shift",
+            startTime = "08:00:00",
+            endTime = "16:00:00",
+            isNightShift = true,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+        error!.ValidationErrors.Should().Contain(e => e.Field == "IsNightShift");
+    }
+
+    [Fact]
+    public async Task Create_WithIsNightShiftFalse_ButTimesCrossMidnight_ReturnsBadRequest()
+    {
+        var response = await _client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            code = $"shift-{Guid.NewGuid():N}",
+            name = "Night Shift",
+            startTime = "22:00:00",
+            endTime = "06:00:00",
+            isNightShift = false,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+        error!.ValidationErrors.Should().Contain(e => e.Field == "IsNightShift");
+    }
+
+    [Fact]
+    public async Task Create_WithIsNightShiftTrue_AndTimesCrossMidnight_Succeeds()
+    {
+        var response = await _client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            code = $"shift-{Guid.NewGuid():N}",
+            name = "Night Shift",
+            startTime = "22:00:00",
+            endTime = "06:00:00",
+            isNightShift = true,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Update_WithIsNightShiftTrue_ButTimesDoNotCrossMidnight_ReturnsBadRequest()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/shifts", NewShiftPayload());
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<ShiftResponse>>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/shifts/{created!.Data!.Id}", new
+        {
+            name = "Morning Shift",
+            startTime = "08:00:00",
+            endTime = "16:00:00",
+            isNightShift = true,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+        error!.ValidationErrors.Should().Contain(e => e.Field == "IsNightShift");
+    }
+
+    /// <summary>
+    /// Reproduces the exact bug report: create a real 22:00–06:00 night shift, then edit
+    /// it toggling "Night shift" off without changing the times. The times still cross
+    /// midnight, so IsNightShift:false is just as inconsistent as IsNightShift:true was on
+    /// a same-day shift — this must be rejected the same way.
+    /// </summary>
+    [Fact]
+    public async Task Update_TogglingIsNightShiftOff_ButTimesStillCrossMidnight_ReturnsBadRequest()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            code = $"shift-{Guid.NewGuid():N}",
+            name = "Night Shift",
+            startTime = "22:00:00",
+            endTime = "06:00:00",
+            isNightShift = true,
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<ShiftResponse>>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/shifts/{created!.Data!.Id}", new
+        {
+            name = "Night Shift",
+            startTime = "22:00:00",
+            endTime = "06:00:00",
+            isNightShift = false,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+        error!.ValidationErrors.Should().Contain(e => e.Field == "IsNightShift");
+    }
 }

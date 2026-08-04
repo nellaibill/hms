@@ -5,6 +5,7 @@ using HMS.Modules.Identity.Application.Validators;
 using HMS.Modules.Identity.Contracts;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.Identity.Infrastructure.Repositories;
+using HMS.Modules.Identity.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,6 +67,21 @@ public static class IdentityModule
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<SetPasswordRequest>, SetPasswordRequestValidator>();
 
+        services.Configure<SuperAdminSeedOptions>(configuration.GetSection(SuperAdminSeedOptions.SectionName));
+        services.AddScoped<IdentityDataSeeder>();
+
         return services;
+    }
+
+    /// <summary>
+    /// Startup data seeding entry point, called once from Program.cs after
+    /// <c>IdentityDbContext.Database.Migrate()</c> — the same
+    /// "single public seam per module" shape as <see cref="AddIdentityModule"/> itself.
+    /// <see cref="IdentityDataSeeder"/> stays internal; resolving it here (inside this
+    /// module's own assembly) doesn't require it to be public.
+    /// </summary>
+    public static Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        return services.GetRequiredService<IdentityDataSeeder>().SeedAsync(cancellationToken);
     }
 }
