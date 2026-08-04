@@ -1,5 +1,7 @@
+import { NetworkError } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { listMockUsers } from '@/features/users/mockUsersStore';
 import { usersApi } from '../services/apiClient';
 
 interface StaffSelectProps {
@@ -20,7 +22,16 @@ interface StaffSelectProps {
 export function StaffSelect({ id, value, onValueChange, ariaLabel = 'Staff', disabled }: StaffSelectProps) {
   const { data } = useQuery({
     queryKey: ['users', 'select-list'],
-    queryFn: () => usersApi.getUsers({ pageSize: 100, isActive: true }),
+    queryFn: async () => {
+      try {
+        return await usersApi.getUsers({ pageSize: 100, isActive: true });
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return listMockUsers({ pageSize: 100, isActive: true });
+        }
+        throw err;
+      }
+    },
   });
 
   const options = (data?.items ?? []).map((user) => ({

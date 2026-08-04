@@ -1,4 +1,6 @@
+import { NetworkError } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
+import { listMockUsers } from '@/features/users/mockUsersStore';
 import { usersApi } from '../services/apiClient';
 
 interface StaffNameProps {
@@ -14,7 +16,16 @@ interface StaffNameProps {
 export function StaffName({ staffId }: StaffNameProps) {
   const { data } = useQuery({
     queryKey: ['users', 'select-list'],
-    queryFn: () => usersApi.getUsers({ pageSize: 100, isActive: true }),
+    queryFn: async () => {
+      try {
+        return await usersApi.getUsers({ pageSize: 100, isActive: true });
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          return listMockUsers({ pageSize: 100, isActive: true });
+        }
+        throw err;
+      }
+    },
   });
 
   const user = data?.items.find((item) => item.id === staffId);
