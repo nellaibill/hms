@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateUserRequest, UpdateUserRequest, User, UserListQuery } from '../../dtos';
+import type { CreateUserRequest, SetPasswordRequest, UpdateUserRequest, User, UserListQuery } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -57,6 +57,20 @@ export class UsersApi {
 
   async deactivateUser(id: string): Promise<User> {
     const response = await this.client.post<User>(API_ROUTES.users.deactivate(id));
+    return response.data;
+  }
+
+  async setPassword(id: string, request: SetPasswordRequest): Promise<User> {
+    const response = await this.client.post<User>(API_ROUTES.users.password(id), request);
+    return response.data;
+  }
+
+  async uploadProfilePhoto(id: string, file: File): Promise<User> {
+    const formData = new FormData();
+    // Field name must be "photo" — mirrors UsersController.UploadProfilePhoto's IFormFile
+    // parameter name, which ASP.NET Core model binding matches against.
+    formData.append('photo', file);
+    const response = await this.client.postFormData<User>(API_ROUTES.users.profilePhoto(id), formData);
     return response.data;
   }
 }

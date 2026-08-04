@@ -25,3 +25,16 @@ export const createUserSchema = userProfileSchema;
 export const updateUserSchema = userProfileSchema;
 
 export type UserProfileFormValues = z.infer<typeof userProfileSchema>;
+
+/** Mirrors HMS.Modules.Identity.Application.Validators.SetPasswordRequestValidator, plus a client-only confirm-password check. */
+export const setPasswordSchema = z
+  .object({
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Confirm the password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type SetPasswordFormValues = z.infer<typeof setPasswordSchema>;

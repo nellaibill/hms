@@ -6,6 +6,7 @@ export interface User {
   lastName: string;
   email: string;
   phoneNumber?: string | null;
+  profilePhotoUrl?: string | null;
   roleId: string;
   roleName: string;
   emailVerified: boolean;
@@ -42,4 +43,9 @@ export interface UserListQuery {
   sort?: string;
   search?: string;
   isActive?: boolean;
+}
+
+/** Mirrors HMS.Modules.Identity.Contracts.SetPasswordRequest. */
+export interface SetPasswordRequest {
+  password: string;
 }
