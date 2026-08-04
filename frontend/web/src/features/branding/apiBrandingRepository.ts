@@ -1,4 +1,4 @@
-import type { BrandingConfigDto } from '@hms/shared';
+import { NetworkError, type BrandingConfigDto } from '@hms/shared';
 import { brandingApi } from '@/services/apiClient';
 import { mockBrandingStore } from './mockBrandingStore';
 import { FONT_FAMILIES, FONT_SIZE_SCALES, type BrandingConfig, type FontFamily, type FontSizeScale } from './types';
@@ -53,20 +53,34 @@ export const apiBrandingRepository = {
       tokensDark: { ...current.tokensDark, ...patch.tokensDark },
     };
 
-    const dto = await brandingApi.updateBranding({
-      hospitalName: merged.hospitalName,
-      appTitle: merged.appTitle,
-      fontFamily: merged.fontFamily,
-      fontSizeScale: merged.fontSizeScale,
-      tokensLight: merged.tokensLight,
-      tokensDark: merged.tokensDark,
-    });
-    return fromDto(dto);
+    try {
+      const dto = await brandingApi.updateBranding({
+        hospitalName: merged.hospitalName,
+        appTitle: merged.appTitle,
+        fontFamily: merged.fontFamily,
+        fontSizeScale: merged.fontSizeScale,
+        tokensLight: merged.tokensLight,
+        tokensDark: merged.tokensDark,
+      });
+      return fromDto(dto);
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        return mockBrandingStore.updateBranding(merged);
+      }
+      throw err;
+    }
   },
 
   async uploadLogo(file: File): Promise<{ logoUrl: string }> {
-    const dto = await brandingApi.uploadLogo(file);
-    return { logoUrl: dto.logoUrl ?? '' };
+    try {
+      const dto = await brandingApi.uploadLogo(file);
+      return { logoUrl: dto.logoUrl ?? '' };
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        return mockBrandingStore.uploadLogo(file);
+      }
+      throw err;
+    }
   },
 
   async resetToDefaults(): Promise<BrandingConfig> {
