@@ -22,6 +22,9 @@ export class ShiftAssignmentsApi {
         pageSize: query.pageSize,
         sort: query.sort,
         search: query.search,
+        departmentId: query.departmentId,
+        rosterDateFrom: query.rosterDateFrom,
+        rosterDateTo: query.rosterDateTo,
       },
     });
     return {

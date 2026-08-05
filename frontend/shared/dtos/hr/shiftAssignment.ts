@@ -35,10 +35,16 @@ export interface UpdateShiftAssignmentRequest {
   remarks?: string | null;
 }
 
-/** Mirrors HMS.Modules.HR.Contracts.ShiftAssignmentListQuery. */
+/** Mirrors HMS.Modules.HR.Contracts.ShiftAssignmentListQuery. DepartmentId/RosterDateFrom/
+ * RosterDateTo let a caller (the Weekly Roster planning board) ask for exactly the
+ * assignments belonging to one department/week server-side, instead of paging through
+ * everything and filtering client-side. */
 export interface ShiftAssignmentListQuery {
   page?: number;
   pageSize?: number;
   sort?: string;
   search?: string;
+  departmentId?: string;
+  rosterDateFrom?: string;
+  rosterDateTo?: string;
 }
