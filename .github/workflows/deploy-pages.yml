@@ -29,24 +29,29 @@ jobs:
         with:
           node-version: "20"
 
+      # frontend/{web,shared} are npm workspace members — npm resolves and hoists deps
+      # against the workspace root's frontend/package-lock.json regardless of which member
+      # folder `npm install` is run from, so that's the one file that actually needs
+      # removing (per-package lockfiles under web/ and shared/ are unused leftovers).
+      # Dropping it before install (never committed back) works around a documented npm bug
+      # (https://github.com/npm/cli/issues/4828) where a locked optionalDependencies
+      # resolution can omit the current platform's native binary (here,
+      # @rollup/rollup-linux-x64-gnu on this Linux runner), causing `vite build` to fail with
+      # MODULE_NOT_FOUND even though the lockfile is untouched and correct for local
+      # (Windows/macOS) development.
+      - name: Reset workspace lockfile for this platform
+        working-directory: frontend
+        run: rm -f package-lock.json
+
       - name: Build @hms/shared
         working-directory: frontend/shared
-        # `rm package-lock.json` before install (never committed back) works around a
-        # documented npm bug (https://github.com/npm/cli/issues/4828) where a lockfile's
-        # locked optionalDependencies resolution can omit the current platform's native
-        # binary (here, @rollup/rollup-linux-x64-gnu on this Linux runner), causing
-        # `vite build` to fail with MODULE_NOT_FOUND even though the lockfile is untouched
-        # and correct for local (Windows/macOS) development.
         run: |
-          rm -f package-lock.json
           npm install
           npm run build
 
       - name: Install web dependencies
         working-directory: frontend/web
-        run: |
-          rm -f package-lock.json
-          npm install
+        run: npm install
 
       - name: Build web app
         working-directory: frontend/web
