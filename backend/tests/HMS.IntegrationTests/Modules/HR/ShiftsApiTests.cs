@@ -88,6 +88,24 @@ public class ShiftsApiTests : IClassFixture<UsersApiFactory>
     }
 
     [Fact]
+    public async Task Create_WithAnUnparsableTime_ReturnsBadRequestNotServerError()
+    {
+        // A body where a field fails to bind (here, StartTime holding a string that isn't a
+        // real TimeOnly) previously deserialized to a null request instead of tripping
+        // [ApiController]'s automatic 400 — passing that null into FluentValidation threw
+        // ArgumentNullException, surfacing as a raw 500.
+        var response = await _client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            code = $"shift-{Guid.NewGuid():N}",
+            name = "Morning Shift",
+            startTime = "not-a-time",
+            endTime = "16:00:00",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task GetById_WhenNotFound_ReturnsNotFound()
     {
         var response = await _client.GetAsync($"/api/v1/shifts/{Guid.NewGuid()}");
@@ -117,6 +135,22 @@ public class ShiftsApiTests : IClassFixture<UsersApiFactory>
         updated!.Data!.Name.Should().Be("Morning (Revised)");
         updated.Data.Code.Should().Be(created.Data.Code);
         updated.Data.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Update_WithAnUnparsableTime_ReturnsBadRequestNotServerError()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/shifts", NewShiftPayload());
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<ShiftResponse>>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/shifts/{created!.Data!.Id}", new
+        {
+            name = "Morning Shift",
+            startTime = "not-a-time",
+            endTime = "16:00:00",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
