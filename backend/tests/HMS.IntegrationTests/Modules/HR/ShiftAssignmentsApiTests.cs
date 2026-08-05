@@ -165,6 +165,28 @@ public class ShiftAssignmentsApiTests : IClassFixture<UsersApiFactory>
     }
 
     [Fact]
+    public async Task Update_WithAnInvalidEnumValue_ReturnsBadRequestNotServerError()
+    {
+        // A body where every field fails to bind (here, an AssignmentStatus value that
+        // isn't a real enum member) previously deserialized to a null request instead of
+        // tripping [ApiController]'s automatic 400 — passing that null into
+        // FluentValidation threw ArgumentNullException, surfacing as a raw 500.
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/shift-assignments", await NewAssignmentPayloadAsync());
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<ShiftAssignmentResponse>>();
+
+        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/shift-assignments/{created!.Data!.Id}", new
+        {
+            staffId = created.Data.StaffId,
+            departmentId = created.Data.DepartmentId,
+            shiftId = created.Data.ShiftId,
+            rosterDate = "2026-08-05",
+            status = "NotARealStatus",
+        });
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Update_WhenNotFound_ReturnsNotFound()
     {
         var response = await _client.PutAsJsonAsync($"/api/v1/shift-assignments/{Guid.NewGuid()}", new

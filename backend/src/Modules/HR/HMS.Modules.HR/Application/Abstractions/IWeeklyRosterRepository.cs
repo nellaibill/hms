@@ -13,6 +13,9 @@ internal interface IWeeklyRosterRepository
 
     Task<WeeklyRoster?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    // Backs the "one roster per department per week" rule in WeeklyRosterService.
+    Task<bool> ExistsForDepartmentAndWeekAsync(Guid departmentId, DateOnly weekStartDate, Guid? excludingId, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<WeeklyRoster> Items, int TotalCount)> GetPagedAsync(WeeklyRosterListQuery query, CancellationToken cancellationToken);
 
     // Read-only view over this same aggregate (rosters whose WeekStartDate falls in the

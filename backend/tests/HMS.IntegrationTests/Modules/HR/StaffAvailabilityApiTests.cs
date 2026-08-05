@@ -88,6 +88,24 @@ public class StaffAvailabilityApiTests : IClassFixture<UsersApiFactory>
     }
 
     [Fact]
+    public async Task Create_WithAnInvalidEnumValue_ReturnsBadRequestNotServerError()
+    {
+        // A body where every field fails to bind (here, an AvailabilityStatus value that
+        // isn't a real enum member) previously deserialized to a null request instead of
+        // tripping [ApiController]'s automatic 400 — passing that null into
+        // FluentValidation threw ArgumentNullException, surfacing as a raw 500.
+        var response = await _client.PostAsJsonAsync("/api/v1/staff-availability", new
+        {
+            staffId = Guid.NewGuid(),
+            startDate = "2026-08-03",
+            endDate = "2026-08-10",
+            availabilityStatus = "NotARealStatus",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task GetById_WhenNotFound_ReturnsNotFound()
     {
         var response = await _client.GetAsync($"/api/v1/staff-availability/{Guid.NewGuid()}");
@@ -114,6 +132,23 @@ public class StaffAvailabilityApiTests : IClassFixture<UsersApiFactory>
         var updated = await updateResponse.Content.ReadFromJsonAsync<ApiResponse<StaffAvailabilityResponse>>();
         updated!.Data!.AvailabilityStatus.Should().Be(AvailabilityStatus.Available);
         updated.Data.Reason.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Update_WithAnInvalidEnumValue_ReturnsBadRequestNotServerError()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/staff-availability", NewAvailabilityPayload());
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<StaffAvailabilityResponse>>();
+
+        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/staff-availability/{created!.Data!.Id}", new
+        {
+            staffId = created.Data.StaffId,
+            startDate = "2026-09-01",
+            endDate = "2026-09-05",
+            availabilityStatus = "NotARealStatus",
+        });
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

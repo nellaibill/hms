@@ -13,6 +13,11 @@ internal interface IShiftAssignmentRepository
 
     Task<ShiftAssignment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    // Backs the double-booking check in ShiftAssignmentService: every other assignment
+    // the same staff member has on the same roster date, so their shift times can be
+    // compared for overlap.
+    Task<IReadOnlyList<ShiftAssignment>> GetByStaffAndDateAsync(Guid staffId, DateOnly rosterDate, Guid? excludingId, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<ShiftAssignment> Items, int TotalCount)> GetPagedAsync(ShiftAssignmentListQuery query, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

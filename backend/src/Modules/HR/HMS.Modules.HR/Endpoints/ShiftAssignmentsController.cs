@@ -38,6 +38,11 @@ public class ShiftAssignmentsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateShiftAssignmentRequest request, CancellationToken cancellationToken)
     {
+        if (request is null)
+        {
+            return BadRequest(BuildRequestRequiredError());
+        }
+
         var validation = await _createValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
         {
@@ -78,6 +83,11 @@ public class ShiftAssignmentsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateShiftAssignmentRequest request, CancellationToken cancellationToken)
     {
+        if (request is null)
+        {
+            return BadRequest(BuildRequestRequiredError());
+        }
+
         var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
         {
@@ -106,6 +116,9 @@ public class ShiftAssignmentsController : ControllerBase
         {
             HRErrorCodes.NotFound => StatusCodes.Status404NotFound,
             HRErrorCodes.InvalidShift => StatusCodes.Status400BadRequest,
+            HRErrorCodes.InvalidDepartment => StatusCodes.Status400BadRequest,
+            HRErrorCodes.InvalidStaff => StatusCodes.Status400BadRequest,
+            HRErrorCodes.ShiftOverlap => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -118,6 +131,18 @@ public class ShiftAssignmentsController : ControllerBase
         ErrorCode = "VALIDATION.FAILED",
         Message = "One or more validation errors occurred.",
         ValidationErrors = validation.Errors.Select(e => new ValidationErrorItem { Field = e.PropertyName, Message = e.ErrorMessage }).ToList(),
+        CorrelationId = HttpContext.GetCorrelationId(),
+        Timestamp = DateTime.UtcNow,
+    };
+
+    // A body that fails to deserialize (e.g. an enum field holding a value that isn't a
+    // real member) binds to a null request instead of tripping [ApiController]'s automatic
+    // 400 — passing that null straight into FluentValidation throws ArgumentNullException,
+    // which surfaces as a raw 500. Guard explicitly instead.
+    private ApiErrorResponse BuildRequestRequiredError() => new()
+    {
+        ErrorCode = "VALIDATION.FAILED",
+        Message = "The request body is missing or could not be parsed.",
         CorrelationId = HttpContext.GetCorrelationId(),
         Timestamp = DateTime.UtcNow,
     };

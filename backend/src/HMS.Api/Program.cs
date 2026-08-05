@@ -3,6 +3,7 @@ using HMS.Api.Configuration;
 using HMS.Api.Middleware;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.HR.Infrastructure;
+using HMS.Modules.Identity;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Modules.Patients.Infrastructure;
@@ -86,6 +87,13 @@ if (app.Environment.IsDevelopment())
     scope.ServiceProvider
         .GetRequiredService<HRDbContext>()
         .Database.Migrate();
+
+    // Idempotent: safe to run on every startup. Seeds the Permission catalog's
+    // dependents — the "Super Admin" role (every permission attached) and a default
+    // Super Admin user — only when they don't already exist. Must run after the
+    // Identity migration above, since it reads the Permission rows that migration's
+    // HasData just inserted.
+    await IdentityModule.SeedAsync(scope.ServiceProvider, CancellationToken.None);
 }
 
 app.Run();

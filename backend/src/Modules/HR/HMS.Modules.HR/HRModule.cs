@@ -38,6 +38,9 @@ public static class HRModule
         services.AddScoped<IShiftRepository, ShiftRepository>();
         services.AddScoped<IShiftService, ShiftService>();
 
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IDepartmentService, DepartmentService>();
+
         services.AddScoped<IShiftAssignmentRepository, ShiftAssignmentRepository>();
         services.AddScoped<IShiftAssignmentService, ShiftAssignmentService>();
 
@@ -55,6 +58,9 @@ public static class HRModule
         // validators are internal by design (docs/DeveloperHandbook.md §8/§20).
         services.AddScoped<IValidator<CreateShiftRequest>, CreateShiftRequestValidator>();
         services.AddScoped<IValidator<UpdateShiftRequest>, UpdateShiftRequestValidator>();
+
+        services.AddScoped<IValidator<CreateDepartmentRequest>, CreateDepartmentRequestValidator>();
+        services.AddScoped<IValidator<UpdateDepartmentRequest>, UpdateDepartmentRequestValidator>();
 
         services.AddScoped<IValidator<CreateShiftAssignmentRequest>, CreateShiftAssignmentRequestValidator>();
         services.AddScoped<IValidator<UpdateShiftAssignmentRequest>, UpdateShiftAssignmentRequestValidator>();

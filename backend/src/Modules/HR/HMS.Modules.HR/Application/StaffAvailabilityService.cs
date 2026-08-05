@@ -2,6 +2,7 @@ using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Application.Mapping;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
+using HMS.Modules.Identity.Application;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.HR.Application;
@@ -28,14 +29,22 @@ public interface IStaffAvailabilityService
 internal class StaffAvailabilityService : IStaffAvailabilityService
 {
     private readonly IStaffAvailabilityRepository _repository;
+    private readonly IUserService _userService;
 
-    public StaffAvailabilityService(IStaffAvailabilityRepository repository)
+    public StaffAvailabilityService(IStaffAvailabilityRepository repository, IUserService userService)
     {
         _repository = repository;
+        _userService = userService;
     }
 
     public async Task<Result<StaffAvailabilityResponse>> CreateAsync(CreateStaffAvailabilityRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
+        var staffResult = await _userService.GetByIdAsync(request.StaffId, cancellationToken);
+        if (!staffResult.IsSuccess)
+        {
+            return Result<StaffAvailabilityResponse>.Failure(HRErrorCodes.InvalidStaff, $"Staff '{request.StaffId}' was not found.");
+        }
+
         var staffAvailability = StaffAvailability.Create(
             request.StaffId,
             request.StartDate,
@@ -56,6 +65,12 @@ internal class StaffAvailabilityService : IStaffAvailabilityService
         if (staffAvailability is null)
         {
             return Result<StaffAvailabilityResponse>.Failure(HRErrorCodes.NotFound, $"Staff availability '{id}' was not found.");
+        }
+
+        var staffResult = await _userService.GetByIdAsync(request.StaffId, cancellationToken);
+        if (!staffResult.IsSuccess)
+        {
+            return Result<StaffAvailabilityResponse>.Failure(HRErrorCodes.InvalidStaff, $"Staff '{request.StaffId}' was not found.");
         }
 
         staffAvailability.Update(

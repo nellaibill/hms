@@ -13,11 +13,17 @@ public class WeeklyRosterServiceTests
     private static readonly DateOnly WeekStartDate = new(2026, 8, 3);
 
     private readonly IWeeklyRosterRepository _repository = Substitute.For<IWeeklyRosterRepository>();
+    private readonly IDepartmentRepository _departmentRepository = Substitute.For<IDepartmentRepository>();
     private readonly WeeklyRosterService _sut;
 
     public WeeklyRosterServiceTests()
     {
-        _sut = new WeeklyRosterService(_repository);
+        // Happy-path defaults: a valid, non-duplicate department/week. Tests for the
+        // "invalid department"/"duplicate roster" failure paths override these per-test.
+        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _repository.ExistsForDepartmentAndWeekAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        _sut = new WeeklyRosterService(_repository, _departmentRepository);
     }
 
     [Fact]
@@ -199,5 +205,46 @@ public class WeeklyRosterServiceTests
 
         result.Items.Should().ContainSingle(w => w.Id == roster.Id);
         result.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenDepartmentDoesNotExist_ReturnsInvalidDepartmentFailure()
+    {
+        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var request = new CreateWeeklyRosterRequest { WeekStartDate = WeekStartDate, DepartmentId = Guid.NewGuid() };
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.InvalidDepartment);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<WeeklyRoster>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenRosterAlreadyExistsForDepartmentAndWeek_ReturnsDuplicateRosterFailure()
+    {
+        _repository.ExistsForDepartmentAndWeekAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        var request = new CreateWeeklyRosterRequest { WeekStartDate = WeekStartDate, DepartmentId = Guid.NewGuid() };
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.DuplicateRoster);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<WeeklyRoster>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CopyAsync_WhenTargetWeekAlreadyHasARoster_ReturnsDuplicateRosterFailure()
+    {
+        var source = WeeklyRoster.Create(WeekStartDate, Guid.NewGuid(), false, null, null);
+        _repository.GetByIdAsync(source.Id, Arg.Any<CancellationToken>()).Returns(source);
+        _repository.ExistsForDepartmentAndWeekAsync(source.DepartmentId, Arg.Any<DateOnly>(), null, Arg.Any<CancellationToken>()).Returns(true);
+
+        var request = new CopyWeeklyRosterRequest { TargetWeekStartDate = new DateOnly(2026, 9, 1) };
+        var result = await _sut.CopyAsync(source.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.DuplicateRoster);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<WeeklyRoster>(), Arg.Any<CancellationToken>());
     }
 }

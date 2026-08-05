@@ -3,6 +3,9 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
+using HMS.Modules.Identity.Application;
+using HMS.Modules.Identity.Contracts;
+using HMS.Shared.Kernel;
 using NSubstitute;
 using Xunit;
 
@@ -14,11 +17,16 @@ public class StaffAvailabilityServiceTests
     private static readonly DateOnly EndDate = new(2026, 8, 10);
 
     private readonly IStaffAvailabilityRepository _repository = Substitute.For<IStaffAvailabilityRepository>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly StaffAvailabilityService _sut;
 
     public StaffAvailabilityServiceTests()
     {
-        _sut = new StaffAvailabilityService(_repository);
+        // Happy-path default: a valid staff member exists. Tests for the "staff not found"
+        // failure path override this per-test.
+        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<UserResponse>.Success(new UserResponse()));
+
+        _sut = new StaffAvailabilityService(_repository, _userService);
     }
 
     [Fact]
@@ -63,6 +71,27 @@ public class StaffAvailabilityServiceTests
         result.Value!.AvailabilityStatus.Should().Be(AvailabilityStatus.Unavailable);
         result.Value.Reason.Should().Be("Medical Leave");
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenStaffDoesNotExist_ReturnsInvalidStaffFailure()
+    {
+        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<UserResponse>.Failure("IDENTITY.USER_NOT_FOUND", "not found"));
+
+        var request = new CreateStaffAvailabilityRequest
+        {
+            StaffId = Guid.NewGuid(),
+            StartDate = StartDate,
+            EndDate = EndDate,
+            AvailabilityStatus = AvailabilityStatus.Unavailable,
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.InvalidStaff);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<StaffAvailability>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

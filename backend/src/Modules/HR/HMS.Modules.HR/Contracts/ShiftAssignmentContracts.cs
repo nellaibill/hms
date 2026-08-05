@@ -39,4 +39,12 @@ public record ShiftAssignmentResponse
 
 public class ShiftAssignmentListQuery : PagedRequest
 {
+    // Lets a caller (e.g. the Weekly Roster planning board) ask for exactly the
+    // assignments that belong to one department/week instead of paging through
+    // everything and filtering client-side.
+    public Guid? DepartmentId { get; set; }
+
+    public DateOnly? RosterDateFrom { get; set; }
+
+    public DateOnly? RosterDateTo { get; set; }
 }

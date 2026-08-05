@@ -3,6 +3,9 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
+using HMS.Modules.Identity.Application;
+using HMS.Modules.Identity.Contracts;
+using HMS.Shared.Kernel;
 using NSubstitute;
 using Xunit;
 
@@ -14,18 +17,20 @@ public class ShiftSwapRequestServiceTests
 
     private readonly IShiftSwapRequestRepository _repository = Substitute.For<IShiftSwapRequestRepository>();
     private readonly IShiftAssignmentRepository _shiftAssignmentRepository = Substitute.For<IShiftAssignmentRepository>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ShiftSwapRequestService _sut;
     private readonly Guid _currentAssignmentId = Guid.NewGuid();
     private readonly Guid _requestedAssignmentId = Guid.NewGuid();
 
     public ShiftSwapRequestServiceTests()
     {
-        _sut = new ShiftSwapRequestService(_repository, _shiftAssignmentRepository);
+        _sut = new ShiftSwapRequestService(_repository, _shiftAssignmentRepository, _userService);
 
-        // Happy-path default: both referenced shift assignments exist. Tests for the
-        // "assignment not found" failure paths override this per-test.
+        // Happy-path default: both referenced shift assignments exist, and every staff id
+        // resolves to a real user. Tests for the failure paths override these per-test.
         var shiftAssignment = ShiftAssignment.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 8, 3), AssignmentStatus.Scheduled, null, null);
         _shiftAssignmentRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(shiftAssignment);
+        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<UserResponse>.Success(new UserResponse()));
     }
 
     private CreateSwapRequest NewCreateRequest() => new()
@@ -75,6 +80,20 @@ public class ShiftSwapRequestServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(HRErrorCodes.InvalidShiftAssignment);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<ShiftSwapRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenRequestedByStaffDoesNotExist_ReturnsInvalidStaffFailure()
+    {
+        var request = NewCreateRequest();
+        _userService.GetByIdAsync(request.RequestedByStaffId, Arg.Any<CancellationToken>())
+            .Returns(Result<UserResponse>.Failure("IDENTITY.USER_NOT_FOUND", "not found"));
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.InvalidStaff);
         await _repository.DidNotReceive().AddAsync(Arg.Any<ShiftSwapRequest>(), Arg.Any<CancellationToken>());
     }
 
