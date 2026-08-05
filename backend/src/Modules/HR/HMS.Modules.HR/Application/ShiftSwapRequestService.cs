@@ -2,6 +2,7 @@ using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Application.Mapping;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
+using HMS.Modules.Identity.Application;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.HR.Application;
@@ -29,11 +30,16 @@ internal class ShiftSwapRequestService : IShiftSwapRequestService
 {
     private readonly IShiftSwapRequestRepository _repository;
     private readonly IShiftAssignmentRepository _shiftAssignmentRepository;
+    private readonly IUserService _userService;
 
-    public ShiftSwapRequestService(IShiftSwapRequestRepository repository, IShiftAssignmentRepository shiftAssignmentRepository)
+    public ShiftSwapRequestService(
+        IShiftSwapRequestRepository repository,
+        IShiftAssignmentRepository shiftAssignmentRepository,
+        IUserService userService)
     {
         _repository = repository;
         _shiftAssignmentRepository = shiftAssignmentRepository;
+        _userService = userService;
     }
 
     public async Task<Result<SwapRequestResponse>> CreateAsync(CreateSwapRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -42,6 +48,12 @@ internal class ShiftSwapRequestService : IShiftSwapRequestService
         if (referentialCheck is not null)
         {
             return Result<SwapRequestResponse>.Failure(referentialCheck.ErrorCode!, referentialCheck.Error!);
+        }
+
+        var staffCheck = await ValidateStaffExistAsync(request.RequestedByStaffId, request.RequestedToStaffId, request.ApprovedBy, cancellationToken);
+        if (staffCheck is not null)
+        {
+            return Result<SwapRequestResponse>.Failure(staffCheck.ErrorCode!, staffCheck.Error!);
         }
 
         var shiftSwapRequest = ShiftSwapRequest.Create(
@@ -74,6 +86,12 @@ internal class ShiftSwapRequestService : IShiftSwapRequestService
         if (referentialCheck is not null)
         {
             return Result<SwapRequestResponse>.Failure(referentialCheck.ErrorCode!, referentialCheck.Error!);
+        }
+
+        var staffCheck = await ValidateStaffExistAsync(request.RequestedByStaffId, request.RequestedToStaffId, request.ApprovedBy, cancellationToken);
+        if (staffCheck is not null)
+        {
+            return Result<SwapRequestResponse>.Failure(staffCheck.ErrorCode!, staffCheck.Error!);
         }
 
         shiftSwapRequest.Update(
@@ -137,6 +155,33 @@ internal class ShiftSwapRequestService : IShiftSwapRequestService
         if (requestedAssignment is null)
         {
             return Result.Failure(HRErrorCodes.InvalidShiftAssignment, $"Requested shift assignment '{requestedShiftAssignmentId}' was not found.");
+        }
+
+        return null;
+    }
+
+    // Cross-module check against Identity's User — same pattern as
+    // ShiftAssignmentService/StaffAvailabilityService. ApprovedBy is nullable (unset until
+    // someone actually approves the swap), so it's only checked when present.
+    private async Task<Result?> ValidateStaffExistAsync(
+        Guid requestedByStaffId,
+        Guid requestedToStaffId,
+        Guid? approvedBy,
+        CancellationToken cancellationToken)
+    {
+        if (!(await _userService.GetByIdAsync(requestedByStaffId, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(HRErrorCodes.InvalidStaff, $"Staff '{requestedByStaffId}' was not found.");
+        }
+
+        if (!(await _userService.GetByIdAsync(requestedToStaffId, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(HRErrorCodes.InvalidStaff, $"Staff '{requestedToStaffId}' was not found.");
+        }
+
+        if (approvedBy.HasValue && !(await _userService.GetByIdAsync(approvedBy.Value, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(HRErrorCodes.InvalidStaff, $"Staff '{approvedBy.Value}' was not found.");
         }
 
         return null;

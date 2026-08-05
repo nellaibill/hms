@@ -20,6 +20,11 @@ internal class WeeklyRosterRepository : IWeeklyRosterRepository
     public Task<WeeklyRoster?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.WeeklyRosters.FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
 
+    public Task<bool> ExistsForDepartmentAndWeekAsync(Guid departmentId, DateOnly weekStartDate, Guid? excludingId, CancellationToken cancellationToken)
+        => _dbContext.WeeklyRosters.AnyAsync(
+            w => w.DepartmentId == departmentId && w.WeekStartDate == weekStartDate && w.Id != excludingId,
+            cancellationToken);
+
     // No Search filtering — WeeklyRoster has no free-text field (no Code/Name/Remarks) to
     // match against, unlike Shift (Code/Name) or ShiftAssignment (Remarks). Search is
     // accepted (inherited from PagedRequest) but simply has nothing to filter on here.

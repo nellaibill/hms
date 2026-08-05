@@ -106,6 +106,7 @@ public class StaffAvailabilityController : ControllerBase
         var status = errorCode switch
         {
             HRErrorCodes.NotFound => StatusCodes.Status404NotFound,
+            HRErrorCodes.InvalidStaff => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

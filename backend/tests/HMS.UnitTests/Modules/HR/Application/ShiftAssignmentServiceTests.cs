@@ -3,6 +3,9 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
+using HMS.Modules.Identity.Application;
+using HMS.Modules.Identity.Contracts;
+using HMS.Shared.Kernel;
 using NSubstitute;
 using Xunit;
 
@@ -14,17 +17,24 @@ public class ShiftAssignmentServiceTests
 
     private readonly IShiftAssignmentRepository _repository = Substitute.For<IShiftAssignmentRepository>();
     private readonly IShiftRepository _shiftRepository = Substitute.For<IShiftRepository>();
+    private readonly IDepartmentRepository _departmentRepository = Substitute.For<IDepartmentRepository>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ShiftAssignmentService _sut;
     private readonly Guid _shiftId = Guid.NewGuid();
 
     public ShiftAssignmentServiceTests()
     {
-        _sut = new ShiftAssignmentService(_repository, _shiftRepository);
+        _sut = new ShiftAssignmentService(_repository, _shiftRepository, _departmentRepository, _userService);
 
-        // Happy-path default: a valid shift exists. Tests for the "shift not found" failure
-        // path override this per-test.
+        // Happy-path defaults: a valid shift, a valid staff member, a valid department, and
+        // no other same-day assignment to overlap with. Tests for each failure path
+        // override the relevant one per-test.
         var shift = Shift.Create("morning", "Morning Shift", new TimeOnly(8, 0), new TimeOnly(16, 0), 0, 0, false, true, null);
         _shiftRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(shift);
+        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<UserResponse>.Success(new UserResponse()));
+        _repository.GetByStaffAndDateAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ShiftAssignment>());
     }
 
     private static CreateShiftAssignmentRequest NewCreateRequest(Guid shiftId) => new()
@@ -65,16 +75,65 @@ public class ShiftAssignmentServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_AllowsTheSameStaffAndDateAsAnExistingAssignment_NoOverlapCheck()
+    public async Task CreateAsync_WhenStaffDoesNotExist_ReturnsInvalidStaffFailure()
     {
-        // Phase 2 explicitly defers this — the service never even queries for existing
-        // assignments before creating a new one.
-        var request = NewCreateRequest(_shiftId);
+        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<UserResponse>.Failure("IDENTITY.USER_NOT_FOUND", "not found"));
 
+        var result = await _sut.CreateAsync(NewCreateRequest(_shiftId), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.InvalidStaff);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<ShiftAssignment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenDepartmentDoesNotExist_ReturnsInvalidDepartmentFailure()
+    {
+        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.CreateAsync(NewCreateRequest(_shiftId), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.InvalidDepartment);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<ShiftAssignment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenStaffAlreadyHasAnOverlappingShiftThatDay_ReturnsShiftOverlapFailure()
+    {
+        // Existing: 08:00-16:00 (the default shift from the constructor). New request also
+        // resolves to the same 08:00-16:00 shift on the same day — a direct overlap.
+        var existingAssignment = ShiftAssignment.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), RosterDate, AssignmentStatus.Scheduled, null, null);
+        _repository.GetByStaffAndDateAsync(Arg.Any<Guid>(), RosterDate, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ShiftAssignment> { existingAssignment });
+
+        var request = NewCreateRequest(_shiftId);
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.ShiftOverlap);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<ShiftAssignment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenStaffHasANonOverlappingShiftThatDay_Succeeds()
+    {
+        // Existing assignment uses a different shift (22:00-06:00, night) that doesn't
+        // overlap the default 08:00-16:00 shift the new request resolves to.
+        var nightShiftId = Guid.NewGuid();
+        var nightShift = Shift.Create("night", "Night Shift", new TimeOnly(22, 0), new TimeOnly(6, 0), 0, 0, true, true, null);
+        _shiftRepository.GetByIdAsync(nightShiftId, Arg.Any<CancellationToken>()).Returns(nightShift);
+
+        var existingAssignment = ShiftAssignment.Create(Guid.NewGuid(), Guid.NewGuid(), nightShiftId, RosterDate, AssignmentStatus.Scheduled, null, null);
+        _repository.GetByStaffAndDateAsync(Arg.Any<Guid>(), RosterDate, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ShiftAssignment> { existingAssignment });
+
+        var request = NewCreateRequest(_shiftId);
         var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        await _repository.DidNotReceive().GetPagedAsync(Arg.Any<ShiftAssignmentListQuery>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).AddAsync(Arg.Any<ShiftAssignment>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

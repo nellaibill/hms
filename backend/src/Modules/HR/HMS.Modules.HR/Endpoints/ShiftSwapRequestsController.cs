@@ -107,6 +107,7 @@ public class ShiftSwapRequestsController : ControllerBase
         {
             HRErrorCodes.NotFound => StatusCodes.Status404NotFound,
             HRErrorCodes.InvalidShiftAssignment => StatusCodes.Status400BadRequest,
+            HRErrorCodes.InvalidStaff => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

@@ -30,9 +30,16 @@ internal class WeeklyRosterConfiguration : IEntityTypeConfiguration<WeeklyRoster
 
         builder.HasQueryFilter(w => !w.IsDeleted);
 
-        // No uniqueness constraint on (DepartmentId, WeekStartDate) — "one roster per
-        // department per week" wasn't part of this phase's validation scope.
         builder.HasIndex(w => w.DepartmentId).HasDatabaseName("ix_weekly_rosters_department_id");
         builder.HasIndex(w => w.WeekStartDate).HasDatabaseName("ix_weekly_rosters_week_start_date");
+
+        // One roster per department per week — enforced at the DB level (not just in
+        // WeeklyRosterService) so it holds even under concurrent requests. Soft-deleted
+        // rows are excluded from the constraint so a deleted roster doesn't block
+        // recreating one for the same department/week.
+        builder.HasIndex(w => new { w.DepartmentId, w.WeekStartDate })
+            .IsUnique()
+            .HasDatabaseName("ux_weekly_rosters_department_week")
+            .HasFilter("is_deleted = false");
     }
 }

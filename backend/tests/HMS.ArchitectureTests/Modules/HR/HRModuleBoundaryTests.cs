@@ -12,18 +12,19 @@ namespace HMS.ArchitectureTests.Modules.HR;
 /// outside Contracts is internal, and Contracts is the module's only public surface, with a
 /// deliberate, narrow exception (see <see cref="AllowedPublicTypeNamePattern"/>):
 /// IShiftService/IShiftAssignmentService/IWeeklyRosterService/IStaffAvailabilityService/
-/// IShiftSwapRequestService are public because their respective controllers — which
-/// ASP.NET Core requires to be public with a public constructor for controller
-/// discovery/DI activation — take them as constructor dependencies (a public constructor
-/// cannot have an internal parameter type, CS0051). HRDbContext is public because it's
-/// resolved by type from HMS.Api's Program.cs for the startup-time migration call.
+/// IShiftSwapRequestService/IDepartmentService are public because their respective
+/// controllers — which ASP.NET Core requires to be public with a public constructor for
+/// controller discovery/DI activation — take them as constructor dependencies (a public
+/// constructor cannot have an internal parameter type, CS0051). HRDbContext is public
+/// because it's resolved by type from HMS.Api's Program.cs for the startup-time
+/// migration call.
 /// </summary>
 public class HRModuleBoundaryTests
 {
     private static readonly Assembly HRAssembly = typeof(ShiftsController).Assembly;
 
     private const string AllowedPublicTypeNamePattern =
-        "^(IShiftService|IShiftAssignmentService|IWeeklyRosterService|IStaffAvailabilityService|IShiftSwapRequestService|HRDbContext)$";
+        "^(IShiftService|IShiftAssignmentService|IWeeklyRosterService|IStaffAvailabilityService|IShiftSwapRequestService|IDepartmentService|HRDbContext)$";
 
     [Theory]
     [InlineData("HMS.Modules.HR.Domain")]

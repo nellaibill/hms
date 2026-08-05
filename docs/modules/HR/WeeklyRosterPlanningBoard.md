@@ -74,9 +74,9 @@ out of scope for this task since "no new APIs" was a hard constraint.
 
 - Back button → `/admin/hr/weekly-rosters` (unchanged).
 - Title: `Week of {weekStartDate}`.
-- Department: resolve `roster.departmentId` the same way the current page already
-  does today (it currently just prints the raw id — keep that; a Department module
-  lookup is out of scope here).
+- Department: **do not print the raw `roster.departmentId`** — a real Department
+  directory now exists (see [§6](#6-backend-change-since-this-spec-was-written-department-directory-now-exists)
+  below). Resolve it to a name the same way §2 already resolves `StaffId` to a name.
 - `Draft` / `Published` badge — already implemented (`roster.published`).
 - Created date — already implemented (`roster.createdAt`).
 - Published date — already implemented (`roster.publishedDate`, shown when present).
@@ -193,3 +193,221 @@ off) does nothing visible — no save, no error, no explanation.
 No new field, no response shape change, no contract change, no new component — just
 this one missing render line, in the same file, following the same pattern already
 used for every other field.
+
+## 6. Backend change since this spec was written: Department directory now exists
+
+This lands **after** §1–§5 above were originally written, and changes one of their
+assumptions: at the time, there was no Department entity anywhere in the system, so
+every DepartmentId field was correctly documented as "no directory exists yet, enter
+the GUID directly." **That's no longer true.** A full Department directory now exists
+on the backend, and every place that still shows a raw GUID text box for department
+should be replaced with a picker, the same way `StaffSelect` already replaced raw
+StaffId text boxes.
+
+### 6.1 What's new
+
+- `GET /api/v1/departments?search=` — paginated list, `?search=` matches against both
+  `code` and `name` (same `ILike` search behavior `GET /api/v1/users` already has,
+  which `StaffSelect` relies on).
+- `GET /api/v1/departments/{id}` — single department.
+- `POST` / `PUT` / `DELETE /api/v1/departments` — full CRUD (create/update/soft-delete),
+  same shape as the existing Shifts endpoints.
+- Response shape:
+  ```ts
+  {
+    id: string;       // Guid
+    code: string;
+    name: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string | null;
+  }
+  ```
+
+### 6.2 What to build — four layers, in order
+
+The Staff picker isn't just one React component — it's a small stack, and Department
+needs the same stack built from scratch since (unlike Staff, which reused Identity's
+existing Users API layer) there is no existing typed client for `/departments` at all
+yet. Build in this order; each step mirrors an existing Shift-module file exactly.
+
+**1. DTOs** — `frontend/shared/dtos/hr/department.ts`, mirroring
+`frontend/shared/dtos/hr/shift.ts`:
+
+```ts
+/** Mirrors HMS.Modules.HR.Contracts.DepartmentResponse. */
+export interface Department {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+/** Mirrors HMS.Modules.HR.Contracts.CreateDepartmentRequest. */
+export interface CreateDepartmentRequest {
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+/** Mirrors HMS.Modules.HR.Contracts.UpdateDepartmentRequest — no Code, matching the
+ * backend (Code is Department's natural key, set only at creation). */
+export interface UpdateDepartmentRequest {
+  name: string;
+  isActive: boolean;
+}
+
+/** Mirrors HMS.Modules.HR.Contracts.DepartmentListQuery. */
+export interface DepartmentListQuery {
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  search?: string;
+  isActive?: boolean;
+}
+```
+
+Add `export * from './hr/department';` to `frontend/shared/dtos/index.ts`, right next
+to the existing `export * from './hr/shift';` line.
+
+**2. Route constants** — add to `frontend/shared/constants/routes.ts`, next to the
+existing `shifts` entry:
+
+```ts
+/** Mirrors HMS.Modules.HR.Endpoints.DepartmentsController. */
+departments: {
+  base: '/api/v1/departments',
+  byId: (id: string) => `/api/v1/departments/${id}`,
+},
+```
+
+**3. Typed API class** — `frontend/shared/api-client/services/departmentsApi.ts`,
+copying `shiftsApi.ts` (same file) field-for-field:
+
+```ts
+import { API_ROUTES } from '../../constants';
+import type { CreateDepartmentRequest, Department, DepartmentListQuery, UpdateDepartmentRequest } from '../../dtos';
+import type { PaginationMeta } from '../../types';
+import type { HttpClient } from '../httpClient';
+
+export interface PagedDepartments {
+  items: Department[];
+  meta: PaginationMeta;
+}
+
+export class DepartmentsApi {
+  constructor(private readonly client: HttpClient) {}
+
+  async getDepartments(query: DepartmentListQuery = {}): Promise<PagedDepartments> {
+    const response = await this.client.get<Department[]>(API_ROUTES.departments.base, {
+      query: { page: query.page, pageSize: query.pageSize, sort: query.sort, search: query.search, isActive: query.isActive },
+    });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getDepartmentById(id: string): Promise<Department> {
+    return (await this.client.get<Department>(API_ROUTES.departments.byId(id))).data;
+  }
+
+  async createDepartment(request: CreateDepartmentRequest): Promise<Department> {
+    return (await this.client.post<Department>(API_ROUTES.departments.base, request)).data;
+  }
+
+  async updateDepartment(id: string, request: UpdateDepartmentRequest): Promise<Department> {
+    return (await this.client.put<Department>(API_ROUTES.departments.byId(id), request)).data;
+  }
+
+  async deleteDepartment(id: string): Promise<void> {
+    await this.client.delete(API_ROUTES.departments.byId(id));
+  }
+}
+```
+
+Then register it in `frontend/web/src/services/apiClient.ts`, next to the existing
+`export const shiftsApi = new ShiftsApi(httpClient);` line:
+
+```ts
+export const departmentsApi = new DepartmentsApi(httpClient);
+```
+
+**4. React components** — now `DepartmentSelect` (copying
+`frontend/web/src/components/StaffSelect.tsx`) and `DepartmentName` (copying
+`StaffName.tsx`) are straightforward, since they're just consuming the client built
+above:
+
+```tsx
+// frontend/web/src/components/DepartmentSelect.tsx
+import { useQuery } from '@tanstack/react-query';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { departmentsApi } from '../services/apiClient';
+
+interface DepartmentSelectProps {
+  id: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  ariaLabel?: string;
+  disabled?: boolean;
+}
+
+export function DepartmentSelect({ id, value, onValueChange, ariaLabel = 'Department', disabled }: DepartmentSelectProps) {
+  const { data } = useQuery({
+    queryKey: ['departments', 'select-list'],
+    queryFn: () => departmentsApi.getDepartments({ pageSize: 100, isActive: true }),
+  });
+
+  const options = (data?.items ?? []).map((department) => ({
+    value: department.id,
+    label: department.name,
+    keywords: department.code,
+  }));
+
+  return (
+    <SearchableSelect
+      id={id}
+      value={value}
+      onValueChange={onValueChange}
+      options={options}
+      placeholder="Select department…"
+      searchPlaceholder="Search by name or code…"
+      ariaLabel={ariaLabel}
+      disabled={disabled}
+    />
+  );
+}
+```
+
+```tsx
+// frontend/web/src/components/DepartmentName.tsx
+import { useQuery } from '@tanstack/react-query';
+import { departmentsApi } from '../services/apiClient';
+
+export function DepartmentName({ departmentId }: { departmentId: string }) {
+  const { data } = useQuery({
+    queryKey: ['departments', 'select-list'],
+    queryFn: () => departmentsApi.getDepartments({ pageSize: 100, isActive: true }),
+  });
+
+  const department = data?.items.find((item) => item.id === departmentId);
+  return department
+    ? <>{department.name}</>
+    : <span className="font-mono text-xs text-muted-foreground">{departmentId.slice(0, 8)}…</span>;
+}
+```
+
+### 6.3 Where to wire it in — exact locations
+
+| File | Current state | Change |
+|---|---|---|
+| `frontend/web/src/features/weeklyRosters/components/WeeklyRosterForm.tsx` (lines 61–68) | Raw `<Input>` + placeholder GUID + "No department directory exists yet" caption | Replace with a `Controller`-wrapped `<DepartmentSelect>`, same pattern as `staffId` in `ShiftAssignmentForm.tsx` lines 63–71. Delete the "No department directory exists yet" caption — it's no longer true. |
+| `frontend/web/src/features/shiftAssignments/components/ShiftAssignmentForm.tsx` (lines 83–88) | Same raw `<Input>` + same caption | Same replacement. |
+| Weekly Roster planning-board header (§4.1 above) | N/A yet — being built | Use `<DepartmentName departmentId={roster.departmentId} />` directly, no raw id. |
+| `WeeklyRosterViewPage.tsx` / `WeeklyRosterTable.tsx` (today's existing pages, not just the new planning board) | Currently print `roster.departmentId` raw, same as the planning board would have | Same `<DepartmentName>` swap — worth fixing here too since it's the same bug, already live in production today. |
+
+### 6.4 Not required, but worth doing while in this area
+
+A "Manage Departments" admin screen (list/create/edit, mirroring the existing Shift
+Management pages) doesn't exist yet either. The backend fully supports it — this spec
+doesn't require building it, but without one, whoever creates the *first* department
+still has to do it via Swagger/API rather than the UI. Flagging it, not scoping it in.

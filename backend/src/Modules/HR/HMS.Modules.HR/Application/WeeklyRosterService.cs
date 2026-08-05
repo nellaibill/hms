@@ -34,14 +34,28 @@ public interface IWeeklyRosterService
 internal class WeeklyRosterService : IWeeklyRosterService
 {
     private readonly IWeeklyRosterRepository _repository;
+    private readonly IDepartmentRepository _departmentRepository;
 
-    public WeeklyRosterService(IWeeklyRosterRepository repository)
+    public WeeklyRosterService(IWeeklyRosterRepository repository, IDepartmentRepository departmentRepository)
     {
         _repository = repository;
+        _departmentRepository = departmentRepository;
     }
 
     public async Task<Result<WeeklyRosterResponse>> CreateAsync(CreateWeeklyRosterRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
+        if (!await _departmentRepository.ExistsAsync(request.DepartmentId, cancellationToken))
+        {
+            return Result<WeeklyRosterResponse>.Failure(HRErrorCodes.InvalidDepartment, $"Department '{request.DepartmentId}' was not found.");
+        }
+
+        if (await _repository.ExistsForDepartmentAndWeekAsync(request.DepartmentId, request.WeekStartDate, excludingId: null, cancellationToken))
+        {
+            return Result<WeeklyRosterResponse>.Failure(
+                HRErrorCodes.DuplicateRoster,
+                $"A weekly roster already exists for this department for the week of {request.WeekStartDate}.");
+        }
+
         var weeklyRoster = WeeklyRoster.Create(request.WeekStartDate, request.DepartmentId, request.Published, request.PublishedDate, actorId);
 
         await _repository.AddAsync(weeklyRoster, cancellationToken);
@@ -56,6 +70,18 @@ internal class WeeklyRosterService : IWeeklyRosterService
         if (weeklyRoster is null)
         {
             return Result<WeeklyRosterResponse>.Failure(HRErrorCodes.NotFound, $"Weekly roster '{id}' was not found.");
+        }
+
+        if (!await _departmentRepository.ExistsAsync(request.DepartmentId, cancellationToken))
+        {
+            return Result<WeeklyRosterResponse>.Failure(HRErrorCodes.InvalidDepartment, $"Department '{request.DepartmentId}' was not found.");
+        }
+
+        if (await _repository.ExistsForDepartmentAndWeekAsync(request.DepartmentId, request.WeekStartDate, excludingId: id, cancellationToken))
+        {
+            return Result<WeeklyRosterResponse>.Failure(
+                HRErrorCodes.DuplicateRoster,
+                $"A weekly roster already exists for this department for the week of {request.WeekStartDate}.");
         }
 
         weeklyRoster.Update(request.WeekStartDate, request.DepartmentId, request.Published, request.PublishedDate, actorId);
@@ -116,6 +142,13 @@ internal class WeeklyRosterService : IWeeklyRosterService
         if (source is null)
         {
             return Result<WeeklyRosterResponse>.Failure(HRErrorCodes.NotFound, $"Weekly roster '{id}' was not found.");
+        }
+
+        if (await _repository.ExistsForDepartmentAndWeekAsync(source.DepartmentId, request.TargetWeekStartDate, excludingId: null, cancellationToken))
+        {
+            return Result<WeeklyRosterResponse>.Failure(
+                HRErrorCodes.DuplicateRoster,
+                $"A weekly roster already exists for this department for the week of {request.TargetWeekStartDate}.");
         }
 
         var copy = WeeklyRoster.Create(request.TargetWeekStartDate, source.DepartmentId, published: false, publishedDate: null, actorId);

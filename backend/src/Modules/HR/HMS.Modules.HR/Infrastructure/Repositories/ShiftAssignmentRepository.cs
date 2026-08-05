@@ -20,9 +20,29 @@ internal class ShiftAssignmentRepository : IShiftAssignmentRepository
     public Task<ShiftAssignment?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.ShiftAssignments.FirstOrDefaultAsync(sa => sa.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<ShiftAssignment>> GetByStaffAndDateAsync(Guid staffId, DateOnly rosterDate, Guid? excludingId, CancellationToken cancellationToken)
+        => await _dbContext.ShiftAssignments
+            .Where(sa => sa.StaffId == staffId && sa.RosterDate == rosterDate && sa.Id != excludingId)
+            .ToListAsync(cancellationToken);
+
     public async Task<(IReadOnlyList<ShiftAssignment> Items, int TotalCount)> GetPagedAsync(ShiftAssignmentListQuery query, CancellationToken cancellationToken)
     {
         var assignments = _dbContext.ShiftAssignments.AsQueryable();
+
+        if (query.DepartmentId.HasValue)
+        {
+            assignments = assignments.Where(sa => sa.DepartmentId == query.DepartmentId.Value);
+        }
+
+        if (query.RosterDateFrom.HasValue)
+        {
+            assignments = assignments.Where(sa => sa.RosterDate >= query.RosterDateFrom.Value);
+        }
+
+        if (query.RosterDateTo.HasValue)
+        {
+            assignments = assignments.Where(sa => sa.RosterDate <= query.RosterDateTo.Value);
+        }
 
         // Only Remarks is free text — Status is a fixed enum, not a useful ILike target.
         if (!string.IsNullOrWhiteSpace(query.Search))

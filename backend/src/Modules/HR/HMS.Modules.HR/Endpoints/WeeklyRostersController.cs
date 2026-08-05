@@ -161,6 +161,8 @@ public class WeeklyRostersController : ControllerBase
         var status = errorCode switch
         {
             HRErrorCodes.NotFound => StatusCodes.Status404NotFound,
+            HRErrorCodes.InvalidDepartment => StatusCodes.Status400BadRequest,
+            HRErrorCodes.DuplicateRoster => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

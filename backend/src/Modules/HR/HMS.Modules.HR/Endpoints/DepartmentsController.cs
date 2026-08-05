@@ -10,33 +10,33 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.Modules.HR.Endpoints;
 
 /// <summary>
-/// Shift Assignment CRUD, per the Shift Management Phase 2 spec. This module has no
-/// authentication yet, so "actor" (created/updated/deleted-by) is null for now — matches
-/// ShiftsController/UsersController.
+/// Department master CRUD. Backs the DepartmentId field carried by WeeklyRoster and
+/// ShiftAssignment — until this controller existed, DepartmentId had no directory to pick
+/// from, list, or validate against anywhere in the system.
 /// </summary>
 [ApiController]
-[Route("api/v1/shift-assignments")]
-public class ShiftAssignmentsController : ControllerBase
+[Route("api/v1/departments")]
+public class DepartmentsController : ControllerBase
 {
-    private readonly IShiftAssignmentService _service;
-    private readonly IValidator<CreateShiftAssignmentRequest> _createValidator;
-    private readonly IValidator<UpdateShiftAssignmentRequest> _updateValidator;
+    private readonly IDepartmentService _service;
+    private readonly IValidator<CreateDepartmentRequest> _createValidator;
+    private readonly IValidator<UpdateDepartmentRequest> _updateValidator;
 
-    public ShiftAssignmentsController(
-        IShiftAssignmentService service,
-        IValidator<CreateShiftAssignmentRequest> createValidator,
-        IValidator<UpdateShiftAssignmentRequest> updateValidator)
+    public DepartmentsController(
+        IDepartmentService service,
+        IValidator<CreateDepartmentRequest> createValidator,
+        IValidator<UpdateDepartmentRequest> updateValidator)
     {
         _service = service;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
 
-    /// <summary>Creates a new shift assignment.</summary>
-    /// <response code="201">The shift assignment was created.</response>
-    /// <response code="400">The request failed validation, or ShiftId does not reference an existing shift.</response>
+    /// <summary>Creates a new department.</summary>
+    /// <response code="201">The department was created.</response>
+    /// <response code="400">The request failed validation, or the code is already in use.</response>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateShiftAssignmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromBody] CreateDepartmentRequest request, CancellationToken cancellationToken)
     {
         var validation = await _createValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
@@ -50,20 +50,20 @@ public class ShiftAssignmentsController : ControllerBase
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
     }
 
-    /// <summary>Lists shift assignments with paging, search (Remarks), and sorting.</summary>
-    /// <response code="200">A page of shift assignments.</response>
+    /// <summary>Lists departments with paging, search, sorting, and active-status filtering.</summary>
+    /// <response code="200">A page of departments.</response>
     [HttpGet]
-    public async Task<IActionResult> GetPaged([FromQuery] ShiftAssignmentListQuery query, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPaged([FromQuery] DepartmentListQuery query, CancellationToken cancellationToken)
     {
         var paged = await _service.GetPagedAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
 
-        return Ok(new ApiResponse<IReadOnlyList<ShiftAssignmentResponse>> { Data = paged.Items, Meta = meta });
+        return Ok(new ApiResponse<IReadOnlyList<DepartmentResponse>> { Data = paged.Items, Meta = meta });
     }
 
-    /// <summary>Gets a single shift assignment by id.</summary>
-    /// <response code="200">The shift assignment was found.</response>
-    /// <response code="404">No shift assignment was found for the given id.</response>
+    /// <summary>Gets a single department by id.</summary>
+    /// <response code="200">The department was found.</response>
+    /// <response code="404">No department was found for the given id.</response>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -71,12 +71,12 @@ public class ShiftAssignmentsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Updates a shift assignment.</summary>
-    /// <response code="200">The shift assignment was updated.</response>
-    /// <response code="400">The request failed validation, or ShiftId does not reference an existing shift.</response>
-    /// <response code="404">No shift assignment was found for the given id.</response>
+    /// <summary>Updates a department.</summary>
+    /// <response code="200">The department was updated.</response>
+    /// <response code="400">The request failed validation.</response>
+    /// <response code="404">No department was found for the given id.</response>
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateShiftAssignmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDepartmentRequest request, CancellationToken cancellationToken)
     {
         var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
@@ -88,9 +88,9 @@ public class ShiftAssignmentsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Soft-deletes a shift assignment.</summary>
-    /// <response code="204">The shift assignment was deleted.</response>
-    /// <response code="404">No shift assignment was found for the given id.</response>
+    /// <summary>Soft-deletes a department.</summary>
+    /// <response code="204">The department was deleted.</response>
+    /// <response code="404">No department was found for the given id.</response>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -98,17 +98,14 @@ public class ShiftAssignmentsController : ControllerBase
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    private static ApiResponse<ShiftAssignmentResponse> Envelope(ShiftAssignmentResponse? data) => new() { Data = data };
+    private static ApiResponse<DepartmentResponse> Envelope(DepartmentResponse? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)
     {
         var status = errorCode switch
         {
             HRErrorCodes.NotFound => StatusCodes.Status404NotFound,
-            HRErrorCodes.InvalidShift => StatusCodes.Status400BadRequest,
-            HRErrorCodes.InvalidDepartment => StatusCodes.Status400BadRequest,
-            HRErrorCodes.InvalidStaff => StatusCodes.Status400BadRequest,
-            HRErrorCodes.ShiftOverlap => StatusCodes.Status400BadRequest,
+            HRErrorCodes.DuplicateCode => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

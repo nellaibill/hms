@@ -25,6 +25,12 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- Only for IUserService (public seam) — used to validate that a StaffId
+         actually refers to a real user before writing a ShiftAssignment/StaffAvailability/
+         ShiftSwapRequest. The same cross-module pattern HMS.Modules.Products already uses
+         against HMS.Modules.Masters. Domain.User/UserRepository etc. stay internal to
+         Identity; only IUserService is public. -->
+    <ProjectReference Include="..\..\Identity\HMS.Modules.Identity\HMS.Modules.Identity.csproj" />
   </ItemGroup>
 
 </Project>
