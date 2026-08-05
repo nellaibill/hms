@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { StaffSelect } from '@/components/StaffSelect';
 import { ShiftSelect } from './ShiftSelect';
 
@@ -81,9 +82,12 @@ export function ShiftAssignmentForm({ defaultValues, onSubmit, isSubmitting, sub
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="departmentId">Department ID</Label>
-        <Input id="departmentId" placeholder="00000000-0000-0000-0000-000000000000" {...register('departmentId')} />
-        <p className="text-xs text-muted-foreground">No department directory exists yet — enter the department's GUID directly.</p>
+        <Label htmlFor="departmentId">Department</Label>
+        <Controller
+          control={control}
+          name="departmentId"
+          render={({ field }) => <DepartmentSelect id="departmentId" value={field.value} onValueChange={field.onChange} />}
+        />
         {errors.departmentId && <p className="text-sm text-destructive">{errors.departmentId.message}</p>}
       </div>
 

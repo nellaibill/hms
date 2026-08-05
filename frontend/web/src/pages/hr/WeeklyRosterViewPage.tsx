@@ -5,7 +5,19 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CopyWeeklyRosterDialog, useCopyWeeklyRosterMutation, usePublishWeeklyRosterMutation, useWeeklyRosterQuery } from '../../features/weeklyRosters';
+import { DepartmentName } from '@/components/DepartmentName';
+import { useShiftsQuery } from '../../features/shifts';
+import { useShiftAssignmentsQuery } from '../../features/shiftAssignments';
+import {
+  CopyWeeklyRosterDialog,
+  WeeklyRosterMatrix,
+  WeeklyRosterWeekNav,
+  useCopyWeeklyRosterMutation,
+  usePublishWeeklyRosterMutation,
+  useWeeklyRosterQuery,
+  useWeeklyRostersQuery,
+} from '../../features/weeklyRosters';
+import { getWeekDates } from '../../features/weeklyRosters/utils/week';
 
 export default function WeeklyRosterViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +26,21 @@ export default function WeeklyRosterViewPage() {
   const publishMutation = usePublishWeeklyRosterMutation();
   const copyMutation = useCopyWeeklyRosterMutation();
   const [isCopying, setIsCopying] = useState(false);
+
+  const weekDates = roster ? getWeekDates(roster.weekStartDate) : [];
+  const shiftsQuery = useShiftsQuery({ pageSize: 100, isActive: true });
+  const assignmentsQuery = useShiftAssignmentsQuery(
+    {
+      pageSize: 100,
+      departmentId: roster?.departmentId,
+      rosterDateFrom: weekDates[0],
+      rosterDateTo: weekDates[6],
+    },
+    { enabled: Boolean(roster) },
+  );
+  // No "list rosters by department" endpoint exists — fetched unfiltered and narrowed
+  // client-side in WeeklyRosterWeekNav, per spec §4.4.
+  const departmentRostersQuery = useWeeklyRostersQuery({ pageSize: 100 });
 
   function handlePublish() {
     if (id) {
@@ -101,6 +128,7 @@ export default function WeeklyRosterViewPage() {
           <h1 className="text-xl font-semibold tracking-tight">Week of {roster.weekStartDate}</h1>
           <Badge variant={roster.published ? 'success' : 'secondary'}>{roster.published ? 'Published' : 'Draft'}</Badge>
         </div>
+        <WeeklyRosterWeekNav roster={roster} allRosters={departmentRostersQuery.data?.items ?? []} />
       </div>
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
@@ -113,8 +141,10 @@ export default function WeeklyRosterViewPage() {
         <Card>
           <CardContent className="grid grid-cols-1 gap-4 py-6 sm:grid-cols-2">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Department ID</p>
-              <p className="mt-1 font-mono text-sm text-foreground">{roster.departmentId}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Department</p>
+              <p className="mt-1 text-sm text-foreground">
+                <DepartmentName departmentId={roster.departmentId} />
+              </p>
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Published</p>
@@ -134,6 +164,26 @@ export default function WeeklyRosterViewPage() {
             )}
           </CardContent>
         </Card>
+
+        <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold text-foreground">Roster</h2>
+          {shiftsQuery.isPending || assignmentsQuery.isPending ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading roster…
+            </div>
+          ) : shiftsQuery.isError || assignmentsQuery.isError ? (
+            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Failed to load shifts or assignments for this week.
+            </p>
+          ) : (
+            <WeeklyRosterMatrix
+              weekStartDate={roster.weekStartDate}
+              shifts={shiftsQuery.data?.items ?? []}
+              assignments={assignmentsQuery.data?.items ?? []}
+            />
+          )}
+        </div>
       </div>
 
       {isCopying && (
