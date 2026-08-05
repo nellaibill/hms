@@ -109,6 +109,7 @@ export function ShiftForm({ mode, defaultValues, onSubmit, isSubmitting, submitL
           name="isNightShift"
           render={({ field }) => <Switch id="isNightShift" checked={field.value} onCheckedChange={field.onChange} />}
         />
+        {errors.isNightShift && <p className="text-sm text-destructive">{errors.isNightShift.message}</p>}
       </div>
 
       <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">
