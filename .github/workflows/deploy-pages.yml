@@ -31,13 +31,22 @@ jobs:
 
       - name: Build @hms/shared
         working-directory: frontend/shared
+        # `rm package-lock.json` before install (never committed back) works around a
+        # documented npm bug (https://github.com/npm/cli/issues/4828) where a lockfile's
+        # locked optionalDependencies resolution can omit the current platform's native
+        # binary (here, @rollup/rollup-linux-x64-gnu on this Linux runner), causing
+        # `vite build` to fail with MODULE_NOT_FOUND even though the lockfile is untouched
+        # and correct for local (Windows/macOS) development.
         run: |
+          rm -f package-lock.json
           npm install
           npm run build
 
       - name: Install web dependencies
         working-directory: frontend/web
-        run: npm install
+        run: |
+          rm -f package-lock.json
+          npm install
 
       - name: Build web app
         working-directory: frontend/web
