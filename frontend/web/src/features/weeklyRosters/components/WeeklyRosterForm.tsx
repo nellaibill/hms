@@ -1,10 +1,11 @@
 import { ApiError, weeklyRosterSchema, type WeeklyRosterFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DepartmentSelect } from '@/components/DepartmentSelect';
 
 interface WeeklyRosterFormProps {
   defaultValues?: Partial<WeeklyRosterFormValues>;
@@ -17,6 +18,7 @@ interface WeeklyRosterFormProps {
 export function WeeklyRosterForm({ defaultValues, onSubmit, isSubmitting, submitLabel, apiError }: WeeklyRosterFormProps) {
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors },
@@ -59,11 +61,12 @@ export function WeeklyRosterForm({ defaultValues, onSubmit, isSubmitting, submit
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="departmentId">Department ID</Label>
-        <Input id="departmentId" placeholder="00000000-0000-0000-0000-000000000000" {...register('departmentId')} />
-        <p className="text-xs text-muted-foreground">
-          No department directory exists yet — enter the department's GUID directly.
-        </p>
+        <Label htmlFor="departmentId">Department</Label>
+        <Controller
+          control={control}
+          name="departmentId"
+          render={({ field }) => <DepartmentSelect id="departmentId" value={field.value} onValueChange={field.onChange} />}
+        />
         {errors.departmentId && <p className="text-sm text-destructive">{errors.departmentId.message}</p>}
       </div>
 

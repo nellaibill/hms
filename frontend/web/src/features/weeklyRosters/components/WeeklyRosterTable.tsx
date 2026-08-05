@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DepartmentName } from '@/components/DepartmentName';
 
 interface WeeklyRosterTableProps {
   rosters: WeeklyRoster[];
@@ -54,7 +55,9 @@ export function WeeklyRosterTable({ rosters, sort, onSortChange, onDeleteRequest
                   {roster.weekStartDate}
                 </Link>
               </td>
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{roster.departmentId.slice(0, 8)}…</td>
+              <td className="px-4 py-3 text-foreground">
+                <DepartmentName departmentId={roster.departmentId} />
+              </td>
               <td className="px-4 py-3">
                 <Badge variant={roster.published ? 'success' : 'secondary'}>{roster.published ? 'Published' : 'Draft'}</Badge>
               </td>
