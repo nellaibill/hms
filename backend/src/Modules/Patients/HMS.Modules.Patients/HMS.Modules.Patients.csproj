@@ -29,6 +29,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- Only for IDocumentOwnerExistenceChecker (Documents' public seam) — implemented here
+         as PatientDocumentOwnerExistenceChecker so Documents' upload flow can validate a
+         Patient owner id actually exists (US-1). Patients does not otherwise depend on
+         Documents. -->
+    <ProjectReference Include="..\..\Documents\HMS.Modules.Documents\HMS.Modules.Documents.csproj" />
   </ItemGroup>
 
 </Project>

@@ -65,6 +65,22 @@ public class WeeklyRostersApiTests : IClassFixture<UsersApiFactory>
     }
 
     [Fact]
+    public async Task Create_WithAnUnparsableDate_ReturnsBadRequestNotServerError()
+    {
+        // A body where a field fails to bind (here, WeekStartDate holding a string that
+        // isn't a real DateOnly) previously deserialized to a null request instead of
+        // tripping [ApiController]'s automatic 400 — passing that null into
+        // FluentValidation threw ArgumentNullException, surfacing as a raw 500.
+        var response = await _client.PostAsJsonAsync("/api/v1/weekly-rosters", new
+        {
+            weekStartDate = "not-a-date",
+            departmentId = Guid.NewGuid(),
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task GetById_WhenNotFound_ReturnsNotFound()
     {
         var response = await _client.GetAsync($"/api/v1/weekly-rosters/{Guid.NewGuid()}");
@@ -90,6 +106,22 @@ public class WeeklyRostersApiTests : IClassFixture<UsersApiFactory>
         var updated = await updateResponse.Content.ReadFromJsonAsync<ApiResponse<WeeklyRosterResponse>>();
         updated!.Data!.Published.Should().BeTrue();
         updated.Data.PublishedDate.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Update_WithAnUnparsableDate_ReturnsBadRequestNotServerError()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/weekly-rosters", NewRosterPayload());
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<WeeklyRosterResponse>>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/weekly-rosters/{created!.Data!.Id}", new
+        {
+            weekStartDate = "not-a-date",
+            departmentId = created.Data.DepartmentId,
+            published = false,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -201,6 +233,20 @@ public class WeeklyRostersApiTests : IClassFixture<UsersApiFactory>
         var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<WeeklyRosterResponse>>();
 
         var response = await _client.PostAsJsonAsync($"/api/v1/weekly-rosters/{created!.Data!.Id}/copy", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Copy_WithAnUnparsableTargetDate_ReturnsBadRequestNotServerError()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/weekly-rosters", NewRosterPayload());
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<WeeklyRosterResponse>>();
+
+        var response = await _client.PostAsJsonAsync($"/api/v1/weekly-rosters/{created!.Data!.Id}/copy", new
+        {
+            targetWeekStartDate = "not-a-date",
+        });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

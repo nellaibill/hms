@@ -5,6 +5,7 @@ export * from './patients/patient';
 export * from './branding/branding';
 export * from './products/product';
 export * from './hr/shift';
+export * from './hr/department';
 export * from './hr/staffAvailability';
 export * from './hr/weeklyRoster';
 export * from './hr/shiftAssignment';

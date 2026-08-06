@@ -131,6 +131,26 @@ public class ShiftSwapRequestsApiTests : IClassFixture<UsersApiFactory>
     }
 
     [Fact]
+    public async Task Create_WithAnInvalidEnumValue_ReturnsBadRequestNotServerError()
+    {
+        // A body where every field fails to bind (here, a SwapRequestStatus value that
+        // isn't a real enum member) previously deserialized to a null request instead of
+        // tripping [ApiController]'s automatic 400 — passing that null into
+        // FluentValidation threw ArgumentNullException, surfacing as a raw 500.
+        var response = await _client.PostAsJsonAsync("/api/v1/shift-swap-requests", new
+        {
+            requestedByStaffId = Guid.NewGuid(),
+            requestedToStaffId = Guid.NewGuid(),
+            currentShiftAssignmentId = await CreateShiftAssignmentIdAsync(),
+            requestedShiftAssignmentId = await CreateShiftAssignmentIdAsync(),
+            status = "NotARealStatus",
+            requestedDate = "2026-08-03T09:00:00Z",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task GetById_WhenNotFound_ReturnsNotFound()
     {
         var response = await _client.GetAsync($"/api/v1/shift-swap-requests/{Guid.NewGuid()}");
@@ -160,6 +180,25 @@ public class ShiftSwapRequestsApiTests : IClassFixture<UsersApiFactory>
         var updated = await updateResponse.Content.ReadFromJsonAsync<ApiResponse<SwapRequestResponse>>();
         updated!.Data!.Status.Should().Be(SwapRequestStatus.Approved);
         updated.Data.ApprovedBy.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Update_WithAnInvalidEnumValue_ReturnsBadRequestNotServerError()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/shift-swap-requests", await NewSwapRequestPayloadAsync());
+        var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<SwapRequestResponse>>();
+
+        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/shift-swap-requests/{created!.Data!.Id}", new
+        {
+            requestedByStaffId = created.Data.RequestedByStaffId,
+            requestedToStaffId = created.Data.RequestedToStaffId,
+            currentShiftAssignmentId = created.Data.CurrentShiftAssignmentId,
+            requestedShiftAssignmentId = created.Data.RequestedShiftAssignmentId,
+            status = "NotARealStatus",
+            requestedDate = "2026-08-03T09:00:00Z",
+        });
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

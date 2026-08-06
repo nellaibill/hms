@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- DocumentsController lives in this module (not HMS.Api), so its <summary> comments
+         must be generated here for Swashbuckle to include them in Swagger UI. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment on a public member) is not useful here: this module is
+         internal-by-default (see docs/DeveloperHandbook.md §4), so its few public members
+         are a deliberate narrow seam, not a fully-documented public API. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needed for ControllerBase/[ApiController]/IActionResult/IFormFile/FileStreamResult in
+         Endpoints/, since this module is a plain class library, not an ASP.NET Core Web SDK
+         project. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!-- FluentValidation.DependencyInjectionExtensions is deliberately NOT referenced: its
+         AddValidatorsFromAssembly* scanners only find *public* IValidator<T>
+         implementations (this module's validators are internal by design), so it would be
+         dead weight — validators are registered explicitly in DocumentsModule instead. -->
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -68,6 +68,11 @@ export const API_ROUTES = {
     base: '/api/v1/shifts',
     byId: (id: string) => `/api/v1/shifts/${id}`,
   },
+  /** Mirrors HMS.Modules.HR.Endpoints.DepartmentsController. */
+  departments: {
+    base: '/api/v1/departments',
+    byId: (id: string) => `/api/v1/departments/${id}`,
+  },
   /** Mirrors HMS.Modules.HR.Endpoints.StaffAvailabilityController (singular route segment, per the backend's own doc comment). */
   staffAvailability: {
     base: '/api/v1/staff-availability',

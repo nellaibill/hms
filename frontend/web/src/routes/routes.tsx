@@ -55,6 +55,8 @@ const ShiftSwapRequestCreatePage = lazy(() => import('../pages/hr/ShiftSwapReque
 const ShiftSwapRequestViewPage = lazy(() => import('../pages/hr/ShiftSwapRequestViewPage'));
 const ShiftSwapRequestEditPage = lazy(() => import('../pages/hr/ShiftSwapRequestEditPage'));
 const MonthlyRosterCalendarPage = lazy(() => import('../pages/hr/MonthlyRosterCalendarPage'));
+const CalendarEventsPage = lazy(() => import('../pages/calendar/CalendarEventsPage'));
+const DocumentManagementPage = lazy(() => import('../pages/documents/DocumentManagementPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -74,6 +76,8 @@ const specialPages: Record<string, React.ReactNode> = {
   '/support/inventory': withSuspense(<ProductsListPage />),
   '/finance/accounts': withSuspense(<InvoiceLedgerPage />),
   '/admin/hr': withSuspense(<HrHubPage />),
+  '/engagement/programmes': withSuspense(<CalendarEventsPage />),
+  '/documents': withSuspense(<DocumentManagementPage />),
 };
 
 const moduleRoutes = getAllLeaves().map((leaf) => ({

@@ -35,8 +35,11 @@ const DropdownMenuSubContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
+    // See PopoverContent's comment in popover.tsx — Radix Dialog disables pointer-events on
+    // <body> while open, which this body-portaled menu would otherwise inherit.
+    style={{ pointerEvents: 'auto' }}
     className={cn(
-      'z-[1100] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
+      'z-[1450] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
       className,
     )}
     {...props}
@@ -52,8 +55,11 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      // See PopoverContent's comment in popover.tsx — Radix Dialog disables pointer-events on
+      // <body> while open, which this body-portaled menu would otherwise inherit.
+      style={{ pointerEvents: 'auto' }}
       className={cn(
-        'z-[1100] min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
+        'z-[1450] min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
         className,
       )}
       {...props}

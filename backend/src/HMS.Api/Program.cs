@@ -2,7 +2,11 @@ using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
 using HMS.Api.Middleware;
 using HMS.Modules.Branding.Infrastructure;
+<<<<<<< HEAD
 using HMS.Modules.Calendar.Infrastructure;
+=======
+using HMS.Modules.Documents.Infrastructure;
+>>>>>>> origin/main
 using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity;
 using HMS.Modules.Identity.Infrastructure;
@@ -71,6 +75,10 @@ if (app.Environment.IsDevelopment())
 
     scope.ServiceProvider
         .GetRequiredService<PatientsDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<DocumentsDbContext>()
         .Database.Migrate();
 
     scope.ServiceProvider

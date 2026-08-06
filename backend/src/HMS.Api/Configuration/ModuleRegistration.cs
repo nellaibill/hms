@@ -1,5 +1,9 @@
 using HMS.Modules.Branding;
+<<<<<<< HEAD
 using HMS.Modules.Calendar;
+=======
+using HMS.Modules.Documents;
+>>>>>>> origin/main
 using HMS.Modules.HR;
 using HMS.Modules.Identity;
 using HMS.Modules.Masters;
@@ -19,6 +23,10 @@ public static class ModuleRegistration
         IConfiguration configuration)
     {
         services.AddIdentityModule(configuration);
+        // Documents registers before Patients only for readability here — DI registration
+        // order doesn't affect resolution; Patients' PatientDocumentOwnerExistenceChecker
+        // registration works the same regardless of which AddXxxModule call runs first.
+        services.AddDocumentsModule(configuration);
         services.AddPatientsModule(configuration);
         services.AddBrandingModule(configuration);
         services.AddMastersModule(configuration);

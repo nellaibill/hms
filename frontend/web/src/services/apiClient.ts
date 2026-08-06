@@ -1,6 +1,7 @@
 import {
   AuthApi,
   BrandingApi,
+  DepartmentsApi,
   HttpClient,
   MastersApi,
   PatientsApi,
@@ -37,6 +38,7 @@ export const brandingApi = new BrandingApi(httpClient);
 export const mastersApi = new MastersApi(httpClient);
 export const productsApi = new ProductsApi(httpClient);
 export const shiftsApi = new ShiftsApi(httpClient);
+export const departmentsApi = new DepartmentsApi(httpClient);
 export const staffAvailabilityApi = new StaffAvailabilityApi(httpClient);
 export const weeklyRostersApi = new WeeklyRostersApi(httpClient);
 export const shiftAssignmentsApi = new ShiftAssignmentsApi(httpClient);
