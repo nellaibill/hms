@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
 using HMS.Api.Middleware;
 using HMS.Modules.Branding.Infrastructure;
+using HMS.Modules.Calendar.Infrastructure;
 using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity;
@@ -91,6 +92,10 @@ if (app.Environment.IsDevelopment())
 
     scope.ServiceProvider
         .GetRequiredService<HRDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<CalendarDbContext>()
         .Database.Migrate();
 
     // Idempotent: safe to run on every startup. Seeds the Permission catalog's

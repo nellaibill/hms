@@ -1,15 +1,16 @@
 export * from './types';
 export * from './constants';
 export * from './utils/date';
+export * from './utils/filterEvents';
 export * from './validation';
 
-export { useCalendarEventsQuery } from './hooks/useCalendarEventsQuery';
+export { useCalendarEventsQuery, calendarEventsQueryKey } from './hooks/useCalendarEventsQuery';
 export {
   useCreateCalendarEventMutation,
   useUpdateCalendarEventMutation,
   useDeleteCalendarEventMutation,
 } from './hooks/useCalendarEventMutations';
-export { getUpcomingMockEvents } from './mockEventsStore';
+export { useDepartmentNames } from './hooks/useDepartmentDirectory';
 
 export { CalendarSidebar } from './components/CalendarSidebar';
 export { CalendarToolbar } from './components/CalendarToolbar';

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays, Menu, Plus } from 'lucide-react';
+import { ApiError } from '@hms/shared';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -16,7 +17,8 @@ import {
   SidebarSkeleton,
   CalendarGridSkeleton,
   createEmptyFilters,
-  getUpcomingMockEvents,
+  filterEvents,
+  getUpcomingEvents,
   isoDateRangesOverlap,
   todayIso,
   useCalendarEventsQuery,
@@ -37,6 +39,16 @@ type FormDrawerState =
   | { open: true; mode: 'create'; defaultDate: string | null }
   | { open: true; mode: 'edit'; event: CalendarEvent };
 
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.validationErrors?.length) {
+      return err.validationErrors.map((issue) => issue.message).join(' ');
+    }
+    return err.message;
+  }
+  return err instanceof Error ? err.message : 'Failed to save event.';
+}
+
 export default function CalendarEventsPage() {
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
@@ -51,16 +63,18 @@ export default function CalendarEventsPage() {
 
   const debouncedSearch = useDebouncedValue(search, 200);
 
-  const allEventsQuery = useCalendarEventsQuery({ types: [] });
-  const visibleEventsQuery = useCalendarEventsQuery({ ...filters, search: debouncedSearch || undefined });
+  const eventsQuery = useCalendarEventsQuery();
 
   const createMutation = useCreateCalendarEventMutation();
   const updateMutation = useUpdateCalendarEventMutation();
   const deleteMutation = useDeleteCalendarEventMutation();
 
-  const allEvents = useMemo(() => allEventsQuery.data ?? [], [allEventsQuery.data]);
-  const visibleEvents = visibleEventsQuery.data ?? [];
-  const isPending = allEventsQuery.isPending || visibleEventsQuery.isPending;
+  const allEvents = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
+  const visibleEvents = useMemo(
+    () => filterEvents(allEvents, { ...filters, search: debouncedSearch || undefined }),
+    [allEvents, filters, debouncedSearch],
+  );
+  const isPending = eventsQuery.isPending;
 
   const typeCounts = useMemo(() => {
     const counts: Partial<Record<EventType, number>> = {};
@@ -81,7 +95,7 @@ export default function CalendarEventsPage() {
     return dates;
   }, [allEvents, viewYear, viewMonth]);
 
-  const upcomingEvents = useMemo(() => getUpcomingMockEvents(todayIso(), 5), [allEvents]);
+  const upcomingEvents = useMemo(() => getUpcomingEvents(allEvents, todayIso(), 5), [allEvents]);
 
   function goToMonth(delta: number) {
     const { year, month } = addMonths(viewYear, viewMonth, delta);
@@ -114,12 +128,12 @@ export default function CalendarEventsPage() {
     if (formDrawer.open && formDrawer.mode === 'edit') {
       updateMutation.mutate(
         { id: formDrawer.event.id, values },
-        { onSuccess: () => closeFormDrawer(), onError: (err) => setSubmitError(err instanceof Error ? err.message : 'Failed to save event.') },
+        { onSuccess: () => closeFormDrawer(), onError: (err) => setSubmitError(extractErrorMessage(err)) },
       );
     } else {
       createMutation.mutate(values, {
         onSuccess: () => closeFormDrawer(),
-        onError: (err) => setSubmitError(err instanceof Error ? err.message : 'Failed to save event.'),
+        onError: (err) => setSubmitError(extractErrorMessage(err)),
       });
     }
   }
@@ -196,11 +210,8 @@ export default function CalendarEventsPage() {
             onFiltersChange={setFilters}
             filterPanelOpen={filterPanelOpen}
             onFilterPanelOpenChange={setFilterPanelOpen}
-            onRefresh={() => {
-              allEventsQuery.refetch();
-              visibleEventsQuery.refetch();
-            }}
-            isRefreshing={allEventsQuery.isFetching || visibleEventsQuery.isFetching}
+            onRefresh={() => eventsQuery.refetch()}
+            isRefreshing={eventsQuery.isFetching}
           />
 
           <div className="flex items-center gap-2 border-b border-border px-4 py-2 lg:hidden">
@@ -257,7 +268,6 @@ export default function CalendarEventsPage() {
           mode={formDrawer.mode}
           event={formDrawer.mode === 'edit' ? formDrawer.event : null}
           defaultDate={formDrawer.mode === 'create' ? formDrawer.defaultDate : null}
-          existingEvents={allEvents}
           onClose={closeFormDrawer}
           onSubmit={handleSubmit}
           isSubmitting={createMutation.isPending || updateMutation.isPending}

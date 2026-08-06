@@ -1,12 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createMockEvent, deleteMockEvent, updateMockEvent } from '../mockEventsStore';
+import { eventsApi } from '@/services/apiClient';
+import { mapFormValuesToRequest } from '../eventsAdapter';
+import { calendarEventsQueryKey } from './useCalendarEventsQuery';
 import type { CalendarEventFormValues } from '../types';
 
 export function useCreateCalendarEventMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (values: CalendarEventFormValues) => Promise.resolve(createMockEvent(values)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-events'] }),
+    mutationFn: (values: CalendarEventFormValues) => eventsApi.createEvent(mapFormValuesToRequest(values)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: calendarEventsQueryKey }),
   });
 }
 
@@ -14,15 +16,15 @@ export function useUpdateCalendarEventMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, values }: { id: string; values: CalendarEventFormValues }) =>
-      Promise.resolve(updateMockEvent(id, values)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-events'] }),
+      eventsApi.updateEvent(id, mapFormValuesToRequest(values)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: calendarEventsQueryKey }),
   });
 }
 
 export function useDeleteCalendarEventMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => Promise.resolve(deleteMockEvent(id)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-events'] }),
+    mutationFn: (id: string) => eventsApi.deleteEvent(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: calendarEventsQueryKey }),
   });
 }

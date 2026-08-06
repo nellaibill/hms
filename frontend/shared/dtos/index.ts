@@ -10,3 +10,4 @@ export * from './hr/staffAvailability';
 export * from './hr/weeklyRoster';
 export * from './hr/shiftAssignment';
 export * from './hr/shiftSwapRequest';
+export * from './calendar/event';

@@ -1,4 +1,5 @@
 using HMS.Modules.Branding;
+using HMS.Modules.Calendar;
 using HMS.Modules.Documents;
 using HMS.Modules.HR;
 using HMS.Modules.Identity;
@@ -30,6 +31,9 @@ public static class ModuleRegistration
         // validation), so it must register after AddMastersModule.
         services.AddProductsModule(configuration);
         services.AddHRModule(configuration);
+        // Calendar depends on HR's public service seam (Department reference
+        // validation), so it must register after AddHRModule.
+        services.AddCalendarModule(configuration);
 
         // Future modules register here, e.g.:
         // services.AddAppointmentsModule(configuration);

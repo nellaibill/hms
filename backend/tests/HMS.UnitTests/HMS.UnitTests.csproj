@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Modules\Notifications\HMS.Modules.Notifications\HMS.Modules.Notifications.csproj" />
     <ProjectReference Include="..\..\src\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\src\Modules\HR\HMS.Modules.HR\HMS.Modules.HR.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Calendar\HMS.Modules.Calendar\HMS.Modules.Calendar.csproj" />
   </ItemGroup>
 
 </Project>

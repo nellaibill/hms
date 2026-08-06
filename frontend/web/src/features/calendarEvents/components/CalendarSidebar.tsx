@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DEPARTMENTS } from '../constants';
+import { useDepartmentNames } from '../hooks/useDepartmentDirectory';
 import { EventTypeFilterList } from './EventTypeFilterList';
 import { MiniNavCalendar } from './MiniNavCalendar';
 import { UpcomingEventsList } from './UpcomingEventsList';
@@ -44,6 +44,7 @@ export function CalendarSidebar({
   onSelectEvent,
 }: CalendarSidebarProps) {
   const filtersActive = !isFiltersEmpty(filters);
+  const departmentNames = useDepartmentNames();
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-border bg-card sm:w-[280px] sm:shrink-0">
@@ -93,7 +94,7 @@ export function CalendarSidebar({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All departments</SelectItem>
-                {DEPARTMENTS.map((dept) => (
+                {departmentNames.map((dept) => (
                   <SelectItem key={dept} value={dept}>
                     {dept}
                   </SelectItem>

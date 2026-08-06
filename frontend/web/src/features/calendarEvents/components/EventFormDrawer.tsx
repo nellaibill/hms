@@ -1,6 +1,5 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AlertCircle } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,18 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { DEPARTMENTS, EVENT_TYPE_META, REMINDER_TYPE_LABELS } from '../constants';
-import { EVENT_TYPES, REMINDER_TYPES } from '../types';
+import { DepartmentSelect } from '@/components/DepartmentSelect';
+import { EVENT_TYPE_META } from '../constants';
+import { EVENT_TYPES } from '../types';
 import { isEventFormValid, validateEventForm } from '../validation';
 import { todayIso } from '../utils/date';
-import type { CalendarEvent, CalendarEventFormValues, EventType, ReminderType } from '../types';
+import type { CalendarEvent, CalendarEventFormValues, EventType } from '../types';
 
 interface EventFormDrawerProps {
   open: boolean;
   mode: 'create' | 'edit';
   event?: CalendarEvent | null;
   defaultDate?: string | null;
-  existingEvents: CalendarEvent[];
   onClose: () => void;
   onSubmit: (values: CalendarEventFormValues) => void;
   isSubmitting?: boolean;
@@ -32,13 +31,10 @@ function buildDefaultValues(event?: CalendarEvent | null, defaultDate?: string |
       title: event.title,
       description: event.description,
       eventType: event.eventType,
-      department: event.department,
+      departmentId: event.departmentId,
       startDate: event.startDate,
       endDate: event.endDate,
       allDay: event.allDay,
-      reminderEnabled: event.reminderEnabled,
-      reminderType: event.reminderType,
-      reminderAt: event.reminderAt ? event.reminderAt.slice(0, 16) : undefined,
     };
   }
   const date = defaultDate ?? todayIso();
@@ -46,13 +42,10 @@ function buildDefaultValues(event?: CalendarEvent | null, defaultDate?: string |
     title: '',
     description: '',
     eventType: '',
-    department: undefined,
+    departmentId: undefined,
     startDate: date,
     endDate: date,
     allDay: true,
-    reminderEnabled: false,
-    reminderType: undefined,
-    reminderAt: undefined,
   };
 }
 
@@ -61,7 +54,6 @@ export function EventFormDrawer({
   mode,
   event,
   defaultDate,
-  existingEvents,
   onClose,
   onSubmit,
   isSubmitting,
@@ -71,19 +63,19 @@ export function EventFormDrawer({
     defaultValues: buildDefaultValues(event, defaultDate),
   });
 
+  const [assignDepartment, setAssignDepartment] = useState(!!event?.departmentId);
+
   useEffect(() => {
     if (open) {
       reset(buildDefaultValues(event, defaultDate));
+      setAssignDepartment(!!event?.departmentId);
     }
     // Only re-seed when the drawer opens for a (possibly new) target — not on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, event?.id, defaultDate]);
 
   const values = watch();
-  const errors = useMemo(
-    () => validateEventForm(values, { existingEvents, excludeId: event?.id }),
-    [values, existingEvents, event?.id],
-  );
+  const errors = useMemo(() => validateEventForm(values), [values]);
   const valid = isEventFormValid(errors);
 
   return (
@@ -98,13 +90,6 @@ export function EventFormDrawer({
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col overflow-y-auto">
           <div className="flex flex-1 flex-col gap-5 px-6 py-5">
-            {errors.business && (
-              <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{errors.business}</span>
-              </div>
-            )}
-
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="event-title">
                 Title <span className="font-normal text-muted-foreground">(required)</span>
@@ -194,64 +179,30 @@ export function EventFormDrawer({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="event-department">Department <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Select
-                value={values.department ?? 'none'}
-                onValueChange={(value) => setValue('department', value === 'none' ? undefined : value, { shouldDirty: true })}
-              >
-                <SelectTrigger id="event-department">
-                  <SelectValue placeholder="Hospital-wide" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Hospital-wide (no department)</SelectItem>
-                  {DEPARTMENTS.map((dept) => (
-                    <SelectItem key={dept} value={dept}>
-                      {dept}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-3 rounded-md border border-border px-3 py-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="event-reminder-enabled" className="cursor-pointer font-normal">
-                  Enable Reminder
+                <Label htmlFor="event-department" className="font-normal">
+                  Department <span className="font-normal text-muted-foreground">(optional)</span>
                 </Label>
-                <Switch
-                  id="event-reminder-enabled"
-                  checked={values.reminderEnabled}
-                  onCheckedChange={(checked) =>
-                    setValue('reminderEnabled', checked, { shouldDirty: true })
-                  }
-                />
-              </div>
-
-              {values.reminderEnabled && (
-                <div className="flex flex-col gap-3 border-t border-border pt-3">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="event-reminder-type">Reminder Type</Label>
-                    <Select
-                      value={values.reminderType ?? undefined}
-                      onValueChange={(value) => setValue('reminderType', value as ReminderType, { shouldDirty: true })}
-                    >
-                      <SelectTrigger id="event-reminder-type">
-                        <SelectValue placeholder="Select reminder type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {REMINDER_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {REMINDER_TYPE_LABELS[type]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="event-reminder-at">Reminder Date &amp; Time</Label>
-                    <Input id="event-reminder-at" type="datetime-local" {...register('reminderAt')} />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="event-department-toggle" className="cursor-pointer text-xs font-normal text-muted-foreground">
+                    Hospital-wide
+                  </Label>
+                  <Switch
+                    id="event-department-toggle"
+                    checked={!assignDepartment}
+                    onCheckedChange={(checked) => {
+                      setAssignDepartment(!checked);
+                      setValue('departmentId', undefined, { shouldDirty: true });
+                    }}
+                  />
                 </div>
+              </div>
+              {assignDepartment && (
+                <DepartmentSelect
+                  id="event-department"
+                  value={values.departmentId ?? ''}
+                  onValueChange={(value) => setValue('departmentId', value, { shouldDirty: true })}
+                />
               )}
             </div>
           </div>

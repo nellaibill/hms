@@ -96,4 +96,11 @@ export const API_ROUTES = {
     base: '/api/v1/shift-swap-requests',
     byId: (id: string) => `/api/v1/shift-swap-requests/${id}`,
   },
+  /** Mirrors HMS.Modules.Calendar.Endpoints.EventsController. */
+  events: {
+    base: '/api/v1/events',
+    byId: (id: string) => `/api/v1/events/${id}`,
+    month: '/api/v1/events/month',
+    bulk: '/api/v1/events/bulk',
+  },
 } as const;
