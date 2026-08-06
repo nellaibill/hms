@@ -35,8 +35,11 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       position={position}
+      // See PopoverContent's comment in popover.tsx — Radix Dialog disables pointer-events on
+      // <body> while open, which this body-portaled content would otherwise inherit.
+      style={{ pointerEvents: 'auto' }}
       className={cn(
-        'relative z-[1100] max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg',
+        'relative z-[1450] max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg',
         position === 'popper' && 'translate-y-1',
         className,
       )}

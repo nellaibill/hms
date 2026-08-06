@@ -15,8 +15,12 @@ const PopoverContent = React.forwardRef<
       ref={ref}
       align={align}
       sideOffset={sideOffset}
+      // Radix Dialog sets `pointer-events: none` on <body> while open and only re-enables it
+      // on its own content — this Popover portals to <body> too (e.g. SearchableSelect used
+      // inside a Dialog), so without this override it renders on top but is unclickable.
+      style={{ pointerEvents: 'auto' }}
       className={cn(
-        'z-[1100] w-[--radix-popover-trigger-width] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg outline-none',
+        'z-[1450] w-[--radix-popover-trigger-width] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg outline-none',
         className,
       )}
       {...props}
