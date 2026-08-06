@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { DEPARTMENTS, EVENT_TYPE_META } from '../constants';
+import { EVENT_TYPE_META } from '../constants';
+import { useDepartmentNames } from '../hooks/useDepartmentDirectory';
 import { createEmptyFilters, EVENT_TYPES, type CalendarEventFilters, type EventType } from '../types';
 
 const QUICK_FILTERS: { label: string; types: EventType[] }[] = [
@@ -24,6 +25,8 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({ open, onOpenChange, filters, onFiltersChange, anchor }: FilterPanelProps) {
+  const departmentNames = useDepartmentNames();
+
   function toggleType(type: EventType) {
     onFiltersChange({
       ...filters,
@@ -106,7 +109,7 @@ export function FilterPanel({ open, onOpenChange, filters, onFiltersChange, anch
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All departments</SelectItem>
-                {DEPARTMENTS.map((dept) => (
+                {departmentNames.map((dept) => (
                   <SelectItem key={dept} value={dept}>
                     {dept}
                   </SelectItem>

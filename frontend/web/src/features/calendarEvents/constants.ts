@@ -1,7 +1,4 @@
-import { DEPARTMENTS } from '@/config/hospitalData';
-import type { EventType, ReminderType } from './types';
-
-export { DEPARTMENTS };
+import type { EventType } from './types';
 
 export interface EventTypeMeta {
   label: string;
@@ -60,12 +57,6 @@ export const EVENT_TYPE_META: Record<EventType, EventTypeMeta> = {
     pillClass: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-200',
     dotClass: 'bg-cyan-500',
   },
-};
-
-export const REMINDER_TYPE_LABELS: Record<ReminderType, string> = {
-  Notification: 'In-app Notification',
-  Email: 'Email',
-  SMS: 'SMS',
 };
 
 /** Reserved-for-later event categories, shown disabled in the Create/Edit type list per the MVP scope note. */

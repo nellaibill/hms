@@ -12,3 +12,4 @@ export * from './services/staffAvailabilityApi';
 export * from './services/weeklyRostersApi';
 export * from './services/shiftAssignmentsApi';
 export * from './services/shiftSwapRequestsApi';
+export * from './services/eventsApi';

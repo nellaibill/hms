@@ -1,8 +1,8 @@
-import { Bell, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { EVENT_TYPE_META, REMINDER_TYPE_LABELS } from '../constants';
+import { EVENT_TYPE_META } from '../constants';
 import { formatDisplayDate } from '../utils/date';
 import type { CalendarEvent } from '../types';
 
@@ -55,9 +55,11 @@ export function EventDetailsDrawer({ event, onClose, onEdit, onDelete }: EventDe
                 <div className="grid grid-cols-2 gap-3">
                   <DetailRow label="Event Type">{meta.label}</DetailRow>
                   <DetailRow label="Department">{event.department ?? 'Hospital-wide'}</DetailRow>
-                  <DetailRow label="Created By">{event.createdBy}</DetailRow>
+                  <DetailRow label="Created By">{event.createdBy ?? <span className="text-muted-foreground">—</span>}</DetailRow>
                   <DetailRow label="Created Date">{formatDisplayDate(event.createdAt.slice(0, 10))}</DetailRow>
-                  <DetailRow label="Updated Date">{formatDisplayDate(event.updatedAt.slice(0, 10))}</DetailRow>
+                  <DetailRow label="Updated Date">
+                    {event.updatedAt ? formatDisplayDate(event.updatedAt.slice(0, 10)) : <span className="text-muted-foreground">—</span>}
+                  </DetailRow>
                 </div>
               </section>
 
@@ -68,23 +70,6 @@ export function EventDetailsDrawer({ event, onClose, onEdit, onDelete }: EventDe
                   <DetailRow label="End Date">{formatDisplayDate(event.endDate)}</DetailRow>
                 </div>
                 <DetailRow label="All Day">{event.allDay ? 'Yes' : 'No'}</DetailRow>
-              </section>
-
-              <section className="flex flex-col gap-3 border-t border-border pt-5">
-                <SectionHeading>Reminder</SectionHeading>
-                {event.reminderEnabled ? (
-                  <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5">
-                    <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                    <div className="flex flex-col gap-0.5 text-sm">
-                      <span className="text-foreground">
-                        {event.reminderType ? REMINDER_TYPE_LABELS[event.reminderType] : 'Reminder'}
-                      </span>
-                      {event.reminderAt && <span className="text-muted-foreground">{event.reminderAt.replace('T', ' ').slice(0, 16)}</span>}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No reminder set for this event.</p>
-                )}
               </section>
             </div>
 
