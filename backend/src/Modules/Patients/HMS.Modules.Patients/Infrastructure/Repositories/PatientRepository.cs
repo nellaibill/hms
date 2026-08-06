@@ -17,6 +17,9 @@ internal class PatientRepository : IPatientRepository
     public async Task AddAsync(Patient patient, CancellationToken cancellationToken)
         => await _dbContext.Patients.AddAsync(patient, cancellationToken);
 
+    public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
+        => _dbContext.Patients.AnyAsync(p => p.Id == id, cancellationToken);
+
     public Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Patients
             .Include(p => p.Registrations)

@@ -1,4 +1,5 @@
 using FluentValidation;
+using HMS.Modules.Documents.Application.Abstractions;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Application.Validators;
@@ -36,6 +37,10 @@ public static class PatientsModule
         services.AddScoped<IPatientIdentifierGenerator, PatientIdentifierGenerator>();
         services.AddScoped<IPatientFileStorage, PatientFileStorage>();
         services.AddScoped<IPatientService, PatientService>();
+
+        // Lets HMS.Modules.Documents validate a Patient owner id exists before accepting an
+        // upload against it (US-1) — see PatientDocumentOwnerExistenceChecker's remarks.
+        services.AddScoped<IDocumentOwnerExistenceChecker, PatientDocumentOwnerExistenceChecker>();
 
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations, and this module's
