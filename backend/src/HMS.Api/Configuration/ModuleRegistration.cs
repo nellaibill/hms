@@ -1,9 +1,6 @@
 using HMS.Modules.Branding;
-<<<<<<< HEAD
 using HMS.Modules.Calendar;
-=======
 using HMS.Modules.Documents;
->>>>>>> origin/main
 using HMS.Modules.HR;
 using HMS.Modules.Identity;
 using HMS.Modules.Masters;
