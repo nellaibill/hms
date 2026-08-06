@@ -11,8 +11,8 @@ namespace HMS.Modules.HR.Endpoints;
 
 /// <summary>
 /// Weekly Roster CRUD, per the Shift Management Phase 3 spec. Roster-header only — it does
-/// not generate or reference ShiftAssignments. This module has no authentication yet, so
-/// "actor" (created/updated/deleted-by) is null for now — matches ShiftsController.
+/// not generate or reference ShiftAssignments. "Actor" (created/updated/deleted-by) is
+/// read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId — matches ShiftsController.
 /// </summary>
 [ApiController]
 [Route("api/v1/weekly-rosters")]
@@ -55,7 +55,7 @@ public class WeeklyRostersController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -119,7 +119,7 @@ public class WeeklyRostersController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -129,7 +129,7 @@ public class WeeklyRostersController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _service.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -140,7 +140,7 @@ public class WeeklyRostersController : ControllerBase
     [HttpPost("{id:guid}/publish")]
     public async Task<IActionResult> Publish(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.PublishAsync(id, actorId: null, cancellationToken);
+        var result = await _service.PublishAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -163,7 +163,7 @@ public class WeeklyRostersController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CopyAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.CopyAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));

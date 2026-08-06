@@ -11,9 +11,10 @@ namespace HMS.Modules.HR.Endpoints;
 
 /// <summary>
 /// Staff Availability CRUD, per the Shift Management Phase 4 spec. Purely informational —
-/// nothing here reads or enforces this data against ShiftAssignments yet. This module has
-/// no authentication yet, so "actor" (created/updated/deleted-by) is null for now — matches
-/// ShiftsController. Singular route (staff-availability, not -availabilities) per spec.
+/// nothing here reads or enforces this data against ShiftAssignments yet. "Actor"
+/// (created/updated/deleted-by) is read from the caller's JWT via
+/// ClaimsPrincipalExtensions.GetUserId — matches ShiftsController. Singular route
+/// (staff-availability, not -availabilities) per spec.
 /// </summary>
 [ApiController]
 [Route("api/v1/staff-availability")]
@@ -50,7 +51,7 @@ public class StaffAvailabilityController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -95,7 +96,7 @@ public class StaffAvailabilityController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -105,7 +106,7 @@ public class StaffAvailabilityController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _service.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 

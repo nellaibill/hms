@@ -35,7 +35,7 @@ public class ProductBarcodesController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(productId, request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(productId, request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { productId, id = result.Value!.Id }, Envelope(result.Value));
@@ -51,7 +51,7 @@ public class ProductBarcodesController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(productId, id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(productId, id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

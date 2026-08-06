@@ -49,7 +49,7 @@ public class DepartmentsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -94,7 +94,7 @@ public class DepartmentsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -104,7 +104,7 @@ public class DepartmentsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _service.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 

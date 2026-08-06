@@ -14,8 +14,9 @@ namespace HMS.Modules.Patients.Endpoints;
 /// The Patients module's HTTP surface — New Patient Registration (combined patient +
 /// first encounter), demographic update, soft delete, paged/search listing, and
 /// photo/ID-proof upload, per docs/PatientRegistrationModule.md's MVP scope (see
-/// docs/DecisionLog.md for what's deferred). No authentication yet, so "actor"
-/// (created/updated-by) is null for now — same as HMS.Modules.Identity.UsersController.
+/// docs/DecisionLog.md for what's deferred). "Actor" (created/updated-by) is read from
+/// the caller's JWT via ClaimsPrincipalExtensions.GetUserId — same as
+/// HMS.Modules.Identity.UsersController.
 /// </summary>
 [ApiController]
 [Route("api/v1/patients")]
@@ -50,7 +51,7 @@ public class PatientsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _patientService.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _patientService.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         if (!result.IsSuccess)
         {
             return MapFailure(result.ErrorCode!, result.Error!);
@@ -74,7 +75,7 @@ public class PatientsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _patientService.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _patientService.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -84,7 +85,7 @@ public class PatientsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _patientService.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _patientService.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -133,7 +134,7 @@ public class PatientsController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _patientService.UploadPhotoAsync(id, stream, file.FileName, file.ContentType, file.Length, actorId: null, cancellationToken);
+        var result = await _patientService.UploadPhotoAsync(id, stream, file.FileName, file.ContentType, file.Length, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -151,7 +152,7 @@ public class PatientsController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _patientService.UploadIdProofAsync(id, idProofType, stream, file.FileName, file.ContentType, file.Length, actorId: null, cancellationToken);
+        var result = await _patientService.UploadIdProofAsync(id, idProofType, stream, file.FileName, file.ContentType, file.Length, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

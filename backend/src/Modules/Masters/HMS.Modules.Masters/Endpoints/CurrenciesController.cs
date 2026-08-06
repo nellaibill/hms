@@ -11,8 +11,8 @@ namespace HMS.Modules.Masters.Endpoints;
 
 /// <summary>
 /// Currency master CRUD (no hard delete — see docs/03_Masters_ERD's is_active note;
-/// deactivate via PUT instead). No authentication yet, so "actor" (created/updated-by) is
-/// null for now — same as HMS.Modules.Patients.PatientsController.
+/// deactivate via PUT instead). "Actor" (created/updated-by) is read from the caller's
+/// JWT via ClaimsPrincipalExtensions.GetUserId — same as HMS.Modules.Patients.PatientsController.
 /// </summary>
 [ApiController]
 [Route("api/v1/masters/currencies")]
@@ -41,7 +41,7 @@ public class CurrenciesController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -60,7 +60,7 @@ public class CurrenciesController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

@@ -43,7 +43,7 @@ public class ProductImagesController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _service.UploadAsync(productId, stream, file.FileName, file.Length, imageType, isPrimary, displayOrder, isActive, actorId: null, cancellationToken);
+        var result = await _service.UploadAsync(productId, stream, file.FileName, file.Length, imageType, isPrimary, displayOrder, isActive, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { productId, id = result.Value!.Id }, Envelope(result.Value));
@@ -59,7 +59,7 @@ public class ProductImagesController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(productId, id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(productId, id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

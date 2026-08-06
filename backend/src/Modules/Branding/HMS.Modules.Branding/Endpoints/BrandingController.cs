@@ -11,9 +11,8 @@ namespace HMS.Modules.Branding.Endpoints;
 /// The Branding module's HTTP surface — get/update the current theme configuration and
 /// upload a hospital logo, per the Theme &amp; Branding settings feature. GET has no
 /// authentication so the pre-login screen can theme itself too; PUT/POST match that same
-/// (currently app-wide) posture — see docs/DecisionLog.md. No authentication exists
-/// anywhere in this app yet, so "actor" (updated-by) is null for now, same as every other
-/// module's controllers.
+/// (currently app-wide) posture — see docs/DecisionLog.md. "Actor" (updated-by) is read
+/// from the caller's JWT via ClaimsPrincipalExtensions.GetUserId when one is present.
 /// </summary>
 [ApiController]
 [Route("api/v1/branding")]
@@ -41,7 +40,7 @@ public class BrandingController : ControllerBase
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] UpdateBrandingRequest request, CancellationToken cancellationToken)
     {
-        var result = await _brandingService.UpdateAsync(request, actorId: null, cancellationToken);
+        var result = await _brandingService.UpdateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -58,7 +57,7 @@ public class BrandingController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _brandingService.UploadLogoAsync(stream, file.FileName, file.Length, actorId: null, cancellationToken);
+        var result = await _brandingService.UploadLogoAsync(stream, file.FileName, file.Length, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

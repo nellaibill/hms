@@ -10,9 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.Modules.HR.Endpoints;
 
 /// <summary>
-/// Shift Assignment CRUD, per the Shift Management Phase 2 spec. This module has no
-/// authentication yet, so "actor" (created/updated/deleted-by) is null for now — matches
-/// ShiftsController/UsersController.
+/// Shift Assignment CRUD, per the Shift Management Phase 2 spec. "Actor" (created/updated/
+/// deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId —
+/// matches ShiftsController/UsersController.
 /// </summary>
 [ApiController]
 [Route("api/v1/shift-assignments")]
@@ -49,7 +49,7 @@ public class ShiftAssignmentsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -94,7 +94,7 @@ public class ShiftAssignmentsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -104,7 +104,7 @@ public class ShiftAssignmentsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _service.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 

@@ -13,8 +13,8 @@ namespace HMS.Modules.Identity.Endpoints;
 /// <summary>
 /// The Users module's HTTP surface — CRUD, soft delete, paged/search/sort listing, and
 /// activate/deactivate, per docs/modules/Identity/Users.md and docs/ApiStandards.md.
-/// This module has no authentication yet, so "actor" (created/updated-by) is null for
-/// now; wire it to the authenticated principal once Authentication ships.
+/// "Actor" (created/updated-by) is read from the caller's JWT via
+/// ClaimsPrincipalExtensions.GetUserId.
 /// </summary>
 [ApiController]
 [Route("api/v1/users")]
@@ -53,7 +53,7 @@ public class UsersController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _userService.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _userService.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         if (!result.IsSuccess)
         {
             return MapFailure(result.ErrorCode!, result.Error!);
@@ -77,7 +77,7 @@ public class UsersController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _userService.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _userService.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -87,7 +87,7 @@ public class UsersController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _userService.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _userService.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -129,7 +129,7 @@ public class UsersController : ControllerBase
     [HttpPost("{id:guid}/activate")]
     public async Task<IActionResult> Activate(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _userService.ActivateAsync(id, actorId: null, cancellationToken);
+        var result = await _userService.ActivateAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -139,7 +139,7 @@ public class UsersController : ControllerBase
     [HttpPost("{id:guid}/deactivate")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _userService.DeactivateAsync(id, actorId: null, cancellationToken);
+        var result = await _userService.DeactivateAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -157,7 +157,7 @@ public class UsersController : ControllerBase
         }
 
         await using var stream = photo.OpenReadStream();
-        var result = await _userService.UploadProfilePhotoAsync(id, stream, photo.FileName, photo.ContentType, photo.Length, actorId: null, cancellationToken);
+        var result = await _userService.UploadProfilePhotoAsync(id, stream, photo.FileName, photo.ContentType, photo.Length, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -175,7 +175,7 @@ public class UsersController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _userService.SetPasswordAsync(id, request.Password, actorId: null, cancellationToken);
+        var result = await _userService.SetPasswordAsync(id, request.Password, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

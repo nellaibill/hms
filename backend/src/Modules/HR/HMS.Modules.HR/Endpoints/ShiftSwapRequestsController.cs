@@ -11,9 +11,9 @@ namespace HMS.Modules.HR.Endpoints;
 
 /// <summary>
 /// Shift Swap Request CRUD, per the Phase 5 spec. No approval workflow, no notifications,
-/// no automatic assignment changes — Status is simply stored. This module has no
-/// authentication yet, so "actor" (created/updated/deleted-by) is null for now — matches
-/// ShiftsController.
+/// no automatic assignment changes — Status is simply stored. "Actor" (created/updated/
+/// deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId —
+/// matches ShiftsController.
 /// </summary>
 [ApiController]
 [Route("api/v1/shift-swap-requests")]
@@ -50,7 +50,7 @@ public class ShiftSwapRequestsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -95,7 +95,7 @@ public class ShiftSwapRequestsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -105,7 +105,7 @@ public class ShiftSwapRequestsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _service.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
