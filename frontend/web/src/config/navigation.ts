@@ -20,6 +20,7 @@ import {
   CalendarDays,
   MessageSquare,
   BarChart3,
+  Files,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/features/auth/types';
@@ -157,6 +158,15 @@ export const navigationTree: NavNode[] = [
     icon: FileBadge,
     description: 'Certificate issuance and medical records department (MRD) retrieval.',
     roles: ['doctor', 'admin'],
+    section: 'Administrative',
+  },
+  {
+    type: 'leaf',
+    label: 'Document Management',
+    path: '/documents',
+    icon: Files,
+    description: 'Centralized document repository — upload, preview, download, and archive files for any HMS record.',
+    roles: 'all',
     section: 'Administrative',
   },
   {

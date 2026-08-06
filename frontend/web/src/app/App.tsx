@@ -1,6 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ToastProvider } from '@/components/ui/toast-context';
+import { Toaster } from '@/components/ui/toaster';
 import { router } from '../routes/routes';
 import { queryClient } from './queryClient';
 import { ThemeProvider } from '../lib/theme-provider';
@@ -12,7 +14,10 @@ export function App() {
       <ThemeProvider>
         <AuthProvider>
           <TooltipProvider delayDuration={200}>
-            <RouterProvider router={router} />
+            <ToastProvider>
+              <RouterProvider router={router} />
+              <Toaster />
+            </ToastProvider>
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>
