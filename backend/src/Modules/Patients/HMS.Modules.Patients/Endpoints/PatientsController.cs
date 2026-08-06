@@ -14,8 +14,9 @@ namespace HMS.Modules.Patients.Endpoints;
 /// The Patients module's HTTP surface — New Patient Registration (combined patient +
 /// first encounter), demographic update, soft delete, paged/search listing, and
 /// photo/ID-proof upload, per docs/PatientRegistrationModule.md's MVP scope (see
-/// docs/DecisionLog.md for what's deferred). No authentication yet, so "actor"
-/// (created/updated-by) is null for now — same as HMS.Modules.Identity.UsersController.
+/// docs/DecisionLog.md for what's deferred). "Actor" (created/updated-by) is read from
+/// the caller's JWT via ClaimsPrincipalExtensions.GetUserId — same as
+/// HMS.Modules.Identity.UsersController.
 /// </summary>
 [ApiController]
 [Route("api/v1/patients")]
@@ -24,17 +25,20 @@ public class PatientsController : ControllerBase
     private readonly IPatientService _patientService;
     private readonly IValidator<CreatePatientRequest> _createValidator;
     private readonly IValidator<UpdatePatientRequest> _updateValidator;
+    private readonly IValidator<PatientRegistrationDetails> _registrationValidator;
     private readonly ILogger<PatientsController> _logger;
 
     public PatientsController(
         IPatientService patientService,
         IValidator<CreatePatientRequest> createValidator,
         IValidator<UpdatePatientRequest> updateValidator,
+        IValidator<PatientRegistrationDetails> registrationValidator,
         ILogger<PatientsController> logger)
     {
         _patientService = patientService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _registrationValidator = registrationValidator;
         _logger = logger;
     }
 
@@ -50,7 +54,7 @@ public class PatientsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _patientService.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _patientService.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         if (!result.IsSuccess)
         {
             return MapFailure(result.ErrorCode!, result.Error!);
@@ -74,7 +78,7 @@ public class PatientsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _patientService.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _patientService.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -84,7 +88,7 @@ public class PatientsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _patientService.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _patientService.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -96,6 +100,43 @@ public class PatientsController : ControllerBase
     {
         var result = await _patientService.GetByIdAsync(id, cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Records a new encounter/visit for an existing patient — a returning patient
+    /// needs this, since Create only ever produces their first registration.</summary>
+    /// <response code="201">The registration was recorded.</response>
+    /// <response code="400">The request failed validation.</response>
+    /// <response code="404">No patient was found for the given id.</response>
+    [HttpPost("{id:guid}/registrations")]
+    public async Task<IActionResult> AddRegistration(Guid id, [FromBody] PatientRegistrationDetails request, CancellationToken cancellationToken)
+    {
+        var validation = await _registrationValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return BadRequest(BuildValidationError(validation));
+        }
+
+        var result = await _patientService.AddRegistrationAsync(id, request, actorId: User.GetUserId(), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return MapFailure(result.ErrorCode!, result.Error!);
+        }
+
+        _logger.LogInformation("POST /api/v1/patients/{PatientId}/registrations succeeded for {RegistrationNumber}", id, result.Value!.RegistrationNumber);
+
+        return StatusCode(StatusCodes.Status201Created, new ApiResponse<PatientRegistrationResponse> { Data = result.Value });
+    }
+
+    /// <summary>Lists every encounter/visit a patient has had, newest first.</summary>
+    /// <response code="200">The patient's registration history.</response>
+    /// <response code="404">No patient was found for the given id.</response>
+    [HttpGet("{id:guid}/registrations")]
+    public async Task<IActionResult> GetRegistrations(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _patientService.GetRegistrationsAsync(id, cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<IReadOnlyList<PatientRegistrationResponse>> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>
@@ -133,7 +174,7 @@ public class PatientsController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _patientService.UploadPhotoAsync(id, stream, file.FileName, file.ContentType, file.Length, actorId: null, cancellationToken);
+        var result = await _patientService.UploadPhotoAsync(id, stream, file.FileName, file.ContentType, file.Length, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -151,7 +192,7 @@ public class PatientsController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _patientService.UploadIdProofAsync(id, idProofType, stream, file.FileName, file.ContentType, file.Length, actorId: null, cancellationToken);
+        var result = await _patientService.UploadIdProofAsync(id, idProofType, stream, file.FileName, file.ContentType, file.Length, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

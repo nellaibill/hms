@@ -257,7 +257,8 @@ internal class Patient : Entity
         MarkUpdated(updatedBy);
     }
 
-    /// <summary>Called only by <see cref="PatientRegistration"/> construction in the same use case — see PatientService.CreateAsync.</summary>
+    /// <summary>Attaches a new encounter/visit — called by PatientService.CreateAsync for the
+    /// first registration and PatientService.AddRegistrationAsync for every visit after.</summary>
     public void AddRegistration(PatientRegistration registration) => _registrations.Add(registration);
 
     private static int CalculateAge(DateOnly dateOfBirth, DateOnly asOf)

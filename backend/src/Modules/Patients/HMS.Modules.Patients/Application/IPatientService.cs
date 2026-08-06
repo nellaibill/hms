@@ -26,4 +26,13 @@ public interface IPatientService
     Task<Result<PatientResponse>> UploadPhotoAsync(Guid id, Stream content, string fileName, string contentType, long length, Guid? actorId, CancellationToken cancellationToken);
 
     Task<Result<PatientResponse>> UploadIdProofAsync(Guid id, IdProofType idProofType, Stream content, string fileName, string contentType, long length, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Records a new encounter/visit for an existing patient — the "one save"
+    /// combined Create flow only ever produces the first registration, so a returning
+    /// patient needs this to be seen again.</summary>
+    Task<Result<PatientRegistrationResponse>> AddRegistrationAsync(Guid patientId, PatientRegistrationDetails request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Lists every encounter/visit a patient has had, newest first — PatientResponse
+    /// only ever surfaces the single most recent one via CurrentRegistration.</summary>
+    Task<Result<IReadOnlyList<PatientRegistrationResponse>>> GetRegistrationsAsync(Guid patientId, CancellationToken cancellationToken);
 }

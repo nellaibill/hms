@@ -136,6 +136,52 @@ internal class PatientService : IPatientService
             : Result<PatientResponse>.Success(patient.ToResponse());
     }
 
+    public async Task<Result<PatientRegistrationResponse>> AddRegistrationAsync(Guid patientId, PatientRegistrationDetails request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var patient = await _repository.GetByIdAsync(patientId, cancellationToken);
+        if (patient is null)
+        {
+            return Result<PatientRegistrationResponse>.Failure(PatientErrorCodes.NotFound, $"Patient '{patientId}' was not found.");
+        }
+
+        var registrationNumber = await _identifierGenerator.NextRegistrationNumberAsync(request.EncounterType, cancellationToken);
+
+        var registration = PatientRegistration.Create(
+            patient.Id,
+            registrationNumber,
+            request.EncounterType,
+            request.ModeOfArrival,
+            request.Department,
+            request.Consultant,
+            request.AdmissionType,
+            request.ReferralSource,
+            request.Category,
+            actorId);
+
+        patient.AddRegistration(registration);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Recorded new registration {RegistrationNumber} for patient {PatientId}", registration.RegistrationNumber, patient.Id);
+
+        return Result<PatientRegistrationResponse>.Success(registration.ToResponse());
+    }
+
+    public async Task<Result<IReadOnlyList<PatientRegistrationResponse>>> GetRegistrationsAsync(Guid patientId, CancellationToken cancellationToken)
+    {
+        var patient = await _repository.GetByIdAsync(patientId, cancellationToken);
+        if (patient is null)
+        {
+            return Result<IReadOnlyList<PatientRegistrationResponse>>.Failure(PatientErrorCodes.NotFound, $"Patient '{patientId}' was not found.");
+        }
+
+        var registrations = patient.Registrations
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => r.ToResponse())
+            .ToList();
+
+        return Result<IReadOnlyList<PatientRegistrationResponse>>.Success(registrations);
+    }
+
     public async Task<PagedResult<PatientResponse>> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
@@ -155,6 +201,11 @@ internal class PatientService : IPatientService
         if (length > MaxFileSizeBytes || !AllowedPhotoContentTypes.Contains(contentType))
         {
             return Result<PatientResponse>.Failure(PatientErrorCodes.InvalidFile, "Photo must be a JPG or PNG file, max 5MB.");
+        }
+
+        if (!await LooksLikeJpegOrPngAsync(content, cancellationToken))
+        {
+            return Result<PatientResponse>.Failure(PatientErrorCodes.InvalidFile, "The uploaded file is not a valid JPG or PNG image.");
         }
 
         var path = await _fileStorage.SaveAsync(id, "photo", fileName, content, cancellationToken);
@@ -179,6 +230,11 @@ internal class PatientService : IPatientService
             return Result<PatientResponse>.Failure(PatientErrorCodes.InvalidFile, "ID proof must be a JPG, PNG, or PDF file, max 5MB.");
         }
 
+        if (!await LooksLikeJpegOrPngOrPdfAsync(content, cancellationToken))
+        {
+            return Result<PatientResponse>.Failure(PatientErrorCodes.InvalidFile, "The uploaded file is not a valid JPG, PNG, or PDF.");
+        }
+
         var path = await _fileStorage.SaveAsync(id, "id-proof", fileName, content, cancellationToken);
         patient.SetIdProof(idProofType, path, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -187,4 +243,44 @@ internal class PatientService : IPatientService
 
         return Result<PatientResponse>.Success(patient.ToResponse());
     }
+
+    // A client-supplied Content-Type header is just a claim — this checks the file's
+    // actual bytes against the well-known signatures for the allowed formats, so a
+    // renamed non-image (e.g. "chart.jpg" containing a script) is still rejected. Mirrors
+    // HMS.Modules.Identity.UserService's LooksLikeAnAllowedImageAsync. Resets the stream
+    // position afterward so the full content is still there for SaveAsync.
+    private static async Task<bool> LooksLikeJpegOrPngAsync(Stream content, CancellationToken cancellationToken)
+    {
+        var (header, bytesRead) = await ReadHeaderAsync(content, cancellationToken);
+        return IsJpeg(header, bytesRead) || IsPng(header, bytesRead);
+    }
+
+    private static async Task<bool> LooksLikeJpegOrPngOrPdfAsync(Stream content, CancellationToken cancellationToken)
+    {
+        var (header, bytesRead) = await ReadHeaderAsync(content, cancellationToken);
+        return IsJpeg(header, bytesRead) || IsPng(header, bytesRead) || IsPdf(header, bytesRead);
+    }
+
+    private static async Task<(byte[] Header, int BytesRead)> ReadHeaderAsync(Stream content, CancellationToken cancellationToken)
+    {
+        var header = new byte[8];
+        var bytesRead = await content.ReadAtLeastAsync(header.AsMemory(0, header.Length), header.Length, throwOnEndOfStream: false, cancellationToken);
+        content.Position = 0;
+        return (header, bytesRead);
+    }
+
+    // JPEG: FF D8 FF
+    private static bool IsJpeg(byte[] header, int bytesRead) =>
+        bytesRead >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    private static bool IsPng(byte[] header, int bytesRead) =>
+        bytesRead >= 8 &&
+        header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+        header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A;
+
+    // PDF: "%PDF-"
+    private static bool IsPdf(byte[] header, int bytesRead) =>
+        bytesRead >= 5 &&
+        header[0] == 0x25 && header[1] == 0x50 && header[2] == 0x44 && header[3] == 0x46 && header[4] == 0x2D;
 }

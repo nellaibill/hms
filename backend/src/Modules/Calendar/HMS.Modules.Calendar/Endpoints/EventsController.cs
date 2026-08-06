@@ -10,9 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.Modules.Calendar.Endpoints;
 
 /// <summary>
-/// Event CRUD + monthly view, per the Calendar Phase 1/Phase 2 spec. This module has no
-/// authentication yet, so "actor" (created/updated/deleted-by) is null for now — matches
-/// every other module's controllers.
+/// Event CRUD + monthly view, per the Calendar Phase 1/Phase 2 spec. "Actor" (created/
+/// updated/deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId
+/// — null only for anonymous requests, since no endpoint here requires [Authorize] yet.
 /// </summary>
 [ApiController]
 [Route("api/v1/events")]
@@ -50,7 +50,7 @@ public class EventsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.CreateAsync(request, actorId: null, cancellationToken);
+        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -94,7 +94,7 @@ public class EventsController : ControllerBase
                 continue;
             }
 
-            var result = await _service.CreateAsync(item, actorId: null, cancellationToken);
+            var result = await _service.CreateAsync(item, actorId: User.GetUserId(), cancellationToken);
             results.Add(result.IsSuccess
                 ? new BulkCreateEventResult { Index = index, Success = true, Event = result.Value }
                 : new BulkCreateEventResult { Index = index, Success = false, ErrorCode = result.ErrorCode, Error = result.Error });
@@ -162,7 +162,7 @@ public class EventsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(id, request, actorId: null, cancellationToken);
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -172,7 +172,7 @@ public class EventsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.DeleteAsync(id, actorId: null, cancellationToken);
+        var result = await _service.DeleteAsync(id, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
