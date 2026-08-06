@@ -19,14 +19,14 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x.State).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Pincode).NotEmpty().Matches(@"^[0-9]{6}$").WithMessage("Pincode must be 6 digits.");
 
-        RuleFor(x => x.PrimaryPhone).NotEmpty().MaximumLength(20).Matches(@"^[0-9+\-() ]*$");
-        RuleFor(x => x.AlternatePhone).MaximumLength(20).Matches(@"^[0-9+\-() ]*$").When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone));
+        RuleFor(x => x.PrimaryPhone).NotEmpty().MaximumLength(20).Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Phone number must contain at least one digit and only digits/+/-/()/spaces.");
+        RuleFor(x => x.AlternatePhone).MaximumLength(20).Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Phone number must contain at least one digit and only digits/+/-/()/spaces.").When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone));
         RuleFor(x => x.Email).EmailAddress().MaximumLength(256).When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Profession).MaximumLength(100);
 
         RuleFor(x => x.EmergencyContactRelationship).NotEmpty().MaximumLength(50);
         RuleFor(x => x.EmergencyContactName).NotEmpty().MaximumLength(150);
-        RuleFor(x => x.EmergencyContactPhone).NotEmpty().MaximumLength(20).Matches(@"^[0-9+\-() ]*$");
+        RuleFor(x => x.EmergencyContactPhone).NotEmpty().MaximumLength(20).Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Phone number must contain at least one digit and only digits/+/-/()/spaces.");
 
         RuleFor(x => x.AllergyType).NotEmpty().MaximumLength(200).When(x => x.HasKnownAllergy);
         RuleFor(x => x.AllergySeverity).NotNull().IsInEnum().When(x => x.HasKnownAllergy);

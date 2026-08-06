@@ -30,6 +30,9 @@
     <!-- Validation -->
     <PackageVersion Include="FluentValidation" Version="11.10.0" />
 
+    <!-- Excel parsing (Patient Import module only) -->
+    <PackageVersion Include="ClosedXML" Version="0.104.2" />
+
     <!-- API documentation -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
 

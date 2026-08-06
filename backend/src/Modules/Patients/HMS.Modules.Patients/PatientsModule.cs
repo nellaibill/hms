@@ -47,6 +47,7 @@ public static class PatientsModule
         // validators are internal by design (docs/DeveloperHandbook.md §8/§20).
         services.AddScoped<IValidator<CreatePatientRequest>, CreatePatientRequestValidator>();
         services.AddScoped<IValidator<UpdatePatientRequest>, UpdatePatientRequestValidator>();
+        services.AddScoped<IValidator<PatientRegistrationDetails>, PatientRegistrationDetailsValidator>();
 
         return services;
     }

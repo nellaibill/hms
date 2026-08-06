@@ -25,17 +25,20 @@ public class PatientsController : ControllerBase
     private readonly IPatientService _patientService;
     private readonly IValidator<CreatePatientRequest> _createValidator;
     private readonly IValidator<UpdatePatientRequest> _updateValidator;
+    private readonly IValidator<PatientRegistrationDetails> _registrationValidator;
     private readonly ILogger<PatientsController> _logger;
 
     public PatientsController(
         IPatientService patientService,
         IValidator<CreatePatientRequest> createValidator,
         IValidator<UpdatePatientRequest> updateValidator,
+        IValidator<PatientRegistrationDetails> registrationValidator,
         ILogger<PatientsController> logger)
     {
         _patientService = patientService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _registrationValidator = registrationValidator;
         _logger = logger;
     }
 
@@ -97,6 +100,43 @@ public class PatientsController : ControllerBase
     {
         var result = await _patientService.GetByIdAsync(id, cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Records a new encounter/visit for an existing patient — a returning patient
+    /// needs this, since Create only ever produces their first registration.</summary>
+    /// <response code="201">The registration was recorded.</response>
+    /// <response code="400">The request failed validation.</response>
+    /// <response code="404">No patient was found for the given id.</response>
+    [HttpPost("{id:guid}/registrations")]
+    public async Task<IActionResult> AddRegistration(Guid id, [FromBody] PatientRegistrationDetails request, CancellationToken cancellationToken)
+    {
+        var validation = await _registrationValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return BadRequest(BuildValidationError(validation));
+        }
+
+        var result = await _patientService.AddRegistrationAsync(id, request, actorId: User.GetUserId(), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return MapFailure(result.ErrorCode!, result.Error!);
+        }
+
+        _logger.LogInformation("POST /api/v1/patients/{PatientId}/registrations succeeded for {RegistrationNumber}", id, result.Value!.RegistrationNumber);
+
+        return StatusCode(StatusCodes.Status201Created, new ApiResponse<PatientRegistrationResponse> { Data = result.Value });
+    }
+
+    /// <summary>Lists every encounter/visit a patient has had, newest first.</summary>
+    /// <response code="200">The patient's registration history.</response>
+    /// <response code="404">No patient was found for the given id.</response>
+    [HttpGet("{id:guid}/registrations")]
+    public async Task<IActionResult> GetRegistrations(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _patientService.GetRegistrationsAsync(id, cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<IReadOnlyList<PatientRegistrationResponse>> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>
