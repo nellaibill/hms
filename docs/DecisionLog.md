@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-009: Documents module ships as a real backend without full platform-wide RBAC, without existence validation for most owner types, and without a real virus scanner — each gap is enforced-narrow and logged, not silently absent
+**Date:** 2026-08-06
+**Status:** Accepted
+
+**Context**
+The Documents module (see [docs/modules/Documents/DocumentManagement.md](modules/Documents/DocumentManagement.md)) aggregates the most sensitive artifact of every other module in one place — patient consent forms, vendor contracts, billing invoices — behind one generic API. Building it to the same "no authentication yet, actorId: null" standard as every other module's controller (see ADR pattern in PatientsController) would have meant shipping the highest-value attack surface in the system on the weakest foundation. At the same time, standing up full ASP.NET Core policy-based authorization (docs/ApiStandards.md §9), existence-checking all ten owner types, and integrating a real antivirus engine are each platform-wide or external-dependency undertakings disproportionate to one module's first iteration.
+
+**Decision**
+Three narrow, explicitly-scoped compromises, each with a stated boundary and a clear seam to close it later:
+1. `DocumentsController` is the first controller to require `[Authorize]` on every action and derive a real actor from JWT claims. `DocumentAccessPolicy` enforces a real, in-code role-to-owner-type (plus classification) access table today, rather than the dynamic database-backed policy model described in docs/ApiStandards.md §9 — closing that gap fully is platform-wide work affecting every module's controllers, not something Documents should do unilaterally.
+2. Owner-existence validation (US-1) is implemented for Patient only, since it's the only owner type with both a real backend module and code this change could verify end-to-end. The other nine either have no backend at all or were left unwired rather than guessed at. An unregistered owner type is accepted with a logged warning, not silently treated as validated.
+3. The virus-scan pipeline (US-9) — queue, background worker, Pending/Available/Quarantined state machine — is real, but `IVirusScanner`'s registered implementation (`NullVirusScanner`) always reports clean. No ClamAV or equivalent is available in this environment. This is stated in code comments, in the module doc's Risks section, and here, rather than left to be discovered later.
+
+**Consequences**
+Documents can be exercised and reviewed end-to-end today without waiting on platform-wide RBAC or an external AV dependency. Each of the three gaps has a single, well-defined swap-in point (`DocumentAccessPolicy`, `IDocumentOwnerExistenceChecker` per owner type, `IVirusScanner`) rather than being scattered through the module — closing any one of them does not require touching `DocumentService` or `DocumentsController`. Anyone deploying this module against real patient data must treat all three as open items, not completed work, until closed.
+
 ### ADR-008: Patient Edit form is scoped to demographic/contact/medical fields only — encounter and billing are not editable there
 **Date:** 2026-08-01
 **Status:** Accepted
