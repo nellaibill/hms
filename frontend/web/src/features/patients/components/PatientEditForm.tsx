@@ -165,7 +165,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
         <TabsContent value="patient-info" className="pt-4">
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
-            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
+            <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
