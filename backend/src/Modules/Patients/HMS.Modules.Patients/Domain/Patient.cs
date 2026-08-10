@@ -31,6 +31,9 @@ internal class Patient : Entity
     public string PrimaryPhone { get; private set; } = null!;
     public string? PrimaryPhoneRelation { get; private set; }
     public string? AlternatePhone { get; private set; }
+    public string? AlternatePhoneRelation { get; private set; }
+    public string? AlternatePhone2 { get; private set; }
+    public string? AlternatePhone2Relation { get; private set; }
     public string? Email { get; private set; }
     public string? Profession { get; private set; }
 
@@ -75,6 +78,9 @@ internal class Patient : Entity
         string primaryPhone,
         string? primaryPhoneRelation,
         string? alternatePhone,
+        string? alternatePhoneRelation,
+        string? alternatePhone2,
+        string? alternatePhone2Relation,
         string? email,
         string? profession,
         string emergencyContactRelationship,
@@ -102,6 +108,9 @@ internal class Patient : Entity
         PrimaryPhone = primaryPhone;
         PrimaryPhoneRelation = primaryPhoneRelation;
         AlternatePhone = alternatePhone;
+        AlternatePhoneRelation = alternatePhoneRelation;
+        AlternatePhone2 = alternatePhone2;
+        AlternatePhone2Relation = alternatePhone2Relation;
         Email = email;
         Profession = profession;
         EmergencyContactRelationship = emergencyContactRelationship;
@@ -129,6 +138,9 @@ internal class Patient : Entity
         string primaryPhone,
         string? primaryPhoneRelation,
         string? alternatePhone,
+        string? alternatePhoneRelation,
+        string? alternatePhone2,
+        string? alternatePhone2Relation,
         string? email,
         string? profession,
         string emergencyContactRelationship,
@@ -169,6 +181,9 @@ internal class Patient : Entity
             primaryPhone.Trim(),
             primaryPhoneRelation?.Trim(),
             alternatePhone?.Trim(),
+            alternatePhoneRelation?.Trim(),
+            alternatePhone2?.Trim(),
+            alternatePhone2Relation?.Trim(),
             email?.Trim().ToLowerInvariant(),
             profession?.Trim(),
             emergencyContactRelationship.Trim(),
@@ -210,13 +225,25 @@ internal class Patient : Entity
         MarkUpdated(updatedBy);
     }
 
-    public void UpdateContact(string primaryPhone, string? primaryPhoneRelation, string? alternatePhone, string? email, string? profession, Guid? updatedBy)
+    public void UpdateContact(
+        string primaryPhone,
+        string? primaryPhoneRelation,
+        string? alternatePhone,
+        string? alternatePhoneRelation,
+        string? alternatePhone2,
+        string? alternatePhone2Relation,
+        string? email,
+        string? profession,
+        Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(primaryPhone, nameof(primaryPhone));
 
         PrimaryPhone = primaryPhone.Trim();
         PrimaryPhoneRelation = primaryPhoneRelation?.Trim();
         AlternatePhone = alternatePhone?.Trim();
+        AlternatePhoneRelation = alternatePhoneRelation?.Trim();
+        AlternatePhone2 = alternatePhone2?.Trim();
+        AlternatePhone2Relation = alternatePhone2Relation?.Trim();
         Email = email?.Trim().ToLowerInvariant();
         Profession = profession?.Trim();
         MarkUpdated(updatedBy);

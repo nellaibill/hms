@@ -24,6 +24,9 @@ public record UpdatePatientRequest
     public string PrimaryPhone { get; init; } = string.Empty;
     public string? PrimaryPhoneRelation { get; init; }
     public string? AlternatePhone { get; init; }
+    public string? AlternatePhoneRelation { get; init; }
+    public string? AlternatePhone2 { get; init; }
+    public string? AlternatePhone2Relation { get; init; }
     public string? Email { get; init; }
     public string? Profession { get; init; }
 

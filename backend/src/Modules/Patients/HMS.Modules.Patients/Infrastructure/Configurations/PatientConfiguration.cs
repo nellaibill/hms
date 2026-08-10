@@ -43,6 +43,9 @@ internal class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.Property(p => p.PrimaryPhone).HasColumnName("primary_phone").HasMaxLength(20).IsRequired();
         builder.Property(p => p.PrimaryPhoneRelation).HasColumnName("primary_phone_relation").HasMaxLength(50);
         builder.Property(p => p.AlternatePhone).HasColumnName("alternate_phone").HasMaxLength(20);
+        builder.Property(p => p.AlternatePhoneRelation).HasColumnName("alternate_phone_relation").HasMaxLength(50);
+        builder.Property(p => p.AlternatePhone2).HasColumnName("alternate_phone2").HasMaxLength(20);
+        builder.Property(p => p.AlternatePhone2Relation).HasColumnName("alternate_phone2_relation").HasMaxLength(50);
         builder.Property(p => p.Email).HasColumnName("email").HasMaxLength(256);
         builder.Property(p => p.Profession).HasColumnName("profession").HasMaxLength(100);
 

@@ -2,7 +2,7 @@ using HMS.Modules.Calendar.Application.Abstractions;
 using HMS.Modules.Calendar.Application.Mapping;
 using HMS.Modules.Calendar.Contracts;
 using HMS.Modules.Calendar.Domain;
-using HMS.Modules.HR.Application;
+using HMS.Modules.Masters.Application;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Calendar.Application;
@@ -31,8 +31,8 @@ public interface IEventService
 /// <summary>
 /// Orchestrates Event use cases. Two business rules from the Phase 1 spec are enforced
 /// here (they need a database query, so they can't live in FluentValidation):
-/// Department existence (cross-module, via HR's IDepartmentService — the same seam HR's
-/// own WeeklyRosterService/ShiftAssignmentService use for the same check) and Holiday
+/// Department existence (cross-module, via Masters' IDepartmentService — the same seam
+/// HR's own WeeklyRosterService/ShiftAssignmentService use for the same check) and Holiday
 /// date uniqueness (same-module, via IEventRepository).
 ///
 /// A third rule from the spec — "Doctor Leave cannot overlap another approved leave for

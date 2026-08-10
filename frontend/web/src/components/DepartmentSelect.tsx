@@ -11,16 +11,21 @@ interface DepartmentSelectProps {
 }
 
 /** Department picker shared across every HR form that references a DepartmentId
- * (Weekly Roster, Shift Assignment), backed by the real GET /api/v1/departments list. */
+ * (Weekly Roster, Shift Assignment), backed by the real GET /api/v1/masters/departments list. */
 export function DepartmentSelect({ id, value, onValueChange, ariaLabel = 'Department', disabled }: DepartmentSelectProps) {
   const { data } = useQuery({
     queryKey: ['departments', 'select-list'],
     queryFn: () => departmentsApi.getDepartments({ pageSize: 100, isActive: true }),
   });
 
+  // Always suffix the code, even though most department names are unique in practice —
+  // Code is the only field guaranteed unique (enforced at creation), so this is the one
+  // label that reliably tells two same-named departments apart (e.g. two "Intensive Care
+  // Unit" wards with different codes) rather than only disambiguating when duplicates
+  // happen to be noticed.
   const options = (data?.items ?? []).map((department) => ({
     value: department.id,
-    label: department.name,
+    label: `${department.name} (${department.code})`,
     keywords: department.code,
   }));
 

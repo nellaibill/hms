@@ -2,6 +2,7 @@ using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Application.Mapping;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
+using HMS.Modules.Masters.Application;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.HR.Application;
@@ -34,17 +35,17 @@ public interface IWeeklyRosterService
 internal class WeeklyRosterService : IWeeklyRosterService
 {
     private readonly IWeeklyRosterRepository _repository;
-    private readonly IDepartmentRepository _departmentRepository;
+    private readonly IDepartmentService _departmentService;
 
-    public WeeklyRosterService(IWeeklyRosterRepository repository, IDepartmentRepository departmentRepository)
+    public WeeklyRosterService(IWeeklyRosterRepository repository, IDepartmentService departmentService)
     {
         _repository = repository;
-        _departmentRepository = departmentRepository;
+        _departmentService = departmentService;
     }
 
     public async Task<Result<WeeklyRosterResponse>> CreateAsync(CreateWeeklyRosterRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
-        if (!await _departmentRepository.ExistsAsync(request.DepartmentId, cancellationToken))
+        if (!(await _departmentService.GetByIdAsync(request.DepartmentId, cancellationToken)).IsSuccess)
         {
             return Result<WeeklyRosterResponse>.Failure(HRErrorCodes.InvalidDepartment, $"Department '{request.DepartmentId}' was not found.");
         }
@@ -72,7 +73,7 @@ internal class WeeklyRosterService : IWeeklyRosterService
             return Result<WeeklyRosterResponse>.Failure(HRErrorCodes.NotFound, $"Weekly roster '{id}' was not found.");
         }
 
-        if (!await _departmentRepository.ExistsAsync(request.DepartmentId, cancellationToken))
+        if (!(await _departmentService.GetByIdAsync(request.DepartmentId, cancellationToken)).IsSuccess)
         {
             return Result<WeeklyRosterResponse>.Failure(HRErrorCodes.InvalidDepartment, $"Department '{request.DepartmentId}' was not found.");
         }

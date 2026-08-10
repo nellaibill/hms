@@ -1,16 +1,15 @@
-using HMS.Modules.HR.Application.Abstractions;
-using HMS.Modules.HR.Application.Mapping;
-using HMS.Modules.HR.Contracts;
-using HMS.Modules.HR.Domain;
+using HMS.Modules.Masters.Application.Abstractions;
+using HMS.Modules.Masters.Application.Mapping;
+using HMS.Modules.Masters.Contracts;
+using HMS.Modules.Masters.Domain;
 using HMS.Shared.Kernel;
 
-namespace HMS.Modules.HR.Application;
+namespace HMS.Modules.Masters.Application;
 
 /// <summary>
-/// Public (not internal): DepartmentsController — which ASP.NET Core requires to be a
-/// public class with a public constructor for controller discovery/DI activation — takes
-/// this as a constructor dependency; a public constructor cannot have an internal parameter
-/// type (CS0051). Interface and implementation share this file, matching IShiftService.
+/// Public (not internal): DepartmentsController requires a public constructor dependency
+/// (CS0051 otherwise). Interface and implementation share this file, matching the other
+/// Masters entities' {Entity}Service.cs convention.
 /// </summary>
 public interface IDepartmentService
 {
@@ -38,7 +37,7 @@ internal class DepartmentService : IDepartmentService
     {
         if (await _repository.ExistsByCodeAsync(request.Code.Trim().ToUpperInvariant(), excludingId: null, cancellationToken))
         {
-            return Result<DepartmentResponse>.Failure(HRErrorCodes.DuplicateCode, $"Department code '{request.Code}' is already in use.");
+            return Result<DepartmentResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Department code '{request.Code}' is already in use.");
         }
 
         var department = Department.Create(request.Code, request.Name, request.IsActive, actorId);
@@ -54,7 +53,7 @@ internal class DepartmentService : IDepartmentService
         var department = await _repository.GetByIdAsync(id, cancellationToken);
         if (department is null)
         {
-            return Result<DepartmentResponse>.Failure(HRErrorCodes.NotFound, $"Department '{id}' was not found.");
+            return Result<DepartmentResponse>.Failure(MastersErrorCodes.NotFound, $"Department '{id}' was not found.");
         }
 
         department.Update(request.Name, request.IsActive, actorId);
@@ -67,7 +66,7 @@ internal class DepartmentService : IDepartmentService
     {
         var department = await _repository.GetByIdAsync(id, cancellationToken);
         return department is null
-            ? Result<DepartmentResponse>.Failure(HRErrorCodes.NotFound, $"Department '{id}' was not found.")
+            ? Result<DepartmentResponse>.Failure(MastersErrorCodes.NotFound, $"Department '{id}' was not found.")
             : Result<DepartmentResponse>.Success(department.ToResponse());
     }
 
@@ -82,7 +81,7 @@ internal class DepartmentService : IDepartmentService
         var department = await _repository.GetByIdAsync(id, cancellationToken);
         if (department is null)
         {
-            return Result.Failure(HRErrorCodes.NotFound, $"Department '{id}' was not found.");
+            return Result.Failure(MastersErrorCodes.NotFound, $"Department '{id}' was not found.");
         }
 
         department.SoftDelete(actorId);

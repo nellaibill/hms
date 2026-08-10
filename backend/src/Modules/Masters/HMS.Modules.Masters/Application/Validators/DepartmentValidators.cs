@@ -1,7 +1,7 @@
 using FluentValidation;
-using HMS.Modules.HR.Contracts;
+using HMS.Modules.Masters.Contracts;
 
-namespace HMS.Modules.HR.Application.Validators;
+namespace HMS.Modules.Masters.Application.Validators;
 
 internal class CreateDepartmentRequestValidator : AbstractValidator<CreateDepartmentRequest>
 {

@@ -34,6 +34,9 @@
          Patient owner id actually exists (US-1). Patients does not otherwise depend on
          Documents. -->
     <ProjectReference Include="..\..\Documents\HMS.Modules.Documents\HMS.Modules.Documents.csproj" />
+    <!-- Only for IDepartmentService/IConsultantService (Masters' public seam) — Registration's
+         Department/Consultant fields are validated against Masters' reference data. -->
+    <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
   </ItemGroup>
 
 </Project>

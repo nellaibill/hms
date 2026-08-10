@@ -16,11 +16,11 @@ internal class PatientRegistration : Entity
     public EncounterType EncounterType { get; private set; }
     public ModeOfArrival ModeOfArrival { get; private set; }
 
-    // Free-text placeholders until the Staff module exists to back these with a real
-    // consultant/department master — see docs/BusinessRequirementsAnalysis.md's module
-    // dependency notes and docs/DecisionLog.md's MVP-scope ADR.
-    public string Department { get; private set; } = null!;
-    public string Consultant { get; private set; } = null!;
+    // References into Masters' Department/Consultant reference data — validated against
+    // IDepartmentService/IConsultantService in PatientService, not here (this module doesn't
+    // depend on Masters' entities, only its public service seam).
+    public Guid DepartmentId { get; private set; }
+    public Guid ConsultantId { get; private set; }
 
     public AdmissionType? AdmissionType { get; private set; }
     public string? ReferralSource { get; private set; }
@@ -40,8 +40,8 @@ internal class PatientRegistration : Entity
         string registrationNumber,
         EncounterType encounterType,
         ModeOfArrival modeOfArrival,
-        string department,
-        string consultant,
+        Guid departmentId,
+        Guid consultantId,
         AdmissionType? admissionType,
         string? referralSource,
         string? category,
@@ -52,8 +52,8 @@ internal class PatientRegistration : Entity
         RegistrationNumber = registrationNumber;
         EncounterType = encounterType;
         ModeOfArrival = modeOfArrival;
-        Department = department;
-        Consultant = consultant;
+        DepartmentId = departmentId;
+        ConsultantId = consultantId;
         AdmissionType = admissionType;
         ReferralSource = referralSource;
         Category = category;
@@ -64,16 +64,14 @@ internal class PatientRegistration : Entity
         string registrationNumber,
         EncounterType encounterType,
         ModeOfArrival modeOfArrival,
-        string department,
-        string consultant,
+        Guid departmentId,
+        Guid consultantId,
         AdmissionType? admissionType,
         string? referralSource,
         string? category,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(registrationNumber, nameof(registrationNumber));
-        Guard.AgainstNullOrWhiteSpace(department, nameof(department));
-        Guard.AgainstNullOrWhiteSpace(consultant, nameof(consultant));
 
         return new PatientRegistration(
             Guid.CreateVersion7(),
@@ -81,8 +79,8 @@ internal class PatientRegistration : Entity
             registrationNumber.Trim(),
             encounterType,
             modeOfArrival,
-            department.Trim(),
-            consultant.Trim(),
+            departmentId,
+            consultantId,
             admissionType,
             referralSource?.Trim(),
             category?.Trim(),

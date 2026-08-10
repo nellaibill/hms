@@ -5,6 +5,8 @@ using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
 using HMS.Modules.Identity.Application;
 using HMS.Modules.Identity.Contracts;
+using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Kernel;
 using NSubstitute;
 using Xunit;
@@ -17,21 +19,21 @@ public class ShiftAssignmentServiceTests
 
     private readonly IShiftAssignmentRepository _repository = Substitute.For<IShiftAssignmentRepository>();
     private readonly IShiftRepository _shiftRepository = Substitute.For<IShiftRepository>();
-    private readonly IDepartmentRepository _departmentRepository = Substitute.For<IDepartmentRepository>();
+    private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ShiftAssignmentService _sut;
     private readonly Guid _shiftId = Guid.NewGuid();
 
     public ShiftAssignmentServiceTests()
     {
-        _sut = new ShiftAssignmentService(_repository, _shiftRepository, _departmentRepository, _userService);
+        _sut = new ShiftAssignmentService(_repository, _shiftRepository, _departmentService, _userService);
 
         // Happy-path defaults: a valid shift, a valid staff member, a valid department, and
         // no other same-day assignment to overlap with. Tests for each failure path
         // override the relevant one per-test.
         var shift = Shift.Create("morning", "Morning Shift", new TimeOnly(8, 0), new TimeOnly(16, 0), 0, 0, false, true, null);
         _shiftRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(shift);
-        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _departmentService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<DepartmentResponse>.Success(new DepartmentResponse()));
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<UserResponse>.Success(new UserResponse()));
         _repository.GetByStaffAndDateAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(new List<ShiftAssignment>());
@@ -90,7 +92,7 @@ public class ShiftAssignmentServiceTests
     [Fact]
     public async Task CreateAsync_WhenDepartmentDoesNotExist_ReturnsInvalidDepartmentFailure()
     {
-        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        _departmentService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<DepartmentResponse>.Failure("MASTERS.NOT_FOUND", "not found"));
 
         var result = await _sut.CreateAsync(NewCreateRequest(_shiftId), actorId: null, CancellationToken.None);
 

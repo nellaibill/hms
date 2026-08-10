@@ -1,3 +1,4 @@
+using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Application.Mapping;
 using HMS.Modules.Patients.Contracts;
@@ -22,22 +23,60 @@ internal class PatientService : IPatientService
     private readonly IPatientRepository _repository;
     private readonly IPatientIdentifierGenerator _identifierGenerator;
     private readonly IPatientFileStorage _fileStorage;
+    private readonly IDepartmentService _departmentService;
+    private readonly IConsultantService _consultantService;
     private readonly ILogger<PatientService> _logger;
 
     public PatientService(
         IPatientRepository repository,
         IPatientIdentifierGenerator identifierGenerator,
         IPatientFileStorage fileStorage,
+        IDepartmentService departmentService,
+        IConsultantService consultantService,
         ILogger<PatientService> logger)
     {
         _repository = repository;
         _identifierGenerator = identifierGenerator;
         _fileStorage = fileStorage;
+        _departmentService = departmentService;
+        _consultantService = consultantService;
         _logger = logger;
+    }
+
+    // Both DepartmentId and ConsultantId are cross-module references into Masters' reference
+    // data (see docs/DecisionLog.md — Department/Consultant consolidated there). Before this
+    // existed, they were free-text strings with no existence check at all.
+    private async Task<Result?> ValidateRegistrationReferencesAsync(Guid departmentId, Guid consultantId, CancellationToken cancellationToken)
+    {
+        if (!(await _departmentService.GetByIdAsync(departmentId, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(PatientErrorCodes.InvalidDepartment, $"Department '{departmentId}' was not found.");
+        }
+
+        if (!(await _consultantService.GetByIdAsync(consultantId, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(PatientErrorCodes.InvalidConsultant, $"Consultant '{consultantId}' was not found.");
+        }
+
+        return null;
     }
 
     public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
+        var duplicate = await _repository.FindDuplicateAsync(request.PrimaryPhone, request.FirstName, request.LastName, cancellationToken);
+        if (duplicate is not null)
+        {
+            return Result<PatientResponse>.Failure(
+                PatientErrorCodes.DuplicatePatient,
+                $"A patient named '{duplicate.FirstName} {duplicate.LastName}' with this phone number is already registered (UHID: {duplicate.Uhid}). If this is a returning patient, record a new visit against their existing record instead of registering them again.");
+        }
+
+        var referenceError = await ValidateRegistrationReferencesAsync(request.Registration.DepartmentId, request.Registration.ConsultantId, cancellationToken);
+        if (referenceError is not null)
+        {
+            return Result<PatientResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
+        }
+
         var uhid = await _identifierGenerator.NextUhidAsync(cancellationToken);
 
         var patient = Patient.Create(
@@ -57,6 +96,9 @@ internal class PatientService : IPatientService
             request.PrimaryPhone,
             request.PrimaryPhoneRelation,
             request.AlternatePhone,
+            request.AlternatePhoneRelation,
+            request.AlternatePhone2,
+            request.AlternatePhone2Relation,
             request.Email,
             request.Profession,
             request.EmergencyContactRelationship,
@@ -74,8 +116,8 @@ internal class PatientService : IPatientService
             registrationNumber,
             request.Registration.EncounterType,
             request.Registration.ModeOfArrival,
-            request.Registration.Department,
-            request.Registration.Consultant,
+            request.Registration.DepartmentId,
+            request.Registration.ConsultantId,
             request.Registration.AdmissionType,
             request.Registration.ReferralSource,
             request.Registration.Category,
@@ -101,7 +143,16 @@ internal class PatientService : IPatientService
 
         patient.UpdateDemographics(request.Title, request.FirstName, request.LastName, request.DateOfBirth, request.Gender, request.BloodGroup, actorId);
         patient.UpdateAddress(request.AddressLine1, request.AddressLine2, request.AddressLine3, request.District, request.State, request.Pincode, actorId);
-        patient.UpdateContact(request.PrimaryPhone, request.PrimaryPhoneRelation, request.AlternatePhone, request.Email, request.Profession, actorId);
+        patient.UpdateContact(
+            request.PrimaryPhone,
+            request.PrimaryPhoneRelation,
+            request.AlternatePhone,
+            request.AlternatePhoneRelation,
+            request.AlternatePhone2,
+            request.AlternatePhone2Relation,
+            request.Email,
+            request.Profession,
+            actorId);
         patient.UpdateEmergencyContact(request.EmergencyContactRelationship, request.EmergencyContactName, request.EmergencyContactPhone, actorId);
         patient.UpdateAllergyDetails(request.HasKnownAllergy, request.AllergyType, request.AllergySeverity, actorId);
 
@@ -144,6 +195,12 @@ internal class PatientService : IPatientService
             return Result<PatientRegistrationResponse>.Failure(PatientErrorCodes.NotFound, $"Patient '{patientId}' was not found.");
         }
 
+        var referenceError = await ValidateRegistrationReferencesAsync(request.DepartmentId, request.ConsultantId, cancellationToken);
+        if (referenceError is not null)
+        {
+            return Result<PatientRegistrationResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
+        }
+
         var registrationNumber = await _identifierGenerator.NextRegistrationNumberAsync(request.EncounterType, cancellationToken);
 
         var registration = PatientRegistration.Create(
@@ -151,8 +208,8 @@ internal class PatientService : IPatientService
             registrationNumber,
             request.EncounterType,
             request.ModeOfArrival,
-            request.Department,
-            request.Consultant,
+            request.DepartmentId,
+            request.ConsultantId,
             request.AdmissionType,
             request.ReferralSource,
             request.Category,

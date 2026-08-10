@@ -117,8 +117,8 @@ const referralColumnSchema = z.object({
 export const registrationDetailsUiSchema = z
   .object({
     encounterType: z.enum(ENCOUNTER_TYPES),
-    department: z.string().trim().min(1, 'Department is required').max(200),
-    consultant: z.string().trim().min(1, 'Consultant is required').max(200),
+    departmentId: z.string().trim().min(1, 'Department is required'),
+    consultantId: z.string().trim().min(1, 'Consultant is required'),
     appointmentType: z.string().trim().max(100).optional().or(z.literal('')),
     admissionType: z.enum(['MLC', 'NMLC']).optional().or(z.literal('')),
     referral: referralColumnSchema.optional(),

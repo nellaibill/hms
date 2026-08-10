@@ -22,7 +22,6 @@ public class HRDbContext : DbContext
     // (HMS.Api's Program.cs resolves it by type for the startup migration call), but this
     // DbSet is only ever queried from within this module.
     internal DbSet<Shift> Shifts => Set<Shift>();
-    internal DbSet<Department> Departments => Set<Department>();
     internal DbSet<ShiftAssignment> ShiftAssignments => Set<ShiftAssignment>();
     internal DbSet<WeeklyRoster> WeeklyRosters => Set<WeeklyRoster>();
     internal DbSet<StaffAvailability> StaffAvailabilities => Set<StaffAvailability>();

@@ -33,6 +33,9 @@ function toRequest(values: PatientEditUiFormValues): UpdatePatientRequest {
     primaryPhone: values.primaryPhone.number,
     primaryPhoneRelation: toPhoneRelationLabel(values.primaryPhone.relation),
     alternatePhone: values.additionalPhones[0]?.number || undefined,
+    alternatePhoneRelation: values.additionalPhones[0] ? toPhoneRelationLabel(values.additionalPhones[0].relation) : undefined,
+    alternatePhone2: values.additionalPhones[1]?.number || undefined,
+    alternatePhone2Relation: values.additionalPhones[1] ? toPhoneRelationLabel(values.additionalPhones[1].relation) : undefined,
     email: values.email || undefined,
     profession: values.profession || undefined,
 
@@ -66,7 +69,10 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     pincode: patient.pincode,
 
     primaryPhone: { number: patient.primaryPhone, relation: fromPhoneRelationLabel(patient.primaryPhoneRelation) },
-    additionalPhones: patient.alternatePhone ? [{ number: patient.alternatePhone, relation: 'Self' }] : [],
+    additionalPhones: [
+      patient.alternatePhone ? { number: patient.alternatePhone, relation: fromPhoneRelationLabel(patient.alternatePhoneRelation) } : null,
+      patient.alternatePhone2 ? { number: patient.alternatePhone2, relation: fromPhoneRelationLabel(patient.alternatePhone2Relation) } : null,
+    ].filter((entry): entry is { number: string; relation: ReturnType<typeof fromPhoneRelationLabel> } => entry !== null),
     email: patient.email ?? '',
     profession: patient.profession ?? '',
 

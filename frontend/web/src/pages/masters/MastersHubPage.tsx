@@ -34,8 +34,8 @@ export default function MastersHubPage() {
           <h1 className="text-xl font-semibold tracking-tight">Masters (Reference Data)</h1>
         </div>
         <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Product classification, brands, units, tax, warehouses, business partners, and finance reference data used
-          across Inventory &amp; ERP.
+          Hospital departments and consultants, product classification, brands, units, tax, warehouses, business
+          partners, and finance reference data used across the hospital, Inventory &amp; ERP.
         </p>
       </div>
 

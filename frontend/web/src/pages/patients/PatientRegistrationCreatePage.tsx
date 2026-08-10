@@ -17,14 +17,12 @@ import { clearRegistrationDraft } from '../../features/patients/registrationDraf
  * Bridges the source-doc-accurate form shape to the *current* backend Contracts, which
  * haven't changed yet (see docs/DecisionLog.md — UI ships first, backend catches up in
  * Phase 2). A few fields collected in the form don't have a backend slot yet:
- * - Gender: Transgender/NA have no backend value yet — mapped to "Other" as a temporary
- *   bridge until the backend Gender enum is extended.
  * - Mode of Arrival: the backend's old modeOfArrival field (walk-in/ambulance/referred)
  *   is superseded by the new referral/advertisement attribution captured here, which has
  *   no backend field at all yet — a fixed placeholder value is sent so the still-required
  *   backend field validates.
- * - The 2nd additional phone number, OP appointment type, and the arrival-source details
- *   are captured in the UI but not sent — nowhere to persist them yet.
+ * - OP appointment type and the arrival-source details are captured in the UI but not
+ *   sent — nowhere to persist them yet.
  * - Allergy category+"specify" and the IP/Emergency/Day-care referral column are composed
  *   into the single free-text backend fields (AllergyType / ReferralSource) that already exist.
  */
@@ -54,6 +52,9 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
     primaryPhone: values.primaryPhone.number,
     primaryPhoneRelation: toPhoneRelationLabel(values.primaryPhone.relation),
     alternatePhone: values.additionalPhones[0]?.number || undefined,
+    alternatePhoneRelation: values.additionalPhones[0] ? toPhoneRelationLabel(values.additionalPhones[0].relation) : undefined,
+    alternatePhone2: values.additionalPhones[1]?.number || undefined,
+    alternatePhone2Relation: values.additionalPhones[1] ? toPhoneRelationLabel(values.additionalPhones[1].relation) : undefined,
     email: values.email || undefined,
     profession: values.profession || undefined,
 
@@ -68,8 +69,8 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
     registration: {
       encounterType: values.registration.encounterType,
       modeOfArrival: 'WalkIn',
-      department: values.registration.department,
-      consultant: values.registration.consultant,
+      departmentId: values.registration.departmentId,
+      consultantId: values.registration.consultantId,
       admissionType: values.registration.admissionType || undefined,
       referralSource,
       category: values.registration.category || undefined,

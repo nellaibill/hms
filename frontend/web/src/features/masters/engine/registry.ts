@@ -1,6 +1,8 @@
 import { brandConfig } from '../configs/brand';
+import { consultantConfig } from '../configs/consultant';
 import { customerConfig } from '../configs/customer';
 import { currencyConfig } from '../configs/currency';
+import { departmentConfig } from '../configs/department';
 import { manufacturerConfig } from '../configs/manufacturer';
 import { paymentMethodConfig } from '../configs/paymentMethod';
 import { paymentTermsConfig } from '../configs/paymentTerms';
@@ -23,6 +25,8 @@ import type { MasterEntityConfig, MasterRecord } from './types';
  * stores are all generated from. There is no per-entity page/route/store code.
  */
 export const MASTER_CONFIGS: MasterEntityConfig[] = [
+  departmentConfig,
+  consultantConfig,
   productCategoryConfig,
   productSubCategoryConfig,
   productGroupConfig,
@@ -43,6 +47,7 @@ export const MASTER_CONFIGS: MasterEntityConfig[] = [
 
 /** Section order for the hub page — mirrors the ERD's "Table Classification" legend. */
 export const MASTER_SECTIONS = [
+  'Hospital Reference Data',
   'Product Classification',
   'Brand & Manufacturer',
   'Units & Tax',

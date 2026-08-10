@@ -1,6 +1,6 @@
 using HMS.Shared.Kernel;
 
-namespace HMS.Modules.HR.Contracts;
+namespace HMS.Modules.Masters.Contracts;
 
 public record CreateDepartmentRequest
 {
@@ -9,8 +9,7 @@ public record CreateDepartmentRequest
     public bool IsActive { get; init; } = true;
 }
 
-// Code is intentionally absent — a natural-key field, protected from change after
-// creation, the same convention CreateShiftRequest/UpdateShiftRequest already use.
+// Code is intentionally absent — a natural-key field, protected from change after creation.
 public record UpdateDepartmentRequest
 {
     public string Name { get; init; } = string.Empty;

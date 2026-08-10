@@ -45,6 +45,7 @@ public class PatientsController : ControllerBase
     /// <summary>Registers a new patient and their first encounter in one transaction.</summary>
     /// <response code="201">The patient was registered.</response>
     /// <response code="400">The request failed validation.</response>
+    /// <response code="409">A patient with the same name and phone number is already registered.</response>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request, CancellationToken cancellationToken)
     {
@@ -212,6 +213,7 @@ public class PatientsController : ControllerBase
         {
             PatientErrorCodes.NotFound => StatusCodes.Status404NotFound,
             PatientErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
+            PatientErrorCodes.DuplicatePatient => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

@@ -3,6 +3,9 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
+using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
+using HMS.Shared.Kernel;
 using NSubstitute;
 using Xunit;
 
@@ -13,17 +16,17 @@ public class WeeklyRosterServiceTests
     private static readonly DateOnly WeekStartDate = new(2026, 8, 3);
 
     private readonly IWeeklyRosterRepository _repository = Substitute.For<IWeeklyRosterRepository>();
-    private readonly IDepartmentRepository _departmentRepository = Substitute.For<IDepartmentRepository>();
+    private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly WeeklyRosterService _sut;
 
     public WeeklyRosterServiceTests()
     {
         // Happy-path defaults: a valid, non-duplicate department/week. Tests for the
         // "invalid department"/"duplicate roster" failure paths override these per-test.
-        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _departmentService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<DepartmentResponse>.Success(new DepartmentResponse()));
         _repository.ExistsForDepartmentAndWeekAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
 
-        _sut = new WeeklyRosterService(_repository, _departmentRepository);
+        _sut = new WeeklyRosterService(_repository, _departmentService);
     }
 
     [Fact]
@@ -210,7 +213,7 @@ public class WeeklyRosterServiceTests
     [Fact]
     public async Task CreateAsync_WhenDepartmentDoesNotExist_ReturnsInvalidDepartmentFailure()
     {
-        _departmentRepository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        _departmentService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Result<DepartmentResponse>.Failure("MASTERS.NOT_FOUND", "not found"));
 
         var request = new CreateWeeklyRosterRequest { WeekStartDate = WeekStartDate, DepartmentId = Guid.NewGuid() };
         var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);

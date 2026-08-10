@@ -8,4 +8,7 @@ internal static class PatientErrorCodes
 {
     public const string NotFound = "PATIENTS.PATIENT_NOT_FOUND";
     public const string InvalidFile = "PATIENTS.INVALID_FILE";
+    public const string DuplicatePatient = "PATIENTS.DUPLICATE_PATIENT";
+    public const string InvalidDepartment = "PATIENTS.INVALID_DEPARTMENT";
+    public const string InvalidConsultant = "PATIENTS.INVALID_CONSULTANT";
 }

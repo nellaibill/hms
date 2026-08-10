@@ -15,8 +15,8 @@ export interface PatientRegistration {
   registrationNumber: string;
   encounterType: EncounterType;
   modeOfArrival: ModeOfArrival;
-  department: string;
-  consultant: string;
+  departmentId: string;
+  consultantId: string;
   admissionType?: AdmissionType | null;
   referralSource?: string | null;
   category?: string | null;
@@ -46,6 +46,9 @@ export interface Patient {
   primaryPhone: string;
   primaryPhoneRelation?: string | null;
   alternatePhone?: string | null;
+  alternatePhoneRelation?: string | null;
+  alternatePhone2?: string | null;
+  alternatePhone2Relation?: string | null;
   email?: string | null;
   profession?: string | null;
 
@@ -71,8 +74,8 @@ export interface Patient {
 export interface PatientRegistrationDetailsRequest {
   encounterType: EncounterType;
   modeOfArrival: ModeOfArrival;
-  department: string;
-  consultant: string;
+  departmentId: string;
+  consultantId: string;
   admissionType?: AdmissionType | null;
   referralSource?: string | null;
   category?: string | null;
@@ -97,6 +100,9 @@ export interface CreatePatientRequest {
   primaryPhone: string;
   primaryPhoneRelation?: string | null;
   alternatePhone?: string | null;
+  alternatePhoneRelation?: string | null;
+  alternatePhone2?: string | null;
+  alternatePhone2Relation?: string | null;
   email?: string | null;
   profession?: string | null;
 
@@ -130,6 +136,9 @@ export interface UpdatePatientRequest {
   primaryPhone: string;
   primaryPhoneRelation?: string | null;
   alternatePhone?: string | null;
+  alternatePhoneRelation?: string | null;
+  alternatePhone2?: string | null;
+  alternatePhone2Relation?: string | null;
   email?: string | null;
   profession?: string | null;
 

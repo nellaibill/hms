@@ -1,15 +1,15 @@
-using HMS.Modules.HR.Application.Abstractions;
-using HMS.Modules.HR.Contracts;
-using HMS.Modules.HR.Domain;
+using HMS.Modules.Masters.Application.Abstractions;
+using HMS.Modules.Masters.Contracts;
+using HMS.Modules.Masters.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace HMS.Modules.HR.Infrastructure.Repositories;
+namespace HMS.Modules.Masters.Infrastructure.Repositories;
 
 internal class DepartmentRepository : IDepartmentRepository
 {
-    private readonly HRDbContext _dbContext;
+    private readonly MastersDbContext _dbContext;
 
-    public DepartmentRepository(HRDbContext dbContext)
+    public DepartmentRepository(MastersDbContext dbContext)
     {
         _dbContext = dbContext;
     }

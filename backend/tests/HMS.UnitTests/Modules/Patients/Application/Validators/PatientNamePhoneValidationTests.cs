@@ -37,8 +37,8 @@ public class PatientNamePhoneValidationTests
         {
             EncounterType = EncounterType.OP,
             ModeOfArrival = ModeOfArrival.WalkIn,
-            Department = "General Medicine",
-            Consultant = "Dr. Smith",
+            DepartmentId = Guid.NewGuid(),
+            ConsultantId = Guid.NewGuid(),
         },
     };
 

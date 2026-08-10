@@ -29,8 +29,8 @@ public class PatientTitleAgeValidationTests
         {
             EncounterType = EncounterType.OP,
             ModeOfArrival = ModeOfArrival.WalkIn,
-            Department = "General Medicine",
-            Consultant = "Dr. Smith",
+            DepartmentId = Guid.NewGuid(),
+            ConsultantId = Guid.NewGuid(),
         },
     };
 
@@ -104,7 +104,8 @@ public class PatientTitleAgeValidationTests
     [Theory]
     [InlineData(Title.Mr, Gender.Male, true)]
     [InlineData(Title.Mr, Gender.Female, false)]
-    [InlineData(Title.Mr, Gender.Other, true)]
+    [InlineData(Title.Mr, Gender.Transgender, true)]
+    [InlineData(Title.Mr, Gender.NA, true)]
     [InlineData(Title.Mrs, Gender.Female, true)]
     [InlineData(Title.Mrs, Gender.Male, false)]
     [InlineData(Title.Ms, Gender.Female, true)]
@@ -115,10 +116,12 @@ public class PatientTitleAgeValidationTests
     [InlineData(Title.Master, Gender.Female, false)]
     [InlineData(Title.Dr, Gender.Male, true)]
     [InlineData(Title.Dr, Gender.Female, true)]
-    [InlineData(Title.Dr, Gender.Other, true)]
+    [InlineData(Title.Dr, Gender.Transgender, true)]
+    [InlineData(Title.Dr, Gender.NA, true)]
     [InlineData(Title.Baby, Gender.Male, true)]
     [InlineData(Title.Baby, Gender.Female, true)]
-    [InlineData(Title.Baby, Gender.Other, true)]
+    [InlineData(Title.Baby, Gender.Transgender, true)]
+    [InlineData(Title.Baby, Gender.NA, true)]
     public void IsTitleConsistentWithGender_MatchesExpectedPairing(Title title, Gender gender, bool expected)
     {
         CreatePatientRequestValidator.IsTitleConsistentWithGender(title, gender).Should().Be(expected);
