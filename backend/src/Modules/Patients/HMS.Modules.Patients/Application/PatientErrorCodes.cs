@@ -11,4 +11,6 @@ internal static class PatientErrorCodes
     public const string DuplicatePatient = "PATIENTS.DUPLICATE_PATIENT";
     public const string InvalidDepartment = "PATIENTS.INVALID_DEPARTMENT";
     public const string InvalidConsultant = "PATIENTS.INVALID_CONSULTANT";
+    public const string InvalidAppointmentType = "PATIENTS.INVALID_APPOINTMENT_TYPE";
+    public const string ConcurrencyConflict = "PATIENTS.CONCURRENCY_CONFLICT";
 }

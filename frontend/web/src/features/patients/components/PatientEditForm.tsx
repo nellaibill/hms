@@ -228,17 +228,22 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
                 )}
               />
             </Field>
-            <Field label="Blood group" htmlFor="bloodGroup" className="flex w-full flex-col gap-1 sm:w-32">
+            <Field
+              label="Blood group"
+              htmlFor="bloodGroup"
+              error={errors.bloodGroup?.message}
+              className="flex w-full flex-col gap-1 sm:w-32"
+            >
               <Controller
                 name="bloodGroup"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="bloodGroup" aria-label="Blood group">
-                      <SelectValue placeholder="Unknown" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {BLOOD_GROUPS.filter((b) => b !== 'Unknown').map((b) => (
+                      {BLOOD_GROUPS.map((b) => (
                         <SelectItem key={b} value={b}>
                           {bloodGroupLabel(b)}
                         </SelectItem>

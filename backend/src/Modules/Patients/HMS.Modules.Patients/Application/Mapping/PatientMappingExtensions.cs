@@ -10,7 +10,7 @@ namespace HMS.Modules.Patients.Application.Mapping;
 /// </summary>
 internal static class PatientMappingExtensions
 {
-    public static PatientResponse ToResponse(this Patient patient)
+    public static PatientResponse ToResponse(this Patient patient, string rowVersion)
     {
         var current = patient.Registrations
             .OrderByDescending(r => r.CreatedAt)
@@ -51,6 +51,7 @@ internal static class PatientMappingExtensions
             IdProofType = patient.IdProofType,
             IdProofPath = patient.IdProofPath,
             CurrentRegistration = current?.ToResponse(),
+            RowVersion = rowVersion,
             CreatedAt = patient.CreatedAt,
             UpdatedAt = patient.UpdatedAt,
         };
@@ -64,6 +65,7 @@ internal static class PatientMappingExtensions
         ModeOfArrival = registration.ModeOfArrival,
         DepartmentId = registration.DepartmentId,
         ConsultantId = registration.ConsultantId,
+        AppointmentTypeId = registration.AppointmentTypeId,
         AdmissionType = registration.AdmissionType,
         ReferralSource = registration.ReferralSource,
         Category = registration.Category,

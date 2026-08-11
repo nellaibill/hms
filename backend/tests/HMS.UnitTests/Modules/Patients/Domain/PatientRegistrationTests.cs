@@ -18,7 +18,7 @@ public class PatientRegistrationTests
 
         var registration = PatientRegistration.Create(
             PatientId, "OP-2026-000001", EncounterType.OP, ModeOfArrival.WalkIn,
-            DepartmentId, ConsultantId, null, "Self", "General", actorId);
+            DepartmentId, ConsultantId, null, null, "Self", "General", actorId);
 
         registration.PatientId.Should().Be(PatientId);
         registration.RegistrationNumber.Should().Be("OP-2026-000001");
@@ -37,7 +37,7 @@ public class PatientRegistrationTests
     {
         var act = () => PatientRegistration.Create(
             PatientId, "   ", EncounterType.OP, ModeOfArrival.WalkIn,
-            DepartmentId, ConsultantId, null, null, null, null);
+            DepartmentId, ConsultantId, null, null, null, null, null);
 
         act.Should().Throw<ArgumentException>();
     }

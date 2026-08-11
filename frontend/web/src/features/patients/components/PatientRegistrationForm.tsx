@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AppointmentTypeSelect } from '@/components/AppointmentTypeSelect';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { BillingStep, defaultBillingFormValues, type BillingFormValues, type BillingStepHandle } from '@/features/billing';
@@ -90,7 +91,7 @@ const defaultValues: PatientRegistrationUiFormValues = {
   lastName: '',
   dateOfBirth: '',
   gender: 'Male',
-  bloodGroup: '',
+  bloodGroup: 'Unknown',
   addressLine1: '',
   addressLine2: '',
   addressLine3: '',
@@ -113,7 +114,7 @@ const defaultValues: PatientRegistrationUiFormValues = {
     encounterType: 'OP',
     departmentId: '',
     consultantId: '',
-    appointmentType: '',
+    appointmentTypeId: '',
     admissionType: '',
     category: '',
   },
@@ -397,17 +398,22 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 )}
               />
             </Field>
-            <Field label="Blood group" htmlFor="bloodGroup" className="flex w-full flex-col gap-1 sm:w-32">
+            <Field
+              label="Blood group"
+              htmlFor="bloodGroup"
+              error={errors.bloodGroup?.message}
+              className="flex w-full flex-col gap-1 sm:w-32"
+            >
               <Controller
                 name="bloodGroup"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="bloodGroup" aria-label="Blood group">
-                      <SelectValue placeholder="Unknown" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {BLOOD_GROUPS.filter((b) => b !== 'Unknown').map((b) => (
+                      {BLOOD_GROUPS.map((b) => (
                         <SelectItem key={b} value={b}>
                           {bloodGroupLabel(b)}
                         </SelectItem>
@@ -841,8 +847,19 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               />
             </Field>
             {encounterType === 'OP' && (
-              <Field label="Appointment type" htmlFor="appointmentType" className="flex min-w-[160px] flex-1 flex-col gap-1">
-                <Input id="appointmentType" {...register('registration.appointmentType')} />
+              <Field
+                label="Appointment type"
+                htmlFor="appointmentType"
+                error={errors.registration?.appointmentTypeId?.message}
+                className="flex min-w-[160px] flex-1 flex-col gap-1"
+              >
+                <Controller
+                  name="registration.appointmentTypeId"
+                  control={control}
+                  render={({ field }) => (
+                    <AppointmentTypeSelect id="appointmentType" value={field.value ?? ''} onValueChange={field.onChange} />
+                  )}
+                />
               </Field>
             )}
             <Field

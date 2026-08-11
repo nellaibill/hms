@@ -1,27 +1,22 @@
 import type { CreatePatientRequest, IdProofType, UpdatePatientRequest } from '@hms/shared';
-import { NetworkError } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '../../../services/apiClient';
-import { createMockPatient, deleteMockPatient, updateMockPatient } from '../mockPatientsStore';
 
 function useInvalidatePatients() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: ['patients'] });
 }
 
+// Unlike the read-side hooks (usePatientsQuery/usePatientQuery), writes never fall back to
+// the offline mock store on a NetworkError — silently "succeeding" a create/edit/delete
+// against fake local data (with no duplicate check, and a real hard-delete where the UI
+// promises a soft one — see mockPatientsStore.ts's history) is worse than just failing
+// loudly. The error propagates so the caller's apiError/toast handling can show it.
+
 export function useCreatePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: async (request: CreatePatientRequest) => {
-      try {
-        return await patientsApi.createPatient(request);
-      } catch (err) {
-        if (err instanceof NetworkError) {
-          return createMockPatient(request);
-        }
-        throw err;
-      }
-    },
+    mutationFn: (request: CreatePatientRequest) => patientsApi.createPatient(request),
     onSuccess: invalidatePatients,
   });
 }
@@ -29,16 +24,7 @@ export function useCreatePatientMutation() {
 export function useUpdatePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: async ({ id, request }: { id: string; request: UpdatePatientRequest }) => {
-      try {
-        return await patientsApi.updatePatient(id, request);
-      } catch (err) {
-        if (err instanceof NetworkError) {
-          return updateMockPatient(id, request);
-        }
-        throw err;
-      }
-    },
+    mutationFn: ({ id, request }: { id: string; request: UpdatePatientRequest }) => patientsApi.updatePatient(id, request),
     onSuccess: invalidatePatients,
   });
 }
@@ -46,17 +32,7 @@ export function useUpdatePatientMutation() {
 export function useDeletePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: async (id: string) => {
-      try {
-        await patientsApi.deletePatient(id);
-      } catch (err) {
-        if (err instanceof NetworkError) {
-          deleteMockPatient(id);
-          return;
-        }
-        throw err;
-      }
-    },
+    mutationFn: (id: string) => patientsApi.deletePatient(id),
     onSuccess: invalidatePatients,
   });
 }

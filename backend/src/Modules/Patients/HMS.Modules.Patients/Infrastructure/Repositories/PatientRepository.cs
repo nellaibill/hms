@@ -92,6 +92,9 @@ internal class PatientRepository : IPatientRepository
             p => p.PrimaryPhone == primaryPhone && EF.Functions.ILike(p.FirstName, firstName) && EF.Functions.ILike(p.LastName, lastName),
             cancellationToken);
 
+    public string GetRowVersion(Patient patient)
+        => _dbContext.Entry(patient).Property<uint>("xmin").CurrentValue.ToString();
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 

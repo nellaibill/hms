@@ -44,6 +44,12 @@ public record PatientResponse
     /// <summary>The most recent registration/encounter — a patient may have several over time.</summary>
     public PatientRegistrationResponse? CurrentRegistration { get; init; }
 
+    /// <summary>Opaque optimistic-concurrency token (the row's Postgres xmin at read time) —
+    /// echo this back on UpdatePatientRequest.RowVersion so a save made against stale data
+    /// (someone else edited this patient after this response was fetched) is rejected with a
+    /// clear conflict instead of silently overwriting their changes.</summary>
+    public string RowVersion { get; init; } = string.Empty;
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }
@@ -56,6 +62,7 @@ public record PatientRegistrationResponse
     public ModeOfArrival ModeOfArrival { get; init; }
     public Guid DepartmentId { get; init; }
     public Guid ConsultantId { get; init; }
+    public Guid? AppointmentTypeId { get; init; }
     public AdmissionType? AdmissionType { get; init; }
     public string? ReferralSource { get; init; }
     public string? Category { get; init; }

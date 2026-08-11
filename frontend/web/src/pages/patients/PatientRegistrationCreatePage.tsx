@@ -1,6 +1,7 @@
-import { ApiError, type CreatePatientRequest, type PatientRegistrationUiFormValues } from '@hms/shared';
+import type { CreatePatientRequest, PatientRegistrationUiFormValues } from '@hms/shared';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/toast-context';
 import { saveBillingForPatient, type BillingFormValues } from '../../features/billing';
 import {
   PatientRegistrationForm,
@@ -9,6 +10,7 @@ import {
   useUploadPatientPhotoMutation,
   type StagedDocuments,
 } from '../../features/patients';
+import { toDisplayError } from '../../features/patients/apiErrorDisplay';
 import { toAllergyType, toBackendGender, toPhoneRelationLabel, toRelationshipLabel } from '../../features/patients/bridging';
 import { humanize } from '../../features/patients/humanize';
 import { clearRegistrationDraft } from '../../features/patients/registrationDraft';
@@ -21,8 +23,9 @@ import { clearRegistrationDraft } from '../../features/patients/registrationDraf
  *   is superseded by the new referral/advertisement attribution captured here, which has
  *   no backend field at all yet — a fixed placeholder value is sent so the still-required
  *   backend field validates.
- * - OP appointment type and the arrival-source details are captured in the UI but not
- *   sent — nowhere to persist them yet.
+ * - The arrival-source details are captured in the UI but not sent — nowhere to persist
+ *   them yet. (OP appointment type *is* sent now — see AppointmentTypeId, backed by
+ *   Masters' AppointmentType, the same way Department/Consultant are.)
  * - Allergy category+"specify" and the IP/Emergency/Day-care referral column are composed
  *   into the single free-text backend fields (AllergyType / ReferralSource) that already exist.
  */
@@ -40,7 +43,7 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
     lastName: values.lastName,
     dateOfBirth: values.dateOfBirth,
     gender: toBackendGender(values.gender),
-    bloodGroup: values.bloodGroup || undefined,
+    bloodGroup: values.bloodGroup,
 
     addressLine1: values.addressLine1,
     addressLine2: values.addressLine2 || undefined,
@@ -71,6 +74,7 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
       modeOfArrival: 'WalkIn',
       departmentId: values.registration.departmentId,
       consultantId: values.registration.consultantId,
+      appointmentTypeId: values.registration.appointmentTypeId || undefined,
       admissionType: values.registration.admissionType || undefined,
       referralSource,
       category: values.registration.category || undefined,
@@ -83,14 +87,41 @@ export default function PatientRegistrationCreatePage() {
   const mutation = useCreatePatientMutation();
   const photoMutation = useUploadPatientPhotoMutation();
   const idProofMutation = useUploadPatientIdProofMutation();
+  const { toast } = useToast();
 
   function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments, billing: BillingFormValues) {
     mutation.mutate(toRequest(values), {
       onSuccess: (patient) => {
         clearRegistrationDraft();
-        if (documents.photo) photoMutation.mutate({ id: patient.id, file: documents.photo });
+        // Fired-and-forgotten (not awaited before navigating, to keep registration fast),
+        // but a failure must never be silent — the patient record already exists at this
+        // point, so a failed upload here is recoverable via the Edit page's document
+        // upload, as long as the receptionist actually finds out it failed.
+        if (documents.photo) {
+          photoMutation.mutate(
+            { id: patient.id, file: documents.photo },
+            {
+              onError: () =>
+                toast({
+                  title: 'Photo not saved',
+                  description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the photo upload failed. Add it from the patient's Edit page.`,
+                  variant: 'error',
+                }),
+            },
+          );
+        }
         if (documents.idProofFile) {
-          idProofMutation.mutate({ id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile });
+          idProofMutation.mutate(
+            { id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile },
+            {
+              onError: () =>
+                toast({
+                  title: 'ID proof not saved',
+                  description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the ID proof upload failed. Add it from the patient's Edit page.`,
+                  variant: 'error',
+                }),
+            },
+          );
         }
         // No Billing API yet — parked in the offline mock store (see mockBillingStore.ts)
         // the same way patient records were ahead of the Patients API, until Billing has a
@@ -133,7 +164,7 @@ export default function PatientRegistrationCreatePage() {
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       <PatientRegistrationForm
         isSubmitting={mutation.isPending}
-        apiError={mutation.error instanceof ApiError ? mutation.error : null}
+        apiError={toDisplayError(mutation.error)}
         onSubmit={handleSubmit}
       />
       </div>

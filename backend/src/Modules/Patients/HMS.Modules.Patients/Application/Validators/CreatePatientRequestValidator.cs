@@ -104,7 +104,11 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
             .WithMessage("Title does not match the patient's gender (Mr/Master: Male, Mrs/Ms/Miss: Female).")
             .When(x => Enum.IsDefined(x.Title) && Enum.IsDefined(x.Gender));
         RuleFor(x => x.Gender).IsInEnum();
-        RuleFor(x => x.BloodGroup).IsInEnum().When(x => x.BloodGroup.HasValue);
+        // Required (not merely validated-when-present): the receptionist must make an
+        // explicit choice, including BloodGroup.Unknown for "not known/not recorded" —
+        // silently omitting it was indistinguishable from a deliberate "Unknown" and let
+        // the field go completely unchecked end-to-end.
+        RuleFor(x => x.BloodGroup).NotNull().WithMessage("Blood group is required — select Unknown if it isn't known.").IsInEnum();
 
         RuleFor(x => x.AddressLine1).NotEmpty().MaximumLength(200);
         RuleFor(x => x.AddressLine2).MaximumLength(200);

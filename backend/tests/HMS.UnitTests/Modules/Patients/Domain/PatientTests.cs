@@ -198,7 +198,7 @@ public class PatientTests
     public void AddRegistration_AddsToRegistrationsCollection()
     {
         var patient = NewPatient();
-        var registration = PatientRegistration.Create(patient.Id, "OP-2026-000001", EncounterType.OP, ModeOfArrival.WalkIn, Guid.NewGuid(), Guid.NewGuid(), null, null, null, null);
+        var registration = PatientRegistration.Create(patient.Id, "OP-2026-000001", EncounterType.OP, ModeOfArrival.WalkIn, Guid.NewGuid(), Guid.NewGuid(), null, null, null, null, null);
 
         patient.AddRegistration(registration);
 

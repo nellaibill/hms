@@ -17,6 +17,7 @@ export interface PatientRegistration {
   modeOfArrival: ModeOfArrival;
   departmentId: string;
   consultantId: string;
+  appointmentTypeId?: string | null;
   admissionType?: AdmissionType | null;
   referralSource?: string | null;
   category?: string | null;
@@ -66,6 +67,12 @@ export interface Patient {
 
   currentRegistration?: PatientRegistration | null;
 
+  /** Optimistic-concurrency token — echo back on UpdatePatientRequest.rowVersion so a save
+   * against stale data is rejected instead of silently overwriting someone else's edit.
+   * Optional here only because the offline demo fallback (mockPatientsStore.ts) doesn't
+   * have one; every real API response always includes it. */
+  rowVersion?: string;
+
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -76,6 +83,7 @@ export interface PatientRegistrationDetailsRequest {
   modeOfArrival: ModeOfArrival;
   departmentId: string;
   consultantId: string;
+  appointmentTypeId?: string | null;
   admissionType?: AdmissionType | null;
   referralSource?: string | null;
   category?: string | null;
@@ -149,6 +157,9 @@ export interface UpdatePatientRequest {
   hasKnownAllergy: boolean;
   allergyType?: string | null;
   allergySeverity?: AllergySeverity | null;
+
+  /** Must be the RowVersion from the Patient this edit was loaded from — see Patient.rowVersion. */
+  rowVersion: string;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.PatientListQuery. */

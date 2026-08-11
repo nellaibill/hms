@@ -4,6 +4,7 @@ using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ namespace HMS.Modules.Patients.Endpoints;
 /// HMS.Modules.Identity.UsersController.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/v1/patients")]
 public class PatientsController : ControllerBase
 {
@@ -214,6 +216,7 @@ public class PatientsController : ControllerBase
             PatientErrorCodes.NotFound => StatusCodes.Status404NotFound,
             PatientErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
             PatientErrorCodes.DuplicatePatient => StatusCodes.Status409Conflict,
+            PatientErrorCodes.ConcurrencyConflict => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

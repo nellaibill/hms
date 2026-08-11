@@ -26,5 +26,10 @@ internal interface IPatientRepository
     /// false-positive against each other.</summary>
     Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, CancellationToken cancellationToken);
 
+    /// <summary>Reads the row's current optimistic-concurrency token (Postgres xmin) as
+    /// tracked by this DbContext instance — reflects whatever was in the database as of the
+    /// entity's last load/save within this request. See PatientService.UpdateAsync.</summary>
+    string GetRowVersion(Patient patient);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

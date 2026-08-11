@@ -54,6 +54,11 @@ public record PatientRegistrationDetails
     public ModeOfArrival ModeOfArrival { get; init; }
     public Guid DepartmentId { get; init; }
     public Guid ConsultantId { get; init; }
+
+    /// <summary>Optional OP appointment category — a reference into Masters' AppointmentType,
+    /// validated the same way as DepartmentId/ConsultantId when present.</summary>
+    public Guid? AppointmentTypeId { get; init; }
+
     public AdmissionType? AdmissionType { get; init; }
     public string? ReferralSource { get; init; }
     public string? Category { get; init; }

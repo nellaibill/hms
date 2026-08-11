@@ -2,6 +2,7 @@ import type { Patient } from '@hms/shared';
 import { CalendarClock, ClipboardList, FileText, HeartPulse, Loader2, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AppointmentTypeName } from '@/components/AppointmentTypeName';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
 import { describeBillingItem, formatCurrency, getBillingForPatient, type BillingItem } from '@/features/billing';
@@ -96,6 +97,9 @@ function PatientProfileTab({ patient }: { patient: Patient }) {
           <Field label="Mode of arrival" value={registration.modeOfArrival} />
           <Field label="Department" value={<DepartmentName departmentId={registration.departmentId} />} />
           <Field label="Consultant" value={<ConsultantName consultantId={registration.consultantId} />} />
+          {registration.appointmentTypeId && (
+            <Field label="Appointment type" value={<AppointmentTypeName appointmentTypeId={registration.appointmentTypeId} />} />
+          )}
           {registration.admissionType && <Field label="Admission type" value={registration.admissionType} />}
           {registration.referralSource && <Field label="Referral source" value={registration.referralSource} />}
           {registration.category && <Field label="Category" value={registration.category} />}

@@ -42,6 +42,7 @@ export const API_ROUTES = {
    * to each controller's kebab-plural route segment.
    */
   masters: {
+    appointmentType: mastersEntity('appointment-types'),
     brand: mastersEntity('brands'),
     consultant: mastersEntity('consultants'),
     currency: mastersEntity('currencies'),

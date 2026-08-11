@@ -9,6 +9,7 @@ export * from './services/productsApi';
 export * from './services/shiftsApi';
 export * from './services/departmentsApi';
 export * from './services/consultantsApi';
+export * from './services/appointmentTypesApi';
 export * from './services/staffAvailabilityApi';
 export * from './services/weeklyRostersApi';
 export * from './services/shiftAssignmentsApi';

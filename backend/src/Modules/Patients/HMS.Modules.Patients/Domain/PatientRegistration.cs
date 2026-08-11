@@ -22,6 +22,11 @@ internal class PatientRegistration : Entity
     public Guid DepartmentId { get; private set; }
     public Guid ConsultantId { get; private set; }
 
+    /// <summary>Optional OP appointment category (e.g. "New", "Follow-up") — a reference into
+    /// Masters' AppointmentType, validated in PatientService the same way as DepartmentId/
+    /// ConsultantId. Null for IP/Emergency/Day-care encounters, where it doesn't apply.</summary>
+    public Guid? AppointmentTypeId { get; private set; }
+
     public AdmissionType? AdmissionType { get; private set; }
     public string? ReferralSource { get; private set; }
 
@@ -42,6 +47,7 @@ internal class PatientRegistration : Entity
         ModeOfArrival modeOfArrival,
         Guid departmentId,
         Guid consultantId,
+        Guid? appointmentTypeId,
         AdmissionType? admissionType,
         string? referralSource,
         string? category,
@@ -54,6 +60,7 @@ internal class PatientRegistration : Entity
         ModeOfArrival = modeOfArrival;
         DepartmentId = departmentId;
         ConsultantId = consultantId;
+        AppointmentTypeId = appointmentTypeId;
         AdmissionType = admissionType;
         ReferralSource = referralSource;
         Category = category;
@@ -66,6 +73,7 @@ internal class PatientRegistration : Entity
         ModeOfArrival modeOfArrival,
         Guid departmentId,
         Guid consultantId,
+        Guid? appointmentTypeId,
         AdmissionType? admissionType,
         string? referralSource,
         string? category,
@@ -81,6 +89,7 @@ internal class PatientRegistration : Entity
             modeOfArrival,
             departmentId,
             consultantId,
+            appointmentTypeId,
             admissionType,
             referralSource?.Trim(),
             category?.Trim(),

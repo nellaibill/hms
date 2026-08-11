@@ -25,7 +25,9 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
             .WithMessage("Title does not match the patient's gender (Mr/Master: Male, Mrs/Ms/Miss: Female).")
             .When(x => Enum.IsDefined(x.Title) && Enum.IsDefined(x.Gender));
         RuleFor(x => x.Gender).IsInEnum();
-        RuleFor(x => x.BloodGroup).IsInEnum().When(x => x.BloodGroup.HasValue);
+        // Kept in sync with CreatePatientRequestValidator — required, not merely
+        // validated-when-present; select Unknown for "not known/not recorded".
+        RuleFor(x => x.BloodGroup).NotNull().WithMessage("Blood group is required — select Unknown if it isn't known.").IsInEnum();
 
         RuleFor(x => x.AddressLine1).NotEmpty().MaximumLength(200);
         RuleFor(x => x.AddressLine2).MaximumLength(200);
@@ -63,5 +65,7 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
 
         RuleFor(x => x.AllergyType).NotEmpty().MaximumLength(200).When(x => x.HasKnownAllergy);
         RuleFor(x => x.AllergySeverity).NotNull().IsInEnum().When(x => x.HasKnownAllergy);
+
+        RuleFor(x => x.RowVersion).NotEmpty().WithMessage("RowVersion is required — reload the patient before saving.");
     }
 }

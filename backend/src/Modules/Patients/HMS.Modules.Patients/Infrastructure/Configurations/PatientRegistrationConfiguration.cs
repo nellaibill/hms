@@ -20,6 +20,7 @@ internal class PatientRegistrationConfiguration : IEntityTypeConfiguration<Patie
         builder.Property(r => r.ModeOfArrival).HasColumnName("mode_of_arrival").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(r => r.DepartmentId).HasColumnName("department_id").IsRequired();
         builder.Property(r => r.ConsultantId).HasColumnName("consultant_id").IsRequired();
+        builder.Property(r => r.AppointmentTypeId).HasColumnName("appointment_type_id");
         builder.Property(r => r.AdmissionType).HasColumnName("admission_type").HasConversion<string>().HasMaxLength(20);
         builder.Property(r => r.ReferralSource).HasColumnName("referral_source").HasMaxLength(200);
         builder.Property(r => r.Category).HasColumnName("category").HasMaxLength(100);
