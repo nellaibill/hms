@@ -3,6 +3,7 @@ using HMS.Modules.Calendar;
 using HMS.Modules.Documents;
 using HMS.Modules.HR;
 using HMS.Modules.Identity;
+using HMS.Modules.IPD;
 using HMS.Modules.Masters;
 using HMS.Modules.Patients;
 using HMS.Modules.Products;
@@ -35,6 +36,10 @@ public static class ModuleRegistration
         // validation, now consolidated there — see docs/DecisionLog.md), so it must
         // register after AddMastersModule (already satisfied above).
         services.AddCalendarModule(configuration);
+        // IPD depends on Masters' (Department/Consultant) and Patients' public service
+        // seams for cross-module admission reference validation, so it must register
+        // after both.
+        services.AddIPDModule(configuration);
 
         // Future modules register here, e.g.:
         // services.AddAppointmentsModule(configuration);

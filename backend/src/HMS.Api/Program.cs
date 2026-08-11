@@ -7,6 +7,7 @@ using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity;
 using HMS.Modules.Identity.Infrastructure;
+using HMS.Modules.IPD.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Modules.Patients.Infrastructure;
 using HMS.Modules.Products.Infrastructure;
@@ -96,6 +97,10 @@ if (app.Environment.IsDevelopment())
 
     scope.ServiceProvider
         .GetRequiredService<CalendarDbContext>()
+        .Database.Migrate();
+
+    scope.ServiceProvider
+        .GetRequiredService<IPDDbContext>()
         .Database.Migrate();
 
     // Idempotent: safe to run on every startup. Seeds the Permission catalog's
