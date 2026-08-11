@@ -24,6 +24,9 @@ public class PatientTests
         primaryPhone: "9876543210",
         primaryPhoneRelation: null,
         alternatePhone: null,
+        alternatePhoneRelation: null,
+        alternatePhone2: null,
+        alternatePhone2Relation: null,
         email: "John.Doe@Example.com",
         profession: null,
         emergencyContactRelationship: "Spouse",
@@ -58,7 +61,7 @@ public class PatientTests
         var patient = Patient.Create(
             "P-2026-000002", Title.Ms, "  Alice  ", "  Smith  ", new DateOnly(1995, 5, 5), Gender.Female, null,
             "  1 Road  ", null, null, "District", "State", "560002",
-            "9998887777", null, null, "  Alice.Smith@Example.com  ", null,
+            "9998887777", null, null, null, null, null, "  Alice.Smith@Example.com  ", null,
             "Friend", "  Bob  ", "9990001111", false, null, null, null);
 
         patient.FirstName.Should().Be("Alice");
@@ -74,7 +77,7 @@ public class PatientTests
         var act = () => Patient.Create(
             "P-2026-000003", Title.Mr, "   ", "Doe", new DateOnly(1990, 1, 1), Gender.Male, null,
             "Addr", null, null, "District", "State", "560001",
-            "9876543210", null, null, null, null,
+            "9876543210", null, null, null, null, null, null, null,
             "Spouse", "Jane", "9876500000", false, null, null, null);
 
         act.Should().Throw<ArgumentException>();
@@ -99,11 +102,11 @@ public class PatientTests
         var patient = NewPatient();
         var updatedBy = Guid.NewGuid();
 
-        patient.UpdateDemographics(Title.Dr, "Johnny", "Doe", new DateOnly(1991, 2, 2), Gender.Other, BloodGroup.ANegative, updatedBy);
+        patient.UpdateDemographics(Title.Dr, "Johnny", "Doe", new DateOnly(1991, 2, 2), Gender.Transgender, BloodGroup.ANegative, updatedBy);
 
         patient.Title.Should().Be(Title.Dr);
         patient.FirstName.Should().Be("Johnny");
-        patient.Gender.Should().Be(Gender.Other);
+        patient.Gender.Should().Be(Gender.Transgender);
         patient.BloodGroup.Should().Be(BloodGroup.ANegative);
         patient.UpdatedBy.Should().Be(updatedBy);
         patient.UpdatedAt.Should().NotBeNull();
@@ -126,7 +129,7 @@ public class PatientTests
     {
         var patient = NewPatient();
 
-        patient.UpdateContact("9000000000", null, null, "New.Email@Example.com", null, Guid.NewGuid());
+        patient.UpdateContact("9000000000", null, null, null, null, null, "New.Email@Example.com", null, Guid.NewGuid());
 
         patient.Email.Should().Be("new.email@example.com");
     }
@@ -195,7 +198,7 @@ public class PatientTests
     public void AddRegistration_AddsToRegistrationsCollection()
     {
         var patient = NewPatient();
-        var registration = PatientRegistration.Create(patient.Id, "OP-2026-000001", EncounterType.OP, ModeOfArrival.WalkIn, "General Medicine", "Dr. Smith", null, null, null, null);
+        var registration = PatientRegistration.Create(patient.Id, "OP-2026-000001", EncounterType.OP, ModeOfArrival.WalkIn, Guid.NewGuid(), Guid.NewGuid(), null, null, null, null, null);
 
         patient.AddRegistration(registration);
 

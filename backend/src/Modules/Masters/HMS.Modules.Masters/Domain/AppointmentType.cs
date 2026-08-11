@@ -1,26 +1,24 @@
 using HMS.Shared.Kernel;
 
-namespace HMS.Modules.HR.Domain;
+namespace HMS.Modules.Masters.Domain;
 
 /// <summary>
-/// A hospital department (e.g. "ICU", "Cardiology") — the aggregate root that
-/// <see cref="WeeklyRoster"/> and <see cref="ShiftAssignment"/> reference by
-/// <c>DepartmentId</c>. Until this entity existed, DepartmentId was a bare, unvalidated
-/// Guid with no backing record anywhere in the system — an admin had to know and type the
-/// raw id by hand. This closes that gap the same way Shift closes it for ShiftId.
+/// A patient registration's OP appointment category (e.g. "New", "Follow-up", "Referral") —
+/// shared reference data for Patients (a visit's optional AppointmentTypeId), matching the
+/// Department/Consultant consolidation pattern (see docs/DecisionLog.md).
 /// </summary>
-internal class Department : Entity
+internal class AppointmentType : Entity
 {
     public string Code { get; private set; } = null!;
     public string Name { get; private set; } = null!;
     public bool IsActive { get; private set; } = true;
 
     // Required by EF Core materialization.
-    private Department()
+    private AppointmentType()
     {
     }
 
-    private Department(
+    private AppointmentType(
         Guid id,
         string code,
         string name,
@@ -33,7 +31,7 @@ internal class Department : Entity
         IsActive = isActive;
     }
 
-    public static Department Create(
+    public static AppointmentType Create(
         string code,
         string name,
         bool isActive,
@@ -42,9 +40,7 @@ internal class Department : Entity
         Guard.AgainstNullOrWhiteSpace(code, nameof(code));
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
 
-        // Time-ordered UUID per docs/DatabaseArchitecture.md §4 — same convention every
-        // other aggregate root in this codebase uses.
-        return new Department(
+        return new AppointmentType(
             Guid.CreateVersion7(),
             code.Trim().ToUpperInvariant(),
             name.Trim(),

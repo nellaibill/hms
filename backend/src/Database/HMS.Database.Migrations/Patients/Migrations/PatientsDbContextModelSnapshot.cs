@@ -64,6 +64,21 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("alternate_phone");
 
+                    b.Property<string>("AlternatePhone2")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("alternate_phone2");
+
+                    b.Property<string>("AlternatePhone2Relation")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("alternate_phone2_relation");
+
+                    b.Property<string>("AlternatePhoneRelation")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("alternate_phone_relation");
+
                     b.Property<string>("BloodGroup")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -243,16 +258,18 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("admission_type");
 
+                    b.Property<Guid?>("AppointmentTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_type_id");
+
                     b.Property<string>("Category")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("category");
 
-                    b.Property<string>("Consultant")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("consultant");
+                    b.Property<Guid>("ConsultantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consultant_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -270,11 +287,9 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
-                    b.Property<string>("Department")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("department");
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_id");
 
                     b.Property<string>("EncounterType")
                         .IsRequired()

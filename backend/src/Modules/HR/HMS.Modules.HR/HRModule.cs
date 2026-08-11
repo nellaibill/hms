@@ -38,8 +38,11 @@ public static class HRModule
         services.AddScoped<IShiftRepository, ShiftRepository>();
         services.AddScoped<IShiftService, ShiftService>();
 
-        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-        services.AddScoped<IDepartmentService, DepartmentService>();
+        // Department itself (repository/service/validators) is registered by
+        // HMS.Modules.Masters.AddMastersModule — consolidated there so HR and Patients share
+        // one department list instead of maintaining two (see docs/DecisionLog.md). This
+        // module only consumes Masters' public IDepartmentService (WeeklyRosterService,
+        // ShiftAssignmentService), so AddMastersModule must also be called in Program.cs.
 
         services.AddScoped<IShiftAssignmentRepository, ShiftAssignmentRepository>();
         services.AddScoped<IShiftAssignmentService, ShiftAssignmentService>();
@@ -58,9 +61,6 @@ public static class HRModule
         // validators are internal by design (docs/DeveloperHandbook.md §8/§20).
         services.AddScoped<IValidator<CreateShiftRequest>, CreateShiftRequestValidator>();
         services.AddScoped<IValidator<UpdateShiftRequest>, UpdateShiftRequestValidator>();
-
-        services.AddScoped<IValidator<CreateDepartmentRequest>, CreateDepartmentRequestValidator>();
-        services.AddScoped<IValidator<UpdateDepartmentRequest>, UpdateDepartmentRequestValidator>();
 
         services.AddScoped<IValidator<CreateShiftAssignmentRequest>, CreateShiftAssignmentRequestValidator>();
         services.AddScoped<IValidator<UpdateShiftAssignmentRequest>, UpdateShiftAssignmentRequestValidator>();

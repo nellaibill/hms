@@ -17,11 +17,17 @@ public enum Title
     Baby,
 }
 
+// Matches the frontend's PATIENT_GENDERS exactly (Male/Female/Transgender/NA) — previously
+// this only had Male/Female/Other, so Transgender and "prefer not to say" both collapsed
+// into the same "Other" value on save and were indistinguishable again on the next edit.
+// Stored as a string column (see PatientConfiguration), so this rename is not a breaking
+// schema change — just a wider vocabulary.
 public enum Gender
 {
     Male,
     Female,
-    Other,
+    Transgender,
+    NA,
 }
 
 public enum BloodGroup

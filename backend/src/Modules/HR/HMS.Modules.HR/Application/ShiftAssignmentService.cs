@@ -3,6 +3,7 @@ using HMS.Modules.HR.Application.Mapping;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
 using HMS.Modules.Identity.Application;
+using HMS.Modules.Masters.Application;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.HR.Application;
@@ -30,18 +31,18 @@ internal class ShiftAssignmentService : IShiftAssignmentService
 {
     private readonly IShiftAssignmentRepository _repository;
     private readonly IShiftRepository _shiftRepository;
-    private readonly IDepartmentRepository _departmentRepository;
+    private readonly IDepartmentService _departmentService;
     private readonly IUserService _userService;
 
     public ShiftAssignmentService(
         IShiftAssignmentRepository repository,
         IShiftRepository shiftRepository,
-        IDepartmentRepository departmentRepository,
+        IDepartmentService departmentService,
         IUserService userService)
     {
         _repository = repository;
         _shiftRepository = shiftRepository;
-        _departmentRepository = departmentRepository;
+        _departmentService = departmentService;
         _userService = userService;
     }
 
@@ -148,10 +149,11 @@ internal class ShiftAssignmentService : IShiftAssignmentService
         return Result.Success();
     }
 
-    // Cross-module check (StaffId → Identity's User) and same-module check (DepartmentId →
-    // this module's own Department), run together since every caller needs both. Before
-    // this existed, StaffId/DepartmentId were accepted as-is with no existence check at
-    // all — any Guid, real or not, would be silently stored.
+    // Both checks are cross-module now (StaffId → Identity's User, DepartmentId → Masters'
+    // Department, since Department was consolidated out of this module — see
+    // docs/DecisionLog.md), run together since every caller needs both. Before this existed,
+    // StaffId/DepartmentId were accepted as-is with no existence check at all — any Guid,
+    // real or not, would be silently stored.
     private async Task<Result?> ValidateReferencesAsync(Guid staffId, Guid departmentId, CancellationToken cancellationToken)
     {
         var staffResult = await _userService.GetByIdAsync(staffId, cancellationToken);
@@ -160,7 +162,7 @@ internal class ShiftAssignmentService : IShiftAssignmentService
             return Result.Failure(HRErrorCodes.InvalidStaff, $"Staff '{staffId}' was not found.");
         }
 
-        if (!await _departmentRepository.ExistsAsync(departmentId, cancellationToken))
+        if (!(await _departmentService.GetByIdAsync(departmentId, cancellationToken)).IsSuccess)
         {
             return Result.Failure(HRErrorCodes.InvalidDepartment, $"Department '{departmentId}' was not found.");
         }

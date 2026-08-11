@@ -30,6 +30,7 @@ export const API_ROUTES = {
     byId: (id: string) => `/api/v1/patients/${id}`,
     photo: (id: string) => `/api/v1/patients/${id}/photo`,
     idProof: (id: string) => `/api/v1/patients/${id}/id-proof`,
+    registrations: (id: string) => `/api/v1/patients/${id}/registrations`,
   },
   branding: {
     base: '/api/v1/branding',
@@ -41,9 +42,12 @@ export const API_ROUTES = {
    * to each controller's kebab-plural route segment.
    */
   masters: {
+    appointmentType: mastersEntity('appointment-types'),
     brand: mastersEntity('brands'),
+    consultant: mastersEntity('consultants'),
     currency: mastersEntity('currencies'),
     customer: mastersEntity('customers'),
+    department: mastersEntity('departments'),
     manufacturer: mastersEntity('manufacturers'),
     paymentMethod: mastersEntity('payment-methods'),
     paymentTerms: mastersEntity('payment-terms'),
@@ -68,10 +72,15 @@ export const API_ROUTES = {
     base: '/api/v1/shifts',
     byId: (id: string) => `/api/v1/shifts/${id}`,
   },
-  /** Mirrors HMS.Modules.HR.Endpoints.DepartmentsController. */
+  /**
+   * Mirrors HMS.Modules.Masters.Endpoints.DepartmentsController — Department was
+   * consolidated into Masters (see docs/DecisionLog.md); this dedicated typed client
+   * (DepartmentsApi/DepartmentSelect) is kept for the HR/Calendar forms that reference it,
+   * pointed at the same route the generic masters.department entry above also serves.
+   */
   departments: {
-    base: '/api/v1/departments',
-    byId: (id: string) => `/api/v1/departments/${id}`,
+    base: '/api/v1/masters/departments',
+    byId: (id: string) => `/api/v1/masters/departments/${id}`,
   },
   /** Mirrors HMS.Modules.HR.Endpoints.StaffAvailabilityController (singular route segment, per the backend's own doc comment). */
   staffAvailability: {

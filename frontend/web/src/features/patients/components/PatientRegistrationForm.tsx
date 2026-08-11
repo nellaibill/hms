@@ -26,6 +26,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AppointmentTypeSelect } from '@/components/AppointmentTypeSelect';
+import { ConsultantSelect } from '@/components/ConsultantSelect';
+import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { BillingStep, defaultBillingFormValues, type BillingFormValues, type BillingStepHandle } from '@/features/billing';
 import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } from './DocumentUploadStaging';
 import { Field, FormSection } from './FormSection';
@@ -88,7 +91,7 @@ const defaultValues: PatientRegistrationUiFormValues = {
   lastName: '',
   dateOfBirth: '',
   gender: 'Male',
-  bloodGroup: '',
+  bloodGroup: 'Unknown',
   addressLine1: '',
   addressLine2: '',
   addressLine3: '',
@@ -109,9 +112,9 @@ const defaultValues: PatientRegistrationUiFormValues = {
   arrivalSource: { category: 'DoctorReferral' },
   registration: {
     encounterType: 'OP',
-    department: '',
-    consultant: '',
-    appointmentType: '',
+    departmentId: '',
+    consultantId: '',
+    appointmentTypeId: '',
     admissionType: '',
     category: '',
   },
@@ -395,17 +398,22 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 )}
               />
             </Field>
-            <Field label="Blood group" htmlFor="bloodGroup" className="flex w-full flex-col gap-1 sm:w-32">
+            <Field
+              label="Blood group"
+              htmlFor="bloodGroup"
+              error={errors.bloodGroup?.message}
+              className="flex w-full flex-col gap-1 sm:w-32"
+            >
               <Controller
                 name="bloodGroup"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="bloodGroup" aria-label="Blood group">
-                      <SelectValue placeholder="Unknown" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {BLOOD_GROUPS.filter((b) => b !== 'Unknown').map((b) => (
+                      {BLOOD_GROUPS.map((b) => (
                         <SelectItem key={b} value={b}>
                           {bloodGroupLabel(b)}
                         </SelectItem>
@@ -839,25 +847,48 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               />
             </Field>
             {encounterType === 'OP' && (
-              <Field label="Appointment type" htmlFor="appointmentType" className="flex min-w-[160px] flex-1 flex-col gap-1">
-                <Input id="appointmentType" {...register('registration.appointmentType')} />
+              <Field
+                label="Appointment type"
+                htmlFor="appointmentType"
+                error={errors.registration?.appointmentTypeId?.message}
+                className="flex min-w-[160px] flex-1 flex-col gap-1"
+              >
+                <Controller
+                  name="registration.appointmentTypeId"
+                  control={control}
+                  render={({ field }) => (
+                    <AppointmentTypeSelect id="appointmentType" value={field.value ?? ''} onValueChange={field.onChange} />
+                  )}
+                />
               </Field>
             )}
             <Field
               label="Department"
               htmlFor="department"
-              error={errors.registration?.department?.message}
+              error={errors.registration?.departmentId?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
-              <Input id="department" {...register('registration.department')} />
+              <Controller
+                name="registration.departmentId"
+                control={control}
+                render={({ field }) => (
+                  <DepartmentSelect id="department" value={field.value} onValueChange={field.onChange} />
+                )}
+              />
             </Field>
             <Field
               label="Consultant"
               htmlFor="consultant"
-              error={errors.registration?.consultant?.message}
+              error={errors.registration?.consultantId?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
-              <Input id="consultant" {...register('registration.consultant')} />
+              <Controller
+                name="registration.consultantId"
+                control={control}
+                render={({ field }) => (
+                  <ConsultantSelect id="consultant" value={field.value} onValueChange={field.onChange} />
+                )}
+              />
             </Field>
             {/* Progressive disclosure: Admission (IP/Emergency) / Observation (Day-care) type only applies beyond OP. */}
             {showReferralColumn && (

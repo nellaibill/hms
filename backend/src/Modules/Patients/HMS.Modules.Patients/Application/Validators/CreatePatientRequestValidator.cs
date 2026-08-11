@@ -65,13 +65,13 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
     }
 
     // Mr/Master are conventionally masculine, Mrs/Ms/Miss conventionally feminine — Dr and
-    // Baby are gender-neutral titles and never flagged. Gender.Other is deliberately never
-    // flagged against any title: unlike the Male/Female mismatches (which are always wrong,
-    // e.g. "Ms" + Male), there's no universal convention for how "Other" should pair with a
-    // gendered title, so guessing would be presumptuous rather than catching a real error.
+    // Baby are gender-neutral titles and never flagged. Transgender/NA are deliberately
+    // never flagged against any title: unlike the Male/Female mismatches (which are always
+    // wrong, e.g. "Ms" + Male), there's no universal convention for how they should pair
+    // with a gendered title, so guessing would be presumptuous rather than catching a real error.
     internal static bool IsTitleConsistentWithGender(Title title, Gender gender)
     {
-        if (gender == Gender.Other)
+        if (gender is Gender.Transgender or Gender.NA)
         {
             return true;
         }
@@ -104,7 +104,11 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
             .WithMessage("Title does not match the patient's gender (Mr/Master: Male, Mrs/Ms/Miss: Female).")
             .When(x => Enum.IsDefined(x.Title) && Enum.IsDefined(x.Gender));
         RuleFor(x => x.Gender).IsInEnum();
-        RuleFor(x => x.BloodGroup).IsInEnum().When(x => x.BloodGroup.HasValue);
+        // Required (not merely validated-when-present): the receptionist must make an
+        // explicit choice, including BloodGroup.Unknown for "not known/not recorded" —
+        // silently omitting it was indistinguishable from a deliberate "Unknown" and let
+        // the field go completely unchecked end-to-end.
+        RuleFor(x => x.BloodGroup).NotNull().WithMessage("Blood group is required — select Unknown if it isn't known.").IsInEnum();
 
         RuleFor(x => x.AddressLine1).NotEmpty().MaximumLength(200);
         RuleFor(x => x.AddressLine2).MaximumLength(200);
@@ -123,6 +127,13 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
             .Matches(PhonePattern).WithMessage("Phone number may only contain digits, spaces, and the characters + - ( ).")
             .Must(value => HasMinimumDigitCount(value, MinPhoneDigits)).WithMessage($"Phone number must contain at least {MinPhoneDigits} digits.")
             .When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone));
+        RuleFor(x => x.AlternatePhoneRelation).MaximumLength(50).Matches(NamePattern).WithMessage("Relation must contain letters only.").When(x => !string.IsNullOrWhiteSpace(x.AlternatePhoneRelation));
+        RuleFor(x => x.AlternatePhone2)
+            .MaximumLength(20)
+            .Matches(PhonePattern).WithMessage("Phone number may only contain digits, spaces, and the characters + - ( ).")
+            .Must(value => HasMinimumDigitCount(value, MinPhoneDigits)).WithMessage($"Phone number must contain at least {MinPhoneDigits} digits.")
+            .When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone2));
+        RuleFor(x => x.AlternatePhone2Relation).MaximumLength(50).Matches(NamePattern).WithMessage("Relation must contain letters only.").When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone2Relation));
         RuleFor(x => x.Email).EmailAddress().MaximumLength(256).When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Profession).MaximumLength(100);
 
@@ -146,8 +157,8 @@ internal class PatientRegistrationDetailsValidator : AbstractValidator<PatientRe
     {
         RuleFor(x => x.EncounterType).IsInEnum();
         RuleFor(x => x.ModeOfArrival).IsInEnum();
-        RuleFor(x => x.Department).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Consultant).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.DepartmentId).NotEmpty();
+        RuleFor(x => x.ConsultantId).NotEmpty();
         RuleFor(x => x.ReferralSource).MaximumLength(200);
         RuleFor(x => x.Category).MaximumLength(100);
 

@@ -1,7 +1,7 @@
-using HMS.Modules.HR.Contracts;
-using HMS.Modules.HR.Domain;
+using HMS.Modules.Masters.Contracts;
+using HMS.Modules.Masters.Domain;
 
-namespace HMS.Modules.HR.Application.Mapping;
+namespace HMS.Modules.Masters.Application.Mapping;
 
 internal static class DepartmentMappingExtensions
 {

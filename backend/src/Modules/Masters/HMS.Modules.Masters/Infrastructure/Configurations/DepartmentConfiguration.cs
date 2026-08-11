@@ -1,8 +1,8 @@
-using HMS.Modules.HR.Domain;
+using HMS.Modules.Masters.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace HMS.Modules.HR.Infrastructure.Configurations;
+namespace HMS.Modules.Masters.Infrastructure.Configurations;
 
 internal class DepartmentConfiguration : IEntityTypeConfiguration<Department>
 {

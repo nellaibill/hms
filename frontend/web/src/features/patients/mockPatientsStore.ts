@@ -1,13 +1,15 @@
-import type { CreatePatientRequest, PagedPatients, Patient, PatientListQuery, UpdatePatientRequest } from '@hms/shared';
+import type { PagedPatients, Patient, PatientListQuery } from '@hms/shared';
 import { calculateAge } from './detailedAge';
 import { MOCK_PATIENTS } from './mockPatients';
 
 /**
- * Offline fallback store used only when the real API is unreachable (see the NetworkError
- * catch in the patients hooks) — lets Patient Management be demoed for client sign-off
- * before the backend is wired up. Persisted to localStorage (not a real backend, just
- * survives page refreshes during a demo) — remove alongside the fallback catches once the
- * backend is live.
+ * Offline fallback used only for *browsing* (list/search, single lookup) when the real API
+ * is unreachable — lets the search screen still show something instead of a dead error, with
+ * the "Demo data" banner (see PatientsListPage) making clear it isn't live data. Writes
+ * (create/update/delete) deliberately do NOT fall back here — silently "succeeding" a
+ * create/edit/delete against this fake local store, with no duplicate check and a real
+ * hard-delete where the UI promises a soft one, is worse than just failing loudly. See
+ * usePatientMutations.ts.
  */
 const STORAGE_KEY = 'hms-mock-patients';
 
@@ -35,16 +37,7 @@ function loadPatients(): Patient[] {
   return [...MOCK_PATIENTS];
 }
 
-function persist() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
-  } catch {
-    // Storage unavailable (e.g. private browsing quota) — demo still works for this tab session.
-  }
-}
-
-let patients: Patient[] = loadPatients();
-let nextSeq = patients.reduce((max, p) => Math.max(max, Number(p.id.replace('mock-', '')) || 0), 0) + 1;
+const patients: Patient[] = loadPatients();
 
 function compareBy(field: string, direction: 1 | -1) {
   return (a: Patient, b: Patient) => {
@@ -112,74 +105,4 @@ export function listMockPatients(query: PatientListQuery): PagedPatients {
 export function getMockPatientById(id: string): Patient | undefined {
   const patient = patients.find((p) => p.id === id);
   return patient && withCurrentAge(patient);
-}
-
-export function createMockPatient(request: CreatePatientRequest): Patient {
-  const seq = nextSeq++;
-  const now = new Date().toISOString();
-  const patient: Patient = {
-    id: `mock-${String(seq).padStart(3, '0')}`,
-    uhid: `NH2026${String(seq).padStart(4, '0')}`,
-    title: request.title,
-    firstName: request.firstName,
-    lastName: request.lastName,
-    dateOfBirth: request.dateOfBirth,
-    age: calculateAge(request.dateOfBirth),
-    gender: request.gender,
-    bloodGroup: request.bloodGroup,
-    addressLine1: request.addressLine1,
-    addressLine2: request.addressLine2,
-    addressLine3: request.addressLine3,
-    district: request.district,
-    state: request.state,
-    pincode: request.pincode,
-    primaryPhone: request.primaryPhone,
-    primaryPhoneRelation: request.primaryPhoneRelation,
-    alternatePhone: request.alternatePhone,
-    email: request.email,
-    profession: request.profession,
-    emergencyContactRelationship: request.emergencyContactRelationship,
-    emergencyContactName: request.emergencyContactName,
-    emergencyContactPhone: request.emergencyContactPhone,
-    hasKnownAllergy: request.hasKnownAllergy,
-    allergyType: request.allergyType,
-    allergySeverity: request.allergySeverity,
-    currentRegistration: {
-      id: `mock-reg-${String(seq).padStart(3, '0')}`,
-      registrationNumber: `REG2026${String(seq).padStart(4, '0')}`,
-      encounterType: request.registration.encounterType,
-      modeOfArrival: request.registration.modeOfArrival,
-      department: request.registration.department,
-      consultant: request.registration.consultant,
-      admissionType: request.registration.admissionType,
-      referralSource: request.registration.referralSource,
-      category: request.registration.category,
-      createdAt: now,
-    },
-    createdAt: now,
-  };
-  patients = [patient, ...patients];
-  persist();
-  return patient;
-}
-
-export function updateMockPatient(id: string, request: UpdatePatientRequest): Patient {
-  const existing = getMockPatientById(id);
-  if (!existing) {
-    throw new Error(`Mock patient ${id} not found.`);
-  }
-  const updated: Patient = {
-    ...existing,
-    ...request,
-    age: calculateAge(request.dateOfBirth),
-    updatedAt: new Date().toISOString(),
-  };
-  patients = patients.map((p) => (p.id === id ? updated : p));
-  persist();
-  return updated;
-}
-
-export function deleteMockPatient(id: string): void {
-  patients = patients.filter((p) => p.id !== id);
-  persist();
 }

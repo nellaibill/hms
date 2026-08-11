@@ -36,6 +36,9 @@ public class MastersDbContext : DbContext
     internal DbSet<StorageLocation> StorageLocations => Set<StorageLocation>();
     internal DbSet<Supplier> Suppliers => Set<Supplier>();
     internal DbSet<Customer> Customers => Set<Customer>();
+    internal DbSet<Department> Departments => Set<Department>();
+    internal DbSet<Consultant> Consultants => Set<Consultant>();
+    internal DbSet<AppointmentType> AppointmentTypes => Set<AppointmentType>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

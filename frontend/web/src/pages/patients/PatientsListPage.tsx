@@ -2,6 +2,7 @@ import type { Patient } from '@hms/shared';
 import { Loader2, Search, UserPlus2 } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/components/ui/toast-context';
 import {
   DeletePatientDialog,
   emptyPatientSearchFilters,
@@ -39,6 +40,7 @@ export default function PatientsListPage() {
   );
 
   const deleteMutation = useDeletePatientMutation();
+  const { toast } = useToast();
 
   function handleFilterChange(field: keyof PatientSearchFilters, value: string) {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -64,8 +66,18 @@ export default function PatientsListPage() {
     if (!patientPendingDelete) {
       return;
     }
+    const { firstName, lastName, uhid } = patientPendingDelete;
     deleteMutation.mutate(patientPendingDelete.id, {
       onSuccess: () => setPatientPendingDelete(null),
+      // Deletion previously had no failure feedback at all — the dialog just sat there
+      // with no explanation. Keep it open (rather than dismissing as if it worked) so the
+      // user can see the reason and retry or cancel.
+      onError: (err) =>
+        toast({
+          title: 'Delete failed',
+          description: `Could not delete ${firstName} ${lastName} (UHID ${uhid}): ${err.message}`,
+          variant: 'error',
+        }),
     });
   }
 

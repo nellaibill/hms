@@ -1,8 +1,11 @@
 using FluentAssertions;
+using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -15,18 +18,32 @@ public class PatientServiceTests
     private static readonly byte[] ValidPngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
     private static readonly byte[] ValidPdfBytes = "%PDF-1.4 rest of the file"u8.ToArray();
     private static readonly byte[] NotAFileBytes = "this is plain text, not a real file"u8.ToArray();
+    private static readonly Guid DepartmentId = Guid.NewGuid();
+    private static readonly Guid ConsultantId = Guid.NewGuid();
 
     private readonly IPatientRepository _repository = Substitute.For<IPatientRepository>();
     private readonly IPatientIdentifierGenerator _identifierGenerator = Substitute.For<IPatientIdentifierGenerator>();
     private readonly IPatientFileStorage _fileStorage = Substitute.For<IPatientFileStorage>();
+    private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
+    private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
+    private readonly IAppointmentTypeService _appointmentTypeService = Substitute.For<IAppointmentTypeService>();
     private readonly PatientService _sut;
 
     public PatientServiceTests()
     {
-        _sut = new PatientService(_repository, _identifierGenerator, _fileStorage, NullLogger<PatientService>.Instance);
+        _sut = new PatientService(_repository, _identifierGenerator, _fileStorage, _departmentService, _consultantService, _appointmentTypeService, NullLogger<PatientService>.Instance);
 
         _identifierGenerator.NextUhidAsync(Arg.Any<CancellationToken>()).Returns("P-2026-000001");
         _identifierGenerator.NextRegistrationNumberAsync(Arg.Any<EncounterType>(), Arg.Any<CancellationToken>()).Returns("OP-2026-000001");
+
+        // Happy-path defaults: the department/consultant exist. Failure-path tests override these per-test.
+        _departmentService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<DepartmentResponse>.Success(new DepartmentResponse()));
+        _consultantService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse()));
+        // AppointmentTypeId is optional — only tests that explicitly set one on the request need this configured.
+        _appointmentTypeService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<AppointmentTypeResponse>.Success(new AppointmentTypeResponse()));
     }
 
     private static CreatePatientRequest NewCreateRequest() => new()
@@ -48,15 +65,15 @@ public class PatientServiceTests
         {
             EncounterType = EncounterType.OP,
             ModeOfArrival = ModeOfArrival.WalkIn,
-            Department = "General Medicine",
-            Consultant = "Dr. Smith",
+            DepartmentId = DepartmentId,
+            ConsultantId = ConsultantId,
         },
     };
 
     private static Patient NewPersistedPatient() => Patient.Create(
         "P-2026-000001", Title.Mr, "John", "Doe", new DateOnly(1990, 1, 1), Gender.Male, null,
         "123 Main St", null, null, "Central", "State", "560001",
-        "9876543210", null, null, null, null,
+        "9876543210", null, null, null, null, null, null, null,
         "Spouse", "Jane Doe", "9876500000", false, null, null, null);
 
     [Fact]
@@ -72,6 +89,51 @@ public class PatientServiceTests
         result.Value.CurrentRegistration!.RegistrationNumber.Should().Be("OP-2026-000001");
         await _repository.Received(1).AddAsync(Arg.Any<Patient>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenDepartmentDoesNotExist_ReturnsInvalidDepartmentFailureAndDoesNotCreate()
+    {
+        _departmentService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<DepartmentResponse>.Failure("MASTERS.NOT_FOUND", "not found"));
+        var request = NewCreateRequest();
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.InvalidDepartment);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Patient>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenConsultantDoesNotExist_ReturnsInvalidConsultantFailureAndDoesNotCreate()
+    {
+        _consultantService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultantResponse>.Failure("MASTERS.NOT_FOUND", "not found"));
+        var request = NewCreateRequest();
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.InvalidConsultant);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Patient>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenSamePhoneAndNameAlreadyRegistered_ReturnsDuplicateFailureAndDoesNotCreate()
+    {
+        var request = NewCreateRequest();
+        var existing = NewPersistedPatient();
+        _repository.FindDuplicateAsync(request.PrimaryPhone, request.FirstName, request.LastName, Arg.Any<CancellationToken>())
+            .Returns(existing);
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.DuplicatePatient);
+        result.Error.Should().Contain(existing.Uhid);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Patient>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -106,6 +168,72 @@ public class PatientServiceTests
             EmergencyContactRelationship = "Spouse",
             EmergencyContactName = "Jane Doe",
             EmergencyContactPhone = "9876500000",
+        };
+
+        var result = await _sut.UpdateAsync(patient.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.FirstName.Should().Be("Johnny");
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenRowVersionDoesNotMatchLoadedPatient_ReturnsConcurrencyConflictAndDoesNotSave()
+    {
+        var patient = NewPersistedPatient();
+        _repository.GetByIdAsync(patient.Id, Arg.Any<CancellationToken>()).Returns(patient);
+        _repository.GetRowVersion(patient).Returns("42");
+
+        var request = new UpdatePatientRequest
+        {
+            Title = Title.Dr,
+            FirstName = "Johnny",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(1990, 1, 1),
+            Gender = Gender.Male,
+            AddressLine1 = "123 Main St",
+            District = "Central",
+            State = "State",
+            Pincode = "560001",
+            PrimaryPhone = "9876543210",
+            EmergencyContactRelationship = "Spouse",
+            EmergencyContactName = "Jane Doe",
+            EmergencyContactPhone = "9876500000",
+            // Stale — someone else's edit moved the row to version "42" after this client loaded "1".
+            RowVersion = "1",
+        };
+
+        var result = await _sut.UpdateAsync(patient.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.ConcurrencyConflict);
+        patient.FirstName.Should().Be("John", "a conflicting update must not be applied to the entity at all");
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenRowVersionMatchesLoadedPatient_UpdatesAndReturnsSuccess()
+    {
+        var patient = NewPersistedPatient();
+        _repository.GetByIdAsync(patient.Id, Arg.Any<CancellationToken>()).Returns(patient);
+        _repository.GetRowVersion(patient).Returns("42");
+
+        var request = new UpdatePatientRequest
+        {
+            Title = Title.Dr,
+            FirstName = "Johnny",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(1990, 1, 1),
+            Gender = Gender.Male,
+            AddressLine1 = "123 Main St",
+            District = "Central",
+            State = "State",
+            Pincode = "560001",
+            PrimaryPhone = "9876543210",
+            EmergencyContactRelationship = "Spouse",
+            EmergencyContactName = "Jane Doe",
+            EmergencyContactPhone = "9876500000",
+            RowVersion = "42",
         };
 
         var result = await _sut.UpdateAsync(patient.Id, request, actorId: null, CancellationToken.None);
@@ -326,8 +454,8 @@ public class PatientServiceTests
         {
             EncounterType = EncounterType.IP,
             ModeOfArrival = ModeOfArrival.Ambulance,
-            Department = "ICU",
-            Consultant = "Dr. Lee",
+            DepartmentId = DepartmentId,
+            ConsultantId = ConsultantId,
             AdmissionType = AdmissionType.MLC,
         };
 
@@ -335,7 +463,7 @@ public class PatientServiceTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.RegistrationNumber.Should().Be("IP-2026-000005");
-        result.Value.Department.Should().Be("ICU");
+        result.Value.DepartmentId.Should().Be(DepartmentId);
         patient.Registrations.Should().ContainSingle();
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         // Adding a follow-up registration is not itself an edit to the Patient master
@@ -358,10 +486,10 @@ public class PatientServiceTests
     public async Task GetRegistrationsAsync_ReturnsAllRegistrationsNewestFirst()
     {
         var patient = NewPersistedPatient();
-        var first = PatientRegistration.Create(patient.Id, "OP-2026-000001", EncounterType.OP, ModeOfArrival.WalkIn, "General Medicine", "Dr. Smith", null, null, null, null);
+        var first = PatientRegistration.Create(patient.Id, "OP-2026-000001", EncounterType.OP, ModeOfArrival.WalkIn, DepartmentId, ConsultantId, null, null, null, null, null);
         patient.AddRegistration(first);
         Thread.Sleep(5); // Ensure a distinguishable CreatedAt for ordering.
-        var second = PatientRegistration.Create(patient.Id, "IP-2026-000002", EncounterType.IP, ModeOfArrival.Ambulance, "ICU", "Dr. Lee", AdmissionType.NMLC, null, null, null);
+        var second = PatientRegistration.Create(patient.Id, "IP-2026-000002", EncounterType.IP, ModeOfArrival.Ambulance, DepartmentId, ConsultantId, null, AdmissionType.NMLC, null, null, null);
         patient.AddRegistration(second);
         _repository.GetByIdAsync(patient.Id, Arg.Any<CancellationToken>()).Returns(patient);
 

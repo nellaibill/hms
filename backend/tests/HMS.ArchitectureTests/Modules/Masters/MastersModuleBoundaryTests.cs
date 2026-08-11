@@ -29,7 +29,7 @@ public class MastersModuleBoundaryTests
         "|IWarehouseService|IStorageLocationService" +
         "|ISupplierService|ICustomerService" +
         "|ICurrencyService|IPaymentTermService|IPaymentMethodService" +
-        "|IStockAdjustmentReasonService)$";
+        "|IStockAdjustmentReasonService|IDepartmentService|IConsultantService|IAppointmentTypeService)$";
 
     [Theory]
     [InlineData("HMS.Modules.Masters.Domain")]

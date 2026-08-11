@@ -27,10 +27,10 @@
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
     <!-- Only for IDepartmentService (public seam) — used to validate that a
          DepartmentId, when supplied, refers to a real department before writing an
-         Event. Mirrors the exact pattern HMS.Modules.HR itself uses against
-         HMS.Modules.Identity's IUserService. Domain.Department/DepartmentRepository
-         etc. stay internal to HR; only IDepartmentService is public. -->
-    <ProjectReference Include="..\..\HR\HMS.Modules.HR\HMS.Modules.HR.csproj" />
+         Event. Mirrors the exact pattern HMS.Modules.HR itself uses against Masters for
+         the same check. Domain.Department/DepartmentRepository etc. stay internal to
+         Masters; only IDepartmentService is public. -->
+    <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
   </ItemGroup>
 
 </Project>

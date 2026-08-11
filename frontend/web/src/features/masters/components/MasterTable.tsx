@@ -100,7 +100,7 @@ export function MasterTable({ config, records, sort, onSortChange }: MasterTable
                 <MasterStatusBadge isActive={record.isActive} />
               </td>
               <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
-                {new Date(record.updatedAt).toLocaleDateString('en-IN')}
+                {record.updatedAt ? new Date(record.updatedAt).toLocaleDateString('en-IN') : '—'}
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">

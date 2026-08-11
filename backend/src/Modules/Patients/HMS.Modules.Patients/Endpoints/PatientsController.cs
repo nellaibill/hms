@@ -4,6 +4,7 @@ using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ namespace HMS.Modules.Patients.Endpoints;
 /// HMS.Modules.Identity.UsersController.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/v1/patients")]
 public class PatientsController : ControllerBase
 {
@@ -45,6 +47,7 @@ public class PatientsController : ControllerBase
     /// <summary>Registers a new patient and their first encounter in one transaction.</summary>
     /// <response code="201">The patient was registered.</response>
     /// <response code="400">The request failed validation.</response>
+    /// <response code="409">A patient with the same name and phone number is already registered.</response>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request, CancellationToken cancellationToken)
     {
@@ -212,6 +215,8 @@ public class PatientsController : ControllerBase
         {
             PatientErrorCodes.NotFound => StatusCodes.Status404NotFound,
             PatientErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
+            PatientErrorCodes.DuplicatePatient => StatusCodes.Status409Conflict,
+            PatientErrorCodes.ConcurrencyConflict => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

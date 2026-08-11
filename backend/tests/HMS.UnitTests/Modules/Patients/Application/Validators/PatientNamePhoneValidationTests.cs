@@ -37,8 +37,8 @@ public class PatientNamePhoneValidationTests
         {
             EncounterType = EncounterType.OP,
             ModeOfArrival = ModeOfArrival.WalkIn,
-            Department = "General Medicine",
-            Consultant = "Dr. Smith",
+            DepartmentId = Guid.NewGuid(),
+            ConsultantId = Guid.NewGuid(),
         },
     };
 
@@ -170,5 +170,33 @@ public class PatientNamePhoneValidationTests
 
         result.ShouldHaveValidationErrorFor(x => x.LastName);
         result.ShouldHaveValidationErrorFor(x => x.PrimaryPhone);
+    }
+
+    [Fact]
+    public void UpdateValidator_RejectsMissingRowVersion()
+    {
+        var validator = new UpdatePatientRequestValidator();
+        var request = new UpdatePatientRequest
+        {
+            Title = Title.Mr,
+            FirstName = "John",
+            LastName = "Doe",
+            DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-30),
+            Gender = Gender.Male,
+            BloodGroup = BloodGroup.Unknown,
+            AddressLine1 = "123 Main St",
+            District = "Central",
+            State = "State",
+            Pincode = "560001",
+            PrimaryPhone = "9876543210",
+            EmergencyContactRelationship = "Spouse",
+            EmergencyContactName = "Jane Doe",
+            EmergencyContactPhone = "9876500000",
+            RowVersion = "",
+        };
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.RowVersion);
     }
 }

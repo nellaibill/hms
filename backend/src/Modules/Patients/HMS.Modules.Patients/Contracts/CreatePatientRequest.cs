@@ -28,6 +28,9 @@ public record CreatePatientRequest
     public string PrimaryPhone { get; init; } = string.Empty;
     public string? PrimaryPhoneRelation { get; init; }
     public string? AlternatePhone { get; init; }
+    public string? AlternatePhoneRelation { get; init; }
+    public string? AlternatePhone2 { get; init; }
+    public string? AlternatePhone2Relation { get; init; }
     public string? Email { get; init; }
     public string? Profession { get; init; }
 
@@ -49,8 +52,13 @@ public record PatientRegistrationDetails
 {
     public EncounterType EncounterType { get; init; }
     public ModeOfArrival ModeOfArrival { get; init; }
-    public string Department { get; init; } = string.Empty;
-    public string Consultant { get; init; } = string.Empty;
+    public Guid DepartmentId { get; init; }
+    public Guid ConsultantId { get; init; }
+
+    /// <summary>Optional OP appointment category — a reference into Masters' AppointmentType,
+    /// validated the same way as DepartmentId/ConsultantId when present.</summary>
+    public Guid? AppointmentTypeId { get; init; }
+
     public AdmissionType? AdmissionType { get; init; }
     public string? ReferralSource { get; init; }
     public string? Category { get; init; }

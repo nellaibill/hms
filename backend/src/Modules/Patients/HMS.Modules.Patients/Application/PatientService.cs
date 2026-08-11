@@ -1,3 +1,4 @@
+using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Application.Mapping;
 using HMS.Modules.Patients.Contracts;
@@ -22,22 +23,69 @@ internal class PatientService : IPatientService
     private readonly IPatientRepository _repository;
     private readonly IPatientIdentifierGenerator _identifierGenerator;
     private readonly IPatientFileStorage _fileStorage;
+    private readonly IDepartmentService _departmentService;
+    private readonly IConsultantService _consultantService;
+    private readonly IAppointmentTypeService _appointmentTypeService;
     private readonly ILogger<PatientService> _logger;
 
     public PatientService(
         IPatientRepository repository,
         IPatientIdentifierGenerator identifierGenerator,
         IPatientFileStorage fileStorage,
+        IDepartmentService departmentService,
+        IConsultantService consultantService,
+        IAppointmentTypeService appointmentTypeService,
         ILogger<PatientService> logger)
     {
         _repository = repository;
         _identifierGenerator = identifierGenerator;
         _fileStorage = fileStorage;
+        _departmentService = departmentService;
+        _consultantService = consultantService;
+        _appointmentTypeService = appointmentTypeService;
         _logger = logger;
+    }
+
+    // DepartmentId/ConsultantId/AppointmentTypeId are all cross-module references into
+    // Masters' reference data (see docs/DecisionLog.md — Department/Consultant consolidated
+    // there; AppointmentType followed the same pattern). AppointmentTypeId is optional
+    // (OP-only), so it's only checked when the caller actually supplied one.
+    private async Task<Result?> ValidateRegistrationReferencesAsync(Guid departmentId, Guid consultantId, Guid? appointmentTypeId, CancellationToken cancellationToken)
+    {
+        if (!(await _departmentService.GetByIdAsync(departmentId, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(PatientErrorCodes.InvalidDepartment, $"Department '{departmentId}' was not found.");
+        }
+
+        if (!(await _consultantService.GetByIdAsync(consultantId, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(PatientErrorCodes.InvalidConsultant, $"Consultant '{consultantId}' was not found.");
+        }
+
+        if (appointmentTypeId.HasValue && !(await _appointmentTypeService.GetByIdAsync(appointmentTypeId.Value, cancellationToken)).IsSuccess)
+        {
+            return Result.Failure(PatientErrorCodes.InvalidAppointmentType, $"Appointment type '{appointmentTypeId}' was not found.");
+        }
+
+        return null;
     }
 
     public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
+        var duplicate = await _repository.FindDuplicateAsync(request.PrimaryPhone, request.FirstName, request.LastName, cancellationToken);
+        if (duplicate is not null)
+        {
+            return Result<PatientResponse>.Failure(
+                PatientErrorCodes.DuplicatePatient,
+                $"A patient named '{duplicate.FirstName} {duplicate.LastName}' with this phone number is already registered (UHID: {duplicate.Uhid}). If this is a returning patient, record a new visit against their existing record instead of registering them again.");
+        }
+
+        var referenceError = await ValidateRegistrationReferencesAsync(request.Registration.DepartmentId, request.Registration.ConsultantId, request.Registration.AppointmentTypeId, cancellationToken);
+        if (referenceError is not null)
+        {
+            return Result<PatientResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
+        }
+
         var uhid = await _identifierGenerator.NextUhidAsync(cancellationToken);
 
         var patient = Patient.Create(
@@ -57,6 +105,9 @@ internal class PatientService : IPatientService
             request.PrimaryPhone,
             request.PrimaryPhoneRelation,
             request.AlternatePhone,
+            request.AlternatePhoneRelation,
+            request.AlternatePhone2,
+            request.AlternatePhone2Relation,
             request.Email,
             request.Profession,
             request.EmergencyContactRelationship,
@@ -74,8 +125,9 @@ internal class PatientService : IPatientService
             registrationNumber,
             request.Registration.EncounterType,
             request.Registration.ModeOfArrival,
-            request.Registration.Department,
-            request.Registration.Consultant,
+            request.Registration.DepartmentId,
+            request.Registration.ConsultantId,
+            request.Registration.AppointmentTypeId,
             request.Registration.AdmissionType,
             request.Registration.ReferralSource,
             request.Registration.Category,
@@ -88,7 +140,7 @@ internal class PatientService : IPatientService
 
         _logger.LogInformation("Registered patient {PatientId} with UHID {Uhid}", patient.Id, patient.Uhid);
 
-        return Result<PatientResponse>.Success(patient.ToResponse());
+        return Result<PatientResponse>.Success(patient.ToResponse(_repository.GetRowVersion(patient)));
     }
 
     public async Task<Result<PatientResponse>> UpdateAsync(Guid id, UpdatePatientRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -99,9 +151,29 @@ internal class PatientService : IPatientService
             return Result<PatientResponse>.Failure(PatientErrorCodes.NotFound, $"Patient '{id}' was not found.");
         }
 
+        // Optimistic concurrency: the client must be editing the version it actually loaded.
+        // Without this, two people editing the same patient at once silently overwrite each
+        // other — the second save always wins with no warning to either party.
+        var loadedRowVersion = _repository.GetRowVersion(patient);
+        if (request.RowVersion != loadedRowVersion)
+        {
+            return Result<PatientResponse>.Failure(
+                PatientErrorCodes.ConcurrencyConflict,
+                "This patient's details were changed by someone else since this page was loaded. Reload the page to see the latest version, then try your edit again.");
+        }
+
         patient.UpdateDemographics(request.Title, request.FirstName, request.LastName, request.DateOfBirth, request.Gender, request.BloodGroup, actorId);
         patient.UpdateAddress(request.AddressLine1, request.AddressLine2, request.AddressLine3, request.District, request.State, request.Pincode, actorId);
-        patient.UpdateContact(request.PrimaryPhone, request.PrimaryPhoneRelation, request.AlternatePhone, request.Email, request.Profession, actorId);
+        patient.UpdateContact(
+            request.PrimaryPhone,
+            request.PrimaryPhoneRelation,
+            request.AlternatePhone,
+            request.AlternatePhoneRelation,
+            request.AlternatePhone2,
+            request.AlternatePhone2Relation,
+            request.Email,
+            request.Profession,
+            actorId);
         patient.UpdateEmergencyContact(request.EmergencyContactRelationship, request.EmergencyContactName, request.EmergencyContactPhone, actorId);
         patient.UpdateAllergyDetails(request.HasKnownAllergy, request.AllergyType, request.AllergySeverity, actorId);
 
@@ -109,7 +181,7 @@ internal class PatientService : IPatientService
 
         _logger.LogInformation("Updated patient {PatientId}", patient.Id);
 
-        return Result<PatientResponse>.Success(patient.ToResponse());
+        return Result<PatientResponse>.Success(patient.ToResponse(_repository.GetRowVersion(patient)));
     }
 
     public async Task<Result> DeleteAsync(Guid id, Guid? actorId, CancellationToken cancellationToken)
@@ -133,7 +205,7 @@ internal class PatientService : IPatientService
         var patient = await _repository.GetByIdAsync(id, cancellationToken);
         return patient is null
             ? Result<PatientResponse>.Failure(PatientErrorCodes.NotFound, $"Patient '{id}' was not found.")
-            : Result<PatientResponse>.Success(patient.ToResponse());
+            : Result<PatientResponse>.Success(patient.ToResponse(_repository.GetRowVersion(patient)));
     }
 
     public async Task<Result<PatientRegistrationResponse>> AddRegistrationAsync(Guid patientId, PatientRegistrationDetails request, Guid? actorId, CancellationToken cancellationToken)
@@ -144,6 +216,12 @@ internal class PatientService : IPatientService
             return Result<PatientRegistrationResponse>.Failure(PatientErrorCodes.NotFound, $"Patient '{patientId}' was not found.");
         }
 
+        var referenceError = await ValidateRegistrationReferencesAsync(request.DepartmentId, request.ConsultantId, request.AppointmentTypeId, cancellationToken);
+        if (referenceError is not null)
+        {
+            return Result<PatientRegistrationResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
+        }
+
         var registrationNumber = await _identifierGenerator.NextRegistrationNumberAsync(request.EncounterType, cancellationToken);
 
         var registration = PatientRegistration.Create(
@@ -151,8 +229,9 @@ internal class PatientService : IPatientService
             registrationNumber,
             request.EncounterType,
             request.ModeOfArrival,
-            request.Department,
-            request.Consultant,
+            request.DepartmentId,
+            request.ConsultantId,
+            request.AppointmentTypeId,
             request.AdmissionType,
             request.ReferralSource,
             request.Category,
@@ -185,7 +264,7 @@ internal class PatientService : IPatientService
     public async Task<PagedResult<PatientResponse>> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
-        var mapped = items.Select(p => p.ToResponse()).ToList();
+        var mapped = items.Select(p => p.ToResponse(_repository.GetRowVersion(p))).ToList();
 
         return new PagedResult<PatientResponse>(mapped, query.Page, query.PageSize, totalCount);
     }
@@ -214,7 +293,7 @@ internal class PatientService : IPatientService
 
         _logger.LogInformation("Uploaded photo for patient {PatientId}", patient.Id);
 
-        return Result<PatientResponse>.Success(patient.ToResponse());
+        return Result<PatientResponse>.Success(patient.ToResponse(_repository.GetRowVersion(patient)));
     }
 
     public async Task<Result<PatientResponse>> UploadIdProofAsync(Guid id, IdProofType idProofType, Stream content, string fileName, string contentType, long length, Guid? actorId, CancellationToken cancellationToken)
@@ -241,7 +320,7 @@ internal class PatientService : IPatientService
 
         _logger.LogInformation("Uploaded ID proof for patient {PatientId}", patient.Id);
 
-        return Result<PatientResponse>.Success(patient.ToResponse());
+        return Result<PatientResponse>.Success(patient.ToResponse(_repository.GetRowVersion(patient)));
     }
 
     // A client-supplied Content-Type header is just a claim — this checks the file's

@@ -31,8 +31,9 @@ public static class ModuleRegistration
         // validation), so it must register after AddMastersModule.
         services.AddProductsModule(configuration);
         services.AddHRModule(configuration);
-        // Calendar depends on HR's public service seam (Department reference
-        // validation), so it must register after AddHRModule.
+        // Calendar depends on Masters' public service seam (Department reference
+        // validation, now consolidated there — see docs/DecisionLog.md), so it must
+        // register after AddMastersModule (already satisfied above).
         services.AddCalendarModule(configuration);
 
         // Future modules register here, e.g.:

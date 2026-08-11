@@ -2,7 +2,11 @@
 export const TITLES = ['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Master', 'Baby'] as const;
 export type Title = (typeof TITLES)[number];
 
-export const GENDERS = ['Male', 'Female', 'Other'] as const;
+// Matches PATIENT_GENDERS in patientRegistrationUi.ts exactly — the UI form and the wire
+// format use the same four values now, so bridging.ts's toBackendGender/fromBackendGender
+// are a lossless 1:1 mapping (previously this only had Male/Female/Other, so Transgender and
+// "prefer not to say" both collapsed into "Other" and were indistinguishable again on edit).
+export const GENDERS = ['Male', 'Female', 'Transgender', 'NA'] as const;
 export type Gender = (typeof GENDERS)[number];
 
 export const BLOOD_GROUPS = [

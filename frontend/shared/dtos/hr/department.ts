@@ -1,4 +1,4 @@
-/** Mirrors HMS.Modules.HR.Contracts.DepartmentResponse. */
+/** Mirrors HMS.Modules.Masters.Contracts.DepartmentResponse (Department lives in Masters, not HR). */
 export interface Department {
   id: string;
   code: string;
@@ -8,21 +8,21 @@ export interface Department {
   updatedAt?: string | null;
 }
 
-/** Mirrors HMS.Modules.HR.Contracts.CreateDepartmentRequest. */
+/** Mirrors HMS.Modules.Masters.Contracts.CreateDepartmentRequest. */
 export interface CreateDepartmentRequest {
   code: string;
   name: string;
   isActive: boolean;
 }
 
-/** Mirrors HMS.Modules.HR.Contracts.UpdateDepartmentRequest — no Code, matching the
+/** Mirrors HMS.Modules.Masters.Contracts.UpdateDepartmentRequest — no Code, matching the
  * backend (Code is Department's natural key, set only at creation). */
 export interface UpdateDepartmentRequest {
   name: string;
   isActive: boolean;
 }
 
-/** Mirrors HMS.Modules.HR.Contracts.DepartmentListQuery. */
+/** Mirrors HMS.Modules.Masters.Contracts.DepartmentListQuery. */
 export interface DepartmentListQuery {
   page?: number;
   pageSize?: number;

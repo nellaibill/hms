@@ -15,8 +15,9 @@ export interface PatientRegistration {
   registrationNumber: string;
   encounterType: EncounterType;
   modeOfArrival: ModeOfArrival;
-  department: string;
-  consultant: string;
+  departmentId: string;
+  consultantId: string;
+  appointmentTypeId?: string | null;
   admissionType?: AdmissionType | null;
   referralSource?: string | null;
   category?: string | null;
@@ -46,6 +47,9 @@ export interface Patient {
   primaryPhone: string;
   primaryPhoneRelation?: string | null;
   alternatePhone?: string | null;
+  alternatePhoneRelation?: string | null;
+  alternatePhone2?: string | null;
+  alternatePhone2Relation?: string | null;
   email?: string | null;
   profession?: string | null;
 
@@ -63,6 +67,12 @@ export interface Patient {
 
   currentRegistration?: PatientRegistration | null;
 
+  /** Optimistic-concurrency token — echo back on UpdatePatientRequest.rowVersion so a save
+   * against stale data is rejected instead of silently overwriting someone else's edit.
+   * Optional here only because the offline demo fallback (mockPatientsStore.ts) doesn't
+   * have one; every real API response always includes it. */
+  rowVersion?: string;
+
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -71,8 +81,9 @@ export interface Patient {
 export interface PatientRegistrationDetailsRequest {
   encounterType: EncounterType;
   modeOfArrival: ModeOfArrival;
-  department: string;
-  consultant: string;
+  departmentId: string;
+  consultantId: string;
+  appointmentTypeId?: string | null;
   admissionType?: AdmissionType | null;
   referralSource?: string | null;
   category?: string | null;
@@ -97,6 +108,9 @@ export interface CreatePatientRequest {
   primaryPhone: string;
   primaryPhoneRelation?: string | null;
   alternatePhone?: string | null;
+  alternatePhoneRelation?: string | null;
+  alternatePhone2?: string | null;
+  alternatePhone2Relation?: string | null;
   email?: string | null;
   profession?: string | null;
 
@@ -130,6 +144,9 @@ export interface UpdatePatientRequest {
   primaryPhone: string;
   primaryPhoneRelation?: string | null;
   alternatePhone?: string | null;
+  alternatePhoneRelation?: string | null;
+  alternatePhone2?: string | null;
+  alternatePhone2Relation?: string | null;
   email?: string | null;
   profession?: string | null;
 
@@ -140,6 +157,9 @@ export interface UpdatePatientRequest {
   hasKnownAllergy: boolean;
   allergyType?: string | null;
   allergySeverity?: AllergySeverity | null;
+
+  /** Must be the RowVersion from the Patient this edit was loaded from — see Patient.rowVersion. */
+  rowVersion: string;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.PatientListQuery. */

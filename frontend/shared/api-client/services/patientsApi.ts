@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { CreatePatientRequest, Patient, PatientListQuery, UpdatePatientRequest } from '../../dtos';
+import type { CreatePatientRequest, Patient, PatientListQuery, PatientRegistration, UpdatePatientRequest } from '../../dtos';
 import type { IdProofType } from '../../enums';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
@@ -65,6 +65,12 @@ export class PatientsApi {
     formData.append('file', file);
     formData.append('idProofType', idProofType);
     const response = await this.client.postFormData<Patient>(API_ROUTES.patients.idProof(id), formData);
+    return response.data;
+  }
+
+  /** All registrations/visits recorded for this patient over time, newest first — mirrors HMS.Modules.Patients.Endpoints.PatientsController's GET .../registrations. */
+  async getRegistrations(id: string): Promise<PatientRegistration[]> {
+    const response = await this.client.get<PatientRegistration[]>(API_ROUTES.patients.registrations(id));
     return response.data;
   }
 }

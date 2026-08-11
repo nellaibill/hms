@@ -16,30 +16,38 @@ import { humanize } from './humanize';
  * (UI ships ahead of the backend in this phase; see docs/DecisionLog.md).
  */
 
-const GENDER_TO_BACKEND: Record<PatientGenderUi, Gender> = {
-  Male: 'Male',
-  Female: 'Female',
-  Transgender: 'Other',
-  NA: 'Other',
-};
-
+// The backend's Gender enum now matches PATIENT_GENDERS exactly (Male/Female/Transgender/NA
+// — see enums/patients.ts), so this is a lossless 1:1 identity mapping in both directions.
 export function toBackendGender(gender: PatientGenderUi): Gender {
-  return GENDER_TO_BACKEND[gender];
+  return gender;
 }
 
-/** Reverse of the above is lossy ("Other" could originally have been Transgender or NA) — defaults to NA. */
 export function fromBackendGender(gender: Gender): PatientGenderUi {
-  return gender === 'Male' || gender === 'Female' ? gender : 'NA';
+  return gender;
 }
 
-/** Finds the enum token whose humanized label matches a free-text value stored by an earlier bridge (e.g. "Father In Law" -> "FatherInLaw"). */
+/**
+ * Finds the enum token whose humanized label matches a free-text value stored by an earlier
+ * bridge (e.g. "Father In Law" -> "FatherInLaw"). Falls back to `fallback` (rather than
+ * throwing or leaving the field blank) only for an empty/missing stored value — an
+ * unrecognized non-empty value (e.g. pre-dropdown free text like "Parent") intentionally does
+ * NOT fall back here; see the two callers below.
+ */
 function dehumanize<T extends string>(displayValue: string | null | undefined, candidates: readonly T[], fallback: T): T {
   if (!displayValue) {
     return fallback;
   }
   const normalized = displayValue.replace(/[\s-]/g, '').toLowerCase();
   const match = candidates.find((candidate) => humanize(candidate).replace(/[\s-]/g, '').toLowerCase() === normalized);
-  return match ?? fallback;
+  if (match) {
+    return match;
+  }
+  // A stored value that doesn't match any known option must not be silently presented as one
+  // of the *specific* candidates (e.g. "Parent" or "a" rendering as "Father") — that would
+  // display, and on save persist, a fabricated relationship with no indication anything was
+  // ever wrong. 'Other' is an honest "this doesn't match a known option" signal instead.
+  const other = candidates.find((candidate) => candidate === 'Other');
+  return other ?? fallback;
 }
 
 export function toPhoneRelationLabel(relation: PhoneRelation): string {

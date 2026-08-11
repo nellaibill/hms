@@ -117,9 +117,9 @@ const referralColumnSchema = z.object({
 export const registrationDetailsUiSchema = z
   .object({
     encounterType: z.enum(ENCOUNTER_TYPES),
-    department: z.string().trim().min(1, 'Department is required').max(200),
-    consultant: z.string().trim().min(1, 'Consultant is required').max(200),
-    appointmentType: z.string().trim().max(100).optional().or(z.literal('')),
+    departmentId: z.string().trim().min(1, 'Department is required'),
+    consultantId: z.string().trim().min(1, 'Consultant is required'),
+    appointmentTypeId: z.string().trim().optional().or(z.literal('')),
     admissionType: z.enum(['MLC', 'NMLC']).optional().or(z.literal('')),
     referral: referralColumnSchema.optional(),
     category: z.string().trim().max(100).optional().or(z.literal('')),
@@ -154,7 +154,10 @@ const demographicsUiSchema = {
       return new Date(value) >= minDate;
     }, 'Date of birth is too far in the past — please check the year.'),
   gender: z.enum(PATIENT_GENDERS),
-  bloodGroup: z.enum(BLOOD_GROUPS).optional().or(z.literal('')),
+  // Required — not optional — so the field can't be silently skipped end-to-end; the
+  // dropdown always defaults to and includes 'Unknown' as an explicit, deliberate choice
+  // for "not known/not recorded" rather than leaving the field genuinely unset.
+  bloodGroup: z.enum(BLOOD_GROUPS, { message: 'Blood group is required — select Unknown if it isn\'t known.' }),
 
   addressLine1: z.string().trim().min(1, 'Address is required').max(200),
   addressLine2: z.string().max(200).optional().or(z.literal('')),

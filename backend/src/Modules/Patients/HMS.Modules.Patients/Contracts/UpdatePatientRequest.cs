@@ -24,6 +24,9 @@ public record UpdatePatientRequest
     public string PrimaryPhone { get; init; } = string.Empty;
     public string? PrimaryPhoneRelation { get; init; }
     public string? AlternatePhone { get; init; }
+    public string? AlternatePhoneRelation { get; init; }
+    public string? AlternatePhone2 { get; init; }
+    public string? AlternatePhone2Relation { get; init; }
     public string? Email { get; init; }
     public string? Profession { get; init; }
 
@@ -34,4 +37,9 @@ public record UpdatePatientRequest
     public bool HasKnownAllergy { get; init; }
     public string? AllergyType { get; init; }
     public AllergySeverity? AllergySeverity { get; init; }
+
+    /// <summary>Must echo back the RowVersion from the PatientResponse this edit was loaded
+    /// from — lets the server detect and reject a save made against data someone else has
+    /// since changed, rather than silently overwriting it. See PatientService.UpdateAsync.</summary>
+    public string RowVersion { get; init; } = string.Empty;
 }

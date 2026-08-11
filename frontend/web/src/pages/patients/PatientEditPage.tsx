@@ -1,7 +1,8 @@
-import { ApiError, type Patient, type PatientEditUiFormValues, type UpdatePatientRequest } from '@hms/shared';
+import type { Patient, PatientEditUiFormValues, UpdatePatientRequest } from '@hms/shared';
 import { ArrowLeft, Loader2, UserCog } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
+import { toDisplayError } from '../../features/patients/apiErrorDisplay';
 import {
   fromAllergyType,
   fromBackendGender,
@@ -13,15 +14,20 @@ import {
   toRelationshipLabel,
 } from '../../features/patients/bridging';
 
-/** See PatientRegistrationCreatePage.tsx's toRequest() comment for why this bridge exists. */
-function toRequest(values: PatientEditUiFormValues): UpdatePatientRequest {
+/**
+ * See PatientRegistrationCreatePage.tsx's toRequest() comment for why this bridge exists.
+ * rowVersion is threaded in separately (not part of the editable form state) — it's the
+ * optimistic-concurrency token from the Patient this edit was loaded from, echoed back so
+ * the server can detect and reject a save made against data someone else has since changed.
+ */
+function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdatePatientRequest {
   return {
     title: values.title,
     firstName: values.firstName,
     lastName: values.lastName,
     dateOfBirth: values.dateOfBirth,
     gender: toBackendGender(values.gender),
-    bloodGroup: values.bloodGroup || undefined,
+    bloodGroup: values.bloodGroup,
 
     addressLine1: values.addressLine1,
     addressLine2: values.addressLine2 || undefined,
@@ -33,6 +39,9 @@ function toRequest(values: PatientEditUiFormValues): UpdatePatientRequest {
     primaryPhone: values.primaryPhone.number,
     primaryPhoneRelation: toPhoneRelationLabel(values.primaryPhone.relation),
     alternatePhone: values.additionalPhones[0]?.number || undefined,
+    alternatePhoneRelation: values.additionalPhones[0] ? toPhoneRelationLabel(values.additionalPhones[0].relation) : undefined,
+    alternatePhone2: values.additionalPhones[1]?.number || undefined,
+    alternatePhone2Relation: values.additionalPhones[1] ? toPhoneRelationLabel(values.additionalPhones[1].relation) : undefined,
     email: values.email || undefined,
     profession: values.profession || undefined,
 
@@ -43,6 +52,8 @@ function toRequest(values: PatientEditUiFormValues): UpdatePatientRequest {
     hasKnownAllergy: values.hasKnownAllergy,
     allergyType: values.hasKnownAllergy ? toAllergyType(values.allergyCategory ?? '', values.allergySpecify ?? '') : undefined,
     allergySeverity: values.hasKnownAllergy ? values.allergySeverity || undefined : undefined,
+
+    rowVersion,
   };
 }
 
@@ -56,7 +67,10 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     lastName: patient.lastName,
     dateOfBirth: patient.dateOfBirth,
     gender: fromBackendGender(patient.gender),
-    bloodGroup: patient.bloodGroup ?? '',
+    // Pre-required-validation records may still have a null BloodGroup in the database —
+    // 'Unknown' is the honest, backward-compatible default rather than leaving the Select
+    // unset (which the required schema below would then reject on save).
+    bloodGroup: patient.bloodGroup ?? 'Unknown',
 
     addressLine1: patient.addressLine1,
     addressLine2: patient.addressLine2 ?? '',
@@ -66,7 +80,10 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     pincode: patient.pincode,
 
     primaryPhone: { number: patient.primaryPhone, relation: fromPhoneRelationLabel(patient.primaryPhoneRelation) },
-    additionalPhones: patient.alternatePhone ? [{ number: patient.alternatePhone, relation: 'Self' }] : [],
+    additionalPhones: [
+      patient.alternatePhone ? { number: patient.alternatePhone, relation: fromPhoneRelationLabel(patient.alternatePhoneRelation) } : null,
+      patient.alternatePhone2 ? { number: patient.alternatePhone2, relation: fromPhoneRelationLabel(patient.alternatePhone2Relation) } : null,
+    ].filter((entry): entry is { number: string; relation: ReturnType<typeof fromPhoneRelationLabel> } => entry !== null),
     email: patient.email ?? '',
     profession: patient.profession ?? '',
 
@@ -106,9 +123,14 @@ export default function PatientEditPage() {
     );
   }
 
+  // Captured here (not read inside handleSubmit directly) so TypeScript's narrowing of
+  // `patient` from the isError/!patient guard above — which doesn't extend into a nested
+  // function's closure — still applies.
+  const rowVersion = patient.rowVersion ?? '';
+
   function handleSubmit(values: PatientEditUiFormValues) {
     mutation.mutate(
-      { id: id as string, request: toRequest(values) },
+      { id: id as string, request: toRequest(values, rowVersion) },
       { onSuccess: () => navigate(`/patients/registration/${id}`) },
     );
   }
@@ -143,7 +165,7 @@ export default function PatientEditPage() {
       <PatientEditForm
         patientId={id as string}
         isSubmitting={mutation.isPending}
-        apiError={mutation.error instanceof ApiError ? mutation.error : null}
+        apiError={toDisplayError(mutation.error)}
         defaultValues={toDefaultValues(patient)}
         onSubmit={handleSubmit}
         onCancel={() => navigate(`/patients/registration/${id}`)}

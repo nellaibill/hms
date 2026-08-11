@@ -23,6 +23,7 @@ export const RELATIONSHIPS = [
   'Daughter',
   'Sister',
   'Brother',
+  'Spouse',
   'Grandson',
   'Granddaughter',
   'Grandfather',
@@ -35,6 +36,11 @@ export const RELATIONSHIPS = [
   'DaughterInLaw',
   'SisterInLaw',
   'BrotherInLaw',
+  // Catch-all for the closed dropdown: also what bridging.ts's dehumanize() falls back to
+  // for any pre-existing free-text value (backend stores these as plain strings) that
+  // doesn't match a known option, so an unrecognized relationship reads as "unrecognized"
+  // rather than silently misrepresenting the record as a specific wrong one.
+  'Other',
 ] as const;
 export type Relationship = (typeof RELATIONSHIPS)[number];
 

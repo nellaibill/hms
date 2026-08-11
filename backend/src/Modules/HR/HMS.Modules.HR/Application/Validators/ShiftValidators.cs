@@ -25,7 +25,7 @@ internal class CreateShiftRequestValidator : AbstractValidator<CreateShiftReques
         RuleFor(x => x)
             .Must(x => x.IsNightShift == (x.EndTime!.Value < x.StartTime!.Value))
             .WithName("IsNightShift")
-            .WithMessage("IsNightShift must be true only when EndTime is earlier than StartTime (the shift crosses midnight), and false otherwise.")
+            .WithMessage("Night shift should be on only when the end time is earlier than the start time (the shift crosses midnight) — toggle Night shift or adjust the times so they agree.")
             .When(x => x.StartTime.HasValue && x.EndTime.HasValue);
     }
 }
@@ -41,7 +41,7 @@ internal class UpdateShiftRequestValidator : AbstractValidator<UpdateShiftReques
         RuleFor(x => x)
             .Must(x => x.IsNightShift == (x.EndTime!.Value < x.StartTime!.Value))
             .WithName("IsNightShift")
-            .WithMessage("IsNightShift must be true only when EndTime is earlier than StartTime (the shift crosses midnight), and false otherwise.")
+            .WithMessage("Night shift should be on only when the end time is earlier than the start time (the shift crosses midnight) — toggle Night shift or adjust the times so they agree.")
             .When(x => x.StartTime.HasValue && x.EndTime.HasValue);
     }
 }

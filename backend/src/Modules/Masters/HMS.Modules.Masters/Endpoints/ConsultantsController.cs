@@ -1,42 +1,41 @@
 using FluentValidation;
 using FluentValidation.Results;
-using HMS.Modules.HR.Application;
-using HMS.Modules.HR.Contracts;
+using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace HMS.Modules.HR.Endpoints;
+namespace HMS.Modules.Masters.Endpoints;
 
 /// <summary>
-/// Department master CRUD. Backs the DepartmentId field carried by WeeklyRoster and
-/// ShiftAssignment — until this controller existed, DepartmentId had no directory to pick
-/// from, list, or validate against anywhere in the system.
+/// Consultant master CRUD — closes the gap Patients' PatientRegistration.Consultant left as
+/// free text (per its own doc comment). Optionally links to Department (same-module).
 /// </summary>
 [ApiController]
-[Route("api/v1/departments")]
-public class DepartmentsController : ControllerBase
+[Route("api/v1/masters/consultants")]
+public class ConsultantsController : ControllerBase
 {
-    private readonly IDepartmentService _service;
-    private readonly IValidator<CreateDepartmentRequest> _createValidator;
-    private readonly IValidator<UpdateDepartmentRequest> _updateValidator;
+    private readonly IConsultantService _service;
+    private readonly IValidator<CreateConsultantRequest> _createValidator;
+    private readonly IValidator<UpdateConsultantRequest> _updateValidator;
 
-    public DepartmentsController(
-        IDepartmentService service,
-        IValidator<CreateDepartmentRequest> createValidator,
-        IValidator<UpdateDepartmentRequest> updateValidator)
+    public ConsultantsController(
+        IConsultantService service,
+        IValidator<CreateConsultantRequest> createValidator,
+        IValidator<UpdateConsultantRequest> updateValidator)
     {
         _service = service;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
 
-    /// <summary>Creates a new department.</summary>
-    /// <response code="201">The department was created.</response>
-    /// <response code="400">The request failed validation, or the code is already in use.</response>
+    /// <summary>Creates a new consultant.</summary>
+    /// <response code="201">The consultant was created.</response>
+    /// <response code="400">The request failed validation, the code is already in use, or the referenced department doesn't exist.</response>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateDepartmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromBody] CreateConsultantRequest request, CancellationToken cancellationToken)
     {
         if (request is null)
         {
@@ -55,20 +54,20 @@ public class DepartmentsController : ControllerBase
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
     }
 
-    /// <summary>Lists departments with paging, search, sorting, and active-status filtering.</summary>
-    /// <response code="200">A page of departments.</response>
+    /// <summary>Lists consultants with paging, search, sorting, active-status, and department filtering.</summary>
+    /// <response code="200">A page of consultants.</response>
     [HttpGet]
-    public async Task<IActionResult> GetPaged([FromQuery] DepartmentListQuery query, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPaged([FromQuery] ConsultantListQuery query, CancellationToken cancellationToken)
     {
         var paged = await _service.GetPagedAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
 
-        return Ok(new ApiResponse<IReadOnlyList<DepartmentResponse>> { Data = paged.Items, Meta = meta });
+        return Ok(new ApiResponse<IReadOnlyList<ConsultantResponse>> { Data = paged.Items, Meta = meta });
     }
 
-    /// <summary>Gets a single department by id.</summary>
-    /// <response code="200">The department was found.</response>
-    /// <response code="404">No department was found for the given id.</response>
+    /// <summary>Gets a single consultant by id.</summary>
+    /// <response code="200">The consultant was found.</response>
+    /// <response code="404">No consultant was found for the given id.</response>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -76,12 +75,12 @@ public class DepartmentsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Updates a department.</summary>
-    /// <response code="200">The department was updated.</response>
-    /// <response code="400">The request failed validation.</response>
-    /// <response code="404">No department was found for the given id.</response>
+    /// <summary>Updates a consultant.</summary>
+    /// <response code="200">The consultant was updated.</response>
+    /// <response code="400">The request failed validation, or the referenced department doesn't exist.</response>
+    /// <response code="404">No consultant was found for the given id.</response>
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDepartmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateConsultantRequest request, CancellationToken cancellationToken)
     {
         if (request is null)
         {
@@ -98,9 +97,9 @@ public class DepartmentsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Soft-deletes a department.</summary>
-    /// <response code="204">The department was deleted.</response>
-    /// <response code="404">No department was found for the given id.</response>
+    /// <summary>Soft-deletes a consultant.</summary>
+    /// <response code="204">The consultant was deleted.</response>
+    /// <response code="404">No consultant was found for the given id.</response>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -108,14 +107,15 @@ public class DepartmentsController : ControllerBase
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    private static ApiResponse<DepartmentResponse> Envelope(DepartmentResponse? data) => new() { Data = data };
+    private static ApiResponse<ConsultantResponse> Envelope(ConsultantResponse? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)
     {
         var status = errorCode switch
         {
-            HRErrorCodes.NotFound => StatusCodes.Status404NotFound,
-            HRErrorCodes.DuplicateCode => StatusCodes.Status400BadRequest,
+            MastersErrorCodes.NotFound => StatusCodes.Status404NotFound,
+            MastersErrorCodes.DuplicateCode => StatusCodes.Status400BadRequest,
+            MastersErrorCodes.InvalidReference => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -132,10 +132,6 @@ public class DepartmentsController : ControllerBase
         Timestamp = DateTime.UtcNow,
     };
 
-    // A body that fails to deserialize (e.g. an enum field holding a value that isn't a
-    // real member) binds to a null request instead of tripping [ApiController]'s automatic
-    // 400 — passing that null straight into FluentValidation throws ArgumentNullException,
-    // which surfaces as a raw 500. Guard explicitly instead.
     private ApiErrorResponse BuildRequestRequiredError() => new()
     {
         ErrorCode = "VALIDATION.FAILED",
