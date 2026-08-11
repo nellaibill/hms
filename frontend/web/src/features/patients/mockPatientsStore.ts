@@ -37,7 +37,7 @@ function loadPatients(): Patient[] {
   return [...MOCK_PATIENTS];
 }
 
-let patients: Patient[] = loadPatients();
+const patients: Patient[] = loadPatients();
 
 function compareBy(field: string, direction: 1 | -1) {
   return (a: Patient, b: Patient) => {
