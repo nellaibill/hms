@@ -67,6 +67,77 @@ public class BedServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WhenStatusIsOccupied_ReturnsBedOccupiedFailure()
+    {
+        var request = NewCreateRequest() with { Status = BedStatus.Occupied };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.BedOccupied);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Bed>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenBedIsOccupiedAndRequestChangesStatusAway_ReturnsBedOccupiedFailure()
+    {
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, null);
+        _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
+
+        var request = new UpdateBedRequest { BedType = "Standard", Status = BedStatus.Available, IsActive = true };
+        var result = await _sut.UpdateAsync(bed.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.BedOccupied);
+        bed.Status.Should().Be(BedStatus.Occupied);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenBedIsNotOccupiedAndRequestSetsStatusToOccupied_ReturnsBedOccupiedFailure()
+    {
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, null);
+        _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
+
+        var request = new UpdateBedRequest { BedType = "Standard", Status = BedStatus.Occupied, IsActive = true };
+        var result = await _sut.UpdateAsync(bed.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.BedOccupied);
+        bed.Status.Should().Be(BedStatus.Available);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenBedIsOccupiedAndRequestKeepsStatusOccupied_UpdatesOtherFieldsAndSucceeds()
+    {
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, null);
+        _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
+
+        var request = new UpdateBedRequest { BedType = "Electric", Status = BedStatus.Occupied, IsActive = true };
+        var result = await _sut.UpdateAsync(bed.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        bed.BedType.Should().Be("Electric");
+        bed.Status.Should().Be(BedStatus.Occupied);
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenBedIsAvailableAndStatusStaysAvailable_UpdatesAndSucceeds()
+    {
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, null);
+        _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
+
+        var request = new UpdateBedRequest { BedType = "Standard", Status = BedStatus.Maintenance, IsActive = true };
+        var result = await _sut.UpdateAsync(bed.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        bed.Status.Should().Be(BedStatus.Maintenance);
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task DeleteAsync_WhenBedIsOccupied_ReturnsBedOccupiedFailure()
     {
         var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, null);

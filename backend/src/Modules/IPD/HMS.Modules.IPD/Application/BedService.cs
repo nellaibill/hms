@@ -50,6 +50,13 @@ internal class BedService : IBedService
             return Result<BedResponse>.Failure(IPDErrorCodes.DuplicateBedNumber, $"Bed number '{request.BedNumber}' is already in use within this ward.");
         }
 
+        // See UpdateAsync — Occupied must only ever be set by AdmissionService, never picked
+        // directly, or the bed ends up "occupied" with no admission behind it.
+        if (request.Status == BedStatus.Occupied)
+        {
+            return Result<BedResponse>.Failure(IPDErrorCodes.BedOccupied, "A new bed cannot be created as Occupied. Admit a patient through the New Admission workflow instead.");
+        }
+
         var bed = Bed.Create(request.WardId, request.BedNumber, request.BedType, request.Status, request.IsActive, actorId);
 
         await _repository.AddAsync(bed, cancellationToken);
@@ -64,6 +71,19 @@ internal class BedService : IBedService
         if (bed is null)
         {
             return Result<BedResponse>.Failure(IPDErrorCodes.NotFound, $"Bed '{id}' was not found.");
+        }
+
+        // Occupied is driven exclusively by AdmissionService (admit/transfer/discharge) — it
+        // reflects a real patient in the bed, so this generic edit endpoint must not be able
+        // to move a bed into or out of that state and desync it from the actual admission.
+        if (bed.Status == BedStatus.Occupied && request.Status != BedStatus.Occupied)
+        {
+            return Result<BedResponse>.Failure(IPDErrorCodes.BedOccupied, "This bed is occupied by an admitted patient. Discharge or transfer the patient before changing its status.");
+        }
+
+        if (bed.Status != BedStatus.Occupied && request.Status == BedStatus.Occupied)
+        {
+            return Result<BedResponse>.Failure(IPDErrorCodes.BedOccupied, "Bed status cannot be set to Occupied directly. Admit a patient through the New Admission workflow instead.");
         }
 
         bed.Update(request.BedType, request.Status, request.IsActive, actorId);

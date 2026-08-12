@@ -32,6 +32,7 @@ public static class IPDModule
         services.AddScoped<IBedService, BedService>();
 
         services.AddScoped<IAdmissionRepository, AdmissionRepository>();
+        services.AddScoped<IBedTransferHistoryRepository, BedTransferHistoryRepository>();
         services.AddScoped<IAdmissionIdentifierGenerator, AdmissionIdentifierGenerator>();
         services.AddScoped<IAdmissionService, AdmissionService>();
 

@@ -18,6 +18,7 @@ public class AdmissionServiceTests
     private readonly IAdmissionRepository _repository = Substitute.For<IAdmissionRepository>();
     private readonly IWardRepository _wardRepository = Substitute.For<IWardRepository>();
     private readonly IBedRepository _bedRepository = Substitute.For<IBedRepository>();
+    private readonly IBedTransferHistoryRepository _transferHistoryRepository = Substitute.For<IBedTransferHistoryRepository>();
     private readonly IAdmissionIdentifierGenerator _identifierGenerator = Substitute.For<IAdmissionIdentifierGenerator>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
@@ -33,6 +34,7 @@ public class AdmissionServiceTests
             _repository,
             _wardRepository,
             _bedRepository,
+            _transferHistoryRepository,
             _identifierGenerator,
             _patientService,
             _departmentService,
@@ -157,6 +159,16 @@ public class AdmissionServiceTests
         admission.BedId.Should().Be(newBedId);
         oldBed.Status.Should().Be(BedStatus.Available);
         newBed.Status.Should().Be(BedStatus.Occupied);
+
+        await _transferHistoryRepository.Received(1).AddAsync(
+            Arg.Is<BedTransferHistory>(h =>
+                h.AdmissionId == admission.Id
+                && h.OldWardId == _wardId
+                && h.OldBedId == _bedId
+                && h.NewWardId == _wardId
+                && h.NewBedId == newBedId
+                && h.TransferReason == "Ward change"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -171,6 +183,45 @@ public class AdmissionServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(IPDErrorCodes.AdmissionAlreadyDischarged);
+    }
+
+    [Fact]
+    public async Task GetTransferHistoryAsync_WhenAdmissionExists_ReturnsDenormalizedHistory()
+    {
+        var admission = Admission.Create("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), _wardId, _bedId, DateTime.UtcNow, AdmissionType.Elective, "Observation", null);
+        _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
+
+        var newWardId = Guid.NewGuid();
+        var newBedId = Guid.NewGuid();
+        var newBed = Bed.Create(newWardId, "b-202", "Standard", BedStatus.Occupied, true, null);
+        _bedRepository.GetByIdAsync(newBedId, Arg.Any<CancellationToken>()).Returns(newBed);
+
+        var history = BedTransferHistory.Create(admission.Id, _wardId, _bedId, newWardId, newBedId, "Ward change", null);
+        _transferHistoryRepository.GetByAdmissionIdAsync(admission.Id, Arg.Any<CancellationToken>())
+            .Returns(new List<BedTransferHistory> { history });
+
+        var result = await _sut.GetTransferHistoryAsync(admission.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(1);
+        var entry = result.Value![0];
+        entry.OldWardId.Should().Be(_wardId);
+        entry.OldBedId.Should().Be(_bedId);
+        entry.NewWardId.Should().Be(newWardId);
+        entry.NewBedId.Should().Be(newBedId);
+        entry.NewBedNumber.Should().Be("B-202");
+        entry.TransferReason.Should().Be("Ward change");
+    }
+
+    [Fact]
+    public async Task GetTransferHistoryAsync_WhenAdmissionDoesNotExist_ReturnsNotFoundFailure()
+    {
+        _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Admission?)null);
+
+        var result = await _sut.GetTransferHistoryAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.NotFound);
     }
 
     [Fact]

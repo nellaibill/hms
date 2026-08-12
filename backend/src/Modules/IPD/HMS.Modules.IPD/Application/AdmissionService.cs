@@ -26,6 +26,8 @@ public interface IAdmissionService
     Task<Result<AdmissionResponse>> TransferBedAsync(Guid id, TransferBedRequest request, Guid? actorId, CancellationToken cancellationToken);
 
     Task<Result<AdmissionResponse>> DischargeAsync(Guid id, DischargeAdmissionRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    Task<Result<IReadOnlyList<BedTransferHistoryResponse>>> GetTransferHistoryAsync(Guid id, CancellationToken cancellationToken);
 }
 
 internal class AdmissionService : IAdmissionService
@@ -33,6 +35,7 @@ internal class AdmissionService : IAdmissionService
     private readonly IAdmissionRepository _repository;
     private readonly IWardRepository _wardRepository;
     private readonly IBedRepository _bedRepository;
+    private readonly IBedTransferHistoryRepository _transferHistoryRepository;
     private readonly IAdmissionIdentifierGenerator _identifierGenerator;
     private readonly IPatientService _patientService;
     private readonly IDepartmentService _departmentService;
@@ -42,6 +45,7 @@ internal class AdmissionService : IAdmissionService
         IAdmissionRepository repository,
         IWardRepository wardRepository,
         IBedRepository bedRepository,
+        IBedTransferHistoryRepository transferHistoryRepository,
         IAdmissionIdentifierGenerator identifierGenerator,
         IPatientService patientService,
         IDepartmentService departmentService,
@@ -50,6 +54,7 @@ internal class AdmissionService : IAdmissionService
         _repository = repository;
         _wardRepository = wardRepository;
         _bedRepository = bedRepository;
+        _transferHistoryRepository = transferHistoryRepository;
         _identifierGenerator = identifierGenerator;
         _patientService = patientService;
         _departmentService = departmentService;
@@ -194,14 +199,64 @@ internal class AdmissionService : IAdmissionService
             return Result<AdmissionResponse>.Failure(IPDErrorCodes.BedNotAvailable, $"Bed '{newBed.BedNumber}' is not available.");
         }
 
+        var oldWardId = admission.WardId;
+        var oldBedId = admission.BedId;
+
         var oldBed = await _bedRepository.GetByIdAsync(admission.BedId, cancellationToken);
         oldBed?.SetStatus(BedStatus.Available, actorId);
         newBed.SetStatus(BedStatus.Occupied, actorId);
 
         admission.TransferBed(request.NewWardId, request.NewBedId, actorId);
+
+        var history = BedTransferHistory.Create(
+            admission.Id,
+            oldWardId,
+            oldBedId,
+            request.NewWardId,
+            request.NewBedId,
+            request.TransferReason,
+            actorId);
+        await _transferHistoryRepository.AddAsync(history, cancellationToken);
+
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<AdmissionResponse>.Success(await BuildResponseAsync(admission, cancellationToken));
+    }
+
+    public async Task<Result<IReadOnlyList<BedTransferHistoryResponse>>> GetTransferHistoryAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (await _repository.GetByIdAsync(id, cancellationToken) is null)
+        {
+            return Result<IReadOnlyList<BedTransferHistoryResponse>>.Failure(IPDErrorCodes.NotFound, $"Admission '{id}' was not found.");
+        }
+
+        var history = await _transferHistoryRepository.GetByAdmissionIdAsync(id, cancellationToken);
+        var responses = new List<BedTransferHistoryResponse>(history.Count);
+        foreach (var entry in history)
+        {
+            var oldWard = await _wardRepository.GetByIdAsync(entry.OldWardId, cancellationToken);
+            var oldBed = await _bedRepository.GetByIdAsync(entry.OldBedId, cancellationToken);
+            var newWard = await _wardRepository.GetByIdAsync(entry.NewWardId, cancellationToken);
+            var newBed = await _bedRepository.GetByIdAsync(entry.NewBedId, cancellationToken);
+
+            responses.Add(new BedTransferHistoryResponse
+            {
+                Id = entry.Id,
+                AdmissionId = entry.AdmissionId,
+                OldWardId = entry.OldWardId,
+                OldWardName = oldWard?.Name ?? string.Empty,
+                OldBedId = entry.OldBedId,
+                OldBedNumber = oldBed?.BedNumber ?? string.Empty,
+                NewWardId = entry.NewWardId,
+                NewWardName = newWard?.Name ?? string.Empty,
+                NewBedId = entry.NewBedId,
+                NewBedNumber = newBed?.BedNumber ?? string.Empty,
+                TransferReason = entry.TransferReason,
+                TransferredAt = entry.CreatedAt,
+            });
+        }
+
+        return Result<IReadOnlyList<BedTransferHistoryResponse>>.Success(responses);
     }
 
     public async Task<Result<AdmissionResponse>> DischargeAsync(Guid id, DischargeAdmissionRequest request, Guid? actorId, CancellationToken cancellationToken)

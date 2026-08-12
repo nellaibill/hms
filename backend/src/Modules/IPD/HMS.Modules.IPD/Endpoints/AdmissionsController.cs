@@ -86,6 +86,15 @@ public class AdmissionsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [HttpGet("{id:guid}/transfer-history")]
+    public async Task<IActionResult> GetTransferHistory(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _service.GetTransferHistoryAsync(id, cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<IReadOnlyList<BedTransferHistoryResponse>> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     [HttpPost("{id:guid}/discharge")]
     public async Task<IActionResult> Discharge(Guid id, [FromBody] DischargeAdmissionRequest request, CancellationToken cancellationToken)
     {
