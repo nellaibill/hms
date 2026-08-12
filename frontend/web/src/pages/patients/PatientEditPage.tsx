@@ -101,7 +101,7 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
 export default function PatientEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: patient, isPending, isError } = usePatientQuery(id);
+  const { data: patient, isPending, isError, refetch } = usePatientQuery(id);
   const mutation = useUpdatePatientMutation();
 
   if (isPending) {
@@ -163,12 +163,17 @@ export default function PatientEditPage() {
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       <PatientEditForm
+        // Remounts on the patient's rowVersion so a post-conflict reload re-initializes
+        // react-hook-form's defaultValues from the freshly refetched record, rather than
+        // leaving stale in-memory field values around after the underlying data changed.
+        key={rowVersion}
         patientId={id as string}
         isSubmitting={mutation.isPending}
         apiError={toDisplayError(mutation.error)}
         defaultValues={toDefaultValues(patient)}
         onSubmit={handleSubmit}
         onCancel={() => navigate(`/patients/registration/${id}`)}
+        onReloadRequested={() => void refetch()}
       />
       </div>
     </div>

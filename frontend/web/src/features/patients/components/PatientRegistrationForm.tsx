@@ -18,6 +18,7 @@ import {
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Receipt, Stethoscope, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
@@ -30,6 +31,7 @@ import { AppointmentTypeSelect } from '@/components/AppointmentTypeSelect';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { BillingStep, defaultBillingFormValues, type BillingFormValues, type BillingStepHandle } from '@/features/billing';
+import { consultantsApi, departmentsApi } from '@/services/apiClient';
 import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } from './DocumentUploadStaging';
 import { Field, FormSection } from './FormSection';
 import { bloodGroupLabel } from '../bloodGroupLabel';
@@ -281,6 +283,24 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const isDayCare = encounterType === 'DayCare';
   const showReferralColumn = isIpOrEmergency || isDayCare;
 
+  // Resolves Registration Details' selected Department/Consultant to display names, to
+  // carry forward into Billing's Consultation card as a best-effort prefill hint (see
+  // ConsultationBillingCard's name-matching logic — Billing's catalog has no shared id space
+  // with these real Masters ids). Same query keys DepartmentSelect/ConsultantSelect already
+  // use, so React Query serves this from their already-fetched cache rather than refetching.
+  const registrationDepartmentId = watch('registration.departmentId');
+  const registrationConsultantId = watch('registration.consultantId');
+  const { data: departmentOptions } = useQuery({
+    queryKey: ['departments', 'select-list'],
+    queryFn: () => departmentsApi.getDepartments({ pageSize: 100, isActive: true }),
+  });
+  const { data: consultantOptions } = useQuery({
+    queryKey: ['consultants', 'select-list'],
+    queryFn: () => consultantsApi.getConsultants({ pageSize: 100, isActive: true }),
+  });
+  const selectedDepartmentName = departmentOptions?.items.find((d) => d.id === registrationDepartmentId)?.name;
+  const selectedConsultantName = consultantOptions?.items.find((c) => c.id === registrationConsultantId)?.name;
+
   // Server-side validation errors can't be mapped 1:1 to this form's field paths — the
   // submitted request is bridged/composed into the backend's narrower DTO shape by the
   // caller (see toRequest() in PatientRegistrationCreatePage), so a server field name
@@ -438,12 +458,22 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             >
               <Input id="addressLine1" {...register('addressLine1')} />
             </Field>
-            <Field label="Address line 2 (street)" htmlFor="addressLine2" className="flex min-w-[220px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 2 (street)"
+              htmlFor="addressLine2"
+              error={errors.addressLine2?.message}
+              className="flex min-w-[220px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine2" {...register('addressLine2')} />
             </Field>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 3 (city)"
+              htmlFor="addressLine3"
+              error={errors.addressLine3?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
             <Field
@@ -622,7 +652,12 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   )}
                 />
               </Field>
-              <Field label="Specify" htmlFor="allergySpecify" className="flex min-w-[200px] flex-1 flex-col gap-1">
+              <Field
+                label="Specify"
+                htmlFor="allergySpecify"
+                error={errors.allergySpecify?.message}
+                className="flex min-w-[200px] flex-1 flex-col gap-1"
+              >
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
               </Field>
               <Field
@@ -688,7 +723,13 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   <Input id="doctorReferralName" {...register('arrivalSource.doctorReferral.doctorName')} />
                 </Field>
                 <Field label="Department" htmlFor="doctorReferralDepartment" className="flex min-w-[160px] flex-1 flex-col gap-1">
-                  <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
+                  <Controller
+                    name="arrivalSource.doctorReferral.departmentId"
+                    control={control}
+                    render={({ field }) => (
+                      <DepartmentSelect id="doctorReferralDepartment" value={field.value ?? ''} onValueChange={field.onChange} />
+                    )}
+                  />
                 </Field>
                 <Field label="Hospital" htmlFor="doctorReferralHospital" className="flex min-w-[160px] flex-1 flex-col gap-1">
                   <Input id="doctorReferralHospital" {...register('arrivalSource.doctorReferral.hospital')} />
@@ -972,6 +1013,8 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             defaultValues={initialDraft?.billing}
             onChange={handleBillingChange}
             onErrorStateChange={setBillingTabHasError}
+            initialDepartmentName={selectedDepartmentName}
+            initialConsultantName={selectedConsultantName}
             ref={billingStepRef}
           />
         </TabsContent>
@@ -990,7 +1033,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             )}
             {!isLastTab && (
               <Button type="button" onClick={goToNextTab}>
-                Next
+                {activeTab === 'registration-details' ? 'Proceed to Billing' : 'Next'}
                 <ChevronRight className="h-4 w-4" />
               </Button>
             )}

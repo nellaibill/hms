@@ -10,9 +10,10 @@ import { PAYMENT_STATUSES } from './types';
  * always passes validation — which also means an empty row can simply be removed rather
  * than needing to be "cleared" first.
  *
- * Radiology/Laboratory/Procedure are arrays (a visit can need several lab tests or several
- * procedures); Consultation stays a single entry — one primary consultation per
- * registration is the realistic case, and multi-consultation is a separate future step.
+ * Consultation, Radiology, Laboratory, and Procedure are all arrays — a visit can need
+ * several lab tests, several procedures, or (a multi-specialty referral, a follow-up plus a
+ * new consult in the same visit) more than one consultation, so every category supports
+ * multiple entries via the same "Add another" pattern.
  *
  * Payment status is deliberately *not* a per-line field — a visit is settled in one
  * transaction at the counter, not per category, so asking Pending/Paid four separate times
@@ -60,7 +61,7 @@ export const serviceBillingSchema = z
   });
 
 export const billingFormSchema = z.object({
-  consultation: consultationBillingSchema,
+  consultation: z.array(consultationBillingSchema).default([]),
   radiology: z.array(serviceBillingSchema).default([]),
   laboratory: z.array(serviceBillingSchema).default([]),
   procedure: z.array(serviceBillingSchema).default([]),
@@ -68,11 +69,11 @@ export const billingFormSchema = z.object({
 });
 
 export type BillingFormValues = z.infer<typeof billingFormSchema>;
-export type ConsultationBillingFormValues = BillingFormValues['consultation'];
+export type ConsultationBillingFormValues = BillingFormValues['consultation'][number];
 export type ServiceBillingRowFormValues = z.infer<typeof serviceBillingSchema>;
 export type ServiceBillingCategory = 'radiology' | 'laboratory' | 'procedure';
 
-const emptyConsultation: ConsultationBillingFormValues = {
+export const emptyConsultation: ConsultationBillingFormValues = {
   departmentId: '',
   consultantId: '',
   consultationTypeId: '',
@@ -92,7 +93,7 @@ export const emptyServiceRow: ServiceBillingRowFormValues = {
 };
 
 export const defaultBillingFormValues: BillingFormValues = {
-  consultation: { ...emptyConsultation },
+  consultation: [{ ...emptyConsultation }],
   radiology: [{ ...emptyServiceRow }],
   laboratory: [{ ...emptyServiceRow }],
   procedure: [{ ...emptyServiceRow }],

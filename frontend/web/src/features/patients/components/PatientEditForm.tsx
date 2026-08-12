@@ -31,7 +31,12 @@ interface PatientEditFormProps {
   apiError: ApiError | null;
   onSubmit: (values: PatientEditUiFormValues) => void;
   onCancel: () => void;
+  /** Reloads the patient from the server and resets the form to it — offered when a save is
+   * rejected with PATIENTS.CONCURRENCY_CONFLICT, so recovering doesn't require leaving the page. */
+  onReloadRequested?: () => void;
 }
+
+const CONCURRENCY_CONFLICT_ERROR_CODE = 'PATIENTS.CONCURRENCY_CONFLICT';
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info'] as const;
 type TabId = (typeof TAB_ORDER)[number];
@@ -68,7 +73,15 @@ function isTabId(value: string): value is TabId {
 }
 
 /** Updates a patient's demographic/master-data fields only — Registration Details and Billing are intentionally not editable here (see docs/DecisionLog.md ADR-008). */
-export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
+export function PatientEditForm({
+  patientId,
+  defaultValues,
+  isSubmitting,
+  apiError,
+  onSubmit,
+  onCancel,
+  onReloadRequested,
+}: PatientEditFormProps) {
   const {
     register,
     control,
@@ -127,23 +140,35 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
   const dateOfBirth = watch('dateOfBirth');
   const detailedAge = dateOfBirth ? calculateDetailedAge(dateOfBirth) : null;
 
+  const isConcurrencyConflict = apiError?.errorCode === CONCURRENCY_CONFLICT_ERROR_CODE;
   const generalError = apiError?.message ?? null;
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   return (
     <div className="flex w-full max-w-6xl flex-col gap-5">
       <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
-        {(generalError || serverValidationMessages.length > 0) && (
-          <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {generalError && <p>{generalError}</p>}
-            {serverValidationMessages.length > 0 && (
-              <ul className="list-inside list-disc">
-                {serverValidationMessages.map((message) => (
-                  <li key={message}>{message}</li>
-                ))}
-              </ul>
+        {isConcurrencyConflict ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-warning/15 px-3 py-2 text-sm text-foreground">
+            <p>{generalError}</p>
+            {onReloadRequested && (
+              <Button type="button" variant="outline" size="sm" onClick={onReloadRequested}>
+                Reload latest version
+              </Button>
             )}
           </div>
+        ) : (
+          (generalError || serverValidationMessages.length > 0) && (
+            <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {generalError && <p>{generalError}</p>}
+              {serverValidationMessages.length > 0 && (
+                <ul className="list-inside list-disc">
+                  {serverValidationMessages.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
         )}
 
       <Tabs value={activeTab} onValueChange={(value) => isTabId(value) && void goToTab(value)}>
@@ -268,12 +293,22 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             >
               <Input id="addressLine1" {...register('addressLine1')} />
             </Field>
-            <Field label="Address line 2 (street)" htmlFor="addressLine2" className="flex min-w-[220px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 2 (street)"
+              htmlFor="addressLine2"
+              error={errors.addressLine2?.message}
+              className="flex min-w-[220px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine2" {...register('addressLine2')} />
             </Field>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 3 (city)"
+              htmlFor="addressLine3"
+              error={errors.addressLine3?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
             <Field
@@ -452,7 +487,12 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
                   )}
                 />
               </Field>
-              <Field label="Specify" htmlFor="allergySpecify" className="flex min-w-[200px] flex-1 flex-col gap-1">
+              <Field
+                label="Specify"
+                htmlFor="allergySpecify"
+                error={errors.allergySpecify?.message}
+                className="flex min-w-[200px] flex-1 flex-col gap-1"
+              >
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
               </Field>
               <Field

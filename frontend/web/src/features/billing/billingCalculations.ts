@@ -59,18 +59,25 @@ function summarizeServiceRows(rows: ServiceBillingRowFormValues[]) {
   return { charge, discount, count: activeRows.length };
 }
 
+function summarizeConsultationRows(rows: ConsultationBillingFormValues[]) {
+  const activeRows = rows.filter(isConsultationEntryActive);
+  const charge = activeRows.reduce((sum, row) => sum + row.charge, 0);
+  const discount = activeRows.reduce((sum, row) => sum + row.discount, 0);
+  return { charge, discount, count: activeRows.length };
+}
+
 /** Recomputed from current form values on every change — never cached, so it can't drift out of sync with the cards. */
 export function summarizeBilling(values: BillingFormValues): BillingSummary {
-  const consultationActive = isConsultationEntryActive(values.consultation);
+  const consultationSummary = summarizeConsultationRows(values.consultation);
   const lines: BillingSummaryLine[] = [
     {
       billingType: 'Consultation',
       label: 'Consultation',
-      charge: values.consultation.charge,
-      discount: values.consultation.discount,
-      net: Math.max(values.consultation.charge - values.consultation.discount, 0),
-      count: consultationActive ? 1 : 0,
-      active: consultationActive,
+      charge: consultationSummary.charge,
+      discount: consultationSummary.discount,
+      net: Math.max(consultationSummary.charge - consultationSummary.discount, 0),
+      count: consultationSummary.count,
+      active: consultationSummary.count > 0,
     },
     ...(Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).map((category) => {
       const { charge, discount, count } = summarizeServiceRows(values[category]);
@@ -94,9 +101,9 @@ export function summarizeBilling(values: BillingFormValues): BillingSummary {
   return { lines, grossTotal, discountTotal, netTotal };
 }
 
-function consultationToBillingItem(entry: ConsultationBillingFormValues, paymentStatus: PaymentStatus): BillingItem {
+function consultationToBillingItem(entry: ConsultationBillingFormValues, index: number, paymentStatus: PaymentStatus): BillingItem {
   return {
-    id: 'consultation',
+    id: `consultation-${index}`,
     billingType: 'Consultation',
     departmentId: entry.departmentId,
     consultantId: entry.consultantId,
@@ -142,9 +149,10 @@ function serviceRowToBillingItem(
 export function toBillingItems(values: BillingFormValues): BillingItem[] {
   const items: BillingItem[] = [];
 
-  if (isConsultationEntryActive(values.consultation)) {
-    items.push(consultationToBillingItem(values.consultation, values.paymentStatus));
-  }
+  values.consultation.forEach((entry, index) => {
+    if (!isConsultationEntryActive(entry)) return;
+    items.push(consultationToBillingItem(entry, index, values.paymentStatus));
+  });
 
   (Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).forEach((category) => {
     values[category].forEach((row, index) => {

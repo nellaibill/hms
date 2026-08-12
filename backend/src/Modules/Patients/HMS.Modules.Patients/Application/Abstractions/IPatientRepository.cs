@@ -19,11 +19,14 @@ internal interface IPatientRepository
 
     Task<(IReadOnlyList<Patient> Items, int TotalCount)> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken);
 
-    /// <summary>Finds an existing, non-deleted patient with the same primary phone number
-    /// and the same first+last name (case-insensitive) — used by PatientService.CreateAsync
-    /// to catch the same person being registered twice under two different UHIDs. Matches on
-    /// phone+name together (not phone alone) so family members sharing a landline don't
-    /// false-positive against each other.</summary>
+    /// <summary>Finds an existing, non-deleted patient with the same first+last name
+    /// (case-insensitive) and a phone number that matches <paramref name="primaryPhone"/> once
+    /// both are normalized to their last 10 digits — checked against the candidate's primary
+    /// AND both alternate phone numbers, so a number that moved from "alternate" to "primary"
+    /// (or vice versa) between two registrations still gets caught. Used by
+    /// PatientService.CreateAsync to catch the same person being registered twice under two
+    /// different UHIDs. Matches on phone+name together (not phone alone) so family members
+    /// sharing a landline don't false-positive against each other.</summary>
     Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, CancellationToken cancellationToken);
 
     /// <summary>Reads the row's current optimistic-concurrency token (Postgres xmin) as

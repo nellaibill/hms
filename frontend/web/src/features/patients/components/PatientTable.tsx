@@ -2,6 +2,8 @@ import type { Patient } from '@hms/shared';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
+import { PATIENT_DELETE_ROLES, PATIENT_EDIT_ROLES } from '../patientAccess';
 
 interface PatientTableProps {
   patients: Patient[];
@@ -17,6 +19,9 @@ const columns: Array<{ field: string; label: string }> = [
 ];
 
 export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }: PatientTableProps) {
+  const { user } = useAuth();
+  const canEdit = user ? PATIENT_EDIT_ROLES.includes(user.role) : false;
+  const canDelete = user ? PATIENT_DELETE_ROLES.includes(user.role) : false;
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
 
@@ -66,17 +71,22 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
               <td className="px-4 py-3 text-muted-foreground">{patient.currentRegistration?.encounterType ?? '—'}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/patients/registration/${patient.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => onDeleteRequested(patient)}
-                  >
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/patients/registration/${patient.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => onDeleteRequested(patient)}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                  {!canEdit && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
                 </div>
               </td>
             </tr>

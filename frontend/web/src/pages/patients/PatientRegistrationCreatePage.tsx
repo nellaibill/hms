@@ -95,33 +95,42 @@ export default function PatientRegistrationCreatePage() {
         clearRegistrationDraft();
         // Fired-and-forgotten (not awaited before navigating, to keep registration fast),
         // but a failure must never be silent — the patient record already exists at this
-        // point, so a failed upload here is recoverable via the Edit page's document
-        // upload, as long as the receptionist actually finds out it failed.
+        // point, so a failed upload here is recoverable either via the toast's inline
+        // "Retry" action (retries with the same staged file, still in memory) or from the
+        // Edit page's document upload, as long as the receptionist actually finds out it failed.
         if (documents.photo) {
-          photoMutation.mutate(
-            { id: patient.id, file: documents.photo },
-            {
-              onError: () =>
-                toast({
-                  title: 'Photo not saved',
-                  description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the photo upload failed. Add it from the patient's Edit page.`,
-                  variant: 'error',
-                }),
-            },
-          );
+          const retryPhotoUpload = () => {
+            photoMutation.mutate(
+              { id: patient.id, file: documents.photo! },
+              {
+                onError: () =>
+                  toast({
+                    title: 'Photo not saved',
+                    description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the photo upload failed. Retry now, or add it from the patient's Edit page.`,
+                    variant: 'error',
+                    action: { label: 'Retry', onClick: retryPhotoUpload },
+                  }),
+              },
+            );
+          };
+          retryPhotoUpload();
         }
         if (documents.idProofFile) {
-          idProofMutation.mutate(
-            { id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile },
-            {
-              onError: () =>
-                toast({
-                  title: 'ID proof not saved',
-                  description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the ID proof upload failed. Add it from the patient's Edit page.`,
-                  variant: 'error',
-                }),
-            },
-          );
+          const retryIdProofUpload = () => {
+            idProofMutation.mutate(
+              { id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile! },
+              {
+                onError: () =>
+                  toast({
+                    title: 'ID proof not saved',
+                    description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the ID proof upload failed. Retry now, or add it from the patient's Edit page.`,
+                    variant: 'error',
+                    action: { label: 'Retry', onClick: retryIdProofUpload },
+                  }),
+              },
+            );
+          };
+          retryIdProofUpload();
         }
         // No Billing API yet — parked in the offline mock store (see mockBillingStore.ts)
         // the same way patient records were ahead of the Patients API, until Billing has a

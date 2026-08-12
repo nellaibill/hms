@@ -20,6 +20,12 @@ interface BillingStepProps {
   onChange?: (values: BillingFormValues) => void;
   /** Reports whether the Billing tab should show its error dot — true once at least one category has been attempted and currently has an error. */
   onErrorStateChange?: (hasError: boolean) => void;
+  /** Best-effort carry-forward from the Registration Details tab's Department/Consultant —
+   * see ConsultationBillingCard's name-matching prefill. Billing's Consultation catalog is a
+   * separate mock dataset with its own id space (see billingCatalog.ts), not the real Masters
+   * ids Registration Details uses, so this is a convenience name match, not a hard id link. */
+  initialDepartmentName?: string;
+  initialConsultantName?: string;
 }
 
 const CATEGORY_FIELD = {
@@ -38,7 +44,7 @@ const CATEGORY_ORDER: BillingType[] = ['Consultation', 'Radiology', 'Laboratory'
  * exposed `validate`/`getValues` handle the same way it drives per-tab validation elsewhere.
  */
 export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(function BillingStep(
-  { defaultValues, onChange, onErrorStateChange },
+  { defaultValues, onChange, onErrorStateChange, initialDepartmentName, initialConsultantName },
   ref,
 ) {
   const methods = useForm<BillingFormValues>({
@@ -105,6 +111,8 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
             expanded={expanded.Consultation}
             onToggle={() => toggleCategory('Consultation')}
             hasError={hasFieldError('Consultation')}
+            initialDepartmentName={initialDepartmentName}
+            initialConsultantName={initialConsultantName}
           />
           <RadiologyBillingCard expanded={expanded.Radiology} onToggle={() => toggleCategory('Radiology')} hasError={hasFieldError('Radiology')} />
           <LaboratoryBillingCard

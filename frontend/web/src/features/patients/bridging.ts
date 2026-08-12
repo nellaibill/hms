@@ -71,12 +71,23 @@ export function toAllergyType(category: string, specify: string): string | undef
   return [category, specify].filter(Boolean).join(': ') || undefined;
 }
 
-/** Best-effort reverse of toAllergyType — splits on the first ": " and matches the category against the known list. */
+/**
+ * Best-effort reverse of toAllergyType — splits on the first ": " and matches the category
+ * against the known list. A stored value that doesn't parse into a known category (legacy
+ * free text entered before the category dropdown existed, or anything else that doesn't
+ * match `"<Category>: <text>"` exactly) falls back to the closed list's 'Others' bucket —
+ * the same "honest catch-all" pattern dehumanize() uses for Relationship/PhoneRelation —
+ * rather than '' (no category). Falling back to '' left hasKnownAllergy=true records with an
+ * unparseable legacy value permanently failing allergyRefinement's "category is required"
+ * check the moment the Edit form loaded, blocking save of *any* field until the user
+ * rebuilt the allergy entry from scratch. 'Others' keeps the record valid on load while the
+ * original text is preserved verbatim in `specify`.
+ */
 export function fromAllergyType(allergyType: string | null | undefined): { category: AllergyCategory | ''; specify: string } {
   if (!allergyType) {
     return { category: '', specify: '' };
   }
   const [prefix, ...rest] = allergyType.split(': ');
   const category = ALLERGY_CATEGORIES.find((c) => c.toLowerCase() === prefix.trim().toLowerCase());
-  return category ? { category, specify: rest.join(': ') } : { category: '', specify: allergyType };
+  return category ? { category, specify: rest.join(': ') } : { category: 'Others', specify: allergyType };
 }

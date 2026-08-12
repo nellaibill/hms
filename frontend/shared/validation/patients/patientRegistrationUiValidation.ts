@@ -55,7 +55,12 @@ const arrivalSourceSchema = z
     doctorReferral: z
       .object({
         doctorName: z.string().trim().max(150).optional().or(z.literal('')),
-        department: z.string().trim().max(100).optional().or(z.literal('')),
+        // A Masters department id (from the same DepartmentSelect used for the main
+        // Registration Details Department field), not free text — kept optional since a
+        // referring doctor's department isn't always known/relevant. Not yet persisted to
+        // the backend; see arrivalSource's top-of-file note in
+        // PatientRegistrationCreatePage.tsx (Phase 2, same as the rest of arrivalSource).
+        departmentId: z.string().trim().optional().or(z.literal('')),
         hospital: z.string().trim().max(150).optional().or(z.literal('')),
       })
       .optional(),

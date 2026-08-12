@@ -3,8 +3,10 @@ import { Droplet, Pencil, Phone, User, UserRound, VenusAndMars, type LucideIcon 
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 import { env } from '../../../config/env';
 import { bloodGroupLabel } from '../bloodGroupLabel';
+import { PATIENT_EDIT_ROLES } from '../patientAccess';
 
 interface PatientSummaryCardProps {
   patient: Patient;
@@ -28,6 +30,9 @@ function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
  * receptionist or doctor needs at a glance without opening the Profile tab. Replaces the
  * old full-width banner + Document Upload side panel (see PatientViewPage). */
 export function PatientSummaryCard({ patient }: PatientSummaryCardProps) {
+  const { user } = useAuth();
+  const canEdit = user ? PATIENT_EDIT_ROLES.includes(user.role) : false;
+
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 shadow-soft-md">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -59,12 +64,14 @@ export function PatientSummaryCard({ patient }: PatientSummaryCardProps) {
         <Stat icon={Phone} label="Mobile" value={patient.primaryPhone} />
       </div>
 
-      <Button asChild variant="outline" className="gap-1.5">
-        <Link to={`/patients/registration/${patient.id}/edit`}>
-          <Pencil className="h-4 w-4" />
-          Edit patient
-        </Link>
-      </Button>
+      {canEdit && (
+        <Button asChild variant="outline" className="gap-1.5">
+          <Link to={`/patients/registration/${patient.id}/edit`}>
+            <Pencil className="h-4 w-4" />
+            Edit patient
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

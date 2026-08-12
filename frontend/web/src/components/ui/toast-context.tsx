@@ -2,12 +2,20 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState, type
 
 export type ToastVariant = 'default' | 'success' | 'error' | 'warning';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastItem {
   id: string;
   title: string;
   description?: string;
   variant: ToastVariant;
   durationMs: number;
+  /** An inline recovery action (e.g. "Retry") rendered alongside the dismiss button — for a
+   * failure the user can act on without navigating away from the toast. */
+  action?: ToastAction;
 }
 
 export interface ToastOptions {
@@ -16,6 +24,7 @@ export interface ToastOptions {
   variant?: ToastVariant;
   /** Per docs/DesignSystem.md §16, informational toasts auto-dismiss no sooner than 8s. */
   durationMs?: number;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
@@ -59,6 +68,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         description: options.description,
         variant: options.variant ?? 'default',
         durationMs,
+        action: options.action,
       };
       // Cap the visible stack at 3 (docs/DesignSystem.md §16) — oldest drops off first.
       setToasts((prev) => [...prev, item].slice(-3));

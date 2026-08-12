@@ -87,10 +87,41 @@ internal class PatientRepository : IPatientRepository
         return (items, totalCount);
     }
 
-    public Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, CancellationToken cancellationToken)
-        => _dbContext.Patients.FirstOrDefaultAsync(
-            p => p.PrimaryPhone == primaryPhone && EF.Functions.ILike(p.FirstName, firstName) && EF.Functions.ILike(p.LastName, lastName),
-            cancellationToken);
+    // Name-matches first (translated to SQL — cheap, and patient volumes here are small), then
+    // compares phone numbers in memory after normalizing both sides. This catches the same
+    // person registered under differently-formatted versions of the same number (e.g.
+    // "9876543210" vs "+91-98765-43210" vs "98765 43210"), which a raw `==` on the stored
+    // string would miss entirely. Normalizing in a LINQ-to-Entities `Where` isn't reliably
+    // translatable across providers, so the phone comparison runs client-side against the
+    // (already name-narrowed) candidate set rather than in the SQL query.
+    public async Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, CancellationToken cancellationToken)
+    {
+        var candidates = await _dbContext.Patients
+            .Where(p => EF.Functions.ILike(p.FirstName, firstName) && EF.Functions.ILike(p.LastName, lastName))
+            .ToListAsync(cancellationToken);
+
+        var normalizedIncoming = NormalizePhone(primaryPhone);
+        if (normalizedIncoming.Length == 0)
+        {
+            return null;
+        }
+
+        return candidates.FirstOrDefault(p =>
+            NormalizePhone(p.PrimaryPhone) == normalizedIncoming ||
+            (p.AlternatePhone is not null && NormalizePhone(p.AlternatePhone) == normalizedIncoming) ||
+            (p.AlternatePhone2 is not null && NormalizePhone(p.AlternatePhone2) == normalizedIncoming));
+    }
+
+    // Strips everything but digits, then keeps only the last 10 — the app's phone validation
+    // (CreatePatientRequestValidator.MinPhoneDigits) already requires at least 10 digits, and
+    // an optional leading country code (e.g. "+91") shouldn't make an otherwise-identical
+    // number compare as different. Internal (not private) so it's directly unit-testable —
+    // see PatientRepositoryPhoneNormalizationTests.
+    internal static string NormalizePhone(string phone)
+    {
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        return digits.Length > 10 ? digits[^10..] : digits;
+    }
 
     public string GetRowVersion(Patient patient)
         => _dbContext.Entry(patient).Property<uint>("xmin").CurrentValue.ToString();

@@ -31,6 +31,18 @@ function ToastCard({ item }: { item: ToastItem }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{item.title}</p>
         {item.description && <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>}
+        {item.action && (
+          <button
+            type="button"
+            onClick={() => {
+              item.action!.onClick();
+              dismiss(item.id);
+            }}
+            className="mt-2 text-sm font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {item.action.label}
+          </button>
+        )}
       </div>
       <button
         type="button"

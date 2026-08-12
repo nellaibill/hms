@@ -1,13 +1,14 @@
-import { Stethoscope } from 'lucide-react';
-import { useEffect } from 'react';
-import { Controller, useFormContext } from 'react-hook-form';
+import { Plus, Stethoscope, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field } from '@/features/patients/components/FormSection';
 import { isConsultationEntryActive } from '../billingActivity';
 import { formatCurrency } from '../billingCalculations';
 import { CONSULTATION_DEPARTMENTS, CONSULTATION_TYPES, getConsultantsForDepartment, getConsultationCharge } from '../billingCatalog';
-import type { BillingFormValues } from '../billingValidation';
+import { emptyConsultation, type BillingFormValues } from '../billingValidation';
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
 import { DiscountApprovalControl } from './DiscountApprovalControl';
@@ -16,42 +17,66 @@ interface ConsultationBillingCardProps {
   expanded: boolean;
   onToggle: () => void;
   hasError: boolean;
+  /** Registration Details' selected Department/Consultant, by name — see BillingStep's prop
+   * doc for why this is a name (not an id) hint. */
+  initialDepartmentName?: string;
+  initialConsultantName?: string;
 }
 
-/** Department → Consultant → Consultation Type → auto-calculated charge. The consultant list narrows to the selected department; changing department clears a now-invalid consultant. */
-export function ConsultationBillingCard({ expanded, onToggle, hasError }: ConsultationBillingCardProps) {
-  const {
-    control,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useFormContext<BillingFormValues>();
+/**
+ * Department → Consultant → Consultation Type → auto-calculated charge, one row per
+ * consultation. Mirrors ServiceBillingCard's `useFieldArray` "Add another" pattern — a
+ * visit can need more than one consultation (a multi-specialty referral, or a follow-up
+ * plus a new consult in the same visit), the same way Radiology/Laboratory/Procedure
+ * already support multiple entries.
+ */
+export function ConsultationBillingCard({
+  expanded,
+  onToggle,
+  hasError,
+  initialDepartmentName,
+  initialConsultantName,
+}: ConsultationBillingCardProps) {
+  const { control, setValue } = useFormContext<BillingFormValues>();
+  const { fields, append, remove } = useFieldArray({ control, name: 'consultation' });
+  const rows = useWatch({ control, name: 'consultation' });
 
-  const departmentId = watch('consultation.departmentId');
-  const consultantId = watch('consultation.consultantId');
-  const consultationTypeId = watch('consultation.consultationTypeId');
-  const discount = watch('consultation.discount');
-  const charge = watch('consultation.charge');
-  const discountApproved = watch('consultation.discountApproved');
-  const discountApprovedBy = watch('consultation.discountApprovedBy');
+  const activeRows = (rows ?? []).filter(isConsultationEntryActive);
+  const isActive = activeRows.length > 0;
+  const categoryTotal = activeRows.reduce((sum, row) => sum + Math.max(row.charge - row.discount, 0), 0);
 
-  const consultants = getConsultantsForDepartment(departmentId);
-
+  // Best-effort carry-forward from Registration Details, applied at most once. Billing's
+  // Consultation catalog (CONSULTATION_DEPARTMENTS/CONSULTATION_CONSULTANTS) is a separate
+  // mock dataset with its own id space — not the real Masters ids Registration Details uses
+  // (see billingCatalog.ts's top comment) — so there's no shared id to carry forward
+  // directly. This matches by name instead: if a same-named department/consultant exists in
+  // the mock catalog, prefill row 0; if not (a real possibility, since the mock catalog is a
+  // small hardcoded list), leave the row blank for the user to fill in themselves. Only fires
+  // while the consultation array is still the untouched single empty default, so it can never
+  // overwrite a restored draft or something the user already started editing.
+  const appliedPrefillRef = useRef(false);
   useEffect(() => {
-    const computed = getConsultationCharge(departmentId, consultantId, consultationTypeId);
-    setValue('consultation.charge', computed, { shouldValidate: true });
-  }, [departmentId, consultantId, consultationTypeId, setValue]);
+    if (appliedPrefillRef.current) return;
+    if (!initialDepartmentName && !initialConsultantName) return;
+    const isPristine = rows.length === 1 && !isConsultationEntryActive(rows[0]);
+    if (!isPristine) return;
 
-  useEffect(() => {
-    if (consultantId && !consultants.some((c) => c.id === consultantId)) {
-      setValue('consultation.consultantId', '');
+    appliedPrefillRef.current = true;
+    const matchedDepartment = initialDepartmentName
+      ? CONSULTATION_DEPARTMENTS.find((d) => d.name.toLowerCase() === initialDepartmentName.toLowerCase())
+      : undefined;
+    if (!matchedDepartment) return;
+
+    setValue('consultation.0.departmentId', matchedDepartment.id);
+    if (initialConsultantName) {
+      const matchedConsultant = getConsultantsForDepartment(matchedDepartment.id).find(
+        (c) => c.name.toLowerCase() === initialConsultantName.toLowerCase(),
+      );
+      if (matchedConsultant) {
+        setValue('consultation.0.consultantId', matchedConsultant.id);
+      }
     }
-    // Only re-check when the department (and thus the eligible consultant list) changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [departmentId]);
-
-  const err = errors.consultation;
-  const isActive = isConsultationEntryActive({ departmentId, consultantId, consultationTypeId, discount });
+  }, [initialDepartmentName, initialConsultantName, rows, setValue]);
 
   return (
     <CollapsibleCard
@@ -64,18 +89,82 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
       hasError={hasError}
       summary={
         !expanded && isActive ? (
-          <span className="text-sm font-semibold text-foreground">{formatCurrency(Math.max(charge - discount, 0))}</span>
+          <span className="text-sm font-semibold text-foreground">
+            {formatCurrency(categoryTotal)}
+            {activeRows.length > 1 ? ` · ${activeRows.length} items` : ''}
+          </span>
         ) : undefined
       }
     >
-      <div className="flex flex-wrap gap-3">
-        <Field label="Department" htmlFor="consultation-department" error={err?.departmentId?.message} className="flex w-full flex-col gap-1 sm:w-56">
+      {fields.map((field, index) => (
+        <ConsultationBillingRow key={field.id} index={index} showRemove={fields.length > 1} onRemove={() => remove(index)} isLast={index === fields.length - 1} />
+      ))}
+      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyConsultation })}>
+        <Plus className="h-4 w-4" />
+        Add another consultation
+      </Button>
+    </CollapsibleCard>
+  );
+}
+
+interface ConsultationBillingRowProps {
+  index: number;
+  showRemove: boolean;
+  onRemove: () => void;
+  isLast: boolean;
+}
+
+function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: ConsultationBillingRowProps) {
+  const {
+    control,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useFormContext<BillingFormValues>();
+  const basePath = `consultation.${index}` as const;
+
+  const departmentId = watch(`${basePath}.departmentId`);
+  const consultantId = watch(`${basePath}.consultantId`);
+  const consultationTypeId = watch(`${basePath}.consultationTypeId`);
+  const discount = watch(`${basePath}.discount`);
+  const charge = watch(`${basePath}.charge`);
+  const discountApproved = watch(`${basePath}.discountApproved`);
+  const discountApprovedBy = watch(`${basePath}.discountApprovedBy`);
+
+  const consultants = getConsultantsForDepartment(departmentId);
+
+  useEffect(() => {
+    const computed = getConsultationCharge(departmentId, consultantId, consultationTypeId);
+    setValue(`${basePath}.charge`, computed, { shouldValidate: true });
+    // `basePath`/`setValue` are stable per row instance — only the selected department/consultant/type should recompute the charge.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departmentId, consultantId, consultationTypeId, setValue]);
+
+  useEffect(() => {
+    if (consultantId && !consultants.some((c) => c.id === consultantId)) {
+      setValue(`${basePath}.consultantId`, '');
+    }
+    // Only re-check when the department (and thus the eligible consultant list) changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departmentId]);
+
+  const rowErrors = errors.consultation?.[index];
+
+  return (
+    <div className={showRemove || !isLast ? 'flex flex-col gap-4 border-b border-dashed border-border pb-4' : 'flex flex-col gap-4'}>
+      <div className="flex flex-wrap items-start gap-3">
+        <Field
+          label="Department"
+          htmlFor={`${basePath}-department`}
+          error={rowErrors?.departmentId?.message}
+          className="flex w-full flex-col gap-1 sm:w-56"
+        >
           <Controller
-            name="consultation.departmentId"
+            name={`${basePath}.departmentId`}
             control={control}
             render={({ field }) => (
               <Select value={field.value || undefined} onValueChange={field.onChange}>
-                <SelectTrigger id="consultation-department" aria-label="Department">
+                <SelectTrigger id={`${basePath}-department`} aria-label="Department">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -91,16 +180,16 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
         </Field>
         <Field
           label="Consultant"
-          htmlFor="consultation-consultant"
-          error={err?.consultantId?.message}
+          htmlFor={`${basePath}-consultant`}
+          error={rowErrors?.consultantId?.message}
           className="flex min-w-[200px] flex-1 flex-col gap-1"
         >
           <Controller
-            name="consultation.consultantId"
+            name={`${basePath}.consultantId`}
             control={control}
             render={({ field }) => (
               <Select value={field.value || undefined} onValueChange={field.onChange} disabled={!departmentId}>
-                <SelectTrigger id="consultation-consultant" aria-label="Consultant">
+                <SelectTrigger id={`${basePath}-consultant`} aria-label="Consultant">
                   <SelectValue placeholder={departmentId ? 'Select consultant' : 'Select a department first'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -116,16 +205,16 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
         </Field>
         <Field
           label="Consultation type"
-          htmlFor="consultation-type"
-          error={err?.consultationTypeId?.message}
+          htmlFor={`${basePath}-type`}
+          error={rowErrors?.consultationTypeId?.message}
           className="flex w-full flex-col gap-1 sm:w-48"
         >
           <Controller
-            name="consultation.consultationTypeId"
+            name={`${basePath}.consultationTypeId`}
             control={control}
             render={({ field }) => (
               <Select value={field.value || undefined} onValueChange={field.onChange}>
-                <SelectTrigger id="consultation-type" aria-label="Consultation type">
+                <SelectTrigger id={`${basePath}-type`} aria-label="Consultation type">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -139,17 +228,29 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
             )}
           />
         </Field>
+        {showRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Remove this consultation"
+            className="mt-6 shrink-0"
+            onClick={onRemove}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <ChargeDisplay id="consultation-charge" amount={charge} label="Consultation charge" />
-        <Field label="Discount (₹)" htmlFor="consultation-discount" error={err?.discount?.message} className="flex w-full flex-col gap-1 sm:w-36">
+        <ChargeDisplay id={`${basePath}-charge`} amount={charge} label="Consultation charge" />
+        <Field label="Discount (₹)" htmlFor={`${basePath}-discount`} error={rowErrors?.discount?.message} className="flex w-full flex-col gap-1 sm:w-36">
           <Controller
-            name="consultation.discount"
+            name={`${basePath}.discount`}
             control={control}
             render={({ field }) => (
               <Input
-                id="consultation-discount"
+                id={`${basePath}-discount`}
                 type="number"
                 min={0}
                 max={charge}
@@ -162,15 +263,15 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
         </Field>
       </div>
       <DiscountApprovalControl
-        id="consultation-discount-approved"
+        id={`${basePath}-discount-approved`}
         approved={discountApproved}
         approvedBy={discountApprovedBy}
         discount={discount}
         onChange={(approved, approvedBy) => {
-          setValue('consultation.discountApproved', approved);
-          setValue('consultation.discountApprovedBy', approvedBy);
+          setValue(`${basePath}.discountApproved`, approved);
+          setValue(`${basePath}.discountApprovedBy`, approvedBy);
         }}
       />
-    </CollapsibleCard>
+    </div>
   );
 }
