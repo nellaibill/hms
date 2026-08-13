@@ -112,4 +112,26 @@ export const API_ROUTES = {
     month: '/api/v1/events/month',
     bulk: '/api/v1/events/bulk',
   },
+  /** Mirrors HMS.Modules.IPD.Endpoints.*Controller. */
+  ipd: {
+    wards: {
+      base: '/api/v1/ipd/wards',
+      byId: (id: string) => `/api/v1/ipd/wards/${id}`,
+    },
+    beds: {
+      base: '/api/v1/ipd/beds',
+      byId: (id: string) => `/api/v1/ipd/beds/${id}`,
+      available: '/api/v1/ipd/beds/available',
+    },
+    admissions: {
+      base: '/api/v1/ipd/admissions',
+      byId: (id: string) => `/api/v1/ipd/admissions/${id}`,
+      transferBed: (id: string) => `/api/v1/ipd/admissions/${id}/transfer-bed`,
+      transferHistory: (id: string) => `/api/v1/ipd/admissions/${id}/transfer-history`,
+      bedHistory: (id: string) => `/api/v1/ipd/admissions/${id}/bed-history`,
+      discharge: (id: string) => `/api/v1/ipd/admissions/${id}/discharge`,
+      charges: (id: string) => `/api/v1/ipd/admissions/${id}/charges`,
+    },
+    dashboard: '/api/v1/ipd/dashboard',
+  },
 } as const;

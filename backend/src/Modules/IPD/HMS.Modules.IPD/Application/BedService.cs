@@ -57,7 +57,7 @@ internal class BedService : IBedService
             return Result<BedResponse>.Failure(IPDErrorCodes.BedOccupied, "A new bed cannot be created as Occupied. Admit a patient through the New Admission workflow instead.");
         }
 
-        var bed = Bed.Create(request.WardId, request.BedNumber, request.BedType, request.Status, request.IsActive, actorId);
+        var bed = Bed.Create(request.WardId, request.BedNumber, request.BedType, request.Status, request.IsActive, request.DailyCharge, actorId);
 
         await _repository.AddAsync(bed, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -86,7 +86,7 @@ internal class BedService : IBedService
             return Result<BedResponse>.Failure(IPDErrorCodes.BedOccupied, "Bed status cannot be set to Occupied directly. Admit a patient through the New Admission workflow instead.");
         }
 
-        bed.Update(request.BedType, request.Status, request.IsActive, actorId);
+        bed.Update(request.BedType, request.Status, request.IsActive, request.DailyCharge, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<BedResponse>.Success(bed.ToResponse());

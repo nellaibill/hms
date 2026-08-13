@@ -9,6 +9,7 @@ public record CreateBedRequest
     public string BedType { get; init; } = string.Empty;
     public BedStatus Status { get; init; } = BedStatus.Available;
     public bool IsActive { get; init; } = true;
+    public decimal DailyCharge { get; init; }
 }
 
 // WardId/BedNumber are intentionally absent — natural-key fields, protected from change
@@ -18,6 +19,7 @@ public record UpdateBedRequest
     public string BedType { get; init; } = string.Empty;
     public BedStatus Status { get; init; }
     public bool IsActive { get; init; } = true;
+    public decimal DailyCharge { get; init; }
 }
 
 public record BedResponse
@@ -28,6 +30,7 @@ public record BedResponse
     public string BedType { get; init; } = string.Empty;
     public BedStatus Status { get; init; }
     public bool IsActive { get; init; }
+    public decimal DailyCharge { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

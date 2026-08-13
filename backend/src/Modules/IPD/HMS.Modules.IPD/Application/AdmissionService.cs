@@ -28,6 +28,8 @@ public interface IAdmissionService
     Task<Result<AdmissionResponse>> DischargeAsync(Guid id, DischargeAdmissionRequest request, Guid? actorId, CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<BedTransferHistoryResponse>>> GetTransferHistoryAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<Result<IReadOnlyList<AdmissionBedStayResponse>>> GetBedStayHistoryAsync(Guid id, CancellationToken cancellationToken);
 }
 
 internal class AdmissionService : IAdmissionService
@@ -36,6 +38,8 @@ internal class AdmissionService : IAdmissionService
     private readonly IWardRepository _wardRepository;
     private readonly IBedRepository _bedRepository;
     private readonly IBedTransferHistoryRepository _transferHistoryRepository;
+    private readonly IAdmissionBedStayRepository _bedStayRepository;
+    private readonly IAdmissionChargeRepository _chargeRepository;
     private readonly IAdmissionIdentifierGenerator _identifierGenerator;
     private readonly IPatientService _patientService;
     private readonly IDepartmentService _departmentService;
@@ -46,6 +50,8 @@ internal class AdmissionService : IAdmissionService
         IWardRepository wardRepository,
         IBedRepository bedRepository,
         IBedTransferHistoryRepository transferHistoryRepository,
+        IAdmissionBedStayRepository bedStayRepository,
+        IAdmissionChargeRepository chargeRepository,
         IAdmissionIdentifierGenerator identifierGenerator,
         IPatientService patientService,
         IDepartmentService departmentService,
@@ -55,6 +61,8 @@ internal class AdmissionService : IAdmissionService
         _wardRepository = wardRepository;
         _bedRepository = bedRepository;
         _transferHistoryRepository = transferHistoryRepository;
+        _bedStayRepository = bedStayRepository;
+        _chargeRepository = chargeRepository;
         _identifierGenerator = identifierGenerator;
         _patientService = patientService;
         _departmentService = departmentService;
@@ -101,6 +109,7 @@ internal class AdmissionService : IAdmissionService
         }
 
         var admissionNumber = await _identifierGenerator.NextAdmissionNumberAsync(cancellationToken);
+        var admissionDateTime = request.AdmissionDateTime ?? DateTime.UtcNow;
 
         var admission = Admission.Create(
             admissionNumber,
@@ -109,12 +118,15 @@ internal class AdmissionService : IAdmissionService
             request.ConsultantId,
             request.WardId,
             request.BedId,
-            request.AdmissionDateTime ?? DateTime.UtcNow,
+            admissionDateTime,
             request.AdmissionType,
             request.ReasonForAdmission,
             actorId);
 
         bed.SetStatus(BedStatus.Occupied, actorId);
+
+        var bedStay = AdmissionBedStay.Create(admission.Id, bed.Id, admissionDateTime, bed.DailyCharge, actorId);
+        await _bedStayRepository.AddAsync(bedStay, cancellationToken);
 
         await _repository.AddAsync(admission, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -218,6 +230,13 @@ internal class AdmissionService : IAdmissionService
             actorId);
         await _transferHistoryRepository.AddAsync(history, cancellationToken);
 
+        var transferDateTime = DateTime.UtcNow;
+        var activeStay = await _bedStayRepository.GetActiveByAdmissionIdAsync(admission.Id, cancellationToken);
+        activeStay?.Close(transferDateTime, actorId);
+
+        var newStay = AdmissionBedStay.Create(admission.Id, newBed.Id, transferDateTime, newBed.DailyCharge, actorId);
+        await _bedStayRepository.AddAsync(newStay, cancellationToken);
+
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<AdmissionResponse>.Success(await BuildResponseAsync(admission, cancellationToken));
@@ -259,6 +278,37 @@ internal class AdmissionService : IAdmissionService
         return Result<IReadOnlyList<BedTransferHistoryResponse>>.Success(responses);
     }
 
+    public async Task<Result<IReadOnlyList<AdmissionBedStayResponse>>> GetBedStayHistoryAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (await _repository.GetByIdAsync(id, cancellationToken) is null)
+        {
+            return Result<IReadOnlyList<AdmissionBedStayResponse>>.Failure(IPDErrorCodes.NotFound, $"Admission '{id}' was not found.");
+        }
+
+        var stays = await _bedStayRepository.GetByAdmissionIdAsync(id, cancellationToken);
+        var responses = new List<AdmissionBedStayResponse>(stays.Count);
+        foreach (var stay in stays)
+        {
+            var bed = await _bedRepository.GetByIdAsync(stay.BedId, cancellationToken);
+            var ward = bed is null ? null : await _wardRepository.GetByIdAsync(bed.WardId, cancellationToken);
+
+            responses.Add(new AdmissionBedStayResponse
+            {
+                Id = stay.Id,
+                AdmissionId = stay.AdmissionId,
+                BedId = stay.BedId,
+                BedNumber = bed?.BedNumber ?? string.Empty,
+                WardId = bed?.WardId ?? Guid.Empty,
+                WardName = ward?.Name ?? string.Empty,
+                FromDateTime = stay.FromDateTime,
+                ToDateTime = stay.ToDateTime,
+                DailyCharge = stay.DailyCharge,
+            });
+        }
+
+        return Result<IReadOnlyList<AdmissionBedStayResponse>>.Success(responses);
+    }
+
     public async Task<Result<AdmissionResponse>> DischargeAsync(Guid id, DischargeAdmissionRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var admission = await _repository.GetByIdAsync(id, cancellationToken);
@@ -280,10 +330,50 @@ internal class AdmissionService : IAdmissionService
         var bed = await _bedRepository.GetByIdAsync(admission.BedId, cancellationToken);
         bed?.SetStatus(BedStatus.Available, actorId);
 
+        var activeStay = await _bedStayRepository.GetActiveByAdmissionIdAsync(admission.Id, cancellationToken);
+        activeStay?.Close(request.DischargeDateTime, actorId);
+
         admission.Discharge(request.DischargeDateTime, request.DischargeType, request.FinalDiagnosis, request.DischargeNotes, request.FollowUpAdvice, actorId);
+
+        await GenerateBedChargesAsync(admission.Id, request.DischargeDateTime, actorId, cancellationToken);
+
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<AdmissionResponse>.Success(await BuildResponseAsync(admission, cancellationToken));
+    }
+
+    /// <summary>
+    /// Highest Room Per Day: groups every AdmissionBedStay by calendar date, charges the
+    /// highest DailyCharge occupied that day, and posts one BedCharge line item per date.
+    /// </summary>
+    private async Task GenerateBedChargesAsync(Guid admissionId, DateTime dischargeDateTime, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var stays = await _bedStayRepository.GetByAdmissionIdAsync(admissionId, cancellationToken);
+
+        var maxChargeByDate = new Dictionary<DateOnly, decimal>();
+        foreach (var stay in stays)
+        {
+            var fromDate = DateOnly.FromDateTime(stay.FromDateTime);
+            var toDate = DateOnly.FromDateTime(stay.ToDateTime ?? dischargeDateTime);
+
+            for (var date = fromDate; date <= toDate; date = date.AddDays(1))
+            {
+                maxChargeByDate[date] = maxChargeByDate.TryGetValue(date, out var existing)
+                    ? Math.Max(existing, stay.DailyCharge)
+                    : stay.DailyCharge;
+            }
+        }
+
+        foreach (var (date, amount) in maxChargeByDate.OrderBy(kv => kv.Key))
+        {
+            var charge = AdmissionCharge.Create(
+                admissionId,
+                ChargeType.BedCharge,
+                amount,
+                $"Bed charge - {date:yyyy-MM-dd} (Highest room tariff)",
+                actorId);
+            await _chargeRepository.AddAsync(charge, cancellationToken);
+        }
     }
 
     private async Task<AdmissionResponse> BuildResponseAsync(Admission admission, CancellationToken cancellationToken)

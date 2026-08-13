@@ -16,6 +16,7 @@ internal class Bed : Entity
     public string BedType { get; private set; } = null!;
     public BedStatus Status { get; private set; }
     public bool IsActive { get; private set; } = true;
+    public decimal DailyCharge { get; private set; }
 
     // Required by EF Core materialization.
     private Bed()
@@ -29,6 +30,7 @@ internal class Bed : Entity
         string bedType,
         BedStatus status,
         bool isActive,
+        decimal dailyCharge,
         Guid? createdBy)
         : base(id, createdBy)
     {
@@ -37,6 +39,7 @@ internal class Bed : Entity
         BedType = bedType;
         Status = status;
         IsActive = isActive;
+        DailyCharge = dailyCharge;
     }
 
     public static Bed Create(
@@ -45,6 +48,7 @@ internal class Bed : Entity
         string bedType,
         BedStatus status,
         bool isActive,
+        decimal dailyCharge,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(bedNumber, nameof(bedNumber));
@@ -57,16 +61,18 @@ internal class Bed : Entity
             bedType.Trim(),
             status,
             isActive,
+            dailyCharge,
             createdBy);
     }
 
-    public void Update(string bedType, BedStatus status, bool isActive, Guid? updatedBy)
+    public void Update(string bedType, BedStatus status, bool isActive, decimal dailyCharge, Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(bedType, nameof(bedType));
 
         BedType = bedType.Trim();
         Status = status;
         IsActive = isActive;
+        DailyCharge = dailyCharge;
         MarkUpdated(updatedBy);
     }
 

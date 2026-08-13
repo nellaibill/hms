@@ -160,6 +160,77 @@ namespace HMS.Database.Migrations.IPD.Migrations
                     b.ToTable("admissions", "ipd");
                 });
 
+            modelBuilder.Entity("HMS.Modules.IPD.Domain.AdmissionBedStay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_id");
+
+                    b.Property<Guid>("BedId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bed_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal>("DailyCharge")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("daily_charge");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime>("FromDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("from_date_time");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("ToDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("to_date_time");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admission_bed_stays");
+
+                    b.HasIndex("AdmissionId")
+                        .HasDatabaseName("ix_admission_bed_stays_admission_id");
+
+                    b.ToTable("admission_bed_stays", "ipd");
+                });
+
             modelBuilder.Entity("HMS.Modules.IPD.Domain.AdmissionCharge", b =>
                 {
                     b.Property<Guid>("Id")
@@ -255,6 +326,10 @@ namespace HMS.Database.Migrations.IPD.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
+
+                    b.Property<decimal>("DailyCharge")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("daily_charge");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone")
@@ -466,6 +541,16 @@ namespace HMS.Database.Migrations.IPD.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("wards", "ipd");
+                });
+
+            modelBuilder.Entity("HMS.Modules.IPD.Domain.AdmissionBedStay", b =>
+                {
+                    b.HasOne("HMS.Modules.IPD.Domain.Admission", null)
+                        .WithMany()
+                        .HasForeignKey("AdmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admission_bed_stays_admissions_admission_id");
                 });
 
             modelBuilder.Entity("HMS.Modules.IPD.Domain.AdmissionCharge", b =>

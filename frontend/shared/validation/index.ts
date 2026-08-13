@@ -6,3 +6,6 @@ export * from './hr/staffAvailabilityValidation';
 export * from './hr/weeklyRosterValidation';
 export * from './hr/shiftAssignmentValidation';
 export * from './hr/shiftSwapRequestValidation';
+export * from './ipd/wardValidation';
+export * from './ipd/bedValidation';
+export * from './ipd/admissionValidation';

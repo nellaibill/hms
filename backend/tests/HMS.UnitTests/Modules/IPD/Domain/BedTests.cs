@@ -13,7 +13,7 @@ public class BedTests
         var wardId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
 
-        var bed = Bed.Create(wardId, "b-101", "Electric", BedStatus.Available, true, actorId);
+        var bed = Bed.Create(wardId, "b-101", "Electric", BedStatus.Available, true, 1500m, actorId);
 
         bed.WardId.Should().Be(wardId);
         bed.BedNumber.Should().Be("B-101");
@@ -28,7 +28,7 @@ public class BedTests
     [InlineData("   ")]
     public void Create_WithInvalidBedNumber_ThrowsArgumentException(string invalidBedNumber)
     {
-        var act = () => Bed.Create(Guid.NewGuid(), invalidBedNumber, "Standard", BedStatus.Available, true, null);
+        var act = () => Bed.Create(Guid.NewGuid(), invalidBedNumber, "Standard", BedStatus.Available, true, 1500m, null);
 
         act.Should().Throw<ArgumentException>();
     }
@@ -37,10 +37,10 @@ public class BedTests
     public void Update_UpdatesFieldsButNotWardOrBedNumber()
     {
         var wardId = Guid.NewGuid();
-        var bed = Bed.Create(wardId, "b-101", "Standard", BedStatus.Available, true, null);
+        var bed = Bed.Create(wardId, "b-101", "Standard", BedStatus.Available, true, 1500m, null);
         var updatedBy = Guid.NewGuid();
 
-        bed.Update("ICU", BedStatus.Maintenance, false, updatedBy);
+        bed.Update("ICU", BedStatus.Maintenance, false, 1800m, updatedBy);
 
         bed.BedType.Should().Be("ICU");
         bed.Status.Should().Be(BedStatus.Maintenance);
@@ -53,7 +53,7 @@ public class BedTests
     [Fact]
     public void SetStatus_UpdatesStatusAndAudit()
     {
-        var bed = Bed.Create(Guid.NewGuid(), "b-101", "Standard", BedStatus.Available, true, null);
+        var bed = Bed.Create(Guid.NewGuid(), "b-101", "Standard", BedStatus.Available, true, 1500m, null);
         var updatedBy = Guid.NewGuid();
 
         bed.SetStatus(BedStatus.Occupied, updatedBy);

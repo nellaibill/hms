@@ -30,6 +30,7 @@ public class BedServiceTests
         BedType = "Standard",
         Status = BedStatus.Available,
         IsActive = true,
+        DailyCharge = 1500m,
     };
 
     [Fact]
@@ -81,7 +82,7 @@ public class BedServiceTests
     [Fact]
     public async Task UpdateAsync_WhenBedIsOccupiedAndRequestChangesStatusAway_ReturnsBedOccupiedFailure()
     {
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, null);
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, 1500m, null);
         _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
 
         var request = new UpdateBedRequest { BedType = "Standard", Status = BedStatus.Available, IsActive = true };
@@ -96,7 +97,7 @@ public class BedServiceTests
     [Fact]
     public async Task UpdateAsync_WhenBedIsNotOccupiedAndRequestSetsStatusToOccupied_ReturnsBedOccupiedFailure()
     {
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, null);
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, 1500m, null);
         _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
 
         var request = new UpdateBedRequest { BedType = "Standard", Status = BedStatus.Occupied, IsActive = true };
@@ -111,7 +112,7 @@ public class BedServiceTests
     [Fact]
     public async Task UpdateAsync_WhenBedIsOccupiedAndRequestKeepsStatusOccupied_UpdatesOtherFieldsAndSucceeds()
     {
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, null);
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, 1500m, null);
         _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
 
         var request = new UpdateBedRequest { BedType = "Electric", Status = BedStatus.Occupied, IsActive = true };
@@ -126,7 +127,7 @@ public class BedServiceTests
     [Fact]
     public async Task UpdateAsync_WhenBedIsAvailableAndStatusStaysAvailable_UpdatesAndSucceeds()
     {
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, null);
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, 1500m, null);
         _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
 
         var request = new UpdateBedRequest { BedType = "Standard", Status = BedStatus.Maintenance, IsActive = true };
@@ -140,7 +141,7 @@ public class BedServiceTests
     [Fact]
     public async Task DeleteAsync_WhenBedIsOccupied_ReturnsBedOccupiedFailure()
     {
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, null);
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, 1500m, null);
         _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
 
         var result = await _sut.DeleteAsync(bed.Id, actorId: null, CancellationToken.None);
@@ -154,7 +155,7 @@ public class BedServiceTests
     [Fact]
     public async Task DeleteAsync_WhenBedIsAvailable_SoftDeletesAndReturnsSuccess()
     {
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, null);
+        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, 1500m, null);
         _repository.GetByIdAsync(bed.Id, Arg.Any<CancellationToken>()).Returns(bed);
 
         var result = await _sut.DeleteAsync(bed.Id, actorId: null, CancellationToken.None);

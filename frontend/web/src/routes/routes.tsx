@@ -57,6 +57,17 @@ const ShiftSwapRequestEditPage = lazy(() => import('../pages/hr/ShiftSwapRequest
 const MonthlyRosterCalendarPage = lazy(() => import('../pages/hr/MonthlyRosterCalendarPage'));
 const CalendarEventsPage = lazy(() => import('../pages/calendar/CalendarEventsPage'));
 const DocumentManagementPage = lazy(() => import('../pages/documents/DocumentManagementPage'));
+const IpdDashboardPage = lazy(() => import('../pages/ipd/IpdDashboardPage'));
+const WardsListPage = lazy(() => import('../pages/ipd/WardsListPage'));
+const WardCreatePage = lazy(() => import('../pages/ipd/WardCreatePage'));
+const WardEditPage = lazy(() => import('../pages/ipd/WardEditPage'));
+const BedsListPage = lazy(() => import('../pages/ipd/BedsListPage'));
+const BedCreatePage = lazy(() => import('../pages/ipd/BedCreatePage'));
+const BedEditPage = lazy(() => import('../pages/ipd/BedEditPage'));
+const BedOccupancyPage = lazy(() => import('../pages/ipd/BedOccupancyPage'));
+const AdmissionsListPage = lazy(() => import('../pages/ipd/AdmissionsListPage'));
+const AdmissionCreatePage = lazy(() => import('../pages/ipd/AdmissionCreatePage'));
+const AdmissionViewPage = lazy(() => import('../pages/ipd/AdmissionViewPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -78,6 +89,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/admin/hr': withSuspense(<HrHubPage />),
   '/engagement/programmes': withSuspense(<CalendarEventsPage />),
   '/documents': withSuspense(<DocumentManagementPage />),
+  '/clinical/ipd': withSuspense(<IpdDashboardPage />),
 };
 
 const moduleRoutes = getAllLeaves().map((leaf) => ({
@@ -190,6 +202,28 @@ const hrRoutes = [
   },
 ];
 
+// In Patient Department (HMS.Modules.IPD), reachable from the '/clinical/ipd' nav leaf
+// (wired via specialPages above). Route-gated via RequireRole since the nav-level role
+// filter alone doesn't block direct URL access — mirrors hrRoutes' ['hr','admin','superAdmin']
+// bypass reasoning, with IPD's own nav leaf roles (['doctor','nurse']) plus admin/superAdmin.
+const ipdRoutes = [
+  {
+    element: <RequireRole roles={['doctor', 'nurse', 'admin', 'superAdmin']} />,
+    children: [
+      { path: 'clinical/ipd/wards', element: withSuspense(<WardsListPage />) },
+      { path: 'clinical/ipd/wards/new', element: withSuspense(<WardCreatePage />) },
+      { path: 'clinical/ipd/wards/:id/edit', element: withSuspense(<WardEditPage />) },
+      { path: 'clinical/ipd/beds', element: withSuspense(<BedsListPage />) },
+      { path: 'clinical/ipd/beds/new', element: withSuspense(<BedCreatePage />) },
+      { path: 'clinical/ipd/beds/:id/edit', element: withSuspense(<BedEditPage />) },
+      { path: 'clinical/ipd/bed-occupancy', element: withSuspense(<BedOccupancyPage />) },
+      { path: 'clinical/ipd/admissions', element: withSuspense(<AdmissionsListPage />) },
+      { path: 'clinical/ipd/admissions/new', element: withSuspense(<AdmissionCreatePage />) },
+      { path: 'clinical/ipd/admissions/:id', element: withSuspense(<AdmissionViewPage />) },
+    ],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -213,6 +247,7 @@ export const router = createBrowserRouter(
             ...productRoutes,
             ...financeRoutes,
             ...hrRoutes,
+            ...ipdRoutes,
           ],
         },
       ],

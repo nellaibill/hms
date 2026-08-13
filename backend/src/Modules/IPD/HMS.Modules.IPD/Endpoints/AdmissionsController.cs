@@ -95,6 +95,15 @@ public class AdmissionsController : ControllerBase
             : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [HttpGet("{id:guid}/bed-history")]
+    public async Task<IActionResult> GetBedStayHistory(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _service.GetBedStayHistoryAsync(id, cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<IReadOnlyList<AdmissionBedStayResponse>> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     [HttpPost("{id:guid}/discharge")]
     public async Task<IActionResult> Discharge(Guid id, [FromBody] DischargeAdmissionRequest request, CancellationToken cancellationToken)
     {

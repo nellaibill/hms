@@ -13,6 +13,7 @@ internal static class BedMappingExtensions
         BedType = bed.BedType,
         Status = bed.Status,
         IsActive = bed.IsActive,
+        DailyCharge = bed.DailyCharge,
         CreatedAt = bed.CreatedAt,
         UpdatedAt = bed.UpdatedAt,
     };

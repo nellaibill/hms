@@ -15,3 +15,7 @@ export * from './services/weeklyRostersApi';
 export * from './services/shiftAssignmentsApi';
 export * from './services/shiftSwapRequestsApi';
 export * from './services/eventsApi';
+export * from './services/wardsApi';
+export * from './services/bedsApi';
+export * from './services/admissionsApi';
+export * from './services/ipdDashboardApi';

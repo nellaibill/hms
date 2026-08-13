@@ -1,11 +1,14 @@
 import {
+  AdmissionsApi,
   AppointmentTypesApi,
   AuthApi,
+  BedsApi,
   BrandingApi,
   ConsultantsApi,
   DepartmentsApi,
   EventsApi,
   HttpClient,
+  IpdDashboardApi,
   MastersApi,
   PatientsApi,
   ProductsApi,
@@ -15,6 +18,7 @@ import {
   ShiftSwapRequestsApi,
   StaffAvailabilityApi,
   UsersApi,
+  WardsApi,
   WeeklyRostersApi,
 } from '@hms/shared';
 import { env } from '../config/env';
@@ -49,3 +53,7 @@ export const weeklyRostersApi = new WeeklyRostersApi(httpClient);
 export const shiftAssignmentsApi = new ShiftAssignmentsApi(httpClient);
 export const shiftSwapRequestsApi = new ShiftSwapRequestsApi(httpClient);
 export const eventsApi = new EventsApi(httpClient);
+export const wardsApi = new WardsApi(httpClient);
+export const bedsApi = new BedsApi(httpClient);
+export const admissionsApi = new AdmissionsApi(httpClient);
+export const ipdDashboardApi = new IpdDashboardApi(httpClient);

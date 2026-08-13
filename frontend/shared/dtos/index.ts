@@ -13,3 +13,8 @@ export * from './hr/weeklyRoster';
 export * from './hr/shiftAssignment';
 export * from './hr/shiftSwapRequest';
 export * from './calendar/event';
+export * from './ipd/ward';
+export * from './ipd/bed';
+export * from './ipd/admission';
+export * from './ipd/charge';
+export * from './ipd/dashboard';

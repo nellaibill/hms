@@ -24,6 +24,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.SuppressModelStateInvalidFilter = true;
 });
 
+
+
 builder.Services.AddControllers()
     // Patients is the first module with enum fields (Title, Gender, EncounterType, ...) —
     // serialize them as their string names, not the default integer ordinal, so the JSON
