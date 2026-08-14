@@ -11,6 +11,17 @@ export const API_ROUTES = {
     login: '/api/v1/auth/login',
     me: '/api/v1/auth/me',
   },
+  /** Mirrors HMS.Modules.Platform.Endpoints.PlatformAuthController — entirely separate from the hospital `auth` routes above. */
+  platformAuth: {
+    login: '/api/platform/auth/login',
+    me: '/api/platform/auth/me',
+  },
+  /** Mirrors HMS.Modules.Platform.Endpoints.HospitalsController. */
+  platformHospitals: {
+    base: '/api/platform/hospitals',
+    stats: '/api/platform/hospitals/stats',
+    status: (id: string) => `/api/platform/hospitals/${id}/status`,
+  },
   users: {
     base: '/api/v1/users',
     byId: (id: string) => `/api/v1/users/${id}`,

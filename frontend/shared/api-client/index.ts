@@ -1,5 +1,7 @@
 export * from './httpClient';
 export * from './services/authApi';
+export * from './services/platformAuthApi';
+export * from './services/platformHospitalsApi';
 export * from './services/usersApi';
 export * from './services/rolesApi';
 export * from './services/patientsApi';

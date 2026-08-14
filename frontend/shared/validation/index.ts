@@ -9,3 +9,4 @@ export * from './hr/shiftSwapRequestValidation';
 export * from './ipd/wardValidation';
 export * from './ipd/bedValidation';
 export * from './ipd/admissionValidation';
+export * from './platform/hospitalValidation';

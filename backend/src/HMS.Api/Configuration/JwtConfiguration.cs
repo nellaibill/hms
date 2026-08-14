@@ -43,7 +43,14 @@ public static class JwtConfiguration
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            // Platform Admin and hospital-user tokens share one bearer scheme (same
+            // Jwt:Issuer/Audience/SigningKey) but carry different claim shapes — this
+            // policy is the seam that keeps them from being used against each other's
+            // endpoints. Hospital tokens never carry a "platform" LoginType claim value.
+            options.AddPolicy("Platform", policy => policy.RequireClaim("LoginType", "platform"));
+        });
 
         return services;
     }

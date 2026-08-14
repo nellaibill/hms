@@ -7,18 +7,21 @@ import { router } from '../routes/routes';
 import { queryClient } from './queryClient';
 import { ThemeProvider } from '../lib/theme-provider';
 import { AuthProvider } from '../features/auth/AuthContext';
+import { PlatformAuthProvider } from '../features/platformAuth/PlatformAuthContext';
 
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <TooltipProvider delayDuration={200}>
-            <ToastProvider>
-              <RouterProvider router={router} />
-              <Toaster />
-            </ToastProvider>
-          </TooltipProvider>
+          <PlatformAuthProvider>
+            <TooltipProvider delayDuration={200}>
+              <ToastProvider>
+                <RouterProvider router={router} />
+                <Toaster />
+              </ToastProvider>
+            </TooltipProvider>
+          </PlatformAuthProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
