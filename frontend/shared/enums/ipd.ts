@@ -5,6 +5,9 @@ export type WardType = (typeof WARD_TYPES)[number];
 export const BED_STATUSES = ['Available', 'Occupied', 'Maintenance'] as const;
 export type BedStatus = (typeof BED_STATUSES)[number];
 
+export const BED_TYPES = ['Standard', 'Electric', 'ICU', 'SemiICU', 'Deluxe'] as const;
+export type BedType = (typeof BED_TYPES)[number];
+
 // Named IpdAdmissionType (not AdmissionType) — HMS.Modules.Patients.Contracts.AdmissionType
 // (MLC/NMLC) already owns that name in this barrel; the two are unrelated concepts that
 // happen to share a base name across modules.

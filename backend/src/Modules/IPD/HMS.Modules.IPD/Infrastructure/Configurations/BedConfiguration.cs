@@ -15,7 +15,7 @@ internal class BedConfiguration : IEntityTypeConfiguration<Bed>
 
         builder.Property(b => b.WardId).HasColumnName("ward_id").IsRequired();
         builder.Property(b => b.BedNumber).HasColumnName("bed_number").HasMaxLength(30).IsRequired();
-        builder.Property(b => b.BedType).HasColumnName("bed_type").HasMaxLength(50).IsRequired();
+        builder.Property(b => b.BedType).HasColumnName("bed_type").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(b => b.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(b => b.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
         builder.Property(b => b.DailyCharge).HasColumnName("daily_charge").HasColumnType("numeric(12,2)").IsRequired();

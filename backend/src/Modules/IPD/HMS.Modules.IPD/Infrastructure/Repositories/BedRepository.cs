@@ -45,7 +45,7 @@ internal class BedRepository : IBedRepository
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = $"%{query.Search.Trim()}%";
-            beds = beds.Where(b => EF.Functions.ILike(b.BedNumber, term) || EF.Functions.ILike(b.BedType, term));
+            beds = beds.Where(b => EF.Functions.ILike(b.BedNumber, term));
         }
 
         beds = ApplySort(beds, query.Sort);

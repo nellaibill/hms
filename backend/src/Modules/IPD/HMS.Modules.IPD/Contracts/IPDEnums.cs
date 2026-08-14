@@ -15,6 +15,15 @@ public enum BedStatus
     Maintenance,
 }
 
+public enum BedType
+{
+    Standard,
+    Electric,
+    ICU,
+    SemiICU,
+    Deluxe,
+}
+
 public enum AdmissionType
 {
     Emergency,

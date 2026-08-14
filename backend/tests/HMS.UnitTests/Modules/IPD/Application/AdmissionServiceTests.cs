@@ -57,7 +57,7 @@ public class AdmissionServiceTests
         var ward = Ward.Create("genmed", "General Medicine Ward A", Guid.NewGuid(), WardType.General, true, null);
         _wardRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ward);
 
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Available, true, 1500m, null);
+        var bed = Bed.Create(_wardId, "b-101", BedType.Standard, BedStatus.Available, true, 1500m, null);
         _bedRepository.GetByIdAsync(_bedId, Arg.Any<CancellationToken>()).Returns(bed);
 
         _repository.GetActiveByPatientIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Admission?)null);
@@ -108,7 +108,7 @@ public class AdmissionServiceTests
     [Fact]
     public async Task CreateAsync_WhenBedIsNotAvailable_ReturnsBedNotAvailableFailure()
     {
-        var occupiedBed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, 1500m, null);
+        var occupiedBed = Bed.Create(_wardId, "b-101", BedType.Standard, BedStatus.Occupied, true, 1500m, null);
         _bedRepository.GetByIdAsync(_bedId, Arg.Any<CancellationToken>()).Returns(occupiedBed);
 
         var result = await _sut.CreateAsync(NewCreateRequest(), actorId: null, CancellationToken.None);
@@ -121,7 +121,7 @@ public class AdmissionServiceTests
     [Fact]
     public async Task CreateAsync_WhenBedBelongsToADifferentWard_ReturnsInvalidBedFailure()
     {
-        var otherWardBed = Bed.Create(Guid.NewGuid(), "b-999", "Standard", BedStatus.Available, true, 1500m, null);
+        var otherWardBed = Bed.Create(Guid.NewGuid(), "b-999", BedType.Standard, BedStatus.Available, true, 1500m, null);
         _bedRepository.GetByIdAsync(_bedId, Arg.Any<CancellationToken>()).Returns(otherWardBed);
 
         var result = await _sut.CreateAsync(NewCreateRequest(), actorId: null, CancellationToken.None);
@@ -150,11 +150,11 @@ public class AdmissionServiceTests
         var admission = Admission.Create("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), _wardId, _bedId, DateTime.UtcNow, AdmissionType.Elective, "Observation", null);
         _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
 
-        var oldBed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, 1500m, null);
+        var oldBed = Bed.Create(_wardId, "b-101", BedType.Standard, BedStatus.Occupied, true, 1500m, null);
         _bedRepository.GetByIdAsync(_bedId, Arg.Any<CancellationToken>()).Returns(oldBed);
 
         var newBedId = Guid.NewGuid();
-        var newBed = Bed.Create(_wardId, "b-102", "Standard", BedStatus.Available, true, 2500m, null);
+        var newBed = Bed.Create(_wardId, "b-102", BedType.Standard, BedStatus.Available, true, 2500m, null);
         _bedRepository.GetByIdAsync(newBedId, Arg.Any<CancellationToken>()).Returns(newBed);
 
         var request = new TransferBedRequest { NewWardId = _wardId, NewBedId = newBedId, TransferReason = "Ward change" };
@@ -198,7 +198,7 @@ public class AdmissionServiceTests
 
         var newWardId = Guid.NewGuid();
         var newBedId = Guid.NewGuid();
-        var newBed = Bed.Create(newWardId, "b-202", "Standard", BedStatus.Occupied, true, 1500m, null);
+        var newBed = Bed.Create(newWardId, "b-202", BedType.Standard, BedStatus.Occupied, true, 1500m, null);
         _bedRepository.GetByIdAsync(newBedId, Arg.Any<CancellationToken>()).Returns(newBed);
 
         var history = BedTransferHistory.Create(admission.Id, _wardId, _bedId, newWardId, newBedId, "Ward change", null);
@@ -236,7 +236,7 @@ public class AdmissionServiceTests
         var admission = Admission.Create("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), _wardId, _bedId, admissionDate, AdmissionType.Elective, "Observation", null);
         _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
 
-        var bed = Bed.Create(_wardId, "b-101", "Standard", BedStatus.Occupied, true, 1500m, null);
+        var bed = Bed.Create(_wardId, "b-101", BedType.Standard, BedStatus.Occupied, true, 1500m, null);
         _bedRepository.GetByIdAsync(_bedId, Arg.Any<CancellationToken>()).Returns(bed);
 
         var request = new DischargeAdmissionRequest

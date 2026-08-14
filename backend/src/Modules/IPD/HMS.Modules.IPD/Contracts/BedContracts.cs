@@ -6,7 +6,7 @@ public record CreateBedRequest
 {
     public Guid WardId { get; init; }
     public string BedNumber { get; init; } = string.Empty;
-    public string BedType { get; init; } = string.Empty;
+    public BedType BedType { get; init; }
     public BedStatus Status { get; init; } = BedStatus.Available;
     public bool IsActive { get; init; } = true;
     public decimal DailyCharge { get; init; }
@@ -16,7 +16,7 @@ public record CreateBedRequest
 // after creation. Use the bed-transfer workflow to move a patient between beds.
 public record UpdateBedRequest
 {
-    public string BedType { get; init; } = string.Empty;
+    public BedType BedType { get; init; }
     public BedStatus Status { get; init; }
     public bool IsActive { get; init; } = true;
     public decimal DailyCharge { get; init; }
@@ -27,7 +27,7 @@ public record BedResponse
     public Guid Id { get; init; }
     public Guid WardId { get; init; }
     public string BedNumber { get; init; } = string.Empty;
-    public string BedType { get; init; } = string.Empty;
+    public BedType BedType { get; init; }
     public BedStatus Status { get; init; }
     public bool IsActive { get; init; }
     public decimal DailyCharge { get; init; }

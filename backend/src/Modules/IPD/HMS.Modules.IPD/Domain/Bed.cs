@@ -13,7 +13,7 @@ internal class Bed : Entity
 {
     public Guid WardId { get; private set; }
     public string BedNumber { get; private set; } = null!;
-    public string BedType { get; private set; } = null!;
+    public BedType BedType { get; private set; }
     public BedStatus Status { get; private set; }
     public bool IsActive { get; private set; } = true;
     public decimal DailyCharge { get; private set; }
@@ -27,7 +27,7 @@ internal class Bed : Entity
         Guid id,
         Guid wardId,
         string bedNumber,
-        string bedType,
+        BedType bedType,
         BedStatus status,
         bool isActive,
         decimal dailyCharge,
@@ -45,31 +45,28 @@ internal class Bed : Entity
     public static Bed Create(
         Guid wardId,
         string bedNumber,
-        string bedType,
+        BedType bedType,
         BedStatus status,
         bool isActive,
         decimal dailyCharge,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(bedNumber, nameof(bedNumber));
-        Guard.AgainstNullOrWhiteSpace(bedType, nameof(bedType));
 
         return new Bed(
             Guid.CreateVersion7(),
             wardId,
             bedNumber.Trim().ToUpperInvariant(),
-            bedType.Trim(),
+            bedType,
             status,
             isActive,
             dailyCharge,
             createdBy);
     }
 
-    public void Update(string bedType, BedStatus status, bool isActive, decimal dailyCharge, Guid? updatedBy)
+    public void Update(BedType bedType, BedStatus status, bool isActive, decimal dailyCharge, Guid? updatedBy)
     {
-        Guard.AgainstNullOrWhiteSpace(bedType, nameof(bedType));
-
-        BedType = bedType.Trim();
+        BedType = bedType;
         Status = status;
         IsActive = isActive;
         DailyCharge = dailyCharge;

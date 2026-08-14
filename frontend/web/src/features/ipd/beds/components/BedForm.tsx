@@ -1,4 +1,4 @@
-import { ApiError, BED_STATUSES, createBedSchema, type BedFormValues } from '@hms/shared';
+import { ApiError, BED_STATUSES, BED_TYPES, createBedSchema, type BedFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -13,6 +13,14 @@ const bedStatusLabels: Record<(typeof BED_STATUSES)[number], string> = {
   Available: 'Available',
   Occupied: 'Occupied',
   Maintenance: 'Maintenance',
+};
+
+const bedTypeLabels: Record<(typeof BED_TYPES)[number], string> = {
+  Standard: 'Standard',
+  Electric: 'Electric',
+  ICU: 'ICU',
+  SemiICU: 'Semi-ICU',
+  Deluxe: 'Deluxe',
 };
 
 interface BedFormProps {
@@ -36,7 +44,7 @@ export function BedForm({ mode, defaultValues, onSubmit, isSubmitting, submitLab
     defaultValues: {
       wardId: '',
       bedNumber: '',
-      bedType: '',
+      bedType: 'Standard',
       status: 'Available',
       isActive: true,
       dailyCharge: 0,
@@ -95,7 +103,24 @@ export function BedForm({ mode, defaultValues, onSubmit, isSubmitting, submitLab
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="bedType">Bed type</Label>
-        <Input id="bedType" placeholder="e.g. Standard, Electric, ICU" {...register('bedType')} />
+        <Controller
+          control={control}
+          name="bedType"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger id="bedType" aria-label="Bed type">
+                <SelectValue placeholder="Select bed type…" />
+              </SelectTrigger>
+              <SelectContent>
+                {BED_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {bedTypeLabels[type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.bedType && <p className="text-sm text-destructive">{errors.bedType.message}</p>}
       </div>
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BED_STATUSES } from '../../enums/ipd';
+import { BED_STATUSES, BED_TYPES } from '../../enums/ipd';
 
 /**
  * Mirrors HMS.Modules.IPD.Application.Validators.CreateBedRequestValidator /
@@ -7,7 +7,7 @@ import { BED_STATUSES } from '../../enums/ipd';
  * authoritative — docs/ApiStandards.md §7, docs/FrontendArchitecture.md §9).
  */
 const bedCommonSchema = {
-  bedType: z.string().trim().min(1, 'Bed type is required').max(50),
+  bedType: z.enum(BED_TYPES, { message: 'Bed type is required' }),
   status: z.enum(BED_STATUSES, { message: 'Status is required' }),
   isActive: z.boolean(),
   dailyCharge: z.coerce.number({ message: 'Daily charge is required' }).positive('Daily charge must be greater than 0'),
