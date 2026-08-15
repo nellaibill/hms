@@ -25,6 +25,7 @@ export default function LoginPage() {
   const { data: brandingConfig } = useBrandingQuery();
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
 
+  const [hospitalCode, setHospitalCode] = useState('');
   const [role, setRole] = useState<Role>('doctor');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -34,15 +35,15 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!username.trim() || !password.trim()) {
-      setError('Enter a username and password to continue.');
+    if (!hospitalCode.trim() || !username.trim() || !password.trim()) {
+      setError('Enter your hospital code, username, and password to continue.');
       return;
     }
 
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(role, username.trim(), password);
+      await login(hospitalCode.trim(), role, username.trim(), password);
       const from = (location.state as LocationState | null)?.from ?? '/dashboard';
       navigate(from, { replace: true });
     } catch (err) {
@@ -80,6 +81,17 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="hospitalCode">Hospital code</Label>
+              <Input
+                id="hospitalCode"
+                autoComplete="organization"
+                placeholder="e.g. kauvery"
+                value={hospitalCode}
+                onChange={(event) => setHospitalCode(event.target.value)}
+              />
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="role">Sign in as</Label>
               <Select value={role} onValueChange={(value) => setRole(value as Role)}>

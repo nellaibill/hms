@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '../../auth/AuthContext';
 import { countGrantedPermissions, type Role } from '../types';
 import { RoleStatusBadge } from './RoleStatusBadge';
 
@@ -13,6 +14,8 @@ interface RoleTableProps {
 export function RoleTable({ roles, sort, onSortChange }: RoleTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('identity-administration.edit');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -69,9 +72,11 @@ export function RoleTable({ roles, sort, onSortChange }: RoleTableProps) {
                     <Button asChild variant="ghost" size="sm">
                       <Link to={`/admin/roles/${role.id}`}>View</Link>
                     </Button>
-                    <Button asChild variant="ghost" size="sm">
-                      <Link to={`/admin/roles/${role.id}/edit`}>Edit</Link>
-                    </Button>
+                    {canEdit && (
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/admin/roles/${role.id}/edit`}>Edit</Link>
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>

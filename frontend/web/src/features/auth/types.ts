@@ -26,4 +26,8 @@ export interface AuthUser {
   email: string;
   /** The freeform Role name from the Roles module (e.g. "Doctor / Consultant") — display only. */
   roleName: string;
+  /** Permission keys (e.g. "patient-management.create") attached to the user's role — same
+   * set the backend checks via [RequirePermission(...)]. UI-only hinting: the backend is the
+   * real enforcement boundary, this just avoids showing actions the user can't complete. */
+  permissionKeys: string[];
 }

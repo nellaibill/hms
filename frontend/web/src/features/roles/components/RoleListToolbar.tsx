@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '../../auth/AuthContext';
 import type { RoleStatus } from '../types';
 
 interface RoleListToolbarProps {
@@ -13,6 +14,8 @@ interface RoleListToolbarProps {
 }
 
 export function RoleListToolbar({ search, onSearchChange, status, onStatusChange }: RoleListToolbarProps) {
+  const { hasPermission } = useAuth();
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative w-64">
@@ -38,12 +41,14 @@ export function RoleListToolbar({ search, onSearchChange, status, onStatusChange
         </SelectContent>
       </Select>
 
-      <Button asChild className="ml-auto gap-1.5">
-        <Link to="/admin/roles/new">
-          <Plus className="h-4 w-4" />
-          Add Role
-        </Link>
-      </Button>
+      {hasPermission('identity-administration.create') && (
+        <Button asChild className="ml-auto gap-1.5">
+          <Link to="/admin/roles/new">
+            <Plus className="h-4 w-4" />
+            Add Role
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }
