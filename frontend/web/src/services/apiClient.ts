@@ -11,6 +11,8 @@ import {
   IpdDashboardApi,
   MastersApi,
   PatientsApi,
+  PlatformAuthApi,
+  PlatformHospitalsApi,
   ProductsApi,
   RolesApi,
   ShiftAssignmentsApi,
@@ -36,6 +38,23 @@ export const httpClient = new HttpClient({
   baseUrl: env.apiBaseUrl,
   getAuthToken: () => authToken,
 });
+
+// Independent token holder + HttpClient instance for the Platform Portal — a Platform Admin
+// session must never share a bearer token with a hospital session (PlatformAuthContext is
+// the only writer), even though both hit the same API origin.
+let platformAuthToken: string | null = null;
+
+export function setPlatformAuthToken(token: string | null) {
+  platformAuthToken = token;
+}
+
+export const platformHttpClient = new HttpClient({
+  baseUrl: env.apiBaseUrl,
+  getAuthToken: () => platformAuthToken,
+});
+
+export const platformAuthApi = new PlatformAuthApi(platformHttpClient);
+export const platformHospitalsApi = new PlatformHospitalsApi(platformHttpClient);
 
 export const authApi = new AuthApi(httpClient);
 export const usersApi = new UsersApi(httpClient);

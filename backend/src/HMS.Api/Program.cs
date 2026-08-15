@@ -10,6 +10,8 @@ using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.IPD.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Modules.Patients.Infrastructure;
+using HMS.Modules.Platform;
+using HMS.Modules.Platform.Infrastructure;
 using HMS.Modules.Products.Infrastructure;
 using HMS.Shared.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -105,12 +107,24 @@ if (app.Environment.IsDevelopment())
         .GetRequiredService<IPDDbContext>()
         .Database.Migrate();
 
+    // Platform owns a separate physical database (hms_platform via
+    // ConnectionStrings:Platform), not another schema in hms_qa — see
+    // docs/DatabaseArchitecture.md's SaaS provisioning ADR.
+    scope.ServiceProvider
+        .GetRequiredService<PlatformDbContext>()
+        .Database.Migrate();
+
     // Idempotent: safe to run on every startup. Seeds the Permission catalog's
     // dependents — the "Super Admin" role (every permission attached) and a default
     // Super Admin user — only when they don't already exist. Must run after the
     // Identity migration above, since it reads the Permission rows that migration's
     // HasData just inserted.
     await IdentityModule.SeedAsync(scope.ServiceProvider, CancellationToken.None);
+
+    // Idempotent: seeds the one default Platform Admin account only when it doesn't
+    // already exist. Independent of IdentityModule.SeedAsync — separate database,
+    // separate account.
+    await PlatformModule.SeedAsync(scope.ServiceProvider, CancellationToken.None);
 }
 
 app.Run();

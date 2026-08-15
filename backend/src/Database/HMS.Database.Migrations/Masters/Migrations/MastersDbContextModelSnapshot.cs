@@ -94,6 +94,151 @@ namespace HMS.Database.Migrations.Masters.Migrations
                     b.ToTable("appointment_types", "masters");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Masters.Domain.BloodGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_blood_groups");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_blood_groups_code")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("blood_groups", "masters");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000011"),
+                            Code = "A_POS",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "A+"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000012"),
+                            Code = "A_NEG",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "A-"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000013"),
+                            Code = "B_POS",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "B+"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000014"),
+                            Code = "B_NEG",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "B-"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000015"),
+                            Code = "O_POS",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "O+"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000016"),
+                            Code = "O_NEG",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "O-"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000017"),
+                            Code = "AB_POS",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "AB+"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000018"),
+                            Code = "AB_NEG",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "AB-"
+                        });
+                });
+
             modelBuilder.Entity("HMS.Modules.Masters.Domain.Brand", b =>
                 {
                     b.Property<Guid>("Id")
@@ -502,6 +647,106 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("departments", "masters");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Masters.Domain.Gender", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_genders");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_genders_code")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("genders", "masters");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000001"),
+                            Code = "MALE",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Male"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000002"),
+                            Code = "FEMALE",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Female"
+                        },
+                        new
+                        {
+                            Id = new Guid("019a0000-0000-7000-8000-000000000003"),
+                            Code = "OTHER",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Other"
+                        });
                 });
 
             modelBuilder.Entity("HMS.Modules.Masters.Domain.Manufacturer", b =>

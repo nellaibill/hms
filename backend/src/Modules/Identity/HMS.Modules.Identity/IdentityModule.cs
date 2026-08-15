@@ -3,6 +3,7 @@ using HMS.Modules.Identity.Application;
 using HMS.Modules.Identity.Application.Abstractions;
 using HMS.Modules.Identity.Application.Validators;
 using HMS.Modules.Identity.Contracts;
+using HMS.Modules.Identity.Domain;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.Identity.Infrastructure.Repositories;
 using HMS.Modules.Identity.Infrastructure.Seed;
@@ -83,5 +84,62 @@ public static class IdentityModule
     public static Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         return services.GetRequiredService<IdentityDataSeeder>().SeedAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Provisioning-only seam: creates the "Super Admin" role (every permission attached)
+    /// and the hospital's first Super Admin user in a freshly-migrated tenant database.
+    /// Called by HMS.Api.Provisioning.TenantProvisioningService, which cannot construct
+    /// User/Role directly — they're internal to this assembly (see
+    /// HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner's doc comment).
+    /// Reuses the exact same domain factories/repositories/password hasher as
+    /// IdentityDataSeeder, just against a caller-supplied connection string instead of the
+    /// DI-registered <see cref="IdentityDbContext"/>, and does not run migrations itself —
+    /// the caller already applied them before invoking this.
+    /// </summary>
+    public static async Task ProvisionTenantSuperAdminAsync(
+        string connectionString,
+        string username,
+        string firstName,
+        string lastName,
+        string email,
+        string phoneNumber,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseNpgsql(connectionString, npgsql =>
+            {
+                npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDbContext.SchemaName);
+                npgsql.MigrationsAssembly("HMS.Database.Migrations");
+            })
+            .Options;
+
+        await using var dbContext = new IdentityDbContext(options);
+
+        var permissionRepository = new PermissionRepository(dbContext);
+        var roleRepository = new RoleRepository(dbContext);
+        var userRepository = new UserRepository(dbContext);
+        var passwordHasher = new PasswordHasher();
+
+        var permissions = await permissionRepository.GetAllAsync(cancellationToken);
+
+        var role = Role.Create(
+            "Super Admin",
+            "Full system access with every permission assigned. Created automatically during tenant provisioning.",
+            isSystemRole: true,
+            displayOrder: 0,
+            createdBy: null);
+
+        role.ReplacePermissions(permissions.Select(p => p.Id));
+
+        await roleRepository.AddAsync(role, cancellationToken);
+        await roleRepository.SaveChangesAsync(cancellationToken);
+
+        var user = User.Create(username, firstName, lastName, email, phoneNumber, role.Id, createdBy: null);
+        user.SetPasswordHash(passwordHasher.HashPassword(password), updatedBy: null);
+
+        await userRepository.AddAsync(user, cancellationToken);
+        await userRepository.SaveChangesAsync(cancellationToken);
     }
 }

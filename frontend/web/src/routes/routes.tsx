@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../layouts/AppLayout';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequireRole } from '../features/auth/RequireRole';
+import { PlatformProtectedRoute } from '../features/platformAuth/PlatformProtectedRoute';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { getAllLeaves } from '../config/navigation';
 
@@ -68,6 +69,13 @@ const BedOccupancyPage = lazy(() => import('../pages/ipd/BedOccupancyPage'));
 const AdmissionsListPage = lazy(() => import('../pages/ipd/AdmissionsListPage'));
 const AdmissionCreatePage = lazy(() => import('../pages/ipd/AdmissionCreatePage'));
 const AdmissionViewPage = lazy(() => import('../pages/ipd/AdmissionViewPage'));
+
+// Platform Portal — entirely separate from the hospital app above (own login, own
+// session, own protected-route gate). Not nested under AppLayout: it has no hospital
+// sidebar/nav, since a Platform Admin isn't scoped to any one hospital.
+const PlatformLoginPage = lazy(() => import('../pages/platform/PlatformLoginPage'));
+const PlatformDashboardPage = lazy(() => import('../pages/platform/PlatformDashboardPage'));
+const CreateHospitalPage = lazy(() => import('../pages/platform/CreateHospitalPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -229,6 +237,17 @@ export const router = createBrowserRouter(
     {
       path: '/login',
       element: withSuspense(<LoginPage />),
+    },
+    {
+      path: '/platform/login',
+      element: withSuspense(<PlatformLoginPage />),
+    },
+    {
+      element: <PlatformProtectedRoute />,
+      children: [
+        { path: '/platform/dashboard', element: withSuspense(<PlatformDashboardPage />) },
+        { path: '/platform/hospitals/new', element: withSuspense(<CreateHospitalPage />) },
+      ],
     },
     {
       element: <ProtectedRoute />,
