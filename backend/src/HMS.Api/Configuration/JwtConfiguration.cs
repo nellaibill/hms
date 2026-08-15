@@ -1,4 +1,6 @@
+using HMS.Shared.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -50,7 +52,33 @@ public static class JwtConfiguration
             // policy is the seam that keeps them from being used against each other's
             // endpoints. Hospital tokens never carry a "platform" LoginType claim value.
             options.AddPolicy("Platform", policy => policy.RequireClaim("LoginType", "platform"));
+
+            // Mirrors "Platform" above: only hospital-issued tokens carry a "UserId" claim
+            // (JwtTokenGenerator) — Platform tokens carry "PlatformUserId" instead
+            // (PlatformJwtTokenGenerator) — so this is exclusive to hospital tokens the same
+            // way "Platform" is exclusive to platform tokens.
+            var hospitalPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .RequireClaim("UserId")
+                .Build();
+            options.AddPolicy("Hospital", hospitalPolicy);
+
+            // Secure by default (HMS Security Hardening Phase A): every controller action
+            // requires a valid Hospital token unless it explicitly opts out via
+            // [AllowAnonymous] or a different policy (e.g. [Authorize(Policy = "Platform")]).
+            // DefaultPolicy governs a bare [Authorize] (e.g. DocumentsController,
+            // PatientsController, AuthenticationController.Me); FallbackPolicy governs
+            // actions with no authorization attribute at all — previously the majority of
+            // hospital-facing controllers (Users, Roles, Permissions, Masters, Products, HR,
+            // IPD, Calendar, Branding) had none, meaning they accepted anonymous requests.
+            options.DefaultPolicy = hospitalPolicy;
+            options.FallbackPolicy = hospitalPolicy;
         });
+
+        // HMS Security Hardening Phase B: backs [RequirePermission("...")] — apply it
+        // alongside a bare [Authorize] on any hospital action that needs a specific
+        // permission, e.g. RolesController.Create. See PermissionAuthorization.cs.
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
         return services;
     }

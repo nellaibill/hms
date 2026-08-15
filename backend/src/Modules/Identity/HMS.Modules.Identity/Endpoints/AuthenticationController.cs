@@ -37,6 +37,7 @@ public class AuthenticationController : ControllerBase
     /// <response code="200">Login succeeded; the response contains a bearer token.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="401">The login type, username, or password was invalid.</response>
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {

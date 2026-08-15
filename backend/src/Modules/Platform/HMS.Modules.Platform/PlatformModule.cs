@@ -44,6 +44,12 @@ public static class PlatformModule
         services.AddScoped<IHospitalRegistrationService, HospitalRegistrationService>();
         services.AddScoped<IPlatformDashboardService, PlatformDashboardService>();
 
+        // HMS Multi-Tenancy Phase C's tenant-resolution seam — consumed by
+        // HMS.Api's TenantResolutionMiddleware and by HMS.Modules.Identity's
+        // AuthenticationService (login-time resolution). See ITenantDirectory's own doc
+        // comment for why this one lives here rather than being implemented in HMS.Api.
+        services.AddScoped<ITenantDirectory, TenantDirectory>();
+
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations — see HRModule.cs's
         // identical comment.
@@ -51,6 +57,7 @@ public static class PlatformModule
         services.AddScoped<IValidator<CreateHospitalRequest>, CreateHospitalRequestValidator>();
 
         services.Configure<PlatformAdminSeedOptions>(configuration.GetSection(PlatformAdminSeedOptions.SectionName));
+        services.Configure<LegacyTenantSeedOptions>(configuration.GetSection(LegacyTenantSeedOptions.SectionName));
         services.AddScoped<PlatformDataSeeder>();
 
         // ITenantProvisioner itself is NOT registered here — it's implemented in HMS.Api

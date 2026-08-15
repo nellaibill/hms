@@ -10,4 +10,5 @@ internal static class PlatformErrorCodes
     public const string ProvisioningFailed = TenantProvisioningErrorCodes.Failed;
     public const string NotFound = "PLATFORM.NOT_FOUND";
     public const string InvalidStatus = "PLATFORM.INVALID_STATUS";
+    public const string MigrationFailed = "PLATFORM.MIGRATION_FAILED";
 }

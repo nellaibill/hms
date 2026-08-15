@@ -11,4 +11,5 @@ public record LoginUserResponse
     public string RoleName { get; init; } = string.Empty;
     public string LoginType { get; init; } = string.Empty;
     public string? ProfilePhotoUrl { get; init; }
+    public IReadOnlyList<string> PermissionKeys { get; init; } = [];
 }

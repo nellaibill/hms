@@ -2,6 +2,7 @@ using HMS.Modules.Branding.Application;
 using HMS.Modules.Branding.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,6 +28,7 @@ public class BrandingController : ControllerBase
 
     /// <summary>Gets the current theme/branding configuration. Public — no auth — so the pre-login screen can theme itself.</summary>
     /// <response code="200">The current branding configuration.</response>
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {

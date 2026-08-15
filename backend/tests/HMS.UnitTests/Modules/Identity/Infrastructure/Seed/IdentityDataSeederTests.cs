@@ -100,10 +100,43 @@ public class IdentityDataSeederTests
         await sut.SeedAsync(CancellationToken.None);
 
         await _roleRepository.DidNotReceive().AddAsync(Arg.Any<Role>(), Arg.Any<CancellationToken>());
-        await _permissionRepository.DidNotReceive().GetAllAsync(Arg.Any<CancellationToken>());
 
         await _userRepository.Received(1).AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
         createdUser!.RoleId.Should().Be(existingRole.Id);
+    }
+
+    [Fact]
+    public async Task SeedAsync_WhenExistingRoleIsMissingCatalogPermissions_ResyncsItToTheFullCatalog()
+    {
+        // Simulates the permission catalog growing (e.g. a new module's permissions seeded)
+        // after the Super Admin role was first created — the role must self-heal on the
+        // next startup instead of silently drifting out of sync with the catalog.
+        var existingRole = Role.Create("Super Admin", "Existing", true, 0, null);
+        _roleRepository.GetByNameAsync("Super Admin", Arg.Any<CancellationToken>()).Returns(existingRole);
+        _userRepository.GetByUsernameAsync("superadmin", Arg.Any<CancellationToken>()).Returns((User?)null);
+
+        var sut = CreateSut();
+
+        await sut.SeedAsync(CancellationToken.None);
+
+        existingRole.RolePermissions.Select(rp => rp.PermissionId)
+            .Should().BeEquivalentTo(SeedPermissions.Select(p => p.Id));
+        await _roleRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SeedAsync_WhenExistingRoleAlreadyMatchesCatalog_DoesNotResaveIt()
+    {
+        var existingRole = Role.Create("Super Admin", "Existing", true, 0, null);
+        existingRole.ReplacePermissions(SeedPermissions.Select(p => p.Id));
+        _roleRepository.GetByNameAsync("Super Admin", Arg.Any<CancellationToken>()).Returns(existingRole);
+        _userRepository.GetByUsernameAsync("superadmin", Arg.Any<CancellationToken>()).Returns((User?)null);
+
+        var sut = CreateSut();
+
+        await sut.SeedAsync(CancellationToken.None);
+
+        await _roleRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

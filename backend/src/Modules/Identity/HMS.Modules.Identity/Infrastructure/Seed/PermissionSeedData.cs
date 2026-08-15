@@ -967,6 +967,102 @@ internal static class PermissionSeedData
                 IsDeleted = false,
                 DeletedAt = (DateTime?)null,
                 DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("6e2c1b3a-8f4d-4a2e-9c7b-1a5e3d8f6b2c"),
+                Module = "identity-administration",
+                Action = "view",
+                Key = "identity-administration.view",
+                Label = "View",
+                DisplayOrder = 11,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("7f3d2c4b-9a5e-4b3f-8d6c-2b6f4e9a7c3d"),
+                Module = "identity-administration",
+                Action = "create",
+                Key = "identity-administration.create",
+                Label = "Create",
+                DisplayOrder = 11,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("8a4e3d5c-0b6f-4c40-9e7d-3c7a5f0b8d4e"),
+                Module = "identity-administration",
+                Action = "edit",
+                Key = "identity-administration.edit",
+                Label = "Edit",
+                DisplayOrder = 11,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("9b5f4e6d-1c70-4d51-af8e-4d8b60c19e5f"),
+                Module = "identity-administration",
+                Action = "delete",
+                Key = "identity-administration.delete",
+                Label = "Delete",
+                DisplayOrder = 11,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
             }
         };
     }
