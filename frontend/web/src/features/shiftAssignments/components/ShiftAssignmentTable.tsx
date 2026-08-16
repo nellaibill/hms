@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StaffName } from '@/components/StaffName';
+import { useAuth } from '@/features/auth/AuthContext';
 import { ShiftName } from './ShiftName';
 
 interface ShiftAssignmentTableProps {
@@ -24,6 +25,9 @@ const statusVariant: Record<ShiftAssignment['status'], 'success' | 'secondary' |
 export function ShiftAssignmentTable({ assignments, sort, onSortChange, onDeleteRequested }: ShiftAssignmentTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('workforce-admin.edit');
+  const canDelete = hasPermission('workforce-admin.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -70,12 +74,16 @@ export function ShiftAssignmentTable({ assignments, sort, onSortChange, onDelete
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/admin/hr/shift-assignments/${assignment.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(assignment)}>
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/admin/hr/shift-assignments/${assignment.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(assignment)}>
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

@@ -13,6 +13,7 @@ import {
   usePatientsQuery,
   type PatientSearchFilters,
 } from '../../features/patients';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 const RESULTS_PAGE_SIZE = 100;
 
@@ -82,6 +83,7 @@ export default function PatientsListPage() {
   }
 
   return (
+    <RequirePermission permission="patient-management.view">
     <div className="flex flex-1 flex-col">
       {/* Centered, brand-colored banner — matches the Page banner style used
           across module pages (Theme & Branding → Section headers). */}
@@ -158,5 +160,6 @@ export default function PatientsListPage() {
       )}
       </div>
     </div>
+    </RequirePermission>
   );
 }

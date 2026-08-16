@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WardSelect } from '@/components/WardSelect';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface BedListToolbarProps {
   search: string;
@@ -16,6 +17,7 @@ interface BedListToolbarProps {
 }
 
 export function BedListToolbar({ search, onSearchChange, wardId, onWardIdChange, status, onStatusChange }: BedListToolbarProps) {
+  const { hasPermission } = useAuth();
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative w-56">
@@ -53,12 +55,14 @@ export function BedListToolbar({ search, onSearchChange, wardId, onWardIdChange,
         </SelectContent>
       </Select>
 
-      <Button asChild className="ml-auto gap-1.5">
-        <Link to="/clinical/ipd/beds/new">
-          <Plus className="h-4 w-4" />
-          New Bed
-        </Link>
-      </Button>
+      {hasPermission('clinical-care.create') && (
+        <Button asChild className="ml-auto gap-1.5">
+          <Link to="/clinical/ipd/beds/new">
+            <Plus className="h-4 w-4" />
+            New Bed
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

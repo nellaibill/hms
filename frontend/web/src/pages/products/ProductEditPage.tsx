@@ -2,6 +2,7 @@ import { ApiError, type ProductProfileFormValues } from '@hms/shared';
 import { ArrowLeft, Loader2, Settings2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ProductForm, useProductQuery, useUpdateProductMutation } from '@/features/products';
+import { RequirePermission } from '@/features/auth/RequirePermission';
 
 export default function ProductEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +65,7 @@ export default function ProductEditPage() {
   }
 
   return (
+    <RequirePermission permission="support-services.edit">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link
@@ -121,5 +123,6 @@ export default function ProductEditPage() {
         />
       </div>
     </div>
+    </RequirePermission>
   );
 }

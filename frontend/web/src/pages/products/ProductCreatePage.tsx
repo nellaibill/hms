@@ -2,6 +2,7 @@ import { ApiError, type ProductProfileFormValues } from '@hms/shared';
 import { ArrowLeft, PackagePlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ProductForm, useCreateProductMutation } from '@/features/products';
+import { RequirePermission } from '@/features/auth/RequirePermission';
 
 export default function ProductCreatePage() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export default function ProductCreatePage() {
   }
 
   return (
+    <RequirePermission permission="support-services.create">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link to="/support/inventory" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -70,5 +72,6 @@ export default function ProductCreatePage() {
         />
       </div>
     </div>
+    </RequirePermission>
   );
 }

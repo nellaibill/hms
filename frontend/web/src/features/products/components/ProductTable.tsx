@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
+import { useAuth } from '@/features/auth/AuthContext';
 import { StatusBadge } from './StatusBadge';
 
 interface ProductTableProps {
@@ -25,6 +26,8 @@ export function ProductTable({ products, sort, onSortChange }: ProductTableProps
 
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('support-services.edit');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -76,9 +79,11 @@ export function ProductTable({ products, sort, onSortChange }: ProductTableProps
                   <Button asChild variant="ghost" size="sm">
                     <Link to={`/support/inventory/${product.id}`}>View</Link>
                   </Button>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/support/inventory/${product.id}/edit`}>Edit</Link>
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/support/inventory/${product.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

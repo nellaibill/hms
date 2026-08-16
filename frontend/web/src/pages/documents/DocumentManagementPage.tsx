@@ -26,8 +26,10 @@ import {
   useDocumentsQuery,
 } from '@/features/documents';
 import type { DocumentFilters, HmsDocument } from '@/features/documents';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export default function DocumentManagementPage() {
+  const { hasPermission } = useAuth();
   const [filters, setFilters] = useState<DocumentFilters>(createEmptyFilters());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -98,10 +100,12 @@ export default function DocumentManagementPage() {
             <RefreshCw className={documentsQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
             Refresh
           </Button>
-          <Button onClick={() => setUploadOpen(true)}>
-            <UploadCloud className="h-4 w-4" />
-            Upload Document
-          </Button>
+          {hasPermission('records-compliance.create') && (
+            <Button onClick={() => setUploadOpen(true)}>
+              <UploadCloud className="h-4 w-4" />
+              Upload Document
+            </Button>
+          )}
         </div>
 
         {isPending ? <SummaryCardsSkeleton /> : <SummaryCards stats={summary} />}

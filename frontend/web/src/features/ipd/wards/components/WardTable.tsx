@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 
 const wardTypeLabels: Record<Ward['wardType'], string> = {
   General: 'General',
@@ -26,6 +27,9 @@ const columns: Array<{ field: string; label: string }> = [
 export function WardTable({ wards, sort, onSortChange, onDeleteRequested }: WardTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('clinical-care.edit');
+  const canDelete = hasPermission('clinical-care.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -59,9 +63,13 @@ export function WardTable({ wards, sort, onSortChange, onDeleteRequested }: Ward
             <tr key={ward.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{ward.code}</td>
               <td className="px-4 py-3">
-                <Link to={`/clinical/ipd/wards/${ward.id}/edit`} className="font-medium text-foreground hover:text-primary hover:underline">
-                  {ward.name}
-                </Link>
+                {canEdit ? (
+                  <Link to={`/clinical/ipd/wards/${ward.id}/edit`} className="font-medium text-foreground hover:text-primary hover:underline">
+                    {ward.name}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-foreground">{ward.name}</span>
+                )}
               </td>
               <td className="px-4 py-3 text-sm text-foreground">{wardTypeLabels[ward.wardType]}</td>
               <td className="px-4 py-3">
@@ -69,12 +77,16 @@ export function WardTable({ wards, sort, onSortChange, onDeleteRequested }: Ward
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/clinical/ipd/wards/${ward.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(ward)}>
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/clinical/ipd/wards/${ward.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(ward)}>
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

@@ -9,11 +9,13 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/Pagination';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { AdmissionTable, useAdmissionsQuery } from '../../features/ipd/admissions';
+import { useAuth } from '../../features/auth/AuthContext';
 
 export default function AdmissionsListPage() {
   const [status, setStatus] = useState<AdmissionStatus>('Admitted');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const { hasPermission } = useAuth();
 
   const debouncedSearch = useDebouncedValue(search);
 
@@ -69,12 +71,14 @@ export default function AdmissionsListPage() {
             aria-label="Search admissions"
             className="w-64"
           />
-          <Button asChild className="ml-auto gap-1.5">
-            <Link to="/clinical/ipd/admissions/new">
-              <Plus className="h-4 w-4" />
-              New Admission
-            </Link>
-          </Button>
+          {hasPermission('clinical-care.create') && (
+            <Button asChild className="ml-auto gap-1.5">
+              <Link to="/clinical/ipd/admissions/new">
+                <Plus className="h-4 w-4" />
+                New Admission
+              </Link>
+            </Button>
+          )}
         </div>
 
         {isPending && (

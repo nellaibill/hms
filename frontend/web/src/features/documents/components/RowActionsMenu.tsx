@@ -2,6 +2,7 @@ import { Archive, Download, Eye, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/features/auth/AuthContext';
 import type { HmsDocument } from '../types';
 
 interface RowActionsMenuProps {
@@ -13,6 +14,9 @@ interface RowActionsMenuProps {
 }
 
 export function RowActionsMenu({ doc, onPreview, onDownload, onArchive, onDelete }: RowActionsMenuProps) {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('records-compliance.edit');
+  const canDelete = hasPermission('records-compliance.delete');
   return (
     <div className="flex items-center justify-end gap-1">
       <Tooltip>
@@ -45,25 +49,29 @@ export function RowActionsMenu({ doc, onPreview, onDownload, onArchive, onDelete
         <TooltipContent>Download</TooltipContent>
       </Tooltip>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`More actions for ${doc.originalFileName}`}>
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {!doc.isArchived && (
-            <DropdownMenuItem onClick={() => onArchive(doc)}>
-              <Archive className="h-4 w-4" />
-              Archive
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem onClick={() => onDelete(doc)} className="text-destructive focus:text-destructive">
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {(canEdit || canDelete) && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`More actions for ${doc.originalFileName}`}>
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {!doc.isArchived && canEdit && (
+              <DropdownMenuItem onClick={() => onArchive(doc)}>
+                <Archive className="h-4 w-4" />
+                Archive
+              </DropdownMenuItem>
+            )}
+            {canDelete && (
+              <DropdownMenuItem onClick={() => onDelete(doc)} className="text-destructive focus:text-destructive">
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

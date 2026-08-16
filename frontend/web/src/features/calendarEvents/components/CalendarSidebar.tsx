@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useDepartmentNames } from '../hooks/useDepartmentDirectory';
 import { EventTypeFilterList } from './EventTypeFilterList';
 import { MiniNavCalendar } from './MiniNavCalendar';
@@ -45,15 +46,18 @@ export function CalendarSidebar({
 }: CalendarSidebarProps) {
   const filtersActive = !isFiltersEmpty(filters);
   const departmentNames = useDepartmentNames();
+  const { hasPermission } = useAuth();
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-border bg-card sm:w-[280px] sm:shrink-0">
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-5 p-4">
-          <Button onClick={onCreateEvent} className="w-full justify-center">
-            <Plus className="h-4 w-4" />
-            Create Event
-          </Button>
+          {hasPermission('engagement.create') && (
+            <Button onClick={onCreateEvent} className="w-full justify-center">
+              <Plus className="h-4 w-4" />
+              Create Event
+            </Button>
+          )}
 
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

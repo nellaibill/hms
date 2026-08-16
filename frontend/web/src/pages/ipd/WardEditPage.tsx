@@ -2,6 +2,7 @@ import { ApiError, type WardFormValues } from '@hms/shared';
 import { ArrowLeft, BedDouble, Loader2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { WardForm, useUpdateWardMutation, useWardQuery } from '../../features/ipd/wards';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function WardEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,6 +45,7 @@ export default function WardEditPage() {
   }
 
   return (
+    <RequirePermission permission="clinical-care.edit">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link to="/clinical/ipd/wards" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -79,5 +81,6 @@ export default function WardEditPage() {
         />
       </div>
     </div>
+    </RequirePermission>
   );
 }

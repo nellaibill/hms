@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface ShiftListToolbarProps {
   search: string;
@@ -12,6 +13,7 @@ interface ShiftListToolbarProps {
 }
 
 export function ShiftListToolbar({ search, onSearchChange, isActive, onIsActiveChange }: ShiftListToolbarProps) {
+  const { hasPermission } = useAuth();
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative w-64">
@@ -40,12 +42,14 @@ export function ShiftListToolbar({ search, onSearchChange, isActive, onIsActiveC
         </SelectContent>
       </Select>
 
-      <Button asChild className="ml-auto gap-1.5">
-        <Link to="/admin/hr/shifts/new">
-          <Plus className="h-4 w-4" />
-          New Shift
-        </Link>
-      </Button>
+      {hasPermission('workforce-admin.create') && (
+        <Button asChild className="ml-auto gap-1.5">
+          <Link to="/admin/hr/shifts/new">
+            <Plus className="h-4 w-4" />
+            New Shift
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

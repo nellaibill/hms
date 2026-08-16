@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Pagination, RoleListToolbar, RoleTable, useRolesQuery, type RoleStatus } from '../../features/roles';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function RolesListPage() {
   const [search, setSearch] = useState('');
@@ -36,6 +37,7 @@ export default function RolesListPage() {
   }
 
   return (
+    <RequirePermission permission="identity-administration.view">
     <div className="flex flex-1 flex-col">
       {/* Centered, brand-colored banner — matches the Page banner style used
           across module pages (Theme & Branding → Section headers). */}
@@ -91,5 +93,6 @@ export default function RolesListPage() {
       )}
       </div>
     </div>
+    </RequirePermission>
   );
 }
