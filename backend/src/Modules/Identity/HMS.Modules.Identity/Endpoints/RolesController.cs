@@ -4,11 +4,19 @@ using HMS.Modules.Identity.Application;
 using HMS.Modules.Identity.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HMS.Modules.Identity.Endpoints;
 
+/// <summary>
+/// Role management is the highest-priority surface protected in HMS Security Hardening
+/// Phase B: mutating actions require "identity-administration.*" in addition to the
+/// baseline Hospital token (see HMS.Shared.Infrastructure.PermissionAuthorization). Reads
+/// (GetPaged/GetById) stay at the baseline Hospital policy only — every authenticated
+/// hospital user can see roles, but only those with the permission can change them.
+/// </summary>
 [ApiController]
 [Route("api/v1/roles")]
 public sealed class RolesController : ControllerBase
@@ -63,6 +71,8 @@ public sealed class RolesController : ControllerBase
         return Ok(Envelope(result.Value));
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<RoleResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
@@ -78,7 +88,7 @@ public sealed class RolesController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        Guid? actorId = null;
+        var actorId = User.GetUserId();
 
         var result = await _service.CreateAsync(request, actorId, cancellationToken);
 
@@ -93,6 +103,8 @@ public sealed class RolesController : ControllerBase
             Envelope(result.Value));
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<RoleResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(
@@ -107,7 +119,7 @@ public sealed class RolesController : ControllerBase
              return BadRequest(BuildValidationError(validation));
         }
 
-        Guid? actorId = null;
+        var actorId = User.GetUserId();
 
         var result = await _service.UpdateAsync(id, request, actorId, cancellationToken);
 
@@ -119,13 +131,15 @@ public sealed class RolesController : ControllerBase
         return Ok(Envelope(result.Value));
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.delete")]
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(
         Guid id,
         CancellationToken cancellationToken)
     {
-        Guid? actorId = null;
+        var actorId = User.GetUserId();
 
         var result = await _service.DeleteAsync(id, actorId, cancellationToken);
 
@@ -137,12 +151,14 @@ public sealed class RolesController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPost("{id:guid}/activate")]
     public async Task<IActionResult> Activate(
         Guid id,
         CancellationToken cancellationToken)
     {
-        Guid? actorId = null;
+        var actorId = User.GetUserId();
 
         var result = await _service.ActivateAsync(id, actorId, cancellationToken);
 
@@ -154,12 +170,14 @@ public sealed class RolesController : ControllerBase
         return Ok(Envelope(result.Value));
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPost("{id:guid}/deactivate")]
     public async Task<IActionResult> Deactivate(
         Guid id,
         CancellationToken cancellationToken)
     {
-        Guid? actorId = null;
+        var actorId = User.GetUserId();
 
         var result = await _service.DeactivateAsync(id, actorId, cancellationToken);
 

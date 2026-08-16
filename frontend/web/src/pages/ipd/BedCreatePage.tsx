@@ -2,6 +2,7 @@ import { ApiError, type BedFormValues } from '@hms/shared';
 import { ArrowLeft, BedSingle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BedForm, useCreateBedMutation } from '../../features/ipd/beds';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function BedCreatePage() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function BedCreatePage() {
   }
 
   return (
+    <RequirePermission permission="clinical-care.create">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link to="/clinical/ipd/beds" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -42,5 +44,6 @@ export default function BedCreatePage() {
         />
       </div>
     </div>
+    </RequirePermission>
   );
 }

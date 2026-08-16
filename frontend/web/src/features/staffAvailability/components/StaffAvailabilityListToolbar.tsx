@@ -2,6 +2,7 @@ import { Plus, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface StaffAvailabilityListToolbarProps {
   search: string;
@@ -9,6 +10,7 @@ interface StaffAvailabilityListToolbarProps {
 }
 
 export function StaffAvailabilityListToolbar({ search, onSearchChange }: StaffAvailabilityListToolbarProps) {
+  const { hasPermission } = useAuth();
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative w-64">
@@ -23,12 +25,14 @@ export function StaffAvailabilityListToolbar({ search, onSearchChange }: StaffAv
         />
       </div>
 
-      <Button asChild className="ml-auto gap-1.5">
-        <Link to="/admin/hr/staff-availability/new">
-          <Plus className="h-4 w-4" />
-          New Availability Record
-        </Link>
-      </Button>
+      {hasPermission('workforce-admin.create') && (
+        <Button asChild className="ml-auto gap-1.5">
+          <Link to="/admin/hr/staff-availability/new">
+            <Plus className="h-4 w-4" />
+            New Availability Record
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

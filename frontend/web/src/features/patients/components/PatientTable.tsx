@@ -2,6 +2,7 @@ import type { Patient } from '@hms/shared';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '../../auth/AuthContext';
 
 interface PatientTableProps {
   patients: Patient[];
@@ -19,6 +20,9 @@ const columns: Array<{ field: string; label: string }> = [
 export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }: PatientTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('patient-management.edit');
+  const canDelete = hasPermission('patient-management.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -66,17 +70,21 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
               <td className="px-4 py-3 text-muted-foreground">{patient.currentRegistration?.encounterType ?? '—'}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/patients/registration/${patient.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => onDeleteRequested(patient)}
-                  >
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/patients/registration/${patient.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => onDeleteRequested(patient)}
+                    >
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

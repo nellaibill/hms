@@ -7,6 +7,7 @@ using HMS.Modules.Identity.Domain;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.Identity.Infrastructure.Repositories;
 using HMS.Modules.Identity.Infrastructure.Seed;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,11 +22,23 @@ public static class IdentityModule
 {
     public static IServiceCollection AddIdentityModule(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
+        // HMS Multi-Tenancy Phase C: the connection is resolved per-request from
+        // ITenantContext, not closed over a static ConnectionStrings:Default value — the
+        // (IServiceProvider, DbContextOptionsBuilder) overload runs once per DI scope
+        // (i.e. once per HTTP request), at the moment this DbContext is first resolved
+        // within that scope, by which point TenantResolutionMiddleware (or, for the login
+        // request itself, AuthenticationService — see its own doc comment) has already
+        // populated ITenantContext. See docs/DatabaseArchitecture.md.
+        services.AddDbContext<IdentityDbContext>((sp, options) =>
+        {
+            var tenantContext = sp.GetRequiredService<ITenantContext>();
+            if (!tenantContext.IsResolved)
+            {
+                throw new InvalidOperationException(
+                    "IdentityDbContext was resolved without a tenant having been established for this request.");
+            }
 
-        services.AddDbContext<IdentityDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsql =>
+            options.UseNpgsql(tenantContext.ConnectionString, npgsql =>
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDbContext.SchemaName);
 
@@ -35,7 +48,8 @@ public static class IdentityModule
                 // string, not typeof(...).Assembly) because HMS.Database.Migrations already
                 // references this module — a compile-time reference back would be circular.
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
-            }));
+            });
+        });
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserFileStorage, UserFileStorage>();

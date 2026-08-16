@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StaffName } from '@/components/StaffName';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface StaffAvailabilityTableProps {
   records: StaffAvailability[];
@@ -20,6 +21,9 @@ const columns: Array<{ field: string; label: string }> = [
 export function StaffAvailabilityTable({ records, sort, onSortChange, onDeleteRequested }: StaffAvailabilityTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('workforce-admin.edit');
+  const canDelete = hasPermission('workforce-admin.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -65,12 +69,16 @@ export function StaffAvailabilityTable({ records, sort, onSortChange, onDeleteRe
               <td className="px-4 py-3 text-muted-foreground">{record.reason || '—'}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/admin/hr/staff-availability/${record.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(record)}>
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/admin/hr/staff-availability/${record.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(record)}>
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

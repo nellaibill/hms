@@ -2,6 +2,7 @@ import { ApiError, type UserProfileFormValues } from '@hms/shared';
 import { ArrowLeft, Loader2, UserCog } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { UserForm, useUpdateUserMutation, useUserQuery } from '../../features/users';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function UserEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +49,7 @@ export default function UserEditPage() {
   }
 
   return (
+    <RequirePermission permission="identity-administration.edit">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link to={`/users/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -87,5 +89,6 @@ export default function UserEditPage() {
       />
       </div>
     </div>
+    </RequirePermission>
   );
 }

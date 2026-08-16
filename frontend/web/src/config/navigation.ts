@@ -23,8 +23,6 @@ import {
   Files,
   type LucideIcon,
 } from 'lucide-react';
-import type { Role } from '@/features/auth/types';
-
 // Flat, two-section Primary Navigation model — Dashboard stands alone at the
 // top, everything else lives directly under a "Clinical" or "Administrative"
 // section with no further nesting. This file is the single source of truth
@@ -36,7 +34,11 @@ export interface NavLeaf {
   path: string;
   icon: LucideIcon;
   description: string;
-  roles: Role[] | 'all';
+  /** Backend permission-catalog module (e.g. "patient-management") whose
+   * `.view` key gates this leaf's visibility — see docs behind
+   * filterNavigationForPermissions below. Omitted (e.g. Dashboard) means
+   * visible to every authenticated user regardless of permissions. */
+  permission?: string;
   /** Section header rendered above this item in the sidebar — top-level items only. */
   section?: string;
 }
@@ -50,7 +52,6 @@ export const navigationTree: NavNode[] = [
     path: '/dashboard',
     icon: LayoutDashboard,
     description: 'Executive overview — census, income & expense, HR presence, and plans/projects status.',
-    roles: 'all',
   },
   {
     type: 'leaf',
@@ -58,7 +59,7 @@ export const navigationTree: NavNode[] = [
     path: '/patients/enquiry',
     icon: UserSearch,
     description: 'Find an existing patient by name, UHID, or phone to view or update their registration.',
-    roles: ['receptionist', 'doctor', 'nurse'],
+    permission: 'patient-management',
     section: 'Clinical',
   },
   {
@@ -67,7 +68,7 @@ export const navigationTree: NavNode[] = [
     path: '/patients/registration',
     icon: ClipboardList,
     description: 'Register a new patient or find an existing one to update their registration.',
-    roles: ['receptionist', 'doctor', 'nurse'],
+    permission: 'patient-management',
     section: 'Clinical',
   },
   {
@@ -76,7 +77,7 @@ export const navigationTree: NavNode[] = [
     path: '/clinical/opd',
     icon: Stethoscope,
     description: 'Outpatient consultant queues, consultations, prescriptions, and investigation orders.',
-    roles: ['doctor', 'nurse'],
+    permission: 'clinical-care',
     section: 'Clinical',
   },
   {
@@ -85,7 +86,7 @@ export const navigationTree: NavNode[] = [
     path: '/clinical/ipd',
     icon: BedDouble,
     description: 'Inpatient bed/ward management, admissions, nursing charting, and discharge workflows.',
-    roles: ['doctor', 'nurse'],
+    permission: 'clinical-care',
     section: 'Clinical',
   },
   {
@@ -94,7 +95,7 @@ export const navigationTree: NavNode[] = [
     path: '/clinical/ot',
     icon: Scissors,
     description: 'OT scheduling, consent management, surgical team assignment, and operative notes.',
-    roles: ['doctor', 'nurse'],
+    permission: 'clinical-care',
     section: 'Clinical',
   },
   {
@@ -103,7 +104,7 @@ export const navigationTree: NavNode[] = [
     path: '/pharmacy',
     icon: Pill,
     description: 'Prescription fulfillment queue, drug master, and stock/batch/expiry tracking.',
-    roles: ['pharmacist', 'doctor'],
+    permission: 'pharmacy',
     section: 'Clinical',
   },
   {
@@ -112,7 +113,7 @@ export const navigationTree: NavNode[] = [
     path: '/diagnostics/lab',
     icon: FlaskConical,
     description: 'Test order queue, sample tracking, and result entry with critical value flagging.',
-    roles: ['labTechnician', 'radiologist', 'doctor'],
+    permission: 'diagnostics',
     section: 'Clinical',
   },
   {
@@ -121,7 +122,7 @@ export const navigationTree: NavNode[] = [
     path: '/diagnostics/radiology',
     icon: ScanLine,
     description: 'Modality worklist, study review, and radiology report entry and release.',
-    roles: ['labTechnician', 'radiologist', 'doctor'],
+    permission: 'diagnostics',
     section: 'Clinical',
   },
   {
@@ -130,7 +131,7 @@ export const navigationTree: NavNode[] = [
     path: '/diagnostics/blood-bank',
     icon: Droplet,
     description: 'Donor management, blood unit inventory, and issue/crossmatch tracking.',
-    roles: ['labTechnician', 'radiologist', 'doctor'],
+    permission: 'diagnostics',
     section: 'Clinical',
   },
   {
@@ -139,7 +140,7 @@ export const navigationTree: NavNode[] = [
     path: '/support/ambulance',
     icon: Truck,
     description: 'Dispatch requests, trip logs, and ambulance billing.',
-    roles: ['admin'],
+    permission: 'support-services',
     section: 'Clinical',
   },
   {
@@ -148,7 +149,7 @@ export const navigationTree: NavNode[] = [
     path: '/finance/accounts',
     icon: Wallet,
     description: 'Unified invoice ledger, payments & refunds, insurance/TPA claims, and financial reports.',
-    roles: ['accounts', 'receptionist'],
+    permission: 'finance-billing',
     section: 'Administrative',
   },
   {
@@ -157,7 +158,7 @@ export const navigationTree: NavNode[] = [
     path: '/records/certificates',
     icon: FileBadge,
     description: 'Certificate issuance and medical records department (MRD) retrieval.',
-    roles: ['doctor', 'admin'],
+    permission: 'records-compliance',
     section: 'Administrative',
   },
   {
@@ -166,7 +167,7 @@ export const navigationTree: NavNode[] = [
     path: '/documents',
     icon: Files,
     description: 'Centralized document repository — upload, preview, download, and archive files for any HMS record.',
-    roles: 'all',
+    permission: 'records-compliance',
     section: 'Administrative',
   },
   {
@@ -175,7 +176,7 @@ export const navigationTree: NavNode[] = [
     path: '/admin/hr',
     icon: UsersRound,
     description: 'Staff directory, roster/shift assignment, leave management, and credentialing.',
-    roles: ['hr', 'admin'],
+    permission: 'workforce-admin',
     section: 'Administrative',
   },
   {
@@ -184,7 +185,7 @@ export const navigationTree: NavNode[] = [
     path: '/admin/activity-log',
     icon: History,
     description: 'System-wide, read-only audit trail of every module\'s write transactions.',
-    roles: ['hr', 'admin'],
+    permission: 'workforce-admin',
     section: 'Administrative',
   },
   {
@@ -193,7 +194,7 @@ export const navigationTree: NavNode[] = [
     path: '/support/inventory',
     icon: Boxes,
     description: 'Item master, stock ledger, reorder alerts, and vendor purchase orders.',
-    roles: ['admin'],
+    permission: 'support-services',
     section: 'Administrative',
   },
   {
@@ -202,7 +203,7 @@ export const navigationTree: NavNode[] = [
     path: '/engagement/programmes',
     icon: CalendarDays,
     description: 'Hospital events, health camps, and programme scheduling.',
-    roles: 'all',
+    permission: 'engagement',
     section: 'Administrative',
   },
   {
@@ -211,7 +212,7 @@ export const navigationTree: NavNode[] = [
     path: '/engagement/messages',
     icon: MessageSquare,
     description: 'Notification center covering clinical, operational, administrative, and financial alerts.',
-    roles: 'all',
+    permission: 'engagement',
     section: 'Administrative',
   },
   {
@@ -220,7 +221,7 @@ export const navigationTree: NavNode[] = [
     path: '/reports',
     icon: BarChart3,
     description: 'Operational, clinical, financial, and statutory/regulatory reports.',
-    roles: ['admin', 'accounts', 'hr'],
+    permission: 'reports-analytics',
     section: 'Administrative',
   },
   {
@@ -229,7 +230,7 @@ export const navigationTree: NavNode[] = [
     path: '/records/emrd',
     icon: FolderOpen,
     description: 'Digital document repository for scanned and archived patient records.',
-    roles: ['doctor', 'admin'],
+    permission: 'records-compliance',
     section: 'Administrative',
   },
   {
@@ -238,17 +239,18 @@ export const navigationTree: NavNode[] = [
     path: '/admin/settings',
     icon: Settings,
     description: 'Roles & permissions, master data, and system configuration.',
-    roles: ['hr', 'admin'],
+    permission: 'identity-administration',
     section: 'Administrative',
   },
 ];
 
-export function filterNavigationForRole(role: Role): NavNode[] {
-  if (role === 'superAdmin' || role === 'admin') return navigationTree;
-
-  const nodeVisible = (roles: Role[] | 'all') => roles === 'all' || roles.includes(role);
-
-  return navigationTree.filter((node) => nodeVisible(node.roles));
+/** Permission-driven — a leaf shows only when the signed-in user holds that
+ * leaf's `${permission}.view` key (leaves with no `permission` are always
+ * visible, e.g. Dashboard). Replaces the old hardcoded role-name allowlist:
+ * an admin can now grant/revoke sidebar access purely by editing a role's
+ * permissions, without a frontend code change. */
+export function filterNavigationForPermissions(hasPermission: (key: string) => boolean): NavNode[] {
+  return navigationTree.filter((node) => !node.permission || hasPermission(`${node.permission}.view`));
 }
 
 export function findLeafByPath(path: string): NavLeaf | undefined {

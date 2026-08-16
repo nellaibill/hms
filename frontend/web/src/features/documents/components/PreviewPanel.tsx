@@ -1,5 +1,6 @@
 import { Archive, Download, FileQuestion, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { EntityTypeBadge } from './EntityTypeBadge';
 import { FileTypeIcon } from './FileTypeIcon';
@@ -77,6 +78,9 @@ interface PreviewPanelProps {
 }
 
 export function PreviewPanel({ doc, onClose, onDownload, onArchive, onDelete, className }: PreviewPanelProps) {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('records-compliance.edit');
+  const canDelete = hasPermission('records-compliance.delete');
   return (
     <div className={cn('flex h-full flex-col', className)}>
       <div className="flex items-start justify-between gap-2 border-b border-border p-4">
@@ -117,16 +121,18 @@ export function PreviewPanel({ doc, onClose, onDownload, onArchive, onDelete, cl
       </div>
 
       <div className="flex items-center justify-end gap-2 border-t border-border p-4">
-        {!doc.isArchived && (
+        {!doc.isArchived && canEdit && (
           <Button variant="outline" onClick={() => onArchive(doc)}>
             <Archive className="h-4 w-4" />
             Archive
           </Button>
         )}
-        <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => onDelete(doc)}>
-          <Trash2 className="h-4 w-4" />
-          Delete
-        </Button>
+        {canDelete && (
+          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => onDelete(doc)}>
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
+        )}
         <Button onClick={() => onDownload(doc)}>
           <Download className="h-4 w-4" />
           Download

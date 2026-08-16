@@ -14,6 +14,7 @@ import { NotificationsMenu } from '@/components/shell/NotificationsMenu';
 import { PendingTasksMenu } from '@/components/shell/PendingTasksMenu';
 import { ProfileMenu } from '@/components/shell/ProfileMenu';
 import { SidebarNav } from '@/components/shell/SidebarNav';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface HeaderLinkIconProps {
   to: string;
@@ -40,6 +41,7 @@ export function TopHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { data: brandingConfig } = useBrandingQuery();
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
+  const { hasPermission } = useAuth();
 
   return (
     <header className="sticky top-0 z-[1000] flex h-16 items-center gap-6 border-b border-header-foreground/15 bg-header px-6 text-header-foreground shadow-soft-md">
@@ -79,10 +81,14 @@ export function TopHeader() {
       <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto py-3 [&>*]:shrink-0">
         <LanguageMenu />
         <NotificationsMenu />
-        <HeaderLinkIcon to="/engagement/programmes" label="Calendar" icon={CalendarIcon} />
+        {hasPermission('engagement.view') && (
+          <HeaderLinkIcon to="/engagement/programmes" label="Calendar" icon={CalendarIcon} />
+        )}
         <HeaderCalculator />
         <PendingTasksMenu />
-        <HeaderLinkIcon to="/finance/accounts" label="Expenses Tracking" icon={Wallet} />
+        {hasPermission('finance-billing.view') && (
+          <HeaderLinkIcon to="/finance/accounts" label="Expenses Tracking" icon={Wallet} />
+        )}
         <ProfileMenu />
       </div>
     </header>

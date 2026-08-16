@@ -1,6 +1,8 @@
 import { ArrowLeft, Loader2, Pencil, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '../../features/auth/AuthContext';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 import {
   buildEmptyPermissions,
   RoleForm,
@@ -34,6 +36,7 @@ const emptyDefaults: RoleFormValues = {
 export default function RoleFormPage({ mode }: RoleFormPageProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const isNew = mode === 'create';
 
   const { data: role, isPending, isError } = useRoleQuery(isNew ? undefined : id);
@@ -87,7 +90,7 @@ export default function RoleFormPage({ mode }: RoleFormPageProps) {
       {/* Centered, brand-colored banner — matches the Page banner style used
           across module pages (Theme & Branding → Section headers). */}
       <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        {mode === 'view' && (
+        {mode === 'view' && hasPermission('identity-administration.edit') && (
           <Button
             asChild
             variant="outline"
@@ -109,13 +112,25 @@ export default function RoleFormPage({ mode }: RoleFormPageProps) {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-      <RoleForm
-        mode={mode}
-        defaultValues={isNew ? emptyDefaults : toFormValues(role!)}
-        isSubmitting={createMutation.isPending || updateMutation.isPending}
-        onSubmit={handleSubmit}
-        onCancel={() => navigate(backTo)}
-      />
+      {mode === 'view' ? (
+        <RoleForm
+          mode={mode}
+          defaultValues={toFormValues(role!)}
+          isSubmitting={false}
+          onSubmit={handleSubmit}
+          onCancel={() => navigate(backTo)}
+        />
+      ) : (
+        <RequirePermission permission={isNew ? 'identity-administration.create' : 'identity-administration.edit'}>
+          <RoleForm
+            mode={mode}
+            defaultValues={isNew ? emptyDefaults : toFormValues(role!)}
+            isSubmitting={createMutation.isPending || updateMutation.isPending}
+            onSubmit={handleSubmit}
+            onCancel={() => navigate(backTo)}
+          />
+        </RequirePermission>
+      )}
       </div>
     </div>
   );

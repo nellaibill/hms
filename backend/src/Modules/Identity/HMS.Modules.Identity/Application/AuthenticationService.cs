@@ -12,6 +12,13 @@ namespace HMS.Modules.Identity.Application;
 /// §8). Soft-deleted users need no special handling: IUserRepository.GetByUsernameAsync
 /// already excludes them via User's EF global query filter, so they naturally fail rule 1
 /// exactly like a username that never existed.
+///
+/// HMS Multi-Tenancy Phase C: by the time this runs, <see cref="ITenantContext"/> has
+/// already been resolved and populated by HMS.Api's TenantResolutionMiddleware (from the
+/// X-Hospital-Code header on this same login request — see that middleware's own doc
+/// comment for why tenant resolution can't happen here, inside this service, instead).
+/// IUserRepository/IdentityDbContext are already tenant-aware by the time this method's
+/// first line runs.
 /// </summary>
 internal class AuthenticationService : IAuthenticationService
 {
@@ -21,6 +28,7 @@ internal class AuthenticationService : IAuthenticationService
     private readonly IRoleRepository _roleRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<AuthenticationService> _logger;
 
     public AuthenticationService(
@@ -28,17 +36,28 @@ internal class AuthenticationService : IAuthenticationService
         IRoleRepository roleRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
+        ITenantContext tenantContext,
         ILogger<AuthenticationService> logger)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
     public async Task<Result<LoginResponse>> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
+        if (!_tenantContext.IsResolved)
+        {
+            // Should be unreachable in production — TenantResolutionMiddleware always
+            // resolves the tenant before this action runs (see its own doc comment). A
+            // hard failure here, not a generic login rejection, since it means the request
+            // reached this method through some path other than that middleware.
+            throw new InvalidOperationException("LoginAsync was called without a tenant having been resolved for this request.");
+        }
+
         // Rule 1: user exists.
         var user = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
         if (user is null)
@@ -73,8 +92,13 @@ internal class AuthenticationService : IAuthenticationService
         user.RecordLogin(DateTime.UtcNow);
         await _userRepository.SaveChangesAsync(cancellationToken);
 
+        var permissionKeys = role.RolePermissions
+            .Where(rp => rp.Permission.IsActive && !rp.Permission.IsDeleted)
+            .Select(rp => rp.Permission.Key)
+            .ToList();
+
         var (token, expiresInSeconds) = _jwtTokenGenerator.GenerateToken(
-            user.Id, user.Username, role.Id, role.Name, request.LoginType);
+            user.Id, user.Username, role.Id, role.Name, request.LoginType, permissionKeys, _tenantContext.TenantId!.Value);
 
         _logger.LogInformation("User {UserId} logged in", user.Id);
 
@@ -93,6 +117,7 @@ internal class AuthenticationService : IAuthenticationService
                 RoleName = role.Name,
                 LoginType = request.LoginType,
                 ProfilePhotoUrl = user.ProfilePhotoUrl,
+                PermissionKeys = permissionKeys,
             },
         });
 

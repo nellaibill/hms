@@ -9,8 +9,10 @@ import type { HttpClient } from '../httpClient';
 export class AuthApi {
   constructor(private readonly client: HttpClient) {}
 
-  async login(request: LoginRequest): Promise<LoginResponse> {
-    const response = await this.client.post<LoginResponse>(API_ROUTES.auth.login, request);
+  async login(hospitalCode: string, request: LoginRequest): Promise<LoginResponse> {
+    const response = await this.client.post<LoginResponse>(API_ROUTES.auth.login, request, {
+      headers: { 'X-Hospital-Code': hospitalCode },
+    });
     return response.data;
   }
 }

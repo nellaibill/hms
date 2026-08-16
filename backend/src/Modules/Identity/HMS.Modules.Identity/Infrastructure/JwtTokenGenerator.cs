@@ -41,20 +41,32 @@ internal sealed class JwtTokenGenerator : IJwtTokenGenerator
         string username,
         Guid roleId,
         string roleName,
-        string loginType)
+        string loginType,
+        IEnumerable<string> permissionKeys,
+        Guid tenantId)
     {
-        // Literal claim type names (UserId/Username/RoleId/RoleName/LoginType), not the
-        // long http://schemas.microsoft.com/... URIs JwtSecurityTokenHandler's default
-        // inbound claim map would otherwise remap well-known types to — HMS.Api's
+        // Literal claim type names (UserId/Username/RoleId/RoleName/LoginType/TenantId),
+        // not the long http://schemas.microsoft.com/... URIs JwtSecurityTokenHandler's
+        // default inbound claim map would otherwise remap well-known types to — HMS.Api's
         // JwtConfiguration disables that mapping so these names survive validation intact.
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim("UserId", userId.ToString()),
-            new Claim("Username", username),
-            new Claim("RoleId", roleId.ToString()),
-            new Claim("RoleName", roleName),
-            new Claim("LoginType", loginType),
+            new("UserId", userId.ToString()),
+            new("Username", username),
+            new("RoleId", roleId.ToString()),
+            new("RoleName", roleName),
+            new("LoginType", loginType),
+            // HMS Multi-Tenancy Phase C: read by HMS.Api's TenantResolutionMiddleware on
+            // every subsequent request to resolve which physical database this caller's
+            // hospital modules must use — never a connection string or any other
+            // infrastructure secret, just the tenant's identity (platform.tenants.Id).
+            new("TenantId", tenantId.ToString()),
         };
+
+        // One "Permission" claim per key — checked by
+        // HMS.Shared.Infrastructure.PermissionAuthorizationHandler (HMS Security Hardening
+        // Phase B) against [RequirePermission("...")] on protected actions.
+        claims.AddRange(permissionKeys.Select(key => new Claim("Permission", key)));
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_expiresInMinutes);
         var token = new JwtSecurityToken(

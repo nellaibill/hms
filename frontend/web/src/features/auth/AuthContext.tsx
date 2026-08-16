@@ -15,8 +15,11 @@ interface StoredSession {
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  login: (role: Role, username: string, password: string) => Promise<void>;
+  login: (hospitalCode: string, role: Role, username: string, password: string) => Promise<void>;
   logout: () => void;
+  /** UI-only hint mirroring the backend's [RequirePermission(key)] checks — hides/disables
+   * actions the user's role doesn't have, so they don't fill in a form only to hit a 403. */
+  hasPermission: (key: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -45,6 +48,7 @@ function toAuthUser(response: LoginResponse): AuthUser {
     username: user.username,
     email: user.email,
     roleName: user.roleName,
+    permissionKeys: user.permissionKeys,
   };
 }
 
@@ -56,8 +60,8 @@ setAuthToken(initialSession?.token ?? null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(initialSession?.user ?? null);
 
-  const login = async (role: Role, username: string, password: string) => {
-    const response = await authApi.login({ loginType: role, username, password });
+  const login = async (hospitalCode: string, role: Role, username: string, password: string) => {
+    const response = await authApi.login(hospitalCode, { loginType: role, username, password });
     const session: StoredSession = {
       token: response.token,
       expiresAt: Date.now() + response.expiresIn * 1000,
@@ -74,7 +78,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const value = useMemo(() => ({ user, isAuthenticated: user !== null, login, logout }), [user]);
+  const hasPermission = (key: string) => user?.permissionKeys.includes(key) ?? false;
+
+  const value = useMemo(
+    () => ({ user, isAuthenticated: user !== null, login, logout, hasPermission }),
+    [user],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface WardListToolbarProps {
   search: string;
@@ -12,6 +13,7 @@ interface WardListToolbarProps {
 }
 
 export function WardListToolbar({ search, onSearchChange, isActive, onIsActiveChange }: WardListToolbarProps) {
+  const { hasPermission } = useAuth();
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative w-64">
@@ -40,12 +42,14 @@ export function WardListToolbar({ search, onSearchChange, isActive, onIsActiveCh
         </SelectContent>
       </Select>
 
-      <Button asChild className="ml-auto gap-1.5">
-        <Link to="/clinical/ipd/wards/new">
-          <Plus className="h-4 w-4" />
-          New Ward
-        </Link>
-      </Button>
+      {hasPermission('clinical-care.create') && (
+        <Button asChild className="ml-auto gap-1.5">
+          <Link to="/clinical/ipd/wards/new">
+            <Plus className="h-4 w-4" />
+            New Ward
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

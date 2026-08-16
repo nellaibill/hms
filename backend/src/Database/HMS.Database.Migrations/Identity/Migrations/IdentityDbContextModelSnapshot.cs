@@ -566,6 +566,54 @@ namespace HMS.Database.Migrations.Identity.Migrations
                             Key = "reports-analytics.delete",
                             Label = "Delete",
                             Module = "reports-analytics"
+                        },
+                        new
+                        {
+                            Id = new Guid("6e2c1b3a-8f4d-4a2e-9c7b-1a5e3d8f6b2c"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 11,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "identity-administration.view",
+                            Label = "View",
+                            Module = "identity-administration"
+                        },
+                        new
+                        {
+                            Id = new Guid("7f3d2c4b-9a5e-4b3f-8d6c-2b6f4e9a7c3d"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 11,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "identity-administration.create",
+                            Label = "Create",
+                            Module = "identity-administration"
+                        },
+                        new
+                        {
+                            Id = new Guid("8a4e3d5c-0b6f-4c40-9e7d-3c7a5f0b8d4e"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 11,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "identity-administration.edit",
+                            Label = "Edit",
+                            Module = "identity-administration"
+                        },
+                        new
+                        {
+                            Id = new Guid("9b5f4e6d-1c70-4d51-af8e-4d8b60c19e5f"),
+                            Action = "delete",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 11,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "identity-administration.delete",
+                            Label = "Delete",
+                            Module = "identity-administration"
                         });
                 });
 

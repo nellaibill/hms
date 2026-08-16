@@ -3,6 +3,7 @@ import { CalendarDays, Menu, Plus } from 'lucide-react';
 import { ApiError } from '@hms/shared';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import {
   CalendarSidebar,
@@ -61,6 +62,7 @@ export default function CalendarEventsPage() {
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const { hasPermission } = useAuth();
   const debouncedSearch = useDebouncedValue(search, 200);
 
   const eventsQuery = useCalendarEventsQuery();
@@ -243,14 +245,16 @@ export default function CalendarEventsPage() {
         </div>
       </div>
 
-      <Button
-        onClick={() => openCreateDrawer()}
-        size="icon"
-        aria-label="Create Event"
-        className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-soft-lg lg:hidden"
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
+      {hasPermission('engagement.create') && (
+        <Button
+          onClick={() => openCreateDrawer()}
+          size="icon"
+          aria-label="Create Event"
+          className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-soft-lg lg:hidden"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      )}
 
       <EventDetailsDrawer
         event={selectedEvent}

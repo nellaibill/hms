@@ -1,6 +1,7 @@
 import { ArrowRight, Database, Palette, Settings as SettingsIcon, ShieldCheck, Users as UsersIcon, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface SettingsSection {
   title: string;
@@ -8,6 +9,10 @@ interface SettingsSection {
   icon: LucideIcon;
   path?: string;
   status: 'available' | 'placeholder';
+  /** Backend permission gating this card — omitted for Master Data/Theme & Branding,
+   * which have no corresponding entry in the permission catalog (see final report's
+   * gap list); those stay reachable to anyone who can open Settings at all. */
+  permission?: string;
 }
 
 const sections: SettingsSection[] = [
@@ -17,6 +22,7 @@ const sections: SettingsSection[] = [
     icon: UsersIcon,
     path: '/users',
     status: 'available',
+    permission: 'identity-administration.view',
   },
   {
     title: 'Roles & Permissions',
@@ -24,6 +30,7 @@ const sections: SettingsSection[] = [
     icon: ShieldCheck,
     path: '/admin/roles',
     status: 'available',
+    permission: 'identity-administration.view',
   },
   {
     title: 'Master Data',
@@ -42,6 +49,8 @@ const sections: SettingsSection[] = [
 ];
 
 export default function SettingsPage() {
+  const { hasPermission } = useAuth();
+  const visibleSections = sections.filter((section) => !section.permission || hasPermission(section.permission));
   return (
     <div className="flex flex-1 flex-col">
       {/* Centered, brand-colored banner — matches the Page banner style used
@@ -60,7 +69,7 @@ export default function SettingsPage() {
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {sections.map((section) => {
+        {visibleSections.map((section) => {
           const Icon = section.icon;
           const content = (
             <Card

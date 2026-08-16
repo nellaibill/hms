@@ -1,4 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/features/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { EventPill } from './EventPill';
 import { EVENT_TYPE_META } from '../constants';
@@ -17,6 +18,8 @@ interface DayCellProps {
 export function DayCell({ day, events, onSelectEvent, onCreateAt }: DayCellProps) {
   const visible = events.slice(0, MAX_VISIBLE_EVENTS);
   const overflow = events.length - visible.length;
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission('engagement.create');
 
   return (
     <div
@@ -39,14 +42,16 @@ export function DayCell({ day, events, onSelectEvent, onCreateAt }: DayCellProps
         >
           {day.dayOfMonth}
         </span>
-        <button
-          type="button"
-          onClick={() => onCreateAt(day.iso)}
-          aria-label={`Create event on ${day.iso}`}
-          className="hidden h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 sm:flex"
-        >
-          +
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => onCreateAt(day.iso)}
+            aria-label={`Create event on ${day.iso}`}
+            className="hidden h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 sm:flex"
+          >
+            +
+          </button>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-1">

@@ -5,6 +5,7 @@ using HMS.Modules.Calendar.Application.Validators;
 using HMS.Modules.Calendar.Contracts;
 using HMS.Modules.Calendar.Infrastructure;
 using HMS.Modules.Calendar.Infrastructure.Repositories;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,18 +23,27 @@ public static class CalendarModule
 {
     public static IServiceCollection AddCalendarModule(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
+        // HMS Multi-Tenancy Phase C: resolved per-request from ITenantContext — see
+        // HMS.Modules.Identity.IdentityModule's identical registration for the full
+        // rationale.
+        services.AddDbContext<CalendarDbContext>((sp, options) =>
+        {
+            var tenantContext = sp.GetRequiredService<ITenantContext>();
+            if (!tenantContext.IsResolved)
+            {
+                throw new InvalidOperationException(
+                    "CalendarDbContext was resolved without a tenant having been established for this request.");
+            }
 
-        services.AddDbContext<CalendarDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsql =>
+            options.UseNpgsql(tenantContext.ConnectionString, npgsql =>
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", CalendarDbContext.SchemaName);
 
                 // Migration classes live in HMS.Database.Migrations (per
                 // docs/DatabaseArchitecture.md), not in this module's own assembly.
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
-            }));
+            });
+        });
 
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventService, EventService>();

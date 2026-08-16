@@ -22,6 +22,10 @@ public class AuthenticationApiTests : IClassFixture<UsersApiFactory>
     public AuthenticationApiTests(UsersApiFactory factory)
     {
         _client = factory.CreateClient();
+        // HMS Multi-Tenancy Phase C: every login request must identify its tenant via this
+        // header — TenantResolutionMiddleware rejects a login with none. UsersApiFactory's
+        // database is the "legacy" tenant seeded at startup (see LegacyTenantSeedOptions).
+        _client.DefaultRequestHeaders.Add("X-Hospital-Code", "legacy");
     }
 
     // "doctor" is one of the web login page's fixed LoginType values; LoginTypes.cs maps it

@@ -2,6 +2,7 @@ import type { CreatePatientRequest, PatientRegistrationUiFormValues } from '@hms
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 import { saveBillingForPatient, type BillingFormValues } from '../../features/billing';
 import {
   PatientRegistrationForm,
@@ -162,11 +163,13 @@ export default function PatientRegistrationCreatePage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-      <PatientRegistrationForm
-        isSubmitting={mutation.isPending}
-        apiError={toDisplayError(mutation.error)}
-        onSubmit={handleSubmit}
-      />
+      <RequirePermission permission="patient-management.create">
+        <PatientRegistrationForm
+          isSubmitting={mutation.isPending}
+          apiError={toDisplayError(mutation.error)}
+          onSubmit={handleSubmit}
+        />
+      </RequirePermission>
       </div>
     </div>
   );

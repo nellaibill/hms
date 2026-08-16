@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 
 const bedStatusVariant: Record<BedStatus, 'success' | 'destructive' | 'warning'> = {
   Available: 'success',
@@ -26,6 +27,9 @@ const columns: Array<{ field: string; label: string }> = [{ field: 'bednumber', 
 export function BedTable({ beds, wardLabels, sort, onSortChange, onDeleteRequested }: BedTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('clinical-care.edit');
+  const canDelete = hasPermission('clinical-care.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -61,9 +65,13 @@ export function BedTable({ beds, wardLabels, sort, onSortChange, onDeleteRequest
           {beds.map((bed) => (
             <tr key={bed.id} className="hover:bg-muted/30">
               <td className="px-4 py-3">
-                <Link to={`/clinical/ipd/beds/${bed.id}/edit`} className="font-medium text-foreground hover:text-primary hover:underline">
-                  {bed.bedNumber}
-                </Link>
+                {canEdit ? (
+                  <Link to={`/clinical/ipd/beds/${bed.id}/edit`} className="font-medium text-foreground hover:text-primary hover:underline">
+                    {bed.bedNumber}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-foreground">{bed.bedNumber}</span>
+                )}
               </td>
               <td className="px-4 py-3 text-sm text-foreground">{wardLabels[bed.wardId] ?? bed.wardId}</td>
               <td className="px-4 py-3 text-sm text-foreground">{bed.bedType}</td>
@@ -76,19 +84,23 @@ export function BedTable({ beds, wardLabels, sort, onSortChange, onDeleteRequest
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/clinical/ipd/beds/${bed.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    disabled={bed.status === 'Occupied'}
-                    title={bed.status === 'Occupied' ? 'An occupied bed cannot be deleted' : undefined}
-                    onClick={() => onDeleteRequested(bed)}
-                  >
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/clinical/ipd/beds/${bed.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={bed.status === 'Occupied'}
+                      title={bed.status === 'Occupied' ? 'An occupied bed cannot be deleted' : undefined}
+                      onClick={() => onDeleteRequested(bed)}
+                    >
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

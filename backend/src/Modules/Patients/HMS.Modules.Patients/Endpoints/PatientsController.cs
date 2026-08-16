@@ -48,6 +48,7 @@ public class PatientsController : ControllerBase
     /// <response code="201">The patient was registered.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="409">A patient with the same name and phone number is already registered.</response>
+    [RequirePermission("patient-management.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request, CancellationToken cancellationToken)
     {
@@ -72,6 +73,7 @@ public class PatientsController : ControllerBase
     /// <response code="200">The patient was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    [RequirePermission("patient-management.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePatientRequest request, CancellationToken cancellationToken)
     {
@@ -88,6 +90,7 @@ public class PatientsController : ControllerBase
     /// <summary>Soft-deletes a patient.</summary>
     /// <response code="204">The patient was deleted.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    [RequirePermission("patient-management.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -98,6 +101,7 @@ public class PatientsController : ControllerBase
     /// <summary>Gets a single patient by id.</summary>
     /// <response code="200">The patient was found.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    [RequirePermission("patient-management.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -110,6 +114,7 @@ public class PatientsController : ControllerBase
     /// <response code="201">The registration was recorded.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    [RequirePermission("patient-management.create")]
     [HttpPost("{id:guid}/registrations")]
     public async Task<IActionResult> AddRegistration(Guid id, [FromBody] PatientRegistrationDetails request, CancellationToken cancellationToken)
     {
@@ -133,6 +138,7 @@ public class PatientsController : ControllerBase
     /// <summary>Lists every encounter/visit a patient has had, newest first.</summary>
     /// <response code="200">The patient's registration history.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    [RequirePermission("patient-management.view")]
     [HttpGet("{id:guid}/registrations")]
     public async Task<IActionResult> GetRegistrations(Guid id, CancellationToken cancellationToken)
     {
@@ -147,6 +153,7 @@ public class PatientsController : ControllerBase
     /// docs/PatientRegistrationModule.md §8 — duplicate-confidence ranking is deferred).
     /// </summary>
     /// <response code="200">A page of patients.</response>
+    [RequirePermission("patient-management.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] PatientListQuery query, CancellationToken cancellationToken)
     {
@@ -167,6 +174,7 @@ public class PatientsController : ControllerBase
     /// <response code="200">The photo was uploaded.</response>
     /// <response code="400">The file failed validation.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    [RequirePermission("patient-management.edit")]
     [HttpPost("{id:guid}/photo")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadPhoto(Guid id, IFormFile file, CancellationToken cancellationToken)
@@ -185,6 +193,7 @@ public class PatientsController : ControllerBase
     /// <response code="200">The ID proof was uploaded.</response>
     /// <response code="400">The file failed validation.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    [RequirePermission("patient-management.edit")]
     [HttpPost("{id:guid}/id-proof")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadIdProof(Guid id, IFormFile file, [FromForm] IdProofType idProofType, CancellationToken cancellationToken)

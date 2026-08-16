@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { EVENT_TYPE_META } from '../constants';
 import { formatDisplayDate } from '../utils/date';
@@ -34,6 +35,9 @@ interface EventDetailsDrawerProps {
 export function EventDetailsDrawer({ event, onClose, onEdit, onDelete }: EventDetailsDrawerProps) {
   const open = event !== null;
   const meta = event ? EVENT_TYPE_META[event.eventType] : null;
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('engagement.edit');
+  const canDelete = hasPermission('engagement.delete');
 
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
@@ -77,16 +81,22 @@ export function EventDetailsDrawer({ event, onClose, onEdit, onDelete }: EventDe
               <Button variant="ghost" onClick={onClose}>
                 Close
               </Button>
-              <div className="flex gap-2">
-                <Button variant="destructive" onClick={() => onDelete(event)}>
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-                <Button onClick={() => onEdit(event)}>
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </Button>
-              </div>
+              {(canEdit || canDelete) && (
+                <div className="flex gap-2">
+                  {canDelete && (
+                    <Button variant="destructive" onClick={() => onDelete(event)}>
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button onClick={() => onEdit(event)}>
+                      <Pencil className="h-4 w-4" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}

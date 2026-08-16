@@ -2,6 +2,7 @@ import type { User } from '@hms/shared';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 import { StatusBadge } from './StatusBadge';
 
 interface UserTableProps {
@@ -26,6 +27,9 @@ const columns: Array<{ field: string; label: string }> = [
 export function UserTable({ users, sort, onSortChange, onDeleteRequested, onToggleActive, isTogglingId }: UserTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('identity-administration.edit');
+  const canDelete = hasPermission('identity-administration.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -73,20 +77,26 @@ export function UserTable({ users, sort, onSortChange, onDeleteRequested, onTogg
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/users/${user.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onToggleActive(user)}
-                    disabled={isTogglingId === user.id}
-                  >
-                    {user.isActive ? 'Deactivate' : 'Activate'}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(user)}>
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/users/${user.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onToggleActive(user)}
+                      disabled={isTogglingId === user.id}
+                    >
+                      {user.isActive ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(user)}>
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

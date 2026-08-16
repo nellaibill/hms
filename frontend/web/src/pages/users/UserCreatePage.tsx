@@ -2,6 +2,7 @@ import { ApiError, type UserProfileFormValues } from '@hms/shared';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserForm, useCreateUserMutation } from '../../features/users';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function UserCreatePage() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function UserCreatePage() {
   }
 
   return (
+    <RequirePermission permission="identity-administration.create">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link to="/users" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -53,5 +55,6 @@ export default function UserCreatePage() {
       />
       </div>
     </div>
+    </RequirePermission>
   );
 }

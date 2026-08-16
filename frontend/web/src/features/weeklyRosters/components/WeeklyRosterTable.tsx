@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DepartmentName } from '@/components/DepartmentName';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface WeeklyRosterTableProps {
   rosters: WeeklyRoster[];
@@ -19,6 +20,9 @@ const columns: Array<{ field: string; label: string }> = [{ field: 'weekStartDat
 export function WeeklyRosterTable({ rosters, sort, onSortChange, onDeleteRequested, onPublishRequested, isPublishingId }: WeeklyRosterTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('workforce-admin.edit');
+  const canDelete = hasPermission('workforce-admin.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -63,7 +67,7 @@ export function WeeklyRosterTable({ rosters, sort, onSortChange, onDeleteRequest
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
-                  {!roster.published && (
+                  {!roster.published && canEdit && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -73,12 +77,16 @@ export function WeeklyRosterTable({ rosters, sort, onSortChange, onDeleteRequest
                       {isPublishingId === roster.id ? 'Publishing…' : 'Publish'}
                     </Button>
                   )}
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/admin/hr/weekly-rosters/${roster.id}/edit`}>Edit</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(roster)}>
-                    Delete
-                  </Button>
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/admin/hr/weekly-rosters/${roster.id}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteRequested(roster)}>
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

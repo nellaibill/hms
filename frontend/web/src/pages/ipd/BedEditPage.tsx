@@ -2,6 +2,7 @@ import { ApiError, type BedFormValues } from '@hms/shared';
 import { ArrowLeft, BedSingle, Loader2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BedForm, useBedQuery, useUpdateBedMutation } from '../../features/ipd/beds';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function BedEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,6 +45,7 @@ export default function BedEditPage() {
   }
 
   return (
+    <RequirePermission permission="clinical-care.edit">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link to="/clinical/ipd/beds" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -80,5 +82,6 @@ export default function BedEditPage() {
         />
       </div>
     </div>
+    </RequirePermission>
   );
 }

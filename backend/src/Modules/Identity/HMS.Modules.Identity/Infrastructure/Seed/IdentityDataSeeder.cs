@@ -54,17 +54,34 @@ internal sealed class IdentityDataSeeder
     /// if it does not already exist. Permission *records* themselves are not created
     /// here — they already exist by this point via PermissionConfiguration.HasData,
     /// applied as part of the migration this seeder runs after — this only reads and
-    /// assigns them.
+    /// assigns them. Re-syncs an already-existing role's permissions on every startup
+    /// too (HMS Security Hardening Phase B): the permission catalog can grow after the
+    /// role was first created (e.g. new module added), and without this an existing
+    /// Super Admin would silently miss newly-seeded permissions — a self-inflicted
+    /// lockout risk once actions start being gated with [RequirePermission].
     /// </summary>
     private async Task<Role> EnsureSuperAdminRoleAsync(CancellationToken cancellationToken)
     {
+        var permissions = await _permissionRepository.GetAllAsync(cancellationToken);
+        var permissionIds = permissions.Select(p => p.Id).ToList();
+
         var existingRole = await _roleRepository.GetByNameAsync(SuperAdminRoleName, cancellationToken);
         if (existingRole is not null)
         {
+            var currentPermissionIds = existingRole.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
+            if (!currentPermissionIds.SetEquals(permissionIds))
+            {
+                existingRole.ReplacePermissions(permissionIds);
+                await _roleRepository.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Re-synced '{RoleName}' role to {PermissionCount} permission(s)",
+                    SuperAdminRoleName,
+                    permissionIds.Count);
+            }
+
             return existingRole;
         }
-
-        var permissions = await _permissionRepository.GetAllAsync(cancellationToken);
 
         var role = Role.Create(
             SuperAdminRoleName,
@@ -73,7 +90,7 @@ internal sealed class IdentityDataSeeder
             displayOrder: 0,
             createdBy: null);
 
-        role.ReplacePermissions(permissions.Select(p => p.Id));
+        role.ReplacePermissions(permissionIds);
 
         await _roleRepository.AddAsync(role, cancellationToken);
         await _roleRepository.SaveChangesAsync(cancellationToken);
@@ -81,7 +98,7 @@ internal sealed class IdentityDataSeeder
         _logger.LogInformation(
             "Seeded '{RoleName}' role with {PermissionCount} permission(s)",
             SuperAdminRoleName,
-            permissions.Count);
+            permissionIds.Count);
 
         return role;
     }

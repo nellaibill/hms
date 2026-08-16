@@ -33,7 +33,7 @@ public static class CorsConfiguration
                         HttpMethods.Patch,
                         HttpMethods.Delete,
                         HttpMethods.Options)
-                    .WithHeaders("Content-Type", "Authorization", "Accept", CorrelationIdMiddleware.HeaderName)
+                    .WithHeaders("Content-Type", "Authorization", "Accept", CorrelationIdMiddleware.HeaderName, "X-Hospital-Code")
                     .WithExposedHeaders(CorrelationIdMiddleware.HeaderName);
 
                 // Deliberately no AllowCredentials(): HttpClient.ts (frontend/shared)

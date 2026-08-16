@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { filterNavigationForRole } from '@/config/navigation';
+import { filterNavigationForPermissions } from '@/config/navigation';
 import { useAuth } from '@/features/auth/AuthContext';
 
 interface SidebarNavProps {
@@ -9,8 +9,8 @@ interface SidebarNavProps {
 }
 
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
-  const { user } = useAuth();
-  const nodes = filterNavigationForRole(user?.role ?? 'admin');
+  const { hasPermission } = useAuth();
+  const nodes = filterNavigationForPermissions(hasPermission);
 
   // Every row gets a 3px transparent left border by default so the active
   // row's accent bar doesn't shift layout when it appears — per

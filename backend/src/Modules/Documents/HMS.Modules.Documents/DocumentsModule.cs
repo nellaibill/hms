@@ -6,6 +6,7 @@ using HMS.Modules.Documents.Application.Validators;
 using HMS.Modules.Documents.Contracts;
 using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.Documents.Infrastructure.Repositories;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,15 +21,24 @@ public static class DocumentsModule
 {
     public static IServiceCollection AddDocumentsModule(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
+        // HMS Multi-Tenancy Phase C: resolved per-request from ITenantContext — see
+        // HMS.Modules.Identity.IdentityModule's identical registration for the full
+        // rationale.
+        services.AddDbContext<DocumentsDbContext>((sp, options) =>
+        {
+            var tenantContext = sp.GetRequiredService<ITenantContext>();
+            if (!tenantContext.IsResolved)
+            {
+                throw new InvalidOperationException(
+                    "DocumentsDbContext was resolved without a tenant having been established for this request.");
+            }
 
-        services.AddDbContext<DocumentsDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsql =>
+            options.UseNpgsql(tenantContext.ConnectionString, npgsql =>
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", DocumentsDbContext.SchemaName);
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
-            }));
+            });
+        });
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentFileStorage, DocumentFileStorage>();

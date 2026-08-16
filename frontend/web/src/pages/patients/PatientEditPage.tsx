@@ -1,6 +1,7 @@
 import type { Patient, PatientEditUiFormValues, UpdatePatientRequest } from '@hms/shared';
 import { ArrowLeft, Loader2, UserCog } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 import { PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
 import {
@@ -162,14 +163,16 @@ export default function PatientEditPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-      <PatientEditForm
-        patientId={id as string}
-        isSubmitting={mutation.isPending}
-        apiError={toDisplayError(mutation.error)}
-        defaultValues={toDefaultValues(patient)}
-        onSubmit={handleSubmit}
-        onCancel={() => navigate(`/patients/registration/${id}`)}
-      />
+      <RequirePermission permission="patient-management.edit">
+        <PatientEditForm
+          patientId={id as string}
+          isSubmitting={mutation.isPending}
+          apiError={toDisplayError(mutation.error)}
+          defaultValues={toDefaultValues(patient)}
+          onSubmit={handleSubmit}
+          onCancel={() => navigate(`/patients/registration/${id}`)}
+        />
+      </RequirePermission>
       </div>
     </div>
   );

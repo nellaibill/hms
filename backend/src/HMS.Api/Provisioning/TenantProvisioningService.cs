@@ -1,17 +1,7 @@
 using System.Text.RegularExpressions;
-using HMS.Modules.Branding.Infrastructure;
-using HMS.Modules.Calendar.Infrastructure;
-using HMS.Modules.Documents.Infrastructure;
-using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity;
-using HMS.Modules.Identity.Infrastructure;
-using HMS.Modules.IPD.Infrastructure;
-using HMS.Modules.Masters.Infrastructure;
-using HMS.Modules.Patients.Infrastructure;
 using HMS.Modules.Platform.Application.Abstractions;
-using HMS.Modules.Products.Infrastructure;
 using HMS.Shared.Kernel;
-using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace HMS.Api.Provisioning;
@@ -29,12 +19,17 @@ public sealed class TenantProvisioningService : ITenantProvisioner
     private static readonly Regex SafeIdentifier = new("^[a-z][a-z0-9_]*$", RegexOptions.Compiled);
 
     private readonly string _platformAdminConnectionString;
+    private readonly ITenantMigrationService _migrationService;
     private readonly ILogger<TenantProvisioningService> _logger;
 
-    public TenantProvisioningService(IConfiguration configuration, ILogger<TenantProvisioningService> logger)
+    public TenantProvisioningService(
+        IConfiguration configuration,
+        ITenantMigrationService migrationService,
+        ILogger<TenantProvisioningService> logger)
     {
         _platformAdminConnectionString = configuration.GetConnectionString("PlatformAdmin")
             ?? throw new InvalidOperationException("Missing 'ConnectionStrings:PlatformAdmin' configuration value.");
+        _migrationService = migrationService;
         _logger = logger;
     }
 
@@ -48,7 +43,7 @@ public sealed class TenantProvisioningService : ITenantProvisioner
         {
             var tenantConnectionString = BuildTenantConnectionString(databaseName);
 
-            await MigrateAllModulesAsync(tenantConnectionString, cancellationToken);
+            await _migrationService.MigrateAsync(tenantConnectionString, cancellationToken);
 
             await IdentityModule.ProvisionTenantSuperAdminAsync(
                 tenantConnectionString,
@@ -164,74 +159,5 @@ public sealed class TenantProvisioningService : ITenantProvisioner
     {
         var builder = new NpgsqlConnectionStringBuilder(_platformAdminConnectionString) { Database = databaseName };
         return builder.ConnectionString;
-    }
-
-    /// <summary>
-    /// Applies every existing HMIS module's migrations to the tenant database, in the same
-    /// order Program.cs's dev-migrate block uses. Only the 9 modules with real migrations
-    /// today (see docs/DecisionLog.md's "Modules migrated" table) — Appointments/Billing are
-    /// empty placeholder projects with no DbContext, so they're not included. Builds a fresh
-    /// DbContextOptions per module rather than resolving the DI-registered instance, since
-    /// those are permanently bound to ConnectionStrings:Default, not this new tenant
-    /// database.
-    /// </summary>
-    private static async Task MigrateAllModulesAsync(string tenantConnectionString, CancellationToken cancellationToken)
-    {
-        await using (var db = new IdentityDbContext(BuildOptions<IdentityDbContext>(tenantConnectionString, IdentityDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new DocumentsDbContext(BuildOptions<DocumentsDbContext>(tenantConnectionString, DocumentsDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new PatientsDbContext(BuildOptions<PatientsDbContext>(tenantConnectionString, PatientsDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new BrandingDbContext(BuildOptions<BrandingDbContext>(tenantConnectionString, BrandingDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new MastersDbContext(BuildOptions<MastersDbContext>(tenantConnectionString, MastersDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new ProductsDbContext(BuildOptions<ProductsDbContext>(tenantConnectionString, ProductsDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new HRDbContext(BuildOptions<HRDbContext>(tenantConnectionString, HRDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new CalendarDbContext(BuildOptions<CalendarDbContext>(tenantConnectionString, CalendarDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-
-        await using (var db = new IPDDbContext(BuildOptions<IPDDbContext>(tenantConnectionString, IPDDbContext.SchemaName)))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-    }
-
-    private static DbContextOptions<TContext> BuildOptions<TContext>(string connectionString, string schemaName)
-        where TContext : DbContext
-    {
-        return new DbContextOptionsBuilder<TContext>()
-            .UseNpgsql(connectionString, npgsql =>
-            {
-                npgsql.MigrationsHistoryTable("__ef_migrations_history", schemaName);
-                npgsql.MigrationsAssembly("HMS.Database.Migrations");
-            })
-            .Options;
     }
 }

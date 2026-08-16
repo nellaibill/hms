@@ -5,6 +5,7 @@ using HMS.Modules.HR.Application.Validators;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.HR.Infrastructure.Repositories;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,18 +23,27 @@ public static class HRModule
 {
     public static IServiceCollection AddHRModule(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
+        // HMS Multi-Tenancy Phase C: resolved per-request from ITenantContext — see
+        // HMS.Modules.Identity.IdentityModule's identical registration for the full
+        // rationale.
+        services.AddDbContext<HRDbContext>((sp, options) =>
+        {
+            var tenantContext = sp.GetRequiredService<ITenantContext>();
+            if (!tenantContext.IsResolved)
+            {
+                throw new InvalidOperationException(
+                    "HRDbContext was resolved without a tenant having been established for this request.");
+            }
 
-        services.AddDbContext<HRDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsql =>
+            options.UseNpgsql(tenantContext.ConnectionString, npgsql =>
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", HRDbContext.SchemaName);
 
                 // Migration classes live in HMS.Database.Migrations (per
                 // docs/DatabaseArchitecture.md), not in this module's own assembly.
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
-            }));
+            });
+        });
 
         services.AddScoped<IShiftRepository, ShiftRepository>();
         services.AddScoped<IShiftService, ShiftService>();

@@ -39,6 +39,7 @@ public class PlatformAuthController : ControllerBase
     /// <response code="200">Login succeeded; the response contains a bearer token.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="401">The email or password was invalid.</response>
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] PlatformLoginRequest request, CancellationToken cancellationToken)
     {

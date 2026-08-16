@@ -10,6 +10,7 @@ using HMS.Modules.Patients;
 using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products;
+using HMS.Shared.Kernel;
 
 namespace HMS.Api.Configuration;
 
@@ -23,6 +24,12 @@ public static class ModuleRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // HMS Multi-Tenancy Phase C's request-scoped tenant seam — registered once, here,
+        // before any module (every tenant-aware hospital DbContext's registration reads it
+        // via sp.GetRequiredService<ITenantContext>()). Scoped, not singleton: a fresh
+        // instance per request/DI-scope is what keeps tenant selection request-safe.
+        services.AddScoped<ITenantContext, TenantContext>();
+
         services.AddIdentityModule(configuration);
         // Documents registers before Patients only for readability here — DI registration
         // order doesn't affect resolution; Patients' PatientDocumentOwnerExistenceChecker
@@ -50,10 +57,12 @@ public static class ModuleRegistration
         // public service seam — see docs/DecisionLog.md's SaaS provisioning ADR.
         services.AddPlatformModule(configuration);
 
-        // Implements Platform's ITenantProvisioner seam here (not inside AddPlatformModule)
-        // because it needs every module's DbContext type to run tenant migrations — see
-        // ITenantProvisioner's own doc comment. Registered after AddPlatformModule so it's
-        // available to satisfy HospitalRegistrationService's constructor dependency.
+        // Implements Platform's ITenantMigrationService/ITenantProvisioner seams here (not
+        // inside AddPlatformModule) because both need every module's DbContext type — see
+        // each interface's own doc comment. ITenantMigrationService is registered first:
+        // TenantProvisioningService now depends on it (reused for a new tenant's initial
+        // migrate step, not duplicated).
+        services.AddScoped<ITenantMigrationService, TenantMigrationService>();
         services.AddScoped<ITenantProvisioner, TenantProvisioningService>();
 
         // Future modules register here, e.g.:

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PatientPicker } from '@/features/billing';
 import { AdmissionForm, useCreateAdmissionMutation } from '../../features/ipd/admissions';
+import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function AdmissionCreatePage() {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ export default function AdmissionCreatePage() {
   }
 
   return (
+    <RequirePermission permission="clinical-care.create">
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
         <Link to="/clinical/ipd/admissions" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -96,5 +98,6 @@ export default function AdmissionCreatePage() {
         )}
       </div>
     </div>
+    </RequirePermission>
   );
 }

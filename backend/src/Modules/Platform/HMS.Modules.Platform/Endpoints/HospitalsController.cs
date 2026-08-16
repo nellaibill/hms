@@ -76,6 +76,26 @@ public class HospitalsController : ControllerBase
         return Ok(new ApiResponse<TenantListItemResponse> { Data = result.Value });
     }
 
+    /// <summary>
+    /// Applies any pending EF Core migrations to this hospital's existing database — HMS
+    /// Multi-Tenancy Phase C's migration-management action. An explicit, operator-triggered
+    /// operation; never run automatically or per-request.
+    /// </summary>
+    /// <response code="200">Migrations were applied (or the database was already current).</response>
+    /// <response code="404">No hospital was found for the given id.</response>
+    /// <response code="400">Migration failed; the existing database was left unchanged.</response>
+    [HttpPost("{id:guid}/migrate")]
+    public async Task<IActionResult> Migrate(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _dashboardService.MigrateAsync(id, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return MapFailure(result.ErrorCode!, result.Error!);
+        }
+
+        return Ok(new ApiResponse<TenantListItemResponse> { Data = result.Value });
+    }
+
     /// <summary>Registers a new hospital: provisions its isolated database and its first Super Admin.</summary>
     /// <response code="201">The hospital was registered and its database provisioned.</response>
     /// <response code="400">The request failed validation, or provisioning failed.</response>

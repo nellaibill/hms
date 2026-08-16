@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../layouts/AppLayout';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequireRole } from '../features/auth/RequireRole';
+import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { PlatformProtectedRoute } from '../features/platformAuth/PlatformProtectedRoute';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { getAllLeaves } from '../config/navigation';
@@ -175,15 +176,12 @@ const financeRoutes = [
 ];
 
 // Human Resource Management — Duty Roster (HMS.Modules.HR), reachable from the '/admin/hr'
-// nav leaf (wired via specialPages above). Route-gated via RequireRole since the nav-level
-// role filter alone doesn't block direct URL access. Includes superAdmin alongside the nav
-// leaf's own ['hr','admin'] — filterNavigationForRole (config/navigation.ts) already treats
-// superAdmin/admin as seeing every leaf regardless of its roles list, so the route guard
-// must honor that same bypass (mirrors brandingRoutes' ['admin','superAdmin']), or a
-// superAdmin who clicks the visible sidebar item gets redirected away.
+// nav leaf (wired via specialPages above). Route-gated via RequirePermissionRoute since the
+// nav-level permission filter alone doesn't block direct URL access — mirrors the nav leaf's
+// own 'workforce-admin' permission (config/navigation.ts).
 const hrRoutes = [
   {
-    element: <RequireRole roles={['hr', 'admin', 'superAdmin']} />,
+    element: <RequirePermissionRoute permission="workforce-admin.view" />,
     children: [
       { path: 'admin/hr/shifts', element: withSuspense(<ShiftsListPage />) },
       { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
@@ -211,12 +209,12 @@ const hrRoutes = [
 ];
 
 // In Patient Department (HMS.Modules.IPD), reachable from the '/clinical/ipd' nav leaf
-// (wired via specialPages above). Route-gated via RequireRole since the nav-level role
-// filter alone doesn't block direct URL access — mirrors hrRoutes' ['hr','admin','superAdmin']
-// bypass reasoning, with IPD's own nav leaf roles (['doctor','nurse']) plus admin/superAdmin.
+// (wired via specialPages above). Route-gated via RequirePermissionRoute since the nav-level
+// permission filter alone doesn't block direct URL access — mirrors hrRoutes' reasoning, using
+// IPD's own nav leaf permission ('clinical-care', config/navigation.ts).
 const ipdRoutes = [
   {
-    element: <RequireRole roles={['doctor', 'nurse', 'admin', 'superAdmin']} />,
+    element: <RequirePermissionRoute permission="clinical-care.view" />,
     children: [
       { path: 'clinical/ipd/wards', element: withSuspense(<WardsListPage />) },
       { path: 'clinical/ipd/wards/new', element: withSuspense(<WardCreatePage />) },

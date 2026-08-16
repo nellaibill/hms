@@ -2,18 +2,12 @@ using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
 using HMS.Api.Middleware;
 using HMS.Modules.Branding.Infrastructure;
-using HMS.Modules.Calendar.Infrastructure;
-using HMS.Modules.Documents.Infrastructure;
-using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity;
-using HMS.Modules.Identity.Infrastructure;
-using HMS.Modules.IPD.Infrastructure;
-using HMS.Modules.Masters.Infrastructure;
-using HMS.Modules.Patients.Infrastructure;
 using HMS.Modules.Platform;
+using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Platform.Infrastructure;
-using HMS.Modules.Products.Infrastructure;
 using HMS.Shared.Infrastructure;
+using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -63,6 +57,12 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// HMS Multi-Tenancy Phase C: must run after authorization (so an unauthenticated/
+// wrong-policy request is already rejected by then, never triggering a tenant lookup) and
+// before the controller executes (so every tenant-aware hospital DbContext sees a resolved
+// ITenantContext the first time it's constructed within this request's scope).
+app.UseMiddleware<TenantResolutionMiddleware>();
+
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())
@@ -70,61 +70,50 @@ if (app.Environment.IsDevelopment())
     // MVP convenience only — see docs/Deployment.md for the real deployment-time
     // migration step.
     using var scope = app.Services.CreateScope();
+    var sp = scope.ServiceProvider;
 
-    scope.ServiceProvider
-        .GetRequiredService<IdentityDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<PatientsDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<DocumentsDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<BrandingDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<MastersDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<ProductsDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<HRDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<CalendarDbContext>()
-        .Database.Migrate();
-
-    scope.ServiceProvider
-        .GetRequiredService<IPDDbContext>()
-        .Database.Migrate();
+    // Branding is the one hospital module NOT made tenant-aware in HMS Multi-Tenancy
+    // Phase C (see BrandingModule.cs's own comment) — still migrated via its
+    // DI-registered, statically-connected DbContext, same as before this phase.
+    sp.GetRequiredService<BrandingDbContext>().Database.Migrate();
 
     // Platform owns a separate physical database (hms_platform via
     // ConnectionStrings:Platform), not another schema in hms_qa — see
-    // docs/DatabaseArchitecture.md's SaaS provisioning ADR.
-    scope.ServiceProvider
-        .GetRequiredService<PlatformDbContext>()
-        .Database.Migrate();
+    // docs/DatabaseArchitecture.md's SaaS provisioning ADR. Migrated (and seeded) before
+    // anything tenant-aware below, since seeding the legacy tenant row needs it.
+    sp.GetRequiredService<PlatformDbContext>().Database.Migrate();
+
+    // HMS Multi-Tenancy Phase C: every other hospital module's DbContext is now
+    // tenant-aware and can no longer be resolved via DI outside a request with an
+    // already-resolved ITenantContext. Migrated directly against ConnectionStrings:Default
+    // instead, through the same ITenantMigrationService provisioning and the Platform
+    // migrate-tenant endpoint use — ConnectionStrings:Default *is* the legacy tenant's
+    // database.
+    var defaultConnectionString = builder.Configuration.GetConnectionString("Default")
+        ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
+    await sp.GetRequiredService<ITenantMigrationService>().MigrateAsync(defaultConnectionString, CancellationToken.None);
+
+    // Idempotent: seeds the one default Platform Admin account, and (Phase C) the
+    // platform.tenants row associating ConnectionStrings:Default with a real tenant
+    // identity — see LegacyTenantSeedOptions's own doc comment. Must run before resolving
+    // that tenant below.
+    await PlatformModule.SeedAsync(sp, CancellationToken.None);
+
+    // Resolves the just-seeded legacy tenant and populates this startup scope's
+    // ITenantContext, so IdentityDbContext — tenant-aware like every other hospital
+    // module — connects to the right database when IdentityModule.SeedAsync below
+    // resolves it via DI.
+    var legacyHospitalCode = builder.Configuration["LegacyTenantSeed:HospitalCode"] ?? "legacy";
+    var legacyTenant = await sp.GetRequiredService<ITenantDirectory>().FindByHospitalCodeAsync(legacyHospitalCode, CancellationToken.None)
+        ?? throw new InvalidOperationException($"Legacy tenant '{legacyHospitalCode}' was not found after seeding.");
+    sp.GetRequiredService<ITenantContext>().SetTenant(legacyTenant.Id, legacyTenant.ConnectionString);
 
     // Idempotent: safe to run on every startup. Seeds the Permission catalog's
     // dependents — the "Super Admin" role (every permission attached) and a default
-    // Super Admin user — only when they don't already exist. Must run after the
-    // Identity migration above, since it reads the Permission rows that migration's
-    // HasData just inserted.
-    await IdentityModule.SeedAsync(scope.ServiceProvider, CancellationToken.None);
-
-    // Idempotent: seeds the one default Platform Admin account only when it doesn't
-    // already exist. Independent of IdentityModule.SeedAsync — separate database,
-    // separate account.
-    await PlatformModule.SeedAsync(scope.ServiceProvider, CancellationToken.None);
+    // Super Admin user — only when they don't already exist. Must run after the tenant
+    // migration above, since it reads the Permission rows that migration's HasData just
+    // inserted into the (now-resolved) legacy tenant database.
+    await IdentityModule.SeedAsync(sp, CancellationToken.None);
 }
 
 app.Run();

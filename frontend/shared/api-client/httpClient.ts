@@ -17,6 +17,11 @@ export interface HttpClientConfig {
 export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined | null>;
   signal?: AbortSignal;
+  /** Extra headers merged on top of the client's own (Accept/Content-Type/Authorization/
+   * X-Correlation-Id) — e.g. X-Hospital-Code on the hospital login call, which has to
+   * travel outside the JSON body (see HMS.Api.Middleware.TenantResolutionMiddleware's own
+   * doc comment for why). */
+  headers?: Record<string, string>;
 }
 
 function buildUrl(baseUrl: string, path: string, query?: RequestOptions['query']): string {
@@ -127,6 +132,10 @@ export class HttpClient {
     const correlationId = this.config.getCorrelationId?.();
     if (correlationId) {
       headers['X-Correlation-Id'] = correlationId;
+    }
+
+    if (options?.headers) {
+      Object.assign(headers, options.headers);
     }
 
     let response: Response;

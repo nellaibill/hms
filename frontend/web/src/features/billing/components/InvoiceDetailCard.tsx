@@ -2,6 +2,7 @@ import { Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/features/auth/AuthContext';
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import type { Billing, BillingItem } from '../types';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
@@ -12,6 +13,8 @@ interface InvoiceDetailCardProps {
 }
 
 export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCardProps) {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('finance-billing.edit');
   return (
     <Card>
       <CardHeader className="flex-row items-center gap-3 space-y-0">
@@ -48,7 +51,7 @@ export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCar
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-foreground">{formatCurrency(item.total)}</span>
                   <PaymentStatusBadge status={item.paymentStatus} />
-                  {item.paymentStatus === 'Pending' && (
+                  {item.paymentStatus === 'Pending' && canEdit && (
                     <Button size="sm" variant="outline" onClick={() => onRecordPayment(item)}>
                       Record Payment
                     </Button>

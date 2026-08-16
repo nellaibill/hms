@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '../../auth/AuthContext';
 
 export interface PatientSearchFilters {
   name: string;
@@ -25,6 +26,7 @@ const hasAnyFilter = (filters: PatientSearchFilters) => Object.values(filters).s
 /** Search by any one or a combination of Name / Age / UHID / Phone Number — a Search action is explicit, results aren't shown until one runs. */
 export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear }: PatientListToolbarProps) {
   const canSearch = hasAnyFilter(filters);
+  const { hasPermission } = useAuth();
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -87,12 +89,14 @@ export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear 
           )}
         </div>
 
-        <Button asChild className="ml-auto gap-1.5">
-          <Link to="/patients/registration/new">
-            <Plus className="h-4 w-4" />
-            New Patient
-          </Link>
-        </Button>
+        {hasPermission('patient-management.create') && (
+          <Button asChild className="ml-auto gap-1.5">
+            <Link to="/patients/registration/new">
+              <Plus className="h-4 w-4" />
+              New Patient
+            </Link>
+          </Button>
+        )}
       </div>
     </form>
   );
