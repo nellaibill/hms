@@ -11,11 +11,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.Modules.Identity.Endpoints;
 
 /// <summary>
-/// Role management is the highest-priority surface protected in HMS Security Hardening
-/// Phase B: mutating actions require "identity-administration.*" in addition to the
-/// baseline Hospital token (see HMS.Shared.Infrastructure.PermissionAuthorization). Reads
-/// (GetPaged/GetById) stay at the baseline Hospital policy only — every authenticated
-/// hospital user can see roles, but only those with the permission can change them.
+/// Role management is protected end to end with "identity-administration.*" (see
+/// HMS.Shared.Infrastructure.PermissionAuthorization): reads require ".view", mutations
+/// require the matching ".create"/".edit"/".delete" — a bare Hospital token is not enough
+/// on its own for any action here, since role/permission data is itself sensitive.
 /// </summary>
 [ApiController]
 [Route("api/v1/roles")]
@@ -35,6 +34,8 @@ public sealed class RolesController : ControllerBase
         _updateValidator = updateValidator;
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<RoleResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPaged(
@@ -54,6 +55,8 @@ public sealed class RolesController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<RoleResponse>> { Data = result.Items, Meta = meta });
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<RoleResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
