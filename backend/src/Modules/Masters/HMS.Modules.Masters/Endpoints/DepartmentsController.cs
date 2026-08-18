@@ -4,6 +4,7 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,6 +37,8 @@ public class DepartmentsController : ControllerBase
     /// <summary>Creates a new department.</summary>
     /// <response code="201">The department was created.</response>
     /// <response code="400">The request failed validation, or the code is already in use.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateDepartmentRequest request, CancellationToken cancellationToken)
     {
@@ -58,6 +61,8 @@ public class DepartmentsController : ControllerBase
 
     /// <summary>Lists departments with paging, search, sorting, and active-status filtering.</summary>
     /// <response code="200">A page of departments.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] DepartmentListQuery query, CancellationToken cancellationToken)
     {
@@ -70,6 +75,8 @@ public class DepartmentsController : ControllerBase
     /// <summary>Gets a single department by id.</summary>
     /// <response code="200">The department was found.</response>
     /// <response code="404">No department was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -81,6 +88,8 @@ public class DepartmentsController : ControllerBase
     /// <response code="200">The department was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No department was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDepartmentRequest request, CancellationToken cancellationToken)
     {
@@ -102,6 +111,8 @@ public class DepartmentsController : ControllerBase
     /// <summary>Soft-deletes a department.</summary>
     /// <response code="204">The department was deleted.</response>
     /// <response code="404">No department was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
