@@ -37,6 +37,21 @@ _To be documented._
 
 ## Decisions
 
+### ADR-011: Roles Management's permission catalog (`ROLE_MODULES`) was missing `identity-administration` — fixed by adding it, not by fetching `GET /api/v1/permissions` dynamically
+**Date:** 2026-08-18
+**Status:** Accepted
+
+**Context**
+A review of the Billing/Roles "mock-data" concern found Roles Management further along than assumed: `apiRoleRepository.ts` already calls the real `RolesController` end-to-end (list/get/create/update, with `activate`/`deactivate` follow-up calls to work around create/update not carrying `status`), falling back to `mockRolesStore.ts` only on a genuine `NetworkError` — the same resilience pattern used by Patients and Masters, not a "fake by default" implementation. `RolesListPage.tsx` already surfaces a "Demo data — API not connected" badge whenever that fallback is active.
+
+The one real bug: `frontend/web/src/features/roles/modules.ts`'s hand-maintained `ROLE_MODULES` list (used to render the permission matrix, build a new role's empty permission grid, and reconcile the backend's flat `permissionKeys` into that grid) had 10 entries, but the real seeded catalog (`PermissionSeedData.cs`) has 11 — `identity-administration`, the module gating Roles/Users/Masters/Settings themselves, was missing. Consequence was worse than a display gap: `apiRoleRepository.ts`'s `toPermissionKeys()` only emits keys for modules in `ROLE_MODULES`, so saving an edit to any role that already held `identity-administration.*` permissions (Super Admin, if ever edited through this UI) would have silently stripped them on save — the matrix never showed them as granted, so nothing would prompt an editor to notice they'd be lost.
+
+**Decision**
+Added `{ id: 'identity-administration', label: 'Roles, Users & Settings' }` to `ROLE_MODULES` and corrected the file's doc comment (it claimed "Roles Management has no backend yet," which was already false before this change). Considered fetching the catalog live from `GET /api/v1/permissions` (`PermissionsController` already exists and is read-only/system-seeded) instead of hand-mirroring it, which would remove this whole class of drift permanently — but that requires threading a resolved module list through `apiRoleRepository.ts`'s four exported functions and both Roles pages' loading states, a real refactor across ~8-10 files. Given the catalog is explicitly documented as static and system-seeded (not something an admin edits), the same low-drift-risk tradeoff already accepted for `config/navigation.ts`'s hand-mirrored permission-group strings applies here — a one-line fix now, with the dynamic-fetch version left as a follow-up if the catalog starts changing often enough for manual sync to become a real problem.
+
+**Consequences**
+The permission matrix, new-role defaults, and DTO reconciliation all pick up the fix for free — every call site in this module already iterates `ROLE_MODULES` rather than a separately-maintained list, so no other file needed to change. Verified against the live backend: role permission counts changed from "X / 40" to the correct "X / 44" everywhere (confirmed against Super Admin, who holds all 44), and a role created with `identity-administration.view`/`.edit` in its `permissionKeys` round-tripped through the real `RolesController` correctly. Anyone adding a 12th permission module to `PermissionSeedData.cs` in the future must remember to mirror it here too, same as they already must for `config/navigation.ts` — this is a known manual-sync point, not a solved one.
+
 ### ADR-009: Documents module ships as a real backend without full platform-wide RBAC, without existence validation for most owner types, and without a real virus scanner — each gap is enforced-narrow and logged, not silently absent
 **Date:** 2026-08-06
 **Status:** Accepted
