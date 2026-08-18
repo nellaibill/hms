@@ -4,6 +4,7 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,6 +35,8 @@ public class AppointmentTypesController : ControllerBase
     /// <summary>Creates a new appointment type.</summary>
     /// <response code="201">The appointment type was created.</response>
     /// <response code="400">The request failed validation, or the code is already in use.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAppointmentTypeRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +59,8 @@ public class AppointmentTypesController : ControllerBase
 
     /// <summary>Lists appointment types with paging, search, sorting, and active-status filtering.</summary>
     /// <response code="200">A page of appointment types.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] AppointmentTypeListQuery query, CancellationToken cancellationToken)
     {
@@ -68,6 +73,8 @@ public class AppointmentTypesController : ControllerBase
     /// <summary>Gets a single appointment type by id.</summary>
     /// <response code="200">The appointment type was found.</response>
     /// <response code="404">No appointment type was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -79,6 +86,8 @@ public class AppointmentTypesController : ControllerBase
     /// <response code="200">The appointment type was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No appointment type was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAppointmentTypeRequest request, CancellationToken cancellationToken)
     {
@@ -100,6 +109,8 @@ public class AppointmentTypesController : ControllerBase
     /// <summary>Soft-deletes an appointment type.</summary>
     /// <response code="204">The appointment type was deleted.</response>
     /// <response code="404">No appointment type was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

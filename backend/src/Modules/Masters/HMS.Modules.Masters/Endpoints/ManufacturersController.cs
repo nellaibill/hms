@@ -4,6 +4,7 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +27,8 @@ public class ManufacturersController : ControllerBase
     }
 
     /// <summary>Creates a new manufacturer.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateManufacturerRequest request, CancellationToken cancellationToken)
     {
@@ -42,6 +45,8 @@ public class ManufacturersController : ControllerBase
     }
 
     /// <summary>Updates a manufacturer.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateManufacturerRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +61,8 @@ public class ManufacturersController : ControllerBase
     }
 
     /// <summary>Gets a single manufacturer by id.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -64,6 +71,8 @@ public class ManufacturersController : ControllerBase
     }
 
     /// <summary>Lists manufacturers with paging, search, and active-status filtering.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] ManufacturerListQuery query, CancellationToken cancellationToken)
     {

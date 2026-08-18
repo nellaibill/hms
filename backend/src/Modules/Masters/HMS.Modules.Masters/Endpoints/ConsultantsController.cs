@@ -4,6 +4,7 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,6 +35,8 @@ public class ConsultantsController : ControllerBase
     /// <summary>Creates a new consultant.</summary>
     /// <response code="201">The consultant was created.</response>
     /// <response code="400">The request failed validation, the code is already in use, or the referenced department doesn't exist.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateConsultantRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +59,8 @@ public class ConsultantsController : ControllerBase
 
     /// <summary>Lists consultants with paging, search, sorting, active-status, and department filtering.</summary>
     /// <response code="200">A page of consultants.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] ConsultantListQuery query, CancellationToken cancellationToken)
     {
@@ -68,6 +73,8 @@ public class ConsultantsController : ControllerBase
     /// <summary>Gets a single consultant by id.</summary>
     /// <response code="200">The consultant was found.</response>
     /// <response code="404">No consultant was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -79,6 +86,8 @@ public class ConsultantsController : ControllerBase
     /// <response code="200">The consultant was updated.</response>
     /// <response code="400">The request failed validation, or the referenced department doesn't exist.</response>
     /// <response code="404">No consultant was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateConsultantRequest request, CancellationToken cancellationToken)
     {
@@ -100,6 +109,8 @@ public class ConsultantsController : ControllerBase
     /// <summary>Soft-deletes a consultant.</summary>
     /// <response code="204">The consultant was deleted.</response>
     /// <response code="404">No consultant was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
