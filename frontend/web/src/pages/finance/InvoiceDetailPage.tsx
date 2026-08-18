@@ -8,6 +8,7 @@ import {
   useBillingQuery,
   useRecordPaymentMutation,
   type BillingItem,
+  type PaymentMethod,
 } from '../../features/billing';
 
 export default function InvoiceDetailPage() {
@@ -16,10 +17,10 @@ export default function InvoiceDetailPage() {
   const [itemPendingPayment, setItemPendingPayment] = useState<BillingItem | null>(null);
   const recordPaymentMutation = useRecordPaymentMutation();
 
-  function handleConfirmPayment() {
+  function handleConfirmPayment(method: PaymentMethod) {
     if (!billing || !itemPendingPayment) return;
     recordPaymentMutation.mutate(
-      { billingId: billing.id, itemId: itemPendingPayment.id },
+      { billingId: billing.id, itemId: itemPendingPayment.id, method },
       { onSuccess: () => setItemPendingPayment(null) },
     );
   }

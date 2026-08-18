@@ -20,3 +20,4 @@ export * from './ipd/bed';
 export * from './ipd/admission';
 export * from './ipd/charge';
 export * from './ipd/dashboard';
+export * from './billing/invoice';

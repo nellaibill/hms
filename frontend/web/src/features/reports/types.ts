@@ -2,6 +2,7 @@ import type { PaymentStatus } from '@/features/billing';
 
 export interface IncomeReportRow {
   id: string;
+  invoiceNumber?: string;
   date: string;
   patientName: string;
   patientUhid: string;

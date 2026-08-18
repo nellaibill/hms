@@ -4,6 +4,16 @@ export type BillingType = (typeof BILLING_TYPES)[number];
 export const PAYMENT_STATUSES = ['Pending', 'Paid'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+/** Mirrors HMS.Modules.Billing.Contracts.PaymentMethod. */
+export const PAYMENT_METHODS = ['Cash', 'Card', 'Upi', 'BankTransfer'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  Cash: 'Cash',
+  Card: 'Card',
+  Upi: 'UPI',
+  BankTransfer: 'Bank Transfer',
+};
+
 /**
  * One priced line on a bill. Normalized so future billing types (packages, insurance, GST
  * line items, refunds…) are just another `billingType` value on the same shape, not a new
@@ -29,6 +39,10 @@ export interface BillingItem {
 /** The bill for one visit — totals are always derived from `items`, never stored independently. */
 export interface Billing {
   id: string;
+  /** Human-readable business identifier (e.g. "INV-2026-000001") — only set for invoices
+   * created against the real backend; absent for pre-existing mock-store records, which
+   * only ever had `id`. Prefer this for display; `id` remains the routing/API key. */
+  invoiceNumber?: string;
   patientId: string;
   visitId: string;
   /**

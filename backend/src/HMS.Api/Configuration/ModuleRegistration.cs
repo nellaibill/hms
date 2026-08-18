@@ -1,4 +1,5 @@
 using HMS.Api.Provisioning;
+using HMS.Modules.Billing;
 using HMS.Modules.Branding;
 using HMS.Modules.Calendar;
 using HMS.Modules.Documents;
@@ -50,6 +51,11 @@ public static class ModuleRegistration
         // seams for cross-module admission reference validation, so it must register
         // after both.
         services.AddIPDModule(configuration);
+
+        // Billing depends on Patients' (PatientId existence) and Masters' (Department/
+        // Consultant existence) public service seams for invoice-creation validation, so it
+        // must register after both — same reasoning as IPD above.
+        services.AddBillingModule(configuration);
 
         // Platform is deliberately last and self-contained: it owns a separate physical
         // database (hms_platform via ConnectionStrings:Platform), not another schema in the

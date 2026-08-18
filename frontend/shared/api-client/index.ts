@@ -21,3 +21,4 @@ export * from './services/wardsApi';
 export * from './services/bedsApi';
 export * from './services/admissionsApi';
 export * from './services/ipdDashboardApi';
+export * from './services/billingApi';

@@ -26,7 +26,7 @@ export function IncomeTable({ rows }: IncomeTableProps) {
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(row.date).toLocaleDateString('en-IN')}</td>
               <td className="px-4 py-3">
                 <Link to={`/finance/accounts/${row.id}`} className="font-mono text-xs text-primary hover:underline">
-                  {row.id}
+                  {row.invoiceNumber ?? row.id}
                 </Link>
               </td>
               <td className="px-4 py-3">

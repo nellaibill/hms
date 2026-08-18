@@ -1,6 +1,7 @@
-import { ArrowLeft, FileBarChart2 } from 'lucide-react';
+import { ArrowLeft, FileBarChart2, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useInvoicesForReportQuery } from '@/features/billing';
 import {
   ExpenseTable,
   ExportButtons,
@@ -28,13 +29,14 @@ function defaultRange(): ReportDateRange {
   return { from: toDateInputValue(from), to: toDateInputValue(today) };
 }
 
-/** Finance & Billing's Income & Expense Report (docs/ScreenInventory.md "Reports" screen type) — mock data for now, same as the rest of Finance & Billing (see mockBillingStore.ts / features/reports/mockExpenses.ts). */
+/** Finance & Billing's Income & Expense Report (docs/ScreenInventory.md "Reports" screen type). Income comes from the real Billing API (useInvoicesForReportQuery); expenses are still mock data (features/reports/mockExpenses.ts) pending an Accounts/Expenses backend. */
 export default function IncomeExpenseReportPage() {
   const [range, setRange] = useState<ReportDateRange>(defaultRange);
   const [incomePage, setIncomePage] = useState(1);
   const [expensePage, setExpensePage] = useState(1);
 
-  const incomeRows = useMemo(() => getIncomeRows(range), [range]);
+  const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
+  const incomeRows = useMemo(() => getIncomeRows(billings ?? [], range), [billings, range]);
   const expenseRows = useMemo(() => getExpenseRows(range), [range]);
   const totals = useMemo(() => getReportTotals(incomeRows, expenseRows), [incomeRows, expenseRows]);
 
@@ -83,7 +85,12 @@ export default function IncomeExpenseReportPage() {
             <h2 className="text-sm font-semibold text-foreground">
               Income <span className="font-normal text-muted-foreground">({incomeRows.length} invoices)</span>
             </h2>
-            {incomeRows.length === 0 ? (
+            {isLoadingBillings ? (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading invoices…
+              </div>
+            ) : incomeRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No income recorded in this period.</p>
             ) : (
               <>
