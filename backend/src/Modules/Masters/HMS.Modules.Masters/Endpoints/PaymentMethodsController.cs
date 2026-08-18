@@ -4,6 +4,7 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +27,8 @@ public class PaymentMethodsController : ControllerBase
     }
 
     /// <summary>Creates a new payment method.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePaymentMethodRequest request, CancellationToken cancellationToken)
     {
@@ -42,6 +45,8 @@ public class PaymentMethodsController : ControllerBase
     }
 
     /// <summary>Updates a payment method.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePaymentMethodRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +61,8 @@ public class PaymentMethodsController : ControllerBase
     }
 
     /// <summary>Gets a single payment method by id.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -64,6 +71,8 @@ public class PaymentMethodsController : ControllerBase
     }
 
     /// <summary>Lists payment methods with paging, search, and active-status filtering.</summary>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] PaymentMethodListQuery query, CancellationToken cancellationToken)
     {

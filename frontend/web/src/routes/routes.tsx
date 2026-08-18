@@ -94,17 +94,23 @@ const specialPages: Record<string, React.ReactNode> = {
   '/patients/registration': withSuspense(<PatientRegistrationHubPage />),
   '/patients/enquiry': withSuspense(<PatientsListPage />),
   '/support/inventory': withSuspense(<ProductsListPage />),
-  '/finance/accounts': withSuspense(<InvoiceLedgerPage />),
   '/admin/hr': withSuspense(<HrHubPage />),
   '/engagement/programmes': withSuspense(<CalendarEventsPage />),
   '/documents': withSuspense(<DocumentManagementPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
 };
 
-const moduleRoutes = getAllLeaves().map((leaf) => ({
-  path: leaf.path.slice(1),
-  element: specialPages[leaf.path] ?? <PlaceholderPage title={leaf.label} description={leaf.description} icon={leaf.icon} />,
-}));
+// '/finance/accounts' is deliberately excluded from specialPages above and handled by
+// financeRoutes' own RequirePermissionRoute-wrapped entry instead — see financeRoutes'
+// comment for why (it used to leak through here with no permission gate).
+const routeGatedLeafPaths = new Set(['/finance/accounts']);
+
+const moduleRoutes = getAllLeaves()
+  .filter((leaf) => !routeGatedLeafPaths.has(leaf.path))
+  .map((leaf) => ({
+    path: leaf.path.slice(1),
+    element: specialPages[leaf.path] ?? <PlaceholderPage title={leaf.label} description={leaf.description} icon={leaf.icon} />,
+  }));
 
 // Users (HMS.Modules.Identity) is the one reference module with a real,
 // API-integrated UI — reachable from the Settings page ("User Accounts"),
@@ -147,13 +153,22 @@ const brandingRoutes = [
 
 // Masters (Reference Data) — reachable from the Settings page ("Master Data"). One generic
 // list/form pair driven by an :entityKey route param covers all ~16 entities from
-// docs/03_Masters_ERD instead of per-entity page code.
+// docs/03_Masters_ERD instead of per-entity page code. Route-gated via RequirePermissionRoute
+// (mirrors hrRoutes/ipdRoutes' reasoning below) since Settings' own nav-level permission
+// filter only hides the sidebar link — it doesn't stop a direct URL visit from reaching
+// reference-data CRUD. Uses Settings' own leaf permission ('identity-administration',
+// config/navigation.ts — "Roles & permissions, master data, and system configuration").
 const mastersRoutes = [
-  { path: 'admin/masters', element: withSuspense(<MastersHubPage />) },
-  { path: 'admin/masters/:entityKey', element: withSuspense(<MasterListPage />) },
-  { path: 'admin/masters/:entityKey/new', element: withSuspense(<MasterFormPage mode="create" />) },
-  { path: 'admin/masters/:entityKey/:id', element: withSuspense(<MasterFormPage mode="view" />) },
-  { path: 'admin/masters/:entityKey/:id/edit', element: withSuspense(<MasterFormPage mode="edit" />) },
+  {
+    element: <RequirePermissionRoute permission="identity-administration.view" />,
+    children: [
+      { path: 'admin/masters', element: withSuspense(<MastersHubPage />) },
+      { path: 'admin/masters/:entityKey', element: withSuspense(<MasterListPage />) },
+      { path: 'admin/masters/:entityKey/new', element: withSuspense(<MasterFormPage mode="create" />) },
+      { path: 'admin/masters/:entityKey/:id', element: withSuspense(<MasterFormPage mode="view" />) },
+      { path: 'admin/masters/:entityKey/:id/edit', element: withSuspense(<MasterFormPage mode="edit" />) },
+    ],
+  },
 ];
 
 // Products (HMS.Modules.Products) — core Product CRUD, reachable from the "Hospital
@@ -167,12 +182,22 @@ const productRoutes = [
 ];
 
 // Finance & Billing (UI-only, mock data — no backend module yet, mirrors Roles Management).
-// The landing ledger ('finance/accounts') is already wired via specialPages above; this
-// covers the detail sub-route, mirroring userRoutes'/roleRoutes' shape.
+// Route-gated via RequirePermissionRoute (mirrors hrRoutes/ipdRoutes' reasoning below), using
+// the nav leaf's own permission ('finance-billing', config/navigation.ts). Includes the
+// landing ledger ('finance/accounts') itself, unlike hrRoutes/ipdRoutes — that path used to be
+// wired through specialPages/moduleRoutes with no guard at all, so it's defined here instead
+// (see routeGatedLeafPaths above) rather than left exposed the way HR's/IPD's own hub pages
+// still are.
 const financeRoutes = [
-  { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
-  { path: 'finance/accounts/reports', element: withSuspense(<IncomeExpenseReportPage />) },
-  { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
+  {
+    element: <RequirePermissionRoute permission="finance-billing.view" />,
+    children: [
+      { path: 'finance/accounts', element: withSuspense(<InvoiceLedgerPage />) },
+      { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
+      { path: 'finance/accounts/reports', element: withSuspense(<IncomeExpenseReportPage />) },
+      { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
+    ],
+  },
 ];
 
 // Human Resource Management — Duty Roster (HMS.Modules.HR), reachable from the '/admin/hr'

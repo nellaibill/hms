@@ -4,6 +4,7 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,6 +33,8 @@ public class CurrenciesController : ControllerBase
     /// <summary>Creates a new currency.</summary>
     /// <response code="201">The currency was created.</response>
     /// <response code="400">The request failed validation, or the currency code is already in use.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCurrencyRequest request, CancellationToken cancellationToken)
     {
@@ -51,6 +54,8 @@ public class CurrenciesController : ControllerBase
     /// <response code="200">The currency was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No currency was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCurrencyRequest request, CancellationToken cancellationToken)
     {
@@ -67,6 +72,8 @@ public class CurrenciesController : ControllerBase
     /// <summary>Gets a single currency by id.</summary>
     /// <response code="200">The currency was found.</response>
     /// <response code="404">No currency was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -76,6 +83,8 @@ public class CurrenciesController : ControllerBase
 
     /// <summary>Lists currencies with paging, search, and active-status filtering.</summary>
     /// <response code="200">A page of currencies.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] CurrencyListQuery query, CancellationToken cancellationToken)
     {
