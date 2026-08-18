@@ -1,16 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { getMockBillingById } from '../mockBillingStore';
+import { getInvoiceById } from '../apiBillingRepository';
 
 export function useBillingQuery(id: string | undefined) {
   return useQuery({
     queryKey: ['billings', 'detail', id],
-    queryFn: () => {
-      const billing = getMockBillingById(id as string);
-      if (!billing) {
-        throw new Error(`Invoice ${id} not found.`);
-      }
-      return billing;
-    },
+    queryFn: () => getInvoiceById(id as string),
     enabled: Boolean(id),
   });
 }

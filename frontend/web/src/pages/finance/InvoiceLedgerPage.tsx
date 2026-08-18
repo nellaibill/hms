@@ -7,7 +7,7 @@ import type { PaymentStatus } from '../../features/billing';
 
 const RESULTS_PAGE_SIZE = 20;
 
-/** Unified Invoice Ledger — Finance & Billing's landing screen (docs/ScreenInventory.md "Finance & Billing Domain"). Mock data for now: see mockBillingStore.ts. */
+/** Unified Invoice Ledger — Finance & Billing's landing screen (docs/ScreenInventory.md "Finance & Billing Domain"). Backed by the real Billing API, with an offline mock-data fallback (see apiBillingRepository.ts) if the backend is unreachable. */
 export default function InvoiceLedgerPage() {
   const [search, setSearch] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | undefined>(undefined);
@@ -44,9 +44,11 @@ export default function InvoiceLedgerPage() {
       {/* Centered, brand-colored banner — matches the Page banner style used
           across module pages (Theme & Branding → Section headers). */}
       <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <span className="absolute right-6 top-5 hidden rounded-full bg-page-banner-foreground/15 px-2.5 py-1 text-xs font-medium sm:inline-block">
-          Demo data — API not connected
-        </span>
+        {data?.source === 'mock' && (
+          <span className="absolute right-6 top-5 hidden rounded-full bg-page-banner-foreground/15 px-2.5 py-1 text-xs font-medium sm:inline-block">
+            Demo data — API not connected
+          </span>
+        )}
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
             <Wallet className="h-5 w-5" />

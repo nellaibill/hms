@@ -3,7 +3,7 @@ import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
 import { RequirePermission } from '../../features/auth/RequirePermission';
-import { saveBillingForPatient, type BillingFormValues } from '../../features/billing';
+import { useCreateInvoiceMutation, type BillingFormValues } from '../../features/billing';
 import {
   PatientRegistrationForm,
   useCreatePatientMutation,
@@ -88,6 +88,7 @@ export default function PatientRegistrationCreatePage() {
   const mutation = useCreatePatientMutation();
   const photoMutation = useUploadPatientPhotoMutation();
   const idProofMutation = useUploadPatientIdProofMutation();
+  const billingMutation = useCreateInvoiceMutation();
   const { toast } = useToast();
 
   function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments, billing: BillingFormValues) {
@@ -124,13 +125,25 @@ export default function PatientRegistrationCreatePage() {
             },
           );
         }
-        // No Billing API yet — parked in the offline mock store (see mockBillingStore.ts)
-        // the same way patient records were ahead of the Patients API, until Billing has a
-        // backend endpoint of its own.
-        saveBillingForPatient(patient.id, patient.currentRegistration?.id ?? patient.id, billing, {
-          name: `${patient.firstName} ${patient.lastName}`,
-          uhid: patient.uhid,
-        });
+        // Fired-and-forgotten like the photo/idProof uploads above, for the same reason:
+        // the patient record already exists at this point, so a failed invoice save here is
+        // recoverable via the standalone OPD Billing Entry screen, as long as staff find out.
+        billingMutation.mutate(
+          {
+            patientId: patient.id,
+            visitId: patient.currentRegistration?.id ?? patient.id,
+            values: billing,
+            patient: { name: `${patient.firstName} ${patient.lastName}`, uhid: patient.uhid },
+          },
+          {
+            onError: () =>
+              toast({
+                title: 'Billing not saved',
+                description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but billing failed to save. Add it from Accounts and Finance → OPD Billing Entry.`,
+                variant: 'error',
+              }),
+          },
+        );
         navigate(`/patients/registration/${patient.id}`);
       },
     });

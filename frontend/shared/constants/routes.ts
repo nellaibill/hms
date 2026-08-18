@@ -145,4 +145,13 @@ export const API_ROUTES = {
     },
     dashboard: '/api/v1/ipd/dashboard',
   },
+  /** Mirrors HMS.Modules.Billing.Endpoints.InvoicesController. */
+  billing: {
+    invoices: {
+      base: '/api/v1/billing/invoices',
+      byId: (id: string) => `/api/v1/billing/invoices/${id}`,
+      byPatientId: (patientId: string) => `/api/v1/billing/invoices/by-patient/${patientId}`,
+      recordPayment: (invoiceId: string, itemId: string) => `/api/v1/billing/invoices/${invoiceId}/items/${itemId}/payments`,
+    },
+  },
 } as const;

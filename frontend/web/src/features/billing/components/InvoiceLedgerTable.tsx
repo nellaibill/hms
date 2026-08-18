@@ -49,7 +49,7 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
         <tbody className="divide-y divide-border">
           {billings.map((billing) => (
             <tr key={billing.id} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{billing.id}</td>
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{billing.invoiceNumber ?? billing.id}</td>
               <td className="px-4 py-3">
                 <Link to={`/finance/accounts/${billing.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
                   {billing.patientName}

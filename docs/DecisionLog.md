@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-012: Billing ships as a real backend module — one unified Invoice/InvoiceLineItem/Payment engine, not four parallel billing blocks; Department/Consultant/Service stay free-text, not Masters-backed FKs
+**Date:** 2026-08-18
+**Status:** Accepted
+
+**Context**
+`HMS.Modules.Billing` was an empty scaffold (no Domain/Application/Infrastructure/Endpoints — see the earlier architecture review) while the frontend shipped a fully-built Billing UI (invoice ledger, per-category billing cards, discount approval, payment recording) against `mockBillingStore.ts`, a browser-local mock with no real persistence. This repo's own `docs/BusinessRequirementsAnalysis.md` had already flagged the client's original brief modeling billing as four separate near-duplicate blocks (OP/Consultation, Radiology, Lab, Procedure) as a revenue-leakage risk, and recommended a single invoice engine instead — but that recommendation had never been acted on, and no target database schema existed to build against.
+
+**Decision**
+1. **One unified invoice engine.** `Invoice` (header) owns a collection of `InvoiceLineItem`s, each carrying a `BillingType` enum (Consultation/Radiology/Laboratory/Procedure) as a plain category field — not four separate tables. This matches the frontend's own `BillingItem` shape (already normalized this way) and the docs' recommendation; it also means the "OP Billing" vs "Consultation Billing" naming inconsistency the requirements review flagged has nothing to attach to anymore.
+2. **A real `Payment` table**, separate from `InvoiceLineItem`, recording amount/method/who/when per payment — the mock store only ever flipped a line item's status with no receipt trail at all.
+3. **`DepartmentId`/`ConsultantId`/`ServiceId` on a line item stay free-text strings, not Masters-backed Guid FKs.** The frontend's billing catalog (`frontend/web/src/features/billing/billingCatalog.ts`) is its own hardcoded pricing/staff reference data — slug-style IDs like `"cardiology"`/`"dr-nirmala"` with fee multipliers — entirely independent of Masters' real Department/Consultant directory that Patient registration and IPD use. Validating these fields against Masters would have rejected every invoice the current UI can actually produce. Started this module out validating them as Guids against `IDepartmentService`/`IConsultantService` (mirroring IPD's `Admission`), caught the mismatch before merging, and reworked to free-text before generating the migration rather than shipping the broken validation and patching later. Unifying the two catalogs (making Billing's pricing data reference real Masters departments/consultants) is a real future improvement, not done here — it would mean rebuilding `billingCatalog.ts` against `mastersApi`/`consultantsApi`, out of scope for "replace the mock store."
+4. **`PatientId` is still validated for real** against `IPatientService.GetByIdAsync` — Patients has a real backend and the frontend always has a genuine patient Guid to send, unlike Department/Consultant/Service.
+5. **Permission gating covers every action, including reads** (`finance-billing.view` on GETs, `.create`/`.edit` on mutations) — matches `RolesController`'s now-current end-to-end pattern (see the identity-administration ADR), not the older reads-are-baseline-only pattern, since an invoice is patient financial data.
+6. **Frontend**: `apiBillingRepository.ts` mirrors `apiRoleRepository.ts`'s live-API-with-mock-fallback pattern exactly — same shape, same `NetworkError`-only fallback. `PatientDetails.tsx`'s Billing tab and `features/reports/incomeExpenseReport.ts` (previously synchronous mock reads) were converted to real React Query hooks (`usePatientInvoicesQuery`, `useInvoicesForReportQuery`) in the process.
+
+**Consequences**
+Verified end-to-end against a live `hms-api-dev`/`hms-web-dev`/local Postgres: a real patient registration with a Consultation billing line produced a real invoice (`INV-2026-000001`) retrievable from the ledger, the patient's Billing tab, and the Income & Expense report, with no "Demo data" fallback badge; a second invoice created via the standalone OPD Billing Entry screen correctly incremented to `INV-2026-000002`; Record Payment posted a real `Payment` row and flipped the line item to Paid; an anonymous request to the new endpoints was correctly rejected with 401. `dotnet test` — 50 architecture tests + 360 unit tests, all green (11 new for Billing). `tsc --noEmit` and `eslint` clean.
+
+The Income & Expense report's income side now depends on `getAllInvoicesForReport()`, which fetches a single page at the server's `PagedRequest.MaxPageSize` (100) — a hospital with more than 100 invoices in a report's date range will only see the first 100 until this gets a dedicated report endpoint. This is a stated, known limitation (see the function's own doc comment), not a silent gap.
+
 ### ADR-009: Documents module ships as a real backend without full platform-wide RBAC, without existence validation for most owner types, and without a real virus scanner — each gap is enforced-narrow and logged, not silently absent
 **Date:** 2026-08-06
 **Status:** Accepted

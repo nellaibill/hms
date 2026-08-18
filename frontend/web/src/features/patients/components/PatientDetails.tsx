@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AppointmentTypeName } from '@/components/AppointmentTypeName';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
-import { describeBillingItem, formatCurrency, getBillingForPatient, type BillingItem } from '@/features/billing';
+import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type BillingItem } from '@/features/billing';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
 import { usePatientRegistrationsQuery } from '../hooks/usePatientRegistrationsQuery';
 import { env } from '../../../config/env';
@@ -188,11 +188,20 @@ function BillingLineItem({ item }: { item: BillingItem }) {
   );
 }
 
-/** Billing is its own bounded context (see features/billing) with its own mock store — this reads it read-only for display, the same way it reads DocumentUpload's storage elsewhere. A patient can have zero billing records (every category is optional at registration) — that's shown explicitly rather than hiding the section, so "no charges were entered" reads as a fact, not a missing feature. */
+/** Billing is its own bounded context (see features/billing) — this reads it read-only for display via the real Billing API, the same way it reads DocumentUpload's storage elsewhere. A patient can have zero billing records (every category is optional at registration) — that's shown explicitly rather than hiding the section, so "no charges were entered" reads as a fact, not a missing feature. */
 function PatientBillingTab({ patientId }: { patientId: string }) {
-  const billings = getBillingForPatient(patientId);
+  const { data: billings, isPending } = usePatientInvoicesQuery(patientId);
 
-  if (billings.length === 0) {
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading billing…
+      </div>
+    );
+  }
+
+  if (!billings || billings.length === 0) {
     return <EmptyState icon={FileText} message="No billing recorded for this patient yet." />;
   }
 

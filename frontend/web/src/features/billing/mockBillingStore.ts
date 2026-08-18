@@ -4,11 +4,11 @@ import type { BillingFormValues } from './billingValidation';
 import type { Billing, PaymentStatus } from './types';
 
 /**
- * Offline-only store for submitted billing records — there is no Billing API yet (see
- * frontend/web/src/features/patients/mockPatientsStore.ts for the same pattern used ahead
- * of the Patients API). Persisted to localStorage so a demo survives a page refresh. Swap
- * for a real `billingApi.create()` call once the backend exposes one; `saveBillingForPatient`
- * is the only call site that needs to change.
+ * Offline-only fallback store — apiBillingRepository.ts is the real entry point now (calls
+ * the actual Billing API, falling back to these functions only on a genuine NetworkError,
+ * e.g. the static GitHub Pages deploy with no backend behind it). Nothing outside
+ * apiBillingRepository.ts should import from this file directly. Persisted to localStorage
+ * so the fallback survives a page refresh — mirrors mockRolesStore.ts's identical role.
  */
 const STORAGE_KEY = 'hms-mock-billing';
 

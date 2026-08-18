@@ -8,7 +8,7 @@ import {
   BillingStep,
   PatientPicker,
   defaultBillingFormValues,
-  saveBillingForPatient,
+  useCreateInvoiceMutation,
   type BillingStepHandle,
 } from '../../features/billing';
 
@@ -25,8 +25,8 @@ export default function InvoiceCreatePage() {
   const navigate = useNavigate();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const billingRef = useRef<BillingStepHandle>(null);
+  const createInvoiceMutation = useCreateInvoiceMutation();
 
   async function handleSave() {
     if (!patient || !billingRef.current) return;
@@ -35,22 +35,26 @@ export default function InvoiceCreatePage() {
     const valid = await billingRef.current.validate();
     if (!valid) return;
 
-    setIsSaving(true);
     const values = billingRef.current.getValues();
-    // No real "new visit" concept exists yet for a returning patient (OPD encounter
-    // tracking isn't built) — fall back to their last registration id the same way the
-    // registration wizard's own save call does, rather than fabricating one.
-    const billing = saveBillingForPatient(patient.id, patient.currentRegistration?.id ?? patient.id, values, {
-      name: `${patient.firstName} ${patient.lastName}`,
-      uhid: patient.uhid,
-    });
-    setIsSaving(false);
+    try {
+      // No real "new visit" concept exists yet for a returning patient (OPD encounter
+      // tracking isn't built) — fall back to their last registration id the same way the
+      // registration wizard's own save call does, rather than fabricating one.
+      const billing = await createInvoiceMutation.mutateAsync({
+        patientId: patient.id,
+        visitId: patient.currentRegistration?.id ?? patient.id,
+        values,
+        patient: { name: `${patient.firstName} ${patient.lastName}`, uhid: patient.uhid },
+      });
 
-    if (!billing) {
-      setSaveError('Add at least one billing item before saving.');
-      return;
+      if (!billing) {
+        setSaveError('Add at least one billing item before saving.');
+        return;
+      }
+      navigate(`/finance/accounts/${billing.id}`);
+    } catch {
+      setSaveError('Could not save the invoice. Please try again.');
     }
-    navigate(`/finance/accounts/${billing.id}`);
   }
 
   return (
@@ -108,8 +112,8 @@ export default function InvoiceCreatePage() {
               )}
 
               <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? 'Saving…' : 'Save Invoice'}
+                <Button onClick={handleSave} disabled={createInvoiceMutation.isPending}>
+                  {createInvoiceMutation.isPending ? 'Saving…' : 'Save Invoice'}
                 </Button>
               </div>
             </>

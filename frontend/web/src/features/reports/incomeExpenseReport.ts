@@ -1,4 +1,4 @@
-import { getAllMockBillings, getOverallPaymentStatus, type Billing } from '@/features/billing';
+import { getOverallPaymentStatus, type Billing } from '@/features/billing';
 import { MOCK_EXPENSES } from './mockExpenses';
 import type { ExpenseReportRow, IncomeReportRow, ReportDateRange } from './types';
 
@@ -14,6 +14,7 @@ function billingToIncomeRow(billing: Billing): IncomeReportRow {
   const billingTypes = Array.from(new Set(billing.items.map((item) => item.billingType))).join(', ');
   return {
     id: billing.id,
+    invoiceNumber: billing.invoiceNumber,
     date: dateOnly(billing.createdAt),
     patientName: billing.patientName,
     patientUhid: billing.patientUhid,
@@ -23,9 +24,9 @@ function billingToIncomeRow(billing: Billing): IncomeReportRow {
   };
 }
 
-/** One row per invoice (not per line item) — a financial report reads at ledger granularity, matching Total Income against the Unified Invoice Ledger's own totals. */
-export function getIncomeRows(range: ReportDateRange): IncomeReportRow[] {
-  return getAllMockBillings()
+/** One row per invoice (not per line item) — a financial report reads at ledger granularity, matching Total Income against the Unified Invoice Ledger's own totals. `billings` comes from features/billing's useInvoicesForReportQuery — this stays a pure transform so the page controls loading state. */
+export function getIncomeRows(billings: Billing[], range: ReportDateRange): IncomeReportRow[] {
+  return billings
     .map(billingToIncomeRow)
     .filter((row) => inRange(row.date, range))
     .sort((a, b) => b.date.localeCompare(a.date));

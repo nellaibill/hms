@@ -26,7 +26,7 @@ export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCar
             {billing.patientName} <span className="font-normal text-muted-foreground">· {billing.patientUhid}</span>
           </CardTitle>
           <CardDescription>
-            Invoice {billing.id} · {new Date(billing.createdAt).toLocaleString('en-IN')}
+            Invoice {billing.invoiceNumber ?? billing.id} · {new Date(billing.createdAt).toLocaleString('en-IN')}
           </CardDescription>
         </div>
       </CardHeader>

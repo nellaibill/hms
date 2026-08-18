@@ -1,0 +1,69 @@
+import type { BillingType, InvoicePaymentStatus, PaymentMethod } from '../../enums';
+
+/** Mirrors HMS.Modules.Billing.Contracts.CreateInvoiceLineItemRequest. */
+export interface CreateInvoiceLineItemRequest {
+  billingType: BillingType;
+  departmentId?: string | null;
+  consultantId?: string | null;
+  serviceId?: string | null;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  discountApproved: boolean;
+  discountApprovedBy?: string | null;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.CreateInvoiceRequest. */
+export interface CreateInvoiceRequest {
+  patientId: string;
+  visitId: string;
+  patientName: string;
+  patientUhid: string;
+  items: CreateInvoiceLineItemRequest[];
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.RecordPaymentRequest. */
+export interface RecordPaymentRequest {
+  method: PaymentMethod;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceLineItemResponse. */
+export interface InvoiceLineItemResponse {
+  id: string;
+  billingType: BillingType;
+  departmentId?: string | null;
+  consultantId?: string | null;
+  serviceId?: string | null;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  discountApproved: boolean;
+  discountApprovedBy?: string | null;
+  paymentStatus: InvoicePaymentStatus;
+  total: number;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceResponse. */
+export interface InvoiceResponse {
+  id: string;
+  invoiceNumber: string;
+  patientId: string;
+  visitId: string;
+  patientName: string;
+  patientUhid: string;
+  createdAt: string;
+  items: InvoiceLineItemResponse[];
+  grossAmount: number;
+  totalDiscount: number;
+  netAmount: number;
+  paymentStatus: InvoicePaymentStatus;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceListQuery. */
+export interface InvoiceListQuery {
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  search?: string;
+  paymentStatus?: InvoicePaymentStatus;
+}
