@@ -11,4 +11,6 @@ internal static class PlatformErrorCodes
     public const string NotFound = "PLATFORM.NOT_FOUND";
     public const string InvalidStatus = "PLATFORM.INVALID_STATUS";
     public const string MigrationFailed = "PLATFORM.MIGRATION_FAILED";
+    public const string IdempotencyKeyInProgress = "PLATFORM.IDEMPOTENCY_KEY_IN_PROGRESS";
+    public const string IdempotencyKeyReused = "PLATFORM.IDEMPOTENCY_KEY_REUSED";
 }

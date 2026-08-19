@@ -41,6 +41,7 @@ public static class PlatformModule
         services.AddScoped<IPlatformAuthenticationService, PlatformAuthenticationService>();
 
         services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<IHospitalRegistrationIdempotencyStore, HospitalRegistrationIdempotencyStore>();
         services.AddScoped<IHospitalRegistrationService, HospitalRegistrationService>();
         services.AddScoped<IPlatformDashboardService, PlatformDashboardService>();
 

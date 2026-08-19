@@ -22,6 +22,7 @@ public class PlatformDbContext : DbContext
     // call), but these DbSets are only ever queried from within this module.
     internal DbSet<PlatformUser> PlatformUsers => Set<PlatformUser>();
     internal DbSet<Tenant> Tenants => Set<Tenant>();
+    internal DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

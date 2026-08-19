@@ -20,7 +20,6 @@ export interface CreateHospitalResponse {
   id: string;
   hospitalName: string;
   hospitalCode: string;
-  databaseName: string;
   status: string;
   createdAt: string;
 }
@@ -30,7 +29,6 @@ export interface TenantListItemResponse {
   id: string;
   hospitalName: string;
   hospitalCode: string;
-  databaseName: string;
   status: string;
   createdAt: string;
 }

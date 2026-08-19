@@ -23,8 +23,16 @@ export interface PagedTenants {
 export class PlatformHospitalsApi {
   constructor(private readonly client: HttpClient) {}
 
-  async createHospital(request: CreateHospitalRequest): Promise<CreateHospitalResponse> {
-    const response = await this.client.post<CreateHospitalResponse>(API_ROUTES.platformHospitals.base, request);
+  /**
+   * `idempotencyKey` must stay the same across retries of one logical registration attempt
+   * (e.g. after a client-side timeout) — the backend uses it to avoid double-provisioning a
+   * hospital database. Callers should generate a fresh key only when starting a genuinely
+   * new registration, not on every call.
+   */
+  async createHospital(request: CreateHospitalRequest, idempotencyKey: string): Promise<CreateHospitalResponse> {
+    const response = await this.client.post<CreateHospitalResponse>(API_ROUTES.platformHospitals.base, request, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    });
     return response.data;
   }
 

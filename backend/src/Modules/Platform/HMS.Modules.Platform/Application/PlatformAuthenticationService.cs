@@ -14,6 +14,11 @@ internal class PlatformAuthenticationService : IPlatformAuthenticationService
 {
     private const string GenericInvalidLoginMessage = "Invalid email or password.";
 
+    /// <summary>Brute-force throttling thresholds — mirrors
+    /// HMS.Modules.Identity.Application.AuthenticationService's identical constants.</summary>
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
     private readonly IPlatformUserRepository _repository;
     private readonly IPlatformPasswordHasher _passwordHasher;
     private readonly IPlatformJwtTokenGenerator _jwtTokenGenerator;
@@ -34,9 +39,31 @@ internal class PlatformAuthenticationService : IPlatformAuthenticationService
     public async Task<Result<PlatformLoginResponse>> LoginAsync(PlatformLoginRequest request, CancellationToken cancellationToken)
     {
         var user = await _repository.GetByEmailAsync(request.Email, cancellationToken);
-        if (user is null || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        if (user is null)
         {
             _logger.LogInformation("Platform login failed for {Email}: invalid credentials", request.Email);
+            return Fail();
+        }
+
+        // Brute-force throttling: a prior run of wrong-password attempts already locked this
+        // account out. Rejected before even touching the password hasher.
+        var now = DateTime.UtcNow;
+        if (user.IsLockedOut(now))
+        {
+            _logger.LogWarning("Platform login failed for {Email}: account is locked out until {LockedOutUntil}", request.Email, user.LockedOutUntil);
+            return Fail();
+        }
+
+        if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        {
+            user.RecordFailedLogin(now, MaxFailedLoginAttempts, LockoutDuration);
+            await _repository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Platform login failed for {Email}: invalid credentials ({FailedAttempts}/{MaxAttempts} failed attempts)",
+                request.Email,
+                user.FailedLoginAttempts,
+                MaxFailedLoginAttempts);
             return Fail();
         }
 
@@ -45,6 +72,9 @@ internal class PlatformAuthenticationService : IPlatformAuthenticationService
             _logger.LogInformation("Platform login failed for {Email}: inactive account", request.Email);
             return Fail();
         }
+
+        user.RecordSuccessfulLogin();
+        await _repository.SaveChangesAsync(cancellationToken);
 
         var (token, expiresInSeconds) = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.FullName, user.Role);
 

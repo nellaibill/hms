@@ -37,12 +37,12 @@ _To be documented._
 
 ## Decisions
 
-### ADR-015: API-wide rate limiting via ASP.NET Core's built-in RateLimiter
+### ADR-018: API-wide rate limiting via ASP.NET Core's built-in RateLimiter
 **Date:** 2026-08-19
 **Status:** Accepted
 
 **Context**
-The architecture/security review flagged that there was no rate limiting anywhere on the API host — nothing stopped a flood of requests (from one client or distributed across many) regardless of authentication state, and the per-account lockout added in the companion "Account lockout after 5 wrong-password attempts" change is per-account, not per-IP, so it doesn't help against an attacker spraying guesses across many different usernames/emails.
+The architecture/security review flagged that there was no rate limiting anywhere on the API host — nothing stopped a flood of requests (from one client or distributed across many) regardless of authentication state, and the per-account lockout added in ADR-017 is per-account, not per-IP, so it doesn't help against an attacker spraying guesses across many different usernames/emails.
 
 **Decision**
 Added `RateLimitingConfiguration` (`HMS.Api/Configuration`), using ASP.NET Core's built-in `Microsoft.AspNetCore.RateLimiting` middleware — no extra package needed, already part of the shared framework. Two layers, both partitioned per client IP (`HttpContext.Connection.RemoteIpAddress`, not `X-Forwarded-For` — nothing here is a trusted reverse proxy yet, so an attacker-controlled header must not be able to bypass the limiter):
@@ -53,7 +53,57 @@ Rejections return `429 Too Many Requests` with the same `ApiErrorResponse` shape
 
 **Consequences**
 - `HMS.IntegrationTests` is excluded from CI (`dotnet test --filter "FullyQualifiedName!~HMS.IntegrationTests"`, `build.yml`) because it needs Docker/Testcontainers, which aren't available in this environment or in CI — so this change is verified by build success and the standard, well-documented ASP.NET Core `RateLimiter` API surface, not by an automated end-to-end test hitting real HTTP 429s. Worth adding a real integration test once Docker is available in CI.
-- Thresholds are hardcoded, not configurable, for the same reason as the companion lockout change's thresholds — one deployment target, no evidence yet of needing per-environment tuning.
+- Thresholds are hardcoded, not configurable, for the same reason as ADR-017's thresholds — one deployment target, no evidence yet of needing per-environment tuning.
+
+---
+
+### ADR-017: Account lockout after 5 wrong-password attempts, on both login endpoints
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that neither login endpoint (hospital `AuthenticationService.LoginAsync` nor Platform `PlatformAuthenticationService.LoginAsync`) had any account lockout or brute-force throttling — an attacker could try unlimited passwords against a known username/email with no penalty.
+
+**Decision**
+Added `FailedLoginAttempts`/`LockedOutUntil` to both `User` (hospital-side, per-tenant) and `PlatformUser`. A wrong password increments the counter and persists it immediately (even though the overall login still fails); reaching 5 attempts sets a 15-minute lockout. A locked-out account is rejected before the password is even checked — no point spending a hash comparison on an account that can't log in regardless. A successful login resets the counter. Both endpoints keep returning the exact same generic `InvalidLogin`/`IDENTITY.INVALID_LOGIN` message and error code used for every other rejection reason (per the existing, explicitly-documented "never reveal which check failed" convention in both services) — a locked-out account looks identical to a wrong password from the outside; only the server logs distinguish it (`LogWarning` instead of `LogInformation`).
+
+**Consequences**
+- Thresholds (5 attempts, 15-minute lockout) are hardcoded constants, not configurable — there's one deployment target and no evidence yet of needing per-environment tuning; revisit if that changes.
+- Only wrong-password attempts count toward the threshold — a login rejected for a nonexistent username, an inactive account, or a login-type/role mismatch doesn't increment anything, since those aren't password-guessing attempts against a specific account's credential.
+- This is per-account throttling, not per-IP — an attacker distributing guesses across many usernames from one IP is unaffected (that's what finding "No rate limiting anywhere on the API host" — tracked separately — is for).
+
+---
+
+### ADR-016: Stop returning DatabaseName to the frontend
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that `CreateHospitalResponse`/`TenantListItemResponse` returned the tenant's internal PostgreSQL database name straight to the browser, and `HospitalTable.tsx` rendered it as a visible column — an infrastructure implementation detail with no product reason to reach the client, and a minor information-disclosure surface (it reveals the exact naming scheme used to derive one tenant's database from another's).
+
+**Decision**
+Removed `DatabaseName` from both response contracts and their mapping code in `HospitalRegistrationService`/`PlatformDashboardService`. Removed the corresponding `databaseName` field from the frontend's DTO mirrors and the "Database Name" column from `HospitalTable.tsx`. The backend's own internal use of `Tenant.DatabaseName` (connection-string resolution via `TenantDirectory`, migrations, logging) is untouched — this is purely about what crosses the API boundary.
+
+**Consequences**
+- No behavior change for Platform Admins beyond one fewer (and not useful) table column.
+- Any future "show ops/support which physical database backs a tenant" need should be a deliberately separate, more tightly-scoped surface (e.g. gated to `SuperAdmin` only, per ADR-014), not the same response every Platform Admin already receives for the dashboard list.
+
+---
+
+### ADR-015: Hospital registration requires an Idempotency-Key header
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that hospital registration had no idempotency/retry protection — a client-perceived timeout followed by a resubmit could double-provision a hospital database, since the only existing guard (checking `platform.tenants` for the hospital code) only catches a duplicate *after* a prior request has already finished writing that row, not while provisioning is still in flight.
+
+**Decision**
+`POST /api/platform/hospitals` now requires an `Idempotency-Key` header (400 if missing). A new `platform.idempotency_keys` table, guarded by a unique index on `key`, is used to atomically "reserve" a key before provisioning starts: the first request to insert wins and proceeds; a concurrent request with the same key gets `409 PLATFORM.IDEMPOTENCY_KEY_IN_PROGRESS` instead of racing into a second provisioning; a later retry after the first request finished gets the original cached `Result<CreateHospitalResponse>` replayed verbatim (`409`/`201` matching the original outcome) instead of re-executing; and a key reused for a different request body gets `409 PLATFORM.IDEMPOTENCY_KEY_REUSED`. The frontend (`useCreateHospitalMutation`) generates one key per page-mount (`crypto.randomUUID()`), reused across retries of the same submission attempt, never regenerated per `mutate()` call.
+
+**Consequences**
+- Verified live against the real API + Postgres: a genuine concurrent double-submit (two requests firing ~150ms apart with the same key) produced exactly one `Provisioned hospital` log line and one `IN_PROGRESS` rejection — confirmed via the running server, not just unit tests.
+- Scoped narrowly to this one endpoint (`IHospitalRegistrationIdempotencyStore`), not a generic ASP.NET Core idempotency middleware — no other endpoint needs this yet.
+- Existing/older API clients that don't send the header now get a hard `400` on hospital creation — acceptable since the only consumer is this repo's own Platform Portal frontend, which was updated in the same change.
 
 ---
 
