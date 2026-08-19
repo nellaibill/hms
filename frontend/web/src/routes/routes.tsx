@@ -77,6 +77,7 @@ const AdmissionViewPage = lazy(() => import('../pages/ipd/AdmissionViewPage'));
 // sidebar/nav, since a Platform Admin isn't scoped to any one hospital.
 const PlatformLoginPage = lazy(() => import('../pages/platform/PlatformLoginPage'));
 const PlatformDashboardPage = lazy(() => import('../pages/platform/PlatformDashboardPage'));
+const PlatformSecuritySettingsPage = lazy(() => import('../pages/platform/PlatformSecuritySettingsPage'));
 const CreateHospitalPage = lazy(() => import('../pages/platform/CreateHospitalPage'));
 
 const shellFallback = (
@@ -271,6 +272,7 @@ export const router = createBrowserRouter(
       children: [
         { path: '/platform/dashboard', element: withSuspense(<PlatformDashboardPage />) },
         { path: '/platform/hospitals/new', element: withSuspense(<CreateHospitalPage />) },
+        { path: '/platform/security', element: withSuspense(<PlatformSecuritySettingsPage />) },
       ],
     },
     {

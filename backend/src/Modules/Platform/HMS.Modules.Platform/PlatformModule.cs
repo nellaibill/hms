@@ -40,6 +40,12 @@ public static class PlatformModule
         services.AddSingleton<IPlatformJwtTokenGenerator, PlatformJwtTokenGenerator>();
         services.AddScoped<IPlatformAuthenticationService, PlatformAuthenticationService>();
 
+        // Platform Admin MFA (RFC 6238 TOTP) — see ITotpService/IPlatformMfaSecretProtector/
+        // IPlatformMfaChallengeStore's own doc comments.
+        services.AddSingleton<ITotpService, TotpService>();
+        services.AddSingleton<IPlatformMfaSecretProtector, PlatformMfaSecretProtector>();
+        services.AddScoped<IPlatformMfaChallengeStore, PlatformMfaChallengeStore>();
+
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IHospitalRegistrationIdempotencyStore, HospitalRegistrationIdempotencyStore>();
         services.AddScoped<IHospitalRegistrationService, HospitalRegistrationService>();
@@ -66,6 +72,9 @@ public static class PlatformModule
         // identical comment.
         services.AddScoped<IValidator<PlatformLoginRequest>, PlatformLoginRequestValidator>();
         services.AddScoped<IValidator<CreateHospitalRequest>, CreateHospitalRequestValidator>();
+        services.AddScoped<IValidator<PlatformMfaVerifyRequest>, PlatformMfaVerifyRequestValidator>();
+        services.AddScoped<IValidator<PlatformMfaEnableRequest>, PlatformMfaEnableRequestValidator>();
+        services.AddScoped<IValidator<PlatformMfaDisableRequest>, PlatformMfaDisableRequestValidator>();
 
         services.Configure<PlatformAdminSeedOptions>(configuration.GetSection(PlatformAdminSeedOptions.SectionName));
         services.Configure<LegacyTenantSeedOptions>(configuration.GetSection(LegacyTenantSeedOptions.SectionName));

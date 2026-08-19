@@ -1,5 +1,13 @@
 import { API_ROUTES } from '../../constants';
-import type { PlatformLoginRequest, PlatformLoginResponse } from '../../dtos';
+import type {
+  PlatformLoginRequest,
+  PlatformLoginResponse,
+  PlatformMfaDisableRequest,
+  PlatformMfaEnableRequest,
+  PlatformMfaSetupResponse,
+  PlatformMfaStatusResponse,
+  PlatformMfaVerifyRequest,
+} from '../../dtos';
 import type { HttpClient } from '../httpClient';
 
 /**
@@ -13,6 +21,35 @@ export class PlatformAuthApi {
   async login(request: PlatformLoginRequest): Promise<PlatformLoginResponse> {
     const response = await this.client.post<PlatformLoginResponse>(API_ROUTES.platformAuth.login, request);
     return response.data;
+  }
+
+  /** Second step of a two-step MFA login — exchanges the challenge token `login` returned
+   * (when `mfaRequired` is true), plus a current authenticator code, for the real token. */
+  async verifyMfa(request: PlatformMfaVerifyRequest): Promise<PlatformLoginResponse> {
+    const response = await this.client.post<PlatformLoginResponse>(API_ROUTES.platformAuth.mfaVerify, request);
+    return response.data;
+  }
+
+  /** Whether the currently-authenticated Platform Admin's account has MFA enabled. */
+  async getMfaStatus(): Promise<PlatformMfaStatusResponse> {
+    const response = await this.client.get<PlatformMfaStatusResponse>(API_ROUTES.platformAuth.mfaStatus);
+    return response.data;
+  }
+
+  /** Starts (or restarts) MFA setup for the currently-authenticated Platform Admin. */
+  async setupMfa(): Promise<PlatformMfaSetupResponse> {
+    const response = await this.client.post<PlatformMfaSetupResponse>(API_ROUTES.platformAuth.mfaSetup);
+    return response.data;
+  }
+
+  /** Confirms a pending setup, turning MFA on. */
+  async enableMfa(request: PlatformMfaEnableRequest): Promise<void> {
+    await this.client.post<void>(API_ROUTES.platformAuth.mfaEnable, request);
+  }
+
+  /** Turns MFA back off, after proving the caller still controls the authenticator. */
+  async disableMfa(request: PlatformMfaDisableRequest): Promise<void> {
+    await this.client.post<void>(API_ROUTES.platformAuth.mfaDisable, request);
   }
 
   /** Revokes the current token server-side — see JwtConfiguration/PlatformAuthController's

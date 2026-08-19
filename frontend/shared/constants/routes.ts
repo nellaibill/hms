@@ -17,6 +17,11 @@ export const API_ROUTES = {
     login: '/api/platform/auth/login',
     me: '/api/platform/auth/me',
     logout: '/api/platform/auth/logout',
+    mfaVerify: '/api/platform/auth/mfa/verify',
+    mfaStatus: '/api/platform/auth/mfa/status',
+    mfaSetup: '/api/platform/auth/mfa/setup',
+    mfaEnable: '/api/platform/auth/mfa/enable',
+    mfaDisable: '/api/platform/auth/mfa/disable',
   },
   /** Mirrors HMS.Modules.Platform.Endpoints.HospitalsController. */
   platformHospitals: {

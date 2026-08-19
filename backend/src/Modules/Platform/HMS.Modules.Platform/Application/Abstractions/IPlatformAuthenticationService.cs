@@ -12,4 +12,20 @@ namespace HMS.Modules.Platform.Application.Abstractions;
 public interface IPlatformAuthenticationService
 {
     Task<Result<PlatformLoginResponse>> LoginAsync(PlatformLoginRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Second step of a two-step MFA login — exchanges a challenge token
+    /// LoginAsync issued for the real bearer token once the TOTP code checks out.</summary>
+    Task<Result<PlatformLoginResponse>> VerifyMfaAsync(PlatformMfaVerifyRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Whether the given Platform Admin's own account currently has MFA enabled.</summary>
+    Task<Result<PlatformMfaStatusResponse>> GetMfaStatusAsync(Guid platformUserId, CancellationToken cancellationToken);
+
+    /// <summary>Starts (or restarts) MFA setup for the given Platform Admin's own account.</summary>
+    Task<Result<PlatformMfaSetupResponse>> SetupMfaAsync(Guid platformUserId, CancellationToken cancellationToken);
+
+    /// <summary>Confirms a pending setup, turning MfaEnabled on.</summary>
+    Task<Result> EnableMfaAsync(Guid platformUserId, string code, CancellationToken cancellationToken);
+
+    /// <summary>Turns MFA back off, after proving the caller still controls the authenticator.</summary>
+    Task<Result> DisableMfaAsync(Guid platformUserId, string code, CancellationToken cancellationToken);
 }

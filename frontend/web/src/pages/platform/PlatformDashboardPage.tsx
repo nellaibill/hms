@@ -1,6 +1,7 @@
 import type { TenantListItemResponse } from '@hms/shared';
-import { AlertTriangle, Building2, CheckCircle2, Loader2, LogOut, XCircle } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Loader2, LogOut, ShieldCheck, XCircle } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Pagination } from '@/components/Pagination';
@@ -27,6 +28,7 @@ interface StatTile {
 
 export default function PlatformDashboardPage() {
   const { user, logout } = usePlatformAuth();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -69,6 +71,10 @@ export default function PlatformDashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Button variant="outline" size="sm" onClick={() => navigate('/platform/security')}>
+            <ShieldCheck className="mr-2 size-4" />
+            Security
+          </Button>
           <Button variant="outline" size="sm" onClick={logout}>
             <LogOut className="mr-2 size-4" />
             Sign out

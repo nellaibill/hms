@@ -11,10 +11,20 @@ interface StoredSession {
   user: PlatformLoginUserResponse;
 }
 
+/** Discriminates the two shapes `login`/`completeMfaLogin` can settle to — see
+ * PlatformLoginResponse's own doc comment for why login is a two-step process for an
+ * MFA-enabled account. */
+export type PlatformLoginOutcome =
+  | { mfaRequired: true; challengeToken: string }
+  | { mfaRequired: false };
+
 interface PlatformAuthContextValue {
   user: PlatformLoginUserResponse | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<PlatformLoginOutcome>;
+  /** Second step of an MFA login — exchanges the challenge token `login` returned for a
+   * real session once the authenticator code checks out. */
+  completeMfaLogin: (challengeToken: string, code: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -35,10 +45,6 @@ function readStoredSession(): StoredSession | null {
   }
 }
 
-function toStoredUser(response: PlatformLoginResponse): PlatformLoginUserResponse {
-  return response.user;
-}
-
 // Initializes the module-level HTTP token holder synchronously (outside React state) so
 // the very first render's queries carry a restored token, not just renders after an effect.
 const initialSession = readStoredSession();
@@ -47,16 +53,31 @@ setPlatformAuthToken(initialSession?.token ?? null);
 export function PlatformAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PlatformLoginUserResponse | null>(initialSession?.user ?? null);
 
-  const login = async (email: string, password: string) => {
-    const response = await platformAuthApi.login({ email, password });
+  function establishSession(response: PlatformLoginResponse) {
+    // Only ever called with the completed-login shape (mfaRequired false) — see
+    // PlatformLoginResponse's own doc comment.
     const session: StoredSession = {
-      token: response.token,
+      token: response.token!,
       expiresAt: Date.now() + response.expiresIn * 1000,
-      user: toStoredUser(response),
+      user: response.user!,
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     setPlatformAuthToken(session.token);
     setUser(session.user);
+  }
+
+  const login = async (email: string, password: string): Promise<PlatformLoginOutcome> => {
+    const response = await platformAuthApi.login({ email, password });
+    if (response.mfaRequired) {
+      return { mfaRequired: true, challengeToken: response.mfaChallengeToken! };
+    }
+    establishSession(response);
+    return { mfaRequired: false };
+  };
+
+  const completeMfaLogin = async (challengeToken: string, code: string) => {
+    const response = await platformAuthApi.verifyMfa({ challengeToken, code });
+    establishSession(response);
   };
 
   const logout = () => {
@@ -71,7 +92,10 @@ export function PlatformAuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const value = useMemo(() => ({ user, isAuthenticated: user !== null, login, logout }), [user]);
+  const value = useMemo(
+    () => ({ user, isAuthenticated: user !== null, login, completeMfaLogin, logout }),
+    [user],
+  );
 
   return <PlatformAuthContext.Provider value={value}>{children}</PlatformAuthContext.Provider>;
 }
