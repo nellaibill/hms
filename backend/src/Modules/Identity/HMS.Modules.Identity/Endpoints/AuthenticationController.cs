@@ -7,6 +7,7 @@ using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 
 namespace HMS.Modules.Identity.Endpoints;
@@ -38,6 +39,7 @@ public class AuthenticationController : ControllerBase
     /// <response code="400">The request failed validation.</response>
     /// <response code="401">The login type, username, or password was invalid.</response>
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingPolicyNames.Login)]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {

@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-018: API-wide rate limiting via ASP.NET Core's built-in RateLimiter
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that there was no rate limiting anywhere on the API host — nothing stopped a flood of requests (from one client or distributed across many) regardless of authentication state, and the per-account lockout added in ADR-017 is per-account, not per-IP, so it doesn't help against an attacker spraying guesses across many different usernames/emails.
+
+**Decision**
+Added `RateLimitingConfiguration` (`HMS.Api/Configuration`), using ASP.NET Core's built-in `Microsoft.AspNetCore.RateLimiting` middleware — no extra package needed, already part of the shared framework. Two layers, both partitioned per client IP (`HttpContext.Connection.RemoteIpAddress`, not `X-Forwarded-For` — nothing here is a trusted reverse proxy yet, so an attacker-controlled header must not be able to bypass the limiter):
+- A **global limiter** applied to every request by default: 200 requests/minute per IP, generous enough not to interfere with normal UI usage (dashboard polling, React Query refetches).
+- A stricter **"Login" policy** (10 requests/minute per IP), applied explicitly via `[EnableRateLimiting("Login")]` to both login actions — the per-IP complement to the per-account lockout.
+
+Rejections return `429 Too Many Requests` with the same `ApiErrorResponse` shape every other error uses. The middleware runs early in the pipeline (right after CORS, before authentication/authorization/tenant resolution) so a flood is rejected before spending any JWT-validation or DB work. The policy name constant lives in `HMS.Shared.Infrastructure` (not `HMS.Api.Configuration`) since modules must never reference `HMS.Api` — only `HMS.Api` may register policies, but modules need the same name to apply them.
+
+**Consequences**
+- `HMS.IntegrationTests` is excluded from CI (`dotnet test --filter "FullyQualifiedName!~HMS.IntegrationTests"`, `build.yml`) because it needs Docker/Testcontainers, which aren't available in this environment or in CI — so this change is verified by build success and the standard, well-documented ASP.NET Core `RateLimiter` API surface, not by an automated end-to-end test hitting real HTTP 429s. Worth adding a real integration test once Docker is available in CI.
+- Thresholds are hardcoded, not configurable, for the same reason as ADR-017's thresholds — one deployment target, no evidence yet of needing per-environment tuning.
+
+---
+
 ### ADR-017: Account lockout after 5 wrong-password attempts, on both login endpoints
 **Date:** 2026-08-19
 **Status:** Accepted
