@@ -88,4 +88,133 @@ public class PlatformDashboardServiceTests
         stats.Inactive.Should().Be(1);
         stats.ProvisioningAlertCount.Should().Be(2);
     }
+
+    [Fact]
+    public async Task GetDeletePreviewAsync_ReturnsTheTenantsCurrentInfo()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await _sut.GetDeletePreviewAsync(tenant.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.HospitalCode.Should().Be(tenant.HospitalCode);
+        result.Value.Status.Should().Be(tenant.Status.ToString());
+    }
+
+    [Fact]
+    public async Task GetDeletePreviewAsync_WhenTenantNotFound_ReturnsNotFoundFailure()
+    {
+        _tenantRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Tenant?)null);
+
+        var result = await _sut.GetDeletePreviewAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteHospitalAsync_WithMatchingConfirmationCode_SoftDeletesTheTenant()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await _sut.DeleteHospitalAsync(tenant.Id, "apollo", _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        tenant.IsDeleted.Should().BeTrue();
+        tenant.DeletedBy.Should().Be(_platformAdminId);
+        await _tenantRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteHospitalAsync_ConfirmationIsCaseInsensitiveAndTrimmed()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await _sut.DeleteHospitalAsync(tenant.Id, "  APOLLO  ", _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        tenant.IsDeleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteHospitalAsync_WithWrongConfirmationCode_LeavesTheTenantUntouched()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await _sut.DeleteHospitalAsync(tenant.Id, "not-apollo", _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.ConfirmationMismatch);
+        tenant.IsDeleted.Should().BeFalse();
+        await _tenantRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteHospitalAsync_WhenTenantNotFound_ReturnsNotFoundFailure()
+    {
+        _tenantRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Tenant?)null);
+
+        var result = await _sut.DeleteHospitalAsync(Guid.NewGuid(), "anything", _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.NotFound);
+    }
+
+    [Fact]
+    public async Task RestoreHospitalAsync_WithASoftDeletedTenant_ClearsTheDeletedFlag()
+    {
+        var tenant = NewTenant();
+        tenant.SoftDelete(Guid.NewGuid());
+        _tenantRepository.GetByIdIncludingDeletedAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await _sut.RestoreHospitalAsync(tenant.Id, _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        tenant.IsDeleted.Should().BeFalse();
+        tenant.DeletedAt.Should().BeNull();
+        tenant.DeletedBy.Should().BeNull();
+        tenant.UpdatedBy.Should().Be(_platformAdminId);
+    }
+
+    [Fact]
+    public async Task RestoreHospitalAsync_WhenTenantIsNotDeleted_ReturnsNotDeletedFailure()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdIncludingDeletedAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await _sut.RestoreHospitalAsync(tenant.Id, _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.NotDeleted);
+    }
+
+    [Fact]
+    public async Task RestoreHospitalAsync_WhenTenantDoesNotExistAtAll_ReturnsNotDeletedFailure()
+    {
+        _tenantRepository.GetByIdIncludingDeletedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Tenant?)null);
+
+        var result = await _sut.RestoreHospitalAsync(Guid.NewGuid(), _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.NotDeleted);
+    }
+
+    [Fact]
+    public async Task GetDeletedHospitalsAsync_ReturnsThePagedDeletedList()
+    {
+        var tenant = NewTenant();
+        tenant.SoftDelete(_platformAdminId);
+        _tenantRepository.GetDeletedPagedAsync(Arg.Any<TenantListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Tenant> { tenant }, 1));
+
+        var paged = await _sut.GetDeletedHospitalsAsync(new TenantListQuery(), CancellationToken.None);
+
+        paged.TotalCount.Should().Be(1);
+        paged.Items.Single().HospitalCode.Should().Be(tenant.HospitalCode);
+        paged.Items.Single().DeletedAt.Should().Be(tenant.DeletedAt!.Value);
+    }
 }

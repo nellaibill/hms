@@ -28,6 +28,10 @@ export const API_ROUTES = {
     base: '/api/platform/hospitals',
     stats: '/api/platform/hospitals/stats',
     status: (id: string) => `/api/platform/hospitals/${id}/status`,
+    deleted: '/api/platform/hospitals/deleted',
+    deletePreview: (id: string) => `/api/platform/hospitals/${id}/delete-preview`,
+    byId: (id: string) => `/api/platform/hospitals/${id}`,
+    restore: (id: string) => `/api/platform/hospitals/${id}/restore`,
   },
   users: {
     base: '/api/v1/users',

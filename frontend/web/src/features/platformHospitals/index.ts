@@ -1,6 +1,11 @@
 export { HospitalForm } from './components/HospitalForm';
 export { HospitalListToolbar } from './components/HospitalListToolbar';
 export { HospitalTable } from './components/HospitalTable';
+export { DeletedHospitalTable } from './components/DeletedHospitalTable';
+export { DeleteHospitalDialog } from './components/DeleteHospitalDialog';
 export { useCreateHospitalMutation } from './hooks/useCreateHospitalMutation';
 export { useHospitalsQuery, useHospitalStatsQuery } from './hooks/useHospitalsQuery';
 export { useUpdateHospitalStatusMutation } from './hooks/useUpdateHospitalStatusMutation';
+export { useDeletedHospitalsQuery } from './hooks/useDeletedHospitalsQuery';
+export { useDeleteHospitalMutation } from './hooks/useDeleteHospitalMutation';
+export { useRestoreHospitalMutation } from './hooks/useRestoreHospitalMutation';

@@ -54,3 +54,22 @@ export interface TenantDashboardStatsResponse {
    * still exist. Zero in the normal case; any nonzero value needs investigation. */
   provisioningAlertCount: number;
 }
+
+/** Mirrors HMS.Modules.Platform.Contracts.DeletedTenantListItemResponse. */
+export interface DeletedTenantListItemResponse {
+  id: string;
+  hospitalName: string;
+  hospitalCode: string;
+  status: string;
+  createdAt: string;
+  deletedAt: string;
+}
+
+/** Mirrors HMS.Modules.Platform.Contracts.TenantDeletePreviewResponse. */
+export interface TenantDeletePreviewResponse {
+  id: string;
+  hospitalName: string;
+  hospitalCode: string;
+  status: string;
+  createdAt: string;
+}

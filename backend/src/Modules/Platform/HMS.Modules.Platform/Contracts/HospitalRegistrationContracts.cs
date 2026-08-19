@@ -48,6 +48,36 @@ public record UpdateTenantStatusRequest
     public string Status { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// A soft-deleted hospital — <see cref="TenantListItemResponse"/> plus when it was deleted.
+/// Only ever returned by the deleted-hospitals list; an active hospital's response never
+/// carries this field since it's meaningless there.
+/// </summary>
+public record DeletedTenantListItemResponse
+{
+    public Guid Id { get; init; }
+    public string HospitalName { get; init; } = string.Empty;
+    public string HospitalCode { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public DateTime CreatedAt { get; init; }
+    public DateTime DeletedAt { get; init; }
+}
+
+/// <summary>
+/// Dry-run preview shown before a soft-delete is confirmed — deliberately Platform-side
+/// data only (no row counts from the tenant's own database). See ADR for this finding: a
+/// soft-delete never touches the tenant's own database at all (it stays fully intact,
+/// login is just blocked), so there is nothing there to preview or warn about.
+/// </summary>
+public record TenantDeletePreviewResponse
+{
+    public Guid Id { get; init; }
+    public string HospitalName { get; init; } = string.Empty;
+    public string HospitalCode { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public DateTime CreatedAt { get; init; }
+}
+
 public record TenantDashboardStatsResponse
 {
     public int Total { get; init; }

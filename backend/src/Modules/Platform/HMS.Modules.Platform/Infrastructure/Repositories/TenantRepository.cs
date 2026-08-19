@@ -20,6 +20,9 @@ internal sealed class TenantRepository : ITenantRepository
     public Task<Tenant?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Tenants.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
+    public Task<Tenant?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken cancellationToken)
+        => _dbContext.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
     public Task<Tenant?> GetByHospitalCodeAsync(string hospitalCode, CancellationToken cancellationToken)
     {
         var normalized = hospitalCode.Trim().ToLowerInvariant();
@@ -43,6 +46,28 @@ internal sealed class TenantRepository : ITenantRepository
         }
 
         tenants = tenants.OrderByDescending(t => t.CreatedAt);
+
+        var totalCount = await tenants.CountAsync(cancellationToken);
+
+        var items = await tenants
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<(IReadOnlyList<Tenant> Items, int TotalCount)> GetDeletedPagedAsync(TenantListQuery query, CancellationToken cancellationToken)
+    {
+        var tenants = _dbContext.Tenants.IgnoreQueryFilters().Where(t => t.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = $"%{query.Search.Trim()}%";
+            tenants = tenants.Where(t => EF.Functions.ILike(t.HospitalName, term) || EF.Functions.ILike(t.HospitalCode, term));
+        }
+
+        tenants = tenants.OrderByDescending(t => t.DeletedAt);
 
         var totalCount = await tenants.CountAsync(cancellationToken);
 

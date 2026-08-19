@@ -77,6 +77,68 @@ public class HospitalsController : ControllerBase
         return Ok(new ApiResponse<TenantListItemResponse> { Data = result.Value });
     }
 
+    /// <summary>Lists soft-deleted hospitals, paged, most recently deleted first — the only
+    /// way to find one to restore.</summary>
+    /// <response code="200">Returns the requested page.</response>
+    [HttpGet("deleted")]
+    public async Task<IActionResult> GetDeleted([FromQuery] TenantListQuery query, CancellationToken cancellationToken)
+    {
+        var paged = await _dashboardService.GetDeletedHospitalsAsync(query, cancellationToken);
+        var meta = new PaginationMeta
+        {
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount,
+            TotalPages = paged.TotalPages,
+        };
+        return Ok(new ApiResponse<IReadOnlyList<DeletedTenantListItemResponse>> { Data = paged.Items, Meta = meta });
+    }
+
+    /// <summary>Dry-run preview shown before confirming a delete.</summary>
+    /// <response code="200">Returns the preview.</response>
+    /// <response code="404">No hospital was found for the given id.</response>
+    [HttpGet("{id:guid}/delete-preview")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
+    public async Task<IActionResult> GetDeletePreview(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _dashboardService.GetDeletePreviewAsync(id, cancellationToken);
+        return result.IsSuccess ? Ok(new ApiResponse<TenantDeletePreviewResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>
+    /// Soft-deletes a hospital: blocks its staff from signing in and hides it from the
+    /// active list, but its own database is never touched — fully reversible via
+    /// <see cref="Restore"/>. <paramref name="confirmHospitalCode"/> must match the
+    /// hospital's actual code (server-enforced "type to confirm").
+    /// </summary>
+    /// <response code="204">The hospital was soft-deleted.</response>
+    /// <response code="400">The confirmation code did not match.</response>
+    /// <response code="404">No hospital was found for the given id.</response>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
+    public async Task<IActionResult> Delete(Guid id, [FromQuery] string confirmHospitalCode, CancellationToken cancellationToken)
+    {
+        var result = await _dashboardService.DeleteHospitalAsync(id, confirmHospitalCode ?? string.Empty, User.GetPlatformUserId(), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return MapFailure(result.ErrorCode!, result.Error!);
+        }
+
+        _logger.LogInformation("DELETE /api/platform/hospitals/{Id} succeeded", id);
+        return NoContent();
+    }
+
+    /// <summary>Reverses a soft-delete, restoring the hospital's previous status and login access.</summary>
+    /// <response code="200">The hospital was restored.</response>
+    /// <response code="404">No soft-deleted hospital was found for the given id.</response>
+    [HttpPost("{id:guid}/restore")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
+    public async Task<IActionResult> Restore(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _dashboardService.RestoreHospitalAsync(id, User.GetPlatformUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(new ApiResponse<TenantListItemResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     /// <summary>
     /// Applies any pending EF Core migrations to this hospital's existing database — HMS
     /// Multi-Tenancy Phase C's migration-management action. An explicit, operator-triggered
@@ -149,6 +211,7 @@ public class HospitalsController : ControllerBase
             PlatformErrorCodes.IdempotencyKeyInProgress => StatusCodes.Status409Conflict,
             PlatformErrorCodes.IdempotencyKeyReused => StatusCodes.Status409Conflict,
             PlatformErrorCodes.NotFound => StatusCodes.Status404NotFound,
+            PlatformErrorCodes.NotDeleted => StatusCodes.Status404NotFound,
             _ => StatusCodes.Status400BadRequest,
         };
 

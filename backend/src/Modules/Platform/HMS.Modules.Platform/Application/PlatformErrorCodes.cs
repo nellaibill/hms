@@ -26,4 +26,10 @@ internal static class PlatformErrorCodes
 
     public const string MfaAlreadyEnabled = "PLATFORM.MFA_ALREADY_ENABLED";
     public const string MfaNotEnabled = "PLATFORM.MFA_NOT_ENABLED";
+
+    /// <summary>DeleteHospitalAsync's confirmation check — the caller-supplied hospital
+    /// code didn't match the tenant actually being deleted.</summary>
+    public const string ConfirmationMismatch = "PLATFORM.CONFIRMATION_MISMATCH";
+
+    public const string NotDeleted = "PLATFORM.NOT_DELETED";
 }

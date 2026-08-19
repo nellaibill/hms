@@ -102,6 +102,67 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
         return Result<TenantListItemResponse>.Success(ToResponse(tenant));
     }
 
+    public async Task<Result<TenantDeletePreviewResponse>> GetDeletePreviewAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantRepository.GetByIdAsync(id, cancellationToken);
+        if (tenant is null)
+        {
+            return Result<TenantDeletePreviewResponse>.Failure(PlatformErrorCodes.NotFound, "No hospital was found for the given id.");
+        }
+
+        return Result<TenantDeletePreviewResponse>.Success(new TenantDeletePreviewResponse
+        {
+            Id = tenant.Id,
+            HospitalName = tenant.HospitalName,
+            HospitalCode = tenant.HospitalCode,
+            Status = tenant.Status.ToString(),
+            CreatedAt = tenant.CreatedAt,
+        });
+    }
+
+    public async Task<Result> DeleteHospitalAsync(Guid id, string confirmHospitalCode, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantRepository.GetByIdAsync(id, cancellationToken);
+        if (tenant is null)
+        {
+            return Result.Failure(PlatformErrorCodes.NotFound, "No hospital was found for the given id.");
+        }
+
+        if (!string.Equals(tenant.HospitalCode, confirmHospitalCode.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure(PlatformErrorCodes.ConfirmationMismatch, "The hospital code you entered does not match.");
+        }
+
+        tenant.SoftDelete(actorId);
+        await _tenantRepository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Soft-deleted tenant '{HospitalCode}' (its database was not touched)", tenant.HospitalCode);
+
+        return Result.Success();
+    }
+
+    public async Task<Result<TenantListItemResponse>> RestoreHospitalAsync(Guid id, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantRepository.GetByIdIncludingDeletedAsync(id, cancellationToken);
+        if (tenant is null || !tenant.IsDeleted)
+        {
+            return Result<TenantListItemResponse>.Failure(PlatformErrorCodes.NotDeleted, "No soft-deleted hospital was found for the given id.");
+        }
+
+        tenant.Restore(actorId);
+        await _tenantRepository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Restored soft-deleted tenant '{HospitalCode}'", tenant.HospitalCode);
+
+        return Result<TenantListItemResponse>.Success(ToResponse(tenant));
+    }
+
+    public async Task<PagedResult<DeletedTenantListItemResponse>> GetDeletedHospitalsAsync(TenantListQuery query, CancellationToken cancellationToken)
+    {
+        var (items, totalCount) = await _tenantRepository.GetDeletedPagedAsync(query, cancellationToken);
+        return new PagedResult<DeletedTenantListItemResponse>(items.Select(ToDeletedResponse).ToList(), query.Page, query.PageSize, totalCount);
+    }
+
     private static TenantListItemResponse ToResponse(Tenant tenant) => new()
     {
         Id = tenant.Id,
@@ -109,5 +170,15 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
         HospitalCode = tenant.HospitalCode,
         Status = tenant.Status.ToString(),
         CreatedAt = tenant.CreatedAt,
+    };
+
+    private static DeletedTenantListItemResponse ToDeletedResponse(Tenant tenant) => new()
+    {
+        Id = tenant.Id,
+        HospitalName = tenant.HospitalName,
+        HospitalCode = tenant.HospitalCode,
+        Status = tenant.Status.ToString(),
+        CreatedAt = tenant.CreatedAt,
+        DeletedAt = tenant.DeletedAt!.Value,
     };
 }

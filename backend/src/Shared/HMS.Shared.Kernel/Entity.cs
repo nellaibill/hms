@@ -42,4 +42,15 @@ public abstract class Entity
         DeletedAt = DateTime.UtcNow;
         DeletedBy = deletedBy;
     }
+
+    /// <summary>Reverses <see cref="SoftDelete"/> — the caller is responsible for fetching
+    /// this entity with its query filter bypassed first (it's excluded from ordinary
+    /// queries once deleted), same as any other post-delete lookup.</summary>
+    public void Restore(Guid? updatedBy)
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
+        MarkUpdated(updatedBy);
+    }
 }
