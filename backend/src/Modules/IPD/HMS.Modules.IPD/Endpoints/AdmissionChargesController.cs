@@ -4,6 +4,7 @@ using HMS.Modules.IPD.Application;
 using HMS.Modules.IPD.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,6 +23,8 @@ public class AdmissionChargesController : ControllerBase
         _createValidator = createValidator;
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.create")]
     [HttpPost]
     public async Task<IActionResult> Create(Guid admissionId, [FromBody] CreateAdmissionChargeRequest request, CancellationToken cancellationToken)
     {
@@ -36,6 +39,8 @@ public class AdmissionChargesController : ControllerBase
             : StatusCode(StatusCodes.Status201Created, new ApiResponse<AdmissionChargeResponse> { Data = result.Value });
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet]
     public async Task<IActionResult> GetByAdmissionId(Guid admissionId, CancellationToken cancellationToken)
     {

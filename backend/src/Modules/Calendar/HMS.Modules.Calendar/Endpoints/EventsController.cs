@@ -4,6 +4,7 @@ using HMS.Modules.Calendar.Application;
 using HMS.Modules.Calendar.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,8 +12,9 @@ namespace HMS.Modules.Calendar.Endpoints;
 
 /// <summary>
 /// Event CRUD + monthly view, per the Calendar Phase 1/Phase 2 spec. "Actor" (created/
-/// updated/deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId
-/// — null only for anonymous requests, since no endpoint here requires [Authorize] yet.
+/// updated/deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId.
+/// Every action requires "engagement.*" (see docs/DecisionLog.md's permission-granularity
+/// ADR).
 /// </summary>
 [ApiController]
 [Route("api/v1/events")]
@@ -41,6 +43,8 @@ public class EventsController : ControllerBase
     /// <summary>Creates a new calendar event.</summary>
     /// <response code="201">The event was created.</response>
     /// <response code="400">The request failed validation, the department doesn't exist, or a holiday already exists on that date.</response>
+    [Authorize]
+    [RequirePermission("engagement.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEventRequest request, CancellationToken cancellationToken)
     {
@@ -67,6 +71,8 @@ public class EventsController : ControllerBase
     /// </summary>
     /// <response code="200">The batch was processed; check each item's Success flag.</response>
     /// <response code="400">The batch itself was malformed (empty, or over the size cap).</response>
+    [Authorize]
+    [RequirePermission("engagement.create")]
     [HttpPost("bulk")]
     public async Task<IActionResult> BulkCreate([FromBody] BulkCreateEventsRequest request, CancellationToken cancellationToken)
     {
@@ -112,6 +118,8 @@ public class EventsController : ControllerBase
 
     /// <summary>Lists events with paging, search, sorting, and EventType/Department filtering.</summary>
     /// <response code="200">A page of events.</response>
+    [Authorize]
+    [RequirePermission("engagement.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] EventListQuery query, CancellationToken cancellationToken)
     {
@@ -124,6 +132,8 @@ public class EventsController : ControllerBase
     /// <summary>Lists events whose date range intersects the given calendar month, with optional EventType/Department filtering.</summary>
     /// <response code="200">A page of events for the month.</response>
     /// <response code="400">The request failed validation.</response>
+    [Authorize]
+    [RequirePermission("engagement.view")]
     [HttpGet("month")]
     public async Task<IActionResult> GetForMonth([FromQuery] MonthlyEventQuery query, CancellationToken cancellationToken)
     {
@@ -142,6 +152,8 @@ public class EventsController : ControllerBase
     /// <summary>Gets a single event by id.</summary>
     /// <response code="200">The event was found.</response>
     /// <response code="404">No event was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("engagement.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -153,6 +165,8 @@ public class EventsController : ControllerBase
     /// <response code="200">The event was updated.</response>
     /// <response code="400">The request failed validation, the department doesn't exist, or a holiday already exists on that date.</response>
     /// <response code="404">No event was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("engagement.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEventRequest request, CancellationToken cancellationToken)
     {
@@ -169,6 +183,8 @@ public class EventsController : ControllerBase
     /// <summary>Soft-deletes an event.</summary>
     /// <response code="204">The event was deleted.</response>
     /// <response code="404">No event was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("engagement.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

@@ -4,6 +4,7 @@ using HMS.Modules.IPD.Application;
 using HMS.Modules.IPD.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,6 +28,8 @@ public class BedsController : ControllerBase
         _updateValidator = updateValidator;
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateBedRequest request, CancellationToken cancellationToken)
     {
@@ -41,6 +44,8 @@ public class BedsController : ControllerBase
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] BedListQuery query, CancellationToken cancellationToken)
     {
@@ -51,6 +56,8 @@ public class BedsController : ControllerBase
 
     // Must be registered before GetById's "{id:guid}" route so "available" isn't parsed as a
     // (invalid) guid route value.
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet("available")]
     public async Task<IActionResult> GetAvailable([FromQuery] Guid? wardId, CancellationToken cancellationToken)
     {
@@ -58,6 +65,8 @@ public class BedsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<BedResponse>> { Data = result.Value });
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -65,6 +74,8 @@ public class BedsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBedRequest request, CancellationToken cancellationToken)
     {
@@ -77,6 +88,8 @@ public class BedsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

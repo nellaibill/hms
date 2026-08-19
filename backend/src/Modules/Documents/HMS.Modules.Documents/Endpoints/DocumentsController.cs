@@ -44,6 +44,7 @@ public class DocumentsController : ControllerBase
     /// <response code="400">The request or file failed validation.</response>
     /// <response code="403">The caller may not upload documents for this owner type.</response>
     /// <response code="404">No record of the given owner type/id was found.</response>
+    [RequirePermission("records-compliance.create")]
     [HttpPost]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload(IFormFile file, [FromForm] UploadDocumentRequest request, CancellationToken cancellationToken)
@@ -75,6 +76,7 @@ public class DocumentsController : ControllerBase
 
     /// <summary>Lists documents with paging, filtering, and search (US-3).</summary>
     /// <response code="200">A page of documents visible to the caller.</response>
+    [RequirePermission("records-compliance.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] DocumentListQuery query, CancellationToken cancellationToken)
     {
@@ -93,6 +95,7 @@ public class DocumentsController : ControllerBase
 
     /// <summary>Server-side KPI aggregate — total, uploaded today, archived, storage used (US-7).</summary>
     /// <response code="200">The current repository-wide summary.</response>
+    [RequirePermission("records-compliance.view")]
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken)
     {
@@ -103,6 +106,7 @@ public class DocumentsController : ControllerBase
     /// <summary>Gets a single document's metadata by id.</summary>
     /// <response code="200">The document was found and is visible to the caller.</response>
     /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
+    [RequirePermission("records-compliance.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -120,6 +124,7 @@ public class DocumentsController : ControllerBase
     /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
     /// <response code="409">The document exists but its content isn't available yet (still
     /// being scanned, or quarantined).</response>
+    [RequirePermission("records-compliance.view")]
     [HttpGet("{id:guid}/content")]
     public async Task<IActionResult> GetContent(Guid id, CancellationToken cancellationToken)
     {
@@ -140,6 +145,7 @@ public class DocumentsController : ControllerBase
     /// <response code="200">The document is archived.</response>
     /// <response code="403">The caller may not archive documents for this owner type.</response>
     /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
+    [RequirePermission("records-compliance.edit")]
     [HttpPatch("{id:guid}/archive")]
     public async Task<IActionResult> Archive(Guid id, CancellationToken cancellationToken)
     {
@@ -152,6 +158,7 @@ public class DocumentsController : ControllerBase
     /// <response code="204">The document was soft-deleted.</response>
     /// <response code="403">The caller may not delete documents for this owner type.</response>
     /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
+    [RequirePermission("records-compliance.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

@@ -4,6 +4,7 @@ using HMS.Modules.Products.Application;
 using HMS.Modules.Products.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +27,8 @@ public class ProductBarcodesController : ControllerBase
     }
 
     /// <summary>Adds a barcode to a product.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.create")]
     [HttpPost]
     public async Task<IActionResult> Create(Guid productId, [FromBody] CreateProductBarcodeRequest request, CancellationToken cancellationToken)
     {
@@ -42,6 +45,8 @@ public class ProductBarcodesController : ControllerBase
     }
 
     /// <summary>Updates a product barcode.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid productId, Guid id, [FromBody] UpdateProductBarcodeRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +61,8 @@ public class ProductBarcodesController : ControllerBase
     }
 
     /// <summary>Gets a single barcode by id.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid productId, Guid id, CancellationToken cancellationToken)
     {
@@ -64,6 +71,8 @@ public class ProductBarcodesController : ControllerBase
     }
 
     /// <summary>Lists a product's barcodes with paging and active-status filtering.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged(Guid productId, [FromQuery] ProductBarcodeListQuery query, CancellationToken cancellationToken)
     {

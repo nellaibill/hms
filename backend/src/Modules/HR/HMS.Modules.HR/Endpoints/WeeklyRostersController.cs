@@ -4,6 +4,7 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -41,6 +42,8 @@ public class WeeklyRostersController : ControllerBase
     /// <summary>Creates a new weekly roster.</summary>
     /// <response code="201">The weekly roster was created.</response>
     /// <response code="400">The request failed validation.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateWeeklyRosterRequest request, CancellationToken cancellationToken)
     {
@@ -63,6 +66,8 @@ public class WeeklyRostersController : ControllerBase
 
     /// <summary>Lists weekly rosters with paging and sorting.</summary>
     /// <response code="200">A page of weekly rosters.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] WeeklyRosterListQuery query, CancellationToken cancellationToken)
     {
@@ -76,6 +81,8 @@ public class WeeklyRostersController : ControllerBase
     /// month — a read-only view over this same aggregate, not a separate resource.</summary>
     /// <response code="200">A page of weekly rosters for the given month.</response>
     /// <response code="400">Year/Month failed validation.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet("monthly")]
     public async Task<IActionResult> GetMonthly([FromQuery] MonthlyWeeklyRosterQuery query, CancellationToken cancellationToken)
     {
@@ -94,6 +101,8 @@ public class WeeklyRostersController : ControllerBase
     /// <summary>Gets a single weekly roster by id.</summary>
     /// <response code="200">The weekly roster was found.</response>
     /// <response code="404">No weekly roster was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -105,6 +114,8 @@ public class WeeklyRostersController : ControllerBase
     /// <response code="200">The weekly roster was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No weekly roster was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWeeklyRosterRequest request, CancellationToken cancellationToken)
     {
@@ -126,6 +137,8 @@ public class WeeklyRostersController : ControllerBase
     /// <summary>Soft-deletes a weekly roster.</summary>
     /// <response code="204">The weekly roster was deleted.</response>
     /// <response code="404">No weekly roster was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -137,6 +150,8 @@ public class WeeklyRostersController : ControllerBase
     /// roster is a no-op, not an error.</summary>
     /// <response code="200">The weekly roster is published (whether it just became so, or already was).</response>
     /// <response code="404">No weekly roster was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.edit")]
     [HttpPost("{id:guid}/publish")]
     public async Task<IActionResult> Publish(Guid id, CancellationToken cancellationToken)
     {
@@ -149,6 +164,8 @@ public class WeeklyRostersController : ControllerBase
     /// <response code="201">The new weekly roster was created.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No source weekly roster was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.create")]
     [HttpPost("{id:guid}/copy")]
     public async Task<IActionResult> Copy(Guid id, [FromBody] CopyWeeklyRosterRequest request, CancellationToken cancellationToken)
     {

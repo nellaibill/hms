@@ -4,6 +4,7 @@ using HMS.Modules.Products.Application;
 using HMS.Modules.Products.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +27,8 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>Creates a new product.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProductRequest request, CancellationToken cancellationToken)
     {
@@ -42,6 +45,8 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>Updates a product.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProductRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +61,8 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>Gets a single product by id.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -64,6 +71,8 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>Lists products with paging, search, and category/brand/active-status filtering.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] ProductListQuery query, CancellationToken cancellationToken)
     {

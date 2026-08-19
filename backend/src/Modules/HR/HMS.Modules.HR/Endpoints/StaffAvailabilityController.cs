@@ -4,6 +4,7 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,6 +38,8 @@ public class StaffAvailabilityController : ControllerBase
     /// <summary>Creates a new staff availability record.</summary>
     /// <response code="201">The staff availability record was created.</response>
     /// <response code="400">The request failed validation.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStaffAvailabilityRequest request, CancellationToken cancellationToken)
     {
@@ -59,6 +62,8 @@ public class StaffAvailabilityController : ControllerBase
 
     /// <summary>Lists staff availability records with paging, search (Reason), and sorting.</summary>
     /// <response code="200">A page of staff availability records.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] StaffAvailabilityListQuery query, CancellationToken cancellationToken)
     {
@@ -71,6 +76,8 @@ public class StaffAvailabilityController : ControllerBase
     /// <summary>Gets a single staff availability record by id.</summary>
     /// <response code="200">The staff availability record was found.</response>
     /// <response code="404">No staff availability record was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -82,6 +89,8 @@ public class StaffAvailabilityController : ControllerBase
     /// <response code="200">The staff availability record was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No staff availability record was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateStaffAvailabilityRequest request, CancellationToken cancellationToken)
     {
@@ -103,6 +112,8 @@ public class StaffAvailabilityController : ControllerBase
     /// <summary>Soft-deletes a staff availability record.</summary>
     /// <response code="204">The staff availability record was deleted.</response>
     /// <response code="404">No staff availability record was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

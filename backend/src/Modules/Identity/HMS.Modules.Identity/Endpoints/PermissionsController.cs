@@ -1,6 +1,8 @@
 using HMS.Modules.Identity.Application;
 using HMS.Modules.Identity.Contracts;
+using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +23,8 @@ public sealed class PermissionsController : ControllerBase
         _service = service;
     }
 
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PermissionResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(

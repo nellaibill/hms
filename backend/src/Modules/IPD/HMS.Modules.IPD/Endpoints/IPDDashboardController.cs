@@ -1,6 +1,8 @@
 using HMS.Modules.IPD.Application;
 using HMS.Modules.IPD.Contracts;
+using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HMS.Modules.IPD.Endpoints;
@@ -16,6 +18,8 @@ public class IPDDashboardController : ControllerBase
         _service = service;
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
