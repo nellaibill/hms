@@ -49,6 +49,12 @@ internal sealed class PlatformJwtTokenGenerator : IPlatformJwtTokenGenerator
             new Claim("FullName", fullName),
             new Claim("PlatformRole", role.ToString()),
             new Claim("LoginType", "platform"),
+            // Server-side revocation (HMS Security Hardening) needs some way to identify
+            // *this specific token* independent of its content — the standard "jti" claim
+            // (a literal claim type, like every other claim here — see MapInboundClaims
+            // false above), checked against IRevokedTokenStore on every request
+            // (JwtConfiguration) and written to it on logout (PlatformAuthController).
+            new Claim("jti", Guid.NewGuid().ToString()),
         };
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_expiresInMinutes);

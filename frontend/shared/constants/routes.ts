@@ -15,6 +15,7 @@ export const API_ROUTES = {
   platformAuth: {
     login: '/api/platform/auth/login',
     me: '/api/platform/auth/me',
+    logout: '/api/platform/auth/logout',
   },
   /** Mirrors HMS.Modules.Platform.Endpoints.HospitalsController. */
   platformHospitals: {

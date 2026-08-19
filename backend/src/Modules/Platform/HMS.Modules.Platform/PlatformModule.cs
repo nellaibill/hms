@@ -50,6 +50,11 @@ public static class PlatformModule
         // IProvisioningAlertStore's own doc comment for why this is public.
         services.AddScoped<IProvisioningAlertStore, ProvisioningAlertStore>();
 
+        // Consumed by HMS.Api's JwtConfiguration (checked on every platform-token
+        // validation) and by PlatformAuthController.Logout (revokes the caller's own
+        // token) — see IRevokedTokenStore's own doc comment for why this is public.
+        services.AddScoped<IRevokedTokenStore, RevokedTokenStore>();
+
         // HMS Multi-Tenancy Phase C's tenant-resolution seam — consumed by
         // HMS.Api's TenantResolutionMiddleware and by HMS.Modules.Identity's
         // AuthenticationService (login-time resolution). See ITenantDirectory's own doc

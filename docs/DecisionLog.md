@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-020: Server-side revocation for Platform tokens; httpOnly-cookie storage deliberately deferred
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that the Platform session token sits in `sessionStorage` (script-readable, no httpOnly option) with no server-side revocation — a leaked or "logged out" token stayed valid until natural JWT expiry, since `logout()` only ever cleared client-side storage. This bundles two separable concerns: (A) how the token is stored client-side, and (B) whether the server can actually invalidate a token before it naturally expires.
+
+**Decision**
+Built (B) — server-side revocation — in full: `PlatformJwtTokenGenerator` now issues a `jti` claim on every Platform token; a new `platform.revoked_tokens` table + `IRevokedTokenStore` (a public seam, like `ITenantProvisioner`) lets `JwtConfiguration`'s `OnTokenValidated` reject an already-revoked `jti` on every request, and a new `POST /api/platform/auth/logout` (`[Authorize(Policy = "Platform")]`) revokes the caller's own token. The frontend's `PlatformAuthContext.logout()` now calls it (best-effort, fire-and-forget — a network failure must never block a local logout). The revocation check only activates for tokens carrying a `PlatformUserId` claim, so hospital-user tokens are untouched — matches the finding's scope.
+
+**Deliberately deferred: (A), moving the token out of `sessionStorage` into an httpOnly cookie.** This codebase has zero existing cookie/CSRF infrastructure anywhere — every endpoint today is Bearer-token-only, which is itself immune to CSRF by construction (a forged cross-site request can't attach an `Authorization` header). Switching the Platform token to a cookie would trade one class of risk (XSS-based token theft, mitigated by httpOnly) for another (CSRF) that this app has no existing defense for, and building one (SameSite handling across the frontend's different local dev origin, or a double-submit CSRF token scheme) is a real architectural addition, not a small tweak — especially since frontend (port 5173) and API (port 58158) are cross-origin in local dev, which itself constrains cookie `SameSite`/`Secure` options. Doing this properly deserves its own dedicated pass with its own design, not a bolt-on here.
+
+**Consequences**
+- Verified live: logged in as the seeded Platform Admin, confirmed the token works (`GET /me` → 200), called `POST /logout` (→ 204), then confirmed the *same* token is rejected on every subsequent request including a second logout call (→ 401 both times) — the actual revocation behavior, not just that the code compiles.
+- This can't be meaningfully unit-tested — there's no abstraction boundary to mock the JWT bearer middleware pipeline behind, and `HMS.IntegrationTests` (where a real pipeline test would belong) is excluded from CI (see ADR-018/ADR-019's identical caveat). Live verification is the actual coverage here.
+- `revoked_tokens` rows are never pruned — acceptable near-term (Platform Admin logout volume is low), but worth a scheduled cleanup (`DELETE WHERE expires_at < now()`) once this app has a background-job mechanism, since an expired row is safe to discard (the token would already fail JWT `exp` validation on its own).
+- Still open: the underlying `sessionStorage` storage and the shared signing key/issuer/audience between hospital and platform tokens (ADR-013's "Consequences" already flagged the latter as unresolved).
+
+---
+
 ### ADR-019: A failed provisioning rollback becomes a durable, dashboard-visible alert, not just a log line
 **Date:** 2026-08-19
 **Status:** Accepted
