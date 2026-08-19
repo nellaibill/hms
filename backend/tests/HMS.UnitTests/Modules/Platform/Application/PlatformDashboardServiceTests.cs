@@ -91,6 +91,82 @@ public class PlatformDashboardServiceTests
     }
 
     [Fact]
+    public async Task GetHospitalsAsync_MapsEachTenantToAListItem()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetPagedAsync(Arg.Any<TenantListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Tenant> { tenant }, 1));
+
+        var paged = await _sut.GetHospitalsAsync(new TenantListQuery(), CancellationToken.None);
+
+        paged.TotalCount.Should().Be(1);
+        paged.Items.Single().HospitalCode.Should().Be(tenant.HospitalCode);
+        paged.Items.Single().SubscriptionTier.Should().Be(tenant.SubscriptionTier);
+    }
+
+    [Fact]
+    public async Task MigrateAsync_WithAResolvableTenant_AppliesMigrationsAndReturnsTheTenant()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        _tenantDirectory.FindByIdAsync(tenant.Id, Arg.Any<CancellationToken>())
+            .Returns(new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, "Host=localhost;Database=hms_tenant_apollo", true, tenant.EnabledModules));
+
+        var result = await _sut.MigrateAsync(tenant.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.HospitalCode.Should().Be(tenant.HospitalCode);
+        await _migrationService.Received(1).MigrateAsync("Host=localhost;Database=hms_tenant_apollo", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MigrateAsync_WhenTenantNotFound_ReturnsNotFoundFailureWithoutMigrating()
+    {
+        _tenantRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Tenant?)null);
+
+        var result = await _sut.MigrateAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.NotFound);
+        await _migrationService.DidNotReceive().MigrateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MigrateAsync_WhenMigrationThrows_ReturnsMigrationFailedFailureAndLeavesTheTenantUnchanged()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        _tenantDirectory.FindByIdAsync(tenant.Id, Arg.Any<CancellationToken>())
+            .Returns(new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, "Host=localhost;Database=hms_tenant_apollo", true, tenant.EnabledModules));
+        _migrationService.MigrateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("connection refused")));
+
+        var result = await _sut.MigrateAsync(tenant.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.MigrationFailed);
+        // Never touched (SetStatus/UpdateConfiguration/etc.) — a failed migration attempt
+        // is not itself a tenant-record change, only its own database is (unsuccessfully)
+        // touched.
+        tenant.UpdatedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task MigrateAsync_WhenTenantExistsButDirectoryCannotResolveIt_Throws()
+    {
+        // Should be unreachable in production (ITenantRepository and ITenantDirectory read
+        // the same platform.tenants table) — proves the defensive guard actually fires
+        // rather than silently migrating against a null/garbage connection string.
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        _tenantDirectory.FindByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns((TenantInfo?)null);
+
+        var act = () => _sut.MigrateAsync(tenant.Id, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task GetDeletePreviewAsync_ReturnsTheTenantsCurrentInfo()
     {
         var tenant = NewTenant();
