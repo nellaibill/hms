@@ -4,6 +4,7 @@ using HMS.Modules.IPD.Application;
 using HMS.Modules.IPD.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,6 +28,8 @@ public class WardsController : ControllerBase
         _updateValidator = updateValidator;
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateWardRequest request, CancellationToken cancellationToken)
     {
@@ -41,6 +44,8 @@ public class WardsController : ControllerBase
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] WardListQuery query, CancellationToken cancellationToken)
     {
@@ -49,6 +54,8 @@ public class WardsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<WardResponse>> { Data = paged.Items, Meta = meta });
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -56,6 +63,8 @@ public class WardsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWardRequest request, CancellationToken cancellationToken)
     {
@@ -68,6 +77,8 @@ public class WardsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

@@ -4,6 +4,7 @@ using HMS.Modules.IPD.Application;
 using HMS.Modules.IPD.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,6 +34,8 @@ public class AdmissionsController : ControllerBase
         _dischargeValidator = dischargeValidator;
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAdmissionRequest request, CancellationToken cancellationToken)
     {
@@ -47,6 +50,8 @@ public class AdmissionsController : ControllerBase
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] AdmissionListQuery query, CancellationToken cancellationToken)
     {
@@ -55,6 +60,8 @@ public class AdmissionsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<AdmissionResponse>> { Data = paged.Items, Meta = meta });
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -62,6 +69,8 @@ public class AdmissionsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAdmissionRequest request, CancellationToken cancellationToken)
     {
@@ -74,6 +83,8 @@ public class AdmissionsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
     [HttpPost("{id:guid}/transfer-bed")]
     public async Task<IActionResult> TransferBed(Guid id, [FromBody] TransferBedRequest request, CancellationToken cancellationToken)
     {
@@ -86,6 +97,8 @@ public class AdmissionsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet("{id:guid}/transfer-history")]
     public async Task<IActionResult> GetTransferHistory(Guid id, CancellationToken cancellationToken)
     {
@@ -95,6 +108,8 @@ public class AdmissionsController : ControllerBase
             : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
     [HttpGet("{id:guid}/bed-history")]
     public async Task<IActionResult> GetBedStayHistory(Guid id, CancellationToken cancellationToken)
     {
@@ -104,6 +119,8 @@ public class AdmissionsController : ControllerBase
             : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
     [HttpPost("{id:guid}/discharge")]
     public async Task<IActionResult> Discharge(Guid id, [FromBody] DischargeAdmissionRequest request, CancellationToken cancellationToken)
     {

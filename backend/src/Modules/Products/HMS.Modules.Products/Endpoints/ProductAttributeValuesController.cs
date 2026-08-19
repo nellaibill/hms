@@ -4,6 +4,7 @@ using HMS.Modules.Products.Application;
 using HMS.Modules.Products.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +27,8 @@ public class ProductAttributeValuesController : ControllerBase
     }
 
     /// <summary>Sets an attribute value on a product.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.create")]
     [HttpPost]
     public async Task<IActionResult> Create(Guid productId, [FromBody] CreateProductAttributeValueRequest request, CancellationToken cancellationToken)
     {
@@ -42,6 +45,8 @@ public class ProductAttributeValuesController : ControllerBase
     }
 
     /// <summary>Updates a product attribute value.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid productId, Guid id, [FromBody] UpdateProductAttributeValueRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +61,8 @@ public class ProductAttributeValuesController : ControllerBase
     }
 
     /// <summary>Gets a single attribute value by id.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid productId, Guid id, CancellationToken cancellationToken)
     {
@@ -64,6 +71,8 @@ public class ProductAttributeValuesController : ControllerBase
     }
 
     /// <summary>Lists a product's attribute values with paging and active-status filtering.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged(Guid productId, [FromQuery] ProductAttributeValueListQuery query, CancellationToken cancellationToken)
     {

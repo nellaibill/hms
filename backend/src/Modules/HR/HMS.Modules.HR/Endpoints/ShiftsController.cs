@@ -4,6 +4,7 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,6 +37,8 @@ public class ShiftsController : ControllerBase
     /// <response code="201">The shift was created.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="409">A shift with the given code already exists.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateShiftRequest request, CancellationToken cancellationToken)
     {
@@ -58,6 +61,8 @@ public class ShiftsController : ControllerBase
 
     /// <summary>Lists shifts with paging, search, sorting, and active-status filtering.</summary>
     /// <response code="200">A page of shifts.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] ShiftListQuery query, CancellationToken cancellationToken)
     {
@@ -70,6 +75,8 @@ public class ShiftsController : ControllerBase
     /// <summary>Gets a single shift by id.</summary>
     /// <response code="200">The shift was found.</response>
     /// <response code="404">No shift was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -81,6 +88,8 @@ public class ShiftsController : ControllerBase
     /// <response code="200">The shift was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No shift was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateShiftRequest request, CancellationToken cancellationToken)
     {
@@ -102,6 +111,8 @@ public class ShiftsController : ControllerBase
     /// <summary>Soft-deletes a shift.</summary>
     /// <response code="204">The shift was deleted.</response>
     /// <response code="404">No shift was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

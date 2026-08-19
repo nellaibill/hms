@@ -4,6 +4,7 @@ using HMS.Modules.Products.Application;
 using HMS.Modules.Products.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +27,8 @@ public class ProductImagesController : ControllerBase
     /// <summary>Uploads a new image for a product (PNG/JPG/WEBP, max 5MB).</summary>
     /// <response code="201">The image was uploaded and its metadata created.</response>
     /// <response code="400">The file is missing, failed validation, or the type/order slot is already taken.</response>
+    [Authorize]
+    [RequirePermission("pharmacy.create")]
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload(
@@ -50,6 +53,8 @@ public class ProductImagesController : ControllerBase
     }
 
     /// <summary>Updates a product image's metadata (type, order, primary flag, active status) — does not replace the file itself.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid productId, Guid id, [FromBody] UpdateProductImageRequest request, CancellationToken cancellationToken)
     {
@@ -64,6 +69,8 @@ public class ProductImagesController : ControllerBase
     }
 
     /// <summary>Gets a single image by id.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid productId, Guid id, CancellationToken cancellationToken)
     {
@@ -72,6 +79,8 @@ public class ProductImagesController : ControllerBase
     }
 
     /// <summary>Lists a product's images with paging and active-status filtering.</summary>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged(Guid productId, [FromQuery] ProductImageListQuery query, CancellationToken cancellationToken)
     {

@@ -4,6 +4,7 @@ using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,6 +36,8 @@ public class ShiftAssignmentsController : ControllerBase
     /// <summary>Creates a new shift assignment.</summary>
     /// <response code="201">The shift assignment was created.</response>
     /// <response code="400">The request failed validation, or ShiftId does not reference an existing shift.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateShiftAssignmentRequest request, CancellationToken cancellationToken)
     {
@@ -57,6 +60,8 @@ public class ShiftAssignmentsController : ControllerBase
 
     /// <summary>Lists shift assignments with paging, search (Remarks), and sorting.</summary>
     /// <response code="200">A page of shift assignments.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] ShiftAssignmentListQuery query, CancellationToken cancellationToken)
     {
@@ -69,6 +74,8 @@ public class ShiftAssignmentsController : ControllerBase
     /// <summary>Gets a single shift assignment by id.</summary>
     /// <response code="200">The shift assignment was found.</response>
     /// <response code="404">No shift assignment was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -80,6 +87,8 @@ public class ShiftAssignmentsController : ControllerBase
     /// <response code="200">The shift assignment was updated.</response>
     /// <response code="400">The request failed validation, or ShiftId does not reference an existing shift.</response>
     /// <response code="404">No shift assignment was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateShiftAssignmentRequest request, CancellationToken cancellationToken)
     {
@@ -101,6 +110,8 @@ public class ShiftAssignmentsController : ControllerBase
     /// <summary>Soft-deletes a shift assignment.</summary>
     /// <response code="204">The shift assignment was deleted.</response>
     /// <response code="404">No shift assignment was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

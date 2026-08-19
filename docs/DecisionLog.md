@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-022: Permission-granularity gaps closed for Documents, Users, HR, IPD, Products, Calendar
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that most hospital-facing controllers were protected only by the global "any authenticated user" fallback policy (ADR from the earlier authorization-hardening pass), with no permission-level (`[RequirePermission]`) gating — unlike Masters, Finance/Billing, Roles, and Patients, which already got this treatment in earlier PRs (#51). Specifically named: Documents, Users (Identity), HR (5 controllers), IPD (5 controllers), Products (8 controllers), and Calendar.
+
+**Decision**
+Added `[Authorize]` + `[RequirePermission("<module>.<action>")]` to every action across all 19 remaining controllers in those 6 modules (~101 actions), mapping HTTP verb to action (GET→`view`, POST→`create`, PUT/PATCH→`edit`, DELETE→`delete`; state-change-only POSTs like activate/deactivate/publish/discharge map to `edit`), using the existing seeded permission catalog (`PermissionSeedData.cs`) rather than inventing new modules. The catalog-to-code-module mapping was inferred from the catalog's own frontend labels (`ROLE_MODULES` in `modules.ts`) since it isn't 1:1 with folder names:
+- Users, Permissions → `identity-administration` (label: "Roles, Users & Settings" — explicitly names Users)
+- IPD (Admissions, Wards, Beds, AdmissionCharges, Dashboard) → `clinical-care`
+- Products (all 8 controllers) → `pharmacy`
+- Documents → `records-compliance`
+- HR (Shifts, ShiftAssignments, ShiftSwapRequests, StaffAvailability, WeeklyRosters) → `workforce-admin`
+- Calendar (Events) → `engagement`
+
+**Consequences**
+- Verified live: confirmed every previously-open route across all 6 modules now returns `401` with no token (where before some accepted anonymous requests entirely, per the earlier audit), and returns `200` for the seeded Super Admin token — the second check is the important one, since it proves the `module.action` strings actually match the real seeded catalog rather than just compiling.
+- No new permission-catalog entries or migration needed — every mapping used an existing seeded module.
+- `pharmacy`/`clinical-care`/`records-compliance`/`workforce-admin`/`engagement` were previously unused by any controller (only referenced in the frontend's static `ROLE_MODULES` list) — a role granted one of these before this change had no actual effect; now it does.
+- Documents already had a bespoke owner-type-based authorization layer (`DocumentActor`, 403 responses per owner type) — `[RequirePermission]` is additive defense-in-depth there, not a replacement.
+
+---
+
 ### ADR-021: Local dev secrets move to `dotnet user-secrets`; no cloud secrets-manager built yet
 **Date:** 2026-08-19
 **Status:** Accepted

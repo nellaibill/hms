@@ -4,6 +4,7 @@ using HMS.Modules.Identity.Application;
 using HMS.Modules.Identity.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -44,6 +45,8 @@ public class UsersController : ControllerBase
     /// <response code="201">The user was created.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="409">A user with the given username or email already exists.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
     {
@@ -68,6 +71,8 @@ public class UsersController : ControllerBase
     /// <response code="200">The user was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No user was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
     {
@@ -84,6 +89,8 @@ public class UsersController : ControllerBase
     /// <summary>Soft-deletes a user.</summary>
     /// <response code="204">The user was deleted.</response>
     /// <response code="404">No user was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -94,6 +101,8 @@ public class UsersController : ControllerBase
     /// <summary>Gets a single user by id.</summary>
     /// <response code="200">The user was found.</response>
     /// <response code="404">No user was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -107,6 +116,8 @@ public class UsersController : ControllerBase
     /// <see cref="UserListQuery"/>) — there is no dedicated /search route.
     /// </summary>
     /// <response code="200">A page of users.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] UserListQuery query, CancellationToken cancellationToken)
     {
@@ -126,6 +137,8 @@ public class UsersController : ControllerBase
     /// <summary>Activates a user.</summary>
     /// <response code="200">The user was activated.</response>
     /// <response code="404">No user was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPost("{id:guid}/activate")]
     public async Task<IActionResult> Activate(Guid id, CancellationToken cancellationToken)
     {
@@ -136,6 +149,8 @@ public class UsersController : ControllerBase
     /// <summary>Deactivates a user.</summary>
     /// <response code="200">The user was deactivated.</response>
     /// <response code="404">No user was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPost("{id:guid}/deactivate")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
@@ -147,6 +162,8 @@ public class UsersController : ControllerBase
     /// <response code="200">The profile photo was uploaded.</response>
     /// <response code="400">The file failed validation.</response>
     /// <response code="404">No user was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPost("{id:guid}/profile-photo")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadProfilePhoto(Guid id, IFormFile photo, CancellationToken cancellationToken)
@@ -166,6 +183,8 @@ public class UsersController : ControllerBase
     /// <response code="200">The password was set.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No user was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
     [HttpPost("{id:guid}/password")]
     public async Task<IActionResult> SetPassword(Guid id, [FromBody] SetPasswordRequest request, CancellationToken cancellationToken)
     {
