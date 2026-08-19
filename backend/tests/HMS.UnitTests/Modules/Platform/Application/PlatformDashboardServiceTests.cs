@@ -14,13 +14,14 @@ public class PlatformDashboardServiceTests
     private readonly ITenantRepository _tenantRepository = Substitute.For<ITenantRepository>();
     private readonly ITenantDirectory _tenantDirectory = Substitute.For<ITenantDirectory>();
     private readonly ITenantMigrationService _migrationService = Substitute.For<ITenantMigrationService>();
+    private readonly IProvisioningAlertStore _provisioningAlertStore = Substitute.For<IProvisioningAlertStore>();
     private readonly ILogger<PlatformDashboardService> _logger = Substitute.For<ILogger<PlatformDashboardService>>();
     private readonly PlatformDashboardService _sut;
     private readonly Guid _platformAdminId = Guid.NewGuid();
 
     public PlatformDashboardServiceTests()
     {
-        _sut = new PlatformDashboardService(_tenantRepository, _tenantDirectory, _migrationService, _logger);
+        _sut = new PlatformDashboardService(_tenantRepository, _tenantDirectory, _migrationService, _provisioningAlertStore, _logger);
     }
 
     private static Tenant NewTenant() => Tenant.Create(
@@ -72,5 +73,19 @@ public class PlatformDashboardServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PlatformErrorCodes.NotFound);
+    }
+
+    [Fact]
+    public async Task GetStatsAsync_IncludesTheProvisioningAlertCount()
+    {
+        _tenantRepository.GetCountsAsync(Arg.Any<CancellationToken>()).Returns((5, 4, 1));
+        _provisioningAlertStore.GetCountAsync(Arg.Any<CancellationToken>()).Returns(2);
+
+        var stats = await _sut.GetStatsAsync(CancellationToken.None);
+
+        stats.Total.Should().Be(5);
+        stats.Active.Should().Be(4);
+        stats.Inactive.Should().Be(1);
+        stats.ProvisioningAlertCount.Should().Be(2);
     }
 }

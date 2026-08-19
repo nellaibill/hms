@@ -1,5 +1,5 @@
 import type { TenantListItemResponse } from '@hms/shared';
-import { Building2, CheckCircle2, Loader2, LogOut, XCircle } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Loader2, LogOut, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,6 +20,9 @@ interface StatTile {
   label: string;
   value: string;
   icon: typeof Building2;
+  /** 'alert' highlights the tile in a warning color — used for the provisioning-alert
+   * count, which should stand out from the ground-truth hospital counts when nonzero. */
+  variant?: 'default' | 'alert';
 }
 
 export default function PlatformDashboardPage() {
@@ -38,6 +41,13 @@ export default function PlatformDashboardPage() {
     { key: 'total', label: 'Total Hospitals', value: stats ? String(stats.total) : '…', icon: Building2 },
     { key: 'active', label: 'Active', value: stats ? String(stats.active) : '…', icon: CheckCircle2 },
     { key: 'inactive', label: 'Inactive', value: stats ? String(stats.inactive) : '…', icon: XCircle },
+    {
+      key: 'provisioningAlerts',
+      label: 'Provisioning Alerts',
+      value: stats ? String(stats.provisioningAlertCount) : '…',
+      icon: AlertTriangle,
+      variant: stats && stats.provisioningAlertCount > 0 ? 'alert' : 'default',
+    },
   ];
 
   function handleSearchChange(value: string) {
@@ -69,16 +79,25 @@ export default function PlatformDashboardPage() {
       <main className="flex flex-col gap-6 p-6 lg:p-8">
         <p className="text-sm text-muted-foreground">Signed in as {user?.fullName ?? user?.email}</p>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {tiles.map((tile) => {
             const Icon = tile.icon;
+            const isAlert = tile.variant === 'alert';
             return (
-              <Card key={tile.key}>
+              <Card key={tile.key} className={isAlert ? 'border-destructive/50' : undefined}>
                 <CardContent className="flex flex-col gap-2 py-4">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <span
+                    className={
+                      isAlert
+                        ? 'flex h-8 w-8 items-center justify-center rounded-md bg-destructive/10 text-destructive'
+                        : 'flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary'
+                    }
+                  >
                     {statsQuery.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
                   </span>
-                  <span className="text-2xl font-semibold tabular-nums text-foreground">{tile.value}</span>
+                  <span className={isAlert ? 'text-2xl font-semibold tabular-nums text-destructive' : 'text-2xl font-semibold tabular-nums text-foreground'}>
+                    {tile.value}
+                  </span>
                   <span className="text-xs text-muted-foreground">{tile.label}</span>
                 </CardContent>
               </Card>

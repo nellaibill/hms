@@ -45,6 +45,11 @@ public static class PlatformModule
         services.AddScoped<IHospitalRegistrationService, HospitalRegistrationService>();
         services.AddScoped<IPlatformDashboardService, PlatformDashboardService>();
 
+        // Consumed by HMS.Api's TenantProvisioningService (ITenantProvisioner) to raise a
+        // durable, dashboard-visible alert when a rollback fails — see
+        // IProvisioningAlertStore's own doc comment for why this is public.
+        services.AddScoped<IProvisioningAlertStore, ProvisioningAlertStore>();
+
         // HMS Multi-Tenancy Phase C's tenant-resolution seam — consumed by
         // HMS.Api's TenantResolutionMiddleware and by HMS.Modules.Identity's
         // AuthenticationService (login-time resolution). See ITenantDirectory's own doc

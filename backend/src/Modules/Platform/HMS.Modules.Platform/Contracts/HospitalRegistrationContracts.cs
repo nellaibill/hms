@@ -53,4 +53,9 @@ public record TenantDashboardStatsResponse
     public int Total { get; init; }
     public int Active { get; init; }
     public int Inactive { get; init; }
+
+    /// <summary>Count of ProvisioningAlert rows — a tenant-provisioning failure whose
+    /// rollback also failed, so an orphaned database may still exist. Zero in the normal
+    /// case; any nonzero value needs a human to investigate (see ADR for this finding).</summary>
+    public int ProvisioningAlertCount { get; init; }
 }
