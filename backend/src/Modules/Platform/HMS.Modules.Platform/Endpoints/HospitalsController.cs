@@ -99,20 +99,37 @@ public class HospitalsController : ControllerBase
     }
 
     /// <summary>Registers a new hospital: provisions its isolated database and its first Super Admin.</summary>
+    /// <remarks>
+    /// Requires an "Idempotency-Key" header — provisioning is not cheap to retry safely, so a
+    /// client must supply the same key across retries of the same logical attempt (e.g. after
+    /// a client-side timeout) rather than risk double-provisioning. A fresh key must be used
+    /// for each genuinely new registration.
+    /// </remarks>
     /// <response code="201">The hospital was registered and its database provisioned.</response>
-    /// <response code="400">The request failed validation, or provisioning failed.</response>
-    /// <response code="409">The hospital code or Super Admin email is already registered.</response>
+    /// <response code="400">The request failed validation, provisioning failed, or the Idempotency-Key header was missing.</response>
+    /// <response code="409">The hospital code or Super Admin email is already registered, or the Idempotency-Key is still in flight or was reused for different data.</response>
     [HttpPost]
     [Authorize(Policy = "PlatformSuperAdmin")]
     public async Task<IActionResult> Create([FromBody] CreateHospitalRequest request, CancellationToken cancellationToken)
     {
+        if (!Request.Headers.TryGetValue("Idempotency-Key", out var idempotencyKeyHeader) || string.IsNullOrWhiteSpace(idempotencyKeyHeader))
+        {
+            return BadRequest(new ApiErrorResponse
+            {
+                ErrorCode = "VALIDATION.MISSING_IDEMPOTENCY_KEY",
+                Message = "The 'Idempotency-Key' header is required.",
+                CorrelationId = HttpContext.GetCorrelationId(),
+                Timestamp = DateTime.UtcNow,
+            });
+        }
+
         var validation = await _createValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
         {
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _registrationService.RegisterAsync(request, User.GetPlatformUserId(), cancellationToken);
+        var result = await _registrationService.RegisterAsync(request, User.GetPlatformUserId(), idempotencyKeyHeader.ToString(), cancellationToken);
         if (!result.IsSuccess)
         {
             return MapFailure(result.ErrorCode!, result.Error!);
@@ -129,6 +146,8 @@ public class HospitalsController : ControllerBase
         {
             PlatformErrorCodes.DuplicateHospitalCode => StatusCodes.Status409Conflict,
             PlatformErrorCodes.DuplicateAdminEmail => StatusCodes.Status409Conflict,
+            PlatformErrorCodes.IdempotencyKeyInProgress => StatusCodes.Status409Conflict,
+            PlatformErrorCodes.IdempotencyKeyReused => StatusCodes.Status409Conflict,
             PlatformErrorCodes.NotFound => StatusCodes.Status404NotFound,
             _ => StatusCodes.Status400BadRequest,
         };

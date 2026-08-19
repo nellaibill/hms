@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Platform.Contracts;
 using HMS.Modules.Platform.Domain;
@@ -19,19 +22,56 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
 {
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantProvisioner _tenantProvisioner;
+    private readonly IHospitalRegistrationIdempotencyStore _idempotencyStore;
     private readonly ILogger<HospitalRegistrationService> _logger;
 
     public HospitalRegistrationService(
         ITenantRepository tenantRepository,
         ITenantProvisioner tenantProvisioner,
+        IHospitalRegistrationIdempotencyStore idempotencyStore,
         ILogger<HospitalRegistrationService> logger)
     {
         _tenantRepository = tenantRepository;
         _tenantProvisioner = tenantProvisioner;
+        _idempotencyStore = idempotencyStore;
         _logger = logger;
     }
 
-    public async Task<Result<CreateHospitalResponse>> RegisterAsync(CreateHospitalRequest request, Guid? actorId, CancellationToken cancellationToken)
+    public async Task<Result<CreateHospitalResponse>> RegisterAsync(CreateHospitalRequest request, Guid? actorId, string idempotencyKey, CancellationToken cancellationToken)
+    {
+        var requestHash = ComputeRequestHash(request);
+        var reservation = await _idempotencyStore.ReserveAsync(idempotencyKey, requestHash, cancellationToken);
+
+        switch (reservation.Outcome)
+        {
+            case IdempotencyReservationOutcome.ReplayCompleted:
+                _logger.LogInformation("Replayed cached result for Idempotency-Key '{IdempotencyKey}'", idempotencyKey);
+                return reservation.ReplayedResult!;
+
+            case IdempotencyReservationOutcome.ReplayInProgress:
+                return Result<CreateHospitalResponse>.Failure(
+                    PlatformErrorCodes.IdempotencyKeyInProgress,
+                    "A request with this Idempotency-Key is already being processed.");
+
+            case IdempotencyReservationOutcome.KeyReusedForDifferentRequest:
+                return Result<CreateHospitalResponse>.Failure(
+                    PlatformErrorCodes.IdempotencyKeyReused,
+                    "This Idempotency-Key was already used for a request with different data.");
+        }
+
+        var result = await RegisterCoreAsync(request, actorId, cancellationToken);
+        await _idempotencyStore.CompleteAsync(reservation.RecordId!.Value, result, cancellationToken);
+        return result;
+    }
+
+    private static string ComputeRequestHash(CreateHospitalRequest request)
+    {
+        var json = JsonSerializer.Serialize(request);
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(json));
+        return Convert.ToHexStringLower(bytes);
+    }
+
+    private async Task<Result<CreateHospitalResponse>> RegisterCoreAsync(CreateHospitalRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var existingByCode = await _tenantRepository.GetByHospitalCodeAsync(request.HospitalCode, cancellationToken);
         if (existingByCode is not null)
