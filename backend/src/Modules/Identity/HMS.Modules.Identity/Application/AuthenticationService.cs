@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace HMS.Modules.Identity.Application;
 
 /// <summary>
-/// Orchestrates the Login use case. Every rejection reason (rules 1-4 below) returns the
+/// Orchestrates the Login use case. Every rejection reason (rules 1-5 below) returns the
 /// same generic <see cref="AuthenticationErrorCodes.InvalidLogin"/> failure — never
 /// revealing which check failed, per standard login-security practice (docs/ApiStandards.md
 /// §8). Soft-deleted users need no special handling: IUserRepository.GetByUsernameAsync
@@ -23,6 +23,12 @@ namespace HMS.Modules.Identity.Application;
 internal class AuthenticationService : IAuthenticationService
 {
     private const string GenericInvalidLoginMessage = "Invalid username or password.";
+
+    /// <summary>Brute-force throttling thresholds (HMS Security Hardening: login had no
+    /// account lockout at all). Not user-configurable — a single deployment target, no
+    /// evidence yet of needing per-environment tuning.</summary>
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
 
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
@@ -66,22 +72,39 @@ internal class AuthenticationService : IAuthenticationService
             return Fail();
         }
 
-        // Rule 2: password matches. A user created before a password was ever set has a
-        // null PasswordHash, which fails here rather than reaching the hasher.
-        if (user.PasswordHash is null || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        // Rule 2 (brute-force throttling): a prior run of wrong-password attempts already
+        // locked this account out. Rejected before even touching the password hasher — a
+        // locked-out account gains nothing from an accurate password.
+        var now = DateTime.UtcNow;
+        if (user.IsLockedOut(now))
         {
-            _logger.LogInformation("Login failed for {Username}: wrong password", request.Username);
+            _logger.LogWarning("Login failed for {Username}: account is locked out until {LockedOutUntil}", request.Username, user.LockedOutUntil);
             return Fail();
         }
 
-        // Rule 3: account is active.
+        // Rule 3: password matches. A user created before a password was ever set has a
+        // null PasswordHash, which fails here rather than reaching the hasher.
+        if (user.PasswordHash is null || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        {
+            user.RecordFailedLogin(now, MaxFailedLoginAttempts, LockoutDuration);
+            await _userRepository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Login failed for {Username}: wrong password ({FailedAttempts}/{MaxAttempts} failed attempts)",
+                request.Username,
+                user.FailedLoginAttempts,
+                MaxFailedLoginAttempts);
+            return Fail();
+        }
+
+        // Rule 4: account is active.
         if (!user.IsActive)
         {
             _logger.LogInformation("Login failed for {Username}: inactive account", request.Username);
             return Fail();
         }
 
-        // Rule 4: the selected Login Type matches the user's assigned role.
+        // Rule 5: the selected Login Type matches the user's assigned role.
         var role = await _roleRepository.GetByIdAsync(user.RoleId, cancellationToken);
         if (role is null || !LoginTypes.RoleMatches(request.LoginType, role.Name))
         {
@@ -89,7 +112,7 @@ internal class AuthenticationService : IAuthenticationService
             return Fail();
         }
 
-        user.RecordLogin(DateTime.UtcNow);
+        user.RecordLogin(now);
         await _userRepository.SaveChangesAsync(cancellationToken);
 
         var permissionKeys = role.RolePermissions

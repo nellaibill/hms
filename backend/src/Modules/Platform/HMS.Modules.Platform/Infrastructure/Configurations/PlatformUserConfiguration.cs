@@ -19,6 +19,8 @@ internal class PlatformUserConfiguration : IEntityTypeConfiguration<PlatformUser
         builder.Property(u => u.PasswordHash).HasColumnName("password_hash").IsRequired();
         builder.Property(u => u.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
         builder.Property(u => u.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(PlatformRole.SuperAdmin);
+        builder.Property(u => u.FailedLoginAttempts).HasColumnName("failed_login_attempts").IsRequired().HasDefaultValue(0);
+        builder.Property(u => u.LockedOutUntil).HasColumnName("locked_out_until");
 
         builder.Property(u => u.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(u => u.CreatedBy).HasColumnName("created_by");
