@@ -89,6 +89,19 @@ public class HospitalRegistrationServiceTests
     }
 
     [Fact]
+    public async Task RegisterAsync_WhenSuperAdminEmailAlreadyExists_ReturnsDuplicateFailureAndNeverProvisions()
+    {
+        _tenantRepository.GetByEmailAsync("admin@apollo.example", Arg.Any<CancellationToken>())
+            .Returns(Tenant.Create("Existing", "existing", "9876543210", "existing@example.com", "1 MG Road", "Chennai", "Tamil Nadu", "600001", "hms_tenant_existing", createdBy: null));
+
+        var result = await Register(ValidRequest(), _platformAdminId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.DuplicateAdminEmail);
+        await _tenantProvisioner.DidNotReceive().ProvisionAsync(Arg.Any<TenantProvisionRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RegisterAsync_WhenProvisioningFails_ReturnsFailureAndNeverWritesATenantRow()
     {
         _tenantProvisioner.ProvisionAsync(Arg.Any<TenantProvisionRequest>(), Arg.Any<CancellationToken>())
@@ -113,6 +126,27 @@ public class HospitalRegistrationServiceTests
         await _idempotencyStore.Received(1).CompleteAsync(
             recordId,
             Arg.Is<Result<CreateHospitalResponse>>(r => r.IsSuccess),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegisterAsync_AfterProvisioningFailure_StillCompletesTheIdempotencyReservationWithTheFailureResult()
+    {
+        // If a failed attempt never completed its reservation, the Idempotency-Key would
+        // stay "in progress" forever — the caller could never retry with the same key even
+        // though nothing actually succeeded on the first attempt.
+        var recordId = Guid.NewGuid();
+        _idempotencyStore.ReserveAsync(IdempotencyKey, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new IdempotencyReservation(IdempotencyReservationOutcome.Reserved, RecordId: recordId));
+        _tenantProvisioner.ProvisionAsync(Arg.Any<TenantProvisionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result<TenantProvisionResult>.Failure(TenantProvisioningErrorCodes.Failed, "database creation failed"));
+
+        var result = await Register(ValidRequest(), _platformAdminId);
+
+        result.IsSuccess.Should().BeFalse();
+        await _idempotencyStore.Received(1).CompleteAsync(
+            recordId,
+            Arg.Is<Result<CreateHospitalResponse>>(r => !r.IsSuccess),
             Arg.Any<CancellationToken>());
     }
 
