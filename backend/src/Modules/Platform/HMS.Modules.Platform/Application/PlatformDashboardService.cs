@@ -37,7 +37,7 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
         return new TenantDashboardStatsResponse { Total = total, Active = active, Inactive = inactive };
     }
 
-    public async Task<Result<TenantListItemResponse>> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken)
+    public async Task<Result<TenantListItemResponse>> UpdateStatusAsync(Guid id, string status, Guid? actorId, CancellationToken cancellationToken)
     {
         if (!Enum.TryParse<TenantStatus>(status, ignoreCase: true, out var parsedStatus))
         {
@@ -50,7 +50,7 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
             return Result<TenantListItemResponse>.Failure(PlatformErrorCodes.NotFound, "No hospital was found for the given id.");
         }
 
-        tenant.SetStatus(parsedStatus, updatedBy: null);
+        tenant.SetStatus(parsedStatus, updatedBy: actorId);
         await _tenantRepository.SaveChangesAsync(cancellationToken);
 
         return Result<TenantListItemResponse>.Success(ToResponse(tenant));
