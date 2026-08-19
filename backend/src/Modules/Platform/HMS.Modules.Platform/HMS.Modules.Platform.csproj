@@ -24,6 +24,8 @@
          HMS.Modules.Identity.csproj (bearer-token validation middleware belongs in
          HMS.Api, which owns the hosting pipeline). -->
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <!-- RFC 6238 TOTP verification for Platform Admin MFA (TotpService) -->
+    <PackageReference Include="Otp.NET" />
   </ItemGroup>
 
   <ItemGroup>

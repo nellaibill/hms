@@ -39,6 +39,10 @@
     <!-- Authentication -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
+    <!-- RFC 6238 TOTP codes for Platform Admin MFA (HMS.Modules.Platform's TotpService) —
+         a well-established, single-purpose library rather than hand-rolling HMAC-based
+         one-time-code generation for a security-critical primitive. -->
+    <PackageVersion Include="Otp.NET" Version="1.4.0" />
     <!-- Test-only: builds an in-memory IConfiguration for JwtTokenGeneratorTests, without
          pulling in the full Microsoft.AspNetCore.App shared framework just for tests. -->
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0" />

@@ -25,6 +25,7 @@ public class PlatformDbContext : DbContext
     internal DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     internal DbSet<ProvisioningAlert> ProvisioningAlerts => Set<ProvisioningAlert>();
     internal DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
+    internal DbSet<PlatformMfaChallenge> PlatformMfaChallenges => Set<PlatformMfaChallenge>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -22,5 +22,8 @@ internal sealed class PlatformUserRepository : IPlatformUserRepository
         return _dbContext.PlatformUsers.FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
     }
 
+    public Task<PlatformUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _dbContext.PlatformUsers.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
 }

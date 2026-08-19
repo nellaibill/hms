@@ -37,6 +37,32 @@ _To be documented._
 
 ## Decisions
 
+### ADR-024: TOTP-based MFA for Platform Admin accounts
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that Platform Admin accounts (the only accounts that can register/deactivate/delete hospital tenants) had no second factor — a leaked or brute-forced password (however unlikely given ADR-017/ADR-023's lockout and complexity rules) was the only thing standing between an attacker and the entire multi-tenant platform.
+
+**Decision**
+Built RFC 6238 TOTP-based MFA, self-service per Platform Admin account:
+- `PlatformUser` gained `MfaEnabled`/`MfaSecret` (the secret is encrypted at rest via `IPlatformMfaSecretProtector`, wrapping ASP.NET Core's built-in Data Protection API — no new infrastructure, just `builder.Services.AddDataProtection()`, already part of the shared framework).
+- New endpoints, all under `/api/platform/auth/mfa/*`: `GET status`, `POST setup` (generates a secret, returns it once as manual-entry text plus an `otpauth://` URI), `POST enable` (confirms a code, the only way `MfaEnabled` turns on), `POST disable` (requires a valid current code, not just an authenticated session — same reasoning as requiring the current password to change a password).
+- Login became two-step for an MFA-enabled account: `LoginAsync` returns a short-lived (5-minute), single-use `PlatformMfaChallenge` token instead of a real JWT once the password checks out; a new `POST /mfa/verify` exchanges that token plus a TOTP code for the real token. `PlatformLoginResponse` now has an `MfaRequired` discriminator.
+- TOTP itself uses the Otp.NET library (`Directory.Packages.props`) rather than hand-rolling HMAC-based one-time-code math — a security primitive is not the place to save a dependency.
+- New `frontend/web/src/pages/platform/PlatformSecuritySettingsPage.tsx` (linked from the dashboard header) drives setup/enable/disable; `PlatformLoginPage` gained the code-entry second step.
+
+**Deliberately not built: QR-code rendering for setup.** The manual-entry key and `otpauth://` URI (copyable text) cover the same authenticator apps a QR scan would, without adding an image-generation dependency to the frontend for a single screen — can be added later as a pure UX improvement if manual entry proves annoying in practice.
+
+**Consequences**
+- **Live-verified end to end**, not just unit-tested (this gates the only account type that can provision/deactivate every tenant — the standing "unit tests are enough" default was set aside here): logged in as the seeded Platform Admin, set up MFA, confirmed the code, logged out, logged back in and confirmed the password step alone no longer completes login (`MfaRequired: true`), and confirmed the real token only issues after the correct TOTP code.
+- **Caught and fixed during that live verification, not by the unit tests**: the first `IPlatformMfaChallengeStore` implementation consumed the challenge token on the *first* verify attempt regardless of whether the code was right — one mistyped digit permanently burned the login attempt (correct code on retry was rejected as "challenge invalid/expired"). Fixed by splitting `ConsumeAsync` into a non-consuming `ValidateAsync` (peek) called before checking the code, and `ConsumeAsync` called only after the code is confirmed correct — a wrong code can now be retried until it's right or the 5-minute window naturally expires. This is exactly the class of bug the existing mocked unit tests couldn't catch (they asserted the *intended* call sequence, which was the bug) — a reminder that this backlog's "unit tests are enough" default has real limits for anything with request/response state spanning two calls.
+- New migration `AddPlatformUserMfaAndChallenges` (`platform.platform_users.mfa_enabled`/`mfa_secret`, new `platform.platform_mfa_challenges` table).
+- `platform_mfa_challenges` rows are never pruned — same accepted-for-now posture as ADR-020's `revoked_tokens`, low volume, worth a scheduled cleanup once this app has a background-job mechanism.
+- Recovery if a Platform Admin loses their authenticator device isn't self-service (no backup codes) — the only path today is another Platform Admin (or direct DB access, for the single-seeded-admin case) clearing `MfaEnabled`/`MfaSecret`. Backup codes are a reasonable follow-up, not built here to keep this pass scoped to the core second-factor gate.
+
+---
+
 ### ADR-023: Password-complexity policy hardened; forced password change replaces a full invite/reset-link email flow
 **Date:** 2026-08-19
 **Status:** Accepted

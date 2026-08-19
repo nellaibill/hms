@@ -23,6 +23,23 @@ internal class PlatformUser : Entity
 
     public DateTime? LockedOutUntil { get; private set; }
 
+    /// <summary>
+    /// The TOTP shared secret (RFC 6238), encrypted at rest via
+    /// IPlatformMfaSecretProtector — never stored or returned in plaintext once set. Set by
+    /// <see cref="SetPendingMfaSecret"/> during setup, before <see cref="MfaEnabled"/> turns
+    /// true; cleared by <see cref="DisableMfa"/>.
+    /// </summary>
+    public string? MfaSecret { get; private set; }
+
+    /// <summary>
+    /// True once the Platform Admin has confirmed a setup code against
+    /// <see cref="MfaSecret"/> — see <see cref="EnableMfa"/>. A non-null
+    /// <see cref="MfaSecret"/> with this still false means setup was started but never
+    /// confirmed; PlatformAuthenticationService.LoginAsync only requires the MFA step when
+    /// this is true.
+    /// </summary>
+    public bool MfaEnabled { get; private set; }
+
     // Required by EF Core materialization.
     private PlatformUser()
     {
@@ -68,4 +85,34 @@ internal class PlatformUser : Entity
     }
 
     public bool IsLockedOut(DateTime asOf) => LockedOutUntil.HasValue && LockedOutUntil.Value > asOf;
+
+    /// <summary>
+    /// Stores a freshly-generated, not-yet-confirmed MFA secret (already encrypted by the
+    /// caller). Overwrites any prior pending or active secret — starting setup again always
+    /// wins, matching SetPasswordHash's "the most recent write is authoritative" convention.
+    /// Does not itself enable MFA; <see cref="EnableMfa"/> does that once the setup code is
+    /// verified.
+    /// </summary>
+    public void SetPendingMfaSecret(string encryptedSecret)
+    {
+        Guard.AgainstNullOrWhiteSpace(encryptedSecret, nameof(encryptedSecret));
+        MfaSecret = encryptedSecret;
+        MfaEnabled = false;
+    }
+
+    public void EnableMfa()
+    {
+        if (MfaSecret is null)
+        {
+            throw new InvalidOperationException("Cannot enable MFA before SetPendingMfaSecret has stored a secret.");
+        }
+
+        MfaEnabled = true;
+    }
+
+    public void DisableMfa()
+    {
+        MfaSecret = null;
+        MfaEnabled = false;
+    }
 }

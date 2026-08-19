@@ -36,6 +36,13 @@ builder.Services.AddHmsCors(builder.Configuration);
 builder.Services.AddHmsJwtAuthentication(builder.Configuration);
 builder.Services.AddHmsRateLimiting();
 
+// Backs PlatformMfaSecretProtector (encrypts Platform Admin TOTP secrets at rest) — the
+// default file-system key ring under the machine's user profile is fine for this app's
+// current single-instance deployment; a distributed key ring (Redis/blob storage) would
+// only be needed once this runs as more than one instance, same "no infra beyond what's
+// already available" posture as ADR-021/ADR-023's other deferrals.
+builder.Services.AddDataProtection();
+
 var app = builder.Build();
 
 app.UseMiddleware<CorrelationIdMiddleware>();

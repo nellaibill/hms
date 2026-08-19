@@ -22,6 +22,9 @@ internal class PlatformUserConfiguration : IEntityTypeConfiguration<PlatformUser
         builder.Property(u => u.FailedLoginAttempts).HasColumnName("failed_login_attempts").IsRequired().HasDefaultValue(0);
         builder.Property(u => u.LockedOutUntil).HasColumnName("locked_out_until");
 
+        builder.Property(u => u.MfaSecret).HasColumnName("mfa_secret");
+        builder.Property(u => u.MfaEnabled).HasColumnName("mfa_enabled").IsRequired().HasDefaultValue(false);
+
         builder.Property(u => u.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(u => u.CreatedBy).HasColumnName("created_by");
         builder.Property(u => u.UpdatedAt).HasColumnName("updated_at");

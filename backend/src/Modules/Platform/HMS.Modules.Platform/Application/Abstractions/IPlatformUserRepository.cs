@@ -12,5 +12,7 @@ internal interface IPlatformUserRepository
 
     Task<PlatformUser?> GetByEmailAsync(string email, CancellationToken cancellationToken);
 
+    Task<PlatformUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }
