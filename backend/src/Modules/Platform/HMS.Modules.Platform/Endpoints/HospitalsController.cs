@@ -67,7 +67,7 @@ public class HospitalsController : ControllerBase
     [HttpPatch("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateTenantStatusRequest request, CancellationToken cancellationToken)
     {
-        var result = await _dashboardService.UpdateStatusAsync(id, request.Status, cancellationToken);
+        var result = await _dashboardService.UpdateStatusAsync(id, request.Status, User.GetPlatformUserId(), cancellationToken);
         if (!result.IsSuccess)
         {
             return MapFailure(result.ErrorCode!, result.Error!);
@@ -109,7 +109,7 @@ public class HospitalsController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _registrationService.RegisterAsync(request, cancellationToken);
+        var result = await _registrationService.RegisterAsync(request, User.GetPlatformUserId(), cancellationToken);
         if (!result.IsSuccess)
         {
             return MapFailure(result.ErrorCode!, result.Error!);

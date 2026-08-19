@@ -5,5 +5,5 @@ namespace HMS.Modules.Platform.Application.Abstractions;
 
 public interface IHospitalRegistrationService
 {
-    Task<Result<CreateHospitalResponse>> RegisterAsync(CreateHospitalRequest request, CancellationToken cancellationToken);
+    Task<Result<CreateHospitalResponse>> RegisterAsync(CreateHospitalRequest request, Guid? actorId, CancellationToken cancellationToken);
 }
