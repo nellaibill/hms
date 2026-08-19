@@ -3,10 +3,12 @@ import type {
   CreateHospitalRequest,
   CreateHospitalResponse,
   DeletedTenantListItemResponse,
+  TenantConfigurationResponse,
   TenantDashboardStatsResponse,
   TenantDeletePreviewResponse,
   TenantListItemResponse,
   TenantListQuery,
+  UpdateTenantConfigurationRequest,
   UpdateTenantStatusRequest,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
@@ -87,6 +89,16 @@ export class PlatformHospitalsApi {
 
   async restoreHospital(id: string): Promise<TenantListItemResponse> {
     const response = await this.client.post<TenantListItemResponse>(API_ROUTES.platformHospitals.restore(id));
+    return response.data;
+  }
+
+  async getConfiguration(id: string): Promise<TenantConfigurationResponse> {
+    const response = await this.client.get<TenantConfigurationResponse>(API_ROUTES.platformHospitals.configuration(id));
+    return response.data;
+  }
+
+  async updateConfiguration(id: string, request: UpdateTenantConfigurationRequest): Promise<TenantConfigurationResponse> {
+    const response = await this.client.put<TenantConfigurationResponse>(API_ROUTES.platformHospitals.configuration(id), request);
     return response.data;
   }
 }

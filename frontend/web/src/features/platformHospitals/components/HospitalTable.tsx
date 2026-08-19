@@ -7,9 +7,10 @@ interface HospitalTableProps {
   onToggleStatus: (hospital: TenantListItemResponse) => void;
   isTogglingId: string | undefined;
   onDelete: (hospital: TenantListItemResponse) => void;
+  onConfigure: (hospital: TenantListItemResponse) => void;
 }
 
-export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onDelete }: HospitalTableProps) {
+export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onDelete, onConfigure }: HospitalTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -18,6 +19,7 @@ export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onDelet
             <th className="px-4 py-2.5">Hospital Name</th>
             <th className="px-4 py-2.5">Code</th>
             <th className="px-4 py-2.5">Status</th>
+            <th className="px-4 py-2.5">Tier</th>
             <th className="px-4 py-2.5">Created</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
@@ -32,6 +34,7 @@ export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onDelet
                 <td className="px-4 py-3">
                   <Badge variant={isActive ? 'success' : 'secondary'}>{hospital.status}</Badge>
                 </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">{hospital.subscriptionTier}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                   {new Date(hospital.createdAt).toLocaleDateString('en-IN')}
                 </td>
@@ -44,6 +47,9 @@ export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onDelet
                       disabled={isTogglingId === hospital.id}
                     >
                       {isActive ? 'Disable' : 'Enable'}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => onConfigure(hospital)}>
+                      Configure
                     </Button>
                     <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDelete(hospital)}>
                       Delete

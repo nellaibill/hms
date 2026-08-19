@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-026: Platform-level per-tenant module configuration, enforced by filtering the JWT at login
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review's "per-tenant configuration store" finding was vague by the time it came up in this backlog — every hospital already gets its own isolated database, so hospital-side settings (Branding, etc.) are already per-tenant by construction. Asked the user what they actually meant: Platform-level settings, set by a Platform Admin rather than a hospital's own admin — specifically, which business-domain modules a hospital's staff can use at all, and a subscription tier.
+
+**Decision**
+- `Tenant` gained `EnabledModules` (defaults to every module in the new `HMS.Shared.Kernel.ModuleCatalog` — the 11 keys mirrored from `PermissionSeedData.cs`) and `SubscriptionTier` (freeform string, default "Standard"). Stored as a comma-joined string (module keys are guaranteed comma-free kebab-case identifiers) rather than a native Postgres array, with an explicit `ValueComparer` so EF Core's change tracking is correct.
+- New Platform endpoints: `GET/PUT /api/platform/hospitals/{id}/configuration`.
+- **Enforcement reuses the existing authorization pipeline instead of adding a new one.** `ITenantContext` (already the per-request tenant state bag `TenantResolutionMiddleware` populates before any hospital request reaches a controller) gained `EnabledModules`. `AuthenticationService.LoginAsync` now strips any permission whose `Permission.Module` isn't in that list out of the JWT it issues — so a disabled module's `[RequirePermission]` gates reject every user at that hospital exactly the way they already reject a role that was never granted the permission. No new middleware, no new authorization requirement, no per-request Platform-DB lookup on the hot path.
+- This is necessarily a login-time check, not a live one: a user already holding a JWT keeps whatever permissions it was issued with until it expires (hospital tokens have no revocation store — see ADR-020's identical limitation for the Platform side). A module toggle takes effect on that user's *next* login.
+- Frontend: a "Configure" action per hospital on the Platform dashboard opens a dialog with a checkbox per module (reusing `ROLE_MODULES`' labels, `frontend/web/src/features/roles/modules.ts`) and a subscription-tier field.
+
+**Consequences**
+- No existing tenant loses access: the migration's column default is the *full* module list (applied to every existing row by Postgres when the `ALTER TABLE ADD COLUMN ... DEFAULT` runs), not an empty/restrictive one.
+- **Live-verified end to end** — this changes what a JWT actually grants, so a bug could either fail to restrict (security gap) or over-restrict (lock out a whole hospital): configured a real tenant to disable Pharmacy, logged in as that hospital's Super Admin, confirmed `GET /api/v1/products` now returns 403 while `GET /api/v1/users` (a still-enabled module) returns 200, then re-enabled Pharmacy and confirmed access returned.
+- **Caught and fixed during that live verification, not by the unit tests, a second unrelated pre-existing bug**: `IdentityModule.cs` never registered `IValidator<ChangePasswordRequest>` in DI — the validator class shipped in ADR-023 (PR #64), but the registration line was missed, and ADR-023 explicitly skipped live verification ("follows an already-proven pattern... fully covered by unit tests"). The result: **every hospital login has been throwing a 500** (`AuthenticationController`'s constructor can't be resolved — it now takes the change-password validator too) since PR #64 merged, invisible to unit tests because DI container resolution isn't something a mocked-constructor unit test exercises. Fixed by adding the missing `services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordRequestValidator>()` line, then audited every other validator class in Identity and Platform against their module's DI registration to confirm no sibling gaps.
+- Not unit-tested at the `AuthenticationService.LoginAsync` filter level: `RolePermission.Permission`'s navigation property has a private setter with no EF-free way to populate it in a pure in-memory domain test (confirmed no existing test in this codebase ever populates it either — every `AuthenticationServiceTests` role is created with zero permissions attached). Covered by the live verification above instead, same posture as ADR-018/019/020's identical "can't be meaningfully unit-tested here" call.
+- Module keys are not validated against `ModuleCatalog` server-side — an unrecognized key is inert (it simply never matches any `Permission.Module`), and this is a Platform-Admin-only internal tool, so a typo's blast radius is low and accepted rather than adding a second place the catalog must stay in sync.
+- Subscription tier is display/storage only — not wired to any billing or enforcement logic yet.
+
+---
+
 ### ADR-025: Tenant delete is soft-delete only, with a server-enforced confirmation step
 **Date:** 2026-08-19
 **Status:** Accepted

@@ -3,6 +3,7 @@ using HMS.Modules.Platform.Application;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Platform.Contracts;
 using HMS.Modules.Platform.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -201,6 +202,59 @@ public class PlatformDashboardServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PlatformErrorCodes.NotDeleted);
+    }
+
+    [Fact]
+    public async Task GetConfigurationAsync_ReturnsTheTenantsCurrentConfigurationAndTheFullCatalog()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await _sut.GetConfigurationAsync(tenant.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.EnabledModules.Should().BeEquivalentTo(ModuleCatalog.All);
+        result.Value.SubscriptionTier.Should().Be("Standard");
+        result.Value.AllModules.Should().BeEquivalentTo(ModuleCatalog.All);
+    }
+
+    [Fact]
+    public async Task GetConfigurationAsync_WhenTenantNotFound_ReturnsNotFoundFailure()
+    {
+        _tenantRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Tenant?)null);
+
+        var result = await _sut.GetConfigurationAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateConfigurationAsync_RestrictsModulesAndUpdatesTier()
+    {
+        var tenant = NewTenant();
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        var request = new UpdateTenantConfigurationRequest { EnabledModules = ["pharmacy", "clinical-care"], SubscriptionTier = "Premium" };
+
+        var result = await _sut.UpdateConfigurationAsync(tenant.Id, request, _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        tenant.EnabledModules.Should().BeEquivalentTo(["pharmacy", "clinical-care"]);
+        tenant.SubscriptionTier.Should().Be("Premium");
+        tenant.UpdatedBy.Should().Be(_platformAdminId);
+        await _tenantRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateConfigurationAsync_WhenTenantNotFound_ReturnsNotFoundFailure()
+    {
+        _tenantRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Tenant?)null);
+        var request = new UpdateTenantConfigurationRequest { EnabledModules = ["pharmacy"], SubscriptionTier = "Premium" };
+
+        var result = await _sut.UpdateConfigurationAsync(Guid.NewGuid(), request, _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.NotFound);
     }
 
     [Fact]

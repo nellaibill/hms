@@ -70,7 +70,7 @@ public sealed class TenantResolutionMiddleware
                 return;
             }
 
-            tenantContext.SetTenant(tenant.Id, tenant.ConnectionString);
+            tenantContext.SetTenant(tenant.Id, tenant.ConnectionString, tenant.EnabledModules);
         }
         else if (IsHospitalLoginRequest(context))
         {
@@ -91,7 +91,7 @@ public sealed class TenantResolutionMiddleware
                 return;
             }
 
-            tenantContext.SetTenant(tenant.Id, tenant.ConnectionString);
+            tenantContext.SetTenant(tenant.Id, tenant.ConnectionString, tenant.EnabledModules);
         }
 
         await _next(context);

@@ -163,6 +163,43 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
         return new PagedResult<DeletedTenantListItemResponse>(items.Select(ToDeletedResponse).ToList(), query.Page, query.PageSize, totalCount);
     }
 
+    public async Task<Result<TenantConfigurationResponse>> GetConfigurationAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantRepository.GetByIdAsync(id, cancellationToken);
+        if (tenant is null)
+        {
+            return Result<TenantConfigurationResponse>.Failure(PlatformErrorCodes.NotFound, "No hospital was found for the given id.");
+        }
+
+        return Result<TenantConfigurationResponse>.Success(ToConfigurationResponse(tenant));
+    }
+
+    public async Task<Result<TenantConfigurationResponse>> UpdateConfigurationAsync(Guid id, UpdateTenantConfigurationRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantRepository.GetByIdAsync(id, cancellationToken);
+        if (tenant is null)
+        {
+            return Result<TenantConfigurationResponse>.Failure(PlatformErrorCodes.NotFound, "No hospital was found for the given id.");
+        }
+
+        tenant.UpdateConfiguration(request.EnabledModules, request.SubscriptionTier, actorId);
+        await _tenantRepository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Updated configuration for tenant '{HospitalCode}': {ModuleCount} module(s) enabled, tier '{Tier}'",
+            tenant.HospitalCode, tenant.EnabledModules.Count, tenant.SubscriptionTier);
+
+        return Result<TenantConfigurationResponse>.Success(ToConfigurationResponse(tenant));
+    }
+
+    private static TenantConfigurationResponse ToConfigurationResponse(Tenant tenant) => new()
+    {
+        Id = tenant.Id,
+        EnabledModules = tenant.EnabledModules,
+        SubscriptionTier = tenant.SubscriptionTier,
+        AllModules = ModuleCatalog.All,
+    };
+
     private static TenantListItemResponse ToResponse(Tenant tenant) => new()
     {
         Id = tenant.Id,
@@ -170,6 +207,7 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
         HospitalCode = tenant.HospitalCode,
         Status = tenant.Status.ToString(),
         CreatedAt = tenant.CreatedAt,
+        SubscriptionTier = tenant.SubscriptionTier,
     };
 
     private static DeletedTenantListItemResponse ToDeletedResponse(Tenant tenant) => new()

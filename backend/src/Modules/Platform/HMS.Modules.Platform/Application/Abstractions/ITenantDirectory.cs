@@ -25,4 +25,4 @@ public interface ITenantDirectory
 /// raw database name to build a connection from themselves (see Phase C's "no
 /// client-controlled database selection" requirement).
 /// </summary>
-public sealed record TenantInfo(Guid Id, string HospitalCode, string DatabaseName, string ConnectionString, bool IsActive);
+public sealed record TenantInfo(Guid Id, string HospitalCode, string DatabaseName, string ConnectionString, bool IsActive, IReadOnlyList<string> EnabledModules);
