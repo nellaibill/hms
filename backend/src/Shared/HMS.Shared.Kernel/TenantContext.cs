@@ -21,10 +21,16 @@ public interface ITenantContext
 
     bool IsResolved { get; }
 
+    /// <summary>The business-domain modules (ModuleCatalog keys) a Platform Admin has
+    /// enabled for this tenant — null when unset (e.g. never populated by
+    /// TenantResolutionMiddleware). AuthenticationService.LoginAsync reads this to strip
+    /// permissions for disabled modules out of the issued JWT.</summary>
+    IReadOnlyList<string>? EnabledModules { get; }
+
     /// <summary>Populates the context. Intended to be called exactly once per request/scope
     /// — by design there is no way to change an already-resolved tenant mid-request, which
     /// is what keeps tenant selection out of reach of anything a client sends.</summary>
-    void SetTenant(Guid tenantId, string connectionString);
+    void SetTenant(Guid tenantId, string connectionString, IReadOnlyList<string>? enabledModules = null);
 }
 
 public sealed class TenantContext : ITenantContext
@@ -33,11 +39,14 @@ public sealed class TenantContext : ITenantContext
 
     public string? ConnectionString { get; private set; }
 
+    public IReadOnlyList<string>? EnabledModules { get; private set; }
+
     public bool IsResolved => TenantId is not null;
 
-    public void SetTenant(Guid tenantId, string connectionString)
+    public void SetTenant(Guid tenantId, string connectionString, IReadOnlyList<string>? enabledModules = null)
     {
         TenantId = tenantId;
         ConnectionString = connectionString;
+        EnabledModules = enabledModules;
     }
 }

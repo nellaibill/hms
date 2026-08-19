@@ -34,6 +34,7 @@ public record TenantListItemResponse
     public string HospitalCode { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
+    public string SubscriptionTier { get; init; } = string.Empty;
 }
 
 public record TenantListQuery
@@ -76,6 +77,26 @@ public record TenantDeletePreviewResponse
     public string HospitalCode { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
+}
+
+/// <summary>The Platform-level per-tenant configuration: which business-domain modules this
+/// hospital's staff can use, and its subscription tier. See Tenant.EnabledModules's own doc
+/// comment for how this is enforced.</summary>
+public record TenantConfigurationResponse
+{
+    public Guid Id { get; init; }
+    public IReadOnlyList<string> EnabledModules { get; init; } = [];
+    public string SubscriptionTier { get; init; } = string.Empty;
+
+    /// <summary>The full module catalog (ModuleCatalog.All), so the frontend can render a
+    /// checkbox per module without hardcoding its own copy of the list.</summary>
+    public IReadOnlyList<string> AllModules { get; init; } = [];
+}
+
+public record UpdateTenantConfigurationRequest
+{
+    public IReadOnlyList<string> EnabledModules { get; init; } = [];
+    public string SubscriptionTier { get; init; } = string.Empty;
 }
 
 public record TenantDashboardStatsResponse

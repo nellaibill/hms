@@ -32,6 +32,7 @@ export const API_ROUTES = {
     deletePreview: (id: string) => `/api/platform/hospitals/${id}/delete-preview`,
     byId: (id: string) => `/api/platform/hospitals/${id}`,
     restore: (id: string) => `/api/platform/hospitals/${id}/restore`,
+    configuration: (id: string) => `/api/platform/hospitals/${id}/configuration`,
   },
   users: {
     base: '/api/v1/users',

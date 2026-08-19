@@ -40,4 +40,8 @@ public interface IPlatformDashboardService
 
     /// <summary>Lists soft-deleted hospitals, paged — the only way to find one to restore.</summary>
     Task<PagedResult<DeletedTenantListItemResponse>> GetDeletedHospitalsAsync(TenantListQuery query, CancellationToken cancellationToken);
+
+    Task<Result<TenantConfigurationResponse>> GetConfigurationAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<Result<TenantConfigurationResponse>> UpdateConfigurationAsync(Guid id, UpdateTenantConfigurationRequest request, Guid? actorId, CancellationToken cancellationToken);
 }

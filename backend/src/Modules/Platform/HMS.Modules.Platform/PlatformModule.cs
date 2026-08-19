@@ -75,6 +75,7 @@ public static class PlatformModule
         services.AddScoped<IValidator<PlatformMfaVerifyRequest>, PlatformMfaVerifyRequestValidator>();
         services.AddScoped<IValidator<PlatformMfaEnableRequest>, PlatformMfaEnableRequestValidator>();
         services.AddScoped<IValidator<PlatformMfaDisableRequest>, PlatformMfaDisableRequestValidator>();
+        services.AddScoped<IValidator<UpdateTenantConfigurationRequest>, UpdateTenantConfigurationRequestValidator>();
 
         services.Configure<PlatformAdminSeedOptions>(configuration.GetSection(PlatformAdminSeedOptions.SectionName));
         services.Configure<LegacyTenantSeedOptions>(configuration.GetSection(LegacyTenantSeedOptions.SectionName));

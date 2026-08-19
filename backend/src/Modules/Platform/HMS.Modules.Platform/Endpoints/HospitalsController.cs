@@ -21,17 +21,20 @@ public class HospitalsController : ControllerBase
     private readonly IHospitalRegistrationService _registrationService;
     private readonly IPlatformDashboardService _dashboardService;
     private readonly IValidator<CreateHospitalRequest> _createValidator;
+    private readonly IValidator<UpdateTenantConfigurationRequest> _configurationValidator;
     private readonly ILogger<HospitalsController> _logger;
 
     public HospitalsController(
         IHospitalRegistrationService registrationService,
         IPlatformDashboardService dashboardService,
         IValidator<CreateHospitalRequest> createValidator,
+        IValidator<UpdateTenantConfigurationRequest> configurationValidator,
         ILogger<HospitalsController> logger)
     {
         _registrationService = registrationService;
         _dashboardService = dashboardService;
         _createValidator = createValidator;
+        _configurationValidator = configurationValidator;
         _logger = logger;
     }
 
@@ -137,6 +140,41 @@ public class HospitalsController : ControllerBase
     {
         var result = await _dashboardService.RestoreHospitalAsync(id, User.GetPlatformUserId(), cancellationToken);
         return result.IsSuccess ? Ok(new ApiResponse<TenantListItemResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Returns which business-domain modules this hospital's staff can use, and its
+    /// subscription tier.</summary>
+    /// <response code="200">Returns the configuration.</response>
+    /// <response code="404">No hospital was found for the given id.</response>
+    [HttpGet("{id:guid}/configuration")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
+    public async Task<IActionResult> GetConfiguration(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _dashboardService.GetConfigurationAsync(id, cancellationToken);
+        return result.IsSuccess ? Ok(new ApiResponse<TenantConfigurationResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>
+    /// Updates which business-domain modules this hospital's staff can use, and its
+    /// subscription tier. Takes effect on each affected user's next login (permissions for
+    /// a disabled module are stripped from the JWT at login time — see
+    /// AuthenticationService.LoginAsync — not revoked from tokens already issued).
+    /// </summary>
+    /// <response code="200">The configuration was updated.</response>
+    /// <response code="400">The request failed validation.</response>
+    /// <response code="404">No hospital was found for the given id.</response>
+    [HttpPut("{id:guid}/configuration")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
+    public async Task<IActionResult> UpdateConfiguration(Guid id, [FromBody] UpdateTenantConfigurationRequest request, CancellationToken cancellationToken)
+    {
+        var validation = await _configurationValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return BadRequest(BuildValidationError(validation));
+        }
+
+        var result = await _dashboardService.UpdateConfigurationAsync(id, request, User.GetPlatformUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(new ApiResponse<TenantConfigurationResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>

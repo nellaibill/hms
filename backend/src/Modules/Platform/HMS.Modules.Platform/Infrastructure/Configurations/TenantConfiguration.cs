@@ -1,5 +1,7 @@
 using HMS.Modules.Platform.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace HMS.Modules.Platform.Infrastructure.Configurations;
@@ -23,6 +25,27 @@ internal class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.Pincode).HasColumnName("pincode").HasMaxLength(20).IsRequired();
         builder.Property(t => t.DatabaseName).HasColumnName("database_name").HasMaxLength(63).IsRequired();
         builder.Property(t => t.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
+
+        // Stored as a comma-joined string rather than a native Postgres array — module keys
+        // are guaranteed comma-free (kebab-case identifiers). EnabledModules is always
+        // replaced wholesale (UpdateConfiguration), never mutated in place, so EF's own
+        // ValueComparer.CreateDefault would already track changes correctly by reference —
+        // this explicit by-value one just satisfies EF's warning for collection converters
+        // and correctly reports "unchanged" if a caller ever did construct an equal-but-
+        // distinct list.
+        builder.Property(t => t.EnabledModules)
+            .HasColumnName("enabled_modules")
+            .HasConversion(
+                v => string.Join(',', v),
+                v => string.IsNullOrEmpty(v) ? new List<string>() : v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                new ValueComparer<IReadOnlyList<string>>(
+                    (a, b) => (a ?? Array.Empty<string>()).SequenceEqual(b ?? Array.Empty<string>()),
+                    v => v.Aggregate(0, (hash, s) => HashCode.Combine(hash, s.GetHashCode())),
+                    v => v.ToList()))
+            .HasDefaultValue(ModuleCatalog.All)
+            .IsRequired();
+
+        builder.Property(t => t.SubscriptionTier).HasColumnName("subscription_tier").HasMaxLength(50).IsRequired().HasDefaultValue("Standard");
 
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(t => t.CreatedBy).HasColumnName("created_by");

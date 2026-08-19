@@ -31,6 +31,7 @@ export interface TenantListItemResponse {
   hospitalCode: string;
   status: string;
   createdAt: string;
+  subscriptionTier: string;
 }
 
 /** Mirrors HMS.Modules.Platform.Contracts.TenantListQuery. */
@@ -72,4 +73,18 @@ export interface TenantDeletePreviewResponse {
   hospitalCode: string;
   status: string;
   createdAt: string;
+}
+
+/** Mirrors HMS.Modules.Platform.Contracts.TenantConfigurationResponse. */
+export interface TenantConfigurationResponse {
+  id: string;
+  enabledModules: string[];
+  subscriptionTier: string;
+  allModules: string[];
+}
+
+/** Mirrors HMS.Modules.Platform.Contracts.UpdateTenantConfigurationRequest. */
+export interface UpdateTenantConfigurationRequest {
+  enabledModules: string[];
+  subscriptionTier: string;
 }

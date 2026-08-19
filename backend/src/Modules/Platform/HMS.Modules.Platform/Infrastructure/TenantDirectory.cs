@@ -42,6 +42,6 @@ internal sealed class TenantDirectory : ITenantDirectory
     private TenantInfo ToTenantInfo(Tenant tenant)
     {
         var builder = new NpgsqlConnectionStringBuilder(_baseConnectionString) { Database = tenant.DatabaseName };
-        return new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, builder.ConnectionString, tenant.Status == TenantStatus.Active);
+        return new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, builder.ConnectionString, tenant.Status == TenantStatus.Active, tenant.EnabledModules);
     }
 }

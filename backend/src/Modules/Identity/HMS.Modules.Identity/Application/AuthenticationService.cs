@@ -115,8 +115,17 @@ internal class AuthenticationService : IAuthenticationService
         user.RecordLogin(now);
         await _userRepository.SaveChangesAsync(cancellationToken);
 
+        // A Platform Admin can restrict which business-domain modules this hospital has
+        // access to at all (Tenant.EnabledModules) — independent of this user's own role.
+        // Stripping the disabled modules' permissions out of the JWT here, rather than
+        // adding a new enforcement mechanism, means [RequirePermission] rejects them through
+        // the exact same pipeline it already uses for a role that lacks the permission.
+        // Empty/unset means unrestricted (every existing tenant, provisioned before this
+        // feature, has every module in EnabledModules by default — see Tenant.Create).
+        var enabledModules = _tenantContext.EnabledModules;
         var permissionKeys = role.RolePermissions
             .Where(rp => rp.Permission.IsActive && !rp.Permission.IsDeleted)
+            .Where(rp => enabledModules is null || enabledModules.Count == 0 || enabledModules.Contains(rp.Permission.Module))
             .Select(rp => rp.Permission.Key)
             .ToList();
 
