@@ -94,7 +94,6 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
             Id = tenant.Id,
             HospitalName = tenant.HospitalName,
             HospitalCode = tenant.HospitalCode,
-            DatabaseName = tenant.DatabaseName,
             Status = tenant.Status.ToString(),
             CreatedAt = tenant.CreatedAt,
         });
