@@ -23,6 +23,7 @@ public class PlatformDbContext : DbContext
     internal DbSet<PlatformUser> PlatformUsers => Set<PlatformUser>();
     internal DbSet<Tenant> Tenants => Set<Tenant>();
     internal DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    internal DbSet<ProvisioningAlert> ProvisioningAlerts => Set<ProvisioningAlert>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

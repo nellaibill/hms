@@ -37,6 +37,25 @@ _To be documented._
 
 ## Decisions
 
+### ADR-019: A failed provisioning rollback becomes a durable, dashboard-visible alert, not just a log line
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that when tenant provisioning fails and the rollback (`DROP DATABASE`) *also* fails, `TenantProvisioningService` only logged "manual cleanup required" — nothing surfaced the failure to a human, so an orphaned tenant database could silently sit there indefinitely with no signal beyond a log line nobody may ever read.
+
+**Decision**
+Added a new `ProvisioningAlert` record (Platform module, `platform.provisioning_alerts`) and `IProvisioningAlertStore` (`RaiseAsync`/`GetCountAsync`), a public seam like `ITenantProvisioner`/`ITenantMigrationService` so `HMS.Api`'s `TenantProvisioningService` can write to it without the Platform module knowing about database provisioning. When the rollback's `DROP DATABASE` fails, the existing log line is elevated to `LogCritical` and a `ProvisioningAlert` row is raised (best-effort — if writing the alert itself fails, that's logged too, but must never mask or throw over the original rollback failure). `TenantDashboardStatsResponse` gained a `ProvisioningAlertCount` field; the Platform Portal dashboard now shows a fourth stat tile, "Provisioning Alerts," styled with a warning color when nonzero.
+
+This is deliberately not a full external alerting integration (email/Slack/PagerDuty) — nothing like that exists anywhere in this codebase yet, and building one from scratch for a single failure path would be a large, speculative addition requiring new credentials/config. Persisting the failure durably and surfacing it on the existing dashboard is what actually closes "silently sit there," without inventing infrastructure this app doesn't have a use for yet.
+
+**Consequences**
+- Verified live: logged in as the seeded Platform Admin, confirmed `GET /api/platform/hospitals/stats` returns `provisioningAlertCount`, and the dashboard renders the new tile correctly (0 in the normal case).
+- No resolve/acknowledge lifecycle — rows accumulate. Acceptable for now since this only fires on a genuine double-failure (provisioning fails *and* the rollback also fails), expected to be rare; add a resolve action if that assumption turns out wrong.
+- `TenantProvisioningService`'s raw Npgsql `CREATE`/`DROP DATABASE` calls remain untested by `HMS.UnitTests` (no abstraction to mock them behind, and `HMS.IntegrationTests` is excluded from CI — see ADR-018's identical caveat) — verified instead via the live dashboard check above and the existing `PlatformDashboardServiceTests`/build.
+
+---
+
 ### ADR-018: API-wide rate limiting via ASP.NET Core's built-in RateLimiter
 **Date:** 2026-08-19
 **Status:** Accepted

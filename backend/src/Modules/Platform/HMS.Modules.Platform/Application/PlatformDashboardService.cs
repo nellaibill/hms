@@ -11,17 +11,20 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantDirectory _tenantDirectory;
     private readonly ITenantMigrationService _migrationService;
+    private readonly IProvisioningAlertStore _provisioningAlertStore;
     private readonly ILogger<PlatformDashboardService> _logger;
 
     public PlatformDashboardService(
         ITenantRepository tenantRepository,
         ITenantDirectory tenantDirectory,
         ITenantMigrationService migrationService,
+        IProvisioningAlertStore provisioningAlertStore,
         ILogger<PlatformDashboardService> logger)
     {
         _tenantRepository = tenantRepository;
         _tenantDirectory = tenantDirectory;
         _migrationService = migrationService;
+        _provisioningAlertStore = provisioningAlertStore;
         _logger = logger;
     }
 
@@ -34,7 +37,14 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
     public async Task<TenantDashboardStatsResponse> GetStatsAsync(CancellationToken cancellationToken)
     {
         var (total, active, inactive) = await _tenantRepository.GetCountsAsync(cancellationToken);
-        return new TenantDashboardStatsResponse { Total = total, Active = active, Inactive = inactive };
+        var provisioningAlertCount = await _provisioningAlertStore.GetCountAsync(cancellationToken);
+        return new TenantDashboardStatsResponse
+        {
+            Total = total,
+            Active = active,
+            Inactive = inactive,
+            ProvisioningAlertCount = provisioningAlertCount,
+        };
     }
 
     public async Task<Result<TenantListItemResponse>> UpdateStatusAsync(Guid id, string status, Guid? actorId, CancellationToken cancellationToken)

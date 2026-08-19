@@ -50,4 +50,7 @@ export interface TenantDashboardStatsResponse {
   total: number;
   active: number;
   inactive: number;
+  /** A tenant-provisioning failure whose rollback also failed, so an orphaned database may
+   * still exist. Zero in the normal case; any nonzero value needs investigation. */
+  provisioningAlertCount: number;
 }

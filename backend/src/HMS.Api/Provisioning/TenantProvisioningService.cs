@@ -20,16 +20,19 @@ public sealed class TenantProvisioningService : ITenantProvisioner
 
     private readonly string _platformAdminConnectionString;
     private readonly ITenantMigrationService _migrationService;
+    private readonly IProvisioningAlertStore _alertStore;
     private readonly ILogger<TenantProvisioningService> _logger;
 
     public TenantProvisioningService(
         IConfiguration configuration,
         ITenantMigrationService migrationService,
+        IProvisioningAlertStore alertStore,
         ILogger<TenantProvisioningService> logger)
     {
         _platformAdminConnectionString = configuration.GetConnectionString("PlatformAdmin")
             ?? throw new InvalidOperationException("Missing 'ConnectionStrings:PlatformAdmin' configuration value.");
         _migrationService = migrationService;
+        _alertStore = alertStore;
         _logger = logger;
     }
 
@@ -151,7 +154,25 @@ public sealed class TenantProvisioningService : ITenantProvisioner
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to roll back (drop) tenant database '{DatabaseName}' — manual cleanup required", databaseName);
+            _logger.LogCritical(ex, "Failed to roll back (drop) tenant database '{DatabaseName}' — manual cleanup required", databaseName);
+
+            // The log line above is easy to miss — this is the actual "alert": a durable
+            // row that shows up in the Platform dashboard's stat tiles (see
+            // ProvisioningAlert's own doc comment) so a human finds out even if nobody was
+            // watching the logs when this happened. Deliberately best-effort: if writing the
+            // alert itself fails (e.g. hms_platform is unreachable), that must not mask the
+            // original rollback failure by throwing out of this catch block.
+            try
+            {
+                await _alertStore.RaiseAsync(
+                    databaseName,
+                    $"Rollback failed after a provisioning error: {ex.Message}",
+                    CancellationToken.None);
+            }
+            catch (Exception alertEx)
+            {
+                _logger.LogCritical(alertEx, "Failed to record the provisioning-rollback alert for database '{DatabaseName}' as well", databaseName);
+            }
         }
     }
 
