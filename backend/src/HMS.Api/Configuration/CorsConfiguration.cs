@@ -33,7 +33,11 @@ public static class CorsConfiguration
                         HttpMethods.Patch,
                         HttpMethods.Delete,
                         HttpMethods.Options)
-                    .WithHeaders("Content-Type", "Authorization", "Accept", CorrelationIdMiddleware.HeaderName, "X-Hospital-Code")
+                    // Idempotency-Key (HospitalsController.Create) was added after this
+                    // allowlist and never added here — the browser's CORS preflight silently
+                    // blocked the actual POST from ever reaching the server, since curl-based
+                    // verification (which doesn't enforce CORS) never would have caught it.
+                    .WithHeaders("Content-Type", "Authorization", "Accept", CorrelationIdMiddleware.HeaderName, "X-Hospital-Code", "Idempotency-Key")
                     .WithExposedHeaders(CorrelationIdMiddleware.HeaderName);
 
                 // Deliberately no AllowCredentials(): HttpClient.ts (frontend/shared)

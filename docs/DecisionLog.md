@@ -37,6 +37,28 @@ _To be documented._
 
 ## Decisions
 
+### ADR-025: Tenant delete is soft-delete only, with a server-enforced confirmation step
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that tenant destructive operations needed safeguards (soft-delete, dry-run, confirmation) before a delete/purge/export API could be added at all — at the time, no delete capability of any kind existed, only Activate/Deactivate. Asked the user how far this should go: hard-delete (actually dropping a tenant's database) is unrecoverable without a separate backup/restore story this app doesn't have, so the user chose soft-delete only — no database-drop capability is built.
+
+**Decision**
+- `DELETE /api/platform/hospitals/{id}?confirmHospitalCode=xxx` soft-deletes a `Tenant` (reusing `Entity.IsDeleted`/`DeletedAt`/`DeletedBy`, already present on every aggregate — no migration needed). This blocks the hospital's staff from signing in for free: `TenantDirectory`'s lookups already go through `ITenantRepository`, whose EF Core query filter (`HasQueryFilter(t => !t.IsDeleted)`) already excludes soft-deleted tenants, so an unresolvable `X-Hospital-Code` naturally rejects login without any new code. The tenant's own database is never touched.
+- `confirmHospitalCode` must match the tenant's actual hospital code (case-insensitive) — a **server-enforced** "type to confirm," not just a frontend dialog a script could skip past.
+- `GET /api/platform/hospitals/{id}/delete-preview` is a dry-run shown before the confirm dialog — deliberately Platform-side data only (hospital name/code/status/registered-date). No cross-tenant-database row counts: since a soft-delete never touches the tenant's own database, there is nothing over there to preview or warn about.
+- Added `Entity.Restore(Guid? updatedBy)` to the shared kernel (symmetric with the existing `SoftDelete`) — soft-delete is fully reversible via `POST /api/platform/hospitals/{id}/restore`, and a new `GET /api/platform/hospitals/deleted` list (bypassing the query filter via `IgnoreQueryFilters()`) is the only way to find a soft-deleted tenant to restore.
+- Frontend: the Platform dashboard gained an "Active Hospitals" / "Deleted Hospitals" toggle, a delete confirmation dialog (shows the dry-run preview, requires typing the hospital code, submit disabled until it matches), and a Restore action on the deleted list.
+
+**Consequences**
+- **Live-verified end to end**, not just unit-tested — this is the first tenant-destructive capability this app has ever had, and a bug here could lock a live hospital's staff out of the app: registered a throwaway test hospital, previewed and deleted it (confirmed the frontend disables the confirm button on a mismatched code, and that a mismatched code is also rejected server-side), confirmed it disappeared from the active list and total count, confirmed it appeared on the Deleted list, restored it, confirmed it reappeared active with its original status, then deleted it again to leave a clean state.
+- **Caught and fixed during that live verification, not by the unit tests**: hospital registration (`POST /api/platform/hospitals`, shipped in ADR for idempotency, PR #56) has been completely broken in any real browser since it shipped — `CorsConfiguration.cs`'s allowed-headers list never included `Idempotency-Key`, so the browser's CORS preflight silently blocked the actual POST from ever reaching the server (`net::ERR_FAILED`, no server-side log at all). This was invisible to prior verification because that used `curl`, which doesn't enforce CORS. Fixed by adding `Idempotency-Key` to `WithHeaders(...)` — a one-line fix, included in this PR since it was directly blocking this fix's own live verification and is a trivial, unambiguous correction once found.
+- No new migration: `Tenant` already inherited `IsDeleted`/`DeletedAt`/`DeletedBy` from `Entity`; this fix only adds behavior around columns that already existed.
+- Closes out the backlog's "tenant delete/purge/export API" item as explicitly out of scope, not merely deferred: a true hard-delete/purge/export capability was the user's own explicit non-choice here (soft-delete only, not "soft-delete now, hard-delete later"). If purge/export becomes a real need later, it deserves its own design pass addressing backup/restore first, not a bolt-on to this ADR's scope.
+
+---
+
 ### ADR-024: TOTP-based MFA for Platform Admin accounts
 **Date:** 2026-08-19
 **Status:** Accepted
