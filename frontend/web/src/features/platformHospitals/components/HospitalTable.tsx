@@ -16,7 +16,6 @@ export function HospitalTable({ hospitals, onToggleStatus, isTogglingId }: Hospi
           <tr>
             <th className="px-4 py-2.5">Hospital Name</th>
             <th className="px-4 py-2.5">Code</th>
-            <th className="px-4 py-2.5">Database Name</th>
             <th className="px-4 py-2.5">Status</th>
             <th className="px-4 py-2.5">Created</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
@@ -29,7 +28,6 @@ export function HospitalTable({ hospitals, onToggleStatus, isTogglingId }: Hospi
               <tr key={hospital.id} className="hover:bg-muted/30">
                 <td className="px-4 py-3 font-medium text-foreground">{hospital.hospitalName}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{hospital.hospitalCode}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{hospital.databaseName}</td>
                 <td className="px-4 py-3">
                   <Badge variant={isActive ? 'success' : 'secondary'}>{hospital.status}</Badge>
                 </td>

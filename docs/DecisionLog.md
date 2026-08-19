@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-016: Stop returning DatabaseName to the frontend
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that `CreateHospitalResponse`/`TenantListItemResponse` returned the tenant's internal PostgreSQL database name straight to the browser, and `HospitalTable.tsx` rendered it as a visible column — an infrastructure implementation detail with no product reason to reach the client, and a minor information-disclosure surface (it reveals the exact naming scheme used to derive one tenant's database from another's).
+
+**Decision**
+Removed `DatabaseName` from both response contracts and their mapping code in `HospitalRegistrationService`/`PlatformDashboardService`. Removed the corresponding `databaseName` field from the frontend's DTO mirrors and the "Database Name" column from `HospitalTable.tsx`. The backend's own internal use of `Tenant.DatabaseName` (connection-string resolution via `TenantDirectory`, migrations, logging) is untouched — this is purely about what crosses the API boundary.
+
+**Consequences**
+- No behavior change for Platform Admins beyond one fewer (and not useful) table column.
+- Any future "show ops/support which physical database backs a tenant" need should be a deliberately separate, more tightly-scoped surface (e.g. gated to `SuperAdmin` only, per ADR-014), not the same response every Platform Admin already receives for the dashboard list.
+
+---
+
 ### ADR-015: Hospital registration requires an Idempotency-Key header
 **Date:** 2026-08-19
 **Status:** Accepted

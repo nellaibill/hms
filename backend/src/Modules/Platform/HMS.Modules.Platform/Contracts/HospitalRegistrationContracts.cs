@@ -23,7 +23,6 @@ public record CreateHospitalResponse
     public Guid Id { get; init; }
     public string HospitalName { get; init; } = string.Empty;
     public string HospitalCode { get; init; } = string.Empty;
-    public string DatabaseName { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
 }
@@ -33,7 +32,6 @@ public record TenantListItemResponse
     public Guid Id { get; init; }
     public string HospitalName { get; init; } = string.Empty;
     public string HospitalCode { get; init; } = string.Empty;
-    public string DatabaseName { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
 }
