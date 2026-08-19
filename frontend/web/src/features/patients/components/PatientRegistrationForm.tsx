@@ -168,6 +168,10 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // silent tab-jump doesn't tell a first-time user *why* they landed back on Billing.
   // Cleared as soon as the user starts fixing it (see handleBillingChange).
   const [billingBlockedSubmit, setBillingBlockedSubmit] = useState(false);
+  // Set only if goToTab's validation step throws (e.g. malformed data left over from an
+  // old draft) — without this, that failure left Next looking like it silently did nothing:
+  // no tab change, no error, nothing (see goToTab below).
+  const [navigationError, setNavigationError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabId>(
     initialDraft && isTabId(initialDraft.activeTab) ? initialDraft.activeTab : 'patient-info',
@@ -227,22 +231,30 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // Billing has no fields on this form, so it's simply skipped here — its own validation
   // gate runs separately, on final submit (see onValidSubmit below).
   const goToTab = async (target: TabId) => {
+    setNavigationError(null);
     const targetIndex = TAB_ORDER.indexOf(target);
     if (targetIndex <= activeTabIndex) {
       setActiveTab(target);
       return;
     }
-    for (let i = activeTabIndex; i < targetIndex; i++) {
-      const tab = TAB_ORDER[i];
-      if (!isPatientTabId(tab)) continue;
-      const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
-      setAttemptedTabs((prev) => new Set(prev).add(tab));
-      if (!isTabValid) {
-        setActiveTab(tab);
-        return;
+    try {
+      for (let i = activeTabIndex; i < targetIndex; i++) {
+        const tab = TAB_ORDER[i];
+        if (!isPatientTabId(tab)) continue;
+        const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
+        setAttemptedTabs((prev) => new Set(prev).add(tab));
+        if (!isTabValid) {
+          setActiveTab(tab);
+          return;
+        }
       }
+      setActiveTab(target);
+    } catch {
+      // Without this, a thrown validation error left Next looking like it did nothing —
+      // no tab change, no message, nothing — since goToNextTab's onClick doesn't await or
+      // catch this promise. Surfacing something is better than the silent failure.
+      setNavigationError('Something went wrong checking this step. Please try again — if it keeps happening, refresh the page.');
     }
-    setActiveTab(target);
   };
   const goToNextTab = () => goToTab(TAB_ORDER[activeTabIndex + 1]);
 
@@ -286,7 +298,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // caller (see toRequest() in PatientRegistrationCreatePage), so a server field name
   // like "Registration.Department" doesn't correspond to a single form control here.
   // Surfaced as a general list instead of per-field errors.
-  const generalError = apiError?.message ?? null;
+  const generalError = navigationError ?? apiError?.message ?? null;
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
   // Every tab but the last has no type="submit" button (Cancel/Previous/Next are all
