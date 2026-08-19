@@ -22,15 +22,18 @@ public class AuthenticationController : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService;
     private readonly IValidator<LoginRequest> _loginValidator;
+    private readonly IValidator<ChangePasswordRequest> _changePasswordValidator;
     private readonly ILogger<AuthenticationController> _logger;
 
     public AuthenticationController(
         IAuthenticationService authenticationService,
         IValidator<LoginRequest> loginValidator,
+        IValidator<ChangePasswordRequest> changePasswordValidator,
         ILogger<AuthenticationController> logger)
     {
         _authenticationService = authenticationService;
         _loginValidator = loginValidator;
+        _changePasswordValidator = changePasswordValidator;
         _logger = logger;
     }
 
@@ -72,11 +75,37 @@ public class AuthenticationController : ControllerBase
         return Ok(new ApiResponse<Dictionary<string, string>> { Data = claims });
     }
 
+    /// <summary>Self-service password change for the caller's own account — proves the
+    /// current password, then rotates it and clears MustChangePassword.</summary>
+    /// <response code="204">The password was changed.</response>
+    /// <response code="400">The request failed validation, or the current password was wrong.</response>
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var validation = await _changePasswordValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return BadRequest(BuildValidationError(validation));
+        }
+
+        var result = await _authenticationService.ChangePasswordAsync(User.GetUserId()!.Value, request.CurrentPassword, request.NewPassword, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return MapFailure(result.ErrorCode!, result.Error!);
+        }
+
+        _logger.LogInformation("POST /api/v1/auth/change-password succeeded for user {UserId}", User.GetUserId());
+
+        return NoContent();
+    }
+
     private IActionResult MapFailure(string errorCode, string message)
     {
         var status = errorCode switch
         {
             AuthenticationErrorCodes.InvalidLogin => StatusCodes.Status401Unauthorized,
+            AuthenticationErrorCodes.InvalidCurrentPassword => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

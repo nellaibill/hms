@@ -30,6 +30,18 @@ internal class User : Entity
 
     public bool EmailVerified { get; private set; }
 
+    /// <summary>
+    /// True whenever the current <see cref="PasswordHash"/> was chosen by someone other
+    /// than the user themselves — the initial password Platform Admin types in during
+    /// hospital registration (see IdentityModule.ProvisionTenantSuperAdminAsync), or a
+    /// reset an Identity admin performs via <see cref="SetPasswordHash"/>/SetPassword.
+    /// Never set by <see cref="ChangeOwnPassword"/>. AuthenticationService surfaces this
+    /// on <c>LoginResponse</c> so the frontend can force a change before letting the user
+    /// proceed — see docs/DecisionLog.md's Super Admin password-hardening ADR for why this
+    /// stops short of a full email invite/reset-link system (no mail infra exists yet).
+    /// </summary>
+    public bool MustChangePassword { get; private set; }
+
     public DateTime? LastLoginAt { get; private set; }
 
     public bool IsActive { get; private set; }
@@ -154,14 +166,33 @@ internal class User : Entity
 
     /// <summary>
     /// Stores a pre-computed hash (never a plaintext password — hashing itself is an
-    /// Authentication-iteration concern, docs/Authentication.md). Not called from anywhere
-    /// yet; the seam Authentication will use once it ships.
+    /// Authentication-iteration concern, docs/Authentication.md) chosen by someone other
+    /// than this user — tenant provisioning (the Super Admin's initial password) or an
+    /// Identity admin's reset via UsersController.SetPassword. Always sets
+    /// <see cref="MustChangePassword"/>, since the person who just set this hash now knows
+    /// the plaintext. Self-service password changes go through
+    /// <see cref="ChangeOwnPassword"/> instead, which clears that flag.
     /// </summary>
     public void SetPasswordHash(string passwordHash, Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(passwordHash, nameof(passwordHash));
         PasswordHash = passwordHash;
+        MustChangePassword = true;
         MarkUpdated(updatedBy);
+    }
+
+    /// <summary>
+    /// Self-service password change (AuthenticationService.ChangePasswordAsync, which has
+    /// already verified the caller knows the current password). Deliberately does not call
+    /// <see cref="Entity.MarkUpdated"/> — same reasoning as <see cref="RecordLogin"/>, this
+    /// is the subject's own act, not an admin edit. Clears <see cref="MustChangePassword"/>:
+    /// the whole point is that nobody else now knows this password.
+    /// </summary>
+    public void ChangeOwnPassword(string passwordHash)
+    {
+        Guard.AgainstNullOrWhiteSpace(passwordHash, nameof(passwordHash));
+        PasswordHash = passwordHash;
+        MustChangePassword = false;
     }
 
     public void VerifyEmail(Guid? updatedBy)

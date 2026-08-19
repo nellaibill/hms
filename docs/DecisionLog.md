@@ -37,6 +37,33 @@ _To be documented._
 
 ## Decisions
 
+### ADR-023: Password-complexity policy hardened; forced password change replaces a full invite/reset-link email flow
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that a hospital's Super Admin never goes through an invite/reset-link flow: the Platform Admin creating the hospital literally types the new Super Admin's password into the `CreateHospitalRequest` form (`CreateHospitalRequestValidator.SuperAdminPassword`, min 8 characters, no complexity rule), which is provisioned verbatim by `IdentityModule.ProvisionTenantSuperAdminAsync`. The same pattern exists for any ordinary hospital user: `UsersController.SetPassword` (`identity-administration.edit`) is an admin resetting a password the user never chose, again with only an 8-character minimum. In both cases, a second party ends up knowing the account's password with no mechanism for the account owner to ever rotate it away from what that person chose — and no self-service "change my own password" endpoint existed anywhere in the Identity module to do so.
+
+**Decision**
+Two changes, scoped to what's buildable without inventing infrastructure this app doesn't have:
+
+1. **Password complexity, centralized.** Added `HMS.Shared.Kernel.PasswordPolicy` (min 10 characters, upper+lower+digit+special-character regex) and applied it everywhere a password is set: `CreateHospitalRequestValidator.SuperAdminPassword`, `SetPasswordRequestValidator.Password`, and the new `ChangePasswordRequestValidator.NewPassword` below — one definition instead of three independently-drifting 8-character minimums. Mirrored on the frontend (`passwordPolicy.ts`, applied to `hospitalValidation.ts` and `userValidation.ts`'s `setPasswordSchema`).
+
+2. **Forced password change substitutes for an invite/reset-link email.** `User` gained `MustChangePassword`, set `true` by `SetPasswordHash` (anyone-but-the-user-themselves setting a password — hospital registration's Super Admin creation, and `UsersController.SetPassword`) and cleared by a new `ChangeOwnPassword` (self-service only). A new self-service endpoint, `POST /api/v1/auth/change-password` (`AuthenticationService.ChangePasswordAsync`, verifies the current password before rotating it — this is the first "change my own password" capability the Identity module has ever had), is the only way to clear the flag. `LoginResponse.User.MustChangePassword` surfaces the flag; the frontend's `ProtectedRoute` redirects any authenticated user carrying it to a new `/change-password` page and blocks every other route until they submit a successful change.
+
+**Deliberately not built: an actual email-based invite/reset-link system.** No mail-sending infrastructure (SMTP/SendGrid/etc.) exists anywhere in this codebase — building one from scratch, including template design and a provider choice, for a single flow would be speculative infrastructure this app has no other use for yet (same reasoning as ADR-019's alerting deferral and ADR-021's cloud-secrets-manager deferral). Forced-change-on-first-use closes the actual security gap (the password a second party chose stops being valid the moment the account owner logs in) without that infrastructure.
+
+**Also deliberately not built: hard server-side gating of every other endpoint while `MustChangePassword` is true.** The flag is enforced by the frontend redirect only — a determined API caller with the still-issued bearer token could keep calling other endpoints while the flag is set. A true server-side block would need a central chokepoint (e.g. `JwtConfiguration`'s `OnTokenValidated`, the same seam ADR-020 used for Platform-token revocation), but that requires a tenant-scoped `IdentityDbContext` lookup at a point in the pipeline before tenant resolution has necessarily completed — a real design question, not a drop-in addition. Left as an explicit follow-up rather than risking a rushed, possibly-broken middleware change.
+
+**Consequences**
+- New migration `AddMustChangePasswordToUsers` (`identity.users.must_change_password`, default `false` — existing rows are unaffected).
+- The dev-seeded default Super Admin (`IdentityDataSeeder`, `SuperAdminSeedOptions` — see ADR-021) also goes through `SetPasswordHash`, so it now requires a change-password on first login too. This is intentional, not an oversight: that password is a known value from `dotnet user-secrets`/`appsettings`, exactly the case this fix targets.
+- `PlatformUser` (Platform Admin accounts) was deliberately left out of this fix — there is no `PlatformUser` creation endpoint anywhere in the codebase today (only `PlatformDataSeeder`), so the "someone else chooses your password" problem this ADR addresses doesn't currently exist for that account type.
+- Covered by unit tests: `UserTests` (`SetPasswordHash` sets the flag, `ChangeOwnPassword` clears it without touching the audit columns), `AuthenticationServiceTests` (login surfaces the flag; `ChangePasswordAsync` success/wrong-current-password/unknown-user cases).
+- Not live-verified against a running server — the change follows an already-proven pattern (`SetPasswordAsync`/`LoginAsync` themselves) and is fully covered by the unit tests above; per the standing practice on this backlog, live verification is reserved for changes with no other validation path.
+
+---
+
 ### ADR-022: Permission-granularity gaps closed for Documents, Users, HR, IPD, Products, Calendar
 **Date:** 2026-08-19
 **Status:** Accepted

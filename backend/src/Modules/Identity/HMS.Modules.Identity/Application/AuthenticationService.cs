@@ -141,10 +141,34 @@ internal class AuthenticationService : IAuthenticationService
                 LoginType = request.LoginType,
                 ProfilePhotoUrl = user.ProfilePhotoUrl,
                 PermissionKeys = permissionKeys,
+                MustChangePassword = user.MustChangePassword,
             },
         });
 
         static Result<LoginResponse> Fail() =>
             Result<LoginResponse>.Failure(AuthenticationErrorCodes.InvalidLogin, GenericInvalidLoginMessage);
+    }
+
+    /// <summary>
+    /// Rule 1: the user exists and already has a PasswordHash to check against — same
+    /// generic-failure posture as LoginAsync would apply, except revealing "wrong current
+    /// password" here carries no enumeration risk (the caller already proved who they are
+    /// via a valid bearer token before reaching this method).
+    /// </summary>
+    public async Task<Result> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null || user.PasswordHash is null || !_passwordHasher.VerifyPassword(currentPassword, user.PasswordHash))
+        {
+            _logger.LogInformation("Change-password failed for user {UserId}: current password did not match", userId);
+            return Result.Failure(AuthenticationErrorCodes.InvalidCurrentPassword, "Current password is incorrect.");
+        }
+
+        user.ChangeOwnPassword(_passwordHasher.HashPassword(newPassword));
+        await _userRepository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("User {UserId} changed their own password", userId);
+
+        return Result.Success();
     }
 }

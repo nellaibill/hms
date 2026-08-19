@@ -30,4 +30,9 @@ export interface AuthUser {
    * set the backend checks via [RequirePermission(...)]. UI-only hinting: the backend is the
    * real enforcement boundary, this just avoids showing actions the user can't complete. */
   permissionKeys: string[];
+  /** True when this user's current password was set by someone else (admin reset, or the
+   * initial password chosen during hospital registration) — mirrors
+   * HMS.Modules.Identity.Contracts.LoginUserResponse.MustChangePassword. ProtectedRoute
+   * redirects to /change-password until this clears. */
+  mustChangePassword: boolean;
 }

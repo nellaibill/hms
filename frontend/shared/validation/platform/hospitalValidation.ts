@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PASSWORD_COMPLEXITY_MESSAGE, PASSWORD_COMPLEXITY_PATTERN, PASSWORD_MIN_LENGTH } from '../passwordPolicy';
 
 /**
  * Mirrors HMS.Modules.Platform.Application.Validators.CreateHospitalRequestValidator —
@@ -36,7 +37,10 @@ export const createHospitalSchema = z.object({
   superAdminLastName: z.string().trim().min(1, 'Last name is required').max(100),
   superAdminEmail: z.string().trim().min(1, 'Email is required').email('Not a valid email').max(256),
   superAdminPhoneNumber: tenDigitPhone,
-  superAdminPassword: z.string().min(8, 'Must be at least 8 characters'),
+  superAdminPassword: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, `Must be at least ${PASSWORD_MIN_LENGTH} characters`)
+    .regex(PASSWORD_COMPLEXITY_PATTERN, PASSWORD_COMPLEXITY_MESSAGE),
 });
 
 export type CreateHospitalFormValues = z.infer<typeof createHospitalSchema>;

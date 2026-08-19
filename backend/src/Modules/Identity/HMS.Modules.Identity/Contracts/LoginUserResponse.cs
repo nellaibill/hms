@@ -12,4 +12,10 @@ public record LoginUserResponse
     public string LoginType { get; init; } = string.Empty;
     public string? ProfilePhotoUrl { get; init; }
     public IReadOnlyList<string> PermissionKeys { get; init; } = [];
+
+    /// <summary>True when this user's current password was set by someone else (an admin
+    /// reset, or the initial password Platform Admin chose during hospital registration) —
+    /// see User.MustChangePassword's own doc comment. The frontend forces a change-password
+    /// screen before letting the user reach the app when this is true.</summary>
+    public bool MustChangePassword { get; init; }
 }

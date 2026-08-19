@@ -10,6 +10,7 @@ export const API_ROUTES = {
   auth: {
     login: '/api/v1/auth/login',
     me: '/api/v1/auth/me',
+    changePassword: '/api/v1/auth/change-password',
   },
   /** Mirrors HMS.Modules.Platform.Endpoints.PlatformAuthController — entirely separate from the hospital `auth` routes above. */
   platformAuth: {
