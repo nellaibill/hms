@@ -65,6 +65,7 @@ public class HospitalsController : ControllerBase
     /// <response code="400">The status value was not valid.</response>
     /// <response code="404">No hospital was found for the given id.</response>
     [HttpPatch("{id:guid}/status")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateTenantStatusRequest request, CancellationToken cancellationToken)
     {
         var result = await _dashboardService.UpdateStatusAsync(id, request.Status, User.GetPlatformUserId(), cancellationToken);
@@ -85,6 +86,7 @@ public class HospitalsController : ControllerBase
     /// <response code="404">No hospital was found for the given id.</response>
     /// <response code="400">Migration failed; the existing database was left unchanged.</response>
     [HttpPost("{id:guid}/migrate")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
     public async Task<IActionResult> Migrate(Guid id, CancellationToken cancellationToken)
     {
         var result = await _dashboardService.MigrateAsync(id, cancellationToken);
@@ -101,6 +103,7 @@ public class HospitalsController : ControllerBase
     /// <response code="400">The request failed validation, or provisioning failed.</response>
     /// <response code="409">The hospital code or Super Admin email is already registered.</response>
     [HttpPost]
+    [Authorize(Policy = "PlatformSuperAdmin")]
     public async Task<IActionResult> Create([FromBody] CreateHospitalRequest request, CancellationToken cancellationToken)
     {
         var validation = await _createValidator.ValidateAsync(request, cancellationToken);

@@ -46,7 +46,7 @@ internal class PlatformAuthenticationService : IPlatformAuthenticationService
             return Fail();
         }
 
-        var (token, expiresInSeconds) = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.FullName);
+        var (token, expiresInSeconds) = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.FullName, user.Role);
 
         _logger.LogInformation("Platform user {PlatformUserId} logged in", user.Id);
 
@@ -59,6 +59,7 @@ internal class PlatformAuthenticationService : IPlatformAuthenticationService
                 Id = user.Id,
                 FullName = user.FullName,
                 Email = user.Email,
+                Role = user.Role.ToString(),
             },
         });
 
