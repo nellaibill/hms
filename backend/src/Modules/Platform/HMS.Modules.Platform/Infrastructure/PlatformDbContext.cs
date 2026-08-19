@@ -24,6 +24,7 @@ public class PlatformDbContext : DbContext
     internal DbSet<Tenant> Tenants => Set<Tenant>();
     internal DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     internal DbSet<ProvisioningAlert> ProvisioningAlerts => Set<ProvisioningAlert>();
+    internal DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

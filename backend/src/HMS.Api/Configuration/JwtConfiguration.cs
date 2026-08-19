@@ -1,3 +1,4 @@
+using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Shared.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -42,6 +43,36 @@ public static class JwtConfiguration
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromSeconds(30),
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    // Server-side revocation (HMS Security Hardening: a leaked or "logged
+                    // out" Platform token previously stayed valid until natural JWT expiry).
+                    // Scoped to Platform tokens only (the "PlatformUserId" claim — hospital
+                    // tokens never carry one) — this revocation system doesn't cover
+                    // hospital-user tokens, matching the finding's scope.
+                    OnTokenValidated = async context =>
+                    {
+                        var platformUserId = context.Principal?.FindFirst("PlatformUserId");
+                        if (platformUserId is null)
+                        {
+                            return;
+                        }
+
+                        var jti = context.Principal?.FindFirst("jti")?.Value;
+                        if (string.IsNullOrEmpty(jti))
+                        {
+                            context.Fail("Token is missing a jti claim.");
+                            return;
+                        }
+
+                        var revokedTokenStore = context.HttpContext.RequestServices.GetRequiredService<IRevokedTokenStore>();
+                        if (await revokedTokenStore.IsRevokedAsync(jti, context.HttpContext.RequestAborted))
+                        {
+                            context.Fail("Token has been revoked.");
+                        }
+                    },
                 };
             });
 

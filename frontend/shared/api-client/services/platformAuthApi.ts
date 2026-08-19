@@ -14,4 +14,10 @@ export class PlatformAuthApi {
     const response = await this.client.post<PlatformLoginResponse>(API_ROUTES.platformAuth.login, request);
     return response.data;
   }
+
+  /** Revokes the current token server-side — see JwtConfiguration/PlatformAuthController's
+   * OnTokenValidated/Logout for the backend half of this. */
+  async logout(): Promise<void> {
+    await this.client.post<void>(API_ROUTES.platformAuth.logout);
+  }
 }

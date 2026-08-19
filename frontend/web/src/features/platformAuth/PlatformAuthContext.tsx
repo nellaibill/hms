@@ -60,6 +60,12 @@ export function PlatformAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Best-effort, fire-and-forget: revokes the token server-side (see
+    // JwtConfiguration/PlatformAuthController's OnTokenValidated/Logout) so a copy of it
+    // elsewhere can't keep working after this logout. Called before clearing local state so
+    // the request still carries the (still-current) Authorization header; a network failure
+    // here must never block the user from logging out locally.
+    void platformAuthApi.logout().catch(() => {});
     sessionStorage.removeItem(STORAGE_KEY);
     setPlatformAuthToken(null);
     setUser(null);

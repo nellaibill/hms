@@ -24,15 +24,18 @@ public class PlatformAuthController : ControllerBase
 {
     private readonly IPlatformAuthenticationService _authenticationService;
     private readonly IValidator<PlatformLoginRequest> _loginValidator;
+    private readonly IRevokedTokenStore _revokedTokenStore;
     private readonly ILogger<PlatformAuthController> _logger;
 
     public PlatformAuthController(
         IPlatformAuthenticationService authenticationService,
         IValidator<PlatformLoginRequest> loginValidator,
+        IRevokedTokenStore revokedTokenStore,
         ILogger<PlatformAuthController> logger)
     {
         _authenticationService = authenticationService;
         _loginValidator = loginValidator;
+        _revokedTokenStore = revokedTokenStore;
         _logger = logger;
     }
 
@@ -72,6 +75,36 @@ public class PlatformAuthController : ControllerBase
     {
         var claims = User.Claims.ToDictionary(c => c.Type, c => c.Value);
         return Ok(new ApiResponse<Dictionary<string, string>> { Data = claims });
+    }
+
+    /// <summary>
+    /// Revokes the caller's own token server-side (HMS Security Hardening: previously a
+    /// leaked or "logged out" Platform token stayed valid until natural JWT expiry — see
+    /// JwtConfiguration's OnTokenValidated for the other half of this). Idempotent: logging
+    /// out twice with the same token succeeds both times.
+    /// </summary>
+    /// <response code="204">The token was revoked (or already was).</response>
+    /// <response code="401">No token, or the token was missing/invalid/expired.</response>
+    [Authorize(Policy = "Platform")]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        var jti = User.FindFirst("jti")?.Value;
+        var expClaim = User.FindFirst("exp")?.Value;
+        if (string.IsNullOrEmpty(jti) || !long.TryParse(expClaim, out var expUnixSeconds))
+        {
+            // Should be unreachable — every Platform token PlatformJwtTokenGenerator issues
+            // carries both claims, and JwtConfiguration already rejects a token missing
+            // "jti" before this action ever runs.
+            throw new InvalidOperationException("Authenticated Platform token is missing a 'jti' or 'exp' claim.");
+        }
+
+        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expUnixSeconds).UtcDateTime;
+        await _revokedTokenStore.RevokeAsync(jti, expiresAt, cancellationToken);
+
+        _logger.LogInformation("Platform user {PlatformUserId} logged out", User.FindFirst("PlatformUserId")?.Value);
+
+        return NoContent();
     }
 
     private IActionResult MapFailure(string errorCode, string message)
