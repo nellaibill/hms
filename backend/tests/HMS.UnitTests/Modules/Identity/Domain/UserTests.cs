@@ -149,7 +149,7 @@ public class UserTests
     }
 
     [Fact]
-    public void SetPasswordHash_SetsHashAndUpdatedAudit()
+    public void SetPasswordHash_SetsHashAndUpdatedAuditAndRequiresChangeOnNextLogin()
     {
         var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, RoleId, null);
         var updatedBy = Guid.NewGuid();
@@ -159,6 +159,22 @@ public class UserTests
         user.PasswordHash.Should().Be("a-computed-hash");
         user.UpdatedBy.Should().Be(updatedBy);
         user.UpdatedAt.Should().NotBeNull();
+        user.MustChangePassword.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ChangeOwnPassword_SetsHashAndClearsMustChangePasswordWithoutTouchingUpdatedAudit()
+    {
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, RoleId, null);
+        user.SetPasswordHash("admin-chosen-hash", Guid.NewGuid());
+        user.MustChangePassword.Should().BeTrue();
+        var updatedAtAfterAdminReset = user.UpdatedAt;
+
+        user.ChangeOwnPassword("self-chosen-hash");
+
+        user.PasswordHash.Should().Be("self-chosen-hash");
+        user.MustChangePassword.Should().BeFalse();
+        user.UpdatedAt.Should().Be(updatedAtAfterAdminReset);
     }
 
     [Fact]

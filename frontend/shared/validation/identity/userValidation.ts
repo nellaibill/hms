@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PASSWORD_COMPLEXITY_MESSAGE, PASSWORD_COMPLEXITY_PATTERN, PASSWORD_MIN_LENGTH } from '../passwordPolicy';
 
 /**
  * Mirrors HMS.Modules.Identity.Application.Validators.CreateUserRequestValidator /
@@ -29,7 +30,10 @@ export type UserProfileFormValues = z.infer<typeof userProfileSchema>;
 /** Mirrors HMS.Modules.Identity.Application.Validators.SetPasswordRequestValidator, plus a client-only confirm-password check. */
 export const setPasswordSchema = z
   .object({
-    password: z.string().min(8, 'Password must be at least 8 characters'),
+    password: z
+      .string()
+      .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
+      .regex(PASSWORD_COMPLEXITY_PATTERN, PASSWORD_COMPLEXITY_MESSAGE),
     confirmPassword: z.string().min(1, 'Confirm the password'),
   })
   .refine((data) => data.password === data.confirmPassword, {

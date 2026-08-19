@@ -10,6 +10,7 @@ import { getAllLeaves } from '../config/navigation';
 
 // Route-level code splitting (docs/FrontendArchitecture.md §4).
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
+const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage'));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'));
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'));
 const UsersListPage = lazy(() => import('../pages/users/UsersListPage'));
@@ -275,6 +276,7 @@ export const router = createBrowserRouter(
     {
       element: <ProtectedRoute />,
       children: [
+        { path: '/change-password', element: withSuspense(<ChangePasswordPage />) },
         {
           path: '/',
           element: <AppLayout />,

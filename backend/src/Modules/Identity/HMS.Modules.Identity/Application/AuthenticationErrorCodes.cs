@@ -10,4 +10,8 @@ namespace HMS.Modules.Identity.Application;
 internal static class AuthenticationErrorCodes
 {
     public const string InvalidLogin = "IDENTITY.INVALID_LOGIN";
+
+    /// <summary>ChangePasswordAsync's one failure reason — unlike login, revealing this is
+    /// safe: the caller is already authenticated, so there's no username-enumeration risk.</summary>
+    public const string InvalidCurrentPassword = "IDENTITY.INVALID_CURRENT_PASSWORD";
 }

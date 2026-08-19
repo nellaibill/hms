@@ -64,6 +64,9 @@ public class AuthenticationServiceTests
         result.Value.User.Id.Should().Be(user.Id);
         result.Value.User.RoleName.Should().Be(role.Name);
         result.Value.User.LoginType.Should().Be("doctor");
+        // SeedActiveUserWithMatchingRole sets the stored hash via SetPasswordHash — same
+        // "someone else chose this password" path a real admin-created user goes through.
+        result.Value.User.MustChangePassword.Should().BeTrue();
         user.LastLoginAt.Should().NotBeNull();
         await _userRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
@@ -217,5 +220,45 @@ public class AuthenticationServiceTests
         var act = () => sut.LoginAsync(request, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WithCorrectCurrentPassword_RotatesHashAndClearsMustChangePassword()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        _userRepository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        _passwordHasher.HashPassword("NewStrongP@ss1").Returns("new-hash");
+
+        var result = await _sut.ChangePasswordAsync(user.Id, "correct-password", "NewStrongP@ss1", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        user.PasswordHash.Should().Be("new-hash");
+        user.MustChangePassword.Should().BeFalse();
+        await _userRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WithWrongCurrentPassword_ReturnsFailureWithoutSaving()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        _userRepository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        _passwordHasher.VerifyPassword("wrong-current", "stored-hash").Returns(false);
+
+        var result = await _sut.ChangePasswordAsync(user.Id, "wrong-current", "NewStrongP@ss1", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidCurrentPassword);
+        await _userRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WhenUserDoesNotExist_ReturnsFailure()
+    {
+        _userRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+
+        var result = await _sut.ChangePasswordAsync(Guid.NewGuid(), "whatever", "NewStrongP@ss1", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidCurrentPassword);
     }
 }

@@ -18,6 +18,7 @@ export interface LoginUserResponse {
   loginType: string;
   profilePhotoUrl?: string | null;
   permissionKeys: string[];
+  mustChangePassword: boolean;
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.LoginResponse. */
@@ -25,4 +26,10 @@ export interface LoginResponse {
   token: string;
   expiresIn: number;
   user: LoginUserResponse;
+}
+
+/** Mirrors HMS.Modules.Identity.Contracts.ChangePasswordRequest. */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }

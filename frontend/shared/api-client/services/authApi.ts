@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { LoginRequest, LoginResponse } from '../../dtos';
+import type { ChangePasswordRequest, LoginRequest, LoginResponse } from '../../dtos';
 import type { HttpClient } from '../httpClient';
 
 /**
@@ -14,5 +14,9 @@ export class AuthApi {
       headers: { 'X-Hospital-Code': hospitalCode },
     });
     return response.data;
+  }
+
+  async changePassword(request: ChangePasswordRequest): Promise<void> {
+    await this.client.post<void>(API_ROUTES.auth.changePassword, request);
   }
 }

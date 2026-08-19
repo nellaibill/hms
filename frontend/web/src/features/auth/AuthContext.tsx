@@ -20,6 +20,9 @@ interface AuthContextValue {
   /** UI-only hint mirroring the backend's [RequirePermission(key)] checks — hides/disables
    * actions the user's role doesn't have, so they don't fill in a form only to hit a 403. */
   hasPermission: (key: string) => boolean;
+  /** Called after a successful change-password submission — clears the forced-change flag
+   * on the in-memory and stored session without a full re-login. */
+  clearMustChangePassword: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -49,6 +52,7 @@ function toAuthUser(response: LoginResponse): AuthUser {
     email: user.email,
     roleName: user.roleName,
     permissionKeys: user.permissionKeys,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 
@@ -80,8 +84,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = (key: string) => user?.permissionKeys.includes(key) ?? false;
 
+  const clearMustChangePassword = () => {
+    setUser((current) => {
+      if (!current) return current;
+      const updated = { ...current, mustChangePassword: false };
+      const stored = readStoredSession();
+      if (stored) {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...stored, user: updated }));
+      }
+      return updated;
+    });
+  };
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: user !== null, login, logout, hasPermission }),
+    () => ({ user, isAuthenticated: user !== null, login, logout, hasPermission, clearMustChangePassword }),
     [user],
   );
 

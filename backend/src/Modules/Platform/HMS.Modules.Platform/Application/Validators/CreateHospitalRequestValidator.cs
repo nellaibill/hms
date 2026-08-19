@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.Platform.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Platform.Application.Validators;
 
@@ -57,7 +58,9 @@ internal class CreateHospitalRequestValidator : AbstractValidator<CreateHospital
         RuleFor(x => x.SuperAdminPassword)
             .NotEmpty()
             .WithMessage("Super Admin password is required.")
-            .MinimumLength(8)
-            .WithMessage("Super Admin password must be at least 8 characters.");
+            .MinimumLength(PasswordPolicy.MinimumLength)
+            .WithMessage($"Super Admin password must be at least {PasswordPolicy.MinimumLength} characters.")
+            .Matches(PasswordPolicy.ComplexityRegex)
+            .WithMessage(PasswordPolicy.ComplexityMessage);
     }
 }
