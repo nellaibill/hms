@@ -289,9 +289,27 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const generalError = apiError?.message ?? null;
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
 
+  // Every tab but the last has no type="submit" button (Cancel/Previous/Next are all
+  // type="button") — with no default button, pressing Enter in a plain text input falls
+  // back to the browser's native implicit form submission (a full page reload/navigation,
+  // bypassing React entirely) instead of doing nothing or advancing the wizard. Blocking
+  // Enter on <input> elements avoids that silent reload; it doesn't affect Select/Radix
+  // dropdowns (which aren't <input>s and handle their own Enter key) or the real submit
+  // button on the last tab (a click, not a keydown-Enter-on-input).
+  const blockEnterKeySubmit = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+      event.preventDefault();
+    }
+  };
+
   return (
     <div className="flex w-full max-w-6xl flex-col gap-5">
-      <form onSubmit={handleSubmit(onValidSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
+      <form
+        onSubmit={handleSubmit(onValidSubmit, onInvalid)}
+        onKeyDown={blockEnterKeySubmit}
+        noValidate
+        className="flex flex-1 flex-col gap-4"
+      >
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -622,7 +640,12 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   )}
                 />
               </Field>
-              <Field label="Specify" htmlFor="allergySpecify" className="flex min-w-[200px] flex-1 flex-col gap-1">
+              <Field
+                label="Specify"
+                htmlFor="allergySpecify"
+                error={errors.allergySpecify?.message}
+                className="flex min-w-[200px] flex-1 flex-col gap-1"
+              >
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
               </Field>
               <Field
@@ -656,7 +679,12 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
 
         <FormSection id="mode-of-arrival" title="Mode of Arrival" description="How the patient found or was referred to the hospital.">
           <div className="flex flex-wrap gap-3">
-            <Field label="Source" htmlFor="arrivalCategory" className="flex w-full flex-col gap-1 sm:w-56">
+            <Field
+              label="Source"
+              htmlFor="arrivalCategory"
+              error={errors.arrivalSource?.category?.message}
+              className="flex w-full flex-col gap-1 sm:w-56"
+            >
               <Controller
                 name="arrivalSource.category"
                 control={control}
