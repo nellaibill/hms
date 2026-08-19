@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using HMS.Modules.Platform.Application.Abstractions;
+using HMS.Modules.Platform.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -11,9 +12,11 @@ namespace HMS.Modules.Platform.Infrastructure;
 /// Issues signed (HMAC-SHA256) JWTs for Platform Admins. Reads the same Jwt:Issuer/Audience/
 /// SigningKey/ExpiresInMinutes config HMS.Modules.Identity's JwtTokenGenerator already uses —
 /// one bearer scheme for the whole host, not a second auth pipeline — but issues a distinct
-/// claim shape (PlatformUserId/Email/FullName/LoginType="platform", no RoleId/RoleName)
-/// so a platform token can never be mistaken for a hospital one. HMS.Api's JwtConfiguration
-/// enforces LoginType=="platform" on Platform-only endpoints via an authorization policy.
+/// claim shape (PlatformUserId/Email/FullName/PlatformRole/LoginType="platform", no
+/// RoleId/RoleName) so a platform token can never be mistaken for a hospital one. HMS.Api's
+/// JwtConfiguration enforces LoginType=="platform" on Platform-only endpoints, and
+/// PlatformRole=="SuperAdmin" on the subset of those that are destructive, via authorization
+/// policies.
 /// </summary>
 internal sealed class PlatformJwtTokenGenerator : IPlatformJwtTokenGenerator
 {
@@ -37,13 +40,14 @@ internal sealed class PlatformJwtTokenGenerator : IPlatformJwtTokenGenerator
             SecurityAlgorithms.HmacSha256);
     }
 
-    public (string Token, int ExpiresInSeconds) GenerateToken(Guid platformUserId, string email, string fullName)
+    public (string Token, int ExpiresInSeconds) GenerateToken(Guid platformUserId, string email, string fullName, PlatformRole role)
     {
         var claims = new[]
         {
             new Claim("PlatformUserId", platformUserId.ToString()),
             new Claim("Email", email),
             new Claim("FullName", fullName),
+            new Claim("PlatformRole", role.ToString()),
             new Claim("LoginType", "platform"),
         };
 

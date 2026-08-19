@@ -1,4 +1,5 @@
 using HMS.Modules.Platform.Application.Abstractions;
+using HMS.Modules.Platform.Contracts;
 using HMS.Modules.Platform.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -72,6 +73,7 @@ internal sealed class PlatformDataSeeder
             _options.FullName,
             _options.Email,
             _passwordHasher.HashPassword(_options.Password),
+            PlatformRole.SuperAdmin,
             createdBy: null);
 
         await _repository.AddAsync(user, cancellationToken);

@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-013: PlatformUser gets a two-tier role (SuperAdmin / SupportUser), not a full permission catalog
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that `PlatformUser` had no role/permission model at all — every Platform Admin who logs in has identical, ungated power over every hospital tenant, including destructive actions (register a hospital, enable/disable a hospital, trigger a tenant migration). At the same time, there is currently no API to create additional Platform Admins at all — only one account is ever seeded (`PlatformAdminSeed`) — so building a full dynamic permission catalog (mirroring `HMS.Modules.Identity`'s hospital-side Roles/Permissions module) would be speculative infrastructure with no consumer.
+
+**Decision**
+Add a `PlatformRole` enum (`SuperAdmin`, `SupportUser`) directly on `PlatformUser`, carried in the JWT as a `PlatformRole` claim (mirroring the existing `PlatformUserId`/`Email`/`FullName`/`LoginType` claim shape). A new `PlatformSuperAdmin` authorization policy (`LoginType==platform` AND `PlatformRole==SuperAdmin`) gates the three destructive/high-privilege `HospitalsController` actions — `Create`, `UpdateStatus`, `Migrate`. Read actions (`GetAll`, `GetStats`) stay on the existing `Platform` policy, so a `SupportUser`-role token can view the dashboard but not mutate anything. The seeded Platform Admin becomes `SuperAdmin` (both in the seeder and via the migration's column default, which backfills the one existing row).
+
+**Consequences**
+- This is a fixed two-tier privilege split, not a dynamic per-tenant permission model — the review's own "support user can configure permissions per tenant" idea still has no foundation beyond this.
+- No `PlatformUser` CRUD/invite API exists yet, so `SupportUser` is currently unreachable in practice — this PR lays the foundation and enforces it at the policy layer, without building unused management UI for a role nobody can yet hold.
+- The Platform Portal frontend does not yet gate any UI on role (e.g. hiding "Register Hospital" for a SupportUser) — tracked separately; harmless today since there's no way to create a SupportUser account through the app.
+
+---
+
 ### ADR-012: Billing ships as a real backend module — one unified Invoice/InvoiceLineItem/Payment engine, not four parallel billing blocks; Department/Consultant/Service stay free-text, not Masters-backed FKs
 **Date:** 2026-08-18
 **Status:** Accepted

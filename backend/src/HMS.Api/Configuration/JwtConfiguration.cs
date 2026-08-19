@@ -53,6 +53,16 @@ public static class JwtConfiguration
             // endpoints. Hospital tokens never carry a "platform" LoginType claim value.
             options.AddPolicy("Platform", policy => policy.RequireClaim("LoginType", "platform"));
 
+            // A stricter subset of "Platform": destructive/high-privilege Platform Portal
+            // actions (register a hospital, enable/disable a hospital, trigger a tenant
+            // migration) additionally require the PlatformRole=="SuperAdmin" claim
+            // (PlatformJwtTokenGenerator) — a SupportUser-role platform token can still view
+            // the dashboard but not perform any of those actions. See docs/DecisionLog.md
+            // ADR-014.
+            options.AddPolicy("PlatformSuperAdmin", policy => policy
+                .RequireClaim("LoginType", "platform")
+                .RequireClaim("PlatformRole", "SuperAdmin"));
+
             // Mirrors "Platform" above: only hospital-issued tokens carry a "UserId" claim
             // (JwtTokenGenerator) — Platform tokens carry "PlatformUserId" instead
             // (PlatformJwtTokenGenerator) — so this is exclusive to hospital tokens the same

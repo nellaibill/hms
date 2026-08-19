@@ -1,3 +1,4 @@
+using HMS.Modules.Platform.Contracts;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Platform.Domain;
@@ -13,21 +14,23 @@ internal class PlatformUser : Entity
     public string Email { get; private set; } = null!;
     public string PasswordHash { get; private set; } = null!;
     public bool IsActive { get; private set; } = true;
+    public PlatformRole Role { get; private set; }
 
     // Required by EF Core materialization.
     private PlatformUser()
     {
     }
 
-    private PlatformUser(Guid id, string fullName, string email, string passwordHash, Guid? createdBy)
+    private PlatformUser(Guid id, string fullName, string email, string passwordHash, PlatformRole role, Guid? createdBy)
         : base(id, createdBy)
     {
         FullName = fullName;
         Email = email;
         PasswordHash = passwordHash;
+        Role = role;
     }
 
-    public static PlatformUser Create(string fullName, string email, string passwordHash, Guid? createdBy)
+    public static PlatformUser Create(string fullName, string email, string passwordHash, PlatformRole role, Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(fullName, nameof(fullName));
         Guard.AgainstNullOrWhiteSpace(email, nameof(email));
@@ -38,6 +41,7 @@ internal class PlatformUser : Entity
             fullName.Trim(),
             email.Trim().ToLowerInvariant(),
             passwordHash,
+            role,
             createdBy);
     }
 }
