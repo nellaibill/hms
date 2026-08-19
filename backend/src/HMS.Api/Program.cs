@@ -34,6 +34,7 @@ builder.Services.AddHmsModules(builder.Configuration);
 builder.Services.AddHmsSwagger();
 builder.Services.AddHmsCors(builder.Configuration);
 builder.Services.AddHmsJwtAuthentication(builder.Configuration);
+builder.Services.AddHmsRateLimiting();
 
 var app = builder.Build();
 
@@ -46,6 +47,12 @@ app.UseExceptionHandler();
 // before it's written. Registered after UseExceptionHandler so a CORS-preflight or
 // rejected request still gets a properly-shaped error response, not a raw failure.
 app.UseHmsCors();
+
+// Must run before MapControllers(), and deliberately before authentication/authorization
+// too — an unauthenticated request flood (e.g. login brute-forcing) should be throttled
+// before it spends any JWT-validation or tenant-resolution work, not after.
+app.UseHmsRateLimiting();
+
 app.UseHmsSwagger();
 
 // Serves patient photos/ID proofs saved by PatientFileStorage under wwwroot/uploads —
