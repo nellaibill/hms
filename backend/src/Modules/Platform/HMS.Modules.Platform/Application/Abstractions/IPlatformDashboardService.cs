@@ -9,7 +9,7 @@ public interface IPlatformDashboardService
 
     Task<TenantDashboardStatsResponse> GetStatsAsync(CancellationToken cancellationToken);
 
-    Task<Result<TenantListItemResponse>> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken);
+    Task<Result<TenantListItemResponse>> UpdateStatusAsync(Guid id, string status, Guid? actorId, CancellationToken cancellationToken);
 
     /// <summary>
     /// HMS Multi-Tenancy Phase C's migration-management endpoint (requirement #8): applies

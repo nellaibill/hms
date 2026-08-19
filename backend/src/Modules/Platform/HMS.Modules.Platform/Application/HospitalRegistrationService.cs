@@ -31,7 +31,7 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
         _logger = logger;
     }
 
-    public async Task<Result<CreateHospitalResponse>> RegisterAsync(CreateHospitalRequest request, CancellationToken cancellationToken)
+    public async Task<Result<CreateHospitalResponse>> RegisterAsync(CreateHospitalRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var existingByCode = await _tenantRepository.GetByHospitalCodeAsync(request.HospitalCode, cancellationToken);
         if (existingByCode is not null)
@@ -79,7 +79,7 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
             request.State,
             request.Pincode,
             provisionResult.Value!.DatabaseName,
-            createdBy: null);
+            createdBy: actorId);
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
         await _tenantRepository.SaveChangesAsync(cancellationToken);

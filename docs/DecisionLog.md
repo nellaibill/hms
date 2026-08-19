@@ -37,7 +37,7 @@ _To be documented._
 
 ## Decisions
 
-### ADR-013: PlatformUser gets a two-tier role (SuperAdmin / SupportUser), not a full permission catalog
+### ADR-014: PlatformUser gets a two-tier role (SuperAdmin / SupportUser), not a full permission catalog
 **Date:** 2026-08-19
 **Status:** Accepted
 
@@ -51,6 +51,23 @@ Add a `PlatformRole` enum (`SuperAdmin`, `SupportUser`) directly on `PlatformUse
 - This is a fixed two-tier privilege split, not a dynamic per-tenant permission model — the review's own "support user can configure permissions per tenant" idea still has no foundation beyond this.
 - No `PlatformUser` CRUD/invite API exists yet, so `SupportUser` is currently unreachable in practice — this PR lays the foundation and enforces it at the policy layer, without building unused management UI for a role nobody can yet hold.
 - The Platform Portal frontend does not yet gate any UI on role (e.g. hiding "Register Hospital" for a SupportUser) — tracked separately; harmless today since there's no way to create a SupportUser account through the app.
+
+---
+
+### ADR-013: Platform tenant lifecycle actions record the calling Platform Admin, not `null`
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that hospital registration and enable/disable both hardcoded `createdBy`/`updatedBy` to `null` on the `Tenant` aggregate, even though `Entity` already supports a real actor id — there was simply nothing populating it from the caller. That leaves the platform's most destructive/high-privilege actions (provisioning a hospital, enabling/disabling one) with no audit trail of which Platform Admin performed them.
+
+**Decision**
+Read the calling Platform Admin's id from the `PlatformUserId` JWT claim (via a new `ClaimsPrincipalExtensions.GetPlatformUserId()`, mirroring the existing hospital-side `GetUserId()`) in `HospitalsController`, and thread it through `IHospitalRegistrationService.RegisterAsync` and `IPlatformDashboardService.UpdateStatusAsync` as an `actorId` parameter, exactly like the `actorId`/`updatedBy` pattern already used across Masters, Billing, and Patients. `Tenant.Create` and `Tenant.SetStatus` already accepted this parameter — only the callers needed wiring.
+
+**Consequences**
+- `platform.tenants.created_by`/`updated_by` now reflect the real acting Platform Admin.
+- `Migrate` was left out of scope — `Tenant` isn't mutated by that action, so there's nothing to attribute.
+- This is a narrow, mechanical fix; it does not address the larger gap that `PlatformUser` still has no role/permission model (tracked separately).
 
 ---
 
