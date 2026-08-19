@@ -16,6 +16,13 @@ internal class PlatformUser : Entity
     public bool IsActive { get; private set; } = true;
     public PlatformRole Role { get; private set; }
 
+    /// <summary>Consecutive wrong-password attempts since the last successful login or the
+    /// last time a lockout expired — see HMS.Modules.Identity.Domain.User's identical
+    /// fields, the same brute-force throttling shape on the hospital-user side.</summary>
+    public int FailedLoginAttempts { get; private set; }
+
+    public DateTime? LockedOutUntil { get; private set; }
+
     // Required by EF Core materialization.
     private PlatformUser()
     {
@@ -44,4 +51,21 @@ internal class PlatformUser : Entity
             role,
             createdBy);
     }
+
+    public void RecordSuccessfulLogin()
+    {
+        FailedLoginAttempts = 0;
+        LockedOutUntil = null;
+    }
+
+    public void RecordFailedLogin(DateTime attemptedAt, int maxAttempts, TimeSpan lockoutDuration)
+    {
+        FailedLoginAttempts++;
+        if (FailedLoginAttempts >= maxAttempts)
+        {
+            LockedOutUntil = attemptedAt.Add(lockoutDuration);
+        }
+    }
+
+    public bool IsLockedOut(DateTime asOf) => LockedOutUntil.HasValue && LockedOutUntil.Value > asOf;
 }

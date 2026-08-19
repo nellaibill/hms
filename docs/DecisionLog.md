@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-017: Account lockout after 5 wrong-password attempts, on both login endpoints
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that neither login endpoint (hospital `AuthenticationService.LoginAsync` nor Platform `PlatformAuthenticationService.LoginAsync`) had any account lockout or brute-force throttling — an attacker could try unlimited passwords against a known username/email with no penalty.
+
+**Decision**
+Added `FailedLoginAttempts`/`LockedOutUntil` to both `User` (hospital-side, per-tenant) and `PlatformUser`. A wrong password increments the counter and persists it immediately (even though the overall login still fails); reaching 5 attempts sets a 15-minute lockout. A locked-out account is rejected before the password is even checked — no point spending a hash comparison on an account that can't log in regardless. A successful login resets the counter. Both endpoints keep returning the exact same generic `InvalidLogin`/`IDENTITY.INVALID_LOGIN` message and error code used for every other rejection reason (per the existing, explicitly-documented "never reveal which check failed" convention in both services) — a locked-out account looks identical to a wrong password from the outside; only the server logs distinguish it (`LogWarning` instead of `LogInformation`).
+
+**Consequences**
+- Thresholds (5 attempts, 15-minute lockout) are hardcoded constants, not configurable — there's one deployment target and no evidence yet of needing per-environment tuning; revisit if that changes.
+- Only wrong-password attempts count toward the threshold — a login rejected for a nonexistent username, an inactive account, or a login-type/role mismatch doesn't increment anything, since those aren't password-guessing attempts against a specific account's credential.
+- This is per-account throttling, not per-IP — an attacker distributing guesses across many usernames from one IP is unaffected (that's what finding "No rate limiting anywhere on the API host" — tracked separately — is for).
+
+---
+
 ### ADR-016: Stop returning DatabaseName to the frontend
 **Date:** 2026-08-19
 **Status:** Accepted

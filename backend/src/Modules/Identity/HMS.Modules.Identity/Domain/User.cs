@@ -35,6 +35,22 @@ internal class User : Entity
     public bool IsActive { get; private set; }
 
     /// <summary>
+    /// Consecutive wrong-password attempts since the last successful login or the last time
+    /// a lockout expired — reset to 0 by <see cref="RecordLogin"/>. Never incremented for a
+    /// login rejected for any other reason (user not found, inactive account, wrong login
+    /// type) — those aren't password-guessing attempts against this specific account.
+    /// </summary>
+    public int FailedLoginAttempts { get; private set; }
+
+    /// <summary>
+    /// Set by <see cref="RecordFailedLogin"/> once <see cref="FailedLoginAttempts"/> reaches
+    /// <c>AuthenticationService.MaxFailedLoginAttempts</c>. While in the future, login is
+    /// rejected outright (same generic message as every other rejection reason — see
+    /// AuthenticationService's own doc comment) without even checking the password.
+    /// </summary>
+    public DateTime? LockedOutUntil { get; private set; }
+
+    /// <summary>
     /// Relative path under wwwroot (e.g. "uploads/users/{id}.jpg"), written only via
     /// <see cref="SetProfilePhoto"/>. Null until an admin uploads one from the User Details
     /// page — never set at creation time (see UsersController.UploadProfilePhoto).
@@ -162,12 +178,31 @@ internal class User : Entity
     /// <summary>
     /// Records a successful login. Deliberately does not call <see cref="Entity.MarkUpdated"/>
     /// — UpdatedAt/UpdatedBy represent an admin-style edit to the record, not the subject's
-    /// own act of logging in.
+    /// own act of logging in. Clears any lockout — a successful login is proof of a correct
+    /// password, so there's no reason to keep the account locked.
     /// </summary>
     public void RecordLogin(DateTime loginAt)
     {
         LastLoginAt = loginAt;
+        FailedLoginAttempts = 0;
+        LockedOutUntil = null;
     }
+
+    /// <summary>
+    /// Records a wrong-password attempt, locking the account out once
+    /// <paramref name="maxAttempts"/> is reached. Deliberately does not call
+    /// <see cref="Entity.MarkUpdated"/> — same reasoning as <see cref="RecordLogin"/>.
+    /// </summary>
+    public void RecordFailedLogin(DateTime attemptedAt, int maxAttempts, TimeSpan lockoutDuration)
+    {
+        FailedLoginAttempts++;
+        if (FailedLoginAttempts >= maxAttempts)
+        {
+            LockedOutUntil = attemptedAt.Add(lockoutDuration);
+        }
+    }
+
+    public bool IsLockedOut(DateTime asOf) => LockedOutUntil.HasValue && LockedOutUntil.Value > asOf;
 
     public void Activate(Guid? updatedBy)
     {

@@ -43,6 +43,8 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).HasColumnName("password_hash").HasMaxLength(255);
         builder.Property(u => u.EmailVerified).HasColumnName("email_verified").IsRequired().HasDefaultValue(false);
         builder.Property(u => u.LastLoginAt).HasColumnName("last_login_at");
+        builder.Property(u => u.FailedLoginAttempts).HasColumnName("failed_login_attempts").IsRequired().HasDefaultValue(0);
+        builder.Property(u => u.LockedOutUntil).HasColumnName("locked_out_until");
 
         builder.Property(u => u.IsActive).HasColumnName("is_active").IsRequired();
 

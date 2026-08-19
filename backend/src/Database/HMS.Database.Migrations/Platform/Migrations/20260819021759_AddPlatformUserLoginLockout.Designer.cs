@@ -3,6 +3,7 @@ using System;
 using HMS.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HMS.Database.Migrations.Platform.Migrations
 {
     [DbContext(typeof(PlatformDbContext))]
-    partial class PlatformDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819021759_AddPlatformUserLoginLockout")]
+    partial class AddPlatformUserLoginLockout
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,65 +25,6 @@ namespace HMS.Database.Migrations.Platform.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("HMS.Modules.Platform.Domain.IdempotencyRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("key");
-
-                    b.Property<string>("RequestHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("request_hash");
-
-                    b.Property<string>("ResultErrorCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("result_error_code");
-
-                    b.Property<string>("ResultErrorMessage")
-                        .HasColumnType("text")
-                        .HasColumnName("result_error_message");
-
-                    b.Property<bool?>("ResultIsSuccess")
-                        .HasColumnType("boolean")
-                        .HasColumnName("result_is_success");
-
-                    b.Property<string>("ResultResponseJson")
-                        .HasColumnType("text")
-                        .HasColumnName("result_response_json");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("status");
-
-                    b.HasKey("Id")
-                        .HasName("pk_idempotency_keys");
-
-                    b.HasIndex("Key")
-                        .IsUnique()
-                        .HasDatabaseName("ux_idempotency_keys_key");
-
-                    b.ToTable("idempotency_keys", "platform");
-                });
 
             modelBuilder.Entity("HMS.Modules.Platform.Domain.PlatformUser", b =>
                 {

@@ -147,6 +147,63 @@ public class AuthenticationServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_WithWrongPassword_IncrementsFailedLoginAttempts()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        _passwordHasher.VerifyPassword("wrong-password", "stored-hash").Returns(false);
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "wrong-password" };
+
+        await _sut.LoginAsync(request, CancellationToken.None);
+
+        user.FailedLoginAttempts.Should().Be(1);
+        user.IsLockedOut(DateTime.UtcNow).Should().BeFalse();
+        await _userRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LoginAsync_AfterFiveWrongPasswordAttempts_LocksTheAccountOut()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        _passwordHasher.VerifyPassword("wrong-password", "stored-hash").Returns(false);
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "wrong-password" };
+
+        for (var i = 0; i < 5; i++)
+        {
+            await _sut.LoginAsync(request, CancellationToken.None);
+        }
+
+        user.FailedLoginAttempts.Should().Be(5);
+        user.IsLockedOut(DateTime.UtcNow).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoginAsync_WhenAccountIsLockedOut_ReturnsGenericFailureWithoutCheckingThePassword()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        user.RecordFailedLogin(DateTime.UtcNow, maxAttempts: 1, lockoutDuration: TimeSpan.FromMinutes(15));
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "correct-password" };
+
+        var result = await _sut.LoginAsync(request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidLogin);
+        _passwordHasher.DidNotReceive().VerifyPassword(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task LoginAsync_WithValidCredentials_ResetsAnyPriorFailedAttempts()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        user.RecordFailedLogin(DateTime.UtcNow, maxAttempts: 5, lockoutDuration: TimeSpan.FromMinutes(15));
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "correct-password" };
+
+        await _sut.LoginAsync(request, CancellationToken.None);
+
+        user.FailedLoginAttempts.Should().Be(0);
+        user.LockedOutUntil.Should().BeNull();
+    }
+
+    [Fact]
     public async Task LoginAsync_WhenTenantContextIsNotResolved_Throws()
     {
         // Should be unreachable in production (TenantResolutionMiddleware always resolves
