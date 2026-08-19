@@ -6,6 +6,7 @@
     <!-- CS1591 (missing XML comment on a public member) isn't useful here: most public
          members in this host project are DI/hosting plumbing, not HTTP-facing API surface. -->
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <UserSecretsId>79b37163-5ea1-4380-9c07-a818769d1ba8</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

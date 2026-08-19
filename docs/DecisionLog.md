@@ -37,6 +37,25 @@ _To be documented._
 
 ## Decisions
 
+### ADR-021: Local dev secrets move to `dotnet user-secrets`; no cloud secrets-manager built yet
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that `appsettings.Development.json` hardcoded default admin/super-admin passwords (and the JWT signing key) in plaintext, checked into git. Production `appsettings.json` already ships these same keys as empty strings, relying on the deploying environment to override them — a reasonable pattern, but nothing analogous existed for local dev, and no actual secrets-manager mechanism (nor documentation of the override convention) existed anywhere.
+
+**Decision**
+Moved the three genuinely sensitive dev values — `Jwt:SigningKey`, `SuperAdminSeed:Password`, `PlatformAdminSeed:Password` — out of `appsettings.Development.json` and into [.NET user-secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets) (`dotnet user-secrets init` added `<UserSecretsId>` to `HMS.Api.csproj`; ASP.NET Core loads user-secrets automatically in Development, no code change needed). These now throw the existing `InvalidOperationException` at startup if unset, same as production already does — fails loudly, not silently. Local Postgres connection strings were deliberately left alone (they only ever point at a developer's own local database, not a meaningfully sensitive secret). Documented the full pattern — dev via user-secrets, staging/prod via the `Section__Key` environment-variable override convention ASP.NET Core already supports — in `docs/Configuration.md`'s previously-empty "Secrets Handling" section.
+
+**Deliberately not done: an actual cloud secrets-manager integration** (Azure Key Vault, AWS Secrets Manager, etc.). This app has no committed-to hosting target yet (`docs/Deployment.md` is still a stub) — building against an unconfirmed target would be speculative infrastructure nobody can verify. Explicitly documented as the still-open gap so it isn't mistaken for "solved."
+
+**Consequences**
+- Verified live: full app startup (migrations + seeding through every module) and a real login round-trip (issue a token, then use it against `GET /me`) both succeed reading the signing key and seed passwords from user-secrets, with zero plaintext secrets left in `appsettings.Development.json`.
+- A fresh clone now requires the three `dotnet user-secrets set` commands documented in `Configuration.md` before `dotnet run` works — a one-time, documented setup cost, traded for no longer having real (if low-stakes, dev-only) credentials in git history.
+- CI is unaffected — `build.yml`'s `dotnet build`/`dotnet test` never starts the host, so it never needed these values.
+
+---
+
 ### ADR-020: Server-side revocation for Platform tokens; httpOnly-cookie storage deliberately deferred
 **Date:** 2026-08-19
 **Status:** Accepted
