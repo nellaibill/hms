@@ -97,7 +97,6 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
         Id = tenant.Id,
         HospitalName = tenant.HospitalName,
         HospitalCode = tenant.HospitalCode,
-        DatabaseName = tenant.DatabaseName,
         Status = tenant.Status.ToString(),
         CreatedAt = tenant.CreatedAt,
     };

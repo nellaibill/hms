@@ -37,7 +37,7 @@ _To be documented._
 
 ## Decisions
 
-### ADR-015: Account lockout after 5 wrong-password attempts, on both login endpoints
+### ADR-017: Account lockout after 5 wrong-password attempts, on both login endpoints
 **Date:** 2026-08-19
 **Status:** Accepted
 
@@ -51,6 +51,39 @@ Added `FailedLoginAttempts`/`LockedOutUntil` to both `User` (hospital-side, per-
 - Thresholds (5 attempts, 15-minute lockout) are hardcoded constants, not configurable — there's one deployment target and no evidence yet of needing per-environment tuning; revisit if that changes.
 - Only wrong-password attempts count toward the threshold — a login rejected for a nonexistent username, an inactive account, or a login-type/role mismatch doesn't increment anything, since those aren't password-guessing attempts against a specific account's credential.
 - This is per-account throttling, not per-IP — an attacker distributing guesses across many usernames from one IP is unaffected (that's what finding "No rate limiting anywhere on the API host" — tracked separately — is for).
+
+---
+
+### ADR-016: Stop returning DatabaseName to the frontend
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that `CreateHospitalResponse`/`TenantListItemResponse` returned the tenant's internal PostgreSQL database name straight to the browser, and `HospitalTable.tsx` rendered it as a visible column — an infrastructure implementation detail with no product reason to reach the client, and a minor information-disclosure surface (it reveals the exact naming scheme used to derive one tenant's database from another's).
+
+**Decision**
+Removed `DatabaseName` from both response contracts and their mapping code in `HospitalRegistrationService`/`PlatformDashboardService`. Removed the corresponding `databaseName` field from the frontend's DTO mirrors and the "Database Name" column from `HospitalTable.tsx`. The backend's own internal use of `Tenant.DatabaseName` (connection-string resolution via `TenantDirectory`, migrations, logging) is untouched — this is purely about what crosses the API boundary.
+
+**Consequences**
+- No behavior change for Platform Admins beyond one fewer (and not useful) table column.
+- Any future "show ops/support which physical database backs a tenant" need should be a deliberately separate, more tightly-scoped surface (e.g. gated to `SuperAdmin` only, per ADR-014), not the same response every Platform Admin already receives for the dashboard list.
+
+---
+
+### ADR-015: Hospital registration requires an Idempotency-Key header
+**Date:** 2026-08-19
+**Status:** Accepted
+
+**Context**
+The architecture/security review flagged that hospital registration had no idempotency/retry protection — a client-perceived timeout followed by a resubmit could double-provision a hospital database, since the only existing guard (checking `platform.tenants` for the hospital code) only catches a duplicate *after* a prior request has already finished writing that row, not while provisioning is still in flight.
+
+**Decision**
+`POST /api/platform/hospitals` now requires an `Idempotency-Key` header (400 if missing). A new `platform.idempotency_keys` table, guarded by a unique index on `key`, is used to atomically "reserve" a key before provisioning starts: the first request to insert wins and proceeds; a concurrent request with the same key gets `409 PLATFORM.IDEMPOTENCY_KEY_IN_PROGRESS` instead of racing into a second provisioning; a later retry after the first request finished gets the original cached `Result<CreateHospitalResponse>` replayed verbatim (`409`/`201` matching the original outcome) instead of re-executing; and a key reused for a different request body gets `409 PLATFORM.IDEMPOTENCY_KEY_REUSED`. The frontend (`useCreateHospitalMutation`) generates one key per page-mount (`crypto.randomUUID()`), reused across retries of the same submission attempt, never regenerated per `mutate()` call.
+
+**Consequences**
+- Verified live against the real API + Postgres: a genuine concurrent double-submit (two requests firing ~150ms apart with the same key) produced exactly one `Provisioned hospital` log line and one `IN_PROGRESS` rejection — confirmed via the running server, not just unit tests.
+- Scoped narrowly to this one endpoint (`IHospitalRegistrationIdempotencyStore`), not a generic ASP.NET Core idempotency middleware — no other endpoint needs this yet.
+- Existing/older API clients that don't send the header now get a hard `400` on hospital creation — acceptable since the only consumer is this repo's own Platform Portal frontend, which was updated in the same change.
 
 ---
 
