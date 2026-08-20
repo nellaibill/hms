@@ -2,6 +2,8 @@ using HMS.Modules.Pharmacy.Application.Abstractions;
 using HMS.Modules.Pharmacy.Application.Mapping;
 using HMS.Modules.Pharmacy.Contracts;
 using HMS.Modules.Pharmacy.Domain;
+using HMS.Modules.Billing.Application;
+using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Products.Application;
 using HMS.Shared.Kernel;
@@ -42,19 +44,22 @@ internal class DispenseService : IDispenseService
     private readonly IProductService _productService;
     private readonly IProductBatchService _productBatchService;
     private readonly IPatientService _patientService;
+    private readonly IInvoiceService _invoiceService;
 
     public DispenseService(
         IPharmacyStockBalanceRepository balanceRepository,
         IPharmacyStockTransactionRepository transactionRepository,
         IProductService productService,
         IProductBatchService productBatchService,
-        IPatientService patientService)
+        IPatientService patientService,
+        IInvoiceService invoiceService)
     {
         _balanceRepository = balanceRepository;
         _transactionRepository = transactionRepository;
         _productService = productService;
         _productBatchService = productBatchService;
         _patientService = patientService;
+        _invoiceService = invoiceService;
     }
 
     public async Task<Result<DispenseResponse>> CreateAsync(CreateDispenseRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -133,8 +138,71 @@ internal class DispenseService : IDispenseService
         }
 
         var patient = patientResult.Value!;
+        var product = productResult.Value!;
+        var patientName = $"{patient.FirstName} {patient.LastName}";
+
+        // Best-effort, deliberately not part of the SaveChangesAsync above (ADR-028): the
+        // dispense — medicine has physically left the pharmacy, stock is already correctly
+        // decremented — is the authoritative fact and must not be rolled back just because
+        // the separate Billing module's write failed or Billing itself is unreachable. A
+        // failure here is surfaced to the caller (BillingFailed/BillingError) so staff can
+        // post the charge manually via the existing OPD Billing Entry screen; it never fails
+        // or reverts the dispense itself.
+        string? invoiceNumber = null;
+        var billingFailed = false;
+        string? billingError = null;
+
+        try
+        {
+            var invoiceRequest = new CreateInvoiceRequest
+            {
+                PatientId = request.PatientId,
+                VisitId = patient.CurrentRegistration?.Id ?? request.PatientId,
+                PatientName = patientName,
+                PatientUhid = patient.Uhid,
+                Items =
+                [
+                    new CreateInvoiceLineItemRequest
+                    {
+                        BillingType = BillingType.Pharmacy,
+                        ServiceId = $"{product.ProductName} (Batch {batchResult.Value!.BatchNo}) × {request.Quantity}",
+                        // Quantity is fixed at 1: CreateInvoiceLineItemRequest.Quantity is an
+                        // int (every other billing category bills whole units), but a
+                        // dispense's real quantity is decimal (e.g. 150.5ml of a syrup) — so
+                        // the full dispensed amount is priced into UnitPrice as this one
+                        // line's total, rather than losing precision by rounding Quantity.
+                        Quantity = 1,
+                        UnitPrice = request.Quantity * product.SellingPrice,
+                        Discount = 0,
+                        DiscountApproved = false,
+                    },
+                ],
+            };
+
+            var invoiceResult = await _invoiceService.CreateAsync(invoiceRequest, actorId, cancellationToken);
+            if (invoiceResult.IsSuccess)
+            {
+                invoiceNumber = invoiceResult.Value!.InvoiceNumber;
+                transaction!.SetInvoiceId(invoiceResult.Value.Id, actorId);
+                await _balanceRepository.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                billingFailed = true;
+                billingError = invoiceResult.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Billing being unreachable/erroring is exactly the case this whole best-effort
+            // design exists for — never let it propagate up as a 500 on an otherwise-successful
+            // dispense.
+            billingFailed = true;
+            billingError = ex.Message;
+        }
+
         return Result<DispenseResponse>.Success(
-            transaction!.ToDispenseResponse(productResult.Value!.ProductName, batchResult.Value.BatchNo, $"{patient.FirstName} {patient.LastName}"));
+            transaction!.ToDispenseResponse(product.ProductName, batchResult.Value!.BatchNo, patientName, invoiceNumber, billingFailed, billingError));
     }
 
     public async Task<Result<DispenseResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)

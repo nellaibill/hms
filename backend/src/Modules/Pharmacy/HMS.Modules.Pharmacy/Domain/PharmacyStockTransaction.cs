@@ -22,6 +22,13 @@ internal class PharmacyStockTransaction : Entity
     public Guid? AdmissionId { get; private set; }
     public string? Remarks { get; private set; }
 
+    /// <summary>Set once, after the fact, by a successful best-effort billing attempt — see
+    /// DispenseService.CreateAsync. Null means either this is a Receipt (never billed) or a
+    /// Dispense whose billing attempt hasn't succeeded (not yet tried, or tried and failed;
+    /// the two aren't distinguished here since nothing is retried automatically — the
+    /// immediate create response's BillingFailed/BillingError carry that one-time detail).</summary>
+    public Guid? InvoiceId { get; private set; }
+
     // Required by EF Core materialization.
     private PharmacyStockTransaction()
     {
@@ -100,5 +107,30 @@ internal class PharmacyStockTransaction : Entity
             admissionId,
             remarks,
             createdBy);
+    }
+
+    /// <summary>
+    /// The one narrow, deliberate exception to "no Update method on PharmacyStockTransaction"
+    /// (see the class doc comment): every stock/financial fact about the dispense itself
+    /// (Quantity, BalanceAfter, TransactionType, ...) stays immutable, but which invoice ended
+    /// up covering it is discovered strictly after the fact, only once billing has actually
+    /// succeeded — see DispenseService.CreateAsync's two-phase dispense-then-bill flow. Guards
+    /// against calling it on a Receipt (never billed) or twice on the same transaction (each
+    /// dispense generates exactly one invoice, at most once).
+    /// </summary>
+    public void SetInvoiceId(Guid invoiceId, Guid? updatedBy)
+    {
+        if (TransactionType != TransactionType.Dispense)
+        {
+            throw new InvalidOperationException("Only a Dispense transaction can have an InvoiceId.");
+        }
+
+        if (InvoiceId is not null)
+        {
+            throw new InvalidOperationException("This transaction's InvoiceId has already been set.");
+        }
+
+        InvoiceId = invoiceId;
+        MarkUpdated(updatedBy);
     }
 }

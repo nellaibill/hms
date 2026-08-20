@@ -91,4 +91,36 @@ public class PharmacyStockTransactionTests
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void SetInvoiceId_OnADispense_SetsIt()
+    {
+        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), 4m, 6m, Guid.NewGuid(), null, null, null);
+        var invoiceId = Guid.NewGuid();
+
+        transaction.SetInvoiceId(invoiceId, null);
+
+        transaction.InvoiceId.Should().Be(invoiceId);
+    }
+
+    [Fact]
+    public void SetInvoiceId_OnAReceipt_Throws()
+    {
+        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), 10m, 10m, null, null);
+
+        var act = () => transaction.SetInvoiceId(Guid.NewGuid(), null);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void SetInvoiceId_CalledTwice_ThrowsOnTheSecondCall()
+    {
+        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), 4m, 6m, Guid.NewGuid(), null, null, null);
+        transaction.SetInvoiceId(Guid.NewGuid(), null);
+
+        var act = () => transaction.SetInvoiceId(Guid.NewGuid(), null);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

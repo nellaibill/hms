@@ -27,7 +27,14 @@ internal static class PharmacyMappingExtensions
         CreatedAt = transaction.CreatedAt,
     };
 
-    public static DispenseResponse ToDispenseResponse(this PharmacyStockTransaction transaction, string productName, string batchNo, string patientName) => new()
+    public static DispenseResponse ToDispenseResponse(
+        this PharmacyStockTransaction transaction,
+        string productName,
+        string batchNo,
+        string patientName,
+        string? invoiceNumber = null,
+        bool billingFailed = false,
+        string? billingError = null) => new()
     {
         Id = transaction.Id,
         ProductId = transaction.ProductId,
@@ -42,6 +49,10 @@ internal static class PharmacyMappingExtensions
         TransactionDate = transaction.TransactionDate,
         Remarks = transaction.Remarks,
         CreatedAt = transaction.CreatedAt,
+        InvoiceId = transaction.InvoiceId,
+        InvoiceNumber = invoiceNumber,
+        BillingFailed = billingFailed,
+        BillingError = billingError,
     };
 
     public static StockBalanceResponse ToResponse(this PharmacyStockBalance balance, string productName, string batchNo, DateOnly expiryDate) => new()

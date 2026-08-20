@@ -29,6 +29,8 @@
     <ProjectReference Include="..\..\Products\HMS.Modules.Products\HMS.Modules.Products.csproj" />
     <!-- PatientId validation and patient-name lookups for dispenses. -->
     <ProjectReference Include="..\..\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
+    <!-- IInvoiceService — best-effort dispense billing (ADR-028). -->
+    <ProjectReference Include="..\..\Billing\HMS.Modules.Billing\HMS.Modules.Billing.csproj" />
   </ItemGroup>
 
 </Project>

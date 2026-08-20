@@ -6,15 +6,15 @@ using Xunit;
 namespace HMS.ArchitectureTests.Modules.Pharmacy;
 
 /// <summary>
-/// Pharmacy has real cross-module dependencies on two other modules' public seams — Products'
-/// (Product/ProductBatch existence) and Patients' (PatientId existence) — rather than
+/// Pharmacy has real cross-module dependencies on three other modules' public seams —
+/// Products' (Product/ProductBatch existence), Patients' (PatientId existence), and Billing's
+/// (IInvoiceService, for the best-effort dispense billing step — ADR-028) — rather than
 /// depending on nothing, so its rule mirrors
 /// HMS.ArchitectureTests.Modules.Products.ProductsCrossModuleDependencyTests rather than
-/// Identity's simpler blanket ban. Products' and Patients' own public seams intentionally
-/// live in their Application namespace (the I{Entity}Service interfaces), not in Contracts,
-/// so Pharmacy may depend on HMS.Modules.Products.Application/.Contracts and
-/// HMS.Modules.Patients.Application/.Contracts, but never on either module's Domain or
-/// Infrastructure — the two layers that are genuinely private to each.
+/// Identity's simpler blanket ban. Each module's own public seam intentionally lives in its
+/// Application namespace (the I{Entity}Service interfaces), not in Contracts, so Pharmacy may
+/// depend on HMS.Modules.{Products,Patients,Billing}.Application/.Contracts, but never on any
+/// of their Domain or Infrastructure — the two layers that are genuinely private to each.
 /// </summary>
 public class PharmacyCrossModuleDependencyTests
 {
@@ -39,6 +39,19 @@ public class PharmacyCrossModuleDependencyTests
         var result = Types.InAssembly(pharmacyAssembly)
             .Should()
             .NotHaveDependencyOnAny("HMS.Modules.Patients.Domain", "HMS.Modules.Patients.Infrastructure")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Pharmacy_ShouldNotDependOnBillingInternals()
+    {
+        var pharmacyAssembly = Assembly.Load("HMS.Modules.Pharmacy");
+
+        var result = Types.InAssembly(pharmacyAssembly)
+            .Should()
+            .NotHaveDependencyOnAny("HMS.Modules.Billing.Domain", "HMS.Modules.Billing.Infrastructure")
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue();

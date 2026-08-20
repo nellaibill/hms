@@ -22,6 +22,7 @@ internal class PharmacyStockTransactionConfiguration : IEntityTypeConfiguration<
         builder.Property(t => t.PatientId).HasColumnName("patient_id");
         builder.Property(t => t.AdmissionId).HasColumnName("admission_id");
         builder.Property(t => t.Remarks).HasColumnName("remarks").HasMaxLength(500);
+        builder.Property(t => t.InvoiceId).HasColumnName("invoice_id");
 
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(t => t.CreatedBy).HasColumnName("created_by");

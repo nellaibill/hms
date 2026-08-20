@@ -13,6 +13,13 @@ public enum BillingType
     Radiology,
     Laboratory,
     Procedure,
+
+    /// <summary>A Pharmacy dispense (HMS.Modules.Pharmacy.Application.DispenseService) — the
+    /// one line item's UnitPrice is the dispense's total price (Quantity × Product.SellingPrice)
+    /// rather than a per-unit rate, because this record's own Quantity is `int` (see this
+    /// enum's own doc comment on the unified line-item shape) and a dispense's real quantity
+    /// is decimal (e.g. 150.5ml of a syrup) — see docs/DecisionLog.md ADR-028.</summary>
+    Pharmacy,
 }
 
 /// <summary>Per-line-item status — an invoice's own overall status is derived (every item
