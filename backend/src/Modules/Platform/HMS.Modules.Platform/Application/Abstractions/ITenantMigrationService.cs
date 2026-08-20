@@ -12,12 +12,17 @@ namespace HMS.Modules.Platform.Application.Abstractions;
 public interface ITenantMigrationService
 {
     /// <summary>
-    /// Applies every current hospital module's pending EF Core migrations to the database
-    /// behind <paramref name="tenantConnectionString"/>. Idempotent: EF Core's
-    /// Database.MigrateAsync only ever applies migrations not already recorded in that
-    /// module's own migrations-history table, so calling this against an already
-    /// up-to-date tenant is a safe no-op — this is deliberately never invoked per-request,
-    /// only from provisioning and from an explicit operator-triggered migrate action.
+    /// Applies pending EF Core migrations to the database behind
+    /// <paramref name="tenantConnectionString"/>, for exactly the modules named in
+    /// <paramref name="enabledFeatureKeys"/> (FeatureCatalog keys) — the selective-
+    /// provisioning seam (Tenant Feature/Module Management). FeatureCatalog.Mandatory is
+    /// unioned in defensively inside the implementation, so no caller can ever omit it, even
+    /// by bug. Idempotent per module: EF Core's Database.MigrateAsync only ever applies
+    /// migrations not already recorded in that module's own migrations-history table, so
+    /// calling this against an already up-to-date tenant (or re-passing a feature that was
+    /// already enabled) is a safe no-op — this is what lets the same seam serve new-tenant
+    /// provisioning, an operator-triggered re-migrate, and enabling a feature on an existing
+    /// tenant, all without separate code paths. Deliberately never invoked per-request.
     /// </summary>
-    Task MigrateAsync(string tenantConnectionString, CancellationToken cancellationToken);
+    Task MigrateAsync(string tenantConnectionString, IReadOnlyCollection<string> enabledFeatureKeys, CancellationToken cancellationToken);
 }

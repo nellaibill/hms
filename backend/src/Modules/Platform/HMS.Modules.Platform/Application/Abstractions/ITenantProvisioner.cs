@@ -28,7 +28,8 @@ public sealed record TenantProvisionRequest(
     string SuperAdminLastName,
     string SuperAdminEmail,
     string SuperAdminPhoneNumber,
-    string SuperAdminPassword);
+    string SuperAdminPassword,
+    IReadOnlyCollection<string> EnabledFeatureKeys);
 
 public sealed record TenantProvisionResult(string DatabaseName);
 

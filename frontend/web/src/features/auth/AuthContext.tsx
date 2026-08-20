@@ -20,6 +20,10 @@ interface AuthContextValue {
   /** UI-only hint mirroring the backend's [RequirePermission(key)] checks — hides/disables
    * actions the user's role doesn't have, so they don't fill in a form only to hit a 403. */
   hasPermission: (key: string) => boolean;
+  /** UI-only hint mirroring the backend's [RequireFeature(key)] checks — hides/disables
+   * nav/actions for a module the tenant doesn't have. See AuthUser.featureKeys's own doc
+   * comment for why the backend never trusts this snapshot for enforcement. */
+  hasFeature: (key: string) => boolean;
   /** Called after a successful change-password submission — clears the forced-change flag
    * on the in-memory and stored session without a full re-login. */
   clearMustChangePassword: () => void;
@@ -52,6 +56,7 @@ function toAuthUser(response: LoginResponse): AuthUser {
     email: user.email,
     roleName: user.roleName,
     permissionKeys: user.permissionKeys,
+    featureKeys: user.featureKeys,
     mustChangePassword: user.mustChangePassword,
   };
 }
@@ -83,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const hasPermission = (key: string) => user?.permissionKeys.includes(key) ?? false;
+  const hasFeature = (key: string) => user?.featureKeys.includes(key) ?? false;
 
   const clearMustChangePassword = () => {
     setUser((current) => {
@@ -97,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ user, isAuthenticated: user !== null, login, logout, hasPermission, clearMustChangePassword }),
+    () => ({ user, isAuthenticated: user !== null, login, logout, hasPermission, hasFeature, clearMustChangePassword }),
     [user],
   );
 

@@ -16,6 +16,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId — matches ShiftsController.
 /// </summary>
 [ApiController]
+[RequireFeature("hr")]
 [Route("api/v1/weekly-rosters")]
 public class WeeklyRostersController : ControllerBase
 {

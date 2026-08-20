@@ -12,6 +12,7 @@ namespace HMS.Modules.Products.Endpoints;
 
 /// <summary>Image CRUD, scoped to a parent product. Creation only happens via <see cref="Upload"/> — there is no plain JSON create endpoint, since image_url must come from the storage layer (see IProductImageStorage), never an arbitrary client-supplied URL.</summary>
 [ApiController]
+[RequireFeature("products")]
 [Route("api/v1/products/{productId:guid}/images")]
 public class ProductImagesController : ControllerBase
 {

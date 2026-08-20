@@ -12,6 +12,7 @@ namespace HMS.Modules.Products.Endpoints;
 
 /// <summary>Global product-attribute definition catalog CRUD (not product-scoped — contrast with the nested child controllers in this module).</summary>
 [ApiController]
+[RequireFeature("products")]
 [Route("api/v1/products/attributes")]
 public class ProductAttributesController : ControllerBase
 {

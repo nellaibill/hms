@@ -17,6 +17,7 @@ namespace HMS.Modules.Calendar.Endpoints;
 /// ADR).
 /// </summary>
 [ApiController]
+[RequireFeature("calendar")]
 [Route("api/v1/events")]
 public class EventsController : ControllerBase
 {

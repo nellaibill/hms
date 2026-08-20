@@ -47,9 +47,11 @@ public static class PlatformModule
         services.AddScoped<IPlatformMfaChallengeStore, PlatformMfaChallengeStore>();
 
         services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<ITenantFeatureRepository, TenantFeatureRepository>();
         services.AddScoped<IHospitalRegistrationIdempotencyStore, HospitalRegistrationIdempotencyStore>();
         services.AddScoped<IHospitalRegistrationService, HospitalRegistrationService>();
         services.AddScoped<IPlatformDashboardService, PlatformDashboardService>();
+        services.AddScoped<ITenantFeatureService, TenantFeatureService>();
 
         // Consumed by HMS.Api's TenantProvisioningService (ITenantProvisioner) to raise a
         // durable, dashboard-visible alert when a rollback fails — see
@@ -76,6 +78,7 @@ public static class PlatformModule
         services.AddScoped<IValidator<PlatformMfaEnableRequest>, PlatformMfaEnableRequestValidator>();
         services.AddScoped<IValidator<PlatformMfaDisableRequest>, PlatformMfaDisableRequestValidator>();
         services.AddScoped<IValidator<UpdateTenantConfigurationRequest>, UpdateTenantConfigurationRequestValidator>();
+        services.AddScoped<IValidator<UpdateTenantFeaturesRequest>, UpdateTenantFeaturesRequestValidator>();
 
         services.Configure<PlatformAdminSeedOptions>(configuration.GetSection(PlatformAdminSeedOptions.SectionName));
         services.Configure<LegacyTenantSeedOptions>(configuration.GetSection(LegacyTenantSeedOptions.SectionName));

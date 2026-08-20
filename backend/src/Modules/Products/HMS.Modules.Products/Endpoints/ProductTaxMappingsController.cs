@@ -12,6 +12,7 @@ namespace HMS.Modules.Products.Endpoints;
 
 /// <summary>Tax mapping CRUD, scoped to a parent product.</summary>
 [ApiController]
+[RequireFeature("products")]
 [Route("api/v1/products/{productId:guid}/tax-mappings")]
 public class ProductTaxMappingsController : ControllerBase
 {

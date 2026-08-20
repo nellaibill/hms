@@ -39,6 +39,13 @@ export interface NavLeaf {
    * filterNavigationForPermissions below. Omitted (e.g. Dashboard) means
    * visible to every authenticated user regardless of permissions. */
   permission?: string;
+  /** FeatureCatalog key (e.g. "hr") this leaf's schema-level module requires — Tenant
+   * Feature/Module Management, distinct from `permission` (RBAC). Only set on leaves backed
+   * by an optional module's real pages; omitted means visible regardless of tenant features
+   * (mandatory modules, or leaves with no real page yet). A leaf shows only when BOTH this
+   * feature is enabled AND the RBAC `permission` (if any) is held — see
+   * filterNavigationForPermissions below. */
+  feature?: string;
   /** Section header rendered above this item in the sidebar — top-level items only. */
   section?: string;
 }
@@ -60,6 +67,7 @@ export const navigationTree: NavNode[] = [
     icon: UserSearch,
     description: 'Find an existing patient by name, UHID, or phone to view or update their registration.',
     permission: 'patient-management',
+    feature: 'patients',
     section: 'Clinical',
   },
   {
@@ -69,6 +77,7 @@ export const navigationTree: NavNode[] = [
     icon: ClipboardList,
     description: 'Register a new patient or find an existing one to update their registration.',
     permission: 'patient-management',
+    feature: 'patients',
     section: 'Clinical',
   },
   {
@@ -78,6 +87,7 @@ export const navigationTree: NavNode[] = [
     icon: Stethoscope,
     description: 'Outpatient consultant queues, consultations, prescriptions, and investigation orders.',
     permission: 'clinical-care',
+    feature: 'opd',
     section: 'Clinical',
   },
   {
@@ -87,6 +97,7 @@ export const navigationTree: NavNode[] = [
     icon: BedDouble,
     description: 'Inpatient bed/ward management, admissions, nursing charting, and discharge workflows.',
     permission: 'clinical-care',
+    feature: 'ipd',
     section: 'Clinical',
   },
   {
@@ -96,6 +107,7 @@ export const navigationTree: NavNode[] = [
     icon: Scissors,
     description: 'OT scheduling, consent management, surgical team assignment, and operative notes.',
     permission: 'clinical-care',
+    feature: 'ot',
     section: 'Clinical',
   },
   {
@@ -105,6 +117,7 @@ export const navigationTree: NavNode[] = [
     icon: Pill,
     description: 'Prescription fulfillment queue, drug master, and stock/batch/expiry tracking.',
     permission: 'pharmacy',
+    feature: 'pharmacy',
     section: 'Clinical',
   },
   {
@@ -114,6 +127,7 @@ export const navigationTree: NavNode[] = [
     icon: FlaskConical,
     description: 'Test order queue, sample tracking, and result entry with critical value flagging.',
     permission: 'diagnostics',
+    feature: 'central-laboratory',
     section: 'Clinical',
   },
   {
@@ -123,6 +137,7 @@ export const navigationTree: NavNode[] = [
     icon: ScanLine,
     description: 'Modality worklist, study review, and radiology report entry and release.',
     permission: 'diagnostics',
+    feature: 'radiology',
     section: 'Clinical',
   },
   {
@@ -132,6 +147,7 @@ export const navigationTree: NavNode[] = [
     icon: Droplet,
     description: 'Donor management, blood unit inventory, and issue/crossmatch tracking.',
     permission: 'diagnostics',
+    feature: 'blood-bank',
     section: 'Clinical',
   },
   {
@@ -141,6 +157,7 @@ export const navigationTree: NavNode[] = [
     icon: Truck,
     description: 'Dispatch requests, trip logs, and ambulance billing.',
     permission: 'support-services',
+    feature: 'ambulance',
     section: 'Clinical',
   },
   {
@@ -150,6 +167,7 @@ export const navigationTree: NavNode[] = [
     icon: Wallet,
     description: 'Unified invoice ledger, payments & refunds, insurance/TPA claims, and financial reports.',
     permission: 'finance-billing',
+    feature: 'finance',
     section: 'Administrative',
   },
   {
@@ -159,6 +177,7 @@ export const navigationTree: NavNode[] = [
     icon: FileBadge,
     description: 'Certificate issuance and medical records department (MRD) retrieval.',
     permission: 'records-compliance',
+    feature: 'records-and-certificates',
     section: 'Administrative',
   },
   {
@@ -168,6 +187,7 @@ export const navigationTree: NavNode[] = [
     icon: Files,
     description: 'Centralized document repository — upload, preview, download, and archive files for any HMS record.',
     permission: 'records-compliance',
+    feature: 'documents',
     section: 'Administrative',
   },
   {
@@ -177,6 +197,7 @@ export const navigationTree: NavNode[] = [
     icon: UsersRound,
     description: 'Staff directory, roster/shift assignment, leave management, and credentialing.',
     permission: 'workforce-admin',
+    feature: 'hr',
     section: 'Administrative',
   },
   {
@@ -186,6 +207,7 @@ export const navigationTree: NavNode[] = [
     icon: History,
     description: 'System-wide, read-only audit trail of every module\'s write transactions.',
     permission: 'workforce-admin',
+    feature: 'activity-log',
     section: 'Administrative',
   },
   {
@@ -195,6 +217,7 @@ export const navigationTree: NavNode[] = [
     icon: Boxes,
     description: 'Item master, stock ledger, reorder alerts, and vendor purchase orders.',
     permission: 'support-services',
+    feature: 'products',
     section: 'Administrative',
   },
   {
@@ -204,6 +227,7 @@ export const navigationTree: NavNode[] = [
     icon: CalendarDays,
     description: 'Hospital events, health camps, and programme scheduling.',
     permission: 'engagement',
+    feature: 'calendar',
     section: 'Administrative',
   },
   {
@@ -213,6 +237,7 @@ export const navigationTree: NavNode[] = [
     icon: MessageSquare,
     description: 'Notification center covering clinical, operational, administrative, and financial alerts.',
     permission: 'engagement',
+    feature: 'messages-and-notifications',
     section: 'Administrative',
   },
   {
@@ -222,6 +247,7 @@ export const navigationTree: NavNode[] = [
     icon: BarChart3,
     description: 'Operational, clinical, financial, and statutory/regulatory reports.',
     permission: 'reports-analytics',
+    feature: 'reports',
     section: 'Administrative',
   },
   {
@@ -231,6 +257,7 @@ export const navigationTree: NavNode[] = [
     icon: FolderOpen,
     description: 'Digital document repository for scanned and archived patient records.',
     permission: 'records-compliance',
+    feature: 'e-mrd',
     section: 'Administrative',
   },
   {
@@ -240,17 +267,25 @@ export const navigationTree: NavNode[] = [
     icon: Settings,
     description: 'Roles & permissions, master data, and system configuration.',
     permission: 'identity-administration',
+    feature: 'identity',
     section: 'Administrative',
   },
 ];
 
-/** Permission-driven — a leaf shows only when the signed-in user holds that
- * leaf's `${permission}.view` key (leaves with no `permission` are always
- * visible, e.g. Dashboard). Replaces the old hardcoded role-name allowlist:
- * an admin can now grant/revoke sidebar access purely by editing a role's
- * permissions, without a frontend code change. */
-export function filterNavigationForPermissions(hasPermission: (key: string) => boolean): NavNode[] {
-  return navigationTree.filter((node) => !node.permission || hasPermission(`${node.permission}.view`));
+/** Permission- and feature-driven — a leaf shows only when BOTH the signed-in user holds
+ * that leaf's `${permission}.view` key (RBAC) AND, if the leaf names a `feature`, the
+ * tenant has that module enabled at all (Tenant Feature/Module Management). Leaves with no
+ * `permission`/`feature` are always visible, e.g. Dashboard. Replaces the old hardcoded
+ * role-name allowlist: an admin can now grant/revoke sidebar access purely by editing a
+ * role's permissions, without a frontend code change; a Platform Admin controls module
+ * availability independently via the Platform Portal. */
+export function filterNavigationForPermissions(
+  hasPermission: (key: string) => boolean,
+  hasFeature: (key: string) => boolean,
+): NavNode[] {
+  return navigationTree.filter(
+    (node) => (!node.permission || hasPermission(`${node.permission}.view`)) && (!node.feature || hasFeature(node.feature)),
+  );
 }
 
 export function findLeafByPath(path: string): NavLeaf | undefined {

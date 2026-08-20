@@ -12,6 +12,7 @@ namespace HMS.Modules.Products.Endpoints;
 
 /// <summary>Attribute-value (EAV) CRUD, scoped to a parent product.</summary>
 [ApiController]
+[RequireFeature("products")]
 [Route("api/v1/products/{productId:guid}/attribute-values")]
 public class ProductAttributeValuesController : ControllerBase
 {

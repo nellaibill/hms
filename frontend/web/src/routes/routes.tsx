@@ -4,6 +4,7 @@ import { AppLayout } from '../layouts/AppLayout';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequireRole } from '../features/auth/RequireRole';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
+import { RequireFeatureRoute } from '../features/auth/RequireFeatureRoute';
 import { PlatformProtectedRoute } from '../features/platformAuth/PlatformProtectedRoute';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { getAllLeaves } from '../config/navigation';
@@ -176,11 +177,18 @@ const mastersRoutes = [
 // Products (HMS.Modules.Products) — core Product CRUD, reachable from the "Hospital
 // Inventory Management" nav leaf ('support/inventory', wired via specialPages above). Sub-
 // resources (batches, barcodes, images, prices, tax mappings) are a future pass — see
-// ProductDetails.tsx's "coming soon" section. Mirrors userRoutes' shape.
+// ProductDetails.tsx's "coming soon" section. Mirrors userRoutes' shape. Route-gated via
+// RequireFeatureRoute (Tenant Feature/Module Management) since the nav-level feature filter
+// alone doesn't block direct URL access — mirrors hrRoutes'/ipdRoutes' own reasoning below.
 const productRoutes = [
-  { path: 'support/inventory/new', element: withSuspense(<ProductCreatePage />) },
-  { path: 'support/inventory/:id', element: withSuspense(<ProductViewPage />) },
-  { path: 'support/inventory/:id/edit', element: withSuspense(<ProductEditPage />) },
+  {
+    element: <RequireFeatureRoute feature="products" />,
+    children: [
+      { path: 'support/inventory/new', element: withSuspense(<ProductCreatePage />) },
+      { path: 'support/inventory/:id', element: withSuspense(<ProductViewPage />) },
+      { path: 'support/inventory/:id/edit', element: withSuspense(<ProductEditPage />) },
+    ],
+  },
 ];
 
 // Finance & Billing (UI-only, mock data — no backend module yet, mirrors Roles Management).
@@ -205,32 +213,39 @@ const financeRoutes = [
 // Human Resource Management — Duty Roster (HMS.Modules.HR), reachable from the '/admin/hr'
 // nav leaf (wired via specialPages above). Route-gated via RequirePermissionRoute since the
 // nav-level permission filter alone doesn't block direct URL access — mirrors the nav leaf's
-// own 'workforce-admin' permission (config/navigation.ts).
+// own 'workforce-admin' permission (config/navigation.ts). Nested inside RequireFeatureRoute
+// (Tenant Feature/Module Management) so a tenant without the "hr" module can't reach these
+// routes either, even with the right RBAC permission — combines both checks, outer-to-inner.
 const hrRoutes = [
   {
-    element: <RequirePermissionRoute permission="workforce-admin.view" />,
+    element: <RequireFeatureRoute feature="hr" />,
     children: [
-      { path: 'admin/hr/shifts', element: withSuspense(<ShiftsListPage />) },
-      { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
-      { path: 'admin/hr/shifts/:id', element: withSuspense(<ShiftViewPage />) },
-      { path: 'admin/hr/shifts/:id/edit', element: withSuspense(<ShiftEditPage />) },
-      { path: 'admin/hr/staff-availability', element: withSuspense(<StaffAvailabilityListPage />) },
-      { path: 'admin/hr/staff-availability/new', element: withSuspense(<StaffAvailabilityCreatePage />) },
-      { path: 'admin/hr/staff-availability/:id', element: withSuspense(<StaffAvailabilityViewPage />) },
-      { path: 'admin/hr/staff-availability/:id/edit', element: withSuspense(<StaffAvailabilityEditPage />) },
-      { path: 'admin/hr/weekly-rosters', element: withSuspense(<WeeklyRostersListPage />) },
-      { path: 'admin/hr/weekly-rosters/new', element: withSuspense(<WeeklyRosterCreatePage />) },
-      { path: 'admin/hr/weekly-rosters/:id', element: withSuspense(<WeeklyRosterViewPage />) },
-      { path: 'admin/hr/weekly-rosters/:id/edit', element: withSuspense(<WeeklyRosterEditPage />) },
-      { path: 'admin/hr/shift-assignments', element: withSuspense(<ShiftAssignmentsListPage />) },
-      { path: 'admin/hr/shift-assignments/new', element: withSuspense(<ShiftAssignmentCreatePage />) },
-      { path: 'admin/hr/shift-assignments/:id', element: withSuspense(<ShiftAssignmentViewPage />) },
-      { path: 'admin/hr/shift-assignments/:id/edit', element: withSuspense(<ShiftAssignmentEditPage />) },
-      { path: 'admin/hr/shift-swap-requests', element: withSuspense(<ShiftSwapRequestsListPage />) },
-      { path: 'admin/hr/shift-swap-requests/new', element: withSuspense(<ShiftSwapRequestCreatePage />) },
-      { path: 'admin/hr/shift-swap-requests/:id', element: withSuspense(<ShiftSwapRequestViewPage />) },
-      { path: 'admin/hr/shift-swap-requests/:id/edit', element: withSuspense(<ShiftSwapRequestEditPage />) },
-      { path: 'admin/hr/monthly-calendar', element: withSuspense(<MonthlyRosterCalendarPage />) },
+      {
+        element: <RequirePermissionRoute permission="workforce-admin.view" />,
+        children: [
+          { path: 'admin/hr/shifts', element: withSuspense(<ShiftsListPage />) },
+          { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
+          { path: 'admin/hr/shifts/:id', element: withSuspense(<ShiftViewPage />) },
+          { path: 'admin/hr/shifts/:id/edit', element: withSuspense(<ShiftEditPage />) },
+          { path: 'admin/hr/staff-availability', element: withSuspense(<StaffAvailabilityListPage />) },
+          { path: 'admin/hr/staff-availability/new', element: withSuspense(<StaffAvailabilityCreatePage />) },
+          { path: 'admin/hr/staff-availability/:id', element: withSuspense(<StaffAvailabilityViewPage />) },
+          { path: 'admin/hr/staff-availability/:id/edit', element: withSuspense(<StaffAvailabilityEditPage />) },
+          { path: 'admin/hr/weekly-rosters', element: withSuspense(<WeeklyRostersListPage />) },
+          { path: 'admin/hr/weekly-rosters/new', element: withSuspense(<WeeklyRosterCreatePage />) },
+          { path: 'admin/hr/weekly-rosters/:id', element: withSuspense(<WeeklyRosterViewPage />) },
+          { path: 'admin/hr/weekly-rosters/:id/edit', element: withSuspense(<WeeklyRosterEditPage />) },
+          { path: 'admin/hr/shift-assignments', element: withSuspense(<ShiftAssignmentsListPage />) },
+          { path: 'admin/hr/shift-assignments/new', element: withSuspense(<ShiftAssignmentCreatePage />) },
+          { path: 'admin/hr/shift-assignments/:id', element: withSuspense(<ShiftAssignmentViewPage />) },
+          { path: 'admin/hr/shift-assignments/:id/edit', element: withSuspense(<ShiftAssignmentEditPage />) },
+          { path: 'admin/hr/shift-swap-requests', element: withSuspense(<ShiftSwapRequestsListPage />) },
+          { path: 'admin/hr/shift-swap-requests/new', element: withSuspense(<ShiftSwapRequestCreatePage />) },
+          { path: 'admin/hr/shift-swap-requests/:id', element: withSuspense(<ShiftSwapRequestViewPage />) },
+          { path: 'admin/hr/shift-swap-requests/:id/edit', element: withSuspense(<ShiftSwapRequestEditPage />) },
+          { path: 'admin/hr/monthly-calendar', element: withSuspense(<MonthlyRosterCalendarPage />) },
+        ],
+      },
     ],
   },
 ];
@@ -238,21 +253,27 @@ const hrRoutes = [
 // In Patient Department (HMS.Modules.IPD), reachable from the '/clinical/ipd' nav leaf
 // (wired via specialPages above). Route-gated via RequirePermissionRoute since the nav-level
 // permission filter alone doesn't block direct URL access — mirrors hrRoutes' reasoning, using
-// IPD's own nav leaf permission ('clinical-care', config/navigation.ts).
+// IPD's own nav leaf permission ('clinical-care', config/navigation.ts). Nested inside
+// RequireFeatureRoute (Tenant Feature/Module Management) the same way hrRoutes is.
 const ipdRoutes = [
   {
-    element: <RequirePermissionRoute permission="clinical-care.view" />,
+    element: <RequireFeatureRoute feature="ipd" />,
     children: [
-      { path: 'clinical/ipd/wards', element: withSuspense(<WardsListPage />) },
-      { path: 'clinical/ipd/wards/new', element: withSuspense(<WardCreatePage />) },
-      { path: 'clinical/ipd/wards/:id/edit', element: withSuspense(<WardEditPage />) },
-      { path: 'clinical/ipd/beds', element: withSuspense(<BedsListPage />) },
-      { path: 'clinical/ipd/beds/new', element: withSuspense(<BedCreatePage />) },
-      { path: 'clinical/ipd/beds/:id/edit', element: withSuspense(<BedEditPage />) },
-      { path: 'clinical/ipd/bed-occupancy', element: withSuspense(<BedOccupancyPage />) },
-      { path: 'clinical/ipd/admissions', element: withSuspense(<AdmissionsListPage />) },
-      { path: 'clinical/ipd/admissions/new', element: withSuspense(<AdmissionCreatePage />) },
-      { path: 'clinical/ipd/admissions/:id', element: withSuspense(<AdmissionViewPage />) },
+      {
+        element: <RequirePermissionRoute permission="clinical-care.view" />,
+        children: [
+          { path: 'clinical/ipd/wards', element: withSuspense(<WardsListPage />) },
+          { path: 'clinical/ipd/wards/new', element: withSuspense(<WardCreatePage />) },
+          { path: 'clinical/ipd/wards/:id/edit', element: withSuspense(<WardEditPage />) },
+          { path: 'clinical/ipd/beds', element: withSuspense(<BedsListPage />) },
+          { path: 'clinical/ipd/beds/new', element: withSuspense(<BedCreatePage />) },
+          { path: 'clinical/ipd/beds/:id/edit', element: withSuspense(<BedEditPage />) },
+          { path: 'clinical/ipd/bed-occupancy', element: withSuspense(<BedOccupancyPage />) },
+          { path: 'clinical/ipd/admissions', element: withSuspense(<AdmissionsListPage />) },
+          { path: 'clinical/ipd/admissions/new', element: withSuspense(<AdmissionCreatePage />) },
+          { path: 'clinical/ipd/admissions/:id', element: withSuspense(<AdmissionViewPage />) },
+        ],
+      },
     ],
   },
 ];

@@ -12,6 +12,7 @@ namespace HMS.Modules.Products.Endpoints;
 
 /// <summary>Batch/expiry CRUD, scoped to a parent product.</summary>
 [ApiController]
+[RequireFeature("products")]
 [Route("api/v1/products/{productId:guid}/batches")]
 public class ProductBatchesController : ControllerBase
 {

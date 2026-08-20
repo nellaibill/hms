@@ -43,7 +43,8 @@ internal sealed class JwtTokenGenerator : IJwtTokenGenerator
         string roleName,
         string loginType,
         IEnumerable<string> permissionKeys,
-        Guid tenantId)
+        Guid tenantId,
+        IEnumerable<string> featureKeys)
     {
         // Literal claim type names (UserId/Username/RoleId/RoleName/LoginType/TenantId),
         // not the long http://schemas.microsoft.com/... URIs JwtSecurityTokenHandler's
@@ -67,6 +68,13 @@ internal sealed class JwtTokenGenerator : IJwtTokenGenerator
         // HMS.Shared.Infrastructure.PermissionAuthorizationHandler (HMS Security Hardening
         // Phase B) against [RequirePermission("...")] on protected actions.
         claims.AddRange(permissionKeys.Select(key => new Claim("Permission", key)));
+
+        // One "Feature" claim per key — Tenant Feature/Module Management. UI/nav-gating
+        // convenience only: FeatureAuthorizationHandler deliberately does NOT read this
+        // claim for backend enforcement (a claim is a login-time snapshot; it checks live
+        // tenant state instead so a disabled feature takes effect immediately, not after
+        // this token expires — see FeatureAuthorizationHandler's own doc comment).
+        claims.AddRange(featureKeys.Select(key => new Claim("Feature", key)));
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_expiresInMinutes);
         var token = new JwtSecurityToken(

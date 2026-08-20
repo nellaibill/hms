@@ -26,6 +26,7 @@ public class PlatformDbContext : DbContext
     internal DbSet<ProvisioningAlert> ProvisioningAlerts => Set<ProvisioningAlert>();
     internal DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
     internal DbSet<PlatformMfaChallenge> PlatformMfaChallenges => Set<PlatformMfaChallenge>();
+    internal DbSet<TenantFeature> TenantFeatures => Set<TenantFeature>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

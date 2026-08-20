@@ -62,5 +62,9 @@ internal class CreateHospitalRequestValidator : AbstractValidator<CreateHospital
             .WithMessage($"Super Admin password must be at least {PasswordPolicy.MinimumLength} characters.")
             .Matches(PasswordPolicy.ComplexityRegex)
             .WithMessage(PasswordPolicy.ComplexityMessage);
+
+        RuleForEach(x => x.EnabledFeatureKeys)
+            .Must(key => FeatureCatalog.All.Contains(key))
+            .WithMessage("One or more feature keys are not recognized.");
     }
 }

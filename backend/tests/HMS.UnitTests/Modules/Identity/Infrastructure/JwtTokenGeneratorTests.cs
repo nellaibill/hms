@@ -32,7 +32,7 @@ public class JwtTokenGeneratorTests
 
         var tenantId = Guid.NewGuid();
 
-        var (token, _) = sut.GenerateToken(userId, "dr.ada", roleId, "Doctor / Consultant", "doctor", [], tenantId);
+        var (token, _) = sut.GenerateToken(userId, "dr.ada", roleId, "Doctor / Consultant", "doctor", [], tenantId, []);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
         jwt.Claims.Should().Contain(c => c.Type == "UserId" && c.Value == userId.ToString());
@@ -50,7 +50,7 @@ public class JwtTokenGeneratorTests
 
         var (token, _) = sut.GenerateToken(
             Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor",
-            ["patient-management.view", "patient-management.create"], Guid.NewGuid());
+            ["patient-management.view", "patient-management.create"], Guid.NewGuid(), []);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
         jwt.Claims.Should().Contain(c => c.Type == "Permission" && c.Value == "patient-management.view");
@@ -59,11 +59,26 @@ public class JwtTokenGeneratorTests
     }
 
     [Fact]
+    public void GenerateToken_IncludesOneFeatureClaimPerKey()
+    {
+        var sut = CreateSut();
+
+        var (token, _) = sut.GenerateToken(
+            Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor",
+            [], Guid.NewGuid(), ["patients", "ipd"]);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        jwt.Claims.Should().Contain(c => c.Type == "Feature" && c.Value == "patients");
+        jwt.Claims.Should().Contain(c => c.Type == "Feature" && c.Value == "ipd");
+        jwt.Claims.Count(c => c.Type == "Feature").Should().Be(2);
+    }
+
+    [Fact]
     public void GenerateToken_SetsIssuerAndAudienceFromConfiguration()
     {
         var sut = CreateSut();
 
-        var (token, _) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid());
+        var (token, _) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
         jwt.Issuer.Should().Be("HMS");
@@ -75,7 +90,7 @@ public class JwtTokenGeneratorTests
     {
         var sut = CreateSut(expiresInMinutes: 30);
 
-        var (_, expiresInSeconds) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid());
+        var (_, expiresInSeconds) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
 
         expiresInSeconds.Should().Be(30 * 60);
     }
@@ -85,7 +100,7 @@ public class JwtTokenGeneratorTests
     {
         var sut = CreateSut(expiresInMinutes: 60);
 
-        var (token, _) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid());
+        var (token, _) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
         jwt.ValidTo.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(60), TimeSpan.FromMinutes(1));

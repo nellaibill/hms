@@ -27,10 +27,18 @@ public interface ITenantContext
     /// permissions for disabled modules out of the issued JWT.</summary>
     IReadOnlyList<string>? EnabledModules { get; }
 
+    /// <summary>The schema-level modules (FeatureCatalog keys) this tenant actually has —
+    /// Tenant Feature/Module Management, distinct from <see cref="EnabledModules"/> (RBAC).
+    /// Re-resolved fresh from platform.tenant_features on every request (via
+    /// ITenantDirectory, same as EnabledModules), never cached in a JWT claim — this is what
+    /// lets FeatureAuthorizationHandler enforce a feature toggle immediately, with no
+    /// re-login wait. Null when unset.</summary>
+    IReadOnlyList<string>? EnabledFeatures { get; }
+
     /// <summary>Populates the context. Intended to be called exactly once per request/scope
     /// — by design there is no way to change an already-resolved tenant mid-request, which
     /// is what keeps tenant selection out of reach of anything a client sends.</summary>
-    void SetTenant(Guid tenantId, string connectionString, IReadOnlyList<string>? enabledModules = null);
+    void SetTenant(Guid tenantId, string connectionString, IReadOnlyList<string>? enabledModules = null, IReadOnlyList<string>? enabledFeatures = null);
 }
 
 public sealed class TenantContext : ITenantContext
@@ -41,12 +49,15 @@ public sealed class TenantContext : ITenantContext
 
     public IReadOnlyList<string>? EnabledModules { get; private set; }
 
+    public IReadOnlyList<string>? EnabledFeatures { get; private set; }
+
     public bool IsResolved => TenantId is not null;
 
-    public void SetTenant(Guid tenantId, string connectionString, IReadOnlyList<string>? enabledModules = null)
+    public void SetTenant(Guid tenantId, string connectionString, IReadOnlyList<string>? enabledModules = null, IReadOnlyList<string>? enabledFeatures = null)
     {
         TenantId = tenantId;
         ConnectionString = connectionString;
         EnabledModules = enabledModules;
+        EnabledFeatures = enabledFeatures;
     }
 }

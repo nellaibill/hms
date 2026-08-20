@@ -18,6 +18,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// (staff-availability, not -availabilities) per spec.
 /// </summary>
 [ApiController]
+[RequireFeature("hr")]
 [Route("api/v1/staff-availability")]
 public class StaffAvailabilityController : ControllerBase
 {

@@ -12,6 +12,7 @@ namespace HMS.Modules.Products.Endpoints;
 
 /// <summary>Price CRUD, scoped to a parent product.</summary>
 [ApiController]
+[RequireFeature("products")]
 [Route("api/v1/products/{productId:guid}/prices")]
 public class ProductPricesController : ControllerBase
 {

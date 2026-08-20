@@ -13,6 +13,7 @@ namespace HMS.UnitTests.Modules.Platform.Application;
 public class HospitalRegistrationServiceTests
 {
     private readonly ITenantRepository _tenantRepository = Substitute.For<ITenantRepository>();
+    private readonly ITenantFeatureRepository _featureRepository = Substitute.For<ITenantFeatureRepository>();
     private readonly ITenantProvisioner _tenantProvisioner = Substitute.For<ITenantProvisioner>();
     private readonly IHospitalRegistrationIdempotencyStore _idempotencyStore = Substitute.For<IHospitalRegistrationIdempotencyStore>();
     private readonly ILogger<HospitalRegistrationService> _logger = Substitute.For<ILogger<HospitalRegistrationService>>();
@@ -22,7 +23,7 @@ public class HospitalRegistrationServiceTests
 
     public HospitalRegistrationServiceTests()
     {
-        _sut = new HospitalRegistrationService(_tenantRepository, _tenantProvisioner, _idempotencyStore, _logger);
+        _sut = new HospitalRegistrationService(_tenantRepository, _featureRepository, _tenantProvisioner, _idempotencyStore, _logger);
 
         _tenantProvisioner.ProvisionAsync(Arg.Any<TenantProvisionRequest>(), Arg.Any<CancellationToken>())
             .Returns(Result<TenantProvisionResult>.Success(new TenantProvisionResult("hms_tenant_apollo")));
