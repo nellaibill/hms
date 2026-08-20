@@ -86,6 +86,7 @@ internal class DispenseService : IDispenseService
         }
 
         PharmacyStockBalance? balance = null;
+        PharmacyStockTransaction? transaction = null;
 
         for (var attempt = 1; attempt <= MaxDispenseAttempts; attempt++)
         {
@@ -101,6 +102,21 @@ internal class DispenseService : IDispenseService
 
             balance!.Dispense(request.Quantity, actorId);
 
+            // Added alongside the balance mutation and saved together below so the decrement
+            // and its ledger record commit as one atomic transaction — never a decremented
+            // balance with no corresponding history row (or vice versa).
+            transaction = PharmacyStockTransaction.CreateDispense(
+                request.ProductId,
+                request.ProductBatchId,
+                request.Quantity,
+                balance.QuantityOnHand,
+                request.PatientId,
+                request.AdmissionId,
+                request.Remarks,
+                actorId);
+
+            await _transactionRepository.AddAsync(transaction, cancellationToken);
+
             try
             {
                 await _balanceRepository.SaveChangesAsync(cancellationToken);
@@ -108,24 +124,13 @@ internal class DispenseService : IDispenseService
             }
             catch (DbUpdateConcurrencyException) when (attempt < MaxDispenseAttempts)
             {
-                // A concurrent dispense against the same batch committed first. Loop again:
-                // the next GetByProductAndBatchAsync re-fetches the now-current balance and
-                // the quantity check above re-validates against it before we try again.
+                // A concurrent dispense against the same batch committed first. Detach the
+                // candidate transaction row so it isn't re-inserted on the next attempt, then
+                // loop again: the next GetByProductAndBatchAsync re-fetches the now-current
+                // balance and the quantity check above re-validates against it.
+                _transactionRepository.Detach(transaction);
             }
         }
-
-        var transaction = PharmacyStockTransaction.CreateDispense(
-            request.ProductId,
-            request.ProductBatchId,
-            request.Quantity,
-            balance!.QuantityOnHand,
-            request.PatientId,
-            request.AdmissionId,
-            request.Remarks,
-            actorId);
-
-        await _transactionRepository.AddAsync(transaction, cancellationToken);
-        await _balanceRepository.SaveChangesAsync(cancellationToken);
 
         var patient = patientResult.Value!;
         return Result<DispenseResponse>.Success(

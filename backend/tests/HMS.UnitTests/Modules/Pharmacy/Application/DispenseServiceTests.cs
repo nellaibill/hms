@@ -67,11 +67,10 @@ public class DispenseServiceTests
         result.Value.BalanceAfter.Should().Be(6m);
 
         await _transactionRepository.Received(1).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
-        // Two SaveChangesAsync calls by design: one commits the balance decrement (inside the
-        // concurrency retry loop), one commits the ledger insert afterward — kept separate so
-        // a retry after a concurrency conflict never re-adds a second ledger row for the same
-        // dispense (see DispenseService.CreateAsync's own comments).
-        await _balanceRepository.Received(2).SaveChangesAsync(Arg.Any<CancellationToken>());
+        // A single SaveChangesAsync commits the balance decrement and the ledger insert
+        // together, atomically — never a decremented balance with no matching history row.
+        await _balanceRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        _transactionRepository.DidNotReceive().Detach(Arg.Any<PharmacyStockTransaction>());
     }
 
     [Fact]
@@ -191,14 +190,18 @@ public class DispenseServiceTests
         result.Value!.BalanceAfter.Should().Be(1m);
 
         await _balanceRepository.Received(2).GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>());
-        // 3 SaveChangesAsync calls: the failed attempt 1, the successful attempt 2 (both
-        // committing just the balance), then the separate final commit for the ledger insert.
-        await _balanceRepository.Received(3).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _transactionRepository.Received(1).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        // 2 SaveChangesAsync calls: the failed attempt 1 (balance decrement + candidate ledger
+        // row together, rolled back), the successful attempt 2 (fresh balance + a fresh ledger
+        // row, committed together).
+        await _balanceRepository.Received(2).SaveChangesAsync(Arg.Any<CancellationToken>());
+        // One AddAsync per attempt: attempt 1's candidate row is detached after the conflict,
+        // attempt 2 adds a fresh one that actually persists.
+        await _transactionRepository.Received(2).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        _transactionRepository.Received(1).Detach(Arg.Any<PharmacyStockTransaction>());
     }
 
     [Fact]
-    public async Task CreateAsync_WhenRetryFindsInsufficientRefreshedStock_ReturnsInsufficientStockWithoutASecondSave()
+    public async Task CreateAsync_WhenRetryFindsInsufficientRefreshedStock_ReturnsInsufficientStockAndDetachesTheAbandonedTransaction()
     {
         var staleBalance = PharmacyStockBalance.Create(_productId, _productBatchId, null);
         staleBalance.Receive(10m, null);
@@ -227,6 +230,10 @@ public class DispenseServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PharmacyErrorCodes.InsufficientStock);
-        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        // Attempt 1 added a candidate row before its SaveChangesAsync hit the concurrency
+        // conflict; it must be detached so nothing lingers half-tracked once attempt 2 fails
+        // the (now-refreshed) quantity check and returns without adding a replacement.
+        await _transactionRepository.Received(1).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        _transactionRepository.Received(1).Detach(Arg.Any<PharmacyStockTransaction>());
     }
 }

@@ -15,6 +15,16 @@ internal interface IPharmacyStockTransactionRepository
 {
     Task AddAsync(PharmacyStockTransaction transaction, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Stops tracking a transaction previously passed to AddAsync without persisting it.
+    /// DispenseService's concurrency retry loop needs this: it adds a candidate transaction,
+    /// then attempts one SaveChangesAsync alongside the balance decrement so both commit
+    /// atomically; if that throws DbUpdateConcurrencyException, the candidate must be detached
+    /// before the next attempt builds and adds a fresh one — otherwise the abandoned instance
+    /// would still be tracked as Added and get inserted twice.
+    /// </summary>
+    void Detach(PharmacyStockTransaction transaction);
+
     Task<PharmacyStockTransaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>

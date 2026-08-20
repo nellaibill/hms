@@ -17,6 +17,9 @@ internal class PharmacyStockTransactionRepository : IPharmacyStockTransactionRep
     public async Task AddAsync(PharmacyStockTransaction transaction, CancellationToken cancellationToken)
         => await _dbContext.StockTransactions.AddAsync(transaction, cancellationToken);
 
+    public void Detach(PharmacyStockTransaction transaction)
+        => _dbContext.Entry(transaction).State = EntityState.Detached;
+
     public Task<PharmacyStockTransaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.StockTransactions.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
