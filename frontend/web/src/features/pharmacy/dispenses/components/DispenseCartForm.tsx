@@ -1,6 +1,6 @@
 import { ApiError, createDispenseCartSchema, type DispenseCartFormValues, type Patient } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, ShoppingCart } from 'lucide-react';
+import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ProductSelect } from '@/components/ProductSelect';
 import { ProductBatchSelect } from '@/components/ProductBatchSelect';
 import { useProductsQuery } from '@/features/pharmacy/product-lookup';
+import { QuickPickPanel } from './QuickPickPanel';
 
 interface DispenseCartFormProps {
   patient: Patient;
@@ -51,7 +52,7 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
     defaultValues: { patientId: patient.id, admissionId: '', lines: [] },
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
+  const { fields, append, remove, update } = useFieldArray({ control, name: 'lines' });
 
   const [staging, setStaging] = useState<StagingLine>(emptyStagingLine);
   const [stagingError, setStagingError] = useState<string | null>(null);
@@ -150,6 +151,12 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-4">
+          <QuickPickPanel
+            products={products}
+            selectedProductId={staging.productId}
+            onSelectProduct={(productId) => setStaging((s) => ({ ...s, productId, productBatchId: '' }))}
+          />
+
           <Card>
             <CardHeader className="flex-row items-center gap-3 space-y-0 p-4">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -242,27 +249,17 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
             {fields.length === 0 ? (
               <p className="py-2 text-center text-sm text-muted-foreground">No items added yet.</p>
             ) : (
-              <div className="flex flex-col gap-2.5">
-                {fields.map((field, index) => {
-                  const product = products.find((p) => p.id === field.productId);
-                  return (
-                    <div key={field.id} className="flex items-start justify-between gap-2 text-sm">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-foreground">
-                          {product?.productName ?? 'Unknown product'} × {field.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          className="text-left text-xs text-muted-foreground hover:text-destructive"
-                          onClick={() => remove(index)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                      <span className="shrink-0 font-medium text-foreground">₹{lineTotal(field).toFixed(2)}</span>
-                    </div>
-                  );
-                })}
+              <div className="flex flex-col gap-3">
+                {fields.map((field, index) => (
+                  <CartLineRow
+                    key={field.id}
+                    productName={products.find((p) => p.id === field.productId)?.productName ?? 'Unknown product'}
+                    quantity={field.quantity}
+                    lineTotal={lineTotal(field)}
+                    onQuantityChange={(quantity) => update(index, { ...field, quantity })}
+                    onRemove={() => remove(index)}
+                  />
+                ))}
               </div>
             )}
 
@@ -286,5 +283,78 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
         </Card>
       </div>
     </form>
+  );
+}
+
+interface CartLineRowProps {
+  productName: string;
+  quantity: number;
+  lineTotal: number;
+  onQuantityChange: (quantity: number) => void;
+  onRemove: () => void;
+}
+
+/**
+ * Quantity is edited locally (its own text buffer) rather than bound straight to the form
+ * field, so a keystroke that momentarily isn't a valid positive number (e.g. clearing the
+ * field to retype) doesn't get instantly overwritten by the last-committed form value on
+ * every render — commits happen on blur/Enter, and the +/- buttons commit immediately since
+ * they always compute from the last-committed quantity.
+ */
+function CartLineRow({ productName, quantity, lineTotal, onQuantityChange, onRemove }: CartLineRowProps) {
+  const [text, setText] = useState(String(quantity));
+
+  useEffect(() => {
+    setText(String(quantity));
+  }, [quantity]);
+
+  function commit() {
+    const parsed = Number(text);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      onQuantityChange(parsed);
+    } else {
+      setText(String(quantity));
+    }
+  }
+
+  return (
+    <div className="flex items-start justify-between gap-2 text-sm">
+      <div className="flex flex-1 flex-col gap-1">
+        <span className="font-medium text-foreground">{productName}</span>
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-6 w-6"
+            disabled={quantity <= 1}
+            onClick={() => onQuantityChange(quantity - 1)}
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+              }
+            }}
+            className="h-6 w-12 rounded border border-input bg-background text-center text-xs text-foreground"
+          />
+          <Button type="button" variant="outline" size="icon" className="h-6 w-6" onClick={() => onQuantityChange(quantity + 1)}>
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+        <button type="button" className="w-fit text-left text-xs text-muted-foreground hover:text-destructive" onClick={onRemove}>
+          Remove
+        </button>
+      </div>
+      <span className="shrink-0 font-medium text-foreground">₹{lineTotal.toFixed(2)}</span>
+    </div>
   );
 }
