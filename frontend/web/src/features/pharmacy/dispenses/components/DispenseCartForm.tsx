@@ -1,68 +1,71 @@
-import { ApiError, createDispenseCartSchema, type DispenseCartFormValues } from '@hms/shared';
+import { ApiError, createDispenseCartSchema, type DispenseCartFormValues, type Patient } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, X } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
-import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { Plus, ShoppingCart } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { ProductSelect } from '@/components/ProductSelect';
 import { ProductBatchSelect } from '@/components/ProductBatchSelect';
 import { useProductsQuery } from '@/features/pharmacy/product-lookup';
 
 interface DispenseCartFormProps {
-  patientId: string;
+  patient: Patient;
+  onChangePatient: () => void;
   onSubmit: (values: DispenseCartFormValues) => void;
   isSubmitting: boolean;
   apiError: ApiError | null;
 }
 
-const emptyLine = { productId: '', productBatchId: '', quantity: 0, remarks: '' };
+interface StagingLine {
+  productId: string;
+  productBatchId: string;
+  quantity: number;
+  remarks: string;
+}
+
+const emptyStagingLine: StagingLine = { productId: '', productBatchId: '', quantity: 1, remarks: '' };
 
 /**
- * Cart-based dispense: several product/batch/quantity lines checked out together for one
- * patient in a single call (DispenseCreatePage's PatientPicker already handles picking the
- * patient once, at the page level). Mirrors ServiceBillingCard's useFieldArray add-row/
- * remove-row/running-total pattern — the closest existing multi-line-item UI in this codebase.
+ * POS-style checkout: a single "Add Item" builder feeds a running cart shown in a sticky
+ * summary panel (mirrors BillingSummaryCard's grid-cols-[1fr_320px] + lg:sticky pattern) —
+ * replaces the old one-row-per-line form, which wasted most of a wide screen on a single
+ * narrow column and only showed the running total after scrolling past every line.
+ *
+ * Cart lines are appended directly via useFieldArray.append() rather than bound to per-line
+ * <input>s — once added, a line is a fixed cart entry (read-only + Remove), not something the
+ * operator edits in place, so there's nothing for register() to bind to.
  */
-export function DispenseCartForm({ patientId, onSubmit, isSubmitting, apiError }: DispenseCartFormProps) {
+export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitting, apiError }: DispenseCartFormProps) {
   const {
     control,
     register,
     handleSubmit,
     setError,
-    setValue,
     formState: { errors },
   } = useForm<DispenseCartFormValues>({
     resolver: zodResolver(createDispenseCartSchema),
-    defaultValues: {
-      patientId,
-      admissionId: '',
-      lines: [{ ...emptyLine }],
-    },
+    defaultValues: { patientId: patient.id, admissionId: '', lines: [] },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
-  const lines = useWatch({ control, name: 'lines' });
+
+  const [staging, setStaging] = useState<StagingLine>(emptyStagingLine);
+  const [stagingError, setStagingError] = useState<string | null>(null);
 
   const { data: productsData } = useProductsQuery({ pageSize: 100, isActive: true, sort: 'productName' });
   const products = productsData?.items ?? [];
 
-  const total = (lines ?? []).reduce((sum, line) => {
+  function lineTotal(line: { productId: string; quantity: number }) {
     const product = products.find((p) => p.id === line.productId);
-    return sum + (product ? (Number(line.quantity) || 0) * product.sellingPrice : 0);
-  }, 0);
+    return product ? (Number(line.quantity) || 0) * product.sellingPrice : 0;
+  }
 
-  // Client-side duplicate hint only — the backend validator is authoritative
-  // (docs/ApiStandards.md §7) and rejects the same product/batch appearing twice, but showing
-  // it live as the operator edits (rather than only after a failed submit) is better UX than
-  // routing it through react-hook-form's less-predictable array-level error path.
-  const hasDuplicateLine = useMemo(() => {
-    const pairs = (lines ?? [])
-      .map((l) => `${l.productId}|${l.productBatchId}`)
-      .filter((pair) => pair !== '|');
-    return new Set(pairs).size !== pairs.length;
-  }, [lines]);
+  const total = fields.reduce((sum, field) => sum + lineTotal(field), 0);
+  const totalQuantity = fields.reduce((sum, field) => sum + (Number(field.quantity) || 0), 0);
 
   // Server-side validation failures (docs/ApiStandards.md §5) that target top-level fields map
   // onto the same field-level display client validation uses — line-level failures (e.g. "Line
@@ -84,8 +87,7 @@ export function DispenseCartForm({ patientId, onSubmit, isSubmitting, apiError }
   const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
 
   // See DispenseForm's identical guard for the full explanation: isSubmitting alone can't
-  // prevent a fast double-click from firing two checkouts (verified live for the single-item
-  // form; the risk is the same here, just multiplied across every line in the cart).
+  // prevent a fast double-click from firing two checkouts.
   const submitLockRef = useRef(false);
 
   useEffect(() => {
@@ -102,120 +104,186 @@ export function DispenseCartForm({ patientId, onSubmit, isSubmitting, apiError }
     onSubmit(values);
   }
 
-  function handleProductChange(index: number, newProductId: string, onChange: (value: string) => void) {
-    onChange(newProductId);
-    // A batch picked under the previous product is meaningless once the product changes.
-    setValue(`lines.${index}.productBatchId`, '');
+  function handleAddToCart() {
+    if (!staging.productId) {
+      setStagingError('Choose a product.');
+      return;
+    }
+    if (!staging.productBatchId) {
+      setStagingError('Choose a batch.');
+      return;
+    }
+    if (!staging.quantity || staging.quantity <= 0) {
+      setStagingError('Quantity must be greater than 0.');
+      return;
+    }
+    const isDuplicate = fields.some((f) => f.productId === staging.productId && f.productBatchId === staging.productBatchId);
+    if (isDuplicate) {
+      setStagingError('That product/batch is already in the cart — remove it there to change the quantity.');
+      return;
+    }
+
+    append({ ...staging });
+    setStaging(emptyStagingLine);
+    setStagingError(null);
+  }
+
+  function handleStagingKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddToCart();
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit(guardedSubmit)} noValidate className="flex max-w-3xl flex-col gap-4">
+    <form onSubmit={handleSubmit(guardedSubmit)} noValidate className="flex flex-col gap-4">
       {generalError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {generalError}
         </p>
       )}
-      {hasDuplicateLine && (
+      {errors.lines?.message && fields.length === 0 && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          The same product/batch appears more than once in the cart — remove one.
+          {errors.lines.message}
         </p>
       )}
 
-      <div className="flex flex-col gap-4">
-        {fields.map((field, index) => {
-          const rowLine = lines?.[index];
-          const product = products.find((p) => p.id === rowLine?.productId);
-          const lineTotal = product ? (Number(rowLine?.quantity) || 0) * product.sellingPrice : 0;
-          const rowErrors = errors.lines?.[index];
-
-          return (
-            <div
-              key={field.id}
-              className={fields.length > 1 ? 'flex flex-col gap-3 border-b border-dashed border-border pb-4' : 'flex flex-col gap-3'}
-            >
-              <div className="flex flex-wrap items-start gap-3">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader className="flex-row items-center gap-3 space-y-0 p-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Plus className="h-4.5 w-4.5" />
+              </span>
+              <CardTitle className="text-base">Add Item</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 p-4 pt-0">
+              <div className="flex flex-wrap items-end gap-3">
                 <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
-                  <Label htmlFor={`lines.${index}.productId`}>Product</Label>
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.productId`}
-                    render={({ field: f }) => (
-                      <ProductSelect
-                        id={`lines.${index}.productId`}
-                        value={f.value}
-                        onValueChange={(value) => handleProductChange(index, value, f.onChange)}
-                      />
-                    )}
+                  <Label htmlFor="staging-product">Product</Label>
+                  <ProductSelect
+                    id="staging-product"
+                    value={staging.productId}
+                    onValueChange={(value) => setStaging((s) => ({ ...s, productId: value, productBatchId: '' }))}
                   />
-                  {rowErrors?.productId && <p className="text-sm text-destructive">{rowErrors.productId.message}</p>}
                 </div>
 
                 <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
-                  <Label htmlFor={`lines.${index}.productBatchId`}>Batch</Label>
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.productBatchId`}
-                    render={({ field: f }) => (
-                      <ProductBatchSelect id={`lines.${index}.productBatchId`} value={f.value} onValueChange={f.onChange} productId={rowLine?.productId} />
-                    )}
+                  <Label htmlFor="staging-batch">Batch</Label>
+                  <ProductBatchSelect
+                    id="staging-batch"
+                    value={staging.productBatchId}
+                    onValueChange={(value) => setStaging((s) => ({ ...s, productBatchId: value }))}
+                    productId={staging.productId}
                   />
-                  {rowErrors?.productBatchId && <p className="text-sm text-destructive">{rowErrors.productBatchId.message}</p>}
                 </div>
 
-                <div className="flex w-28 flex-col gap-1.5">
-                  <Label htmlFor={`lines.${index}.quantity`}>Quantity</Label>
-                  <Input id={`lines.${index}.quantity`} type="number" min="0" step="any" {...register(`lines.${index}.quantity`)} />
-                  {rowErrors?.quantity && <p className="text-sm text-destructive">{rowErrors.quantity.message}</p>}
+                <div className="flex w-24 flex-col gap-1.5">
+                  <Label htmlFor="staging-quantity">Qty</Label>
+                  <Input
+                    id="staging-quantity"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={staging.quantity}
+                    onChange={(e) => setStaging((s) => ({ ...s, quantity: Number(e.target.value) }))}
+                    onKeyDown={handleStagingKeyDown}
+                  />
                 </div>
 
-                {fields.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Remove this item"
-                    className="mt-6 shrink-0"
-                    onClick={() => remove(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                <Button type="button" className="gap-1.5" onClick={handleAddToCart}>
+                  <Plus className="h-4 w-4" />
+                  Add
+                </Button>
               </div>
 
-              <div className="flex flex-wrap items-end gap-4">
-                <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
-                  <Label htmlFor={`lines.${index}.remarks`}>Remarks (optional)</Label>
-                  <Input id={`lines.${index}.remarks`} placeholder="Optional notes about this item…" {...register(`lines.${index}.remarks`)} />
-                </div>
-                <p className="pb-2 text-sm text-muted-foreground">{product ? `₹${lineTotal.toFixed(2)}` : '—'}</p>
+              <Input
+                placeholder="Remarks (optional)"
+                value={staging.remarks}
+                onChange={(e) => setStaging((s) => ({ ...s, remarks: e.target.value }))}
+                onKeyDown={handleStagingKeyDown}
+              />
+
+              {stagingError && <p className="text-sm text-destructive">{stagingError}</p>}
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col gap-1.5 sm:w-64">
+            <Label htmlFor="admissionId">Admission reference (optional)</Label>
+            <Input id="admissionId" placeholder="Admission id, if this checkout is for an inpatient" {...register('admissionId')} />
+            {errors.admissionId && <p className="text-sm text-destructive">{errors.admissionId.message}</p>}
+          </div>
+        </div>
+
+        <Card className="lg:sticky lg:top-20">
+          <CardHeader className="flex-row items-center gap-3 space-y-0 p-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+              <ShoppingCart className="h-4.5 w-4.5" />
+            </span>
+            <CardTitle className="text-base">Cart</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 p-4 pt-0">
+            <div className="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-foreground">
+                  {patient.title} {patient.firstName} {patient.lastName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {patient.uhid} · {patient.primaryPhone}
+                </span>
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={onChangePatient}>
+                Change
+              </Button>
+            </div>
+
+            <Separator />
+
+            {fields.length === 0 ? (
+              <p className="py-2 text-center text-sm text-muted-foreground">No items added yet.</p>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {fields.map((field, index) => {
+                  const product = products.find((p) => p.id === field.productId);
+                  return (
+                    <div key={field.id} className="flex items-start justify-between gap-2 text-sm">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">
+                          {product?.productName ?? 'Unknown product'} × {field.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-left text-xs text-muted-foreground hover:text-destructive"
+                          onClick={() => remove(index)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <span className="shrink-0 font-medium text-foreground">₹{lineTotal(field).toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <Separator />
+
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total items</span>
+                <span className="font-medium text-foreground">{fields.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total quantity</span>
+                <span className="font-medium text-foreground">{totalQuantity}</span>
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyLine })}>
-        <Plus className="h-4 w-4" />
-        Add another item
-      </Button>
-
-      <div className="flex flex-col gap-1.5 sm:w-64">
-        <Label htmlFor="admissionId">Admission reference (optional)</Label>
-        <Input id="admissionId" placeholder="Admission id, if this checkout is for an inpatient" {...register('admissionId')} />
-        {errors.admissionId && <p className="text-sm text-destructive">{errors.admissionId.message}</p>}
-      </div>
-
-      <div className="mt-2 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-4 py-3">
-        <span className="text-sm font-medium text-foreground">
-          {fields.length} item{fields.length === 1 ? '' : 's'} · Total
-        </span>
-        <span className="text-lg font-semibold text-foreground">₹{total.toFixed(2)}</span>
-      </div>
-
-      <div className="flex gap-3">
-        <Button type="submit" disabled={isSubmitting || hasDuplicateLine}>
-          {isSubmitting ? 'Checking out…' : 'Checkout'}
-        </Button>
+            <Button type="submit" className="w-full" disabled={isSubmitting || fields.length === 0}>
+              {isSubmitting ? 'Checking out…' : `Checkout · ₹${total.toFixed(2)}`}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </form>
   );
