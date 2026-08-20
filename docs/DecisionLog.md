@@ -58,6 +58,7 @@ Of the five clinical sidebar modules (IPD, OT, Pharmacy, Central Laboratory, Rad
 - A future Prescription module, if ever built, would sit in front of Dispense as an optional originating document rather than replacing it — Dispense's contract (Patient + Product + Batch + Quantity) doesn't need to change.
 - The `pharmacy` schema (reserved in `docs/DatabaseArchitecture.md` §2 as "post-MVP") is now provisioned.
 - No `docs/modules/Pharmacy/Pharmacy.md` was written — consistent with the two most recently built full modules (IPD, Products), which also don't have one; `docs/modules/*` is only kept current for Documents/HR/Identity/Patients.
+- **Known limitation, pre-existing, not introduced by this module**: the frontend's product/batch picker calls Products' `GET /api/v1/products/{id}/batches` directly, which is gated `[RequireFeature("products")]`. A tenant with Pharmacy enabled but Products disabled would see that picker fail even though Pharmacy's own endpoints are correctly gated on `pharmacy`. This is really a gap in ADR-026/FeatureCatalog's per-tenant module toggling — nothing today enforces or even declares module *dependencies* (e.g. "Pharmacy requires Products"), so any module built on another module's HTTP surface would have the same issue. Not fixed here since it's a cross-cutting concern beyond this module's scope, not a Pharmacy-specific bug.
 
 ---
 
