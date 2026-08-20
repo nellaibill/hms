@@ -12,3 +12,5 @@ export * from './ipd/wardValidation';
 export * from './ipd/bedValidation';
 export * from './ipd/admissionValidation';
 export * from './platform/hospitalValidation';
+export * from './pharmacy/stockReceiptValidation';
+export * from './pharmacy/dispenseValidation';

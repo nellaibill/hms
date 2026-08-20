@@ -90,6 +90,9 @@ export const API_ROUTES = {
   products: {
     base: '/api/v1/products',
     byId: (id: string) => `/api/v1/products/${id}`,
+    /** Mirrors HMS.Modules.Products.Endpoints.ProductBatchesController. */
+    batches: (productId: string) => `/api/v1/products/${productId}/batches`,
+    batchById: (productId: string, id: string) => `/api/v1/products/${productId}/batches/${id}`,
   },
   /** Mirrors HMS.Modules.HR.Endpoints.ShiftsController. */
   shifts: {
@@ -166,5 +169,21 @@ export const API_ROUTES = {
       byPatientId: (patientId: string) => `/api/v1/billing/invoices/by-patient/${patientId}`,
       recordPayment: (invoiceId: string, itemId: string) => `/api/v1/billing/invoices/${invoiceId}/items/${itemId}/payments`,
     },
+  },
+  /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
+  pharmacy: {
+    stockReceipts: {
+      base: '/api/v1/pharmacy/stock-receipts',
+      byId: (id: string) => `/api/v1/pharmacy/stock-receipts/${id}`,
+    },
+    dispenses: {
+      base: '/api/v1/pharmacy/dispenses',
+      byId: (id: string) => `/api/v1/pharmacy/dispenses/${id}`,
+    },
+    stockBalances: {
+      base: '/api/v1/pharmacy/stock-balances',
+      byProductBatch: (productId: string, productBatchId: string) => `/api/v1/pharmacy/stock-balances/${productId}/${productBatchId}`,
+    },
+    stockLedger: '/api/v1/pharmacy/stock-ledger',
   },
 } as const;

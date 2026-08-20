@@ -1,0 +1,118 @@
+import { ApiError, createStockReceiptSchema, type StockReceiptFormValues } from '@hms/shared';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ProductSelect } from '@/components/ProductSelect';
+import { ProductBatchSelect } from '@/components/ProductBatchSelect';
+
+interface StockReceiptFormProps {
+  onSubmit: (values: StockReceiptFormValues) => void;
+  isSubmitting: boolean;
+  apiError: ApiError | null;
+}
+
+export function StockReceiptForm({ onSubmit, isSubmitting, apiError }: StockReceiptFormProps) {
+  const {
+    control,
+    register,
+    handleSubmit,
+    setError,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<StockReceiptFormValues>({
+    resolver: zodResolver(createStockReceiptSchema),
+    defaultValues: {
+      productId: '',
+      productBatchId: '',
+      quantity: 0,
+      remarks: '',
+    },
+  });
+
+  const productId = watch('productId');
+
+  // Server-side validation failures (docs/ApiStandards.md §5) are mapped onto the same
+  // field-level display client validation uses, per docs/FrontendArchitecture.md §9.
+  useEffect(() => {
+    if (!apiError?.validationErrors) {
+      return;
+    }
+
+    for (const issue of apiError.validationErrors) {
+      const fieldName = (issue.field.charAt(0).toLowerCase() + issue.field.slice(1)) as keyof StockReceiptFormValues;
+      setError(fieldName, { type: 'server', message: issue.message });
+    }
+  }, [apiError, setError]);
+
+  const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
+
+  function handleProductChange(newProductId: string, onChange: (value: string) => void) {
+    onChange(newProductId);
+    // A batch picked under the previous product is meaningless once the product changes.
+    setValue('productBatchId', '');
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex max-w-2xl flex-col gap-4">
+      {generalError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {generalError}
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="productId">Product</Label>
+          <Controller
+            control={control}
+            name="productId"
+            render={({ field }) => (
+              <ProductSelect id="productId" value={field.value} onValueChange={(value) => handleProductChange(value, field.onChange)} />
+            )}
+          />
+          {errors.productId && <p className="text-sm text-destructive">{errors.productId.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="productBatchId">Batch</Label>
+          <Controller
+            control={control}
+            name="productBatchId"
+            render={({ field }) => (
+              <ProductBatchSelect id="productBatchId" value={field.value} onValueChange={field.onChange} productId={productId} />
+            )}
+          />
+          {errors.productBatchId && <p className="text-sm text-destructive">{errors.productBatchId.message}</p>}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="quantity">Quantity received</Label>
+        <Input id="quantity" type="number" min="0" step="any" {...register('quantity')} />
+        {errors.quantity && <p className="text-sm text-destructive">{errors.quantity.message}</p>}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="remarks">Remarks</Label>
+        <textarea
+          id="remarks"
+          rows={3}
+          {...register('remarks')}
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          placeholder="Optional notes about this receipt…"
+        />
+        {errors.remarks && <p className="text-sm text-destructive">{errors.remarks.message}</p>}
+      </div>
+
+      <div className="mt-2 flex gap-3">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving…' : 'Record Receipt'}
+        </Button>
+      </div>
+    </form>
+  );
+}
