@@ -1,3 +1,4 @@
+using HMS.Modules.Billing.Infrastructure;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.Calendar.Infrastructure;
 using HMS.Modules.Documents.Infrastructure;
@@ -17,11 +18,13 @@ namespace HMS.Api.Provisioning;
 /// <summary>
 /// Implements HMS.Modules.Platform's <see cref="ITenantMigrationService"/> seam — see that
 /// interface's own doc comment for why this lives in HMS.Api. Selective per Tenant
-/// Feature/Module Management: each of the 9 real modules only migrates when its
+/// Feature/Module Management: each of the 11 real modules only migrates when its
 /// FeatureCatalog key is present in the resolved (Mandatory-unioned) feature set, so a
-/// tenant that never enabled e.g. "hr" never gets an hr schema (now 10 real modules, since
-/// Pharmacy moved from FeatureCatalog.UiOnly to .SchemaBacked). The exact same module list
-/// and order this always used to apply unconditionally — moved here so a brand-new tenant
+/// tenant that never enabled e.g. "hr" never gets an hr schema (Pharmacy moved from
+/// FeatureCatalog.UiOnly to .SchemaBacked earlier; Billing was added — as Mandatory, always
+/// resolved regardless of any toggle — only after being found entirely missing here during
+/// Pharmacy billing's live regression test, see ADR-028). The exact same module list and
+/// order this always used to apply unconditionally — moved here so a brand-new tenant
 /// (provisioning), an existing tenant's operator-triggered re-migrate, and a feature being
 /// toggled on all go through one code path instead of duplicated migration lists drifting
 /// apart.
@@ -93,6 +96,16 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("pharmacy"))
         {
             await using var db = new PharmacyDbContext(BuildOptions<PharmacyDbContext>(tenantConnectionString, PharmacyDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // Was missing entirely until this was caught by Pharmacy billing's live regression
+        // test (ADR-028) — "billing" was never in FeatureCatalog.SchemaBacked, so no tenant,
+        // new or existing, ever had this schema migrated despite Patient Registration's own
+        // Billing step and the OPD Billing Entry screen depending on it unconditionally.
+        if (resolved.Contains("billing"))
+        {
+            await using var db = new BillingDbContext(BuildOptions<BillingDbContext>(tenantConnectionString, BillingDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
     }
