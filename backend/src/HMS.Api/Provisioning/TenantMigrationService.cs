@@ -6,6 +6,7 @@ using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.IPD.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Modules.Patients.Infrastructure;
+using HMS.Modules.Pharmacy.Infrastructure;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products.Infrastructure;
 using HMS.Shared.Kernel;
@@ -18,7 +19,8 @@ namespace HMS.Api.Provisioning;
 /// interface's own doc comment for why this lives in HMS.Api. Selective per Tenant
 /// Feature/Module Management: each of the 9 real modules only migrates when its
 /// FeatureCatalog key is present in the resolved (Mandatory-unioned) feature set, so a
-/// tenant that never enabled e.g. "hr" never gets an hr schema. The exact same module list
+/// tenant that never enabled e.g. "hr" never gets an hr schema (now 10 real modules, since
+/// Pharmacy moved from FeatureCatalog.UiOnly to .SchemaBacked). The exact same module list
 /// and order this always used to apply unconditionally — moved here so a brand-new tenant
 /// (provisioning), an existing tenant's operator-triggered re-migrate, and a feature being
 /// toggled on all go through one code path instead of duplicated migration lists drifting
@@ -85,6 +87,12 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("ipd"))
         {
             await using var db = new IPDDbContext(BuildOptions<IPDDbContext>(tenantConnectionString, IPDDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        if (resolved.Contains("pharmacy"))
+        {
+            await using var db = new PharmacyDbContext(BuildOptions<PharmacyDbContext>(tenantConnectionString, PharmacyDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
     }

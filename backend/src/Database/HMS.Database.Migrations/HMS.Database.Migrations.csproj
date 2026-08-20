@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\Modules\Calendar\HMS.Modules.Calendar\HMS.Modules.Calendar.csproj" />
     <ProjectReference Include="..\..\Modules\IPD\HMS.Modules.IPD\HMS.Modules.IPD.csproj" />
     <ProjectReference Include="..\..\Modules\Platform\HMS.Modules.Platform\HMS.Modules.Platform.csproj" />
+    <ProjectReference Include="..\..\Modules\Pharmacy\HMS.Modules.Pharmacy\HMS.Modules.Pharmacy.csproj" />
   </ItemGroup>
 
 </Project>

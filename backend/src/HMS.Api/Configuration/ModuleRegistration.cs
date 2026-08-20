@@ -8,6 +8,7 @@ using HMS.Modules.Identity;
 using HMS.Modules.IPD;
 using HMS.Modules.Masters;
 using HMS.Modules.Patients;
+using HMS.Modules.Pharmacy;
 using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products;
@@ -51,6 +52,11 @@ public static class ModuleRegistration
         // seams for cross-module admission reference validation, so it must register
         // after both.
         services.AddIPDModule(configuration);
+
+        // Pharmacy depends on Products' (Product/ProductBatch existence) and Patients'
+        // (PatientId existence) public service seams for stock receipt/dispense reference
+        // validation, so it must register after both — same reasoning as IPD above.
+        services.AddPharmacyModule(configuration);
 
         // Billing depends on Patients' (PatientId existence) and Masters' (Department/
         // Consultant existence) public service seams for invoice-creation validation, so it

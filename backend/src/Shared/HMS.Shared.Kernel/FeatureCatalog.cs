@@ -9,7 +9,7 @@ namespace HMS.Shared.Kernel;
 /// Platform Admin controls hospital-wide module availability — see docs/DecisionLog.md).
 ///
 /// Split into two groups:
-/// - <see cref="SchemaBacked"/>: the 9 real modules with an actual database schema — only
+/// - <see cref="SchemaBacked"/>: the 10 real modules with an actual database schema — only
 ///   these are ever passed to ITenantMigrationService, so enabling/disabling anything outside
 ///   this list never provisions or migrates anything (see that interface's own doc comment).
 /// - <see cref="UiOnly"/>: modules with a frontend page today but no backend module/schema yet
@@ -31,6 +31,7 @@ public static class FeatureCatalog
         "calendar",
         "products",
         "ipd",
+        "pharmacy",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate
@@ -41,7 +42,6 @@ public static class FeatureCatalog
     [
         "opd",
         "ot",
-        "pharmacy",
         "central-laboratory",
         "radiology",
         "blood-bank",
