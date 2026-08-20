@@ -22,6 +22,7 @@ export class PatientsApi {
         page: query.page,
         pageSize: query.pageSize,
         sort: query.sort,
+        search: query.search,
         name: query.name,
         age: query.age,
         uhid: query.uhid,

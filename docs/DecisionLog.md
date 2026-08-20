@@ -37,6 +37,54 @@ _To be documented._
 
 ## Decisions
 
+### ADR-028: Pharmacy dispense billing is best-effort, generated server-side, not atomic with the dispense
+**Date:** 2026-08-20
+**Status:** Accepted
+
+**Context**
+ADR-027 explicitly deferred billing integration for Pharmacy. During a full regression pass (patient registration → dispense → billing), the user asked to build it now rather than continue treating it as out of scope. Billing (`HMS.Modules.Billing`) turned out to already be a full CRUD module with a public `IInvoiceService.CreateAsync`, not merely something nested inside patient registration — so this was a real but contained addition, not a prerequisite rebuild of Billing itself.
+
+**Decision**
+1. **`BillingType` gains a `Pharmacy` value.** Stored via the existing `HasConversion<string>()` mapping, so this is a purely additive change — no migration needed on Billing's own schema.
+2. **Billing is best-effort, not part of the dispense's atomic commit.** `DispenseService.CreateAsync` calls `IInvoiceService.CreateAsync` only *after* the stock decrement + ledger row have already committed. Medicine has physically left the pharmacy and stock is already correctly decremented by that point — that fact must never be rolled back because a separate module's write failed or Billing was unreachable. A `Result` failure or a genuine exception from the billing call is caught and surfaced as `BillingFailed`/`BillingError` on the response; the dispense itself always still succeeds. Staff can post the charge manually via the existing OPD Billing Entry screen if automatic billing failed. This mirrors the project's established preference for doing the core piece fully and handling the adjacent failure mode explicitly rather than either skipping it or over-building a cross-schema distributed transaction this codebase has no precedent for anywhere.
+3. **One invoice per dispense, one line item, `Quantity` fixed at 1.** `CreateInvoiceLineItemRequest.Quantity` is `int` — every other billing category bills whole units — but a dispense's real quantity is `decimal` (e.g. 150.5ml of a syrup). Rather than lose precision rounding the quantity, the full dispensed amount is priced into `UnitPrice` as that one line's total (`Quantity × Product.SellingPrice`); `ServiceId` carries a human-readable description (`"{ProductName} (Batch {BatchNo}) × {Quantity}"`) since Pharmacy has no Masters-backed service catalog to reference.
+4. **`VisitId` falls back to `PatientId`** when the patient has no `CurrentRegistration` (mirrors the pattern `CreateInvoiceRequest`'s own doc comment already documents for OPD Billing Entry).
+5. **`PharmacyStockTransaction` gains one narrow, deliberate exception to its otherwise-immutable-after-create design**: `SetInvoiceId(Guid, Guid?)`, guarded to Dispense-type rows and settable only once. Every stock/financial fact about the dispense itself stays immutable; which invoice ended up covering it is discoverable only *after* the fact, once billing has actually succeeded, so it's a distinct category of "write" from re-litigating what happened.
+
+**Consequences**
+- A dispense whose billing failed shows "Not billed" in the Dispenses list (persisted signal: `InvoiceId is null`) with no automatic retry — this is a known, accepted gap; nothing currently re-attempts billing for a previously-failed dispense.
+- `InvoiceNumber` is only returned on the immediate `CreateAsync` response, not on later `GetById`/`GetPaged` reads — avoids an extra Billing round-trip per row on every list read (the existing product/batch/patient N+1 trade-off already documented in ADR-027 applies the same reasoning); `InvoiceId` alone is enough for the frontend to link to `/finance/accounts/{id}`.
+- `features/billing/types.ts`'s own `BILLING_TYPES` (which drives which manual-entry cards the registration/OPD Billing Entry wizard renders) deliberately still excludes `Pharmacy` — there is no wizard card for it, since it's generated server-side only. The shared, backend-mirroring `BillingType` enum (`frontend/shared/enums/billing.ts`) does include it, since that one types real API responses.
+
+**Also found and fixed during this ADR's live regression test**: `FeatureCatalog.SchemaBacked` never included `"billing"` at all, and `TenantMigrationService.MigrateAsync` had no `billing` branch — so the `billing` schema had never been migrated for *any* tenant, new or existing, despite Patient Registration's own Billing step and the OPD Billing Entry screen depending on it unconditionally. Every dispense's billing attempt against the live `pharmtest` tenant failed with `3F000: schema "billing" does not exist` until this was fixed. `"billing"` is now in both `FeatureCatalog.SchemaBacked` and `.Mandatory` (never toggleable — nothing treats it as optional), and `TenantMigrationService` migrates it unconditionally like identity/masters/patients/documents/branding. The migration was also applied directly (via `dotnet ef database update`) to all pre-existing tenant databases so this doesn't require every hospital to be re-provisioned. This was a real, pre-existing gap unrelated to Pharmacy specifically — it was only surfaced because Pharmacy billing was the first thing to ever make a real cross-module call into `IInvoiceService.CreateAsync` and actually exercise this path.
+
+---
+
+### ADR-027: Pharmacy ships as a minimal direct-dispense module — running-balance ledger, no prescriptions, no billing integration yet
+**Date:** 2026-08-20
+**Status:** Accepted
+
+**Context**
+Of the five clinical sidebar modules (IPD, OT, Pharmacy, Central Laboratory, Radiology), only IPD had a real backend/frontend — the rest were `PlaceholderPage` stubs. Pharmacy was picked as the next module to build because the drug/batch catalog already exists (the Products module) and its permission key (`pharmacy.*`) was already seeded and tenant-gated (ADR-022, ADR-026), making it the smallest lift of the four unbuilt modules. Investigation found `ProductBatch` has no quantity field and no stock ledger exists anywhere in the system — a real (non-demo) Pharmacy dispense workflow therefore had to introduce stock tracking from scratch, not just a prescription/dispense UI. Three scope questions were put to the user before implementation and answered as follows.
+
+**Decision**
+1. **Stock tracking**: a simple two-entity ledger — `PharmacyStockBalance` (current running balance per `(ProductId, ProductBatchId)`, `xmin`-guarded) and `PharmacyStockTransaction` (append-only Receipt/Dispense history with a `BalanceAfter` snapshot taken at commit time). No goods-receipt/purchase-order/supplier workflow — stock enters the system via a manual Stock Receipt (quantity-in only). This mirrors IPD's own current-state-plus-history-log shape (`Bed`/`BedTransferHistory`).
+2. **Workflow**: direct dispense only. A pharmacist records Patient + Product + Batch + Quantity in one action and it's dispensed immediately — no separate Prescription entity, no doctor-writes-first approval step. `AdmissionId` is optional/nullable on a dispense so both OPD walk-ins and IPD patients work through the same action.
+3. **Concurrency**: two dispenses racing against the same batch are handled with the existing `xmin` optimistic-concurrency column (already used by every entity in this codebase) plus a new, narrow addition — a bounded (3-attempt) retry loop in `DispenseService` that, on a `DbUpdateConcurrencyException`, re-fetches the balance and re-validates the requested quantity before retrying, so the loser of a race either succeeds against the winner's updated total or correctly fails `InsufficientStock` — never a silent lost update. No raw-SQL row locking was introduced; this stays inside patterns the codebase already uses.
+4. **Atomicity**: the balance decrement and its ledger row are added to the same `PharmacyDbContext` and committed via a single `SaveChangesAsync` inside the retry loop, so a dispense can never partially commit (a decremented balance with no matching history row, or vice versa). An earlier draft of `DispenseService` called `SaveChangesAsync` twice (balance, then ledger separately) — caught and fixed before merge, since a failure between the two calls would have silently dropped stock without a matching audit record.
+5. **Permissions**: no new permission catalog entries. Dispense and Stock Receipt both reuse the already-seeded `pharmacy.create`/`pharmacy.view` keys (ADR-022's own POST→create mapping) — ledger rows are immutable, so `pharmacy.edit`/`pharmacy.delete` stay defined-but-unused, same as several other modules' unused `delete` action today.
+6. **Billing**: explicitly deferred to a follow-up PR. This module does not touch `BillingType` or `InvoiceLineItem` — a dispensed item does not yet generate an invoice line. Same deferred-seam pattern already used elsewhere in this backlog (do the core piece fully, defer the adjacent architecture change explicitly rather than half-building it).
+7. `FeatureCatalog.SchemaBacked` (introduced in the "Tenant Feature/Module Management" work) gained `"pharmacy"`, moved out of `UiOnly`, so per-tenant enable/disable now actually provisions/migrates the Pharmacy schema instead of only toggling sidebar visibility.
+
+**Consequences**
+- A future Billing-integration PR must add the Dispense → Invoice posting step; until then, dispensed drugs are recorded but not billed automatically.
+- A future Prescription module, if ever built, would sit in front of Dispense as an optional originating document rather than replacing it — Dispense's contract (Patient + Product + Batch + Quantity) doesn't need to change.
+- The `pharmacy` schema (reserved in `docs/DatabaseArchitecture.md` §2 as "post-MVP") is now provisioned.
+- No `docs/modules/Pharmacy/Pharmacy.md` was written — consistent with the two most recently built full modules (IPD, Products), which also don't have one; `docs/modules/*` is only kept current for Documents/HR/Identity/Patients.
+- **Known limitation, pre-existing, not introduced by this module**: the frontend's product/batch picker calls Products' `GET /api/v1/products/{id}/batches` directly, which is gated `[RequireFeature("products")]`. A tenant with Pharmacy enabled but Products disabled would see that picker fail even though Pharmacy's own endpoints are correctly gated on `pharmacy`. This is really a gap in ADR-026/FeatureCatalog's per-tenant module toggling — nothing today enforces or even declares module *dependencies* (e.g. "Pharmacy requires Products"), so any module built on another module's HTTP surface would have the same issue. Not fixed here since it's a cross-cutting concern beyond this module's scope, not a Pharmacy-specific bug.
+
+---
+
 ### ADR-026: Platform-level per-tenant module configuration, enforced by filtering the JWT at login
 **Date:** 2026-08-19
 **Status:** Accepted

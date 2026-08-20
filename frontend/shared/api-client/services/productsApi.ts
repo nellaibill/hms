@@ -1,10 +1,23 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateProductRequest, Product, ProductListQuery, UpdateProductRequest } from '../../dtos';
+import type {
+  CreateProductBatchRequest,
+  CreateProductRequest,
+  Product,
+  ProductBatch,
+  ProductBatchListQuery,
+  ProductListQuery,
+  UpdateProductRequest,
+} from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
 export interface PagedProducts {
   items: Product[];
+  meta: PaginationMeta;
+}
+
+export interface PagedProductBatches {
+  items: ProductBatch[];
   meta: PaginationMeta;
 }
 
@@ -46,6 +59,36 @@ export class ProductsApi {
 
   async updateProduct(id: string, request: UpdateProductRequest): Promise<Product> {
     const response = await this.client.put<Product>(API_ROUTES.products.byId(id), request);
+    return response.data;
+  }
+
+  /**
+   * Lists a product's batches (HMS.Modules.Products.Endpoints.ProductBatchesController) —
+   * needed so Pharmacy's Dispense/Stock-Receipt forms can populate a batch dropdown once a
+   * product is chosen.
+   */
+  async getProductBatches(productId: string, query: ProductBatchListQuery = {}): Promise<PagedProductBatches> {
+    const response = await this.client.get<ProductBatch[]>(API_ROUTES.products.batches(productId), {
+      query: {
+        page: query.page,
+        pageSize: query.pageSize,
+        sort: query.sort,
+        search: query.search,
+        isActive: query.isActive,
+      },
+    });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  /**
+   * Creates a batch for a product (HMS.Modules.Products.Endpoints.ProductBatchesController).
+   * Products has no batch-management UI of its own yet ("a future pass" — see
+   * getProductBatches above), so this is called directly from Pharmacy's Stock Receipt form:
+   * without it, a real pharmacy user receiving a genuinely new batch would have no way to
+   * create it through any screen in the app.
+   */
+  async createProductBatch(productId: string, request: CreateProductBatchRequest): Promise<ProductBatch> {
+    const response = await this.client.post<ProductBatch>(API_ROUTES.products.batches(productId), request);
     return response.data;
   }
 }

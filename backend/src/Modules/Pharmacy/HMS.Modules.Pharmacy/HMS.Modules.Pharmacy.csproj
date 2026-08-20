@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Controllers live in this module (not HMS.Api), so their <summary> comments
+         must be generated here for Swashbuckle to include them in Swagger UI. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment on a public member) is not useful here: this module is
+         internal-by-default (see docs/DeveloperHandbook.md §4), so its few public members
+         are a deliberate narrow seam, not a fully-documented public API. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needed for ControllerBase/[ApiController]/IActionResult in Endpoints/, since this
+         module is a plain class library, not an ASP.NET Core Web SDK project. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- Product/ProductBatch reference validation for stock receipts/dispenses. -->
+    <ProjectReference Include="..\..\Products\HMS.Modules.Products\HMS.Modules.Products.csproj" />
+    <!-- PatientId validation and patient-name lookups for dispenses. -->
+    <ProjectReference Include="..\..\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
+    <!-- IInvoiceService — best-effort dispense billing (ADR-028). -->
+    <ProjectReference Include="..\..\Billing\HMS.Modules.Billing\HMS.Modules.Billing.csproj" />
+  </ItemGroup>
+
+</Project>

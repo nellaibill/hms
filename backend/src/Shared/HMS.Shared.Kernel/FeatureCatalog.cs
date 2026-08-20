@@ -9,14 +9,21 @@ namespace HMS.Shared.Kernel;
 /// Platform Admin controls hospital-wide module availability — see docs/DecisionLog.md).
 ///
 /// Split into two groups:
-/// - <see cref="SchemaBacked"/>: the 9 real modules with an actual database schema — only
+/// - <see cref="SchemaBacked"/>: the 11 real modules with an actual database schema — only
 ///   these are ever passed to ITenantMigrationService, so enabling/disabling anything outside
 ///   this list never provisions or migrates anything (see that interface's own doc comment).
 /// - <see cref="UiOnly"/>: modules with a frontend page today but no backend module/schema yet
 ///   (e.g. OPD, Central Laboratory) — toggling these only controls sidebar/route visibility;
-///   there's nothing server-side to provision or enforce for them. Appointments and Billing
-///   remain excluded entirely — placeholder projects with no DbContext/migrations and no
-///   frontend page either.
+///   there's nothing server-side to provision or enforce for them. Appointments remains
+///   excluded entirely — a placeholder project with no DbContext/migrations and no frontend
+///   page either. "finance" (UiOnly, below) is a distinct, broader nav-level key for the
+///   Accounts/Finance section and is NOT the same thing as "billing" here — Billing
+///   (HMS.Modules.Billing, schema "billing") is the real Invoice/InvoiceLineItem module,
+///   already used unconditionally by Patient Registration's own Billing step and by every
+///   Pharmacy dispense (ADR-028) regardless of any per-tenant toggle, which is exactly why
+///   it's Mandatory rather than merely SchemaBacked below — see that list's own doc comment.
+///   (Discovered missing here — and so never migrated for any tenant, this tenant included —
+///   during Pharmacy billing's live regression test; see docs/DecisionLog.md ADR-028.)
 /// </summary>
 public static class FeatureCatalog
 {
@@ -31,6 +38,8 @@ public static class FeatureCatalog
         "calendar",
         "products",
         "ipd",
+        "pharmacy",
+        "billing",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate
@@ -41,7 +50,6 @@ public static class FeatureCatalog
     [
         "opd",
         "ot",
-        "pharmacy",
         "central-laboratory",
         "radiology",
         "blood-bank",
@@ -59,7 +67,10 @@ public static class FeatureCatalog
     /// <summary>Always provisioned/enabled, never toggleable — identity/masters are
     /// foundational dependencies of nearly every other module; documents is a hard
     /// compile-time dependency of patients; patients and branding are core to every existing
-    /// tenant.</summary>
+    /// tenant; billing is used unconditionally by Patient Registration's own Billing step and
+    /// by every Pharmacy dispense (ADR-028) — there is no code path that treats it as
+    /// optional, so it can't be a togglable Optional entry the way a genuinely
+    /// business-domain module like Pharmacy or IPD is.</summary>
     public static readonly IReadOnlyList<string> Mandatory =
     [
         "identity",
@@ -67,6 +78,7 @@ public static class FeatureCatalog
         "patients",
         "documents",
         "branding",
+        "billing",
     ];
 
     /// <summary>Platform-admin toggleable per tenant — every catalog key that isn't mandatory,

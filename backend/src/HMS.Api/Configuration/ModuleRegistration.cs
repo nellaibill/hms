@@ -8,6 +8,7 @@ using HMS.Modules.Identity;
 using HMS.Modules.IPD;
 using HMS.Modules.Masters;
 using HMS.Modules.Patients;
+using HMS.Modules.Pharmacy;
 using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products;
@@ -56,6 +57,12 @@ public static class ModuleRegistration
         // Consultant existence) public service seams for invoice-creation validation, so it
         // must register after both — same reasoning as IPD above.
         services.AddBillingModule(configuration);
+
+        // Pharmacy depends on Products' (Product/ProductBatch existence), Patients'
+        // (PatientId existence), and now Billing's IInvoiceService (best-effort dispense
+        // billing — ADR-028) public service seams, so it must register after all three —
+        // same reasoning as IPD above.
+        services.AddPharmacyModule(configuration);
 
         // Platform is deliberately last and self-contained: it owns a separate physical
         // database (hms_platform via ConnectionStrings:Platform), not another schema in the

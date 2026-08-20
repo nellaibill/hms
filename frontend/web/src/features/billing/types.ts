@@ -22,7 +22,12 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
  */
 export interface BillingItem {
   id: string;
-  billingType: BillingType;
+  /** Wider than this file's own BillingType/BILLING_TYPES (which drives which manual-entry
+   * cards the registration/OPD Billing Entry wizard renders — Consultation/Radiology/
+   * Laboratory/Procedure only): a real invoice's line item can also be 'Pharmacy', generated
+   * server-side only by DispenseService's best-effort billing step (ADR-028) — there's no
+   * wizard card for it, so it's deliberately excluded from BILLING_TYPES above. */
+  billingType: BillingType | 'Pharmacy';
   departmentId?: string;
   consultantId?: string;
   serviceId?: string;
