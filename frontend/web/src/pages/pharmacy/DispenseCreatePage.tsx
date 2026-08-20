@@ -1,9 +1,7 @@
 import { ApiError, type DispenseCartFormValues, type Patient } from '@hms/shared';
-import { ArrowLeft, Pill, UserRound } from 'lucide-react';
+import { ArrowLeft, Pill } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast-context';
 import { PatientPicker } from '@/features/billing';
 import { RequirePermission } from '@/features/auth/RequirePermission';
@@ -85,38 +83,13 @@ export default function DispenseCreatePage() {
           )}
 
           {patient && (
-            <>
-              <Card>
-                <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <UserRound className="h-5 w-5" />
-                    </span>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {patient.title} {patient.firstName} {patient.lastName}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {patient.uhid} · {patient.age} yrs · {patient.gender} · {patient.primaryPhone}
-                      </span>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setPatient(null)}>
-                    Change patient
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <div className="flex flex-col gap-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dispense Details</h2>
-                <DispenseCartForm
-                  patientId={patient.id}
-                  isSubmitting={mutation.isPending}
-                  apiError={mutation.error instanceof ApiError ? mutation.error : null}
-                  onSubmit={handleSubmit}
-                />
-              </div>
-            </>
+            <DispenseCartForm
+              patient={patient}
+              onChangePatient={() => setPatient(null)}
+              isSubmitting={mutation.isPending}
+              apiError={mutation.error instanceof ApiError ? mutation.error : null}
+              onSubmit={handleSubmit}
+            />
           )}
         </div>
       </div>
