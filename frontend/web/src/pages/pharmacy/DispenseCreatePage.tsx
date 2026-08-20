@@ -27,11 +27,23 @@ export default function DispenseCreatePage() {
       },
       {
         onSuccess: (dispense) => {
-          toast({
-            title: 'Stock dispensed',
-            description: `${dispense.quantity} unit(s) of ${dispense.productName} (batch ${dispense.batchNo}) dispensed to ${dispense.patientName} — balance now ${dispense.balanceAfter}.`,
-            variant: 'success',
-          });
+          const base = `${dispense.quantity} unit(s) of ${dispense.productName} (batch ${dispense.batchNo}) dispensed to ${dispense.patientName} — balance now ${dispense.balanceAfter}.`;
+          if (dispense.billingFailed) {
+            // The dispense itself always succeeds even when billing doesn't (see
+            // DispenseService's best-effort billing step) — a real toast here, not a silent
+            // drop, so staff know to post the charge manually via OPD Billing Entry.
+            toast({
+              title: 'Stock dispensed — billing failed',
+              description: `${base} Could not create the invoice: ${dispense.billingError ?? 'unknown error'}. Bill this manually via OPD Billing Entry.`,
+              variant: 'warning',
+            });
+          } else {
+            toast({
+              title: 'Stock dispensed',
+              description: `${base} Invoice ${dispense.invoiceNumber} created.`,
+              variant: 'success',
+            });
+          }
           navigate('/pharmacy/dispenses');
         },
         // On failure (409: expired batch / insufficient stock / invalid product-batch-patient

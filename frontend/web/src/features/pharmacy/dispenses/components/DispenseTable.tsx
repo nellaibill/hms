@@ -1,4 +1,6 @@
 import type { DispenseResponse } from '@hms/shared';
+import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 
 interface DispenseTableProps {
   dispenses: DispenseResponse[];
@@ -16,6 +18,7 @@ export function DispenseTable({ dispenses }: DispenseTableProps) {
             <th className="px-4 py-2.5">Quantity</th>
             <th className="px-4 py-2.5">Balance After</th>
             <th className="px-4 py-2.5">Date</th>
+            <th className="px-4 py-2.5">Billing</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -27,6 +30,15 @@ export function DispenseTable({ dispenses }: DispenseTableProps) {
               <td className="px-4 py-3 tabular-nums text-foreground">{dispense.quantity}</td>
               <td className="px-4 py-3 tabular-nums text-foreground">{dispense.balanceAfter}</td>
               <td className="px-4 py-3 text-sm text-foreground">{new Date(dispense.transactionDate).toLocaleString('en-IN')}</td>
+              <td className="px-4 py-3">
+                {dispense.invoiceId ? (
+                  <Link to={`/finance/accounts/${dispense.invoiceId}`} className="text-sm font-medium text-primary underline-offset-2 hover:underline">
+                    View invoice
+                  </Link>
+                ) : (
+                  <Badge variant="warning">Not billed</Badge>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

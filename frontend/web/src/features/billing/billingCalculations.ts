@@ -185,6 +185,13 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     };
   }
 
+  if (item.billingType === 'Pharmacy') {
+    // Generated server-side only (DispenseService's best-effort billing step, ADR-028) — its
+    // serviceId is already the full human-readable description ("Paracetamol 500mg (Batch
+    // B-2026-001) × 4"), not a catalog id to resolve, and there's no consultant on a dispense.
+    return { serviceLabel: item.serviceId ?? 'Pharmacy', consultantName: '—' };
+  }
+
   const service = SERVICE_CATALOGS[item.billingType].find((s) => s.id === item.serviceId);
   const consultant = SERVICE_CONSULTANT_CATALOGS[item.billingType].find((c) => c.id === item.consultantId);
   return {

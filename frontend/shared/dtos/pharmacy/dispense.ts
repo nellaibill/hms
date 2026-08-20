@@ -29,6 +29,18 @@ export interface DispenseResponse {
   transactionDate: string;
   remarks?: string;
   createdAt: string;
+
+  /** Set when this dispense was successfully billed — null if never billed (either the
+   * attempt failed, see billingFailed/billingError below, or this is a historical row where
+   * billing detail isn't re-fetched — see the backend contract's own doc comment). */
+  invoiceId?: string;
+  /** Populated only on the response returned immediately by the create call — always
+   * undefined on list/detail reads. */
+  invoiceNumber?: string;
+  /** True only on the immediate create response when the dispense itself succeeded but the
+   * follow-up billing attempt did not — the dispense is NOT rolled back in that case. */
+  billingFailed?: boolean;
+  billingError?: string;
 }
 
 /** Mirrors HMS.Modules.Pharmacy.Contracts.DispenseListQuery. */
