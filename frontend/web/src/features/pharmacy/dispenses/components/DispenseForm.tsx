@@ -1,6 +1,6 @@
 import { ApiError, createDispenseSchema, type DispenseFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +56,28 @@ export function DispenseForm({ patientId, onSubmit, isSubmitting, apiError }: Di
   // backend's message is already human-readable (docs/ApiStandards.md §5).
   const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
 
+  // See StockReceiptForm's identical guard for the full explanation: isSubmitting alone
+  // can't prevent a fast double-click from firing two dispenses (verified live), because
+  // react-hook-form's async validation leaves a window before mutation.isPending actually
+  // disables this button in the DOM. This ref closes that window imperatively. Doubly
+  // important here — a duplicate dispense doesn't just corrupt a balance, it means a
+  // patient's record shows twice the medication actually issued.
+  const submitLockRef = useRef(false);
+
+  useEffect(() => {
+    if (!isSubmitting) {
+      submitLockRef.current = false;
+    }
+  }, [isSubmitting]);
+
+  function guardedSubmit(values: DispenseFormValues) {
+    if (submitLockRef.current) {
+      return;
+    }
+    submitLockRef.current = true;
+    onSubmit(values);
+  }
+
   function handleProductChange(newProductId: string, onChange: (value: string) => void) {
     onChange(newProductId);
     // A batch picked under the previous product is meaningless once the product changes.
@@ -63,7 +85,7 @@ export function DispenseForm({ patientId, onSubmit, isSubmitting, apiError }: Di
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex max-w-2xl flex-col gap-4">
+    <form onSubmit={handleSubmit(guardedSubmit)} noValidate className="flex max-w-2xl flex-col gap-4">
       {generalError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {generalError}

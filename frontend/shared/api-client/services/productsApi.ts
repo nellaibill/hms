@@ -1,5 +1,13 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateProductRequest, Product, ProductBatch, ProductBatchListQuery, ProductListQuery, UpdateProductRequest } from '../../dtos';
+import type {
+  CreateProductBatchRequest,
+  CreateProductRequest,
+  Product,
+  ProductBatch,
+  ProductBatchListQuery,
+  ProductListQuery,
+  UpdateProductRequest,
+} from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -70,5 +78,17 @@ export class ProductsApi {
       },
     });
     return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  /**
+   * Creates a batch for a product (HMS.Modules.Products.Endpoints.ProductBatchesController).
+   * Products has no batch-management UI of its own yet ("a future pass" — see
+   * getProductBatches above), so this is called directly from Pharmacy's Stock Receipt form:
+   * without it, a real pharmacy user receiving a genuinely new batch would have no way to
+   * create it through any screen in the app.
+   */
+  async createProductBatch(productId: string, request: CreateProductBatchRequest): Promise<ProductBatch> {
+    const response = await this.client.post<ProductBatch>(API_ROUTES.products.batches(productId), request);
+    return response.data;
   }
 }
