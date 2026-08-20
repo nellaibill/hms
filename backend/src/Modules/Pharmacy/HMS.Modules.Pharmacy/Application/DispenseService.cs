@@ -134,7 +134,7 @@ internal class DispenseService : IDispenseService
 
         var patient = patientResult.Value!;
         return Result<DispenseResponse>.Success(
-            transaction.ToDispenseResponse(productResult.Value!.ProductName, batchResult.Value.BatchNo, $"{patient.FirstName} {patient.LastName}"));
+            transaction!.ToDispenseResponse(productResult.Value!.ProductName, batchResult.Value.BatchNo, $"{patient.FirstName} {patient.LastName}"));
     }
 
     public async Task<Result<DispenseResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
