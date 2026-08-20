@@ -35,7 +35,11 @@ function Tabs({ value, defaultValue, onValueChange, className, children }: TabsP
     // Switching tabs (via a trigger click or Previous/Next) swaps the panel in place —
     // without this, a user scrolled down on a long tab lands on the new tab wherever
     // they happened to be scrolled to, possibly past its content entirely.
-    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 'instant', not 'smooth': confirmed live (see PatientRegistrationForm's identical fix
+    // for its Previous/Next buttons, which bypass this component's setValue entirely) that a
+    // 'smooth' scrollIntoView call here can produce zero net movement — the animation gets
+    // cancelled by the layout shift from the tab content swapping right as this runs.
+    containerRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
   };
 
   return (

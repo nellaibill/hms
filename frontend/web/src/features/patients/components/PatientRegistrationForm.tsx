@@ -176,6 +176,25 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const [activeTab, setActiveTab] = useState<TabId>(
     initialDraft && isTabId(initialDraft.activeTab) ? initialDraft.activeTab : 'patient-info',
   );
+  // Previous/Next (goToPreviousTab/goToTab below) set activeTab directly on this component's
+  // own state, bypassing <Tabs>'s internal setValue — which is the only place that resets
+  // scroll position (see tabs.tsx's own comment on that same bug for a direct tab-header
+  // click). Without this, clicking Next while scrolled down a long tab (e.g. Medical
+  // Information's Allergy/Mode of Arrival/Document Upload) leaves the page scrolled to that
+  // same pixel offset on the new, often-shorter tab — landing past its fields entirely and
+  // looking exactly like Next silently did nothing (confirmed live: the tab really does
+  // change underneath, just off-screen). Runs for every activeTab change (including
+  // tab-header clicks, where <Tabs> already does this too) since either source is just as
+  // capable of leaving the page scrolled past the new tab's content.
+  //
+  // 'instant', not 'smooth': confirmed live that a 'smooth' scrollIntoView call here
+  // frequently produces zero net scroll movement — the animation appears to get cancelled by
+  // a layout shift immediately following the tab swap (a large block of the DOM gets replaced
+  // by TabsContent's conditional render right as this runs). 'instant' isn't interruptible.
+  const formTopRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }, [activeTab]);
   // Tabs the user has actually tried to leave (via Next) or a final submit attempt — a tab
   // the user hasn't reached yet shouldn't show an error dot just because its untouched
   // required fields are technically invalid.
@@ -315,7 +334,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   };
 
   return (
-    <div className="flex w-full max-w-6xl flex-col gap-5">
+    <div ref={formTopRef} className="flex w-full max-w-6xl scroll-mt-20 flex-col gap-5">
       <form
         onSubmit={handleSubmit(onValidSubmit, onInvalid)}
         onKeyDown={blockEnterKeySubmit}
