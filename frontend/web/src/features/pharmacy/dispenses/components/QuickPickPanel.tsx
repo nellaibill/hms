@@ -2,6 +2,7 @@ import type { Product } from '@hms/shared';
 import { Pill } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProductCategoriesQuery } from '@/features/pharmacy/product-lookup';
 
 interface QuickPickPanelProps {
@@ -20,7 +21,9 @@ const ALL_TAB = 'all';
  *
  * Tabs are built from the categories actually present among the passed-in products — a
  * category with zero products here would be a tab a pharmacist can click into and find
- * nothing, so it's left out rather than listing every category master record.
+ * nothing, so it's left out rather than listing every category master record. Uses the same
+ * underlined Tabs primitive as the rest of the app (e.g. patient registration) rather than a
+ * one-off pill style, so this reads as part of the same product, not a bolted-on widget.
  */
 export function QuickPickPanel({ products, selectedProductId, onSelectProduct }: QuickPickPanelProps) {
   const categoriesQuery = useProductCategoriesQuery();
@@ -42,26 +45,21 @@ export function QuickPickPanel({ products, selectedProductId, onSelectProduct }:
         <CardTitle className="text-base">Quick Pick</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 p-4 pt-0">
-        <div className="flex flex-wrap gap-1.5 border-b border-border pb-3">
-          <button type="button" onClick={() => setActiveTab(ALL_TAB)} className={tabClassName(activeTab === ALL_TAB)}>
-            All
-          </button>
-          {categoryTabs.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => setActiveTab(category.id)}
-              className={tabClassName(activeTab === category.id)}
-            >
-              {category.categoryName}
-            </button>
-          ))}
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value={ALL_TAB}>All</TabsTrigger>
+            {categoryTabs.map((category) => (
+              <TabsTrigger key={category.id} value={category.id}>
+                {category.categoryName}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {visibleProducts.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">No products in this category.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
             {visibleProducts.map((product) => {
               const isSelected = product.id === selectedProductId;
               return (
@@ -69,15 +67,19 @@ export function QuickPickPanel({ products, selectedProductId, onSelectProduct }:
                   key={product.id}
                   type="button"
                   onClick={() => onSelectProduct(product.id)}
-                  className={`flex flex-col items-start gap-1 rounded-md border p-2.5 text-left transition-colors ${
-                    isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40 hover:bg-accent/40'
+                  className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center shadow-soft transition-all ${
+                    isSelected
+                      ? 'border-primary bg-primary/5 shadow-soft-md'
+                      : 'border-border hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-soft-md'
                   }`}
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Pill className="h-4 w-4" />
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Pill className="h-5 w-5" />
                   </span>
-                  <span className="line-clamp-2 text-xs font-medium text-foreground">{product.productName}</span>
-                  <span className="text-xs text-muted-foreground">₹{product.sellingPrice.toFixed(2)}</span>
+                  <span className="line-clamp-2 text-xs font-medium leading-snug text-foreground">{product.productName}</span>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    ₹{product.sellingPrice.toFixed(2)}
+                  </span>
                 </button>
               );
             })}
@@ -86,10 +88,4 @@ export function QuickPickPanel({ products, selectedProductId, onSelectProduct }:
       </CardContent>
     </Card>
   );
-}
-
-function tabClassName(isActive: boolean) {
-  return `shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-    isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-  }`;
 }

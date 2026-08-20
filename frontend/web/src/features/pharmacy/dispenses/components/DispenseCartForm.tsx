@@ -1,6 +1,6 @@
 import { ApiError, createDispenseCartSchema, type DispenseCartFormValues, type Patient } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Minus, Plus, ShoppingCart } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -231,13 +231,18 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
           </CardHeader>
           <CardContent className="flex flex-col gap-3 p-4 pt-0">
             <div className="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-foreground">
-                  {patient.title} {patient.firstName} {patient.lastName}
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <UserRound className="h-4 w-4" />
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {patient.uhid} · {patient.primaryPhone}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground">
+                    {patient.title} {patient.firstName} {patient.lastName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {patient.uhid} · {patient.primaryPhone}
+                  </span>
+                </div>
               </div>
               <Button type="button" variant="ghost" size="sm" onClick={onChangePatient}>
                 Change
