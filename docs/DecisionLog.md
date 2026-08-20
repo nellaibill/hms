@@ -37,6 +37,27 @@ _To be documented._
 
 ## Decisions
 
+### ADR-028: Pharmacy dispense billing is best-effort, generated server-side, not atomic with the dispense
+**Date:** 2026-08-20
+**Status:** Accepted
+
+**Context**
+ADR-027 explicitly deferred billing integration for Pharmacy. During a full regression pass (patient registration → dispense → billing), the user asked to build it now rather than continue treating it as out of scope. Billing (`HMS.Modules.Billing`) turned out to already be a full CRUD module with a public `IInvoiceService.CreateAsync`, not merely something nested inside patient registration — so this was a real but contained addition, not a prerequisite rebuild of Billing itself.
+
+**Decision**
+1. **`BillingType` gains a `Pharmacy` value.** Stored via the existing `HasConversion<string>()` mapping, so this is a purely additive change — no migration needed on Billing's own schema.
+2. **Billing is best-effort, not part of the dispense's atomic commit.** `DispenseService.CreateAsync` calls `IInvoiceService.CreateAsync` only *after* the stock decrement + ledger row have already committed. Medicine has physically left the pharmacy and stock is already correctly decremented by that point — that fact must never be rolled back because a separate module's write failed or Billing was unreachable. A `Result` failure or a genuine exception from the billing call is caught and surfaced as `BillingFailed`/`BillingError` on the response; the dispense itself always still succeeds. Staff can post the charge manually via the existing OPD Billing Entry screen if automatic billing failed. This mirrors the project's established preference for doing the core piece fully and handling the adjacent failure mode explicitly rather than either skipping it or over-building a cross-schema distributed transaction this codebase has no precedent for anywhere.
+3. **One invoice per dispense, one line item, `Quantity` fixed at 1.** `CreateInvoiceLineItemRequest.Quantity` is `int` — every other billing category bills whole units — but a dispense's real quantity is `decimal` (e.g. 150.5ml of a syrup). Rather than lose precision rounding the quantity, the full dispensed amount is priced into `UnitPrice` as that one line's total (`Quantity × Product.SellingPrice`); `ServiceId` carries a human-readable description (`"{ProductName} (Batch {BatchNo}) × {Quantity}"`) since Pharmacy has no Masters-backed service catalog to reference.
+4. **`VisitId` falls back to `PatientId`** when the patient has no `CurrentRegistration` (mirrors the pattern `CreateInvoiceRequest`'s own doc comment already documents for OPD Billing Entry).
+5. **`PharmacyStockTransaction` gains one narrow, deliberate exception to its otherwise-immutable-after-create design**: `SetInvoiceId(Guid, Guid?)`, guarded to Dispense-type rows and settable only once. Every stock/financial fact about the dispense itself stays immutable; which invoice ended up covering it is discoverable only *after* the fact, once billing has actually succeeded, so it's a distinct category of "write" from re-litigating what happened.
+
+**Consequences**
+- A dispense whose billing failed shows "Not billed" in the Dispenses list (persisted signal: `InvoiceId is null`) with no automatic retry — this is a known, accepted gap; nothing currently re-attempts billing for a previously-failed dispense.
+- `InvoiceNumber` is only returned on the immediate `CreateAsync` response, not on later `GetById`/`GetPaged` reads — avoids an extra Billing round-trip per row on every list read (the existing product/batch/patient N+1 trade-off already documented in ADR-027 applies the same reasoning); `InvoiceId` alone is enough for the frontend to link to `/finance/accounts/{id}`.
+- `features/billing/types.ts`'s own `BILLING_TYPES` (which drives which manual-entry cards the registration/OPD Billing Entry wizard renders) deliberately still excludes `Pharmacy` — there is no wizard card for it, since it's generated server-side only. The shared, backend-mirroring `BillingType` enum (`frontend/shared/enums/billing.ts`) does include it, since that one types real API responses.
+
+---
+
 ### ADR-027: Pharmacy ships as a minimal direct-dispense module — running-balance ledger, no prescriptions, no billing integration yet
 **Date:** 2026-08-20
 **Status:** Accepted
