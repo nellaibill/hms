@@ -12,6 +12,7 @@ import {
   IpdDashboardApi,
   MastersApi,
   PatientsApi,
+  PharmacyApi,
   PlatformAuthApi,
   PlatformHospitalsApi,
   ProductsApi,
@@ -78,3 +79,4 @@ export const bedsApi = new BedsApi(httpClient);
 export const admissionsApi = new AdmissionsApi(httpClient);
 export const ipdDashboardApi = new IpdDashboardApi(httpClient);
 export const billingApi = new BillingApi(httpClient);
+export const pharmacyApi = new PharmacyApi(httpClient);

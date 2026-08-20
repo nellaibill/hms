@@ -72,6 +72,12 @@ const BedOccupancyPage = lazy(() => import('../pages/ipd/BedOccupancyPage'));
 const AdmissionsListPage = lazy(() => import('../pages/ipd/AdmissionsListPage'));
 const AdmissionCreatePage = lazy(() => import('../pages/ipd/AdmissionCreatePage'));
 const AdmissionViewPage = lazy(() => import('../pages/ipd/AdmissionViewPage'));
+const PharmacyHubPage = lazy(() => import('../pages/pharmacy/PharmacyHubPage'));
+const StockReceiptsListPage = lazy(() => import('../pages/pharmacy/StockReceiptsListPage'));
+const StockReceiptCreatePage = lazy(() => import('../pages/pharmacy/StockReceiptCreatePage'));
+const DispensesListPage = lazy(() => import('../pages/pharmacy/DispensesListPage'));
+const DispenseCreatePage = lazy(() => import('../pages/pharmacy/DispenseCreatePage'));
+const StockLedgerPage = lazy(() => import('../pages/pharmacy/StockLedgerPage'));
 
 // Platform Portal — entirely separate from the hospital app above (own login, own
 // session, own protected-route gate). Not nested under AppLayout: it has no hospital
@@ -101,6 +107,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/engagement/programmes': withSuspense(<CalendarEventsPage />),
   '/documents': withSuspense(<DocumentManagementPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
+  '/pharmacy': withSuspense(<PharmacyHubPage />),
 };
 
 // '/finance/accounts' is deliberately excluded from specialPages above and handled by
@@ -278,6 +285,30 @@ const ipdRoutes = [
   },
 ];
 
+// Pharmacy (HMS.Modules.Pharmacy), reachable from the '/pharmacy' nav leaf (wired via
+// specialPages above). Route-gated via RequirePermissionRoute since the nav-level
+// permission filter alone doesn't block direct URL access — mirrors ipdRoutes' reasoning,
+// using Pharmacy's own nav leaf permission ('pharmacy', config/navigation.ts). Nested inside
+// RequireFeatureRoute (Tenant Feature/Module Management) the same way ipdRoutes is. No
+// PUT/DELETE anywhere on the backend — every list is append-only history, so no edit routes.
+const pharmacyRoutes = [
+  {
+    element: <RequireFeatureRoute feature="pharmacy" />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="pharmacy.view" />,
+        children: [
+          { path: 'pharmacy/stock-receipts', element: withSuspense(<StockReceiptsListPage />) },
+          { path: 'pharmacy/stock-receipts/new', element: withSuspense(<StockReceiptCreatePage />) },
+          { path: 'pharmacy/dispenses', element: withSuspense(<DispensesListPage />) },
+          { path: 'pharmacy/dispenses/new', element: withSuspense(<DispenseCreatePage />) },
+          { path: 'pharmacy/stock-ledger', element: withSuspense(<StockLedgerPage />) },
+        ],
+      },
+    ],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -315,6 +346,7 @@ export const router = createBrowserRouter(
             ...financeRoutes,
             ...hrRoutes,
             ...ipdRoutes,
+            ...pharmacyRoutes,
           ],
         },
       ],
