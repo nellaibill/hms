@@ -1,7 +1,9 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  CreateDispenseCartRequest,
   CreateDispenseRequest,
   CreateStockReceiptRequest,
+  DispenseCartResponse,
   DispenseListQuery,
   DispenseResponse,
   StockBalanceListQuery,
@@ -87,6 +89,11 @@ export class PharmacyApi {
 
   async createDispense(request: CreateDispenseRequest): Promise<DispenseResponse> {
     const response = await this.client.post<DispenseResponse>(API_ROUTES.pharmacy.dispenses.base, request);
+    return response.data;
+  }
+
+  async createDispenseCart(request: CreateDispenseCartRequest): Promise<DispenseCartResponse> {
+    const response = await this.client.post<DispenseCartResponse>(API_ROUTES.pharmacy.dispenses.cart, request);
     return response.data;
   }
 

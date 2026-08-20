@@ -179,6 +179,7 @@ export const API_ROUTES = {
     dispenses: {
       base: '/api/v1/pharmacy/dispenses',
       byId: (id: string) => `/api/v1/pharmacy/dispenses/${id}`,
+      cart: '/api/v1/pharmacy/dispenses/cart',
     },
     stockBalances: {
       base: '/api/v1/pharmacy/stock-balances',

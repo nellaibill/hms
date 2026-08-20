@@ -281,6 +281,214 @@ public class DispenseServiceTests
         _transactionRepository.Received(1).Detach(Arg.Any<PharmacyStockTransaction>());
     }
 
+    // ---- CreateCartAsync ------------------------------------------------------------------
+
+    private CreateDispenseCartRequest NewCartRequest(params DispenseCartLineRequest[] lines) => new()
+    {
+        PatientId = _patientId,
+        Lines = lines,
+    };
+
+    private DispenseCartLineRequest NewLine(Guid productId, Guid productBatchId, decimal quantity) => new()
+    {
+        ProductId = productId,
+        ProductBatchId = productBatchId,
+        Quantity = quantity,
+        Remarks = "Ward dispense",
+    };
+
+    [Fact]
+    public async Task CreateCartAsync_WithValidLines_DispensesAllAndBillsOneInvoiceWithNItems()
+    {
+        var secondProductId = Guid.NewGuid();
+        var secondBatchId = Guid.NewGuid();
+        _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+        _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+        var secondBalance = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        secondBalance.Receive(20m, null);
+        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
+
+        var invoiceId = Guid.NewGuid();
+        _invoiceService.CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<InvoiceResponse>.Success(new InvoiceResponse { Id = invoiceId, InvoiceNumber = "INV-2026-000099" }));
+
+        var request = NewCartRequest(NewLine(_productId, _productBatchId, 4m), NewLine(secondProductId, secondBatchId, 3m));
+
+        var result = await _sut.CreateCartAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Lines.Should().HaveCount(2);
+        result.Value.Lines[0].BalanceAfter.Should().Be(6m);
+        result.Value.Lines[1].BalanceAfter.Should().Be(17m);
+        result.Value.InvoiceId.Should().Be(invoiceId);
+        result.Value.InvoiceNumber.Should().Be("INV-2026-000099");
+        result.Value.BillingFailed.Should().BeFalse();
+        result.Value.TotalAmount.Should().Be((4m * 20m) + (3m * 5m));
+
+        await _transactionRepository.Received(2).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        // One save for both lines' balance decrements + ledger rows together, one more for
+        // linking both transaction rows to the one invoice.
+        await _balanceRepository.Received(2).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _invoiceService.Received(1).CreateAsync(
+            Arg.Is<CreateInvoiceRequest>(r => r.Items.Count == 2 && r.Items[0].UnitPrice == 4m * 20m && r.Items[1].UnitPrice == 3m * 5m),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateCartAsync_WhenPatientDoesNotExist_ReturnsInvalidPatientFailureWithoutTouchingAnyLine()
+    {
+        _patientService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<PatientResponse>.Failure("PATIENTS.NOT_FOUND", "not found"));
+
+        var result = await _sut.CreateCartAsync(NewCartRequest(NewLine(_productId, _productBatchId, 4m)), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.InvalidPatient);
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateCartAsync_WhenAMiddleLineHasAnExpiredBatch_FailsTheWholeCartWithoutDispensingAnyLine()
+    {
+        var secondProductId = Guid.NewGuid();
+        var secondBatchId = Guid.NewGuid();
+        _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+        _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2025-999", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1) }));
+
+        var request = NewCartRequest(NewLine(_productId, _productBatchId, 4m), NewLine(secondProductId, secondBatchId, 3m));
+
+        var result = await _sut.CreateCartAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.BatchExpired);
+        result.Error.Should().StartWith("Line 2:");
+        // Nothing was ever added to the change tracker — the failing line was caught in the
+        // up-front validation pass, before either line's balance was ever fetched or mutated.
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        await _balanceRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateCartAsync_WhenASecondLineHasInsufficientStock_FailsTheWholeCartWithoutDispensingEitherLine()
+    {
+        var secondProductId = Guid.NewGuid();
+        var secondBatchId = Guid.NewGuid();
+        _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+        _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+        var secondBalance = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        secondBalance.Receive(2m, null);
+        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
+
+        // First line has plenty of stock (10 on hand, wants 4) — the check must still fail the
+        // whole cart because the SECOND line only has 2 on hand but wants 3.
+        var request = NewCartRequest(NewLine(_productId, _productBatchId, 4m), NewLine(secondProductId, secondBatchId, 3m));
+
+        var result = await _sut.CreateCartAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.InsufficientStock);
+        result.Error.Should().StartWith("Line 2:");
+        // Line 1 passed its stock check in pass 1, but pass 2 (the actual mutation) never runs
+        // because pass 1 must fully clear for every line first — line 1's balance is untouched.
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateCartAsync_WithDuplicateProductAndBatch_IsRejectedByTheValidatorNotTheService()
+    {
+        // The duplicate-line rule lives in CreateDispenseCartRequestValidator (see
+        // CreateDispenseCartRequestValidatorTests) — DispenseService itself doesn't re-check
+        // for duplicates, so calling it directly with a duplicate pair would just dispense both
+        // lines against the same balance sequentially. This test documents that boundary.
+        var request = NewCartRequest(NewLine(_productId, _productBatchId, 2m), NewLine(_productId, _productBatchId, 2m));
+
+        var result = await _sut.CreateCartAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Lines.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task CreateCartAsync_WhenBillingFails_StillDispensesAllLinesButReportsTheFailureOnEveryLine()
+    {
+        _invoiceService.CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<InvoiceResponse>.Failure("BILLING.SOME_ERROR", "Billing is temporarily unavailable."));
+
+        var request = NewCartRequest(NewLine(_productId, _productBatchId, 4m));
+
+        var result = await _sut.CreateCartAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Lines[0].BalanceAfter.Should().Be(6m);
+        result.Value.BillingFailed.Should().BeTrue();
+        result.Value.BillingError.Should().Be("Billing is temporarily unavailable.");
+        result.Value.InvoiceId.Should().BeNull();
+        result.Value.Lines[0].BillingFailed.Should().BeTrue();
+
+        // Only the one save for the dispense itself — no second save attempting to persist an
+        // InvoiceId that was never obtained.
+        await _balanceRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateCartAsync_WhenFirstSaveThrowsConcurrencyException_RetriesAllLinesAgainstRefreshedBalancesAndSucceeds()
+    {
+        var secondProductId = Guid.NewGuid();
+        var secondBatchId = Guid.NewGuid();
+        _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+        _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+
+        var staleFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        staleFirst.Receive(10m, null);
+        var refreshedFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        refreshedFirst.Receive(10m, null);
+        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>())
+            .Returns(staleFirst, refreshedFirst);
+
+        var staleSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        staleSecond.Receive(20m, null);
+        var refreshedSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        refreshedSecond.Receive(20m, null);
+        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+            .Returns(staleSecond, refreshedSecond);
+
+        var saveAttempt = 0;
+        _balanceRepository.When(x => x.SaveChangesAsync(Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                saveAttempt++;
+                if (saveAttempt == 1)
+                {
+                    throw new DbUpdateConcurrencyException();
+                }
+            });
+
+        var request = NewCartRequest(NewLine(_productId, _productBatchId, 4m), NewLine(secondProductId, secondBatchId, 3m));
+
+        var result = await _sut.CreateCartAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Lines[0].BalanceAfter.Should().Be(6m);
+        result.Value.Lines[1].BalanceAfter.Should().Be(17m);
+
+        // Both balances re-fetched (and thus reloaded) on both attempts.
+        await _balanceRepository.Received(2).GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>());
+        await _balanceRepository.Received(2).GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>());
+        // Attempt 1 adds 2 candidate rows (both detached on conflict), attempt 2 adds 2 more
+        // that persist = 4 total AddAsync calls, 2 Detach calls.
+        await _transactionRepository.Received(4).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        _transactionRepository.Received(2).Detach(Arg.Any<PharmacyStockTransaction>());
+    }
+
     [Fact]
     public async Task CreateAsync_WhenRetryFindsInsufficientRefreshedStock_ReturnsInsufficientStockAndDetachesTheAbandonedTransaction()
     {
@@ -316,5 +524,57 @@ public class DispenseServiceTests
         // the (now-refreshed) quantity check and returns without adding a replacement.
         await _transactionRepository.Received(1).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
         _transactionRepository.Received(1).Detach(Arg.Any<PharmacyStockTransaction>());
+    }
+
+    [Fact]
+    public async Task CreateCartAsync_WhenRetryFindsInsufficientRefreshedStock_ReturnsInsufficientStockAndDetachesAllAbandonedTransactions()
+    {
+        var secondProductId = Guid.NewGuid();
+        var secondBatchId = Guid.NewGuid();
+        _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+        _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+
+        var staleFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        staleFirst.Receive(10m, null);
+        // The winner of the race dispensed enough of the FIRST product/batch that, once
+        // re-fetched on the retry, this cart's request for it no longer fits.
+        var refreshedFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        refreshedFirst.Receive(3m, null);
+        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>())
+            .Returns(staleFirst, refreshedFirst);
+
+        var staleSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        staleSecond.Receive(20m, null);
+        var refreshedSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        refreshedSecond.Receive(20m, null);
+        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+            .Returns(staleSecond, refreshedSecond);
+
+        var saveAttempt = 0;
+        _balanceRepository.When(x => x.SaveChangesAsync(Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                saveAttempt++;
+                if (saveAttempt == 1)
+                {
+                    throw new DbUpdateConcurrencyException();
+                }
+            });
+
+        var request = NewCartRequest(NewLine(_productId, _productBatchId, 5m), NewLine(secondProductId, secondBatchId, 3m));
+
+        var result = await _sut.CreateCartAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.InsufficientStock);
+        result.Error.Should().StartWith("Line 1:");
+        // Attempt 1 added candidate rows for both lines before its SaveChangesAsync hit the
+        // concurrency conflict; both must be detached so nothing lingers half-tracked once
+        // attempt 2's pass 1 fails the (now-refreshed) first line's quantity check and returns
+        // before pass 2 ever adds a replacement for either line.
+        await _transactionRepository.Received(2).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+        _transactionRepository.Received(2).Detach(Arg.Any<PharmacyStockTransaction>());
     }
 }

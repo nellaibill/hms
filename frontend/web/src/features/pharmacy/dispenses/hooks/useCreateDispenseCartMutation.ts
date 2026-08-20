@@ -1,16 +1,15 @@
-import type { CreateDispenseRequest } from '@hms/shared';
+import type { CreateDispenseCartRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { pharmacyApi } from '../../../../services/apiClient';
 
-export function useCreateDispenseMutation() {
+export function useCreateDispenseCartMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: CreateDispenseRequest) => pharmacyApi.createDispense(request),
+    mutationFn: (request: CreateDispenseCartRequest) => pharmacyApi.createDispenseCart(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pharmacy', 'dispenses'] });
-      // A dispense decreases the product/batch's on-hand balance, so balances and the
-      // combined ledger go stale at the same time — mirrors useCreateStockReceiptMutation's
-      // own fan-out.
+      // A checkout decreases every line's product/batch on-hand balance, so balances and the
+      // combined ledger go stale at the same time — mirrors useCreateDispenseMutation's own fan-out.
       queryClient.invalidateQueries({ queryKey: ['pharmacy', 'stock-balances'] });
       queryClient.invalidateQueries({ queryKey: ['pharmacy', 'stock-ledger'] });
     },

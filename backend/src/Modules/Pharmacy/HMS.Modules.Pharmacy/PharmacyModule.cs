@@ -50,6 +50,7 @@ public static class PharmacyModule
         // Users module).
         services.AddScoped<IValidator<CreateStockReceiptRequest>, CreateStockReceiptRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseRequest>, CreateDispenseRequestValidator>();
+        services.AddScoped<IValidator<CreateDispenseCartRequest>, CreateDispenseCartRequestValidator>();
 
         return services;
     }

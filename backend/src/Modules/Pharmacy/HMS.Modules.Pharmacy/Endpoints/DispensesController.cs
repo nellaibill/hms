@@ -19,13 +19,16 @@ public class DispensesController : ControllerBase
 {
     private readonly IDispenseService _service;
     private readonly IValidator<CreateDispenseRequest> _createValidator;
+    private readonly IValidator<CreateDispenseCartRequest> _createCartValidator;
 
     public DispensesController(
         IDispenseService service,
-        IValidator<CreateDispenseRequest> createValidator)
+        IValidator<CreateDispenseRequest> createValidator,
+        IValidator<CreateDispenseCartRequest> createCartValidator)
     {
         _service = service;
         _createValidator = createValidator;
+        _createCartValidator = createCartValidator;
     }
 
     /// <summary>Dispenses stock from a product/batch to a patient, decreasing its on-hand balance.</summary>
@@ -46,6 +49,27 @@ public class DispensesController : ControllerBase
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
+    }
+
+    /// <summary>Checks out several product/batch/quantity lines for one patient in a single
+    /// call, dispensing all of them and billing them as ONE invoice with N line items.</summary>
+    /// <response code="201">The cart was dispensed.</response>
+    /// <response code="400">The request failed validation (including an empty cart or a duplicate product/batch line).</response>
+    /// <response code="409">A line's product/batch/patient reference is invalid, a batch has expired, or there is not enough stock on hand — nothing in the cart is dispensed.</response>
+    [Authorize]
+    [RequirePermission("pharmacy.create")]
+    [HttpPost("cart")]
+    public async Task<IActionResult> CreateCart([FromBody] CreateDispenseCartRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _createCartValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.CreateCartAsync(request, actorId: User.GetUserId(), cancellationToken);
+        return !result.IsSuccess
+            ? MapFailure(result.ErrorCode!, result.Error!)
+            : StatusCode(StatusCodes.Status201Created, new ApiResponse<DispenseCartResponse> { Data = result.Value });
     }
 
     /// <summary>Lists dispenses, newest first, optionally filtered by patient and/or product.</summary>

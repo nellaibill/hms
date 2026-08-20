@@ -24,5 +24,6 @@ export * from './ipd/dashboard';
 export * from './billing/invoice';
 export * from './pharmacy/stockReceipt';
 export * from './pharmacy/dispense';
+export * from './pharmacy/dispenseCart';
 export * from './pharmacy/stockBalance';
 export * from './pharmacy/stockLedger';

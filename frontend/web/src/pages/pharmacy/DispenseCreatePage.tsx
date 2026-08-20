@@ -1,4 +1,4 @@
-import { ApiError, type DispenseFormValues, type Patient } from '@hms/shared';
+import { ApiError, type DispenseCartFormValues, type Patient } from '@hms/shared';
 import { ArrowLeft, Pill, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -7,48 +7,51 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast-context';
 import { PatientPicker } from '@/features/billing';
 import { RequirePermission } from '@/features/auth/RequirePermission';
-import { DispenseForm, useCreateDispenseMutation } from '@/features/pharmacy/dispenses';
+import { DispenseCartForm, useCreateDispenseCartMutation } from '@/features/pharmacy/dispenses';
 
 export default function DispenseCreatePage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [patient, setPatient] = useState<Patient | null>(null);
-  const mutation = useCreateDispenseMutation();
+  const mutation = useCreateDispenseCartMutation();
 
-  function handleSubmit(values: DispenseFormValues) {
+  function handleSubmit(values: DispenseCartFormValues) {
     mutation.mutate(
       {
-        productId: values.productId,
-        productBatchId: values.productBatchId,
         patientId: values.patientId,
         admissionId: values.admissionId || undefined,
-        quantity: values.quantity,
-        remarks: values.remarks || undefined,
+        lines: values.lines.map((line) => ({
+          productId: line.productId,
+          productBatchId: line.productBatchId,
+          quantity: line.quantity,
+          remarks: line.remarks || undefined,
+        })),
       },
       {
-        onSuccess: (dispense) => {
-          const base = `${dispense.quantity} unit(s) of ${dispense.productName} (batch ${dispense.batchNo}) dispensed to ${dispense.patientName} — balance now ${dispense.balanceAfter}.`;
-          if (dispense.billingFailed) {
+        onSuccess: (cart) => {
+          const itemCount = cart.lines.length;
+          const base = `${itemCount} item${itemCount === 1 ? '' : 's'} dispensed to ${patient?.firstName} ${patient?.lastName} — total ₹${cart.totalAmount.toFixed(2)}.`;
+          if (cart.billingFailed) {
             // The dispense itself always succeeds even when billing doesn't (see
             // DispenseService's best-effort billing step) — a real toast here, not a silent
             // drop, so staff know to post the charge manually via OPD Billing Entry.
             toast({
               title: 'Stock dispensed — billing failed',
-              description: `${base} Could not create the invoice: ${dispense.billingError ?? 'unknown error'}. Bill this manually via OPD Billing Entry.`,
+              description: `${base} Could not create the invoice: ${cart.billingError ?? 'unknown error'}. Bill this manually via OPD Billing Entry.`,
               variant: 'warning',
             });
           } else {
             toast({
               title: 'Stock dispensed',
-              description: `${base} Invoice ${dispense.invoiceNumber} created.`,
+              description: `${base} Invoice ${cart.invoiceNumber} created.`,
               variant: 'success',
             });
           }
           navigate('/pharmacy/dispenses');
         },
         // On failure (409: expired batch / insufficient stock / invalid product-batch-patient
-        // reference) the real backend message is surfaced by DispenseForm via apiError —
-        // never swallowed into a generic "something went wrong".
+        // reference on any line — nothing in the cart is dispensed) the real backend message is
+        // surfaced by DispenseCartForm via apiError — never swallowed into a generic message.
       },
     );
   }
@@ -106,7 +109,7 @@ export default function DispenseCreatePage() {
 
               <div className="flex flex-col gap-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dispense Details</h2>
-                <DispenseForm
+                <DispenseCartForm
                   patientId={patient.id}
                   isSubmitting={mutation.isPending}
                   apiError={mutation.error instanceof ApiError ? mutation.error : null}

@@ -62,3 +62,39 @@ public class DispenseListQuery : PagedRequest
     public Guid? PatientId { get; set; }
     public Guid? ProductId { get; set; }
 }
+
+public record DispenseCartLineRequest
+{
+    public Guid ProductId { get; init; }
+    public Guid ProductBatchId { get; init; }
+    public decimal Quantity { get; init; }
+    public string? Remarks { get; init; }
+}
+
+/// <summary>
+/// Checks out several products/batches for one patient in a single call, dispensing all of
+/// them and billing them as ONE invoice with N line items — see DispenseService.CreateCartAsync.
+/// AdmissionId stays cart-level (one optional IPD link for the whole checkout), same as the
+/// single-item CreateDispenseRequest.
+/// </summary>
+public record CreateDispenseCartRequest
+{
+    public Guid PatientId { get; init; }
+    public Guid? AdmissionId { get; init; }
+    public IReadOnlyList<DispenseCartLineRequest> Lines { get; init; } = [];
+}
+
+/// <summary>
+/// One DispenseResponse per cart line (each is its own PharmacyStockTransaction row), plus the
+/// billing outcome for the whole cart — unlike the single-item DispenseResponse, billing here
+/// applies once to the entire checkout, not per line, so it lives only at this top level.
+/// </summary>
+public record DispenseCartResponse
+{
+    public IReadOnlyList<DispenseResponse> Lines { get; init; } = [];
+    public Guid? InvoiceId { get; init; }
+    public string? InvoiceNumber { get; init; }
+    public bool BillingFailed { get; init; }
+    public string? BillingError { get; init; }
+    public decimal TotalAmount { get; init; }
+}
