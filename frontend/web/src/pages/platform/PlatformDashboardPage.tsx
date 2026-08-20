@@ -10,7 +10,7 @@ import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
 import {
   DeleteHospitalDialog,
   DeletedHospitalTable,
-  HospitalConfigurationDialog,
+  HospitalFeaturesDialog,
   HospitalListToolbar,
   HospitalTable,
   useDeletedHospitalsQuery,
@@ -42,7 +42,7 @@ export default function PlatformDashboardPage() {
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search);
   const [hospitalToDelete, setHospitalToDelete] = useState<TenantListItemResponse | null>(null);
-  const [hospitalToConfigure, setHospitalToConfigure] = useState<TenantListItemResponse | null>(null);
+  const [hospitalToManageFeatures, setHospitalToManageFeatures] = useState<TenantListItemResponse | null>(null);
 
   const statsQuery = useHospitalStatsQuery();
   const hospitalsQuery = useHospitalsQuery({ page, pageSize: 20, search: debouncedSearch || undefined });
@@ -181,7 +181,7 @@ export default function PlatformDashboardPage() {
                   onToggleStatus={handleToggleStatus}
                   isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
                   onDelete={setHospitalToDelete}
-                  onConfigure={setHospitalToConfigure}
+                  onManageFeatures={setHospitalToManageFeatures}
                 />
                 <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
               </div>
@@ -233,8 +233,8 @@ export default function PlatformDashboardPage() {
       </main>
 
       {hospitalToDelete && <DeleteHospitalDialog hospital={hospitalToDelete} onClose={() => setHospitalToDelete(null)} />}
-      {hospitalToConfigure && (
-        <HospitalConfigurationDialog hospital={hospitalToConfigure} onClose={() => setHospitalToConfigure(null)} />
+      {hospitalToManageFeatures && (
+        <HospitalFeaturesDialog hospital={hospitalToManageFeatures} onClose={() => setHospitalToManageFeatures(null)} />
       )}
     </div>
   );

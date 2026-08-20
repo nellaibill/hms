@@ -25,4 +25,6 @@ public interface ITenantDirectory
 /// raw database name to build a connection from themselves (see Phase C's "no
 /// client-controlled database selection" requirement).
 /// </summary>
-public sealed record TenantInfo(Guid Id, string HospitalCode, string DatabaseName, string ConnectionString, bool IsActive, IReadOnlyList<string> EnabledModules);
+/// <summary>EnabledFeatures is the schema-level FeatureCatalog set (Tenant Feature/Module
+/// Management) — distinct from EnabledModules (the RBAC ModuleCatalog set).</summary>
+public sealed record TenantInfo(Guid Id, string HospitalCode, string DatabaseName, string ConnectionString, bool IsActive, IReadOnlyList<string> EnabledModules, IReadOnlyList<string> EnabledFeatures);

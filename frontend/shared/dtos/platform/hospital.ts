@@ -13,6 +13,9 @@ export interface CreateHospitalRequest {
   superAdminEmail: string;
   superAdminPhoneNumber: string;
   superAdminPassword: string;
+  /** Optional FeatureCatalog keys beyond the always-included mandatory set — drives which
+   * schemas get provisioned. Empty provisions only the mandatory modules. */
+  enabledFeatureKeys: string[];
 }
 
 /** Mirrors HMS.Modules.Platform.Contracts.CreateHospitalResponse. */
@@ -87,4 +90,18 @@ export interface TenantConfigurationResponse {
 export interface UpdateTenantConfigurationRequest {
   enabledModules: string[];
   subscriptionTier: string;
+}
+
+/** Mirrors HMS.Modules.Platform.Contracts.TenantFeaturesResponse — the schema-level "which
+ * modules does this hospital have" set. Distinct from TenantConfigurationResponse (RBAC). */
+export interface TenantFeaturesResponse {
+  id: string;
+  enabledFeatures: string[];
+  allFeatures: string[];
+  mandatoryFeatures: string[];
+}
+
+/** Mirrors HMS.Modules.Platform.Contracts.UpdateTenantFeaturesRequest. */
+export interface UpdateTenantFeaturesRequest {
+  enabledFeatures: string[];
 }

@@ -16,6 +16,12 @@ public record CreateHospitalRequest
     public string SuperAdminEmail { get; init; } = string.Empty;
     public string SuperAdminPhoneNumber { get; init; } = string.Empty;
     public string SuperAdminPassword { get; init; } = string.Empty;
+
+    /// <summary>Optional FeatureCatalog keys to enable for this tenant beyond
+    /// FeatureCatalog.Mandatory (which is always included regardless of this list) — drives
+    /// which schemas get provisioned (see Tenant Feature/Module Management). An empty list
+    /// provisions only the mandatory modules.</summary>
+    public IReadOnlyList<string> EnabledFeatureKeys { get; init; } = [];
 }
 
 public record CreateHospitalResponse

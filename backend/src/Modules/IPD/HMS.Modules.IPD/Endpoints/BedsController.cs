@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.Modules.IPD.Endpoints;
 
 [ApiController]
+[RequireFeature("ipd")]
 [Route("api/v1/ipd/beds")]
 public class BedsController : ControllerBase
 {

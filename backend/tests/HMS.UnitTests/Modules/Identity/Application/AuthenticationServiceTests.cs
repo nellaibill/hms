@@ -44,7 +44,7 @@ public class AuthenticationServiceTests
         _roleRepository.GetByIdAsync(role.Id, Arg.Any<CancellationToken>()).Returns(role);
         _passwordHasher.VerifyPassword("correct-password", "stored-hash").Returns(true);
         _jwtTokenGenerator
-            .GenerateToken(user.Id, user.Username, role.Id, role.Name, loginType, Arg.Any<IEnumerable<string>>(), _tenantId)
+            .GenerateToken(user.Id, user.Username, role.Id, role.Name, loginType, Arg.Any<IEnumerable<string>>(), _tenantId, Arg.Any<IEnumerable<string>>())
             .Returns(("a.jwt.token", 3600));
 
         return (user, role);

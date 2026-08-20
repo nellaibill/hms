@@ -129,8 +129,18 @@ internal class AuthenticationService : IAuthenticationService
             .Select(rp => rp.Permission.Key)
             .ToList();
 
+        // Tenant Feature/Module Management: FeatureCatalog keys enabled for this tenant, for
+        // the JWT's UI-only "Feature" claim (see JwtTokenGenerator's own doc comment). Empty/
+        // unset means every feature (same "unrestricted by default" convention EnabledModules
+        // above already uses) — covers tenants provisioned before platform.tenant_features
+        // existed.
+        var enabledFeatures = _tenantContext.EnabledFeatures;
+        var featureKeys = enabledFeatures is null || enabledFeatures.Count == 0
+            ? FeatureCatalog.All
+            : enabledFeatures;
+
         var (token, expiresInSeconds) = _jwtTokenGenerator.GenerateToken(
-            user.Id, user.Username, role.Id, role.Name, request.LoginType, permissionKeys, _tenantContext.TenantId!.Value);
+            user.Id, user.Username, role.Id, role.Name, request.LoginType, permissionKeys, _tenantContext.TenantId!.Value, featureKeys);
 
         _logger.LogInformation("User {UserId} logged in", user.Id);
 
@@ -150,6 +160,7 @@ internal class AuthenticationService : IAuthenticationService
                 LoginType = request.LoginType,
                 ProfilePhotoUrl = user.ProfilePhotoUrl,
                 PermissionKeys = permissionKeys,
+                FeatureKeys = featureKeys.ToList(),
                 MustChangePassword = user.MustChangePassword,
             },
         });

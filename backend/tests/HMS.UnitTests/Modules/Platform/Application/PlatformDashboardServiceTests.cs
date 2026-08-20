@@ -110,13 +110,13 @@ public class PlatformDashboardServiceTests
         var tenant = NewTenant();
         _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         _tenantDirectory.FindByIdAsync(tenant.Id, Arg.Any<CancellationToken>())
-            .Returns(new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, "Host=localhost;Database=hms_tenant_apollo", true, tenant.EnabledModules));
+            .Returns(new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, "Host=localhost;Database=hms_tenant_apollo", true, tenant.EnabledModules, HMS.Shared.Kernel.FeatureCatalog.All));
 
         var result = await _sut.MigrateAsync(tenant.Id, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.HospitalCode.Should().Be(tenant.HospitalCode);
-        await _migrationService.Received(1).MigrateAsync("Host=localhost;Database=hms_tenant_apollo", Arg.Any<CancellationToken>());
+        await _migrationService.Received(1).MigrateAsync("Host=localhost;Database=hms_tenant_apollo", Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class PlatformDashboardServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PlatformErrorCodes.NotFound);
-        await _migrationService.DidNotReceive().MigrateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _migrationService.DidNotReceive().MigrateAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -137,8 +137,8 @@ public class PlatformDashboardServiceTests
         var tenant = NewTenant();
         _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         _tenantDirectory.FindByIdAsync(tenant.Id, Arg.Any<CancellationToken>())
-            .Returns(new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, "Host=localhost;Database=hms_tenant_apollo", true, tenant.EnabledModules));
-        _migrationService.MigrateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, "Host=localhost;Database=hms_tenant_apollo", true, tenant.EnabledModules, HMS.Shared.Kernel.FeatureCatalog.All));
+        _migrationService.MigrateAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("connection refused")));
 
         var result = await _sut.MigrateAsync(tenant.Id, CancellationToken.None);

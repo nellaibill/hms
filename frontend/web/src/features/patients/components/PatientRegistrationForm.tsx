@@ -168,6 +168,10 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // silent tab-jump doesn't tell a first-time user *why* they landed back on Billing.
   // Cleared as soon as the user starts fixing it (see handleBillingChange).
   const [billingBlockedSubmit, setBillingBlockedSubmit] = useState(false);
+  // Set only if goToTab's validation step throws (e.g. malformed data left over from an
+  // old draft) — without this, that failure left Next looking like it silently did nothing:
+  // no tab change, no error, nothing (see goToTab below).
+  const [navigationError, setNavigationError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabId>(
     initialDraft && isTabId(initialDraft.activeTab) ? initialDraft.activeTab : 'patient-info',
@@ -227,22 +231,30 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // Billing has no fields on this form, so it's simply skipped here — its own validation
   // gate runs separately, on final submit (see onValidSubmit below).
   const goToTab = async (target: TabId) => {
+    setNavigationError(null);
     const targetIndex = TAB_ORDER.indexOf(target);
     if (targetIndex <= activeTabIndex) {
       setActiveTab(target);
       return;
     }
-    for (let i = activeTabIndex; i < targetIndex; i++) {
-      const tab = TAB_ORDER[i];
-      if (!isPatientTabId(tab)) continue;
-      const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
-      setAttemptedTabs((prev) => new Set(prev).add(tab));
-      if (!isTabValid) {
-        setActiveTab(tab);
-        return;
+    try {
+      for (let i = activeTabIndex; i < targetIndex; i++) {
+        const tab = TAB_ORDER[i];
+        if (!isPatientTabId(tab)) continue;
+        const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
+        setAttemptedTabs((prev) => new Set(prev).add(tab));
+        if (!isTabValid) {
+          setActiveTab(tab);
+          return;
+        }
       }
+      setActiveTab(target);
+    } catch {
+      // Without this, a thrown validation error left Next looking like it did nothing —
+      // no tab change, no message, nothing — since goToNextTab's onClick doesn't await or
+      // catch this promise. Surfacing something is better than the silent failure.
+      setNavigationError('Something went wrong checking this step. Please try again — if it keeps happening, refresh the page.');
     }
-    setActiveTab(target);
   };
   const goToNextTab = () => goToTab(TAB_ORDER[activeTabIndex + 1]);
 
@@ -286,12 +298,30 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // caller (see toRequest() in PatientRegistrationCreatePage), so a server field name
   // like "Registration.Department" doesn't correspond to a single form control here.
   // Surfaced as a general list instead of per-field errors.
-  const generalError = apiError?.message ?? null;
+  const generalError = navigationError ?? apiError?.message ?? null;
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
+
+  // Every tab but the last has no type="submit" button (Cancel/Previous/Next are all
+  // type="button") — with no default button, pressing Enter in a plain text input falls
+  // back to the browser's native implicit form submission (a full page reload/navigation,
+  // bypassing React entirely) instead of doing nothing or advancing the wizard. Blocking
+  // Enter on <input> elements avoids that silent reload; it doesn't affect Select/Radix
+  // dropdowns (which aren't <input>s and handle their own Enter key) or the real submit
+  // button on the last tab (a click, not a keydown-Enter-on-input).
+  const blockEnterKeySubmit = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+      event.preventDefault();
+    }
+  };
 
   return (
     <div className="flex w-full max-w-6xl flex-col gap-5">
-      <form onSubmit={handleSubmit(onValidSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
+      <form
+        onSubmit={handleSubmit(onValidSubmit, onInvalid)}
+        onKeyDown={blockEnterKeySubmit}
+        noValidate
+        className="flex flex-1 flex-col gap-4"
+      >
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}
@@ -622,7 +652,12 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   )}
                 />
               </Field>
-              <Field label="Specify" htmlFor="allergySpecify" className="flex min-w-[200px] flex-1 flex-col gap-1">
+              <Field
+                label="Specify"
+                htmlFor="allergySpecify"
+                error={errors.allergySpecify?.message}
+                className="flex min-w-[200px] flex-1 flex-col gap-1"
+              >
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
               </Field>
               <Field
@@ -656,7 +691,12 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
 
         <FormSection id="mode-of-arrival" title="Mode of Arrival" description="How the patient found or was referred to the hospital.">
           <div className="flex flex-wrap gap-3">
-            <Field label="Source" htmlFor="arrivalCategory" className="flex w-full flex-col gap-1 sm:w-56">
+            <Field
+              label="Source"
+              htmlFor="arrivalCategory"
+              error={errors.arrivalSource?.category?.message}
+              className="flex w-full flex-col gap-1 sm:w-56"
+            >
               <Controller
                 name="arrivalSource.category"
                 control={control}

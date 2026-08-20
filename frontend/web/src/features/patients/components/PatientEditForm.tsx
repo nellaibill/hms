@@ -86,6 +86,9 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
   const hasKnownAllergy = watch('hasKnownAllergy');
 
   const [activeTab, setActiveTab] = useState<TabId>('patient-info');
+  // Set only if goToTab's validation step throws — without this, that failure left Next
+  // looking like it silently did nothing: no tab change, no error, nothing (see goToTab below).
+  const [navigationError, setNavigationError] = useState<string | null>(null);
   // Tabs the user has actually tried to leave (via Next) or a final submit attempt — a tab
   // the user hasn't reached yet shouldn't show an error dot just because its untouched
   // required fields are technically invalid. Mirrors PatientRegistrationForm's gating so
@@ -100,21 +103,28 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
   // landing on it — covers both the Next button and clicking a tab header directly.
   // Moving backward to an already-visited tab is always allowed with no validation.
   const goToTab = async (target: TabId) => {
+    setNavigationError(null);
     const targetIndex = TAB_ORDER.indexOf(target);
     if (targetIndex <= activeTabIndex) {
       setActiveTab(target);
       return;
     }
-    for (let i = activeTabIndex; i < targetIndex; i++) {
-      const tab = TAB_ORDER[i];
-      const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
-      setAttemptedTabs((prev) => new Set(prev).add(tab));
-      if (!isTabValid) {
-        setActiveTab(tab);
-        return;
+    try {
+      for (let i = activeTabIndex; i < targetIndex; i++) {
+        const tab = TAB_ORDER[i];
+        const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
+        setAttemptedTabs((prev) => new Set(prev).add(tab));
+        if (!isTabValid) {
+          setActiveTab(tab);
+          return;
+        }
       }
+      setActiveTab(target);
+    } catch {
+      // Without this, a thrown validation error left Next looking like it did nothing — no
+      // tab change, no message — since goToNextTab's onClick doesn't await or catch this.
+      setNavigationError('Something went wrong checking this step. Please try again — if it keeps happening, refresh the page.');
     }
-    setActiveTab(target);
   };
   const goToNextTab = () => goToTab(TAB_ORDER[activeTabIndex + 1]);
 
@@ -127,12 +137,30 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
   const dateOfBirth = watch('dateOfBirth');
   const detailedAge = dateOfBirth ? calculateDetailedAge(dateOfBirth) : null;
 
-  const generalError = apiError?.message ?? null;
+  const generalError = navigationError ?? apiError?.message ?? null;
   const serverValidationMessages = apiError?.validationErrors?.map((issue) => issue.message) ?? [];
+
+  // Every tab but the last has no type="submit" button (Cancel/Previous/Next are all
+  // type="button") — with no default button, pressing Enter in a plain text input falls
+  // back to the browser's native implicit form submission (a full page reload/navigation,
+  // bypassing React entirely) instead of doing nothing or advancing the wizard. Blocking
+  // Enter on <input> elements avoids that silent reload; it doesn't affect Select/Radix
+  // dropdowns (which aren't <input>s and handle their own Enter key) or the real submit
+  // button on the last tab (a click, not a keydown-Enter-on-input).
+  const blockEnterKeySubmit = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+      event.preventDefault();
+    }
+  };
 
   return (
     <div className="flex w-full max-w-6xl flex-col gap-5">
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="flex flex-1 flex-col gap-4">
+      <form
+        onSubmit={handleSubmit(onSubmit, onInvalid)}
+        onKeyDown={blockEnterKeySubmit}
+        noValidate
+        className="flex flex-1 flex-col gap-4"
+      >
         {(generalError || serverValidationMessages.length > 0) && (
           <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {generalError && <p>{generalError}</p>}

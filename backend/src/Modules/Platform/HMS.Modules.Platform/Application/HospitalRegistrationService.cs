@@ -21,17 +21,20 @@ namespace HMS.Modules.Platform.Application;
 internal sealed class HospitalRegistrationService : IHospitalRegistrationService
 {
     private readonly ITenantRepository _tenantRepository;
+    private readonly ITenantFeatureRepository _featureRepository;
     private readonly ITenantProvisioner _tenantProvisioner;
     private readonly IHospitalRegistrationIdempotencyStore _idempotencyStore;
     private readonly ILogger<HospitalRegistrationService> _logger;
 
     public HospitalRegistrationService(
         ITenantRepository tenantRepository,
+        ITenantFeatureRepository featureRepository,
         ITenantProvisioner tenantProvisioner,
         IHospitalRegistrationIdempotencyStore idempotencyStore,
         ILogger<HospitalRegistrationService> logger)
     {
         _tenantRepository = tenantRepository;
+        _featureRepository = featureRepository;
         _tenantProvisioner = tenantProvisioner;
         _idempotencyStore = idempotencyStore;
         _logger = logger;
@@ -89,6 +92,13 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
                 $"A hospital with Super Admin email '{request.SuperAdminEmail}' is already registered.");
         }
 
+        // Mandatory features are always included regardless of what the caller selected —
+        // same defensive union TenantMigrationService itself also applies, done here too so
+        // the platform.tenant_features rows written below agree with what was actually
+        // migrated.
+        var resolvedFeatureKeys = new HashSet<string>(request.EnabledFeatureKeys);
+        resolvedFeatureKeys.UnionWith(FeatureCatalog.Mandatory);
+
         var provisionResult = await _tenantProvisioner.ProvisionAsync(
             new TenantProvisionRequest(
                 request.HospitalName,
@@ -97,7 +107,8 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
                 request.SuperAdminLastName,
                 request.SuperAdminEmail,
                 request.SuperAdminPhoneNumber,
-                request.SuperAdminPassword),
+                request.SuperAdminPassword,
+                resolvedFeatureKeys),
             cancellationToken);
 
         if (!provisionResult.IsSuccess)
@@ -122,6 +133,12 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
             createdBy: actorId);
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
+
+        var featureRows = FeatureCatalog.All.Select(key => TenantFeature.Create(tenant.Id, key, resolvedFeatureKeys.Contains(key), createdBy: actorId));
+        await _featureRepository.AddRangeAsync(featureRows, cancellationToken);
+
+        // Both repositories share the same scoped PlatformDbContext, so one SaveChanges
+        // persists the tenant row and its initial tenant_features rows together.
         await _tenantRepository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(

@@ -121,6 +121,12 @@ public static class JwtConfiguration
         // permission, e.g. RolesController.Create. See PermissionAuthorization.cs.
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
+        // Tenant Feature/Module Management: backs [RequireFeature("...")] — apply it
+        // alongside a bare [Authorize] on any hospital action belonging to an optional
+        // module. Scoped (not Singleton) because it depends on the request-scoped
+        // ITenantContext — see FeatureAuthorizationHandler's own doc comment.
+        services.AddScoped<IAuthorizationHandler, FeatureAuthorizationHandler>();
+
         return services;
     }
 }

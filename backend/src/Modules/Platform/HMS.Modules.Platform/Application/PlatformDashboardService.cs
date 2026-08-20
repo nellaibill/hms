@@ -82,7 +82,10 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
 
         try
         {
-            await _migrationService.MigrateAsync(tenantInfo.ConnectionString, cancellationToken);
+            // Passes the tenant's CURRENT enabled-feature set (not the full catalog) so a
+            // re-migrate never provisions a schema for a feature this tenant doesn't have —
+            // otherwise this operator action would silently defeat feature-based exclusion.
+            await _migrationService.MigrateAsync(tenantInfo.ConnectionString, tenantInfo.EnabledFeatures, cancellationToken);
         }
         catch (Exception ex)
         {

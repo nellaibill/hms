@@ -12,6 +12,7 @@ namespace HMS.Modules.Products.Endpoints;
 
 /// <summary>Product/item master CRUD — the aggregate root every child entity in this module (barcodes, batches, prices, images, attribute values, tax mappings) hangs off of.</summary>
 [ApiController]
+[RequireFeature("products")]
 [Route("api/v1/products")]
 public class ProductsController : ControllerBase
 {

@@ -6,9 +6,11 @@ import type {
   TenantConfigurationResponse,
   TenantDashboardStatsResponse,
   TenantDeletePreviewResponse,
+  TenantFeaturesResponse,
   TenantListItemResponse,
   TenantListQuery,
   UpdateTenantConfigurationRequest,
+  UpdateTenantFeaturesRequest,
   UpdateTenantStatusRequest,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
@@ -99,6 +101,16 @@ export class PlatformHospitalsApi {
 
   async updateConfiguration(id: string, request: UpdateTenantConfigurationRequest): Promise<TenantConfigurationResponse> {
     const response = await this.client.put<TenantConfigurationResponse>(API_ROUTES.platformHospitals.configuration(id), request);
+    return response.data;
+  }
+
+  async getFeatures(id: string): Promise<TenantFeaturesResponse> {
+    const response = await this.client.get<TenantFeaturesResponse>(API_ROUTES.platformHospitals.features(id));
+    return response.data;
+  }
+
+  async updateFeatures(id: string, request: UpdateTenantFeaturesRequest): Promise<TenantFeaturesResponse> {
+    const response = await this.client.put<TenantFeaturesResponse>(API_ROUTES.platformHospitals.features(id), request);
     return response.data;
   }
 }

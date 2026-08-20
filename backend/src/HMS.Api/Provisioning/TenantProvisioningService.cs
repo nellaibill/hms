@@ -46,7 +46,7 @@ public sealed class TenantProvisioningService : ITenantProvisioner
         {
             var tenantConnectionString = BuildTenantConnectionString(databaseName);
 
-            await _migrationService.MigrateAsync(tenantConnectionString, cancellationToken);
+            await _migrationService.MigrateAsync(tenantConnectionString, request.EnabledFeatureKeys, cancellationToken);
 
             await IdentityModule.ProvisionTenantSuperAdminAsync(
                 tenantConnectionString,

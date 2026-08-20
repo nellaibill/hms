@@ -69,13 +69,21 @@ app.UseStaticFiles();
 // Must run after CORS and before MapControllers, in that order: Authentication decides
 // who the caller is, Authorization then checks [Authorize] on the matched endpoint.
 app.UseAuthentication();
-app.UseAuthorization();
 
-// HMS Multi-Tenancy Phase C: must run after authorization (so an unauthenticated/
-// wrong-policy request is already rejected by then, never triggering a tenant lookup) and
-// before the controller executes (so every tenant-aware hospital DbContext sees a resolved
-// ITenantContext the first time it's constructed within this request's scope).
+// HMS Multi-Tenancy Phase C: must run after authentication (so it has a JWT's "UserId"/
+// "TenantId" claims to key off) but BEFORE authorization — Tenant Feature/Module
+// Management's FeatureAuthorizationHandler reads ITenantContext.EnabledFeatures (live,
+// re-resolved from platform.tenant_features on every request, deliberately never a JWT
+// claim — see FeatureAuthorizationHandler's own doc comment), so ITenantContext must
+// already be populated by the time UseAuthorization() evaluates policies, not after. Also
+// still before MapControllers(), so every tenant-aware hospital DbContext sees a resolved
+// ITenantContext the first time it's constructed within this request's scope. Trade-off:
+// an authenticated request now always resolves its tenant even if authorization will go on
+// to reject it for an unrelated reason (e.g. a missing permission) — an acceptable single
+// extra lookup against the same seam every request already needed anyway.
 app.UseMiddleware<TenantResolutionMiddleware>();
+
+app.UseAuthorization();
 
 app.MapControllers();
 
@@ -105,7 +113,9 @@ if (app.Environment.IsDevelopment())
     // database.
     var defaultConnectionString = builder.Configuration.GetConnectionString("Default")
         ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
-    await sp.GetRequiredService<ITenantMigrationService>().MigrateAsync(defaultConnectionString, CancellationToken.None);
+    // Full feature set — preserves this legacy tenant's existing behavior exactly (it has
+    // always had every module) under the new selective-migration seam.
+    await sp.GetRequiredService<ITenantMigrationService>().MigrateAsync(defaultConnectionString, FeatureCatalog.All, CancellationToken.None);
 
     // Idempotent: seeds the one default Platform Admin account, and (Phase C) the
     // platform.tenants row associating ConnectionStrings:Default with a real tenant

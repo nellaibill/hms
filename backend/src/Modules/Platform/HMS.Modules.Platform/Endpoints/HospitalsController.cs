@@ -20,21 +20,27 @@ public class HospitalsController : ControllerBase
 {
     private readonly IHospitalRegistrationService _registrationService;
     private readonly IPlatformDashboardService _dashboardService;
+    private readonly ITenantFeatureService _featureService;
     private readonly IValidator<CreateHospitalRequest> _createValidator;
     private readonly IValidator<UpdateTenantConfigurationRequest> _configurationValidator;
+    private readonly IValidator<UpdateTenantFeaturesRequest> _featuresValidator;
     private readonly ILogger<HospitalsController> _logger;
 
     public HospitalsController(
         IHospitalRegistrationService registrationService,
         IPlatformDashboardService dashboardService,
+        ITenantFeatureService featureService,
         IValidator<CreateHospitalRequest> createValidator,
         IValidator<UpdateTenantConfigurationRequest> configurationValidator,
+        IValidator<UpdateTenantFeaturesRequest> featuresValidator,
         ILogger<HospitalsController> logger)
     {
         _registrationService = registrationService;
         _dashboardService = dashboardService;
+        _featureService = featureService;
         _createValidator = createValidator;
         _configurationValidator = configurationValidator;
+        _featuresValidator = featuresValidator;
         _logger = logger;
     }
 
@@ -175,6 +181,42 @@ public class HospitalsController : ControllerBase
 
         var result = await _dashboardService.UpdateConfigurationAsync(id, request, User.GetPlatformUserId(), cancellationToken);
         return result.IsSuccess ? Ok(new ApiResponse<TenantConfigurationResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Returns which schema-level modules this hospital tenant has — distinct from
+    /// GetConfiguration's RBAC EnabledModules. See TenantFeaturesResponse's own doc comment.</summary>
+    /// <response code="200">Returns the tenant's features.</response>
+    /// <response code="404">No hospital was found for the given id.</response>
+    [HttpGet("{id:guid}/features")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
+    public async Task<IActionResult> GetFeatures(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _featureService.GetAsync(id, cancellationToken);
+        return result.IsSuccess ? Ok(new ApiResponse<TenantFeaturesResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>
+    /// Updates which schema-level modules this hospital tenant has. Enabling a feature that
+    /// was never provisioned schedules its schema to be created on next migrate; disabling a
+    /// feature never drops its schema or data — only its nav/API access is revoked, enforced
+    /// live on every request via FeatureAuthorizationHandler (not from a JWT snapshot), so it
+    /// takes effect immediately without waiting for affected users to re-login.
+    /// </summary>
+    /// <response code="200">The features were updated.</response>
+    /// <response code="400">The request failed validation (unknown key, or a mandatory feature was omitted).</response>
+    /// <response code="404">No hospital was found for the given id.</response>
+    [HttpPut("{id:guid}/features")]
+    [Authorize(Policy = "PlatformSuperAdmin")]
+    public async Task<IActionResult> UpdateFeatures(Guid id, [FromBody] UpdateTenantFeaturesRequest request, CancellationToken cancellationToken)
+    {
+        var validation = await _featuresValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return BadRequest(BuildValidationError(validation));
+        }
+
+        var result = await _featureService.UpdateAsync(id, request, User.GetPlatformUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(new ApiResponse<TenantFeaturesResponse> { Data = result.Value }) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>

@@ -41,6 +41,9 @@ export const createHospitalSchema = z.object({
     .string()
     .min(PASSWORD_MIN_LENGTH, `Must be at least ${PASSWORD_MIN_LENGTH} characters`)
     .regex(PASSWORD_COMPLEXITY_PATTERN, PASSWORD_COMPLEXITY_MESSAGE),
+
+  /** Optional FeatureCatalog keys beyond the always-included mandatory set. */
+  enabledFeatureKeys: z.array(z.string()).default([]),
 });
 
 export type CreateHospitalFormValues = z.infer<typeof createHospitalSchema>;

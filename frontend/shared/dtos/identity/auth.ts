@@ -18,6 +18,10 @@ export interface LoginUserResponse {
   loginType: string;
   profilePhotoUrl?: string | null;
   permissionKeys: string[];
+  /** FeatureCatalog keys enabled for this tenant (Tenant Feature/Module Management) — UI/
+   * nav-gating convenience only, a login-time snapshot. The backend never trusts this for
+   * authorization; it always checks live tenant state instead. */
+  featureKeys: string[];
   mustChangePassword: boolean;
 }
 

@@ -33,6 +33,7 @@ export const API_ROUTES = {
     byId: (id: string) => `/api/platform/hospitals/${id}`,
     restore: (id: string) => `/api/platform/hospitals/${id}/restore`,
     configuration: (id: string) => `/api/platform/hospitals/${id}/configuration`,
+    features: (id: string) => `/api/platform/hospitals/${id}/features`,
   },
   users: {
     base: '/api/v1/users',
