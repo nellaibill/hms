@@ -12,24 +12,46 @@ interface PatientPickerProps {
 const RESULTS_PAGE_SIZE = 10;
 
 /**
- * Reuses the same search-by-Name/Age/UHID/Phone flow as Old Patient Registration
+ * Reuses the same search-by-Name/Age/UHID/Phone toolbar as Old Patient Registration
  * (features/patients) — billing needs to find an existing patient, not manage them, so
  * results render as a pick list here rather than PatientTable's full row-actions view.
+ *
+ * Query construction deliberately differs from that page, though: when exactly one of the
+ * free-text fields (Name/UHID/Phone) is filled in — and Age is not, since it's a numeric
+ * date-of-birth-range filter the general search can't express — it's sent as the backend's
+ * general `search` param (PatientRepository.GetPagedAsync OR-matches name/UHID/phone for
+ * that one term) instead of the field-specific one. Found live: a real user pasted a UHID
+ * into the "Patient Name" box (the natural thing to do when you just want to find someone
+ * fast) and got a silent "no results", because the Name filter only matches First/LastName,
+ * never UHID. Once more than one field has a value (or Age is one of them), this falls back
+ * to the precise per-field AND-narrowing PatientsListPage also uses — a receptionist
+ * deliberately combining Name + Phone to narrow among several matches should still get that
+ * behavior, not a broad OR across unrelated fields.
  */
 export function PatientPicker({ onSelect }: PatientPickerProps) {
   const [filters, setFilters] = useState<PatientSearchFilters>(emptyPatientSearchFilters);
   const [activeFilters, setActiveFilters] = useState<PatientSearchFilters | null>(null);
   const hasSearched = activeFilters !== null;
 
+  const freeTextFields = activeFilters ? ([activeFilters.name, activeFilters.uhid, activeFilters.phone] as const) : undefined;
+  const filledFreeTextCount = freeTextFields?.filter((value) => value.trim() !== '').length ?? 0;
+  const ageIsFilled = Boolean(activeFilters?.age.trim());
+  const singleFreeTextValue =
+    !ageIsFilled && filledFreeTextCount === 1 ? freeTextFields?.find((value) => value.trim() !== '') : undefined;
+
   const { data, isPending, isError } = usePatientsQuery(
     {
       page: 1,
       pageSize: RESULTS_PAGE_SIZE,
       sort: 'lastName',
-      name: activeFilters?.name.trim() || undefined,
-      age: activeFilters?.age.trim() ? Number(activeFilters.age) : undefined,
-      uhid: activeFilters?.uhid.trim() || undefined,
-      phone: activeFilters?.phone.trim() || undefined,
+      ...(singleFreeTextValue
+        ? { search: singleFreeTextValue.trim() }
+        : {
+            name: activeFilters?.name.trim() || undefined,
+            age: activeFilters?.age.trim() ? Number(activeFilters.age) : undefined,
+            uhid: activeFilters?.uhid.trim() || undefined,
+            phone: activeFilters?.phone.trim() || undefined,
+          }),
     },
     { enabled: hasSearched },
   );
