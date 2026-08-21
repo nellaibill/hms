@@ -1,0 +1,13 @@
+# Used as the build context root for the backend image (see docker-compose.yml).
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+
+backend/tests/
+frontend/
+docs/
+cicd/
+.git/
+.github/
+*.md

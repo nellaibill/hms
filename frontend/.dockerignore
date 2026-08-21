@@ -1,0 +1,7 @@
+# Used as the build context root for the frontend image (see docker-compose.yml).
+**/node_modules/
+**/dist/
+**/coverage/
+**/*.tsbuildinfo
+
+mobile/
