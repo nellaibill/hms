@@ -111,6 +111,16 @@ const referralColumnSchema = z.object({
   contactNumber: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
 });
 
+// UI-only demo affordance ("Add another Consultant") — mirrors additionalPhones' own
+// optional/unvalidated shape below. Deliberately not bridged into CreatePatientRequest by
+// PatientRegistrationCreatePage's toRequest(): the backend contract only has one
+// Department/Consultant pair per registration today, so entries here are for the on-screen
+// experience only and are dropped, not silently mis-saved, at submit time.
+const additionalConsultantSchema = z.object({
+  departmentId: z.string().trim().optional().or(z.literal('')),
+  consultantId: z.string().trim().optional().or(z.literal('')),
+});
+
 // Exported (not just used internally) so a future "record a new visit" form can reuse this
 // exact schema instead of duplicating it — a follow-up visit's registration details are the
 // same shape as a first-time registration's, so they should share one validator.
@@ -119,6 +129,7 @@ export const registrationDetailsUiSchema = z
     encounterType: z.enum(ENCOUNTER_TYPES),
     departmentId: z.string().trim().min(1, 'Department is required'),
     consultantId: z.string().trim().min(1, 'Consultant is required'),
+    additionalConsultants: z.array(additionalConsultantSchema).max(3, 'Up to three additional consultants').default([]),
     appointmentTypeId: z.string().trim().optional().or(z.literal('')),
     admissionType: z.enum(['MLC', 'NMLC']).optional().or(z.literal('')),
     referral: referralColumnSchema.optional(),

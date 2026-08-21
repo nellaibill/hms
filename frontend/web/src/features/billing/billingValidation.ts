@@ -61,6 +61,12 @@ export const serviceBillingSchema = z
 
 export const billingFormSchema = z.object({
   consultation: consultationBillingSchema,
+  // UI-only demo affordance ("Add another Consultation") — kept as a separate field rather
+  // than turning `consultation` itself into an array like radiology/laboratory/procedure
+  // above, since that would ripple into billingCalculations.ts's summary math and eventually
+  // the real invoice-creation payload. Entries here render and behave like the real thing but
+  // aren't read by summarizeBilling/toBillingItems, so they never reach an actual invoice.
+  additionalConsultations: z.array(consultationBillingSchema).default([]),
   radiology: z.array(serviceBillingSchema).default([]),
   laboratory: z.array(serviceBillingSchema).default([]),
   procedure: z.array(serviceBillingSchema).default([]),
@@ -93,6 +99,7 @@ export const emptyServiceRow: ServiceBillingRowFormValues = {
 
 export const defaultBillingFormValues: BillingFormValues = {
   consultation: { ...emptyConsultation },
+  additionalConsultations: [],
   radiology: [{ ...emptyServiceRow }],
   laboratory: [{ ...emptyServiceRow }],
   procedure: [{ ...emptyServiceRow }],

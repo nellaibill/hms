@@ -1,6 +1,7 @@
-import { Stethoscope } from 'lucide-react';
+import { Plus, Stethoscope, X } from 'lucide-react';
 import { useEffect } from 'react';
-import { Controller, useFormContext } from 'react-hook-form';
+import { Controller, useController, useFieldArray, useFormContext, type Control } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field } from '@/features/patients/components/FormSection';
@@ -26,6 +27,10 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
     setValue,
     formState: { errors },
   } = useFormContext<BillingFormValues>();
+
+  // UI-only demo affordance — see additionalConsultations' own doc comment in
+  // billingValidation.ts for why these rows never reach an actual invoice.
+  const additionalConsultations = useFieldArray({ control, name: 'additionalConsultations' });
 
   const departmentId = watch('consultation.departmentId');
   const consultantId = watch('consultation.consultantId');
@@ -171,6 +176,149 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
           setValue('consultation.discountApprovedBy', approvedBy);
         }}
       />
+
+      {additionalConsultations.fields.map((field, index) => (
+        <AdditionalConsultationRow
+          key={field.id}
+          control={control}
+          index={index}
+          onRemove={() => additionalConsultations.remove(index)}
+        />
+      ))}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-fit gap-1.5"
+        onClick={() =>
+          additionalConsultations.append({
+            departmentId: '',
+            consultantId: '',
+            consultationTypeId: '',
+            charge: 0,
+            discount: 0,
+            discountApproved: false,
+            discountApprovedBy: '',
+          })
+        }
+      >
+        <Plus className="h-4 w-4" />
+        Add another Consultation
+      </Button>
     </CollapsibleCard>
+  );
+}
+
+interface AdditionalConsultationRowProps {
+  control: Control<BillingFormValues>;
+  index: number;
+  onRemove: () => void;
+}
+
+/** One "Add another Consultation" row — its own Department/Consultant/Type/Charge/Discount,
+ * independent of the primary consultation above and every other additional row. Mirrors the
+ * primary card's own department-clears-consultant and auto-computed-charge behavior via
+ * useController + a local effect, since this row has no form-level watch()/setValue() of
+ * its own the way the primary fields do through useFormContext above. */
+function AdditionalConsultationRow({ control, index, onRemove }: AdditionalConsultationRowProps) {
+  const departmentField = useController({ control, name: `additionalConsultations.${index}.departmentId` as const });
+  const consultantField = useController({ control, name: `additionalConsultations.${index}.consultantId` as const });
+  const typeField = useController({ control, name: `additionalConsultations.${index}.consultationTypeId` as const });
+  const chargeField = useController({ control, name: `additionalConsultations.${index}.charge` as const });
+  const discountField = useController({ control, name: `additionalConsultations.${index}.discount` as const });
+
+  const rowDepartmentId = departmentField.field.value;
+  const rowConsultantId = consultantField.field.value;
+  const rowTypeId = typeField.field.value;
+  const rowConsultants = getConsultantsForDepartment(rowDepartmentId);
+
+  useEffect(() => {
+    chargeField.field.onChange(getConsultationCharge(rowDepartmentId, rowConsultantId, rowTypeId));
+    // Only recompute when the inputs to the charge lookup change, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowDepartmentId, rowConsultantId, rowTypeId]);
+
+  useEffect(() => {
+    if (rowConsultantId && !rowConsultants.some((c) => c.id === rowConsultantId)) {
+      consultantField.field.onChange('');
+    }
+    // Only re-check when the department (and thus the eligible consultant list) changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowDepartmentId]);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-dashed border-border p-3">
+      <div className="flex flex-wrap gap-3">
+        <Field label="Department" htmlFor={`additional-consultation-department-${index}`} className="flex w-full flex-col gap-1 sm:w-56">
+          <Select value={rowDepartmentId || undefined} onValueChange={departmentField.field.onChange}>
+            <SelectTrigger id={`additional-consultation-department-${index}`} aria-label="Department">
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
+            <SelectContent>
+              {CONSULTATION_DEPARTMENTS.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field
+          label="Consultant"
+          htmlFor={`additional-consultation-consultant-${index}`}
+          className="flex min-w-[200px] flex-1 flex-col gap-1"
+        >
+          <Select value={rowConsultantId || undefined} onValueChange={consultantField.field.onChange} disabled={!rowDepartmentId}>
+            <SelectTrigger id={`additional-consultation-consultant-${index}`} aria-label="Consultant">
+              <SelectValue placeholder={rowDepartmentId ? 'Select consultant' : 'Select a department first'} />
+            </SelectTrigger>
+            <SelectContent>
+              {rowConsultants.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field
+          label="Consultation type"
+          htmlFor={`additional-consultation-type-${index}`}
+          className="flex w-full flex-col gap-1 sm:w-48"
+        >
+          <Select value={rowTypeId || undefined} onValueChange={typeField.field.onChange}>
+            <SelectTrigger id={`additional-consultation-type-${index}`} aria-label="Consultation type">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {CONSULTATION_TYPES.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <ChargeDisplay id={`additional-consultation-charge-${index}`} amount={chargeField.field.value} label="Consultation charge" />
+        <Field label="Discount (₹)" htmlFor={`additional-consultation-discount-${index}`} className="flex w-full flex-col gap-1 sm:w-36">
+          <Input
+            id={`additional-consultation-discount-${index}`}
+            type="number"
+            min={0}
+            max={chargeField.field.value}
+            inputMode="decimal"
+            value={discountField.field.value}
+            onChange={(e) => discountField.field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+          />
+        </Field>
+        <Button type="button" variant="ghost" size="icon" aria-label="Remove consultation" onClick={onRemove}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
