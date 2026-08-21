@@ -150,6 +150,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
     watch,
     trigger,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
@@ -311,6 +312,14 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const isIpOrEmergency = encounterType === 'IP' || encounterType === 'Emergency';
   const isDayCare = encounterType === 'DayCare';
   const showReferralColumn = isIpOrEmergency || isDayCare;
+  const registrationDepartmentId = watch('registration.departmentId');
+
+  // A consultant picked under the previous department is meaningless once the department
+  // changes — same reasoning as DispenseCartForm resetting Batch when Product changes.
+  function handleDepartmentChange(newDepartmentId: string, onChange: (value: string) => void) {
+    onChange(newDepartmentId);
+    setValue('registration.consultantId', '');
+  }
 
   // Server-side validation errors can't be mapped 1:1 to this form's field paths — the
   // submitted request is bridged/composed into the backend's narrower DTO shape by the
@@ -931,7 +940,11 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 name="registration.departmentId"
                 control={control}
                 render={({ field }) => (
-                  <DepartmentSelect id="department" value={field.value} onValueChange={field.onChange} />
+                  <DepartmentSelect
+                    id="department"
+                    value={field.value}
+                    onValueChange={(value) => handleDepartmentChange(value, field.onChange)}
+                  />
                 )}
               />
             </Field>
@@ -945,7 +958,12 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 name="registration.consultantId"
                 control={control}
                 render={({ field }) => (
-                  <ConsultantSelect id="consultant" value={field.value} onValueChange={field.onChange} />
+                  <ConsultantSelect
+                    id="consultant"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    departmentId={registrationDepartmentId}
+                  />
                 )}
               />
             </Field>

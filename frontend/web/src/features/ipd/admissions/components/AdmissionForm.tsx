@@ -43,6 +43,7 @@ export function AdmissionForm({ patientId, onSubmit, isSubmitting, apiError }: A
 
   const wardId = watch('wardId');
   const bedId = watch('bedId');
+  const departmentId = watch('departmentId');
   const [availableBeds, setAvailableBeds] = useState<Bed[]>([]);
   const selectedBed = availableBeds.find((bed) => bed.id === bedId);
 
@@ -67,6 +68,13 @@ export function AdmissionForm({ patientId, onSubmit, isSubmitting, apiError }: A
     setValue('bedId', '');
   }
 
+  function handleDepartmentChange(newDepartmentId: string, onChange: (value: string) => void) {
+    onChange(newDepartmentId);
+    // A consultant picked under the previous department is meaningless once the
+    // department changes.
+    setValue('consultantId', '');
+  }
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex max-w-2xl flex-col gap-4">
       {generalError && (
@@ -81,7 +89,13 @@ export function AdmissionForm({ patientId, onSubmit, isSubmitting, apiError }: A
           <Controller
             control={control}
             name="departmentId"
-            render={({ field }) => <DepartmentSelect id="departmentId" value={field.value} onValueChange={field.onChange} />}
+            render={({ field }) => (
+              <DepartmentSelect
+                id="departmentId"
+                value={field.value}
+                onValueChange={(value) => handleDepartmentChange(value, field.onChange)}
+              />
+            )}
           />
           {errors.departmentId && <p className="text-sm text-destructive">{errors.departmentId.message}</p>}
         </div>
@@ -91,7 +105,9 @@ export function AdmissionForm({ patientId, onSubmit, isSubmitting, apiError }: A
           <Controller
             control={control}
             name="consultantId"
-            render={({ field }) => <ConsultantSelect id="consultantId" value={field.value} onValueChange={field.onChange} />}
+            render={({ field }) => (
+              <ConsultantSelect id="consultantId" value={field.value} onValueChange={field.onChange} departmentId={departmentId} />
+            )}
           />
           {errors.consultantId && <p className="text-sm text-destructive">{errors.consultantId.message}</p>}
         </div>
