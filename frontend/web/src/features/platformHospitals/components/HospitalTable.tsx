@@ -6,11 +6,10 @@ interface HospitalTableProps {
   hospitals: TenantListItemResponse[];
   onToggleStatus: (hospital: TenantListItemResponse) => void;
   isTogglingId: string | undefined;
-  onDelete: (hospital: TenantListItemResponse) => void;
   onManageFeatures: (hospital: TenantListItemResponse) => void;
 }
 
-export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onDelete, onManageFeatures }: HospitalTableProps) {
+export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onManageFeatures }: HospitalTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -50,9 +49,6 @@ export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onDelet
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => onManageFeatures(hospital)}>
                       Manage Features
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDelete(hospital)}>
-                      Delete
                     </Button>
                   </div>
                 </td>

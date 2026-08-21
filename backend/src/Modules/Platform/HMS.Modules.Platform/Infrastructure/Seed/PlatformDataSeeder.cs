@@ -46,10 +46,13 @@ internal sealed class PlatformDataSeeder
         _logger = logger;
     }
 
-    public async Task SeedAsync(CancellationToken cancellationToken)
+    public async Task SeedAsync(CancellationToken cancellationToken, bool seedLegacyTenant = true)
     {
         await SeedPlatformAdminAsync(cancellationToken);
-        await SeedLegacyTenantAsync(cancellationToken);
+        if (seedLegacyTenant)
+        {
+            await SeedLegacyTenantAsync(cancellationToken);
+        }
     }
 
     private async Task SeedPlatformAdminAsync(CancellationToken cancellationToken)
