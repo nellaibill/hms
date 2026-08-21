@@ -20,7 +20,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Receipt, Stethoscope, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
+import { Controller, useController, useFieldArray, useForm, type Control, type FieldErrors } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,6 +114,7 @@ const defaultValues: PatientRegistrationUiFormValues = {
     encounterType: 'OP',
     departmentId: '',
     consultantId: '',
+    additionalConsultants: [],
     appointmentTypeId: '',
     admissionType: '',
     category: '',
@@ -150,6 +151,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
     watch,
     trigger,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
@@ -158,6 +160,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   });
 
   const additionalPhones = useFieldArray({ control, name: 'additionalPhones' });
+  // UI-only demo affordance — see additionalConsultantSchema's own doc comment for why this
+  // never reaches CreatePatientRequest.
+  const additionalConsultants = useFieldArray({ control, name: 'registration.additionalConsultants' });
   const [documents, setDocuments] = useState<StagedDocuments>(emptyStagedDocuments);
 
   // Billing (step 5) owns its own useForm — see BillingStep — so it's driven through this
@@ -311,6 +316,14 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const isIpOrEmergency = encounterType === 'IP' || encounterType === 'Emergency';
   const isDayCare = encounterType === 'DayCare';
   const showReferralColumn = isIpOrEmergency || isDayCare;
+  const registrationDepartmentId = watch('registration.departmentId');
+
+  // A consultant picked under the previous department is meaningless once the department
+  // changes — same reasoning as DispenseCartForm resetting Batch when Product changes.
+  function handleDepartmentChange(newDepartmentId: string, onChange: (value: string) => void) {
+    onChange(newDepartmentId);
+    setValue('registration.consultantId', '');
+  }
 
   // Server-side validation errors can't be mapped 1:1 to this form's field paths — the
   // submitted request is bridged/composed into the backend's narrower DTO shape by the
@@ -931,7 +944,11 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 name="registration.departmentId"
                 control={control}
                 render={({ field }) => (
-                  <DepartmentSelect id="department" value={field.value} onValueChange={field.onChange} />
+                  <DepartmentSelect
+                    id="department"
+                    value={field.value}
+                    onValueChange={(value) => handleDepartmentChange(value, field.onChange)}
+                  />
                 )}
               />
             </Field>
@@ -945,7 +962,12 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 name="registration.consultantId"
                 control={control}
                 render={({ field }) => (
-                  <ConsultantSelect id="consultant" value={field.value} onValueChange={field.onChange} />
+                  <ConsultantSelect
+                    id="consultant"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    departmentId={registrationDepartmentId}
+                  />
                 )}
               />
             </Field>
@@ -983,6 +1005,28 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               </Field>
             )}
           </div>
+
+          {additionalConsultants.fields.map((field, index) => (
+            <AdditionalConsultantRow
+              key={field.id}
+              control={control}
+              index={index}
+              onRemove={() => additionalConsultants.remove(index)}
+            />
+          ))}
+
+          {additionalConsultants.fields.length < 3 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit gap-1.5"
+              onClick={() => additionalConsultants.append({ departmentId: '', consultantId: '' })}
+            >
+              <Plus className="h-4 w-4" />
+              Add another Consultant
+            </Button>
+          )}
 
           {showReferralColumn && (
             <div className="flex flex-wrap gap-3 rounded-md border border-dashed border-border p-3">
@@ -1061,6 +1105,59 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           </div>
         </div>
       </form>
+    </div>
+  );
+}
+
+interface AdditionalConsultantRowProps {
+  control: Control<PatientRegistrationUiFormValues>;
+  index: number;
+  onRemove: () => void;
+}
+
+/** One "Add another Consultant" row — its own Department + Consultant pair, independent of
+ * the primary one above and of every other additional row. Uses useController (the hook
+ * form of Controller) rather than two <Controller>s so handleRowDepartmentChange can reach
+ * both fields' onChange directly, the same "clear the child when the parent changes"
+ * behavior the primary Department/Consultant pair and Ward/Bed already have elsewhere in
+ * this app — just without a wrapping component to hang a handler function off of here. */
+function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsultantRowProps) {
+  const departmentField = useController({ control, name: `registration.additionalConsultants.${index}.departmentId` as const });
+  const consultantField = useController({ control, name: `registration.additionalConsultants.${index}.consultantId` as const });
+
+  function handleRowDepartmentChange(value: string) {
+    departmentField.field.onChange(value);
+    consultantField.field.onChange('');
+  }
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 rounded-md border border-dashed border-border p-3">
+      <Field
+        label={`Department ${index + 2}`}
+        htmlFor={`additional-department-${index}`}
+        className="flex min-w-[160px] flex-1 flex-col gap-1"
+      >
+        <DepartmentSelect
+          id={`additional-department-${index}`}
+          value={departmentField.field.value ?? ''}
+          onValueChange={handleRowDepartmentChange}
+        />
+      </Field>
+      <Field
+        label={`Consultant ${index + 2}`}
+        htmlFor={`additional-consultant-${index}`}
+        className="flex min-w-[160px] flex-1 flex-col gap-1"
+      >
+        <ConsultantSelect
+          id={`additional-consultant-${index}`}
+          value={consultantField.field.value ?? ''}
+          onValueChange={consultantField.field.onChange}
+          departmentId={departmentField.field.value || undefined}
+        />
+      </Field>
+      <Button type="button" variant="ghost" size="icon" aria-label={`Remove consultant ${index + 2}`} onClick={onRemove}>
+        <X className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import type { DeletedTenantListItemResponse, TenantListItemResponse } from '@hms/shared';
-import { AlertTriangle, Building2, CheckCircle2, Loader2, LogOut, ShieldCheck, Trash2, XCircle } from 'lucide-react';
+import type { TenantListItemResponse } from '@hms/shared';
+import { AlertTriangle, Building2, CheckCircle2, Loader2, LogOut, ShieldCheck, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,20 +8,14 @@ import { Pagination } from '@/components/Pagination';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
 import {
-  DeleteHospitalDialog,
-  DeletedHospitalTable,
   HospitalFeaturesDialog,
   HospitalListToolbar,
   HospitalTable,
-  useDeletedHospitalsQuery,
   useHospitalsQuery,
   useHospitalStatsQuery,
-  useRestoreHospitalMutation,
   useUpdateHospitalStatusMutation,
 } from '@/features/platformHospitals';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-
-type View = 'active' | 'deleted';
 
 interface StatTile {
   key: string;
@@ -37,21 +31,14 @@ export default function PlatformDashboardPage() {
   const { user, logout } = usePlatformAuth();
   const navigate = useNavigate();
 
-  const [view, setView] = useState<View>('active');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search);
-  const [hospitalToDelete, setHospitalToDelete] = useState<TenantListItemResponse | null>(null);
   const [hospitalToManageFeatures, setHospitalToManageFeatures] = useState<TenantListItemResponse | null>(null);
 
   const statsQuery = useHospitalStatsQuery();
   const hospitalsQuery = useHospitalsQuery({ page, pageSize: 20, search: debouncedSearch || undefined });
-  const deletedHospitalsQuery = useDeletedHospitalsQuery(
-    { page, pageSize: 20, search: debouncedSearch || undefined },
-    view === 'deleted',
-  );
   const statusMutation = useUpdateHospitalStatusMutation();
-  const restoreMutation = useRestoreHospitalMutation();
 
   const stats = statsQuery.data;
   const tiles: StatTile[] = [
@@ -75,15 +62,6 @@ export default function PlatformDashboardPage() {
   function handleToggleStatus(hospital: TenantListItemResponse) {
     const nextStatus = hospital.status === 'Active' ? 'Inactive' : 'Active';
     statusMutation.mutate({ id: hospital.id, status: nextStatus });
-  }
-
-  function handleViewChange(nextView: View) {
-    setView(nextView);
-    setPage(1);
-  }
-
-  function handleRestore(hospital: DeletedTenantListItemResponse) {
-    restoreMutation.mutate(hospital.id);
   }
 
   return (
@@ -135,104 +113,45 @@ export default function PlatformDashboardPage() {
           })}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant={view === 'active' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleViewChange('active')}>
-            <Building2 className="mr-2 size-4" />
-            Active Hospitals
-          </Button>
-          <Button variant={view === 'deleted' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleViewChange('deleted')}>
-            <Trash2 className="mr-2 size-4" />
-            Deleted Hospitals
-          </Button>
-        </div>
-
         <HospitalListToolbar search={search} onSearchChange={handleSearchChange} />
 
-        {view === 'active' && (
-          <>
-            {hospitalsQuery.isPending && (
-              <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading hospitals…
-              </div>
-            )}
-
-            {hospitalsQuery.isError && (
-              <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                Failed to load hospitals.
-              </p>
-            )}
-
-            {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length === 0 && (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-                  <p className="text-sm font-medium text-foreground">No hospitals found</p>
-                  <p className="text-sm text-muted-foreground">
-                    {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Register the first hospital to get started.'}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <HospitalTable
-                  hospitals={hospitalsQuery.data.items}
-                  onToggleStatus={handleToggleStatus}
-                  isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
-                  onDelete={setHospitalToDelete}
-                  onManageFeatures={setHospitalToManageFeatures}
-                />
-                <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
-              </div>
-            )}
-          </>
+        {hospitalsQuery.isPending && (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading hospitals…
+          </div>
         )}
 
-        {view === 'deleted' && (
-          <>
-            {deletedHospitalsQuery.isPending && (
-              <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading deleted hospitals…
-              </div>
-            )}
+        {hospitalsQuery.isError && (
+          <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Failed to load hospitals.
+          </p>
+        )}
 
-            {deletedHospitalsQuery.isError && (
-              <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                Failed to load deleted hospitals.
+        {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length === 0 && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+              <p className="text-sm font-medium text-foreground">No hospitals found</p>
+              <p className="text-sm text-muted-foreground">
+                {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Register the first hospital to get started.'}
               </p>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
-            {!deletedHospitalsQuery.isPending &&
-              !deletedHospitalsQuery.isError &&
-              deletedHospitalsQuery.data &&
-              deletedHospitalsQuery.data.items.length === 0 && (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-                    <p className="text-sm font-medium text-foreground">No deleted hospitals</p>
-                  </CardContent>
-                </Card>
-              )}
-
-            {!deletedHospitalsQuery.isPending &&
-              !deletedHospitalsQuery.isError &&
-              deletedHospitalsQuery.data &&
-              deletedHospitalsQuery.data.items.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  <DeletedHospitalTable
-                    hospitals={deletedHospitalsQuery.data.items}
-                    onRestore={handleRestore}
-                    isRestoringId={restoreMutation.isPending ? restoreMutation.variables : undefined}
-                  />
-                  <Pagination meta={deletedHospitalsQuery.data.meta} onPageChange={setPage} />
-                </div>
-              )}
-          </>
+        {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <HospitalTable
+              hospitals={hospitalsQuery.data.items}
+              onToggleStatus={handleToggleStatus}
+              isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
+              onManageFeatures={setHospitalToManageFeatures}
+            />
+            <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
+          </div>
         )}
       </main>
 
-      {hospitalToDelete && <DeleteHospitalDialog hospital={hospitalToDelete} onClose={() => setHospitalToDelete(null)} />}
       {hospitalToManageFeatures && (
         <HospitalFeaturesDialog hospital={hospitalToManageFeatures} onClose={() => setHospitalToManageFeatures(null)} />
       )}

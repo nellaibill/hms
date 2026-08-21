@@ -96,8 +96,14 @@ public static class PlatformModule
     /// PlatformDbContext.Database.Migrate() — the same "single public seam per module"
     /// shape as HMS.Modules.Identity.IdentityModule.SeedAsync.
     /// </summary>
-    public static Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken)
+    /// <param name="seedLegacyTenant">
+    /// Whether to also seed the platform.tenants row for the pre-existing legacy dev
+    /// database (see LegacyTenantSeedOptions) — true everywhere except a from-scratch
+    /// "Platform DB only" reset (Bootstrap:SeedLegacyTenant=false), where nothing should
+    /// exist yet for every hospital to be registered through the real flow instead.
+    /// </param>
+    public static Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken, bool seedLegacyTenant = true)
     {
-        return services.GetRequiredService<PlatformDataSeeder>().SeedAsync(cancellationToken);
+        return services.GetRequiredService<PlatformDataSeeder>().SeedAsync(cancellationToken, seedLegacyTenant);
     }
 }

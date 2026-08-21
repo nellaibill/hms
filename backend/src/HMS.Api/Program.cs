@@ -94,10 +94,24 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var sp = scope.ServiceProvider;
 
-    // Branding is the one hospital module NOT made tenant-aware in HMS Multi-Tenancy
-    // Phase C (see BrandingModule.cs's own comment) — still migrated via its
-    // DI-registered, statically-connected DbContext, same as before this phase.
-    sp.GetRequiredService<BrandingDbContext>().Database.Migrate();
+    // Normally true: the pre-existing legacy dev database (ConnectionStrings:Default)
+    // gets migrated and seeded alongside Platform, so a plain `dotnet run` always has a
+    // working hospital to log into. Set to false (e.g. cicd/scripts/reset-dev-databases
+    // .ps1) for a from-scratch reset where hms_platform should come up with only the
+    // Platform Admin account — every hospital, including this one, gets created through
+    // the real Register Hospital flow instead of a dev-only shortcut. Read before the
+    // Branding migration below since that also targets ConnectionStrings:Default and
+    // must be skipped the same way everything else tenant-related is.
+    var seedLegacyTenant = builder.Configuration.GetValue("Bootstrap:SeedLegacyTenant", true);
+
+    if (seedLegacyTenant)
+    {
+        // Branding is the one hospital module NOT made tenant-aware in HMS
+        // Multi-Tenancy Phase C (see BrandingModule.cs's own comment) — still migrated
+        // via its DI-registered, statically-connected DbContext, same as before this
+        // phase. Targets ConnectionStrings:Default, same as everything else gated here.
+        sp.GetRequiredService<BrandingDbContext>().Database.Migrate();
+    }
 
     // Platform owns a separate physical database (hms_platform via
     // ConnectionStrings:Platform), not another schema in hms_qa — see
@@ -105,39 +119,42 @@ if (app.Environment.IsDevelopment())
     // anything tenant-aware below, since seeding the legacy tenant row needs it.
     sp.GetRequiredService<PlatformDbContext>().Database.Migrate();
 
-    // HMS Multi-Tenancy Phase C: every other hospital module's DbContext is now
-    // tenant-aware and can no longer be resolved via DI outside a request with an
-    // already-resolved ITenantContext. Migrated directly against ConnectionStrings:Default
-    // instead, through the same ITenantMigrationService provisioning and the Platform
-    // migrate-tenant endpoint use — ConnectionStrings:Default *is* the legacy tenant's
-    // database.
-    var defaultConnectionString = builder.Configuration.GetConnectionString("Default")
-        ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
-    // Full feature set — preserves this legacy tenant's existing behavior exactly (it has
-    // always had every module) under the new selective-migration seam.
-    await sp.GetRequiredService<ITenantMigrationService>().MigrateAsync(defaultConnectionString, FeatureCatalog.All, CancellationToken.None);
+    // Idempotent: seeds the one default Platform Admin account, and — only when
+    // seedLegacyTenant is true — the platform.tenants row associating
+    // ConnectionStrings:Default with a real tenant identity (see LegacyTenantSeedOptions's
+    // own doc comment). Must run before resolving that tenant below.
+    await PlatformModule.SeedAsync(sp, CancellationToken.None, seedLegacyTenant);
 
-    // Idempotent: seeds the one default Platform Admin account, and (Phase C) the
-    // platform.tenants row associating ConnectionStrings:Default with a real tenant
-    // identity — see LegacyTenantSeedOptions's own doc comment. Must run before resolving
-    // that tenant below.
-    await PlatformModule.SeedAsync(sp, CancellationToken.None);
+    if (seedLegacyTenant)
+    {
+        // HMS Multi-Tenancy Phase C: every other hospital module's DbContext is now
+        // tenant-aware and can no longer be resolved via DI outside a request with an
+        // already-resolved ITenantContext. Migrated directly against
+        // ConnectionStrings:Default instead, through the same ITenantMigrationService
+        // provisioning and the Platform migrate-tenant endpoint use —
+        // ConnectionStrings:Default *is* the legacy tenant's database.
+        var defaultConnectionString = builder.Configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException("Missing 'ConnectionStrings:Default' configuration value.");
+        // Full feature set — preserves this legacy tenant's existing behavior exactly (it
+        // has always had every module) under the new selective-migration seam.
+        await sp.GetRequiredService<ITenantMigrationService>().MigrateAsync(defaultConnectionString, FeatureCatalog.All, CancellationToken.None);
 
-    // Resolves the just-seeded legacy tenant and populates this startup scope's
-    // ITenantContext, so IdentityDbContext — tenant-aware like every other hospital
-    // module — connects to the right database when IdentityModule.SeedAsync below
-    // resolves it via DI.
-    var legacyHospitalCode = builder.Configuration["LegacyTenantSeed:HospitalCode"] ?? "legacy";
-    var legacyTenant = await sp.GetRequiredService<ITenantDirectory>().FindByHospitalCodeAsync(legacyHospitalCode, CancellationToken.None)
-        ?? throw new InvalidOperationException($"Legacy tenant '{legacyHospitalCode}' was not found after seeding.");
-    sp.GetRequiredService<ITenantContext>().SetTenant(legacyTenant.Id, legacyTenant.ConnectionString);
+        // Resolves the just-seeded legacy tenant and populates this startup scope's
+        // ITenantContext, so IdentityDbContext — tenant-aware like every other hospital
+        // module — connects to the right database when IdentityModule.SeedAsync below
+        // resolves it via DI.
+        var legacyHospitalCode = builder.Configuration["LegacyTenantSeed:HospitalCode"] ?? "legacy";
+        var legacyTenant = await sp.GetRequiredService<ITenantDirectory>().FindByHospitalCodeAsync(legacyHospitalCode, CancellationToken.None)
+            ?? throw new InvalidOperationException($"Legacy tenant '{legacyHospitalCode}' was not found after seeding.");
+        sp.GetRequiredService<ITenantContext>().SetTenant(legacyTenant.Id, legacyTenant.ConnectionString);
 
-    // Idempotent: safe to run on every startup. Seeds the Permission catalog's
-    // dependents — the "Super Admin" role (every permission attached) and a default
-    // Super Admin user — only when they don't already exist. Must run after the tenant
-    // migration above, since it reads the Permission rows that migration's HasData just
-    // inserted into the (now-resolved) legacy tenant database.
-    await IdentityModule.SeedAsync(sp, CancellationToken.None);
+        // Idempotent: safe to run on every startup. Seeds the Permission catalog's
+        // dependents — the "Super Admin" role (every permission attached) and a default
+        // Super Admin user — only when they don't already exist. Must run after the
+        // tenant migration above, since it reads the Permission rows that migration's
+        // HasData just inserted into the (now-resolved) legacy tenant database.
+        await IdentityModule.SeedAsync(sp, CancellationToken.None);
+    }
 }
 
 app.Run();
