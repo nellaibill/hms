@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge } from '../detailedAge';
 import { humanize } from '../humanize';
+import { maritalStatusLabel } from '../maritalStatusLabel';
+import { titleLabel } from '../titleLabel';
 import { Field, FormSection } from './FormSection';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
 
@@ -203,12 +205,15 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="title" aria-label="Title">
-                      <SelectValue />
+                      {/* Descriptive age/gender guidance shows only in the open dropdown list
+                          (see titleLabel) — once selected, the trigger displays just the
+                          title itself, not the guidance text, and that's also what's saved. */}
+                      <SelectValue>{field.value}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {TITLES.map((t) => (
                         <SelectItem key={t} value={t}>
-                          {t}
+                          {titleLabel(t)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -296,7 +301,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
                     <SelectContent>
                       {MARITAL_STATUSES.map((m) => (
                         <SelectItem key={m} value={m}>
-                          {m}
+                          {maritalStatusLabel(m)}
                         </SelectItem>
                       ))}
                     </SelectContent>
