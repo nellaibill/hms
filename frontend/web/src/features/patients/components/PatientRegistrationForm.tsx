@@ -5,7 +5,7 @@ import {
   ApiError,
   ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
-  ENCOUNTER_TYPES,
+  ENCOUNTER_TYPES_UI,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
   PATIENT_GENDERS,
@@ -314,8 +314,10 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   const offlineChannel = watch('arrivalSource.offlineAd.channel');
   const encounterType = watch('registration.encounterType');
   const isIpOrEmergency = encounterType === 'IP' || encounterType === 'Emergency';
-  const isDayCare = encounterType === 'DayCare';
-  const showReferralColumn = isIpOrEmergency || isDayCare;
+  // "Observation" is a UI-only split of "Day Care" (see ENCOUNTER_TYPES_UI) — both get the
+  // same Observation type/Category/referral fields Day Care already had.
+  const isDayCareOrObservation = encounterType === 'DayCare' || encounterType === 'Observation';
+  const showReferralColumn = isIpOrEmergency || isDayCareOrObservation;
   const registrationDepartmentId = watch('registration.departmentId');
 
   // A consultant picked under the previous department is meaningless once the department
@@ -750,22 +752,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             </Field>
 
             {arrivalCategory === 'DoctorReferral' && (
-              <>
-                <Field
-                  label="Doctor name"
-                  htmlFor="doctorReferralName"
-                  error={errors.arrivalSource?.doctorReferral?.doctorName?.message}
-                  className="flex min-w-[160px] flex-1 flex-col gap-1"
-                >
-                  <Input id="doctorReferralName" {...register('arrivalSource.doctorReferral.doctorName')} />
-                </Field>
-                <Field label="Department" htmlFor="doctorReferralDepartment" className="flex min-w-[160px] flex-1 flex-col gap-1">
-                  <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
-                </Field>
-                <Field label="Hospital" htmlFor="doctorReferralHospital" className="flex min-w-[160px] flex-1 flex-col gap-1">
-                  <Input id="doctorReferralHospital" {...register('arrivalSource.doctorReferral.hospital')} />
-                </Field>
-              </>
+              <Field label="Department" htmlFor="doctorReferralDepartment" className="flex min-w-[160px] flex-1 flex-col gap-1">
+                <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
+              </Field>
             )}
 
             {arrivalCategory === 'PatientOrRelativeReferral' && (
@@ -908,9 +897,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ENCOUNTER_TYPES.map((e) => (
+                      {ENCOUNTER_TYPES_UI.map((e) => (
                         <SelectItem key={e} value={e}>
-                          {e === 'DayCare' ? 'Day-care / Observation' : e}
+                          {e === 'DayCare' ? 'Day Care' : e}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -970,11 +959,23 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   />
                 )}
               />
+              {additionalConsultants.fields.length < 3 && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto w-fit gap-1 px-0 py-0 text-xs"
+                  onClick={() => additionalConsultants.append({ departmentId: '', consultantId: '' })}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add another Consultant
+                </Button>
+              )}
             </Field>
             {/* Progressive disclosure: Admission (IP/Emergency) / Observation (Day-care) type only applies beyond OP. */}
             {showReferralColumn && (
               <Field
-                label={isDayCare ? 'Observation type' : 'Admission type'}
+                label={isDayCareOrObservation ? 'Observation type' : 'Admission type'}
                 htmlFor="admissionType"
                 error={errors.registration?.admissionType?.message}
                 className="flex w-full flex-col gap-1 sm:w-40"
@@ -984,7 +985,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   control={control}
                   render={({ field }) => (
                     <Select value={field.value || undefined} onValueChange={field.onChange}>
-                      <SelectTrigger id="admissionType" aria-label={isDayCare ? 'Observation type' : 'Admission type'}>
+                      <SelectTrigger id="admissionType" aria-label={isDayCareOrObservation ? 'Observation type' : 'Admission type'}>
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1014,19 +1015,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               onRemove={() => additionalConsultants.remove(index)}
             />
           ))}
-
-          {additionalConsultants.fields.length < 3 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-fit gap-1.5"
-              onClick={() => additionalConsultants.append({ departmentId: '', consultantId: '' })}
-            >
-              <Plus className="h-4 w-4" />
-              Add another Consultant
-            </Button>
-          )}
 
           {showReferralColumn && (
             <div className="flex flex-wrap gap-3 rounded-md border border-dashed border-border p-3">

@@ -1,4 +1,5 @@
 import type { BrandingConfigDto } from '@hms/shared';
+import { env } from '@/config/env';
 import { brandingApi } from '@/services/apiClient';
 import { mockBrandingStore } from './mockBrandingStore';
 import { FONT_FAMILIES, FONT_SIZE_SCALES, type BrandingConfig, type FontFamily, type FontSizeScale } from './types';
@@ -11,11 +12,21 @@ function toFontSizeScale(value: string): FontSizeScale {
   return (FONT_SIZE_SCALES as readonly string[]).includes(value) ? (value as FontSizeScale) : 'md';
 }
 
+// The backend returns the logo as a server-relative path (e.g. "uploads/branding/logo/xxx.png"),
+// same as patient photos elsewhere in the app (see PatientSummaryCard) — it has to be resolved
+// against the API's own origin, not the frontend's, or every <img> using it 404s. Left alone when
+// it's already absolute (http(s):/data:/blob:) — e.g. the mock store's data: URI fallback below.
+function resolveLogoUrl(logoUrl: string | null): string | null {
+  if (!logoUrl) return null;
+  if (/^(https?:|data:|blob:)/i.test(logoUrl)) return logoUrl;
+  return `${env.apiBaseUrl}/${logoUrl.replace(/^\/+/, '')}`;
+}
+
 function fromDto(dto: BrandingConfigDto): BrandingConfig {
   return {
     hospitalName: dto.hospitalName,
     appTitle: dto.appTitle,
-    logoUrl: dto.logoUrl,
+    logoUrl: resolveLogoUrl(dto.logoUrl),
     fontFamily: toFontFamily(dto.fontFamily),
     fontSizeScale: toFontSizeScale(dto.fontSizeScale),
     tokensLight: dto.tokensLight,
@@ -66,7 +77,7 @@ export const apiBrandingRepository = {
 
   async uploadLogo(file: File): Promise<{ logoUrl: string }> {
     const dto = await brandingApi.uploadLogo(file);
-    return { logoUrl: dto.logoUrl ?? '' };
+    return { logoUrl: resolveLogoUrl(dto.logoUrl) ?? '' };
   },
 
   async resetToDefaults(): Promise<BrandingConfig> {

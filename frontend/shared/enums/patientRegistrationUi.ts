@@ -58,6 +58,19 @@ export type AllergyCategory = (typeof ALLERGY_CATEGORIES)[number];
 export const REFERRAL_COLUMN_CATEGORIES = ['Ambulance', 'Doctor', 'Medicals', 'Others'] as const;
 export type ReferralColumnCategory = (typeof REFERRAL_COLUMN_CATEGORIES)[number];
 
+/**
+ * UI-only split of the backend's single "DayCare" EncounterType into two distinct reception
+ * choices — "Day Care" and "Observation" — since staff treat them as different visit kinds
+ * even though the backend doesn't yet have a separate value for the latter. Both options are
+ * sent to the backend as "DayCare" (see PatientRegistrationCreatePage's toRequest()); nothing
+ * downstream needs to know the split happened. Deliberately not just ../enums/patients.ts's
+ * ENCOUNTER_TYPES with "Observation" appended, since that constant also types the real
+ * CreatePatientRequest/PatientResponse wire DTOs, and "Observation" isn't a value the backend
+ * enum accepts.
+ */
+export const ENCOUNTER_TYPES_UI = ['OP', 'IP', 'Emergency', 'DayCare', 'Observation'] as const;
+export type EncounterTypeUi = (typeof ENCOUNTER_TYPES_UI)[number];
+
 /** Source: "PATIENT MODE OF ARRIVAL FORM" — top-level source of how the patient found the hospital. */
 export const ARRIVAL_SOURCE_CATEGORIES = [
   'DoctorReferral',

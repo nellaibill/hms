@@ -1,18 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { RotateCcw, Upload } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ApiError } from '@hms/shared';
 import { hexToHslTriple, hslTripleToHex } from '@/lib/color';
 import { useBrandingQuery } from '../hooks/useBrandingQuery';
-import { useResetBrandingMutation, useUpdateBrandingMutation, useUploadLogoMutation } from '../hooks/useBrandingMutations';
-import { LogoTooLargeError } from '../mockBrandingStore';
+import { useResetBrandingMutation, useUpdateBrandingMutation } from '../hooks/useBrandingMutations';
 import {
   FONT_FAMILIES,
   FONT_FAMILY_LABELS,
@@ -98,16 +96,15 @@ function TokenGroupFields({
 export function BrandingForm() {
   const query = useBrandingQuery();
   const updateMutation = useUpdateBrandingMutation();
-  const uploadLogoMutation = useUploadLogoMutation();
   const resetMutation = useResetBrandingMutation();
 
   const [editingTheme, setEditingTheme] = useState<'light' | 'dark'>('light');
   const [draftTokensLight, setDraftTokensLight] = useState<Record<string, string>>({});
   const [draftTokensDark, setDraftTokensDark] = useState<Record<string, string>>({});
+  // Still synced from the persisted config (below) and fed into the live preview even
+  // though the upload UI that used to let you set it is hidden — see the Identity tab.
   const [previewLogoUrl, setPreviewLogoUrl] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -146,23 +143,6 @@ export function BrandingForm() {
     setSavedMessage(false);
   };
 
-  const handleLogoSelect = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    setLogoError(null);
-    try {
-      const result = await uploadLogoMutation.mutateAsync(file);
-      setPreviewLogoUrl(result.logoUrl);
-    } catch (error) {
-      if (error instanceof LogoTooLargeError || error instanceof ApiError) {
-        setLogoError(error.message);
-      } else {
-        setLogoError('Failed to upload logo. Try a different image.');
-      }
-    }
-  };
-
   const onSubmit = (values: IdentityFormValues) => {
     const patch: Partial<BrandingConfig> = {
       ...values,
@@ -178,7 +158,6 @@ export function BrandingForm() {
 
   const handleReset = () => {
     setSavedMessage(false);
-    setLogoError(null);
     resetMutation.mutate();
   };
 
@@ -218,25 +197,6 @@ export function BrandingForm() {
                 {errors.appTitle && <p className="text-sm text-destructive">{errors.appTitle.message}</p>}
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label>Hospital logo</Label>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40">
-                    {previewLogoUrl ? (
-                      <img src={previewLogoUrl} alt="Current logo" className="h-full w-full object-contain p-1" />
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">Default logo</span>
-                    )}
-                  </div>
-                  <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={handleLogoSelect} />
-                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadLogoMutation.isPending}>
-                    <Upload className="h-4 w-4" />
-                    {uploadLogoMutation.isPending ? 'Uploading…' : 'Upload logo'}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">PNG, JPG, WEBP, or SVG — up to 500KB.</p>
-                {logoError && <p className="text-sm text-destructive">{logoError}</p>}
-              </div>
             </div>
           </TabsContent>
 

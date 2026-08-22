@@ -4,7 +4,7 @@ import {
   ALLERGY_SEVERITIES,
   ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
-  ENCOUNTER_TYPES,
+  ENCOUNTER_TYPES_UI,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
   PATIENT_GENDERS,
@@ -54,9 +54,7 @@ const arrivalSourceSchema = z
     category: z.enum(ARRIVAL_SOURCE_CATEGORIES),
     doctorReferral: z
       .object({
-        doctorName: z.string().trim().max(150).optional().or(z.literal('')),
         department: z.string().trim().max(100).optional().or(z.literal('')),
-        hospital: z.string().trim().max(150).optional().or(z.literal('')),
       })
       .optional(),
     patientRelativeReferral: z
@@ -79,9 +77,6 @@ const arrivalSourceSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.category === 'DoctorReferral' && !data.doctorReferral?.doctorName) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['doctorReferral', 'doctorName'], message: 'Referring doctor name is required' });
-    }
     if (data.category === 'PatientOrRelativeReferral') {
       if (!data.patientRelativeReferral?.source) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'source'], message: 'Select a referral source' });
@@ -126,7 +121,7 @@ const additionalConsultantSchema = z.object({
 // same shape as a first-time registration's, so they should share one validator.
 export const registrationDetailsUiSchema = z
   .object({
-    encounterType: z.enum(ENCOUNTER_TYPES),
+    encounterType: z.enum(ENCOUNTER_TYPES_UI),
     departmentId: z.string().trim().min(1, 'Department is required'),
     consultantId: z.string().trim().min(1, 'Consultant is required'),
     additionalConsultants: z.array(additionalConsultantSchema).max(3, 'Up to three additional consultants').default([]),

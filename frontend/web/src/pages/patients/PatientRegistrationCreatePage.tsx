@@ -71,7 +71,9 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
     allergySeverity: values.hasKnownAllergy ? values.allergySeverity || undefined : undefined,
 
     registration: {
-      encounterType: values.registration.encounterType,
+      // "Observation" is a UI-only split of the backend's single "DayCare" value (see
+      // ENCOUNTER_TYPES_UI) — the backend still only knows "DayCare".
+      encounterType: values.registration.encounterType === 'Observation' ? 'DayCare' : values.registration.encounterType,
       modeOfArrival: 'WalkIn',
       departmentId: values.registration.departmentId,
       consultantId: values.registration.consultantId,
