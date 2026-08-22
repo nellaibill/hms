@@ -12,7 +12,7 @@ import {
   type StagedDocuments,
 } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
-import { toAllergyType, toBackendGender, toPhoneRelationLabel, toRelationshipLabel } from '../../features/patients/bridging';
+import { toAllergyType, toBackendGender, toRelationshipLabel } from '../../features/patients/bridging';
 import { humanize } from '../../features/patients/humanize';
 import { clearRegistrationDraft } from '../../features/patients/registrationDraft';
 
@@ -29,6 +29,10 @@ import { clearRegistrationDraft } from '../../features/patients/registrationDraf
  *   Masters' AppointmentType, the same way Department/Consultant are.)
  * - Allergy category+"specify" and the IP/Emergency/Day-care referral column are composed
  *   into the single free-text backend fields (AllergyType / ReferralSource) that already exist.
+ * - Marital status is captured in the UI but has no backend field yet either — same
+ *   "captured, not yet sent" situation as arrival source, pending a future backend update.
+ *   Secondary phone *is* sent — it reuses the existing optional AlternatePhone field now
+ *   that the UI no longer collects a relation for it.
  */
 function toRequest(values: PatientRegistrationUiFormValues): CreatePatientRequest {
   const referral = values.registration.referral;
@@ -54,11 +58,7 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
     pincode: values.pincode,
 
     primaryPhone: values.primaryPhone.number,
-    primaryPhoneRelation: toPhoneRelationLabel(values.primaryPhone.relation),
-    alternatePhone: values.additionalPhones[0]?.number || undefined,
-    alternatePhoneRelation: values.additionalPhones[0] ? toPhoneRelationLabel(values.additionalPhones[0].relation) : undefined,
-    alternatePhone2: values.additionalPhones[1]?.number || undefined,
-    alternatePhone2Relation: values.additionalPhones[1] ? toPhoneRelationLabel(values.additionalPhones[1].relation) : undefined,
+    alternatePhone: values.secondaryPhone || undefined,
     email: values.email || undefined,
     profession: values.profession || undefined,
 

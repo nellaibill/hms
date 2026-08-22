@@ -12,6 +12,10 @@
 export const PATIENT_GENDERS = ['Male', 'Female', 'Transgender', 'NA'] as const;
 export type PatientGenderUi = (typeof PATIENT_GENDERS)[number];
 
+/** Marital status, captured on the Patient Registration form's Patient Information tab. */
+export const MARITAL_STATUSES = ['Married', 'Unmarried', 'NA'] as const;
+export type MaritalStatus = (typeof MARITAL_STATUSES)[number];
+
 /**
  * Source: LH Software.docx's Emergency Contact relationship dropdown, reused for phone
  * "self/relation" tagging per "Contact Number with self/relation".

@@ -5,11 +5,11 @@ import {
   ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
   ENCOUNTER_TYPES_UI,
+  MARITAL_STATUSES,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
   PATIENT_GENDERS,
   PATIENT_RELATIVE_REFERRAL_SOURCES,
-  PHONE_RELATIONS,
   REFERRAL_COLUMN_CATEGORIES,
   RELATIONSHIPS,
   TITLES,
@@ -39,14 +39,8 @@ const pincodePattern = /^[0-9]{6}$/;
 const namePattern = /^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$/u;
 const namePatternMessage = 'Enter letters only.';
 
-const phoneEntrySchema = z.object({
-  number: z.string().trim().max(20).regex(phonePattern, phonePatternMessage),
-  relation: z.enum(PHONE_RELATIONS),
-});
-
 const primaryPhoneSchema = z.object({
   number: z.string().trim().min(1, 'Primary phone is required').max(20).regex(phonePattern, phonePatternMessage),
-  relation: z.enum(PHONE_RELATIONS),
 });
 
 const arrivalSourceSchema = z
@@ -106,8 +100,9 @@ const referralColumnSchema = z.object({
   contactNumber: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
 });
 
-// UI-only demo affordance ("Add another Consultant") — mirrors additionalPhones' own
-// optional/unvalidated shape below. Deliberately not bridged into CreatePatientRequest by
+// UI-only demo affordance ("Add another Consultant") — each row is optional/unvalidated,
+// same as every other UI-only capture field in this schema. Deliberately not bridged into
+// CreatePatientRequest by
 // PatientRegistrationCreatePage's toRequest(): the backend contract only has one
 // Department/Consultant pair per registration today, so entries here are for the on-screen
 // experience only and are dropped, not silently mis-saved, at submit time.
@@ -164,6 +159,7 @@ const demographicsUiSchema = {
   // dropdown always defaults to and includes 'Unknown' as an explicit, deliberate choice
   // for "not known/not recorded" rather than leaving the field genuinely unset.
   bloodGroup: z.enum(BLOOD_GROUPS, { message: 'Blood group is required — select Unknown if it isn\'t known.' }),
+  maritalStatus: z.enum(MARITAL_STATUSES, { message: 'Marital status is required.' }),
 
   addressLine1: z.string().trim().min(1, 'Address is required').max(200),
   addressLine2: z.string().max(200).optional().or(z.literal('')),
@@ -173,7 +169,7 @@ const demographicsUiSchema = {
   pincode: z.string().regex(pincodePattern, 'Pincode must be 6 digits'),
 
   primaryPhone: primaryPhoneSchema,
-  additionalPhones: z.array(phoneEntrySchema).max(2, 'Up to two additional numbers').default([]),
+  secondaryPhone: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
   email: z.string().email('Enter a valid email address').max(256).optional().or(z.literal('')),
   profession: z.string().max(100).optional().or(z.literal('')),
 
