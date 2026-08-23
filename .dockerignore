@@ -3,8 +3,10 @@
 **/obj/
 **/.vs/
 
-# Node / frontend (not part of the API image)
-frontend/
+# Node — mobile isn't containerized. node_modules/dist are rebuilt fresh inside the
+# frontend image (host-built artifacts could be Windows-native or stale) rather than
+# copied in, so excluding them here doesn't affect what actually ships.
+frontend/mobile/
 **/node_modules/
 **/dist/
 **/build/

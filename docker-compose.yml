@@ -82,6 +82,10 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *api-env
+      # Frontend and api are different origins (same host, different ports) — the browser
+      # sends this as the Origin header on every cross-origin request. CorsConfiguration's
+      # policy fails closed (empty AllowedOrigins = allow nothing) without it.
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN:-http://localhost}
     ports:
       - "${API_PORT:-8080}:8080"
     healthcheck:
@@ -90,6 +94,28 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/web/Dockerfile
+      args:
+        # Vite bakes this into the JS bundle at build time — baseUrl falls back to
+        # localhost:5000 if this resolves empty (env.ts's `|| 'http://localhost:5000'`),
+        # so it has to be the API's real public URL, not a relative path.
+        VITE_API_BASE_URL: http://${PUBLIC_HOST:-localhost}:${API_PORT:-8080}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   pgdata:
