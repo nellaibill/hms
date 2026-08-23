@@ -21,6 +21,7 @@ import {
   ShiftsApi,
   ShiftSwapRequestsApi,
   StaffAvailabilityApi,
+  StatesApi,
   UsersApi,
   WardsApi,
   WeeklyRostersApi,
@@ -69,6 +70,7 @@ export const shiftsApi = new ShiftsApi(httpClient);
 export const departmentsApi = new DepartmentsApi(httpClient);
 export const consultantsApi = new ConsultantsApi(httpClient);
 export const appointmentTypesApi = new AppointmentTypesApi(httpClient);
+export const statesApi = new StatesApi(httpClient);
 export const staffAvailabilityApi = new StaffAvailabilityApi(httpClient);
 export const weeklyRostersApi = new WeeklyRostersApi(httpClient);
 export const shiftAssignmentsApi = new ShiftAssignmentsApi(httpClient);

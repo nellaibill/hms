@@ -33,6 +33,10 @@ import { clearRegistrationDraft } from '../../features/patients/registrationDraf
  *   "captured, not yet sent" situation as arrival source, pending a future backend update.
  *   Secondary phone *is* sent — it reuses the existing optional AlternatePhone field now
  *   that the UI no longer collects a relation for it.
+ * - Additional emergency contacts (beyond the first, which *is* sent) are captured in the
+ *   UI but dropped here — the backend only has one emergency-contact slot per patient, same
+ *   "captured, not yet sent" situation as the additional-consultant rows on the Registration
+ *   Details tab.
  */
 function toRequest(values: PatientRegistrationUiFormValues): CreatePatientRequest {
   const referral = values.registration.referral;

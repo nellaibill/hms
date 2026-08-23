@@ -43,6 +43,16 @@ const primaryPhoneSchema = z.object({
   number: z.string().trim().min(1, 'Primary phone is required').max(20).regex(phonePattern, phonePatternMessage),
 });
 
+// A second/third emergency contact added via "Add Emergency Contact" — the first one stays
+// its own always-present, always-required set of fields (emergencyContactRelationship/Name/
+// Phone below); this is only for entries beyond that first one, same shape as
+// additionalConsultants' "the primary one is a fixed field, extras are an array" split.
+const emergencyContactEntrySchema = z.object({
+  relationship: z.enum(RELATIONSHIPS),
+  name: z.string().trim().min(1, 'Name is required').max(150).regex(namePattern, namePatternMessage),
+  phone: z.string().trim().min(1, 'Phone is required').max(20).regex(phonePattern, phonePatternMessage),
+});
+
 const arrivalSourceSchema = z
   .object({
     category: z.enum(ARRIVAL_SOURCE_CATEGORIES),
@@ -181,6 +191,7 @@ const demographicsUiSchema = {
     .min(1, 'Emergency contact phone is required')
     .max(20)
     .regex(phonePattern, phonePatternMessage),
+  additionalEmergencyContacts: z.array(emergencyContactEntrySchema).max(2, 'Up to two additional emergency contacts').default([]),
 
   hasKnownAllergy: z.boolean(),
   allergyCategory: z.enum(ALLERGY_CATEGORIES).optional().or(z.literal('')),

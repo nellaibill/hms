@@ -11,6 +11,7 @@ export * from './hr/shift';
 export * from './hr/department';
 export * from './masters/consultant';
 export * from './masters/appointmentType';
+export * from './masters/state';
 export * from './hr/staffAvailability';
 export * from './hr/weeklyRoster';
 export * from './hr/shiftAssignment';

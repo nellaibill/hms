@@ -79,6 +79,9 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     emergencyContactRelationship: fromRelationshipLabel(patient.emergencyContactRelationship),
     emergencyContactName: patient.emergencyContactName,
     emergencyContactPhone: patient.emergencyContactPhone,
+    // No backend field yet (see PatientRegistrationCreatePage.tsx's toRequest() comment) —
+    // an existing record never has any to restore.
+    additionalEmergencyContacts: [],
 
     hasKnownAllergy: patient.hasKnownAllergy,
     allergyCategory: allergy.category,

@@ -13,18 +13,22 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
 import { useState } from 'react';
-import { Controller, useForm, type FieldErrors } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DistrictSelect } from '@/components/DistrictSelect';
+import { StateSelect } from '@/components/StateSelect';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge } from '../detailedAge';
+import { tabErrorMessages } from '../formErrorSummary';
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
 import { titleLabel } from '../titleLabel';
 import { Field, FormSection } from './FormSection';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
+import { TabErrorSummary } from './TabErrorSummary';
 
 interface PatientEditFormProps {
   patientId: string;
@@ -57,6 +61,7 @@ const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientEditUiFormValues)[]> = {
     'emergencyContactRelationship',
     'emergencyContactName',
     'emergencyContactPhone',
+    'additionalEmergencyContacts',
   ],
   'medical-info': ['hasKnownAllergy', 'allergyCategory', 'allergySpecify', 'allergySeverity'],
 };
@@ -86,9 +91,18 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
   });
 
   const hasKnownAllergy = watch('hasKnownAllergy');
-  // Emergency contact starts collapsed behind an "Add Emergency Contact" button, except when
-  // the patient already has one on record — see PatientRegistrationForm's identical pattern.
-  const [showEmergencyContact, setShowEmergencyContact] = useState(() => Boolean(defaultValues.emergencyContactName));
+  const state = watch('state');
+
+  // A district picked under the previous state is meaningless once the state changes —
+  // mirrors PatientRegistrationForm's identical handleStateChange.
+  function handleStateChange(newState: string, onChange: (value: string) => void) {
+    onChange(newState);
+    setValue('district', '');
+  }
+  // The first Emergency Contact is its own always-present, always-required set of fields —
+  // this is only for the extras added via "Add Emergency Contact". See
+  // PatientRegistrationForm's identical additionalEmergencyContacts.
+  const additionalEmergencyContacts = useFieldArray({ control, name: 'additionalEmergencyContacts' });
 
   const [activeTab, setActiveTab] = useState<TabId>('patient-info');
   // Set only if goToTab's validation step throws — without this, that failure left Next
@@ -132,6 +146,10 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
     }
   };
   const goToNextTab = () => goToTab(TAB_ORDER[activeTabIndex + 1]);
+
+  // Every validation message for one tab's fields, gated the same way its red-dot indicator
+  // is (attemptedTabs) — mirrors PatientRegistrationForm's identical tabMessages.
+  const tabMessages = (tab: TabId): string[] => (attemptedTabs.has(tab) ? tabErrorMessages(errors, TAB_ERROR_FIELDS[tab]) : []);
 
   const onInvalid = (invalidFields: FieldErrors<PatientEditUiFormValues>) => {
     setAttemptedTabs(new Set(TAB_ORDER));
@@ -196,6 +214,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
         </TabsList>
 
         <TabsContent value="patient-info" className="pt-4">
+        <TabErrorSummary messages={tabMessages('patient-info')} />
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
             <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
@@ -314,6 +333,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
         </TabsContent>
 
         <TabsContent value="contact-info" className="pt-4">
+        <TabErrorSummary messages={tabMessages('contact-info')} />
         <FormSection id="address" title="Address">
           <div className="flex flex-wrap gap-3">
             <Field
@@ -332,16 +352,26 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
+            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
+              <Controller
+                name="state"
+                control={control}
+                render={({ field }) => (
+                  <StateSelect id="state" value={field.value} onValueChange={(value) => handleStateChange(value, field.onChange)} />
+                )}
+              />
+            </Field>
             <Field
               label="District"
               htmlFor="district"
               error={errors.district?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
-              <Input id="district" {...register('district')} />
-            </Field>
-            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
-              <Input id="state" {...register('state')} />
+              <Controller
+                name="district"
+                control={control}
+                render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateName={state} />}
+              />
             </Field>
             <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
@@ -377,15 +407,58 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
         </FormSection>
 
         <FormSection id="emergency-contact" title="Emergency Contact">
-          {showEmergencyContact ? (
-            <div className="flex flex-wrap items-end gap-3">
-              <Field label="Relationship" htmlFor="emergencyContactRelationship" className="flex w-full flex-col gap-1 sm:w-44">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Relationship" htmlFor="emergencyContactRelationship" className="flex w-full flex-col gap-1 sm:w-44">
+              <Controller
+                name="emergencyContactRelationship"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="emergencyContactRelationship" aria-label="Emergency contact relationship">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RELATIONSHIPS.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {humanize(r)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+            <Field
+              label="Name"
+              htmlFor="emergencyContactName"
+              error={errors.emergencyContactName?.message}
+              className="flex min-w-[180px] flex-1 flex-col gap-1"
+            >
+              <Input id="emergencyContactName" {...register('emergencyContactName')} />
+            </Field>
+            <Field
+              label="Phone"
+              htmlFor="emergencyContactPhone"
+              error={errors.emergencyContactPhone?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
+              <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
+            </Field>
+          </div>
+
+          {additionalEmergencyContacts.fields.map((field, index) => (
+            <div key={field.id} className="flex flex-wrap items-end gap-3">
+              <Field
+                label="Relationship"
+                htmlFor={`additionalEmergencyContacts.${index}.relationship`}
+                className="flex w-full flex-col gap-1 sm:w-44"
+              >
                 <Controller
-                  name="emergencyContactRelationship"
+                  name={`additionalEmergencyContacts.${index}.relationship` as const}
                   control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="emergencyContactRelationship" aria-label="Emergency contact relationship">
+                  render={({ field: relationshipField }) => (
+                    <Select value={relationshipField.value} onValueChange={relationshipField.onChange}>
+                      <SelectTrigger id={`additionalEmergencyContacts.${index}.relationship`} aria-label={`Emergency contact ${index + 2} relationship`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -401,36 +474,40 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
               </Field>
               <Field
                 label="Name"
-                htmlFor="emergencyContactName"
-                error={errors.emergencyContactName?.message}
+                htmlFor={`additionalEmergencyContacts.${index}.name`}
+                error={errors.additionalEmergencyContacts?.[index]?.name?.message}
                 className="flex min-w-[180px] flex-1 flex-col gap-1"
               >
-                <Input id="emergencyContactName" {...register('emergencyContactName')} />
+                <Input id={`additionalEmergencyContacts.${index}.name`} {...register(`additionalEmergencyContacts.${index}.name` as const)} />
               </Field>
               <Field
                 label="Phone"
-                htmlFor="emergencyContactPhone"
-                error={errors.emergencyContactPhone?.message}
+                htmlFor={`additionalEmergencyContacts.${index}.phone`}
+                error={errors.additionalEmergencyContacts?.[index]?.phone?.message}
                 className="flex min-w-[160px] flex-1 flex-col gap-1"
               >
-                <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
+                <Input id={`additionalEmergencyContacts.${index}.phone`} {...register(`additionalEmergencyContacts.${index}.phone` as const)} />
               </Field>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="Remove emergency contact"
-                onClick={() => {
-                  setShowEmergencyContact(false);
-                  setValue('emergencyContactName', '');
-                  setValue('emergencyContactPhone', '');
-                }}
+                aria-label={`Remove emergency contact ${index + 2}`}
+                onClick={() => additionalEmergencyContacts.remove(index)}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => setShowEmergencyContact(true)}>
+          ))}
+
+          {additionalEmergencyContacts.fields.length < 2 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit gap-1.5"
+              onClick={() => additionalEmergencyContacts.append({ relationship: 'Father', name: '', phone: '' })}
+            >
               <Plus className="h-4 w-4" />
               Add Emergency Contact
             </Button>
@@ -439,6 +516,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
         </TabsContent>
 
         <TabsContent value="medical-info" className="pt-4">
+        <TabErrorSummary messages={tabMessages('medical-info')} />
         <FormSection id="allergy" title="Allergy Details">
           <div className="flex items-center gap-2">
             <input id="hasKnownAllergy" type="checkbox" className="h-4 w-4 rounded border-input" {...register('hasKnownAllergy')} />

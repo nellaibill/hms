@@ -41,6 +41,8 @@ public class MastersDbContext : DbContext
     internal DbSet<AppointmentType> AppointmentTypes => Set<AppointmentType>();
     internal DbSet<Gender> Genders => Set<Gender>();
     internal DbSet<BloodGroup> BloodGroups => Set<BloodGroup>();
+    internal DbSet<State> States => Set<State>();
+    internal DbSet<District> Districts => Set<District>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
