@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Maintenance database — matches ConnectionStrings:PlatformAdmin. The tenant and
+      # platform databases are created by init-databases.sh below.
+      POSTGRES_DB: postgres
+      TENANT_DB_NAME: ${TENANT_DB_NAME}
+      PLATFORM_DB_NAME: ${PLATFORM_DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    ports:
+      # Bound to loopback only — for local psql/debugging access, not public exposure.
+      # Host-side port defaults to 5433 (not 5432) to avoid clashing with a locally
+      # installed Postgres instance/service, if one is already using 5432.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/src/HMS.Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Development reuses HMS.Api's existing dev-time auto-migrate/seed block
+      # (Program.cs) as-is — see docs/Deployment.md for the still-to-be-written real
+      # production migration step (a separate explicit deploy-pipeline step per
+      # docs/DatabaseArchitecture.md's Migration Strategy), which this Docker setup does
+      # not invent on its own.
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${TENANT_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Platform: Host=postgres;Port=5432;Database=${PLATFORM_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__PlatformAdmin: Host=postgres;Port=5432;Database=postgres;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      SuperAdminSeed__Password: ${SUPER_ADMIN_PASSWORD}
+      PlatformAdminSeed__Password: ${PLATFORM_ADMIN_PASSWORD}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  pgdata:

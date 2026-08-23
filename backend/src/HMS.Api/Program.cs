@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
+using HMS.Api.HealthChecks;
 using HMS.Api.Middleware;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.Identity;
@@ -35,6 +36,10 @@ builder.Services.AddHmsSwagger();
 builder.Services.AddHmsCors(builder.Configuration);
 builder.Services.AddHmsJwtAuthentication(builder.Configuration);
 builder.Services.AddHmsRateLimiting();
+
+// Backs the Docker Compose healthcheck (and any future orchestrator) — see
+// DatabaseHealthCheck's own doc comment for why it targets PlatformDbContext.
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("postgres");
 
 // Backs PlatformMfaSecretProtector (encrypts Platform Admin TOTP secrets at rest) — the
 // default file-system key ring under the machine's user profile is fine for this app's
@@ -86,6 +91,11 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// AllowAnonymous is required here: JwtConfiguration's FallbackPolicy requires a Hospital
+// token on any endpoint without an explicit authorization attribute, and the container
+// healthcheck has no token to present.
+app.MapHealthChecks("/health").AllowAnonymous();
 
 if (app.Environment.IsDevelopment())
 {
