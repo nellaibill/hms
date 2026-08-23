@@ -109,6 +109,16 @@ export const API_ROUTES = {
     base: '/api/v1/masters/departments',
     byId: (id: string) => `/api/v1/masters/departments/${id}`,
   },
+  /**
+   * Mirrors HMS.Modules.Masters.Endpoints.StatesController — read-only, no admin CRUD, so
+   * this doesn't live under `masters` above (that block is generic CRUD-shaped, driven by
+   * MastersApi/MastersEntityKey — see mastersApi.ts). India is the only supported country,
+   * so states are the top level (no Country route).
+   */
+  states: {
+    base: '/api/v1/masters/states',
+    districts: (stateId: string) => `/api/v1/masters/states/${stateId}/districts`,
+  },
   /** Mirrors HMS.Modules.HR.Endpoints.StaffAvailabilityController (singular route segment, per the backend's own doc comment). */
   staffAvailability: {
     base: '/api/v1/staff-availability',

@@ -4,12 +4,12 @@ import {
   ALLERGY_SEVERITIES,
   ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
-  ENCOUNTER_TYPES,
+  ENCOUNTER_TYPES_UI,
+  MARITAL_STATUSES,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
   PATIENT_GENDERS,
   PATIENT_RELATIVE_REFERRAL_SOURCES,
-  PHONE_RELATIONS,
   REFERRAL_COLUMN_CATEGORIES,
   RELATIONSHIPS,
   TITLES,
@@ -39,14 +39,18 @@ const pincodePattern = /^[0-9]{6}$/;
 const namePattern = /^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$/u;
 const namePatternMessage = 'Enter letters only.';
 
-const phoneEntrySchema = z.object({
-  number: z.string().trim().max(20).regex(phonePattern, phonePatternMessage),
-  relation: z.enum(PHONE_RELATIONS),
-});
-
 const primaryPhoneSchema = z.object({
   number: z.string().trim().min(1, 'Primary phone is required').max(20).regex(phonePattern, phonePatternMessage),
-  relation: z.enum(PHONE_RELATIONS),
+});
+
+// A second/third emergency contact added via "Add Emergency Contact" — the first one stays
+// its own always-present, always-required set of fields (emergencyContactRelationship/Name/
+// Phone below); this is only for entries beyond that first one, same shape as
+// additionalConsultants' "the primary one is a fixed field, extras are an array" split.
+const emergencyContactEntrySchema = z.object({
+  relationship: z.enum(RELATIONSHIPS),
+  name: z.string().trim().min(1, 'Name is required').max(150).regex(namePattern, namePatternMessage),
+  phone: z.string().trim().min(1, 'Phone is required').max(20).regex(phonePattern, phonePatternMessage),
 });
 
 const arrivalSourceSchema = z
@@ -54,9 +58,7 @@ const arrivalSourceSchema = z
     category: z.enum(ARRIVAL_SOURCE_CATEGORIES),
     doctorReferral: z
       .object({
-        doctorName: z.string().trim().max(150).optional().or(z.literal('')),
         department: z.string().trim().max(100).optional().or(z.literal('')),
-        hospital: z.string().trim().max(150).optional().or(z.literal('')),
       })
       .optional(),
     patientRelativeReferral: z
@@ -79,9 +81,6 @@ const arrivalSourceSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.category === 'DoctorReferral' && !data.doctorReferral?.doctorName) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['doctorReferral', 'doctorName'], message: 'Referring doctor name is required' });
-    }
     if (data.category === 'PatientOrRelativeReferral') {
       if (!data.patientRelativeReferral?.source) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'source'], message: 'Select a referral source' });
@@ -111,8 +110,9 @@ const referralColumnSchema = z.object({
   contactNumber: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
 });
 
-// UI-only demo affordance ("Add another Consultant") — mirrors additionalPhones' own
-// optional/unvalidated shape below. Deliberately not bridged into CreatePatientRequest by
+// UI-only demo affordance ("Add another Consultant") — each row is optional/unvalidated,
+// same as every other UI-only capture field in this schema. Deliberately not bridged into
+// CreatePatientRequest by
 // PatientRegistrationCreatePage's toRequest(): the backend contract only has one
 // Department/Consultant pair per registration today, so entries here are for the on-screen
 // experience only and are dropped, not silently mis-saved, at submit time.
@@ -126,7 +126,7 @@ const additionalConsultantSchema = z.object({
 // same shape as a first-time registration's, so they should share one validator.
 export const registrationDetailsUiSchema = z
   .object({
-    encounterType: z.enum(ENCOUNTER_TYPES),
+    encounterType: z.enum(ENCOUNTER_TYPES_UI),
     departmentId: z.string().trim().min(1, 'Department is required'),
     consultantId: z.string().trim().min(1, 'Consultant is required'),
     additionalConsultants: z.array(additionalConsultantSchema).max(3, 'Up to three additional consultants').default([]),
@@ -169,6 +169,7 @@ const demographicsUiSchema = {
   // dropdown always defaults to and includes 'Unknown' as an explicit, deliberate choice
   // for "not known/not recorded" rather than leaving the field genuinely unset.
   bloodGroup: z.enum(BLOOD_GROUPS, { message: 'Blood group is required — select Unknown if it isn\'t known.' }),
+  maritalStatus: z.enum(MARITAL_STATUSES, { message: 'Marital status is required.' }),
 
   addressLine1: z.string().trim().min(1, 'Address is required').max(200),
   addressLine2: z.string().max(200).optional().or(z.literal('')),
@@ -178,7 +179,7 @@ const demographicsUiSchema = {
   pincode: z.string().regex(pincodePattern, 'Pincode must be 6 digits'),
 
   primaryPhone: primaryPhoneSchema,
-  additionalPhones: z.array(phoneEntrySchema).max(2, 'Up to two additional numbers').default([]),
+  secondaryPhone: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
   email: z.string().email('Enter a valid email address').max(256).optional().or(z.literal('')),
   profession: z.string().max(100).optional().or(z.literal('')),
 
@@ -190,6 +191,7 @@ const demographicsUiSchema = {
     .min(1, 'Emergency contact phone is required')
     .max(20)
     .regex(phonePattern, phonePatternMessage),
+  additionalEmergencyContacts: z.array(emergencyContactEntrySchema).max(2, 'Up to two additional emergency contacts').default([]),
 
   hasKnownAllergy: z.boolean(),
   allergyCategory: z.enum(ALLERGY_CATEGORIES).optional().or(z.literal('')),

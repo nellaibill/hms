@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardList, UserPlus, UserSearch } from 'lucide-react';
+import { ArrowRight, ClipboardList, UserPlus, UserSearch, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -21,10 +21,20 @@ const sections = [
   },
 ];
 
+const billingSection = {
+  title: 'Billing',
+  description: 'Create a new invoice — charges, payments, and insurance/TPA claim details.',
+  icon: Wallet,
+  path: '/finance/accounts/new',
+  permission: 'finance-billing.view',
+};
+
 /** Reception & Registration landing hub — the single entry point for both registration flows. */
 export default function PatientRegistrationHubPage() {
   const { hasPermission } = useAuth();
   const visibleSections = sections.filter((section) => hasPermission(section.permission));
+  const showBilling = hasPermission(billingSection.permission);
+  const BillingIcon = billingSection.icon;
   return (
     <RequirePermission permission="patient-management.view">
     <div className="flex flex-1 flex-col">
@@ -43,8 +53,10 @@ export default function PatientRegistrationHubPage() {
       {/* Centered as one pair (not a full-width 50/50 split, which centered each card
           independently within its own half — spreading them apart the wider the
           viewport instead of reading as a single centered choice). Falls back to a single
-          centered card (no divider) when the signed-in user can only reach one flow. */}
-      <div className="flex flex-1 items-center justify-center p-6 lg:p-8">
+          centered card (no divider) when the signed-in user can only reach one flow.
+          Billing sits in its own centered row below the pair, not inside the same grid,
+          so it isn't forced into the pair's divider/column layout. */}
+      <div className="flex flex-1 flex-col items-center justify-center gap-8 p-6 lg:p-8">
         <div
           className={
             visibleSections.length > 1
@@ -56,9 +68,9 @@ export default function PatientRegistrationHubPage() {
             const Icon = section.icon;
             return (
               <div key={section.title} className="flex items-center justify-center px-0 py-0 sm:px-10">
-                <Link to={section.path} className="block w-full max-w-sm">
+                <Link to={section.path} className="block w-full max-w-sm sm:max-w-md">
                   <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
-                    <CardHeader>
+                    <CardHeader className="p-7 sm:p-8">
                       <div className="flex items-center justify-between">
                         <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                           <Icon className="h-5 w-5" />
@@ -74,6 +86,23 @@ export default function PatientRegistrationHubPage() {
             );
           })}
         </div>
+
+        {showBilling && (
+          <Link to={billingSection.path} className="block w-full max-w-sm sm:max-w-md">
+            <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
+              <CardHeader className="p-7 sm:p-8">
+                <div className="flex items-center justify-between">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <BillingIcon className="h-5 w-5" />
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <CardTitle className="text-base">{billingSection.title}</CardTitle>
+                <CardDescription>{billingSection.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+        )}
       </div>
     </div>
     </RequirePermission>

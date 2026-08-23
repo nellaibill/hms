@@ -4,16 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
-import {
-  fromAllergyType,
-  fromBackendGender,
-  fromPhoneRelationLabel,
-  fromRelationshipLabel,
-  toAllergyType,
-  toBackendGender,
-  toPhoneRelationLabel,
-  toRelationshipLabel,
-} from '../../features/patients/bridging';
+import { fromAllergyType, fromBackendGender, fromRelationshipLabel, toAllergyType, toBackendGender, toRelationshipLabel } from '../../features/patients/bridging';
 
 /**
  * See PatientRegistrationCreatePage.tsx's toRequest() comment for why this bridge exists.
@@ -38,11 +29,7 @@ function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdateP
     pincode: values.pincode,
 
     primaryPhone: values.primaryPhone.number,
-    primaryPhoneRelation: toPhoneRelationLabel(values.primaryPhone.relation),
-    alternatePhone: values.additionalPhones[0]?.number || undefined,
-    alternatePhoneRelation: values.additionalPhones[0] ? toPhoneRelationLabel(values.additionalPhones[0].relation) : undefined,
-    alternatePhone2: values.additionalPhones[1]?.number || undefined,
-    alternatePhone2Relation: values.additionalPhones[1] ? toPhoneRelationLabel(values.additionalPhones[1].relation) : undefined,
+    alternatePhone: values.secondaryPhone || undefined,
     email: values.email || undefined,
     profession: values.profession || undefined,
 
@@ -72,6 +59,10 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     // 'Unknown' is the honest, backward-compatible default rather than leaving the Select
     // unset (which the required schema below would then reject on save).
     bloodGroup: patient.bloodGroup ?? 'Unknown',
+    // No backend field yet (see PatientRegistrationCreatePage.tsx's toRequest() comment) —
+    // 'NA' is the honest default for an existing record with nothing recorded, same reasoning
+    // as bloodGroup's 'Unknown' fallback above.
+    maritalStatus: 'NA',
 
     addressLine1: patient.addressLine1,
     addressLine2: patient.addressLine2 ?? '',
@@ -80,17 +71,17 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     state: patient.state,
     pincode: patient.pincode,
 
-    primaryPhone: { number: patient.primaryPhone, relation: fromPhoneRelationLabel(patient.primaryPhoneRelation) },
-    additionalPhones: [
-      patient.alternatePhone ? { number: patient.alternatePhone, relation: fromPhoneRelationLabel(patient.alternatePhoneRelation) } : null,
-      patient.alternatePhone2 ? { number: patient.alternatePhone2, relation: fromPhoneRelationLabel(patient.alternatePhone2Relation) } : null,
-    ].filter((entry): entry is { number: string; relation: ReturnType<typeof fromPhoneRelationLabel> } => entry !== null),
+    primaryPhone: { number: patient.primaryPhone },
+    secondaryPhone: patient.alternatePhone ?? '',
     email: patient.email ?? '',
     profession: patient.profession ?? '',
 
     emergencyContactRelationship: fromRelationshipLabel(patient.emergencyContactRelationship),
     emergencyContactName: patient.emergencyContactName,
     emergencyContactPhone: patient.emergencyContactPhone,
+    // No backend field yet (see PatientRegistrationCreatePage.tsx's toRequest() comment) —
+    // an existing record never has any to restore.
+    additionalEmergencyContacts: [],
 
     hasKnownAllergy: patient.hasKnownAllergy,
     allergyCategory: allergy.category,
