@@ -1,0 +1,95 @@
+x-api-build: &api-build
+  # Explicit shared tag: without it, migrate and api (identical build context) each get
+  # their own default <project>-<service> image name and Compose builds the same image
+  # twice. This way it's built once and both services just run it with a different command.
+  image: hms-api:latest
+  build:
+    context: .
+    dockerfile: backend/src/HMS.Api/Dockerfile
+
+# Shared by migrate and api — both need the same database/secrets configuration, just a
+# different entrypoint command (see each service below).
+x-api-env: &api-env
+  ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+  ConnectionStrings__Default: Host=postgres;Port=5432;Database=${TENANT_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+  ConnectionStrings__Platform: Host=postgres;Port=5432;Database=${PLATFORM_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+  ConnectionStrings__PlatformAdmin: Host=postgres;Port=5432;Database=postgres;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+  Jwt__SigningKey: ${JWT_SIGNING_KEY}
+  SuperAdminSeed__Password: ${SUPER_ADMIN_PASSWORD}
+  PlatformAdminSeed__Password: ${PLATFORM_ADMIN_PASSWORD}
+  # Non-secret, but only appsettings.Development.json carries defaults for these — the
+  # base appsettings.json (what Production, this stack's default, actually loads) has
+  # neither, so both seeders silently skip the account entirely without them (each logs
+  # a "Skipped ... seeding: configuration is incomplete" warning rather than failing loud,
+  # which is how this was first caught — a login that should have worked returned 401).
+  PlatformAdminSeed__FullName: ${PLATFORM_ADMIN_FULL_NAME:-Platform Support}
+  PlatformAdminSeed__Email: ${PLATFORM_ADMIN_EMAIL:-support@yourhms.com}
+  SuperAdminSeed__Username: ${SUPER_ADMIN_USERNAME:-superadmin}
+  SuperAdminSeed__FirstName: ${SUPER_ADMIN_FIRST_NAME:-Super}
+  SuperAdminSeed__LastName: ${SUPER_ADMIN_LAST_NAME:-Admin}
+  SuperAdminSeed__Email: ${SUPER_ADMIN_EMAIL:-superadmin@hms.local}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Maintenance database — matches ConnectionStrings:PlatformAdmin. The tenant and
+      # platform databases are created by init-databases.sh below.
+      POSTGRES_DB: postgres
+      TENANT_DB_NAME: ${TENANT_DB_NAME}
+      PLATFORM_DB_NAME: ${PLATFORM_DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    ports:
+      # Bound to loopback only — for local psql/debugging access, not public exposure.
+      # Host-side port defaults to 5433 (not 5432) to avoid clashing with a locally
+      # installed Postgres instance/service, if one is already using 5432.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # One-shot deploy-time migration step (docs/Deployment.md's Database Migration
+  # Deployment, docs/DatabaseArchitecture.md's Migration Strategy): runs
+  # `dotnet HMS.Api.dll migrate` — the same migrate+seed logic Development runs
+  # automatically, but explicit, logged, and exits before any traffic is served. api
+  # below only starts once this exits 0, so a failed migration blocks the deploy instead
+  # of the app silently starting against a stale schema.
+  migrate:
+    <<: *api-build
+    environment:
+      <<: *api-env
+    command: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Explicitly not "unless-stopped" — this is a one-shot job, not a long-running
+    # service; it must run to completion once per `up`, not restart after exiting 0.
+    restart: "no"
+
+  api:
+    <<: *api-build
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *api-env
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  pgdata:

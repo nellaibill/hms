@@ -1,0 +1,22 @@
+# .NET
+**/bin/
+**/obj/
+**/.vs/
+
+# Node / frontend (not part of the API image)
+frontend/
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+
+# VCS / tooling
+.git/
+.github/
+.claude/
+docs/
+
+# Env / secrets — never baked into an image
+.env
+.env.local
+.env.*.local
