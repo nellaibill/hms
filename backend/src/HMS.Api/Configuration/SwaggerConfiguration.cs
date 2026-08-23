@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.OpenApi;
+using System.Linq;
 
 namespace HMS.Api.Configuration;
 
@@ -37,6 +38,17 @@ public static class SwaggerConfiguration
 
                 return new[] { api.ActionDescriptor.RouteValues.TryGetValue("controller", out var controller) ? controller! : "Default" };
             });
+
+            // Swashbuckle's default schemaId is just the bare type name, which collides in
+            // two distinct ways: (1) two modules independently defining a same-named
+            // contract type (e.g. Patients.Contracts.AdmissionType vs
+            // IPD.Contracts.AdmissionType), and (2) one open generic type (e.g.
+            // HMS.Shared.Kernel.ApiResponse<T>) instantiated with different T — the bare
+            // name drops the generic argument entirely, so ApiResponse<InvoiceResponse> and
+            // ApiResponse<IReadOnlyList<InvoiceResponse>> both collapse to "ApiResponse`1".
+            // GetSchemaId handles both: module-prefixing (same "HMS.Modules.<name>.*" shape
+            // TagActionsBy keys off above) plus recursively naming generic arguments.
+            options.CustomSchemaIds(GetSchemaId);
 
             // Picks up HMS.Api.xml, HMS.Modules.Identity.xml, and any future module's xml
             // automatically, as long as that project has GenerateDocumentationFile set.
@@ -78,5 +90,25 @@ public static class SwaggerConfiguration
         });
 
         return app;
+    }
+
+    private static string GetSchemaId(Type type)
+    {
+        var name = type.IsGenericType
+            ? $"{StripGenericArity(type.Name)}Of{string.Join("And", type.GetGenericArguments().Select(GetSchemaId))}"
+            : type.Name;
+
+        return type.Namespace?.Split('.') is ["HMS", "Modules", var moduleName, ..]
+            ? $"{moduleName}.{name}"
+            : name;
+    }
+
+    // Reflection's Type.Name for a generic type keeps the CLR arity suffix (e.g.
+    // "ApiResponse`1") — stripped here since GetSchemaId appends the actual argument
+    // names instead.
+    private static string StripGenericArity(string typeName)
+    {
+        var tickIndex = typeName.IndexOf('`');
+        return tickIndex < 0 ? typeName : typeName[..tickIndex];
     }
 }
