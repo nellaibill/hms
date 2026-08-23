@@ -12,6 +12,16 @@ using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+// Explicit deploy-time migration step (docs/DatabaseArchitecture.md's Migration
+// Strategy: "pending migrations are applied as an explicit, logged step in the
+// deployment pipeline before the new application version begins serving traffic").
+// `dotnet HMS.Api.dll migrate` runs the same migrate+seed block below that Development
+// already runs automatically, then exits without starting Kestrel — the counterpart to
+// the "MVP convenience only" auto-migrate further down, usable in any environment
+// including Production. A bare positional token like this is ignored by the command-line
+// configuration provider CreateBuilder(args) below wires up, so it's safe to pass through.
+var isMigrationOnlyRun = args.Contains("migrate", StringComparer.OrdinalIgnoreCase);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // FluentValidation is invoked explicitly by controllers (see UsersController), so the
@@ -97,10 +107,17 @@ app.MapControllers();
 // healthcheck has no token to present.
 app.MapHealthChecks("/health").AllowAnonymous();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
 {
-    // MVP convenience only — see docs/Deployment.md for the real deployment-time
-    // migration step.
+    // Development still runs this automatically on a plain `dotnet run` — MVP
+    // convenience, unchanged. `isMigrationOnlyRun` is the real deployment-time path (see
+    // docs/Deployment.md): same migrate+seed logic, explicitly invoked, in any environment.
+    var migrationLogger = app.Services.GetRequiredService<ILogger<Program>>();
+    migrationLogger.LogInformation(
+        "Starting migration step (environment: {Environment}, explicit: {Explicit})",
+        app.Environment.EnvironmentName,
+        isMigrationOnlyRun);
+
     using var scope = app.Services.CreateScope();
     var sp = scope.ServiceProvider;
 
@@ -165,6 +182,14 @@ if (app.Environment.IsDevelopment())
         // HasData just inserted into the (now-resolved) legacy tenant database.
         await IdentityModule.SeedAsync(sp, CancellationToken.None);
     }
+
+    migrationLogger.LogInformation("Migration step complete.");
+}
+
+if (isMigrationOnlyRun)
+{
+    // The deploy pipeline's migration step ends here — it never starts serving traffic.
+    return;
 }
 
 app.Run();
