@@ -37,7 +37,22 @@ _To be documented._
 _To be documented._
 
 ## Database Migration Deployment
-_To be documented._
+Per [DatabaseArchitecture.md](DatabaseArchitecture.md)'s Migration Strategy: pending
+migrations are applied as an explicit, logged step before the new application version
+begins serving traffic — not automatically on every startup.
+
+`dotnet HMS.Api.dll migrate` runs that step: it migrates the Platform database, seeds the
+Platform Admin account, and — only when `Bootstrap:SeedLegacyTenant` resolves to `true`
+(default) — also migrates and seeds the legacy tenant (`ConnectionStrings:Default`). It
+then exits (code `0` on success, non-zero on failure) without starting Kestrel, so it's
+safe to run as a one-off step ahead of starting the real app process, in any
+`ASPNETCORE_ENVIRONMENT`. Set `Bootstrap__SeedLegacyTenant=false` for a real multi-tenant
+production deployment — hospitals should be provisioned through the Register Hospital
+flow, not the legacy dev/QA seed path.
+
+This is the same migrate+seed logic `ASPNETCORE_ENVIRONMENT=Development` already runs
+automatically on a plain `dotnet run`, for local convenience — `migrate` is the explicit
+counterpart meant for a deploy pipeline or container entrypoint, usable in Production too.
 
 ## Rollback Strategy
 _To be documented._
