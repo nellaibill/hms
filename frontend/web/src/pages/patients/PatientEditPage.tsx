@@ -87,6 +87,9 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     allergyCategory: allergy.category,
     allergySpecify: allergy.specify,
     allergySeverity: patient.allergySeverity ?? '',
+    // No backend field yet (see PatientRegistrationCreatePage.tsx's toRequest() comment) —
+    // an existing record never has any to restore.
+    additionalAllergies: [],
   };
 }
 

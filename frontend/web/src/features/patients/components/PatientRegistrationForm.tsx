@@ -119,6 +119,7 @@ const defaultValues: PatientRegistrationUiFormValues = {
   allergyCategory: '',
   allergySpecify: '',
   allergySeverity: '',
+  additionalAllergies: [],
   arrivalSource: { category: 'DoctorReferral' },
   registration: {
     encounterType: 'OP',
@@ -177,6 +178,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // via "Add Emergency Contact", same "primary field + optional array" split as
   // additionalConsultants above.
   const additionalEmergencyContacts = useFieldArray({ control, name: 'additionalEmergencyContacts' });
+  // UI-only demo affordance — see additionalAllergySchema's own doc comment for why this
+  // never reaches CreatePatientRequest.
+  const additionalAllergies = useFieldArray({ control, name: 'additionalAllergies' });
   const [documents, setDocuments] = useState<StagedDocuments>(emptyStagedDocuments);
   // ID proof number is mandatory but lives on `documents`, not this form's RHF-validated
   // fields (it's staged alongside the photo/ID-proof files, uploaded only after the patient
@@ -681,6 +685,9 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             >
               <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
             </Field>
+            {/* Reserves the same width as the additional rows' Remove button below, so
+                Name/Phone line up in the same columns whether or not a row has one. */}
+            <div className="h-10 w-10 flex-none" aria-hidden="true" />
           </div>
 
           {additionalEmergencyContacts.fields.map((field, index) => (
@@ -762,6 +769,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             </label>
           </div>
           {hasKnownAllergy && (
+            <>
             <div className="flex flex-wrap gap-3">
               <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message} className="flex w-full flex-col gap-1 sm:w-40">
                 <Controller
@@ -816,7 +824,97 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   )}
                 />
               </Field>
+              {/* Reserves the same width as the additional rows' Remove button below, so
+                  Type/Specify/Severity line up in the same columns whether or not a row has one. */}
+              <div className="h-10 w-10 flex-none" aria-hidden="true" />
             </div>
+
+            {additionalAllergies.fields.map((field, index) => (
+              <div key={field.id} className="flex flex-wrap items-end gap-3">
+                <Field
+                  label="Type"
+                  htmlFor={`additionalAllergies.${index}.allergyCategory`}
+                  className="flex w-full flex-col gap-1 sm:w-40"
+                >
+                  <Controller
+                    name={`additionalAllergies.${index}.allergyCategory` as const}
+                    control={control}
+                    render={({ field: categoryField }) => (
+                      <Select value={categoryField.value || undefined} onValueChange={categoryField.onChange}>
+                        <SelectTrigger id={`additionalAllergies.${index}.allergyCategory`} aria-label={`Allergy ${index + 2} type`}>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ALLERGY_CATEGORIES.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                <Field
+                  label="Specify"
+                  htmlFor={`additionalAllergies.${index}.allergySpecify`}
+                  className="flex min-w-[200px] flex-1 flex-col gap-1"
+                >
+                  <Input
+                    id={`additionalAllergies.${index}.allergySpecify`}
+                    placeholder="e.g. Penicillin, Peanuts…"
+                    {...register(`additionalAllergies.${index}.allergySpecify` as const)}
+                  />
+                </Field>
+                <Field
+                  label="Severity"
+                  htmlFor={`additionalAllergies.${index}.allergySeverity`}
+                  className="flex w-full flex-col gap-1 sm:w-60"
+                >
+                  <Controller
+                    name={`additionalAllergies.${index}.allergySeverity` as const}
+                    control={control}
+                    render={({ field: severityField }) => (
+                      <Select value={severityField.value || undefined} onValueChange={severityField.onChange}>
+                        <SelectTrigger id={`additionalAllergies.${index}.allergySeverity`} aria-label={`Allergy ${index + 2} severity`}>
+                          <SelectValue placeholder="Select severity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ALLERGY_SEVERITIES.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s === 'Severe' ? 'Severe / Life-Threatening' : s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Remove allergy ${index + 2}`}
+                  onClick={() => additionalAllergies.remove(index)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+
+            {additionalAllergies.fields.length < 3 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit gap-1.5"
+                onClick={() => additionalAllergies.append({ allergyCategory: '', allergySpecify: '', allergySeverity: '' })}
+              >
+                <Plus className="h-4 w-4" />
+                Add another Allergy
+              </Button>
+            )}
+            </>
           )}
         </FormSection>
 
