@@ -53,6 +53,19 @@ const emergencyContactEntrySchema = z.object({
   phone: z.string().trim().min(1, 'Phone is required').max(20).regex(phonePattern, phonePatternMessage),
 });
 
+// UI-only demo affordance ("Add another Allergy") — mirrors additionalConsultantSchema's own
+// optional/unvalidated shape (frontend/shared/validation/patients/patientRegistrationUiValidation.ts's
+// registrationDetailsUiSchema). Deliberately not bridged into CreatePatientRequest: the backend
+// only has one AllergyType/AllergySeverity pair per registration today (composed from
+// allergyCategory/allergySpecify/allergySeverity above), so entries here are for the on-screen
+// experience only and are dropped, not silently mis-saved, at submit time — same reasoning as
+// additionalConsultants.
+const additionalAllergySchema = z.object({
+  allergyCategory: z.enum(ALLERGY_CATEGORIES).optional().or(z.literal('')),
+  allergySpecify: z.string().trim().max(200).optional().or(z.literal('')),
+  allergySeverity: z.enum(ALLERGY_SEVERITIES).optional().or(z.literal('')),
+});
+
 const arrivalSourceSchema = z
   .object({
     category: z.enum(ARRIVAL_SOURCE_CATEGORIES),
@@ -197,6 +210,7 @@ const demographicsUiSchema = {
   allergyCategory: z.enum(ALLERGY_CATEGORIES).optional().or(z.literal('')),
   allergySpecify: z.string().max(200).optional().or(z.literal('')),
   allergySeverity: z.enum(ALLERGY_SEVERITIES).optional().or(z.literal('')),
+  additionalAllergies: z.array(additionalAllergySchema).max(3, 'Up to three additional allergies').default([]),
 };
 
 // The backend composes AllergyType as `${category}: ${specify}` (see bridging.ts's
