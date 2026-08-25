@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { CreatePatientRequest, Patient, PatientListQuery, PatientRegistration, UpdatePatientRequest } from '../../dtos';
+import type { AddAllergyRequest, CreatePatientRequest, Patient, PatientListQuery, UpdatePatientRequest } from '../../dtos';
 import type { IdProofType } from '../../enums';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
@@ -69,9 +69,15 @@ export class PatientsApi {
     return response.data;
   }
 
-  /** All registrations/visits recorded for this patient over time, newest first — mirrors HMS.Modules.Patients.Endpoints.PatientsController's GET .../registrations. */
-  async getRegistrations(id: string): Promise<PatientRegistration[]> {
-    const response = await this.client.get<PatientRegistration[]>(API_ROUTES.patients.registrations(id));
+  /** Adds one allergy row to an existing patient — mirrors HMS.Modules.Patients.Endpoints.PatientsController's POST .../allergies. */
+  async addAllergy(id: string, request: AddAllergyRequest): Promise<Patient> {
+    const response = await this.client.post<Patient>(API_ROUTES.patients.allergies(id), request);
+    return response.data;
+  }
+
+  /** Removes one allergy row — mirrors the DELETE .../allergies/{allergyId} endpoint. */
+  async removeAllergy(id: string, allergyId: string): Promise<Patient> {
+    const response = await this.client.delete<Patient>(API_ROUTES.patients.allergyById(id, allergyId));
     return response.data;
   }
 }

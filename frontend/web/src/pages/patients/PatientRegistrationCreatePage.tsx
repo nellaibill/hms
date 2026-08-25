@@ -1,5 +1,6 @@
-import type { CreatePatientRequest, PatientRegistrationUiFormValues } from '@hms/shared';
+import type { CreatePatientRequest, Patient, PatientRegistrationCoreUiFormValues, PatientRegistrationUiFormValues } from '@hms/shared';
 import { ArrowLeft, UserPlus } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
 import { RequirePermission } from '../../features/auth/RequirePermission';
@@ -7,44 +8,41 @@ import { useCreateInvoiceMutation, type BillingFormValues } from '../../features
 import {
   PatientRegistrationForm,
   useCreatePatientMutation,
+  useUpdatePatientMutation,
   useUploadPatientIdProofMutation,
   useUploadPatientPhotoMutation,
   type StagedDocuments,
 } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
-import { toAllergyType, toBackendGender, toRelationshipLabel } from '../../features/patients/bridging';
-import { humanize } from '../../features/patients/humanize';
+import { toAllergyRequest, toBackendGender, toEmergencyContactRequest, toModeOfArrivalRequest } from '../../features/patients/bridging';
 import { clearRegistrationDraft } from '../../features/patients/registrationDraft';
 
 /**
- * Bridges the source-doc-accurate form shape to the *current* backend Contracts, which
- * haven't changed yet (see docs/DecisionLog.md — UI ships first, backend catches up in
- * Phase 2). A few fields collected in the form don't have a backend slot yet:
- * - Mode of Arrival: the backend's old modeOfArrival field (walk-in/ambulance/referred)
- *   is superseded by the new referral/advertisement attribution captured here, which has
- *   no backend field at all yet — a fixed placeholder value is sent so the still-required
- *   backend field validates.
- * - The arrival-source details are captured in the UI but not sent — nowhere to persist
- *   them yet. (OP appointment type *is* sent now — see AppointmentTypeId, backed by
- *   Masters' AppointmentType, the same way Department/Consultant are.)
- * - Allergy category+"specify" and the IP/Emergency/Day-care referral column are composed
- *   into the single free-text backend fields (AllergyType / ReferralSource) that already exist.
- * - Marital status is captured in the UI but has no backend field yet either — same
- *   "captured, not yet sent" situation as arrival source, pending a future backend update.
- *   Secondary phone *is* sent — it reuses the existing optional AlternatePhone field now
- *   that the UI no longer collects a relation for it.
- * - Additional emergency contacts (beyond the first, which *is* sent) are captured in the
- *   UI but dropped here — the backend only has one emergency-contact slot per patient, same
- *   "captured, not yet sent" situation as the additional-consultant rows on the Registration
- *   Details tab.
+ * Builds the real CreatePatientRequest from Patient Information + Contact Information +
+ * Medical Information (the three tabs wired to the backend) plus the separately-staged
+ * `documents` (idProofType/idProofNumber live there, not on the RHF form — see
+ * DocumentUploadStaging's own doc comment). Registration Details/Billing stay UI-only: the
+ * Patients backend has no encounter/visit concept yet (deliberately deferred), so nothing
+ * from those two tabs is sent here.
  */
-function toRequest(values: PatientRegistrationUiFormValues): CreatePatientRequest {
-  const referral = values.registration.referral;
-  const referralSource = referral?.category
-    ? [humanize(referral.category), referral.details, referral.contactNumber && `Contact: ${referral.contactNumber}`]
-        .filter(Boolean)
-        .join(' — ')
-    : undefined;
+function toRequest(values: PatientRegistrationCoreUiFormValues, documents: StagedDocuments): CreatePatientRequest {
+  const allergies = values.hasKnownAllergy
+    ? [
+        toAllergyRequest({ allergyCategory: values.allergyCategory, allergySpecify: values.allergySpecify, allergySeverity: values.allergySeverity }),
+        ...values.additionalAllergies
+          .filter((row) => row.allergyCategory && row.allergySeverity)
+          .map((row) => toAllergyRequest(row)),
+      ]
+    : [];
+
+  const emergencyContacts = [
+    toEmergencyContactRequest({
+      relationship: values.emergencyContactRelationship,
+      name: values.emergencyContactName,
+      phone: values.emergencyContactPhone,
+    }),
+    ...values.additionalEmergencyContacts.map((row) => toEmergencyContactRequest(row)),
+  ];
 
   return {
     title: values.title,
@@ -53,91 +51,155 @@ function toRequest(values: PatientRegistrationUiFormValues): CreatePatientReques
     dateOfBirth: values.dateOfBirth,
     gender: toBackendGender(values.gender),
     bloodGroup: values.bloodGroup,
-
-    addressLine1: values.addressLine1,
-    addressLine2: values.addressLine2 || undefined,
-    addressLine3: values.addressLine3 || undefined,
-    district: values.district,
-    state: values.state,
-    pincode: values.pincode,
+    maritalStatus: values.maritalStatus,
 
     primaryPhone: values.primaryPhone.number,
-    alternatePhone: values.secondaryPhone || undefined,
+    secondaryPhone: values.secondaryPhone || undefined,
     email: values.email || undefined,
     profession: values.profession || undefined,
 
-    emergencyContactRelationship: toRelationshipLabel(values.emergencyContactRelationship),
-    emergencyContactName: values.emergencyContactName,
-    emergencyContactPhone: values.emergencyContactPhone,
+    idProofType: documents.idProofType || undefined,
+    // Trimmed here, not just at validation time — idProofNumberValidationError (which gates
+    // the Save button) trims before checking the format, but the raw untrimmed value was what
+    // actually got sent, so a stray leading/trailing space could pass client-side validation
+    // and still fail the backend's own (untrimmed) pattern check. Same class of bug as the
+    // form-wide getValues() fix above, just for this field, which lives outside the RHF form.
+    idProofNumber: documents.idProofNumber.trim() || undefined,
 
-    hasKnownAllergy: values.hasKnownAllergy,
-    allergyType: values.hasKnownAllergy ? toAllergyType(values.allergyCategory ?? '', values.allergySpecify ?? '') : undefined,
-    allergySeverity: values.hasKnownAllergy ? values.allergySeverity || undefined : undefined,
+    ...toModeOfArrivalRequest(values.arrivalSource),
 
-    registration: {
-      // "Observation" is a UI-only split of the backend's single "DayCare" value (see
-      // ENCOUNTER_TYPES_UI) — the backend still only knows "DayCare".
-      encounterType: values.registration.encounterType === 'Observation' ? 'DayCare' : values.registration.encounterType,
-      modeOfArrival: 'WalkIn',
-      departmentId: values.registration.departmentId,
-      consultantId: values.registration.consultantId,
-      appointmentTypeId: values.registration.appointmentTypeId || undefined,
-      admissionType: values.registration.admissionType || undefined,
-      referralSource,
-      category: values.registration.category || undefined,
+    address: {
+      addressLine1: values.addressLine1,
+      addressLine2: values.addressLine2 || undefined,
+      addressLine3: values.addressLine3 || undefined,
+      stateId: values.state,
+      districtId: values.district,
+      pincode: values.pincode,
     },
+    allergies,
+    emergencyContacts,
   };
 }
 
 export default function PatientRegistrationCreatePage() {
   const navigate = useNavigate();
-  const mutation = useCreatePatientMutation();
+  const createMutation = useCreatePatientMutation();
+  const updateMutation = useUpdatePatientMutation();
   const photoMutation = useUploadPatientPhotoMutation();
   const idProofMutation = useUploadPatientIdProofMutation();
   const billingMutation = useCreateInvoiceMutation();
   const { toast } = useToast();
 
-  function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments, billing: BillingFormValues) {
-    mutation.mutate(toRequest(values), {
+  // Set once "Save and proceed to Registration" (Medical Information tab) successfully saves
+  // the patient — lets a second click of that button (after going back and editing tabs 1-3)
+  // update instead of re-create, and lets the final Billing-tab submit skip creating again.
+  const [savedPatient, setSavedPatient] = useState<Patient | null>(null);
+
+  function uploadStagedDocuments(patientId: string, documents: StagedDocuments) {
+    if (documents.photo) {
+      photoMutation.mutate(
+        { id: patientId, file: documents.photo },
+        {
+          onError: () =>
+            toast({
+              title: 'Photo not saved',
+              description: "The patient was registered, but the photo upload failed. Add it from the patient's Edit page.",
+              variant: 'error',
+            }),
+        },
+      );
+    }
+    if (documents.idProofFile) {
+      idProofMutation.mutate(
+        { id: patientId, idProofType: documents.idProofType, file: documents.idProofFile },
+        {
+          onError: () =>
+            toast({
+              title: 'ID proof not saved',
+              description: "The patient was registered, but the ID proof upload failed. Add it from the patient's Edit page.",
+              variant: 'error',
+            }),
+        },
+      );
+    }
+  }
+
+  // Passed to PatientRegistrationForm as onSaveAndProceed — called after the form validates
+  // Patient/Contact/Medical Information itself. Returns whether it succeeded so the form knows
+  // whether to advance to Registration Details; a failure is surfaced via the apiError prop
+  // below (derived from whichever mutation just failed), same display path final submit uses.
+  async function handleSaveAndProceed(values: PatientRegistrationCoreUiFormValues, documents: StagedDocuments): Promise<boolean> {
+    try {
+      if (savedPatient) {
+        const patient = await updateMutation.mutateAsync({
+          id: savedPatient.id,
+          request: { ...toRequest(values, documents), rowVersion: savedPatient.rowVersion },
+        });
+        setSavedPatient(patient);
+        return true;
+      }
+      const patient = await createMutation.mutateAsync(toRequest(values, documents));
+      setSavedPatient(patient);
+      uploadStagedDocuments(patient.id, documents);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Already saved via "Save and proceed to Registration" — don't create the patient again
+  // (that would 409 as a duplicate). Instead, re-send tabs 1-3 as an update first: the user
+  // may have gone back to Patient/Contact/Medical Information and edited something (e.g.
+  // fixing a mistyped ID proof number) after that first save without revisiting Medical
+  // Information's own Save button — without this, that edit would silently never reach the
+  // server, since this final submit previously only handled Billing. This PUT is a no-op in
+  // effect when nothing changed (rowVersion still protects against real conflicts), so it's
+  // safe to always send. Billing stays a fire-and-forget follow-up call exactly as before;
+  // Billing wiring itself is out of scope for this pass.
+  async function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments, billing: BillingFormValues) {
+    if (savedPatient) {
+      let patient: Patient;
+      try {
+        patient = await updateMutation.mutateAsync({
+          id: savedPatient.id,
+          request: { ...toRequest(values, documents), rowVersion: savedPatient.rowVersion },
+        });
+        setSavedPatient(patient);
+      } catch {
+        // Surfaced via the existing apiError prop (toDisplayError(... ?? updateMutation.error)) — stay on the form.
+        return;
+      }
+      clearRegistrationDraft();
+      billingMutation.mutate(
+        {
+          patientId: patient.id,
+          visitId: patient.id,
+          values: billing,
+          patient: { name: `${patient.firstName} ${patient.lastName}`, uhid: patient.uhid },
+        },
+        {
+          onError: () =>
+            toast({
+              title: 'Billing not saved',
+              description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but billing failed to save. Add it from Accounts and Finance → OPD Billing Entry.`,
+              variant: 'error',
+            }),
+        },
+      );
+      navigate(`/patients/registration/${patient.id}`);
+      return;
+    }
+
+    // Fallback for reaching Billing without ever clicking "Save and proceed" (e.g. jumping
+    // straight to a later tab via its header) — create now, same flow as before this change.
+    createMutation.mutate(toRequest(values, documents), {
       onSuccess: (patient) => {
         clearRegistrationDraft();
-        // Fired-and-forgotten (not awaited before navigating, to keep registration fast),
-        // but a failure must never be silent — the patient record already exists at this
-        // point, so a failed upload here is recoverable via the Edit page's document
-        // upload, as long as the receptionist actually finds out it failed.
-        if (documents.photo) {
-          photoMutation.mutate(
-            { id: patient.id, file: documents.photo },
-            {
-              onError: () =>
-                toast({
-                  title: 'Photo not saved',
-                  description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the photo upload failed. Add it from the patient's Edit page.`,
-                  variant: 'error',
-                }),
-            },
-          );
-        }
-        if (documents.idProofFile) {
-          idProofMutation.mutate(
-            { id: patient.id, idProofType: documents.idProofType, file: documents.idProofFile },
-            {
-              onError: () =>
-                toast({
-                  title: 'ID proof not saved',
-                  description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) was registered, but the ID proof upload failed. Add it from the patient's Edit page.`,
-                  variant: 'error',
-                }),
-            },
-          );
-        }
-        // Fired-and-forgotten like the photo/idProof uploads above, for the same reason:
-        // the patient record already exists at this point, so a failed invoice save here is
-        // recoverable via the standalone OPD Billing Entry screen, as long as staff find out.
+        uploadStagedDocuments(patient.id, documents);
         billingMutation.mutate(
           {
             patientId: patient.id,
-            visitId: patient.currentRegistration?.id ?? patient.id,
+            visitId: patient.id,
             values: billing,
             patient: { name: `${patient.firstName} ${patient.lastName}`, uhid: patient.uhid },
           },
@@ -184,8 +246,11 @@ export default function PatientRegistrationCreatePage() {
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       <RequirePermission permission="patient-management.create">
         <PatientRegistrationForm
-          isSubmitting={mutation.isPending}
-          apiError={toDisplayError(mutation.error)}
+          isSubmitting={createMutation.isPending || updateMutation.isPending}
+          isSavingAndProceeding={createMutation.isPending || updateMutation.isPending}
+          apiError={toDisplayError(createMutation.error ?? updateMutation.error)}
+          savedPatient={savedPatient}
+          onSaveAndProceed={handleSaveAndProceed}
           onSubmit={handleSubmit}
         />
       </RequirePermission>

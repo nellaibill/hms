@@ -54,7 +54,8 @@ export const API_ROUTES = {
     byId: (id: string) => `/api/v1/patients/${id}`,
     photo: (id: string) => `/api/v1/patients/${id}/photo`,
     idProof: (id: string) => `/api/v1/patients/${id}/id-proof`,
-    registrations: (id: string) => `/api/v1/patients/${id}/registrations`,
+    allergies: (id: string) => `/api/v1/patients/${id}/allergies`,
+    allergyById: (id: string, allergyId: string) => `/api/v1/patients/${id}/allergies/${allergyId}`,
   },
   branding: {
     base: '/api/v1/branding',

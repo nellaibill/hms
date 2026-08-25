@@ -8,8 +8,8 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
     public UpdatePatientRequestValidator()
     {
         RuleFor(x => x.Title).IsInEnum();
-        RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100).Matches(CreatePatientRequestValidator.NamePattern).WithMessage("First name must contain letters only.");
-        RuleFor(x => x.LastName).NotEmpty().MaximumLength(100).Matches(CreatePatientRequestValidator.NamePattern).WithMessage("Last name must contain letters only.");
+        RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100).Matches(CreatePatientRequestValidator.NamePattern).WithMessage(CreatePatientRequestValidator.NamePatternMessage);
+        RuleFor(x => x.LastName).NotEmpty().MaximumLength(100).Matches(CreatePatientRequestValidator.NamePattern).WithMessage(CreatePatientRequestValidator.NamePatternMessage);
         RuleFor(x => x.DateOfBirth)
             .NotEmpty()
             .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth cannot be in the future.")
@@ -17,7 +17,7 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x)
             .Must(x => CreatePatientRequestValidator.IsTitleConsistentWithAge(x.Title, x.DateOfBirth))
             .WithName("Title")
-            .WithMessage("Title does not match the patient's age (Baby: under 2, Master/Miss: under 18, Mr/Mrs/Ms/Dr: 18 or older).")
+            .WithMessage("Title does not match the patient's age (Baby: up to 1 year, Master/Miss: 1–18 years, Mr/Mrs/Ms/Dr: 18 or older).")
             .When(x => Enum.IsDefined(x.Title));
         RuleFor(x => x)
             .Must(x => CreatePatientRequestValidator.IsTitleConsistentWithGender(x.Title, x.Gender))
@@ -25,47 +25,38 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
             .WithMessage("Title does not match the patient's gender (Mr/Master: Male, Mrs/Ms/Miss: Female).")
             .When(x => Enum.IsDefined(x.Title) && Enum.IsDefined(x.Gender));
         RuleFor(x => x.Gender).IsInEnum();
-        // Kept in sync with CreatePatientRequestValidator — required, not merely
-        // validated-when-present; select Unknown for "not known/not recorded".
-        RuleFor(x => x.BloodGroup).NotNull().WithMessage("Blood group is required — select Unknown if it isn't known.").IsInEnum();
+        RuleFor(x => x.BloodGroup).IsInEnum();
+        RuleFor(x => x.MaritalStatus).IsInEnum();
+        RuleFor(x => x)
+            .Must(x => CreatePatientRequestValidator.IsMaritalStatusConsistentWithAge(x.MaritalStatus, x.DateOfBirth))
+            .WithName("MaritalStatus")
+            .WithMessage(x => CreatePatientRequestValidator.MaritalStatusAgeMessage(x.DateOfBirth))
+            .When(x => Enum.IsDefined(x.MaritalStatus));
 
-        RuleFor(x => x.AddressLine1).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.AddressLine2).MaximumLength(200);
-        RuleFor(x => x.AddressLine3).MaximumLength(200);
-        RuleFor(x => x.District).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.State).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Pincode).NotEmpty().Matches(@"^[0-9]{6}$").WithMessage("Pincode must be 6 digits.");
-
-        RuleFor(x => x.PrimaryPhone)
-            .NotEmpty().MaximumLength(20)
-            .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Phone number may only contain digits, spaces, and the characters + - ( ).")
-            .Must(value => CreatePatientRequestValidator.HasMinimumDigitCount(value, CreatePatientRequestValidator.MinPhoneDigits)).WithMessage($"Phone number must contain at least {CreatePatientRequestValidator.MinPhoneDigits} digits.");
-        RuleFor(x => x.PrimaryPhoneRelation).MaximumLength(50).Matches(CreatePatientRequestValidator.NamePattern).WithMessage("Relation must contain letters only.").When(x => !string.IsNullOrWhiteSpace(x.PrimaryPhoneRelation));
-        RuleFor(x => x.AlternatePhone)
-            .MaximumLength(20)
-            .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Phone number may only contain digits, spaces, and the characters + - ( ).")
-            .Must(value => CreatePatientRequestValidator.HasMinimumDigitCount(value, CreatePatientRequestValidator.MinPhoneDigits)).WithMessage($"Phone number must contain at least {CreatePatientRequestValidator.MinPhoneDigits} digits.")
-            .When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone));
-        RuleFor(x => x.AlternatePhoneRelation).MaximumLength(50).Matches(CreatePatientRequestValidator.NamePattern).WithMessage("Relation must contain letters only.").When(x => !string.IsNullOrWhiteSpace(x.AlternatePhoneRelation));
-        RuleFor(x => x.AlternatePhone2)
-            .MaximumLength(20)
-            .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Phone number may only contain digits, spaces, and the characters + - ( ).")
-            .Must(value => CreatePatientRequestValidator.HasMinimumDigitCount(value, CreatePatientRequestValidator.MinPhoneDigits)).WithMessage($"Phone number must contain at least {CreatePatientRequestValidator.MinPhoneDigits} digits.")
-            .When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone2));
-        RuleFor(x => x.AlternatePhone2Relation).MaximumLength(50).Matches(CreatePatientRequestValidator.NamePattern).WithMessage("Relation must contain letters only.").When(x => !string.IsNullOrWhiteSpace(x.AlternatePhone2Relation));
+        RuleFor(x => x.PrimaryPhone).NotEmpty().Matches(CreatePatientRequestValidator.PhonePattern).WithMessage(CreatePatientRequestValidator.PhonePatternMessage);
+        RuleFor(x => x.SecondaryPhone)
+            .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage(CreatePatientRequestValidator.PhonePatternMessage)
+            .When(x => !string.IsNullOrWhiteSpace(x.SecondaryPhone));
+        RuleFor(x => x.SecondaryPhone)
+            .NotEqual(x => x.PrimaryPhone).WithMessage("Secondary phone must be different from the primary phone.")
+            .When(x => !string.IsNullOrWhiteSpace(x.SecondaryPhone));
         RuleFor(x => x.Email).EmailAddress().MaximumLength(256).When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Profession).MaximumLength(100);
 
-        RuleFor(x => x.EmergencyContactRelationship).NotEmpty().MaximumLength(50).Matches(CreatePatientRequestValidator.NamePattern).WithMessage("Relation must contain letters only.");
-        RuleFor(x => x.EmergencyContactName).NotEmpty().MaximumLength(150).Matches(CreatePatientRequestValidator.NamePattern).WithMessage("Name must contain letters only.");
-        RuleFor(x => x.EmergencyContactPhone)
-            .NotEmpty().MaximumLength(20)
-            .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Phone number may only contain digits, spaces, and the characters + - ( ).")
-            .Must(value => CreatePatientRequestValidator.HasMinimumDigitCount(value, CreatePatientRequestValidator.MinPhoneDigits)).WithMessage($"Phone number must contain at least {CreatePatientRequestValidator.MinPhoneDigits} digits.");
+        RuleFor(x => x.IdProofNumber).NotEmpty().WithMessage("ID proof number is required when an ID proof type is selected.").When(x => x.IdProofType.HasValue);
+        RuleFor(x => x.IdProofNumber)
+            .Matches(CreatePatientRequestValidator.AadhaarPattern).WithMessage("Aadhaar number must be exactly 12 digits.")
+            .When(x => x.IdProofType == IdProofType.Aadhaar && !string.IsNullOrWhiteSpace(x.IdProofNumber));
 
-        RuleFor(x => x.AllergyType).NotEmpty().MaximumLength(200).When(x => x.HasKnownAllergy);
-        RuleFor(x => x.AllergySeverity).NotNull().IsInEnum().When(x => x.HasKnownAllergy);
+        RuleFor(x => x.ModeOfArrivalSource).IsInEnum();
+        RuleFor(x => x.ModeOfArrivalChannel)
+            .NotEmpty().WithMessage("Channel is required for this arrival source.")
+            .When(x => x.ModeOfArrivalSource is ModeOfArrivalSource.OnlineAdvertisement or ModeOfArrivalSource.OfflineAdvertisement);
+        RuleFor(x => x.ModeOfArrivalSpecify)
+            .NotEmpty().WithMessage("Please specify.")
+            .When(x => !string.IsNullOrWhiteSpace(x.ModeOfArrivalChannel) && x.ModeOfArrivalChannel == "Other");
 
-        RuleFor(x => x.RowVersion).NotEmpty().WithMessage("RowVersion is required — reload the patient before saving.");
+        RuleFor(x => x.Address).NotNull().SetValidator(new AddressRequestValidator());
+        RuleFor(x => x.RowVersion).NotEmpty();
     }
 }

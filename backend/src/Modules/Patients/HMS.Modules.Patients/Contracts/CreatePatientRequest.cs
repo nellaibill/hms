@@ -1,65 +1,58 @@
 namespace HMS.Modules.Patients.Contracts;
 
 /// <summary>
-/// One combined submit for a New Patient Registration — creates the patient master
-/// record and its first <see cref="PatientRegistrationDetails"/> in a single transaction,
-/// per docs/PatientRegistrationModule.md's "one save" registration flow (autosave/wizard
-/// gating deferred — see docs/DecisionLog.md's MVP-scope ADR).
+/// One combined submit for a New Patient Registration — creates the patient, their address,
+/// and any allergies/emergency contacts supplied up front, all in a single transaction.
+/// Encounter/visit registration (department, consultant, admission type) is out of scope
+/// for this iteration.
 /// </summary>
 public record CreatePatientRequest
 {
-    // Section 1 — Patient Identification & Demographics
     public Title Title { get; init; }
     public string FirstName { get; init; } = string.Empty;
     public string LastName { get; init; } = string.Empty;
     public DateOnly DateOfBirth { get; init; }
     public Gender Gender { get; init; }
-    public BloodGroup? BloodGroup { get; init; }
+    public BloodGroup BloodGroup { get; init; }
+    public MaritalStatus MaritalStatus { get; init; }
 
-    // Section 2 — Address
-    public string AddressLine1 { get; init; } = string.Empty;
-    public string? AddressLine2 { get; init; }
-    public string? AddressLine3 { get; init; }
-    public string District { get; init; } = string.Empty;
-    public string State { get; init; } = string.Empty;
-    public string Pincode { get; init; } = string.Empty;
-
-    // Section 3 — Contact Details
     public string PrimaryPhone { get; init; } = string.Empty;
-    public string? PrimaryPhoneRelation { get; init; }
-    public string? AlternatePhone { get; init; }
-    public string? AlternatePhoneRelation { get; init; }
-    public string? AlternatePhone2 { get; init; }
-    public string? AlternatePhone2Relation { get; init; }
+    public string? SecondaryPhone { get; init; }
     public string? Email { get; init; }
     public string? Profession { get; init; }
 
-    // Section 4 — Emergency Contact
-    public string EmergencyContactRelationship { get; init; } = string.Empty;
-    public string EmergencyContactName { get; init; } = string.Empty;
-    public string EmergencyContactPhone { get; init; } = string.Empty;
+    public IdProofType? IdProofType { get; init; }
+    public string? IdProofNumber { get; init; }
 
-    // Section 6 — Allergy Details
-    public bool HasKnownAllergy { get; init; }
-    public string? AllergyType { get; init; }
-    public AllergySeverity? AllergySeverity { get; init; }
+    public ModeOfArrivalSource ModeOfArrivalSource { get; init; }
+    public string? ModeOfArrivalChannel { get; init; }
+    public string? ModeOfArrivalSpecify { get; init; }
 
-    // Section 5 & 7 — Mode of Arrival + Registration/Encounter Details
-    public PatientRegistrationDetails Registration { get; init; } = new();
+    public AddressRequest Address { get; init; } = new();
+    public IReadOnlyList<AllergyRequest> Allergies { get; init; } = [];
+    public IReadOnlyList<EmergencyContactRequest> EmergencyContacts { get; init; } = [];
 }
 
-public record PatientRegistrationDetails
+public record AddressRequest
 {
-    public EncounterType EncounterType { get; init; }
-    public ModeOfArrival ModeOfArrival { get; init; }
-    public Guid DepartmentId { get; init; }
-    public Guid ConsultantId { get; init; }
+    public string AddressLine1 { get; init; } = string.Empty;
+    public string? AddressLine2 { get; init; }
+    public string? AddressLine3 { get; init; }
+    public Guid StateId { get; init; }
+    public Guid DistrictId { get; init; }
+    public string Pincode { get; init; } = string.Empty;
+}
 
-    /// <summary>Optional OP appointment category — a reference into Masters' AppointmentType,
-    /// validated the same way as DepartmentId/ConsultantId when present.</summary>
-    public Guid? AppointmentTypeId { get; init; }
+public record AllergyRequest
+{
+    public AllergyType AllergyType { get; init; }
+    public string? Specify { get; init; }
+    public AllergySeverity Severity { get; init; }
+}
 
-    public AdmissionType? AdmissionType { get; init; }
-    public string? ReferralSource { get; init; }
-    public string? Category { get; init; }
+public record EmergencyContactRequest
+{
+    public Relationship Relationship { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string Phone { get; init; } = string.Empty;
 }

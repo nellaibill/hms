@@ -11,60 +11,56 @@ public record PatientResponse
     public DateOnly DateOfBirth { get; init; }
     public int Age { get; init; }
     public Gender Gender { get; init; }
-    public BloodGroup? BloodGroup { get; init; }
-
-    public string AddressLine1 { get; init; } = string.Empty;
-    public string? AddressLine2 { get; init; }
-    public string? AddressLine3 { get; init; }
-    public string District { get; init; } = string.Empty;
-    public string State { get; init; } = string.Empty;
-    public string Pincode { get; init; } = string.Empty;
+    public BloodGroup BloodGroup { get; init; }
+    public MaritalStatus MaritalStatus { get; init; }
 
     public string PrimaryPhone { get; init; } = string.Empty;
-    public string? PrimaryPhoneRelation { get; init; }
-    public string? AlternatePhone { get; init; }
-    public string? AlternatePhoneRelation { get; init; }
-    public string? AlternatePhone2 { get; init; }
-    public string? AlternatePhone2Relation { get; init; }
+    public string? SecondaryPhone { get; init; }
     public string? Email { get; init; }
     public string? Profession { get; init; }
 
-    public string EmergencyContactRelationship { get; init; } = string.Empty;
-    public string EmergencyContactName { get; init; } = string.Empty;
-    public string EmergencyContactPhone { get; init; } = string.Empty;
-
-    public bool HasKnownAllergy { get; init; }
-    public string? AllergyType { get; init; }
-    public AllergySeverity? AllergySeverity { get; init; }
-
-    public string? PhotoPath { get; init; }
     public IdProofType? IdProofType { get; init; }
-    public string? IdProofPath { get; init; }
+    public string? IdProofNumber { get; init; }
 
-    /// <summary>The most recent registration/encounter — a patient may have several over time.</summary>
-    public PatientRegistrationResponse? CurrentRegistration { get; init; }
+    public ModeOfArrivalSource ModeOfArrivalSource { get; init; }
+    public string? ModeOfArrivalChannel { get; init; }
+    public string? ModeOfArrivalSpecify { get; init; }
+
+    public AddressResponse Address { get; init; } = new();
+    public IReadOnlyList<AllergyResponse> Allergies { get; init; } = [];
+    public IReadOnlyList<EmergencyContactResponse> EmergencyContacts { get; init; } = [];
 
     /// <summary>Opaque optimistic-concurrency token (the row's Postgres xmin at read time) —
-    /// echo this back on UpdatePatientRequest.RowVersion so a save made against stale data
-    /// (someone else edited this patient after this response was fetched) is rejected with a
-    /// clear conflict instead of silently overwriting their changes.</summary>
+    /// echo this back on UpdatePatientRequest.RowVersion so a save made against stale data is
+    /// rejected with a clear conflict instead of silently overwriting someone else's edit.</summary>
     public string RowVersion { get; init; } = string.Empty;
 
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }
 
-public record PatientRegistrationResponse
+public record AddressResponse
+{
+    public string AddressLine1 { get; init; } = string.Empty;
+    public string? AddressLine2 { get; init; }
+    public string? AddressLine3 { get; init; }
+    public Guid StateId { get; init; }
+    public Guid DistrictId { get; init; }
+    public string Pincode { get; init; } = string.Empty;
+}
+
+public record AllergyResponse
 {
     public Guid Id { get; init; }
-    public string RegistrationNumber { get; init; } = string.Empty;
-    public EncounterType EncounterType { get; init; }
-    public ModeOfArrival ModeOfArrival { get; init; }
-    public Guid DepartmentId { get; init; }
-    public Guid ConsultantId { get; init; }
-    public Guid? AppointmentTypeId { get; init; }
-    public AdmissionType? AdmissionType { get; init; }
-    public string? ReferralSource { get; init; }
-    public string? Category { get; init; }
-    public DateTime CreatedAt { get; init; }
+    public AllergyType AllergyType { get; init; }
+    public string? Specify { get; init; }
+    public AllergySeverity Severity { get; init; }
+}
+
+public record EmergencyContactResponse
+{
+    public Guid Id { get; init; }
+    public Relationship Relationship { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string Phone { get; init; } = string.Empty;
 }

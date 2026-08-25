@@ -1,4 +1,3 @@
-using FluentAssertions;
 using FluentValidation.TestHelper;
 using HMS.Modules.Patients.Application.Validators;
 using HMS.Modules.Patients.Contracts;
@@ -8,7 +7,10 @@ namespace HMS.UnitTests.Modules.Patients.Application.Validators;
 
 public class PatientBloodGroupValidationTests
 {
-    private static CreatePatientRequest ValidCreateRequest(BloodGroup? bloodGroup) => new()
+    private static readonly Guid StateId = Guid.NewGuid();
+    private static readonly Guid DistrictId = Guid.NewGuid();
+
+    private static CreatePatientRequest ValidCreateRequest(BloodGroup bloodGroup) => new()
     {
         Title = Title.Mr,
         FirstName = "John",
@@ -16,39 +18,21 @@ public class PatientBloodGroupValidationTests
         DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-30),
         Gender = Gender.Male,
         BloodGroup = bloodGroup,
-        AddressLine1 = "123 Main St",
-        District = "Central",
-        State = "State",
-        Pincode = "560001",
+        MaritalStatus = MaritalStatus.Married,
         PrimaryPhone = "9876543210",
-        EmergencyContactRelationship = "Spouse",
-        EmergencyContactName = "Jane Doe",
-        EmergencyContactPhone = "9876500000",
-        Registration = new PatientRegistrationDetails
-        {
-            EncounterType = EncounterType.OP,
-            ModeOfArrival = ModeOfArrival.WalkIn,
-            DepartmentId = Guid.NewGuid(),
-            ConsultantId = Guid.NewGuid(),
-        },
+        ModeOfArrivalSource = ModeOfArrivalSource.DoctorReferral,
+        Address = new AddressRequest { AddressLine1 = "123 Main St", StateId = StateId, DistrictId = DistrictId, Pincode = "560001" },
+        EmergencyContacts = [new EmergencyContactRequest { Relationship = Relationship.Spouse, Name = "Jane Doe", Phone = "9876500000" }],
     };
 
-    [Fact]
-    public void CreateValidator_RejectsMissingBloodGroup()
-    {
-        var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(bloodGroup: null);
-
-        var result = validator.TestValidate(request);
-
-        result.ShouldHaveValidationErrorFor(x => x.BloodGroup);
-    }
-
+    // BloodGroup is a required (non-nullable) enum now — "select Unknown if it isn't known"
+    // is enforced by there being no way to submit the field empty at all, not by a separate
+    // "missing" validation rule the way the old nullable field needed.
     [Fact]
     public void CreateValidator_AcceptsUnknownAsAnExplicitBloodGroupChoice()
     {
         var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(bloodGroup: BloodGroup.Unknown);
+        var request = ValidCreateRequest(BloodGroup.Unknown);
 
         var result = validator.TestValidate(request);
 
@@ -59,38 +43,10 @@ public class PatientBloodGroupValidationTests
     public void CreateValidator_AcceptsAKnownBloodGroup()
     {
         var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(bloodGroup: BloodGroup.OPositive);
+        var request = ValidCreateRequest(BloodGroup.OPositive);
 
         var result = validator.TestValidate(request);
 
         result.ShouldNotHaveValidationErrorFor(x => x.BloodGroup);
-    }
-
-    [Fact]
-    public void UpdateValidator_RejectsMissingBloodGroup()
-    {
-        var validator = new UpdatePatientRequestValidator();
-        var request = new UpdatePatientRequest
-        {
-            Title = Title.Mr,
-            FirstName = "John",
-            LastName = "Doe",
-            DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-30),
-            Gender = Gender.Male,
-            BloodGroup = null,
-            AddressLine1 = "123 Main St",
-            District = "Central",
-            State = "State",
-            Pincode = "560001",
-            PrimaryPhone = "9876543210",
-            EmergencyContactRelationship = "Spouse",
-            EmergencyContactName = "Jane Doe",
-            EmergencyContactPhone = "9876500000",
-            RowVersion = "1",
-        };
-
-        var result = validator.TestValidate(request);
-
-        result.ShouldHaveValidationErrorFor(x => x.BloodGroup);
     }
 }

@@ -47,7 +47,6 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
               </th>
             ))}
             <th className="px-4 py-2.5">Phone</th>
-            <th className="px-4 py-2.5">Encounter</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
         </thead>
@@ -67,7 +66,6 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
                 {new Date(patient.createdAt).toLocaleDateString('en-IN')}
               </td>
               <td className="px-4 py-3 text-muted-foreground">{patient.primaryPhone}</td>
-              <td className="px-4 py-3 text-muted-foreground">{patient.currentRegistration?.encounterType ?? '—'}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
                   {canEdit && (

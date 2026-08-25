@@ -4,8 +4,7 @@ import { statesApi } from '../services/apiClient';
 
 interface StateSelectProps {
   id: string;
-  /** State *name* (not id) — matches Patient.State's plain string field, so no bridging is
-   * needed between this control and the form/backend contract. */
+  /** State id (a real Masters State record's Guid) — matches Address.StateId's Guid field. */
   value: string;
   onValueChange: (value: string) => void;
   ariaLabel?: string;
@@ -20,7 +19,7 @@ export function StateSelect({ id, value, onValueChange, ariaLabel = 'State', dis
     queryFn: () => statesApi.getStates(),
   });
 
-  const options = (data ?? []).map((state) => ({ value: state.name, label: state.name }));
+  const options = (data ?? []).map((state) => ({ value: state.id, label: state.name }));
 
   return (
     <SearchableSelect

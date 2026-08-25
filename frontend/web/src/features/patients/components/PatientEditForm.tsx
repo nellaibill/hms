@@ -1,8 +1,12 @@
 import {
+  type Allergy,
   ALLERGY_CATEGORIES,
   ALLERGY_SEVERITIES,
+  type AllergySeverity,
+  type AllergyType,
   ApiError,
   BLOOD_GROUPS,
+  ID_PROOF_TYPES,
   MARITAL_STATUSES,
   patientEditUiSchema,
   PATIENT_GENDERS,
@@ -25,6 +29,7 @@ import { calculateDetailedAge } from '../detailedAge';
 import { tabErrorMessages } from '../formErrorSummary';
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
+import { useAddPatientAllergyMutation, useRemovePatientAllergyMutation } from '../hooks/usePatientMutations';
 import { titleLabel } from '../titleLabel';
 import { Field, FormSection } from './FormSection';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
@@ -32,6 +37,11 @@ import { TabErrorSummary } from './TabErrorSummary';
 
 interface PatientEditFormProps {
   patientId: string;
+  /** The patient's current allergy list — lives outside the RHF form entirely; add/remove hit
+   * the backend's real per-row endpoints immediately (see the Allergy Details section below),
+   * so this always reflects the latest saved state via the query that refetches after each
+   * mutation, not local form state. */
+  allergies: Allergy[];
   defaultValues: PatientEditUiFormValues;
   isSubmitting: boolean;
   apiError: ApiError | null;
@@ -63,7 +73,7 @@ const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientEditUiFormValues)[]> = {
     'emergencyContactPhone',
     'additionalEmergencyContacts',
   ],
-  'medical-info': ['hasKnownAllergy', 'allergyCategory', 'allergySpecify', 'allergySeverity'],
+  'medical-info': ['idProofType', 'idProofNumber'],
 };
 
 function tabWithFirstError(errors: FieldErrors<PatientEditUiFormValues>): TabId | null {
@@ -75,7 +85,7 @@ function isTabId(value: string): value is TabId {
 }
 
 /** Updates a patient's demographic/master-data fields only — Registration Details and Billing are intentionally not editable here (see docs/DecisionLog.md ADR-008). */
-export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
+export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
   const {
     register,
     control,
@@ -87,11 +97,47 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
   } = useForm<PatientEditUiFormValues>({
     resolver: zodResolver(patientEditUiSchema),
     defaultValues,
-    mode: 'onChange',
+    // Deliberately not `mode: 'onChange'` — see PatientRegistrationForm's identical fix for
+    // why: it races an overlapping validation pass against goToTab's own trigger() call.
   });
 
-  const hasKnownAllergy = watch('hasKnownAllergy');
+  const idProofType = watch('idProofType');
   const state = watch('state');
+
+  // Allergy add/remove happen immediately against the real backend endpoints — see this
+  // component's own doc comment on the `allergies` prop for why they're not part of the RHF
+  // form. `newAllergy`/`showAddAllergyRow` are the local draft state for the one row being
+  // added; they're unrelated to react-hook-form entirely.
+  const addAllergyMutation = useAddPatientAllergyMutation();
+  const removeAllergyMutation = useRemovePatientAllergyMutation();
+  const [showAddAllergyRow, setShowAddAllergyRow] = useState(false);
+  const [newAllergy, setNewAllergy] = useState<{ allergyType: AllergyType | ''; specify: string; severity: AllergySeverity | '' }>({
+    allergyType: '',
+    specify: '',
+    severity: '',
+  });
+  const [addAllergyError, setAddAllergyError] = useState<string | null>(null);
+
+  function handleAddAllergy() {
+    if (!newAllergy.allergyType || !newAllergy.severity) {
+      setAddAllergyError('Type and severity are required.');
+      return;
+    }
+    setAddAllergyError(null);
+    addAllergyMutation.mutate(
+      { id: patientId, request: { allergyType: newAllergy.allergyType, specify: newAllergy.specify.trim() || undefined, severity: newAllergy.severity } },
+      {
+        onSuccess: () => {
+          setNewAllergy({ allergyType: '', specify: '', severity: '' });
+          setShowAddAllergyRow(false);
+        },
+      },
+    );
+  }
+
+  function handleRemoveAllergy(allergyId: string) {
+    removeAllergyMutation.mutate({ id: patientId, allergyId });
+  }
 
   // A district picked under the previous state is meaningless once the state changes —
   // mirrors PatientRegistrationForm's identical handleStateChange.
@@ -217,7 +263,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
         <TabErrorSummary messages={tabMessages('patient-info')} />
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
-            <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
+            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -243,7 +289,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="First name"
               htmlFor="firstName"
-              error={errors.firstName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="firstName" {...register('firstName')} />
@@ -251,12 +296,11 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="Last name"
               htmlFor="lastName"
-              error={errors.lastName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-48">
+            <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
               <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
@@ -286,7 +330,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="Blood group"
               htmlFor="bloodGroup"
-              error={errors.bloodGroup?.message}
               className="flex w-full flex-col gap-1 sm:w-32"
             >
               <Controller
@@ -308,7 +351,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
                 )}
               />
             </Field>
-            <Field label="Marital status" htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
+            <Field label="Marital status" htmlFor="maritalStatus" className="flex w-full flex-col gap-1 sm:w-40">
               <Controller
                 name="maritalStatus"
                 control={control}
@@ -339,7 +382,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="Address line 1 (door no. & building name)"
               htmlFor="addressLine1"
-              error={errors.addressLine1?.message}
               className="flex min-w-[260px] flex-1 flex-col gap-1"
             >
               <Input id="addressLine1" {...register('addressLine1')} />
@@ -352,7 +394,7 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field label="State" htmlFor="state" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Controller
                 name="state"
                 control={control}
@@ -364,16 +406,15 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="District"
               htmlFor="district"
-              error={errors.district?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Controller
                 name="district"
                 control={control}
-                render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateName={state} />}
+                render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateId={state} />}
               />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
+            <Field label="Pincode" htmlFor="pincode" className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
@@ -384,7 +425,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="Primary phone"
               htmlFor="primaryPhoneNumber"
-              error={errors.primaryPhone?.number?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="primaryPhoneNumber" {...register('primaryPhone.number')} />
@@ -392,12 +432,11 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="Secondary phone (optional)"
               htmlFor="secondaryPhone"
-              error={errors.secondaryPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="secondaryPhone" {...register('secondaryPhone')} />
             </Field>
-            <Field label="Email" htmlFor="email" error={errors.email?.message} className="flex min-w-[180px] flex-1 flex-col gap-1">
+            <Field label="Email" htmlFor="email" className="flex min-w-[180px] flex-1 flex-col gap-1">
               <Input id="email" type="email" {...register('email')} />
             </Field>
             <Field label="Profession" htmlFor="profession" className="flex min-w-[160px] flex-1 flex-col gap-1">
@@ -431,7 +470,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="Name"
               htmlFor="emergencyContactName"
-              error={errors.emergencyContactName?.message}
               className="flex min-w-[180px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
@@ -439,7 +477,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
             <Field
               label="Phone"
               htmlFor="emergencyContactPhone"
-              error={errors.emergencyContactPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
@@ -475,7 +512,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
               <Field
                 label="Name"
                 htmlFor={`additionalEmergencyContacts.${index}.name`}
-                error={errors.additionalEmergencyContacts?.[index]?.name?.message}
                 className="flex min-w-[180px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.name`} {...register(`additionalEmergencyContacts.${index}.name` as const)} />
@@ -483,7 +519,6 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
               <Field
                 label="Phone"
                 htmlFor={`additionalEmergencyContacts.${index}.phone`}
-                error={errors.additionalEmergencyContacts?.[index]?.phone?.message}
                 className="flex min-w-[160px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.phone`} {...register(`additionalEmergencyContacts.${index}.phone` as const)} />
@@ -518,64 +553,135 @@ export function PatientEditForm({ patientId, defaultValues, isSubmitting, apiErr
         <TabsContent value="medical-info" className="pt-4">
         <TabErrorSummary messages={tabMessages('medical-info')} />
         <FormSection id="allergy" title="Allergy Details">
-          <div className="flex items-center gap-2">
-            <input id="hasKnownAllergy" type="checkbox" className="h-4 w-4 rounded border-input" {...register('hasKnownAllergy')} />
-            <label htmlFor="hasKnownAllergy" className="cursor-pointer text-sm font-normal text-foreground">
-              Patient has a known allergy
-            </label>
-          </div>
-          {hasKnownAllergy && (
-            <div className="flex flex-wrap gap-3">
-              <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message} className="flex w-full flex-col gap-1 sm:w-40">
-                <Controller
-                  name="allergyCategory"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value || undefined} onValueChange={field.onChange}>
-                      <SelectTrigger id="allergyCategory" aria-label="Allergy type">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ALLERGY_CATEGORIES.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-              <Field label="Specify" htmlFor="allergySpecify" className="flex min-w-[200px] flex-1 flex-col gap-1">
-                <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
-              </Field>
-              <Field
-                label="Severity"
-                htmlFor="allergySeverity"
-                error={errors.allergySeverity?.message}
-                className="flex w-full flex-col gap-1 sm:w-60"
+          {allergies.length === 0 && !showAddAllergyRow && <p className="text-sm text-muted-foreground">No known allergies recorded.</p>}
+
+          {allergies.map((allergy) => (
+            <div key={allergy.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3">
+              <span className="min-w-[100px] text-sm font-medium text-foreground">{allergy.allergyType}</span>
+              <span className="flex-1 text-sm text-muted-foreground">{allergy.specify || '—'}</span>
+              <span className="text-sm text-foreground">{allergy.severity === 'Severe' ? 'Severe / Life-Threatening' : allergy.severity}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Remove ${allergy.allergyType} allergy`}
+                disabled={removeAllergyMutation.isPending}
+                onClick={() => handleRemoveAllergy(allergy.id)}
               >
-                <Controller
-                  name="allergySeverity"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value || undefined} onValueChange={field.onChange}>
-                      <SelectTrigger id="allergySeverity" aria-label="Allergy severity">
-                        <SelectValue placeholder="Select severity" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ALLERGY_SEVERITIES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s === 'Severe' ? 'Severe / Life-Threatening' : s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+
+          {addAllergyError && (
+            <p role="alert" className="text-sm text-destructive">
+              {addAllergyError}
+            </p>
+          )}
+          {addAllergyMutation.isError && (
+            <p role="alert" className="text-sm text-destructive">
+              Failed to add allergy — please try again.
+            </p>
+          )}
+          {removeAllergyMutation.isError && (
+            <p role="alert" className="text-sm text-destructive">
+              Failed to remove allergy — please try again.
+            </p>
+          )}
+
+          {showAddAllergyRow ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="Type" htmlFor="new-allergy-type" className="flex w-full flex-col gap-1 sm:w-40">
+                <Select
+                  value={newAllergy.allergyType || undefined}
+                  onValueChange={(value) => setNewAllergy((prev) => ({ ...prev, allergyType: value as AllergyType }))}
+                >
+                  <SelectTrigger id="new-allergy-type" aria-label="New allergy type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALLERGY_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Specify" htmlFor="new-allergy-specify" className="flex min-w-[200px] flex-1 flex-col gap-1">
+                <Input
+                  id="new-allergy-specify"
+                  placeholder="e.g. Penicillin, Peanuts…"
+                  value={newAllergy.specify}
+                  onChange={(event) => setNewAllergy((prev) => ({ ...prev, specify: event.target.value }))}
                 />
               </Field>
+              <Field label="Severity" htmlFor="new-allergy-severity" className="flex w-full flex-col gap-1 sm:w-60">
+                <Select
+                  value={newAllergy.severity || undefined}
+                  onValueChange={(value) => setNewAllergy((prev) => ({ ...prev, severity: value as AllergySeverity }))}
+                >
+                  <SelectTrigger id="new-allergy-severity" aria-label="New allergy severity">
+                    <SelectValue placeholder="Select severity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALLERGY_SEVERITIES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s === 'Severe' ? 'Severe / Life-Threatening' : s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Button type="button" onClick={handleAddAllergy} disabled={addAllergyMutation.isPending}>
+                {addAllergyMutation.isPending ? 'Adding…' : 'Add'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setShowAddAllergyRow(false);
+                  setAddAllergyError(null);
+                  setNewAllergy({ allergyType: '', specify: '', severity: '' });
+                }}
+              >
+                Cancel
+              </Button>
             </div>
+          ) : (
+            <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => setShowAddAllergyRow(true)}>
+              <Plus className="h-4 w-4" />
+              Add another Allergy
+            </Button>
           )}
+        </FormSection>
+
+        <FormSection id="id-proof" title="ID Proof">
+          <div className="flex flex-wrap gap-3">
+            <Field label="ID proof type" htmlFor="idProofType" className="flex w-full flex-col gap-1 sm:w-48">
+              <Controller
+                name="idProofType"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="idProofType" aria-label="ID proof type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ID_PROOF_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+            <Field label={`${idProofType} number`} htmlFor="idProofNumber" className="flex min-w-[200px] flex-1 flex-col gap-1">
+              <Input id="idProofNumber" {...register('idProofNumber')} />
+            </Field>
+          </div>
         </FormSection>
 
         <FormSection id="document-upload" title="Document Upload" description="Upload or replace the patient's photo and ID proof.">

@@ -6,9 +6,9 @@ namespace HMS.Modules.Patients.Infrastructure;
 
 /// <summary>
 /// Lets HMS.Modules.Documents validate that a Patient owner id actually exists before
-/// accepting an upload against it (US-1's "reject with 404 if not" acceptance criterion) —
-/// see IDocumentOwnerExistenceChecker's remarks for why this is a one-directional dependency
-/// (Patients → Documents) rather than the other way around.
+/// accepting an upload against it — see IDocumentOwnerExistenceChecker's remarks for why
+/// this is a one-directional dependency (Patients → Documents) rather than the other way
+/// around.
 /// </summary>
 internal class PatientDocumentOwnerExistenceChecker : IDocumentOwnerExistenceChecker
 {

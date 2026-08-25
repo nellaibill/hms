@@ -3,8 +3,7 @@ namespace HMS.Modules.Patients.Contracts;
 /// <summary>
 /// Shared vocabulary for the Patients module — public because these values cross the
 /// HTTP boundary (request/response fields) and Swagger needs to describe them, but also
-/// used directly by Domain/Application within this same assembly (see docs/DecisionLog.md
-/// for why enums are the one type Domain is allowed to share with Contracts).
+/// used directly by Domain/Application within this same assembly.
 /// </summary>
 public enum Title
 {
@@ -17,11 +16,6 @@ public enum Title
     Baby,
 }
 
-// Matches the frontend's PATIENT_GENDERS exactly (Male/Female/Transgender/NA) — previously
-// this only had Male/Female/Other, so Transgender and "prefer not to say" both collapsed
-// into the same "Other" value on save and were indistinguishable again on the next edit.
-// Stored as a string column (see PatientConfiguration), so this rename is not a breaking
-// schema change — just a wider vocabulary.
 public enum Gender
 {
     Male,
@@ -43,11 +37,12 @@ public enum BloodGroup
     Unknown,
 }
 
-public enum AllergySeverity
+/// <summary>Matches the frontend's MARITAL_STATUSES exactly.</summary>
+public enum MaritalStatus
 {
-    Mild,
-    Moderate,
-    Severe,
+    Married,
+    Unmarried,
+    NA,
 }
 
 public enum IdProofType
@@ -59,26 +54,53 @@ public enum IdProofType
     Other,
 }
 
-/// <summary>Per docs/PatientRegistrationModule.md §2 (Form Section 7).</summary>
-public enum EncounterType
+/// <summary>Matches the frontend's ALLERGY_CATEGORIES exactly.</summary>
+public enum AllergyType
 {
-    OP,
-    IP,
-    Emergency,
-    DayCare,
+    Food,
+    Drug,
+    Environmental,
+    Contact,
+    Others,
 }
 
-/// <summary>Per docs/PatientRegistrationModule.md §2 (Form Section 5).</summary>
-public enum ModeOfArrival
+public enum AllergySeverity
 {
-    WalkIn,
-    Ambulance,
-    Referred,
+    Mild,
+    Moderate,
+    Severe,
 }
 
-/// <summary>Admission type only applies to IP/Emergency encounters — see §5's progressive disclosure rule.</summary>
-public enum AdmissionType
+/// <summary>Matches the frontend's RELATIONSHIPS list exactly (used for Emergency Contacts).</summary>
+public enum Relationship
 {
-    MLC,
-    NMLC,
+    Father,
+    Mother,
+    Son,
+    Daughter,
+    Sister,
+    Brother,
+    Spouse,
+    Grandson,
+    Granddaughter,
+    Grandfather,
+    Grandmother,
+    Cousin,
+    Friend,
+    FatherInLaw,
+    MotherInLaw,
+    SonInLaw,
+    DaughterInLaw,
+    SisterInLaw,
+    BrotherInLaw,
+    Other,
+}
+
+/// <summary>Matches the frontend's ARRIVAL_SOURCE_CATEGORIES exactly.</summary>
+public enum ModeOfArrivalSource
+{
+    DoctorReferral,
+    PatientOrRelativeReferral,
+    OnlineAdvertisement,
+    OfflineAdvertisement,
 }

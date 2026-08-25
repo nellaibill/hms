@@ -6,15 +6,19 @@ import {
   ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
   ENCOUNTER_TYPES_UI,
+  idProofNumberFormatError,
   MARITAL_STATUSES,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
   PATIENT_GENDERS,
   PATIENT_RELATIVE_REFERRAL_SOURCES,
+  patientRegistrationCoreUiSchema,
   patientRegistrationUiSchema,
   REFERRAL_COLUMN_CATEGORIES,
   RELATIONSHIPS,
   TITLES,
+  type Patient,
+  type PatientRegistrationCoreUiFormValues,
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -46,7 +50,18 @@ import { titleLabel } from '../titleLabel';
 
 interface PatientRegistrationFormProps {
   isSubmitting: boolean;
+  /** True while "Save and proceed to Registration" (Medical Information tab) is saving. */
+  isSavingAndProceeding: boolean;
   apiError: ApiError | null;
+  /** The patient record once "Save and proceed to Registration" has succeeded — null until
+   * then (Registration Details can be reached without it, by jumping tab headers ahead of
+   * Medical Information). Used to display the assigned UHID on Registration Details. */
+  savedPatient: Patient | null;
+  /** Called after Patient/Contact/Medical Information themselves validate — persists the
+   * patient via the real API. Resolves to whether it succeeded; on true the form advances to
+   * Registration Details itself, on false it stays put (the failure is already visible via
+   * apiError). */
+  onSaveAndProceed: (values: PatientRegistrationCoreUiFormValues, documents: StagedDocuments) => Promise<boolean>;
   onSubmit: (values: PatientRegistrationUiFormValues, documents: StagedDocuments, billing: BillingFormValues) => void;
 }
 
@@ -76,7 +91,7 @@ const TAB_ERROR_FIELDS: Record<Exclude<TabId, 'billing'>, (keyof PatientRegistra
     'emergencyContactPhone',
     'additionalEmergencyContacts',
   ],
-  'medical-info': ['hasKnownAllergy', 'allergyCategory', 'allergySpecify', 'allergySeverity', 'arrivalSource'],
+  'medical-info': ['hasKnownAllergy', 'allergyCategory', 'allergySpecify', 'allergySeverity', 'additionalAllergies', 'arrivalSource'],
   'registration-details': ['registration'],
 };
 
@@ -88,6 +103,17 @@ function tabWithFirstError(errors: FieldErrors<PatientRegistrationUiFormValues>)
 
 function isTabId(value: string): value is TabId {
   return (TAB_ORDER as readonly string[]).includes(value);
+}
+
+// "Required" is checked here (Create-specific gating — see idProofNumberError below); the
+// actual format rules live in idProofNumberFormatError, shared with the Edit form's schema so
+// the two can't drift apart.
+function idProofNumberValidationError(documents: StagedDocuments): string | null {
+  const number = documents.idProofNumber.trim();
+  if (!number) {
+    return 'ID proof number is required.';
+  }
+  return idProofNumberFormatError(documents.idProofType, number);
 }
 
 /** How long to wait after the user stops typing before writing the draft to localStorage — avoids a write on every keystroke. */
@@ -138,17 +164,16 @@ const defaultValues: PatientRegistrationUiFormValues = {
  * tabs (Patient / Contact / Medical / Registration Details) rather than one long scrolling
  * page (not the full spec's hard-gated/autosaving wizard — see docs/DecisionLog.md).
  *
- * UI-only per the current phase: the submitted request is bridged to the *existing*
- * backend Contracts by the caller's toRequest() (see PatientRegistrationCreatePage) —
- * some fields collected here (Transgender/NA gender, the 2nd additional phone's relation,
- * OP appointment type, structured referral/arrival-source) don't have a backend field to
- * persist into yet and are composed/defaulted/dropped there until backend Phase 2.
+ * Patient Information/Contact Information/Medical Information are wired to the real backend
+ * (see PatientRegistrationCreatePage's toRequest() and the "Save and proceed to Registration"
+ * button on Medical Information, which persists the patient at that point). Registration
+ * Details/Billing stay UI-only — the Patients backend has no encounter/visit concept yet.
  */
 function isPatientTabId(value: TabId): value is Exclude<TabId, 'billing'> {
   return value !== 'billing';
 }
 
-export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: PatientRegistrationFormProps) {
+export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, apiError, savedPatient, onSaveAndProceed, onSubmit }: PatientRegistrationFormProps) {
   const navigate = useNavigate();
 
   // Loaded once per mount — a fresh visit to "New Patient Registration" picks up any draft
@@ -167,7 +192,13 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
     defaultValues: initialDraft?.values ?? defaultValues,
-    mode: 'onChange',
+    // Deliberately not `mode: 'onChange'` — that ran a full schema validation pass on every
+    // keystroke/selection, overlapping with goToTab's own explicit `trigger()` call on Next.
+    // Two independent async validation passes writing to the same formState.errors can resolve
+    // out of order, letting a stale (superseded) pass overwrite a fresh, correct one — causing
+    // Next to intermittently show a phantom error on a field that was actually filled in.
+    // Default mode ('onSubmit') plus the default reValidateMode ('onChange') gives the same
+    // "live-clears-as-you-fix-it" UX after a field's first validation, without the race.
   });
 
   // UI-only demo affordance — see additionalConsultantSchema's own doc comment for why this
@@ -186,11 +217,14 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // fields (it's staged alongside the photo/ID-proof files, uploaded only after the patient
   // is created — see DocumentUploadStaging's own doc comment) — so it's gated at final submit
   // time instead, the same way Billing's own separate form is (see onValidSubmit below).
-  const [idProofNumberBlockedSubmit, setIdProofNumberBlockedSubmit] = useState(false);
+  // Kept in sync with the backend's AadhaarPattern (12 digits) — without this, an invalid
+  // Aadhaar number only surfaced as a server error after "Save and proceed" round-tripped,
+  // unlike every other field on this tab, which validates before the request is even sent.
+  const [idProofNumberError, setIdProofNumberError] = useState<string | null>(null);
   const handleDocumentsChange = (next: StagedDocuments) => {
     setDocuments(next);
-    if (next.idProofNumber.trim()) {
-      setIdProofNumberBlockedSubmit(false);
+    if (!idProofNumberValidationError(next)) {
+      setIdProofNumberError(null);
     }
   };
   // Billing (step 5) owns its own useForm — see BillingStep — so it's driven through this
@@ -310,16 +344,59 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   };
   const goToNextTab = () => goToTab(TAB_ORDER[activeTabIndex + 1]);
 
+  // The Medical Information tab's forward action — validates the three backend-wired tabs
+  // (re-checked here regardless of navigation history, since a user can return to an earlier
+  // tab and edit it without that tab's fields being re-validated until an explicit trigger),
+  // gates on the ID proof number the same way onValidSubmit already does, then hands off to
+  // the parent page to actually persist the patient. Only advances to Registration Details on
+  // success — a failure is already visible via the apiError banner.
+  const handleSaveAndProceed = async () => {
+    setNavigationError(null);
+    try {
+      for (const tab of ['patient-info', 'contact-info', 'medical-info'] as const) {
+        const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
+        setAttemptedTabs((prev) => new Set(prev).add(tab));
+        if (!isTabValid) {
+          setActiveTab(tab);
+          return;
+        }
+      }
+      const idProofError = idProofNumberValidationError(documents);
+      if (idProofError) {
+        setIdProofNumberError(idProofError);
+        return;
+      }
+      setIdProofNumberError(null);
+      // getValues() returns the raw, untransformed field values — e.g. a name typed with a
+      // trailing space passes trigger() (Zod's schema trims before checking the regex) but
+      // that untrimmed space would still reach the API and fail the backend's own (stricter,
+      // no-trim) pattern check. Re-parsing through the same schema here gets the actual
+      // trimmed values trigger() just confirmed are valid, matching what handleSubmit's own
+      // callback already receives for free via react-hook-form's resolver.
+      const parsed = patientRegistrationCoreUiSchema.safeParse(getValues());
+      if (!parsed.success) {
+        setNavigationError('Something went wrong checking this step. Please try again — if it keeps happening, refresh the page.');
+        return;
+      }
+      const succeeded = await onSaveAndProceed(parsed.data, documents);
+      if (succeeded) {
+        setActiveTab('registration-details');
+      }
+    } catch {
+      setNavigationError('Something went wrong saving this patient. Please try again — if it keeps happening, refresh the page.');
+    }
+  };
+
   // Every validation message for one tab's fields, gated the same way its red-dot indicator
   // is (attemptedTabs) — a tab the user hasn't tried to leave yet shouldn't show an error
   // summary just because its untouched required fields are technically invalid. ID proof
-  // number lives outside react-hook-form's errors (see idProofNumberBlockedSubmit above), so
-  // it's folded into medical-info's list here rather than being invisible to this summary.
+  // number lives outside react-hook-form's errors (see idProofNumberError above), so it's
+  // folded into medical-info's list here rather than being invisible to this summary.
   const tabMessages = (tab: Exclude<TabId, 'billing'>): string[] => {
     if (!attemptedTabs.has(tab)) return [];
     const messages = tabErrorMessages(errors, TAB_ERROR_FIELDS[tab]);
-    if (tab === 'medical-info' && idProofNumberBlockedSubmit) {
-      messages.push('ID proof number is required.');
+    if (tab === 'medical-info' && idProofNumberError) {
+      messages.push(idProofNumberError);
     }
     return messages;
   };
@@ -336,9 +413,10 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
   // form) before actually registering, since Billing can't proceed with invalid expanded
   // cards either. On a billing error, jump there and let its own error dots take over.
   const onValidSubmit = async (values: PatientRegistrationUiFormValues) => {
-    if (!documents.idProofNumber.trim()) {
+    const idProofError = idProofNumberValidationError(documents);
+    if (idProofError) {
       setActiveTab('medical-info');
-      setIdProofNumberBlockedSubmit(true);
+      setIdProofNumberError(idProofError);
       return;
     }
     const billingValid = await billingStepRef.current?.validate();
@@ -436,7 +514,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           </TabsTrigger>
           <TabsTrigger
             value="medical-info"
-            hasError={(attemptedTabs.has('medical-info') && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))) || idProofNumberBlockedSubmit}
+            hasError={(attemptedTabs.has('medical-info') && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))) || Boolean(idProofNumberError)}
           >
             <Stethoscope className="h-4 w-4" />
             Medical Information
@@ -458,7 +536,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
         <TabErrorSummary messages={tabMessages('patient-info')} />
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
-            <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
+            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -484,7 +562,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="First name"
               htmlFor="firstName"
-              error={errors.firstName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="firstName" {...register('firstName')} />
@@ -492,12 +569,11 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Last name"
               htmlFor="lastName"
-              error={errors.lastName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-48">
+            <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
               <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
@@ -527,7 +603,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Blood group"
               htmlFor="bloodGroup"
-              error={errors.bloodGroup?.message}
               className="flex w-full flex-col gap-1 sm:w-32"
             >
               <Controller
@@ -549,7 +624,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 )}
               />
             </Field>
-            <Field label="Marital status" htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
+            <Field label="Marital status" htmlFor="maritalStatus" className="flex w-full flex-col gap-1 sm:w-40">
               <Controller
                 name="maritalStatus"
                 control={control}
@@ -580,7 +655,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Address line 1 (door no. & building name)"
               htmlFor="addressLine1"
-              error={errors.addressLine1?.message}
               className="flex min-w-[260px] flex-1 flex-col gap-1"
             >
               <Input id="addressLine1" {...register('addressLine1')} />
@@ -593,7 +667,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field label="State" htmlFor="state" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Controller
                 name="state"
                 control={control}
@@ -605,16 +679,15 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="District"
               htmlFor="district"
-              error={errors.district?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Controller
                 name="district"
                 control={control}
-                render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateName={state} />}
+                render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateId={state} />}
               />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
+            <Field label="Pincode" htmlFor="pincode" className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
@@ -625,7 +698,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Primary phone"
               htmlFor="primaryPhoneNumber"
-              error={errors.primaryPhone?.number?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="primaryPhoneNumber" {...register('primaryPhone.number')} />
@@ -633,12 +705,11 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Secondary phone (optional)"
               htmlFor="secondaryPhone"
-              error={errors.secondaryPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="secondaryPhone" {...register('secondaryPhone')} />
             </Field>
-            <Field label="Email" htmlFor="email" error={errors.email?.message} className="flex min-w-[180px] flex-1 flex-col gap-1">
+            <Field label="Email" htmlFor="email" className="flex min-w-[180px] flex-1 flex-col gap-1">
               <Input id="email" type="email" {...register('email')} />
             </Field>
             <Field label="Profession" htmlFor="profession" className="flex min-w-[160px] flex-1 flex-col gap-1">
@@ -672,7 +743,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Name"
               htmlFor="emergencyContactName"
-              error={errors.emergencyContactName?.message}
               className="flex min-w-[180px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
@@ -680,7 +750,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Phone"
               htmlFor="emergencyContactPhone"
-              error={errors.emergencyContactPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
@@ -719,7 +788,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               <Field
                 label="Name"
                 htmlFor={`additionalEmergencyContacts.${index}.name`}
-                error={errors.additionalEmergencyContacts?.[index]?.name?.message}
                 className="flex min-w-[180px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.name`} {...register(`additionalEmergencyContacts.${index}.name` as const)} />
@@ -727,7 +795,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               <Field
                 label="Phone"
                 htmlFor={`additionalEmergencyContacts.${index}.phone`}
-                error={errors.additionalEmergencyContacts?.[index]?.phone?.message}
                 className="flex min-w-[160px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.phone`} {...register(`additionalEmergencyContacts.${index}.phone` as const)} />
@@ -771,7 +838,7 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           {hasKnownAllergy && (
             <>
             <div className="flex flex-wrap gap-3">
-              <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message} className="flex w-full flex-col gap-1 sm:w-40">
+              <Field label="Type" htmlFor="allergyCategory" className="flex w-full flex-col gap-1 sm:w-40">
                 <Controller
                   name="allergyCategory"
                   control={control}
@@ -794,7 +861,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               <Field
                 label="Specify"
                 htmlFor="allergySpecify"
-                error={errors.allergySpecify?.message}
                 className="flex min-w-[200px] flex-1 flex-col gap-1"
               >
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
@@ -802,7 +868,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
               <Field
                 label="Severity"
                 htmlFor="allergySeverity"
-                error={errors.allergySeverity?.message}
                 className="flex w-full flex-col gap-1 sm:w-60"
               >
                 <Controller
@@ -923,7 +988,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
             <Field
               label="Source"
               htmlFor="arrivalCategory"
-              error={errors.arrivalSource?.category?.message}
               className="flex w-full flex-col gap-1 sm:w-56"
             >
               <Controller
@@ -957,7 +1021,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 <Field
                   label="Source"
                   htmlFor="patientRelativeSource"
-                  error={errors.arrivalSource?.patientRelativeReferral?.source?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
                 >
                   <Controller
@@ -983,7 +1046,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   <Field
                     label="Please specify"
                     htmlFor="patientRelativeDetails"
-                    error={errors.arrivalSource?.patientRelativeReferral?.details?.message}
                     className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
                   >
                     <Input id="patientRelativeDetails" {...register('arrivalSource.patientRelativeReferral.details')} />
@@ -997,7 +1059,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 <Field
                   label="Channel"
                   htmlFor="onlineChannel"
-                  error={errors.arrivalSource?.onlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
                 >
                   <Controller
@@ -1023,7 +1084,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   <Field
                     label="Please specify"
                     htmlFor="onlineDetails"
-                    error={errors.arrivalSource?.onlineAd?.details?.message}
                     className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
                   >
                     <Input id="onlineDetails" {...register('arrivalSource.onlineAd.details')} />
@@ -1037,7 +1097,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 <Field
                   label="Channel"
                   htmlFor="offlineChannel"
-                  error={errors.arrivalSource?.offlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-56"
                 >
                   <Controller
@@ -1063,7 +1122,6 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                   <Field
                     label="Please specify"
                     htmlFor="offlineDetails"
-                    error={errors.arrivalSource?.offlineAd?.details?.message}
                     className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
                   >
                     <Input id="offlineDetails" {...register('arrivalSource.offlineAd.details')} />
@@ -1079,16 +1137,18 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
           title="Document Upload"
           description="The patient photo and ID proof file are optional and are uploaded once the record is saved — the ID proof number is required."
         >
-          <DocumentUploadStaging
-            value={documents}
-            onChange={handleDocumentsChange}
-            idProofNumberError={idProofNumberBlockedSubmit ? 'ID proof number is required.' : undefined}
-          />
+          <DocumentUploadStaging value={documents} onChange={handleDocumentsChange} />
         </FormSection>
         </TabsContent>
 
         <TabsContent value="registration-details" className="pt-4">
         <TabErrorSummary messages={tabMessages('registration-details')} />
+        {savedPatient && (
+          <div className="mb-4 flex w-fit items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-sm">
+            <span className="font-medium text-foreground">UHID:</span>
+            <span className="font-mono text-foreground">{savedPatient.uhid}</span>
+          </div>
+        )}
         <FormSection id="registration-details" title="Registration / Encounter Details">
           <div className="flex flex-wrap gap-3">
             <Field label="Encounter type" htmlFor="encounterType" className="flex w-full flex-col gap-1 sm:w-56">
@@ -1286,7 +1346,13 @@ export function PatientRegistrationForm({ isSubmitting, apiError, onSubmit }: Pa
                 Previous
               </Button>
             )}
-            {!isLastTab && (
+            {!isLastTab && activeTab === 'medical-info' && (
+              <Button type="button" onClick={handleSaveAndProceed} disabled={isSavingAndProceeding}>
+                {isSavingAndProceeding ? 'Saving…' : 'Save and proceed to Registration'}
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+            {!isLastTab && activeTab !== 'medical-info' && (
               <Button type="button" onClick={goToNextTab}>
                 Next
                 <ChevronRight className="h-4 w-4" />

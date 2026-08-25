@@ -18,15 +18,15 @@ const STORAGE_KEY = 'hms-mock-patients';
 // saved with can go stale the moment a birthday passes, so every patient that leaves this
 // module (list results, single lookups) gets its age recalculated fresh from dateOfBirth
 // first, keeping age search/display correct no matter how long ago the record was seeded.
-function withCurrentAge(patient: Patient): Patient {
+function withCurrentAge(patient: Omit<Patient, 'age'>): Patient {
   return { ...patient, age: calculateAge(patient.dateOfBirth) };
 }
 
-function loadPatients(): Patient[] {
+function loadPatients(): Array<Omit<Patient, 'age'>> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Patient[];
+      const parsed = JSON.parse(raw) as Array<Omit<Patient, 'age'>>;
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
@@ -37,7 +37,7 @@ function loadPatients(): Patient[] {
   return [...MOCK_PATIENTS];
 }
 
-const patients: Patient[] = loadPatients();
+const patients: Array<Omit<Patient, 'age'>> = loadPatients();
 
 function compareBy(field: string, direction: 1 | -1) {
   return (a: Patient, b: Patient) => {

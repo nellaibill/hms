@@ -293,7 +293,11 @@ internal class DispenseService : IDispenseService
             var invoiceRequest = new CreateInvoiceRequest
             {
                 PatientId = patientId,
-                VisitId = patient.CurrentRegistration?.Id ?? patientId,
+                // Encounter/visit tracking (PatientResponse.CurrentRegistration) is out of
+                // scope for the current Patients module design — falls back to patientId,
+                // exactly like this already did whenever a patient had no current
+                // registration.
+                VisitId = patientId,
                 PatientName = patientName,
                 PatientUhid = patient.Uhid,
                 Items = items,

@@ -1,4 +1,3 @@
-using FluentAssertions;
 using FluentValidation.TestHelper;
 using HMS.Modules.Patients.Application.Validators;
 using HMS.Modules.Patients.Contracts;
@@ -8,13 +7,14 @@ namespace HMS.UnitTests.Modules.Patients.Application.Validators;
 
 public class PatientNamePhoneValidationTests
 {
+    private static readonly Guid StateId = Guid.NewGuid();
+    private static readonly Guid DistrictId = Guid.NewGuid();
+
     private static CreatePatientRequest ValidCreateRequest(
         string firstName = "John",
         string lastName = "Doe",
         string primaryPhone = "9876543210",
-        string? primaryPhoneRelation = null,
-        string? alternatePhone = null,
-        string emergencyContactRelationship = "Spouse",
+        string? secondaryPhone = null,
         string emergencyContactName = "Jane Doe",
         string emergencyContactPhone = "9876500000") => new()
     {
@@ -23,23 +23,13 @@ public class PatientNamePhoneValidationTests
         LastName = lastName,
         DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-30),
         Gender = Gender.Male,
-        AddressLine1 = "123 Main St",
-        District = "Central",
-        State = "State",
-        Pincode = "560001",
+        BloodGroup = BloodGroup.Unknown,
+        MaritalStatus = MaritalStatus.Married,
         PrimaryPhone = primaryPhone,
-        PrimaryPhoneRelation = primaryPhoneRelation,
-        AlternatePhone = alternatePhone,
-        EmergencyContactRelationship = emergencyContactRelationship,
-        EmergencyContactName = emergencyContactName,
-        EmergencyContactPhone = emergencyContactPhone,
-        Registration = new PatientRegistrationDetails
-        {
-            EncounterType = EncounterType.OP,
-            ModeOfArrival = ModeOfArrival.WalkIn,
-            DepartmentId = Guid.NewGuid(),
-            ConsultantId = Guid.NewGuid(),
-        },
+        SecondaryPhone = secondaryPhone,
+        ModeOfArrivalSource = ModeOfArrivalSource.DoctorReferral,
+        Address = new AddressRequest { AddressLine1 = "123 Main St", StateId = StateId, DistrictId = DistrictId, Pincode = "560001" },
+        EmergencyContacts = [new EmergencyContactRequest { Relationship = Relationship.Spouse, Name = emergencyContactName, Phone = emergencyContactPhone }],
     };
 
     [Theory]
@@ -75,38 +65,18 @@ public class PatientNamePhoneValidationTests
 
         var result = validator.TestValidate(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.EmergencyContactName);
+        result.ShouldHaveValidationErrorFor("EmergencyContacts[0].Name");
     }
 
-    [Fact]
-    public void CreateValidator_RejectsDigitsInEmergencyContactRelationship()
-    {
-        var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(emergencyContactRelationship: "Sp0use");
-
-        var result = validator.TestValidate(request);
-
-        result.ShouldHaveValidationErrorFor(x => x.EmergencyContactRelationship);
-    }
-
-    [Fact]
-    public void CreateValidator_RejectsDigitsInPrimaryPhoneRelation()
-    {
-        var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(primaryPhoneRelation: "Self1");
-
-        var result = validator.TestValidate(request);
-
-        result.ShouldHaveValidationErrorFor(x => x.PrimaryPhoneRelation);
-    }
-
+    // Phone numbers are exactly 10 digits now — no country code, no formatting characters.
     [Theory]
     [InlineData("9876543210", true)]
-    [InlineData("+91-98765-43210", true)]
+    [InlineData("+91-98765-43210", false)]
     [InlineData("123", false)]
     [InlineData("12", false)]
+    [InlineData("98765432101", false)]
     [InlineData("----------", false)]
-    public void CreateValidator_PrimaryPhoneMustHaveAtLeastTenDigits(string phone, bool expectedValid)
+    public void CreateValidator_PrimaryPhoneMustBeExactlyTenDigits(string phone, bool expectedValid)
     {
         var validator = new CreatePatientRequestValidator();
         var request = ValidCreateRequest(primaryPhone: phone);
@@ -124,14 +94,14 @@ public class PatientNamePhoneValidationTests
     }
 
     [Fact]
-    public void CreateValidator_RejectsShortAlternatePhone()
+    public void CreateValidator_RejectsShortSecondaryPhone()
     {
         var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(alternatePhone: "999");
+        var request = ValidCreateRequest(secondaryPhone: "999");
 
         var result = validator.TestValidate(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.AlternatePhone);
+        result.ShouldHaveValidationErrorFor(x => x.SecondaryPhone);
     }
 
     [Fact]
@@ -142,7 +112,65 @@ public class PatientNamePhoneValidationTests
 
         var result = validator.TestValidate(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.EmergencyContactPhone);
+        result.ShouldHaveValidationErrorFor("EmergencyContacts[0].Phone");
+    }
+
+    [Fact]
+    public void CreateValidator_RequiresAtLeastOneEmergencyContact()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest() with { EmergencyContacts = [] };
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.EmergencyContacts);
+    }
+
+    // A "secondary" number identical to the primary isn't a second contact method.
+    [Fact]
+    public void CreateValidator_RejectsSecondaryPhoneSameAsPrimary()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", secondaryPhone: "9876543210");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.SecondaryPhone);
+    }
+
+    [Fact]
+    public void CreateValidator_AcceptsDistinctSecondaryPhone()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", secondaryPhone: "9111122233");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.SecondaryPhone);
+    }
+
+    // An emergency contact is supposed to be someone else to call when the patient can't be
+    // reached — reusing the patient's own primary phone defeats that purpose.
+    [Fact]
+    public void CreateValidator_RejectsEmergencyContactPhoneSameAsPrimary()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", emergencyContactPhone: "9876543210");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.EmergencyContacts);
+    }
+
+    [Fact]
+    public void CreateValidator_AcceptsDistinctEmergencyContactPhone()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", emergencyContactPhone: "9876500000");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.EmergencyContacts);
     }
 
     [Fact]
@@ -156,14 +184,12 @@ public class PatientNamePhoneValidationTests
             LastName = "Doe2",
             DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-30),
             Gender = Gender.Male,
-            AddressLine1 = "123 Main St",
-            District = "Central",
-            State = "State",
-            Pincode = "560001",
+            BloodGroup = BloodGroup.Unknown,
+            MaritalStatus = MaritalStatus.Married,
             PrimaryPhone = "123",
-            EmergencyContactRelationship = "Spouse",
-            EmergencyContactName = "Jane Doe",
-            EmergencyContactPhone = "9876500000",
+            ModeOfArrivalSource = ModeOfArrivalSource.DoctorReferral,
+            Address = new AddressRequest { AddressLine1 = "123 Main St", StateId = StateId, DistrictId = DistrictId, Pincode = "560001" },
+            RowVersion = "1",
         };
 
         var result = validator.TestValidate(request);
@@ -184,14 +210,10 @@ public class PatientNamePhoneValidationTests
             DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-30),
             Gender = Gender.Male,
             BloodGroup = BloodGroup.Unknown,
-            AddressLine1 = "123 Main St",
-            District = "Central",
-            State = "State",
-            Pincode = "560001",
+            MaritalStatus = MaritalStatus.Married,
             PrimaryPhone = "9876543210",
-            EmergencyContactRelationship = "Spouse",
-            EmergencyContactName = "Jane Doe",
-            EmergencyContactPhone = "9876500000",
+            ModeOfArrivalSource = ModeOfArrivalSource.DoctorReferral,
+            Address = new AddressRequest { AddressLine1 = "123 Main St", StateId = StateId, DistrictId = DistrictId, Pincode = "560001" },
             RowVersion = "",
         };
 

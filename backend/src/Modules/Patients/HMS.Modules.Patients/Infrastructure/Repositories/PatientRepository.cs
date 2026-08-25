@@ -22,12 +22,18 @@ internal class PatientRepository : IPatientRepository
 
     public Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Patients
-            .Include(p => p.Registrations)
+            .Include(p => p.Address)
+            .Include(p => p.Allergies)
+            .Include(p => p.EmergencyContacts)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public async Task<(IReadOnlyList<Patient> Items, int TotalCount)> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken)
     {
-        var patients = _dbContext.Patients.Include(p => p.Registrations).AsQueryable();
+        var patients = _dbContext.Patients
+            .Include(p => p.Address)
+            .Include(p => p.Allergies)
+            .Include(p => p.EmergencyContacts)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -39,9 +45,8 @@ internal class PatientRepository : IPatientRepository
                 EF.Functions.ILike(p.PrimaryPhone, term));
         }
 
-        // The four dedicated filters below are independent and AND together — a receptionist
-        // filling in more than one search box (e.g. Name + Phone) narrows the result further,
-        // rather than the fields OR-ing against each other.
+        // The dedicated filters below are independent and AND together — a receptionist
+        // filling in more than one search box narrows the result further.
         if (!string.IsNullOrWhiteSpace(query.Name))
         {
             var term = $"%{query.Name.Trim()}%";
@@ -57,18 +62,13 @@ internal class PatientRepository : IPatientRepository
         if (!string.IsNullOrWhiteSpace(query.Phone))
         {
             var term = $"%{query.Phone.Trim()}%";
-            patients = patients.Where(p =>
-                EF.Functions.ILike(p.PrimaryPhone, term) ||
-                (p.AlternatePhone != null && EF.Functions.ILike(p.AlternatePhone, term)) ||
-                (p.AlternatePhone2 != null && EF.Functions.ILike(p.AlternatePhone2, term)));
+            patients = patients.Where(p => EF.Functions.ILike(p.PrimaryPhone, term) || (p.SecondaryPhone != null && EF.Functions.ILike(p.SecondaryPhone, term)));
         }
 
         if (query.Age.HasValue && query.Age.Value >= 0)
         {
-            // Age isn't a stored column (Patient.Age is always derived from DateOfBirth —
-            // see Domain/Patient.cs), so "age equals N" is expressed as the DateOfBirth
-            // range that produces age N as of today: born on or before N years ago, but
-            // not more than N+1 years ago.
+            // Age isn't a stored column (Patient.Age is always derived from DateOfBirth), so
+            // "age equals N" is expressed as the DateOfBirth range that produces age N today.
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var maxDateOfBirth = today.AddYears(-query.Age.Value);
             var minDateOfBirthExclusive = today.AddYears(-(query.Age.Value + 1));
@@ -87,10 +87,20 @@ internal class PatientRepository : IPatientRepository
         return (items, totalCount);
     }
 
-    public Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, CancellationToken cancellationToken)
-        => _dbContext.Patients.FirstOrDefaultAsync(
-            p => p.PrimaryPhone == primaryPhone && EF.Functions.ILike(p.FirstName, firstName) && EF.Functions.ILike(p.LastName, lastName),
-            cancellationToken);
+    public Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, string? idProofNumber, CancellationToken cancellationToken)
+    {
+        var query = _dbContext.Patients.Where(
+            p => p.PrimaryPhone == primaryPhone && EF.Functions.ILike(p.FirstName, firstName) && EF.Functions.ILike(p.LastName, lastName));
+
+        // When an ID number is supplied, require it to also match — the strongest of the
+        // three signals. When it isn't supplied, name+phone alone still catches the common case.
+        if (!string.IsNullOrWhiteSpace(idProofNumber))
+        {
+            query = query.Where(p => p.IdProofNumber == idProofNumber);
+        }
+
+        return query.FirstOrDefaultAsync(cancellationToken);
+    }
 
     public string GetRowVersion(Patient patient)
         => _dbContext.Entry(patient).Property<uint>("xmin").CurrentValue.ToString();

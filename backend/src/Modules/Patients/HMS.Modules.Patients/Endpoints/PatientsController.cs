@@ -12,12 +12,11 @@ using Microsoft.Extensions.Logging;
 namespace HMS.Modules.Patients.Endpoints;
 
 /// <summary>
-/// The Patients module's HTTP surface — New Patient Registration (combined patient +
-/// first encounter), demographic update, soft delete, paged/search listing, and
-/// photo/ID-proof upload, per docs/PatientRegistrationModule.md's MVP scope (see
-/// docs/DecisionLog.md for what's deferred). "Actor" (created/updated-by) is read from
-/// the caller's JWT via ClaimsPrincipalExtensions.GetUserId — same as
-/// HMS.Modules.Identity.UsersController.
+/// The Patients module's HTTP surface — registration, demographic/address update, soft
+/// delete, paged/search listing, and per-row Allergy/Emergency Contact add-remove. File
+/// uploads (photo, ID proof) go through the Documents module's own generic endpoints
+/// (ownerType=Patient), not through this controller. "Actor" (created/updated-by) is read
+/// from the caller's JWT via ClaimsPrincipalExtensions.GetUserId.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -27,27 +26,31 @@ public class PatientsController : ControllerBase
     private readonly IPatientService _patientService;
     private readonly IValidator<CreatePatientRequest> _createValidator;
     private readonly IValidator<UpdatePatientRequest> _updateValidator;
-    private readonly IValidator<PatientRegistrationDetails> _registrationValidator;
+    private readonly IValidator<AddAllergyRequest> _addAllergyValidator;
+    private readonly IValidator<AddEmergencyContactRequest> _addEmergencyContactValidator;
     private readonly ILogger<PatientsController> _logger;
 
     public PatientsController(
         IPatientService patientService,
         IValidator<CreatePatientRequest> createValidator,
         IValidator<UpdatePatientRequest> updateValidator,
-        IValidator<PatientRegistrationDetails> registrationValidator,
+        IValidator<AddAllergyRequest> addAllergyValidator,
+        IValidator<AddEmergencyContactRequest> addEmergencyContactValidator,
         ILogger<PatientsController> logger)
     {
         _patientService = patientService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
-        _registrationValidator = registrationValidator;
+        _addAllergyValidator = addAllergyValidator;
+        _addEmergencyContactValidator = addEmergencyContactValidator;
         _logger = logger;
     }
 
-    /// <summary>Registers a new patient and their first encounter in one transaction.</summary>
+    /// <summary>Registers a new patient — Patient Info + Address + any Allergies/Emergency
+    /// Contacts supplied up front, in one transaction.</summary>
     /// <response code="201">The patient was registered.</response>
     /// <response code="400">The request failed validation.</response>
-    /// <response code="409">A patient with the same name and phone number is already registered.</response>
+    /// <response code="409">A matching patient (name + phone [+ ID number]) is already registered.</response>
     [RequirePermission("patient-management.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request, CancellationToken cancellationToken)
@@ -69,10 +72,11 @@ public class PatientsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
     }
 
-    /// <summary>Updates a patient's demographic/master-data fields.</summary>
+    /// <summary>Updates a patient's demographic/contact/address/mode-of-arrival fields.</summary>
     /// <response code="200">The patient was updated.</response>
     /// <response code="400">The request failed validation.</response>
     /// <response code="404">No patient was found for the given id.</response>
+    /// <response code="409">The patient was changed by someone else since it was loaded.</response>
     [RequirePermission("patient-management.edit")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePatientRequest request, CancellationToken cancellationToken)
@@ -98,7 +102,8 @@ public class PatientsController : ControllerBase
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Gets a single patient by id.</summary>
+    /// <summary>Gets a single patient by id — Patient Info + Address + Allergies + Emergency
+    /// Contacts. Documents are fetched separately from the Documents module.</summary>
     /// <response code="200">The patient was found.</response>
     /// <response code="404">No patient was found for the given id.</response>
     [RequirePermission("patient-management.view")]
@@ -109,49 +114,7 @@ public class PatientsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Records a new encounter/visit for an existing patient — a returning patient
-    /// needs this, since Create only ever produces their first registration.</summary>
-    /// <response code="201">The registration was recorded.</response>
-    /// <response code="400">The request failed validation.</response>
-    /// <response code="404">No patient was found for the given id.</response>
-    [RequirePermission("patient-management.create")]
-    [HttpPost("{id:guid}/registrations")]
-    public async Task<IActionResult> AddRegistration(Guid id, [FromBody] PatientRegistrationDetails request, CancellationToken cancellationToken)
-    {
-        var validation = await _registrationValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return BadRequest(BuildValidationError(validation));
-        }
-
-        var result = await _patientService.AddRegistrationAsync(id, request, actorId: User.GetUserId(), cancellationToken);
-        if (!result.IsSuccess)
-        {
-            return MapFailure(result.ErrorCode!, result.Error!);
-        }
-
-        _logger.LogInformation("POST /api/v1/patients/{PatientId}/registrations succeeded for {RegistrationNumber}", id, result.Value!.RegistrationNumber);
-
-        return StatusCode(StatusCodes.Status201Created, new ApiResponse<PatientRegistrationResponse> { Data = result.Value });
-    }
-
-    /// <summary>Lists every encounter/visit a patient has had, newest first.</summary>
-    /// <response code="200">The patient's registration history.</response>
-    /// <response code="404">No patient was found for the given id.</response>
-    [RequirePermission("patient-management.view")]
-    [HttpGet("{id:guid}/registrations")]
-    public async Task<IActionResult> GetRegistrations(Guid id, CancellationToken cancellationToken)
-    {
-        var result = await _patientService.GetRegistrationsAsync(id, cancellationToken);
-        return result.IsSuccess
-            ? Ok(new ApiResponse<IReadOnlyList<PatientRegistrationResponse>> { Data = result.Value })
-            : MapFailure(result.ErrorCode!, result.Error!);
-    }
-
-    /// <summary>
-    /// Lists patients with paging and search by Name, UHID, or Phone (see
-    /// docs/PatientRegistrationModule.md §8 — duplicate-confidence ranking is deferred).
-    /// </summary>
+    /// <summary>Lists patients with paging and search by Name, UHID, or Phone.</summary>
     /// <response code="200">A page of patients.</response>
     [RequirePermission("patient-management.view")]
     [HttpGet]
@@ -170,62 +133,77 @@ public class PatientsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<PatientResponse>> { Data = paged.Items, Meta = meta });
     }
 
-    /// <summary>Uploads/replaces a patient's photo (JPG/PNG, max 5MB).</summary>
-    /// <response code="200">The photo was uploaded.</response>
-    /// <response code="400">The file failed validation.</response>
+    /// <summary>Adds one allergy row ("Add another Allergy").</summary>
+    /// <response code="200">The allergy was added; returns the updated patient.</response>
+    /// <response code="400">The request failed validation.</response>
     /// <response code="404">No patient was found for the given id.</response>
     [RequirePermission("patient-management.edit")]
-    [HttpPost("{id:guid}/photo")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadPhoto(Guid id, IFormFile file, CancellationToken cancellationToken)
+    [HttpPost("{id:guid}/allergies")]
+    public async Task<IActionResult> AddAllergy(Guid id, [FromBody] AddAllergyRequest request, CancellationToken cancellationToken)
     {
-        if (file is null || file.Length == 0)
+        var validation = await _addAllergyValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
         {
-            return BadRequest(BuildFileRequiredError());
+            return BadRequest(BuildValidationError(validation));
         }
 
-        await using var stream = file.OpenReadStream();
-        var result = await _patientService.UploadPhotoAsync(id, stream, file.FileName, file.ContentType, file.Length, actorId: User.GetUserId(), cancellationToken);
+        var result = await _patientService.AddAllergyAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Uploads/replaces a patient's ID proof (JPG/PNG/PDF, max 5MB).</summary>
-    /// <response code="200">The ID proof was uploaded.</response>
-    /// <response code="400">The file failed validation.</response>
+    /// <summary>Removes one allergy row.</summary>
+    /// <response code="200">The allergy was removed; returns the updated patient.</response>
+    /// <response code="404">No patient, or no matching allergy, was found.</response>
+    [RequirePermission("patient-management.edit")]
+    [HttpDelete("{id:guid}/allergies/{allergyId:guid}")]
+    public async Task<IActionResult> RemoveAllergy(Guid id, Guid allergyId, CancellationToken cancellationToken)
+    {
+        var result = await _patientService.RemoveAllergyAsync(id, allergyId, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Adds one emergency contact ("Add another Emergency Contact").</summary>
+    /// <response code="200">The contact was added; returns the updated patient.</response>
+    /// <response code="400">The request failed validation.</response>
     /// <response code="404">No patient was found for the given id.</response>
     [RequirePermission("patient-management.edit")]
-    [HttpPost("{id:guid}/id-proof")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadIdProof(Guid id, IFormFile file, [FromForm] IdProofType idProofType, CancellationToken cancellationToken)
+    [HttpPost("{id:guid}/emergency-contacts")]
+    public async Task<IActionResult> AddEmergencyContact(Guid id, [FromBody] AddEmergencyContactRequest request, CancellationToken cancellationToken)
     {
-        if (file is null || file.Length == 0)
+        var validation = await _addEmergencyContactValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
         {
-            return BadRequest(BuildFileRequiredError());
+            return BadRequest(BuildValidationError(validation));
         }
 
-        await using var stream = file.OpenReadStream();
-        var result = await _patientService.UploadIdProofAsync(id, idProofType, stream, file.FileName, file.ContentType, file.Length, actorId: User.GetUserId(), cancellationToken);
+        var result = await _patientService.AddEmergencyContactAsync(id, request, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Removes one emergency contact — rejected if it's the patient's last one.</summary>
+    /// <response code="200">The contact was removed; returns the updated patient.</response>
+    /// <response code="404">No patient, or no matching contact, was found.</response>
+    /// <response code="409">This is the patient's only emergency contact.</response>
+    [RequirePermission("patient-management.edit")]
+    [HttpDelete("{id:guid}/emergency-contacts/{emergencyContactId:guid}")]
+    public async Task<IActionResult> RemoveEmergencyContact(Guid id, Guid emergencyContactId, CancellationToken cancellationToken)
+    {
+        var result = await _patientService.RemoveEmergencyContactAsync(id, emergencyContactId, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     private static ApiResponse<PatientResponse> Envelope(PatientResponse? data) => new() { Data = data };
-
-    private ApiErrorResponse BuildFileRequiredError() => new()
-    {
-        ErrorCode = "VALIDATION.FAILED",
-        Message = "A file is required.",
-        CorrelationId = HttpContext.GetCorrelationId(),
-        Timestamp = DateTime.UtcNow,
-    };
 
     private IActionResult MapFailure(string errorCode, string message)
     {
         var status = errorCode switch
         {
             PatientErrorCodes.NotFound => StatusCodes.Status404NotFound,
-            PatientErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
+            PatientErrorCodes.AllergyNotFound => StatusCodes.Status404NotFound,
+            PatientErrorCodes.EmergencyContactNotFound => StatusCodes.Status404NotFound,
             PatientErrorCodes.DuplicatePatient => StatusCodes.Status409Conflict,
             PatientErrorCodes.ConcurrencyConflict => StatusCodes.Status409Conflict,
+            PatientErrorCodes.CannotRemoveLastEmergencyContact => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

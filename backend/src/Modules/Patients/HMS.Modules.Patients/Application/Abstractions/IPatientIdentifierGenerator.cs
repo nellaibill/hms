@@ -1,15 +1,11 @@
-using HMS.Modules.Patients.Contracts;
-
 namespace HMS.Modules.Patients.Application.Abstractions;
 
 /// <summary>
-/// Generates the short, human-readable business identifiers the UX spec requires (UHID,
-/// registration number) — distinct from the entity's internal <c>Guid.CreateVersion7()</c>
-/// primary key. Implemented in Infrastructure via Postgres sequences.
+/// Generates the short, human-readable UHID business identifier — distinct from the
+/// entity's internal <c>Guid.CreateVersion7()</c> primary key. Implemented in Infrastructure
+/// via a Postgres sequence.
 /// </summary>
 internal interface IPatientIdentifierGenerator
 {
     Task<string> NextUhidAsync(CancellationToken cancellationToken);
-
-    Task<string> NextRegistrationNumberAsync(EncounterType encounterType, CancellationToken cancellationToken);
 }

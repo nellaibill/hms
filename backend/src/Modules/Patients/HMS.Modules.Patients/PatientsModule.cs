@@ -14,16 +14,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace HMS.Modules.Patients;
 
 /// <summary>
-/// Single composition entry point for this module, called once from
-/// HMS.Api/Configuration — mirrors HMS.Modules.Identity.IdentityModule.
+/// Single composition entry point for this module, called once from HMS.Api/Configuration.
 /// </summary>
 public static class PatientsModule
 {
     public static IServiceCollection AddPatientsModule(this IServiceCollection services, IConfiguration configuration)
     {
-        // HMS Multi-Tenancy Phase C: resolved per-request from ITenantContext — see
-        // HMS.Modules.Identity.IdentityModule's identical registration for the full
-        // rationale.
+        // Resolved per-request from ITenantContext — see HMS.Modules.Identity.IdentityModule's
+        // identical registration for the full rationale.
         services.AddDbContext<PatientsDbContext>((sp, options) =>
         {
             var tenantContext = sp.GetRequiredService<ITenantContext>();
@@ -36,28 +34,25 @@ public static class PatientsModule
             options.UseNpgsql(tenantContext.ConnectionString, npgsql =>
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", PatientsDbContext.SchemaName);
-
-                // Migration classes live in HMS.Database.Migrations (per
-                // docs/DatabaseArchitecture.md), not in this module's own assembly.
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
             });
         });
 
         services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<IPatientIdentifierGenerator, PatientIdentifierGenerator>();
-        services.AddScoped<IPatientFileStorage, PatientFileStorage>();
         services.AddScoped<IPatientService, PatientService>();
 
         // Lets HMS.Modules.Documents validate a Patient owner id exists before accepting an
-        // upload against it (US-1) — see PatientDocumentOwnerExistenceChecker's remarks.
+        // upload against it.
         services.AddScoped<IDocumentOwnerExistenceChecker, PatientDocumentOwnerExistenceChecker>();
 
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations, and this module's
-        // validators are internal by design (docs/DeveloperHandbook.md §8/§20).
+        // validators are internal by design.
         services.AddScoped<IValidator<CreatePatientRequest>, CreatePatientRequestValidator>();
         services.AddScoped<IValidator<UpdatePatientRequest>, UpdatePatientRequestValidator>();
-        services.AddScoped<IValidator<PatientRegistrationDetails>, PatientRegistrationDetailsValidator>();
+        services.AddScoped<IValidator<AddAllergyRequest>, AddAllergyRequestValidator>();
+        services.AddScoped<IValidator<AddEmergencyContactRequest>, AddEmergencyContactRequestValidator>();
 
         return services;
     }

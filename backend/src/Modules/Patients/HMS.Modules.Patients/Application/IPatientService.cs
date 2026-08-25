@@ -4,12 +4,11 @@ using HMS.Shared.Kernel;
 namespace HMS.Modules.Patients.Application;
 
 /// <summary>
-/// Public (not internal): this is the one Application-layer type PatientsController — which
-/// ASP.NET Core requires to be public, with a public constructor, for controller discovery
-/// and DI activation — takes as a constructor dependency. A public constructor cannot have
-/// an internal parameter type (CS0051), so this interface is the module's deliberate,
-/// narrow seam between its public HTTP boundary and its otherwise-internal
-/// Application/Domain/Infrastructure layers, mirroring HMS.Modules.Identity.IUserService.
+/// Public (not internal): PatientsController — which ASP.NET Core requires to be public,
+/// with a public constructor, for controller discovery and DI activation — takes this as a
+/// constructor dependency. A public constructor cannot have an internal parameter type
+/// (CS0051), so this interface is the module's deliberate, narrow seam between its public
+/// HTTP boundary and its otherwise-internal Application/Domain/Infrastructure layers.
 /// </summary>
 public interface IPatientService
 {
@@ -23,16 +22,16 @@ public interface IPatientService
 
     Task<PagedResult<PatientResponse>> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken);
 
-    Task<Result<PatientResponse>> UploadPhotoAsync(Guid id, Stream content, string fileName, string contentType, long length, Guid? actorId, CancellationToken cancellationToken);
+    /// <summary>Adds one allergy row ("Add another Allergy") and returns the updated patient.</summary>
+    Task<Result<PatientResponse>> AddAllergyAsync(Guid patientId, AddAllergyRequest request, Guid? actorId, CancellationToken cancellationToken);
 
-    Task<Result<PatientResponse>> UploadIdProofAsync(Guid id, IdProofType idProofType, Stream content, string fileName, string contentType, long length, Guid? actorId, CancellationToken cancellationToken);
+    Task<Result<PatientResponse>> RemoveAllergyAsync(Guid patientId, Guid allergyId, Guid? actorId, CancellationToken cancellationToken);
 
-    /// <summary>Records a new encounter/visit for an existing patient — the "one save"
-    /// combined Create flow only ever produces the first registration, so a returning
-    /// patient needs this to be seen again.</summary>
-    Task<Result<PatientRegistrationResponse>> AddRegistrationAsync(Guid patientId, PatientRegistrationDetails request, Guid? actorId, CancellationToken cancellationToken);
+    /// <summary>Adds one emergency contact ("Add another Emergency Contact") and returns the
+    /// updated patient.</summary>
+    Task<Result<PatientResponse>> AddEmergencyContactAsync(Guid patientId, AddEmergencyContactRequest request, Guid? actorId, CancellationToken cancellationToken);
 
-    /// <summary>Lists every encounter/visit a patient has had, newest first — PatientResponse
-    /// only ever surfaces the single most recent one via CurrentRegistration.</summary>
-    Task<Result<IReadOnlyList<PatientRegistrationResponse>>> GetRegistrationsAsync(Guid patientId, CancellationToken cancellationToken);
+    /// <summary>Fails with PatientErrorCodes.CannotRemoveLastEmergencyContact if this would
+    /// leave the patient with zero — every patient must have at least one.</summary>
+    Task<Result<PatientResponse>> RemoveEmergencyContactAsync(Guid patientId, Guid emergencyContactId, Guid? actorId, CancellationToken cancellationToken);
 }

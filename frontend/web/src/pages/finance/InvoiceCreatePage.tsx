@@ -37,12 +37,11 @@ export default function InvoiceCreatePage() {
 
     const values = billingRef.current.getValues();
     try {
-      // No real "new visit" concept exists yet for a returning patient (OPD encounter
-      // tracking isn't built) — fall back to their last registration id the same way the
-      // registration wizard's own save call does, rather than fabricating one.
+      // No visit/encounter concept exists on Patient at all anymore (Registration Details is
+      // UI-only pending a future backend module) — key the invoice off the patient directly.
       const billing = await createInvoiceMutation.mutateAsync({
         patientId: patient.id,
-        visitId: patient.currentRegistration?.id ?? patient.id,
+        visitId: patient.id,
         values,
         patient: { name: `${patient.firstName} ${patient.lastName}`, uhid: patient.uhid },
       });
