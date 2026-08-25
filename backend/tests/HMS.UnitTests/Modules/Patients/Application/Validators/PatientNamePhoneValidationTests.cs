@@ -126,6 +126,53 @@ public class PatientNamePhoneValidationTests
         result.ShouldHaveValidationErrorFor(x => x.EmergencyContacts);
     }
 
+    // A "secondary" number identical to the primary isn't a second contact method.
+    [Fact]
+    public void CreateValidator_RejectsSecondaryPhoneSameAsPrimary()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", secondaryPhone: "9876543210");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.SecondaryPhone);
+    }
+
+    [Fact]
+    public void CreateValidator_AcceptsDistinctSecondaryPhone()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", secondaryPhone: "9111122233");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.SecondaryPhone);
+    }
+
+    // An emergency contact is supposed to be someone else to call when the patient can't be
+    // reached — reusing the patient's own primary phone defeats that purpose.
+    [Fact]
+    public void CreateValidator_RejectsEmergencyContactPhoneSameAsPrimary()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", emergencyContactPhone: "9876543210");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.EmergencyContacts);
+    }
+
+    [Fact]
+    public void CreateValidator_AcceptsDistinctEmergencyContactPhone()
+    {
+        var validator = new CreatePatientRequestValidator();
+        var request = ValidCreateRequest(primaryPhone: "9876543210", emergencyContactPhone: "9876500000");
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.EmergencyContacts);
+    }
+
     [Fact]
     public void UpdateValidator_RejectsDigitsInLastNameAndShortPhone()
     {

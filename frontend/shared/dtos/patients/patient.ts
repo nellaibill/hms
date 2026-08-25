@@ -1,28 +1,44 @@
 import type {
-  AdmissionType,
   AllergySeverity,
+  AllergyType,
   BloodGroup,
-  EncounterType,
   Gender,
   IdProofType,
-  ModeOfArrival,
+  MaritalStatus,
+  ModeOfArrivalSource,
+  Relationship,
   Title,
 } from '../../enums/patients';
 
-/** Mirrors HMS.Modules.Patients.Contracts.PatientRegistrationResponse. */
-export interface PatientRegistration {
-  id: string;
-  registrationNumber: string;
-  encounterType: EncounterType;
-  modeOfArrival: ModeOfArrival;
-  departmentId: string;
-  consultantId: string;
-  appointmentTypeId?: string | null;
-  admissionType?: AdmissionType | null;
-  referralSource?: string | null;
-  category?: string | null;
-  createdAt: string;
+/** Mirrors HMS.Modules.Patients.Contracts.AddressRequest/AddressResponse. */
+export interface Address {
+  addressLine1: string;
+  addressLine2?: string | null;
+  addressLine3?: string | null;
+  stateId: string;
+  districtId: string;
+  pincode: string;
 }
+
+/** Mirrors HMS.Modules.Patients.Contracts.AllergyResponse (id present) / AllergyRequest (id absent, see AllergyInput below). */
+export interface Allergy {
+  id: string;
+  allergyType: AllergyType;
+  specify?: string | null;
+  severity: AllergySeverity;
+}
+
+export type AllergyInput = Omit<Allergy, 'id'>;
+
+/** Mirrors HMS.Modules.Patients.Contracts.EmergencyContactResponse (id present) / EmergencyContactRequest (id absent, see EmergencyContactInput below). */
+export interface EmergencyContact {
+  id: string;
+  relationship: Relationship;
+  name: string;
+  phone: string;
+}
+
+export type EmergencyContactInput = Omit<EmergencyContact, 'id'>;
 
 /** Mirrors HMS.Modules.Patients.Contracts.PatientResponse. */
 export interface Patient {
@@ -35,58 +51,37 @@ export interface Patient {
   dateOfBirth: string;
   age: number;
   gender: Gender;
-  bloodGroup?: BloodGroup | null;
-
-  addressLine1: string;
-  addressLine2?: string | null;
-  addressLine3?: string | null;
-  district: string;
-  state: string;
-  pincode: string;
+  bloodGroup: BloodGroup;
+  maritalStatus: MaritalStatus;
 
   primaryPhone: string;
-  primaryPhoneRelation?: string | null;
-  alternatePhone?: string | null;
-  alternatePhoneRelation?: string | null;
-  alternatePhone2?: string | null;
-  alternatePhone2Relation?: string | null;
+  secondaryPhone?: string | null;
   email?: string | null;
   profession?: string | null;
 
-  emergencyContactRelationship: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
+  idProofType?: IdProofType | null;
+  idProofNumber?: string | null;
 
-  hasKnownAllergy: boolean;
-  allergyType?: string | null;
-  allergySeverity?: AllergySeverity | null;
+  modeOfArrivalSource: ModeOfArrivalSource;
+  modeOfArrivalChannel?: string | null;
+  modeOfArrivalSpecify?: string | null;
+
+  address: Address;
+  allergies: Allergy[];
+  emergencyContacts: EmergencyContact[];
 
   photoPath?: string | null;
-  idProofType?: IdProofType | null;
   idProofPath?: string | null;
 
-  currentRegistration?: PatientRegistration | null;
-
-  /** Optimistic-concurrency token — echo back on UpdatePatientRequest.rowVersion so a save
-   * against stale data is rejected instead of silently overwriting someone else's edit.
-   * Optional here only because the offline demo fallback (mockPatientsStore.ts) doesn't
-   * have one; every real API response always includes it. */
-  rowVersion?: string;
+  /** Opaque optimistic-concurrency token (the row's Postgres xmin at read time) — echo this
+   * back on UpdatePatientRequest.rowVersion so a save against stale data is rejected with a
+   * clear conflict instead of silently overwriting someone else's edit. Always present on a
+   * real API response (see PatientResponse.RowVersion); the mock store populates a fake one
+   * too, so this is never actually undefined at runtime. */
+  rowVersion: string;
 
   createdAt: string;
   updatedAt?: string | null;
-}
-
-/** Mirrors HMS.Modules.Patients.Contracts.PatientRegistrationDetails. */
-export interface PatientRegistrationDetailsRequest {
-  encounterType: EncounterType;
-  modeOfArrival: ModeOfArrival;
-  departmentId: string;
-  consultantId: string;
-  appointmentTypeId?: string | null;
-  admissionType?: AdmissionType | null;
-  referralSource?: string | null;
-  category?: string | null;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.CreatePatientRequest. */
@@ -96,71 +91,63 @@ export interface CreatePatientRequest {
   lastName: string;
   dateOfBirth: string;
   gender: Gender;
-  bloodGroup?: BloodGroup | null;
-
-  addressLine1: string;
-  addressLine2?: string | null;
-  addressLine3?: string | null;
-  district: string;
-  state: string;
-  pincode: string;
+  bloodGroup: BloodGroup;
+  maritalStatus: MaritalStatus;
 
   primaryPhone: string;
-  primaryPhoneRelation?: string | null;
-  alternatePhone?: string | null;
-  alternatePhoneRelation?: string | null;
-  alternatePhone2?: string | null;
-  alternatePhone2Relation?: string | null;
+  secondaryPhone?: string | null;
   email?: string | null;
   profession?: string | null;
 
-  emergencyContactRelationship: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
+  idProofType?: IdProofType | null;
+  idProofNumber?: string | null;
 
-  hasKnownAllergy: boolean;
-  allergyType?: string | null;
-  allergySeverity?: AllergySeverity | null;
+  modeOfArrivalSource: ModeOfArrivalSource;
+  modeOfArrivalChannel?: string | null;
+  modeOfArrivalSpecify?: string | null;
 
-  registration: PatientRegistrationDetailsRequest;
+  address: Address;
+  allergies: AllergyInput[];
+  emergencyContacts: EmergencyContactInput[];
 }
 
-/** Mirrors HMS.Modules.Patients.Contracts.UpdatePatientRequest. */
+/** Mirrors HMS.Modules.Patients.Contracts.UpdatePatientRequest — Allergies/EmergencyContacts
+ * have their own add/remove endpoints (AddAllergyRequest/AddEmergencyContactRequest below)
+ * rather than being replaced wholesale here. */
 export interface UpdatePatientRequest {
   title: Title;
   firstName: string;
   lastName: string;
   dateOfBirth: string;
   gender: Gender;
-  bloodGroup?: BloodGroup | null;
-
-  addressLine1: string;
-  addressLine2?: string | null;
-  addressLine3?: string | null;
-  district: string;
-  state: string;
-  pincode: string;
+  bloodGroup: BloodGroup;
+  maritalStatus: MaritalStatus;
 
   primaryPhone: string;
-  primaryPhoneRelation?: string | null;
-  alternatePhone?: string | null;
-  alternatePhoneRelation?: string | null;
-  alternatePhone2?: string | null;
-  alternatePhone2Relation?: string | null;
+  secondaryPhone?: string | null;
   email?: string | null;
   profession?: string | null;
 
-  emergencyContactRelationship: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
+  idProofType?: IdProofType | null;
+  idProofNumber?: string | null;
 
-  hasKnownAllergy: boolean;
-  allergyType?: string | null;
-  allergySeverity?: AllergySeverity | null;
+  modeOfArrivalSource: ModeOfArrivalSource;
+  modeOfArrivalChannel?: string | null;
+  modeOfArrivalSpecify?: string | null;
+
+  address: Address;
 
   /** Must be the RowVersion from the Patient this edit was loaded from — see Patient.rowVersion. */
   rowVersion: string;
 }
+
+/** Mirrors HMS.Modules.Patients.Contracts.AddAllergyRequest — not wired to any UI yet (Create
+ * sends the full Allergies[] up front instead), kept here so the DTO file matches the backend
+ * surface completely for the next pass that adds per-row add/remove to the Edit page. */
+export type AddAllergyRequest = AllergyInput;
+
+/** Mirrors HMS.Modules.Patients.Contracts.AddEmergencyContactRequest — same "not wired yet" note as AddAllergyRequest. */
+export type AddEmergencyContactRequest = EmergencyContactInput;
 
 /** Mirrors HMS.Modules.Patients.Contracts.PatientListQuery. */
 export interface PatientListQuery {

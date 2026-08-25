@@ -2,14 +2,13 @@ import type { Patient } from '@hms/shared';
 import { CalendarClock, ClipboardList, FileText, HeartPulse, Loader2, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AppointmentTypeName } from '@/components/AppointmentTypeName';
-import { ConsultantName } from '@/components/ConsultantName';
-import { DepartmentName } from '@/components/DepartmentName';
+import { DistrictName } from '@/components/DistrictName';
+import { StateName } from '@/components/StateName';
 import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type BillingItem } from '@/features/billing';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
-import { usePatientRegistrationsQuery } from '../hooks/usePatientRegistrationsQuery';
 import { env } from '../../../config/env';
 import { bloodGroupLabel } from '../bloodGroupLabel';
+import { humanize } from '../humanize';
 
 interface PatientDetailsProps {
   patient: Patient;
@@ -45,8 +44,6 @@ function EmptyState({ icon: Icon, message }: { icon: LucideIcon; message: string
 }
 
 function PatientProfileTab({ patient }: { patient: Patient }) {
-  const registration = patient.currentRegistration;
-
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <InfoCard title="Demographics">
@@ -55,112 +52,64 @@ function PatientProfileTab({ patient }: { patient: Patient }) {
         <Field label="Date of birth" value={new Date(patient.dateOfBirth).toLocaleDateString('en-IN')} />
         <Field label="Age" value={patient.age} />
         <Field label="Gender" value={patient.gender} />
-        <Field label="Blood group" value={patient.bloodGroup ? bloodGroupLabel(patient.bloodGroup) : '—'} />
+        <Field label="Blood group" value={bloodGroupLabel(patient.bloodGroup)} />
+        <Field label="Marital status" value={patient.maritalStatus} />
       </InfoCard>
 
       <InfoCard title="Address">
         <Field
           label="Address"
-          value={[patient.addressLine1, patient.addressLine2, patient.addressLine3].filter(Boolean).join(', ')}
+          value={[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}
         />
-        <Field label="District / State" value={`${patient.district}, ${patient.state}`} />
-        <Field label="Pincode" value={patient.pincode} />
+        <Field
+          label="District / State"
+          value={
+            <>
+              <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />,{' '}
+              <StateName stateId={patient.address.stateId} />
+            </>
+          }
+        />
+        <Field label="Pincode" value={patient.address.pincode} />
       </InfoCard>
 
       <InfoCard title="Contact">
         <Field label="Primary phone" value={patient.primaryPhone} />
-        <Field label="Alternate phone" value={patient.alternatePhone || '—'} />
+        <Field label="Secondary phone" value={patient.secondaryPhone || '—'} />
         <Field label="Email" value={patient.email || '—'} />
         <Field label="Profession" value={patient.profession || '—'} />
       </InfoCard>
 
-      <InfoCard title="Emergency Contact">
-        <Field label="Name" value={patient.emergencyContactName} />
-        <Field label="Relationship" value={patient.emergencyContactRelationship} />
-        <Field label="Phone" value={patient.emergencyContactPhone} />
-      </InfoCard>
-
-      <InfoCard title="Allergy Details">
-        <Field label="Known allergy" value={patient.hasKnownAllergy ? 'Yes' : 'No'} />
-        {patient.hasKnownAllergy && (
-          <>
-            <Field label="Type" value={patient.allergyType || '—'} />
-            <Field label="Severity" value={patient.allergySeverity || '—'} />
-          </>
+      <InfoCard title="Emergency Contacts">
+        {patient.emergencyContacts.length === 0 ? (
+          <Field label="Emergency contacts" value="—" />
+        ) : (
+          patient.emergencyContacts.map((contact) => (
+            <Field
+              key={contact.id}
+              label={humanize(contact.relationship)}
+              value={`${contact.name} · ${contact.phone}`}
+            />
+          ))
         )}
       </InfoCard>
 
-      {registration && (
-        <InfoCard title="Current Registration">
-          <Field label="Registration number" value={<span className="font-mono">{registration.registrationNumber}</span>} />
-          <Field label="Encounter type" value={registration.encounterType} />
-          <Field label="Mode of arrival" value={registration.modeOfArrival} />
-          <Field label="Department" value={<DepartmentName departmentId={registration.departmentId} />} />
-          <Field label="Consultant" value={<ConsultantName consultantId={registration.consultantId} />} />
-          {registration.appointmentTypeId && (
-            <Field label="Appointment type" value={<AppointmentTypeName appointmentTypeId={registration.appointmentTypeId} />} />
-          )}
-          {registration.admissionType && <Field label="Admission type" value={registration.admissionType} />}
-          {registration.referralSource && <Field label="Referral source" value={registration.referralSource} />}
-          {registration.category && <Field label="Category" value={registration.category} />}
-        </InfoCard>
-      )}
-    </div>
-  );
-}
+      <InfoCard title="Allergy Details">
+        <Field label="Known allergy" value={patient.allergies.length > 0 ? 'Yes' : 'No'} />
+        {patient.allergies.map((allergy) => (
+          <Field
+            key={allergy.id}
+            label={allergy.allergyType}
+            value={`${allergy.specify || '—'} · ${allergy.severity}`}
+          />
+        ))}
+      </InfoCard>
 
-/** Every encounter/visit this patient has ever had — the registration history endpoint
- * (POST/GET .../registrations) existed on the backend but had no frontend consumer until
- * now; a returning patient's Create-only first registration was previously the only one
- * ever visible. */
-function PatientVisitsTab({ patientId }: { patientId: string }) {
-  const { data: registrations, isPending } = usePatientRegistrationsQuery(patientId);
-
-  if (isPending) {
-    return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-border py-10 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading visits…
-      </div>
-    );
-  }
-
-  if (!registrations || registrations.length === 0) {
-    return <EmptyState icon={CalendarClock} message="No visits have been recorded for this patient yet." />;
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="whitespace-nowrap px-4 py-2.5">Registration #</th>
-            <th className="whitespace-nowrap px-4 py-2.5">Date</th>
-            <th className="whitespace-nowrap px-4 py-2.5">Encounter</th>
-            <th className="whitespace-nowrap px-4 py-2.5">Department</th>
-            <th className="whitespace-nowrap px-4 py-2.5">Consultant</th>
-            <th className="whitespace-nowrap px-4 py-2.5">Mode of arrival</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {registrations.map((registration) => (
-            <tr key={registration.id} className="hover:bg-muted/30">
-              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{registration.registrationNumber}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{new Date(registration.createdAt).toLocaleDateString('en-IN')}</td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <Badge variant="outline">{registration.encounterType}</Badge>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-foreground">
-                <DepartmentName departmentId={registration.departmentId} />
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-foreground">
-                <ConsultantName consultantId={registration.consultantId} />
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{registration.modeOfArrival}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <InfoCard title="Mode of Arrival">
+        <Field label="Source" value={humanize(patient.modeOfArrivalSource)} />
+        {patient.modeOfArrivalChannel && <Field label="Channel" value={humanize(patient.modeOfArrivalChannel)} />}
+        {patient.modeOfArrivalSpecify && <Field label="Details" value={patient.modeOfArrivalSpecify} />}
+      </InfoCard>
     </div>
   );
 }
@@ -286,7 +235,10 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
       </TabsContent>
 
       <TabsContent value="visits" className="pt-4">
-        <PatientVisitsTab patientId={patient.id} />
+        <EmptyState
+          icon={CalendarClock}
+          message="Visit/encounter history isn't tracked yet — registering a patient today only captures their demographics, contact, and medical information."
+        />
       </TabsContent>
 
       <TabsContent value="billing" className="pt-4">

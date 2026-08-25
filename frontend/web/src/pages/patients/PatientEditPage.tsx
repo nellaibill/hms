@@ -4,15 +4,23 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
-import { fromAllergyType, fromBackendGender, fromRelationshipLabel, toAllergyType, toBackendGender, toRelationshipLabel } from '../../features/patients/bridging';
+import { toBackendGender, fromBackendGender } from '../../features/patients/bridging';
 
 /**
- * See PatientRegistrationCreatePage.tsx's toRequest() comment for why this bridge exists.
- * rowVersion is threaded in separately (not part of the editable form state) — it's the
- * optimistic-concurrency token from the Patient this edit was loaded from, echoed back so
- * the server can detect and reject a save made against data someone else has since changed.
+ * See PatientRegistrationCreatePage.tsx's toRequest() comment for the same structural
+ * mapping, applied here to an edit instead of a create. rowVersion is threaded in separately
+ * (not part of the editable form state) — it's the optimistic-concurrency token from the
+ * Patient this edit was loaded from, echoed back so the server can detect and reject a save
+ * made against data someone else has since changed. `original` supplies modeOfArrival*
+ * unchanged — this edit form still has no arrival-source fields, so it's carried forward from
+ * the loaded record rather than overwritten with empty values on every save. idProofType/
+ * idProofNumber, by contrast, now come from the edited `values` (they're real fields on
+ * PatientEditUiFormValues — see patientEditUiSchema). Allergies/EmergencyContacts aren't part
+ * of UpdatePatientRequest (they have their own add/remove endpoints) — Allergies are wired
+ * separately via useAddPatientAllergyMutation/useRemovePatientAllergyMutation in
+ * PatientEditForm, fired immediately rather than batched into this request.
  */
-function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdatePatientRequest {
+function toRequest(values: PatientEditUiFormValues, rowVersion: string, original: Patient): UpdatePatientRequest {
   return {
     title: values.title,
     firstName: values.firstName,
@@ -20,34 +28,39 @@ function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdateP
     dateOfBirth: values.dateOfBirth,
     gender: toBackendGender(values.gender),
     bloodGroup: values.bloodGroup,
-
-    addressLine1: values.addressLine1,
-    addressLine2: values.addressLine2 || undefined,
-    addressLine3: values.addressLine3 || undefined,
-    district: values.district,
-    state: values.state,
-    pincode: values.pincode,
+    maritalStatus: values.maritalStatus,
 
     primaryPhone: values.primaryPhone.number,
-    alternatePhone: values.secondaryPhone || undefined,
+    secondaryPhone: values.secondaryPhone || undefined,
     email: values.email || undefined,
     profession: values.profession || undefined,
 
-    emergencyContactRelationship: toRelationshipLabel(values.emergencyContactRelationship),
-    emergencyContactName: values.emergencyContactName,
-    emergencyContactPhone: values.emergencyContactPhone,
+    idProofType: values.idProofType,
+    idProofNumber: values.idProofNumber.trim(),
 
-    hasKnownAllergy: values.hasKnownAllergy,
-    allergyType: values.hasKnownAllergy ? toAllergyType(values.allergyCategory ?? '', values.allergySpecify ?? '') : undefined,
-    allergySeverity: values.hasKnownAllergy ? values.allergySeverity || undefined : undefined,
+    modeOfArrivalSource: original.modeOfArrivalSource,
+    modeOfArrivalChannel: original.modeOfArrivalChannel,
+    modeOfArrivalSpecify: original.modeOfArrivalSpecify,
+
+    address: {
+      addressLine1: values.addressLine1,
+      addressLine2: values.addressLine2 || undefined,
+      addressLine3: values.addressLine3 || undefined,
+      stateId: values.state,
+      districtId: values.district,
+      pincode: values.pincode,
+    },
 
     rowVersion,
   };
 }
 
-/** Reconstructs the richer edit-form shape from the patient record the backend actually returns. */
+/** Reconstructs the edit-form shape from the patient record the backend actually returns. Note
+ * allergies are deliberately not read here — they're not part of PatientEditUiFormValues at
+ * all (see patientEditUiSchema's own comment); PatientEditForm reads patient.allergies
+ * directly as its own prop instead. */
 function toDefaultValues(patient: Patient): PatientEditUiFormValues {
-  const allergy = fromAllergyType(patient.allergyType);
+  const primaryContact = patient.emergencyContacts[0];
 
   return {
     title: patient.title,
@@ -55,41 +68,34 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     lastName: patient.lastName,
     dateOfBirth: patient.dateOfBirth,
     gender: fromBackendGender(patient.gender),
-    // Pre-required-validation records may still have a null BloodGroup in the database —
-    // 'Unknown' is the honest, backward-compatible default rather than leaving the Select
-    // unset (which the required schema below would then reject on save).
-    bloodGroup: patient.bloodGroup ?? 'Unknown',
-    // No backend field yet (see PatientRegistrationCreatePage.tsx's toRequest() comment) —
-    // 'NA' is the honest default for an existing record with nothing recorded, same reasoning
-    // as bloodGroup's 'Unknown' fallback above.
-    maritalStatus: 'NA',
+    bloodGroup: patient.bloodGroup,
+    maritalStatus: patient.maritalStatus,
 
-    addressLine1: patient.addressLine1,
-    addressLine2: patient.addressLine2 ?? '',
-    addressLine3: patient.addressLine3 ?? '',
-    district: patient.district,
-    state: patient.state,
-    pincode: patient.pincode,
+    addressLine1: patient.address.addressLine1,
+    addressLine2: patient.address.addressLine2 ?? '',
+    addressLine3: patient.address.addressLine3 ?? '',
+    district: patient.address.districtId,
+    state: patient.address.stateId,
+    pincode: patient.address.pincode,
 
     primaryPhone: { number: patient.primaryPhone },
-    secondaryPhone: patient.alternatePhone ?? '',
+    secondaryPhone: patient.secondaryPhone ?? '',
     email: patient.email ?? '',
     profession: patient.profession ?? '',
 
-    emergencyContactRelationship: fromRelationshipLabel(patient.emergencyContactRelationship),
-    emergencyContactName: patient.emergencyContactName,
-    emergencyContactPhone: patient.emergencyContactPhone,
-    // No backend field yet (see PatientRegistrationCreatePage.tsx's toRequest() comment) —
-    // an existing record never has any to restore.
-    additionalEmergencyContacts: [],
+    idProofType: patient.idProofType ?? 'Aadhaar',
+    idProofNumber: patient.idProofNumber ?? '',
 
-    hasKnownAllergy: patient.hasKnownAllergy,
-    allergyCategory: allergy.category,
-    allergySpecify: allergy.specify,
-    allergySeverity: patient.allergySeverity ?? '',
-    // No backend field yet (see PatientRegistrationCreatePage.tsx's toRequest() comment) —
-    // an existing record never has any to restore.
-    additionalAllergies: [],
+    emergencyContactRelationship: primaryContact?.relationship ?? 'Father',
+    emergencyContactName: primaryContact?.name ?? '',
+    emergencyContactPhone: primaryContact?.phone ?? '',
+    // Every emergency contact beyond the first now round-trips (the backend genuinely stores
+    // all of them) — the primary slot above always shows patient.emergencyContacts[0].
+    additionalEmergencyContacts: patient.emergencyContacts.slice(1).map((contact) => ({
+      relationship: contact.relationship,
+      name: contact.name,
+      phone: contact.phone,
+    })),
   };
 }
 
@@ -121,11 +127,12 @@ export default function PatientEditPage() {
   // Captured here (not read inside handleSubmit directly) so TypeScript's narrowing of
   // `patient` from the isError/!patient guard above — which doesn't extend into a nested
   // function's closure — still applies.
-  const rowVersion = patient.rowVersion ?? '';
+  const rowVersion = patient.rowVersion;
+  const loadedPatient = patient;
 
   function handleSubmit(values: PatientEditUiFormValues) {
     mutation.mutate(
-      { id: id as string, request: toRequest(values, rowVersion) },
+      { id: id as string, request: toRequest(values, rowVersion, loadedPatient) },
       { onSuccess: () => navigate(`/patients/registration/${id}`) },
     );
   }
@@ -160,6 +167,7 @@ export default function PatientEditPage() {
       <RequirePermission permission="patient-management.edit">
         <PatientEditForm
           patientId={id as string}
+          allergies={patient.allergies}
           isSubmitting={mutation.isPending}
           apiError={toDisplayError(mutation.error)}
           defaultValues={toDefaultValues(patient)}

@@ -1,4 +1,4 @@
-import type { CreatePatientRequest, IdProofType, UpdatePatientRequest } from '@hms/shared';
+import type { AddAllergyRequest, CreatePatientRequest, IdProofType, UpdatePatientRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '../../../services/apiClient';
 
@@ -50,6 +50,22 @@ export function useUploadPatientIdProofMutation() {
   return useMutation({
     mutationFn: ({ id, idProofType, file }: { id: string; idProofType: IdProofType; file: File }) =>
       patientsApi.uploadIdProof(id, idProofType, file),
+    onSuccess: invalidatePatients,
+  });
+}
+
+export function useAddPatientAllergyMutation() {
+  const invalidatePatients = useInvalidatePatients();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: AddAllergyRequest }) => patientsApi.addAllergy(id, request),
+    onSuccess: invalidatePatients,
+  });
+}
+
+export function useRemovePatientAllergyMutation() {
+  const invalidatePatients = useInvalidatePatients();
+  return useMutation({
+    mutationFn: ({ id, allergyId }: { id: string; allergyId: string }) => patientsApi.removeAllergy(id, allergyId),
     onSuccess: invalidatePatients,
   });
 }

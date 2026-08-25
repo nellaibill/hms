@@ -17,7 +17,7 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x)
             .Must(x => CreatePatientRequestValidator.IsTitleConsistentWithAge(x.Title, x.DateOfBirth))
             .WithName("Title")
-            .WithMessage("Title does not match the patient's age (Baby: under 2, Master/Miss: under 18, Mr/Mrs/Ms/Dr: 18 or older).")
+            .WithMessage("Title does not match the patient's age (Baby: up to 1 year, Master/Miss: 1–18 years, Mr/Mrs/Ms/Dr: 18 or older).")
             .When(x => Enum.IsDefined(x.Title));
         RuleFor(x => x)
             .Must(x => CreatePatientRequestValidator.IsTitleConsistentWithGender(x.Title, x.Gender))
@@ -27,10 +27,18 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x.Gender).IsInEnum();
         RuleFor(x => x.BloodGroup).IsInEnum();
         RuleFor(x => x.MaritalStatus).IsInEnum();
+        RuleFor(x => x)
+            .Must(x => CreatePatientRequestValidator.IsMaritalStatusConsistentWithAge(x.MaritalStatus, x.DateOfBirth))
+            .WithName("MaritalStatus")
+            .WithMessage(x => CreatePatientRequestValidator.MaritalStatusAgeMessage(x.DateOfBirth))
+            .When(x => Enum.IsDefined(x.MaritalStatus));
 
         RuleFor(x => x.PrimaryPhone).NotEmpty().Matches(CreatePatientRequestValidator.PhonePattern).WithMessage(CreatePatientRequestValidator.PhonePatternMessage);
         RuleFor(x => x.SecondaryPhone)
             .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage(CreatePatientRequestValidator.PhonePatternMessage)
+            .When(x => !string.IsNullOrWhiteSpace(x.SecondaryPhone));
+        RuleFor(x => x.SecondaryPhone)
+            .NotEqual(x => x.PrimaryPhone).WithMessage("Secondary phone must be different from the primary phone.")
             .When(x => !string.IsNullOrWhiteSpace(x.SecondaryPhone));
         RuleFor(x => x.Email).EmailAddress().MaximumLength(256).When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Profession).MaximumLength(100);

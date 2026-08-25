@@ -26,16 +26,17 @@ const ID_PROOF_NUMBER_LABELS: Record<IdProofType, string> = {
 interface DocumentUploadStagingProps {
   value: StagedDocuments;
   onChange: (value: StagedDocuments) => void;
-  /** Shown under the ID proof number field — surfaced by the parent only after a submit attempt finds it empty. */
-  idProofNumberError?: string;
 }
 
 /**
  * Same fields as PatientDocumentUpload, but for the create flow — there's no patient id to
  * attach an upload to yet, so files are just held here and the caller
  * (PatientRegistrationCreatePage) uploads them right after the new patient is created.
+ * ID proof number's own validation errors surface only via the tab-level error summary (see
+ * idProofNumberError in PatientRegistrationForm) — not inline here, consistent with every
+ * other field on this wizard.
  */
-export function DocumentUploadStaging({ value, onChange, idProofNumberError }: DocumentUploadStagingProps) {
+export function DocumentUploadStaging({ value, onChange }: DocumentUploadStagingProps) {
   function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
     onChange({ ...value, photo: event.target.files?.[0] ?? null });
   }
@@ -76,7 +77,6 @@ export function DocumentUploadStaging({ value, onChange, idProofNumberError }: D
         <Field
           label={ID_PROOF_NUMBER_LABELS[value.idProofType]}
           htmlFor="id-proof-number"
-          error={idProofNumberError}
           className="flex min-w-[160px] flex-1 flex-col gap-1"
         >
           <Input id="id-proof-number" value={value.idProofNumber} onChange={(event) => onChange({ ...value, idProofNumber: event.target.value })} />

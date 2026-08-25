@@ -5,6 +5,8 @@ import {
   ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
   ENCOUNTER_TYPES_UI,
+  ID_PROOF_TYPES,
+  type IdProofType,
   MARITAL_STATUSES,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
@@ -17,19 +19,16 @@ import {
 
 /**
  * UI-first schema matching the source documents exactly (LH Software.docx + the Patient
- * Mode of Arrival Form) — distinct from ./patientValidation.ts, which mirrors the
- * *current* backend Contracts. See frontend/web/src/pages/patients/*.tsx's toRequest()
- * for how this bridges to the existing API shape pending the backend Phase 2 update.
+ * Mode of Arrival Form). Patient Information/Contact Information/Medical Information now map
+ * onto the real CreatePatientRequest (see PatientRegistrationCreatePage.tsx's toRequest());
+ * Registration Details/Billing are still UI-only — the Patients backend has no
+ * encounter/visit concept yet, see that same file's doc comment.
  */
-// A real phone number never has fewer than 10 digits in this system — the lookahead
-// requires at least 10 digit characters anywhere in the string (formatting characters like
-// "+91-98765-43210" don't count against that), which also subsumes the old "at least one
-// digit" check (a symbol-only string like "----------" has zero digits and is rejected too).
-// Kept in sync with backend's CreatePatientRequestValidator.PhonePattern/MinPhoneDigits.
-const phonePattern = /^(?=(?:.*\d){10,})[0-9+\-() ]*$/;
-// Spells out the allowed characters in prose rather than "digits/+/-/()/spaces" — that
-// slash-separated form reads as if "/" itself were an allowed character, which it isn't.
-const phonePatternMessage = 'Phone number must contain at least 10 digits, using only digits, spaces, and the characters + - ( ).';
+// Exactly 10 digits, no country code, no formatting characters — kept in sync with backend's
+// CreatePatientRequestValidator.PhonePattern (^[0-9]{10}$), which now actually rejects
+// anything else, so the UI must match exactly rather than just being "at least as strict".
+const phonePattern = /^[0-9]{10}$/;
+const phonePatternMessage = 'Phone number must be exactly 10 digits.';
 const pincodePattern = /^[0-9]{6}$/;
 
 // \p{L}/\p{M} (Unicode letter/mark categories) rather than A-Za-z so names in Indian
@@ -38,6 +37,33 @@ const pincodePattern = /^[0-9]{6}$/;
 // O'Brien" or "Dr. Rao". Kept in sync with backend's CreatePatientRequestValidator.NamePattern.
 const namePattern = /^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$/u;
 const namePatternMessage = 'Enter letters only.';
+
+// Kept in sync with the backend's CreatePatientRequestValidator — Aadhaar/Passport/VoterId
+// each have one fixed, nationally-standardized format, checkable outright. DrivingLicense
+// genuinely varies too much (state-specific RTO codes, several formats still in circulation)
+// for a real format check, so it only gets a sanity check (alphanumeric, reasonable length) —
+// same reasoning as the backend. Other is a free-text catch-all by definition — no format.
+// Returns null when the format is fine (or the type has no format to check) — callers add
+// their own "required" check first, since that's contextual (Create gates it separately from
+// Edit's always-required field).
+export function idProofNumberFormatError(idProofType: IdProofType, trimmedNumber: string): string | null {
+  switch (idProofType) {
+    case 'Aadhaar':
+      return /^[0-9]{12}$/.test(trimmedNumber) ? null : 'Aadhaar number must be exactly 12 digits.';
+    case 'Passport':
+      return /^[A-Za-z][0-9]{7}$/.test(trimmedNumber)
+        ? null
+        : 'Passport number must be 1 letter followed by 7 digits (e.g. A1234567).';
+    case 'VoterId':
+      return /^[A-Za-z]{3}[0-9]{7}$/.test(trimmedNumber)
+        ? null
+        : 'Voter ID number must be 3 letters followed by 7 digits (e.g. ABC1234567).';
+    case 'DrivingLicense':
+      return /^[A-Za-z0-9\s-]{10,20}$/.test(trimmedNumber) ? null : 'Driving License number must be 10–20 letters/digits.';
+    default:
+      return null;
+  }
+}
 
 const primaryPhoneSchema = z.object({
   number: z.string().trim().min(1, 'Primary phone is required').max(20).regex(phonePattern, phonePatternMessage),
@@ -60,11 +86,29 @@ const emergencyContactEntrySchema = z.object({
 // allergyCategory/allergySpecify/allergySeverity above), so entries here are for the on-screen
 // experience only and are dropped, not silently mis-saved, at submit time — same reasoning as
 // additionalConsultants.
-const additionalAllergySchema = z.object({
-  allergyCategory: z.enum(ALLERGY_CATEGORIES).optional().or(z.literal('')),
-  allergySpecify: z.string().trim().max(200).optional().or(z.literal('')),
-  allergySeverity: z.enum(ALLERGY_SEVERITIES).optional().or(z.literal('')),
-});
+const additionalAllergySchema = z
+  .object({
+    allergyCategory: z.enum(ALLERGY_CATEGORIES).optional().or(z.literal('')),
+    allergySpecify: z.string().trim().max(200).optional().or(z.literal('')),
+    allergySeverity: z.enum(ALLERGY_SEVERITIES).optional().or(z.literal('')),
+  })
+  // A row with *some* field filled in but not enough to actually save (Type/Severity are what
+  // toAllergyRequest requires) was previously accepted by this schema and then silently
+  // dropped at submit time (PatientRegistrationCreatePage's toRequest filters out incomplete
+  // rows) — the receptionist's entry vanished with no error shown. An untouched row (the
+  // common case before "Add another Allergy" is even clicked) stays valid.
+  .superRefine((row, ctx) => {
+    const touched = Boolean(row.allergyCategory || row.allergySpecify || row.allergySeverity);
+    if (!touched) {
+      return;
+    }
+    if (!row.allergyCategory) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergyCategory'], message: 'Allergy type is required for this row.' });
+    }
+    if (!row.allergySeverity) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySeverity'], message: 'Allergy severity is required for this row.' });
+    }
+  });
 
 const arrivalSourceSchema = z
   .object({
@@ -94,6 +138,11 @@ const arrivalSourceSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.category === 'DoctorReferral') {
+      if (!data.doctorReferral?.department) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['doctorReferral', 'department'], message: 'Enter the referring department.' });
+      }
+    }
     if (data.category === 'PatientOrRelativeReferral') {
       if (!data.patientRelativeReferral?.source) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'source'], message: 'Select a referral source' });
@@ -265,13 +314,16 @@ const titleAgeRefinement = (data: { title: string; dateOfBirth: string }, ctx: z
     return;
   }
   const age = calculateAge(data.dateOfBirth, new Date());
+  // Brackets match the Title dropdown's own displayed guidance exactly (see titleLabel.ts:
+  // "Baby — up to 1 year", "Master/Miss — 1–18 years") — Master/Miss requires age >= 1 too,
+  // not just < 18, so a newborn can't be silently registered as Master/Miss instead of Baby.
   const isConsistent = (() => {
     switch (data.title) {
       case 'Baby':
-        return age < 2;
+        return age <= 1;
       case 'Master':
       case 'Miss':
-        return age < 18;
+        return age >= 1 && age < 18;
       case 'Mr':
       case 'Mrs':
       case 'Ms':
@@ -285,7 +337,7 @@ const titleAgeRefinement = (data: { title: string; dateOfBirth: string }, ctx: z
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['title'],
-      message: "Title does not match the patient's age (Baby: under 2, Master/Miss: under 18, Mr/Mrs/Ms/Dr: 18 or older).",
+      message: "Title does not match the patient's age (Baby: up to 1 year, Master/Miss: 1–18 years, Mr/Mrs/Ms/Dr: 18 or older).",
     });
   }
 };
@@ -322,6 +374,88 @@ const titleGenderRefinement = (data: { title: string; gender: string }, ctx: z.R
   }
 };
 
+// Kept in sync with backend's CreatePatientRequestValidator.IsMaritalStatusConsistentWithAge —
+// a minor's marital status isn't a real-world determination yet: under 18 must be 'NA';
+// 18-or-older must give a real answer (Married or Unmarried), not 'NA'. Same 18 threshold
+// Title already uses for Mr/Mrs/Ms/Dr.
+const maritalStatusAgeRefinement = (data: { maritalStatus: string; dateOfBirth: string }, ctx: z.RefinementCtx) => {
+  if (!data.dateOfBirth) {
+    return;
+  }
+  const isMinor = calculateAge(data.dateOfBirth, new Date()) < 18;
+  const isConsistent = isMinor ? data.maritalStatus === 'NA' : data.maritalStatus === 'Married' || data.maritalStatus === 'Unmarried';
+  if (!isConsistent) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['maritalStatus'],
+      message: isMinor
+        ? "Patients under 18 must have marital status 'N/A'."
+        : 'Marital status must be Married or Unmarried for patients 18 or older.',
+    });
+  }
+};
+
+// Kept in sync with backend's CreatePatientRequestValidator (the SecondaryPhone.NotEqual and
+// EmergencyContacts.Must rules) — a "secondary" number identical to the primary isn't a second
+// contact method, and an emergency contact is supposed to be someone else to call when the
+// patient can't be reached, so either reusing the patient's own primary phone is almost
+// certainly a data-entry mistake, not a deliberate choice.
+const phoneDuplicationRefinement = (
+  data: {
+    primaryPhone: { number: string };
+    secondaryPhone?: string;
+    emergencyContactPhone: string;
+    additionalEmergencyContacts: Array<{ phone: string }>;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const primary = data.primaryPhone.number;
+  if (!primary) {
+    return;
+  }
+  if (data.secondaryPhone && data.secondaryPhone === primary) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['secondaryPhone'],
+      message: 'Secondary phone must be different from the primary phone.',
+    });
+  }
+  if (data.emergencyContactPhone && data.emergencyContactPhone === primary) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['emergencyContactPhone'],
+      message: "An emergency contact's phone number must be different from the patient's own primary phone.",
+    });
+  }
+  data.additionalEmergencyContacts.forEach((contact, index) => {
+    if (contact.phone && contact.phone === primary) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['additionalEmergencyContacts', index, 'phone'],
+        message: "An emergency contact's phone number must be different from the patient's own primary phone.",
+      });
+    }
+  });
+};
+
+// Patient Information + Contact Information + Medical Information only — everything the
+// backend's CreatePatientRequest actually needs, and nothing from Registration Details/
+// Billing (which aren't wired to the backend yet, see PatientRegistrationCreatePage's
+// toRequest()). Exported so "Save and proceed to Registration" can re-parse getValues()
+// through this instead of the full patientRegistrationUiSchema, which would also demand
+// Registration Details' required Department/Consultant be filled in — fields that step
+// deliberately hasn't been reached yet at that point in the wizard.
+export const patientRegistrationCoreUiSchema = z
+  .object({
+    ...demographicsUiSchema,
+    arrivalSource: arrivalSourceSchema,
+  })
+  .superRefine(allergyRefinement)
+  .superRefine(titleAgeRefinement)
+  .superRefine(titleGenderRefinement)
+  .superRefine(maritalStatusAgeRefinement)
+  .superRefine(phoneDuplicationRefinement);
+
 export const patientRegistrationUiSchema = z
   .object({
     ...demographicsUiSchema,
@@ -330,13 +464,55 @@ export const patientRegistrationUiSchema = z
   })
   .superRefine(allergyRefinement)
   .superRefine(titleAgeRefinement)
-  .superRefine(titleGenderRefinement);
+  .superRefine(titleGenderRefinement)
+  .superRefine(maritalStatusAgeRefinement)
+  .superRefine(phoneDuplicationRefinement);
+
+// ID proof type/number live only on the Edit schema, not demographicsUiSchema — Create keeps
+// them on its separate `documents` staging object (see PatientRegistrationForm.tsx) since a
+// file has to be staged alongside them until the patient exists; Edit has no such constraint,
+// so they can be normal RHF-validated fields here. Always required (unlike Create's more
+// deferred gating) since an existing patient's record already has some value for both.
+const idProofNumberRefinement = (data: { idProofType: IdProofType; idProofNumber: string }, ctx: z.RefinementCtx) => {
+  const trimmed = data.idProofNumber.trim();
+  if (!trimmed) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['idProofNumber'], message: 'ID proof number is required.' });
+    return;
+  }
+  const formatError = idProofNumberFormatError(data.idProofType, trimmed);
+  if (formatError) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['idProofNumber'], message: formatError });
+  }
+};
+
+// Edit's Allergy Details section is a real list backed by the backend's add-one/remove-one
+// endpoints (see useAddPatientAllergyMutation/useRemovePatientAllergyMutation), not a single
+// "primary + additional" set of form fields the way Create's is — there's no "edit the
+// current one in place" or "batch several into one save" on the backend for an existing
+// patient. So hasKnownAllergy/allergyCategory/allergySpecify/allergySeverity/
+// additionalAllergies are deliberately excluded here (they used to be included but never
+// actually read by PatientEditPage's toRequest — a dead, silently-discarded set of fields).
+const {
+  hasKnownAllergy: _hasKnownAllergy,
+  allergyCategory: _allergyCategory,
+  allergySpecify: _allergySpecify,
+  allergySeverity: _allergySeverity,
+  additionalAllergies: _additionalAllergies,
+  ...editDemographicsUiSchema
+} = demographicsUiSchema;
 
 export const patientEditUiSchema = z
-  .object(demographicsUiSchema)
-  .superRefine(allergyRefinement)
+  .object({
+    ...editDemographicsUiSchema,
+    idProofType: z.enum(ID_PROOF_TYPES),
+    idProofNumber: z.string().max(30),
+  })
   .superRefine(titleAgeRefinement)
-  .superRefine(titleGenderRefinement);
+  .superRefine(titleGenderRefinement)
+  .superRefine(maritalStatusAgeRefinement)
+  .superRefine(phoneDuplicationRefinement)
+  .superRefine(idProofNumberRefinement);
 
 export type PatientRegistrationUiFormValues = z.infer<typeof patientRegistrationUiSchema>;
+export type PatientRegistrationCoreUiFormValues = z.infer<typeof patientRegistrationCoreUiSchema>;
 export type PatientEditUiFormValues = z.infer<typeof patientEditUiSchema>;

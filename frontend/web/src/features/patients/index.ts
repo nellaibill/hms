@@ -10,5 +10,4 @@ export * from './components/PatientSummaryCard';
 export * from './components/PatientTable';
 export * from './hooks/usePatientMutations';
 export * from './hooks/usePatientQuery';
-export * from './hooks/usePatientRegistrationsQuery';
 export * from './hooks/usePatientsQuery';
