@@ -8,6 +8,9 @@ namespace HMS.UnitTests.Modules.Patients.Application.Validators;
 
 public class PatientTitleAgeValidationTests
 {
+    private static readonly Guid StateId = Guid.NewGuid();
+    private static readonly Guid DistrictId = Guid.NewGuid();
+
     private static DateOnly AgeYears(int years) => DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-years);
 
     private static CreatePatientRequest ValidCreateRequest(Title title, DateOnly dateOfBirth) => new()
@@ -17,21 +20,12 @@ public class PatientTitleAgeValidationTests
         LastName = "Doe",
         DateOfBirth = dateOfBirth,
         Gender = Gender.Male,
-        AddressLine1 = "123 Main St",
-        District = "Central",
-        State = "State",
-        Pincode = "560001",
+        BloodGroup = BloodGroup.Unknown,
+        MaritalStatus = MaritalStatus.Married,
         PrimaryPhone = "9876543210",
-        EmergencyContactRelationship = "Spouse",
-        EmergencyContactName = "Jane Doe",
-        EmergencyContactPhone = "9876500000",
-        Registration = new PatientRegistrationDetails
-        {
-            EncounterType = EncounterType.OP,
-            ModeOfArrival = ModeOfArrival.WalkIn,
-            DepartmentId = Guid.NewGuid(),
-            ConsultantId = Guid.NewGuid(),
-        },
+        ModeOfArrivalSource = ModeOfArrivalSource.DoctorReferral,
+        Address = new AddressRequest { AddressLine1 = "123 Main St", StateId = StateId, DistrictId = DistrictId, Pincode = "560001" },
+        EmergencyContacts = [new EmergencyContactRequest { Relationship = Relationship.Spouse, Name = "Jane Doe", Phone = "9876500000" }],
     };
 
     [Theory]
@@ -86,14 +80,12 @@ public class PatientTitleAgeValidationTests
             LastName = "Doe",
             DateOfBirth = AgeYears(30),
             Gender = Gender.Male,
-            AddressLine1 = "123 Main St",
-            District = "Central",
-            State = "State",
-            Pincode = "560001",
+            BloodGroup = BloodGroup.Unknown,
+            MaritalStatus = MaritalStatus.Married,
             PrimaryPhone = "9876543210",
-            EmergencyContactRelationship = "Spouse",
-            EmergencyContactName = "Jane Doe",
-            EmergencyContactPhone = "9876500000",
+            ModeOfArrivalSource = ModeOfArrivalSource.DoctorReferral,
+            Address = new AddressRequest { AddressLine1 = "123 Main St", StateId = StateId, DistrictId = DistrictId, Pincode = "560001" },
+            RowVersion = "1",
         };
 
         var result = validator.TestValidate(request);
@@ -131,8 +123,7 @@ public class PatientTitleAgeValidationTests
     public void CreateValidator_RejectsMsWithMaleGender()
     {
         var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(Title.Ms, AgeYears(30));
-        request = request with { Gender = Gender.Male };
+        var request = ValidCreateRequest(Title.Ms, AgeYears(30)) with { Gender = Gender.Male };
 
         var result = validator.TestValidate(request);
 
@@ -143,8 +134,7 @@ public class PatientTitleAgeValidationTests
     public void CreateValidator_AcceptsDrWithAnyGender()
     {
         var validator = new CreatePatientRequestValidator();
-        var request = ValidCreateRequest(Title.Dr, AgeYears(30));
-        request = request with { Gender = Gender.Female };
+        var request = ValidCreateRequest(Title.Dr, AgeYears(30)) with { Gender = Gender.Female };
 
         var result = validator.TestValidate(request);
 
