@@ -492,14 +492,18 @@ const idProofNumberRefinement = (data: { idProofType: IdProofType; idProofNumber
 // patient. So hasKnownAllergy/allergyCategory/allergySpecify/allergySeverity/
 // additionalAllergies are deliberately excluded here (they used to be included but never
 // actually read by PatientEditPage's toRequest — a dead, silently-discarded set of fields).
-const {
-  hasKnownAllergy: _hasKnownAllergy,
-  allergyCategory: _allergyCategory,
-  allergySpecify: _allergySpecify,
-  allergySeverity: _allergySeverity,
-  additionalAllergies: _additionalAllergies,
-  ...editDemographicsUiSchema
-} = demographicsUiSchema;
+function omit<T extends object, K extends keyof T>(shape: T, keys: readonly K[]): Omit<T, K> {
+  const result = { ...shape };
+  for (const key of keys) delete result[key];
+  return result;
+}
+const editDemographicsUiSchema = omit(demographicsUiSchema, [
+  'hasKnownAllergy',
+  'allergyCategory',
+  'allergySpecify',
+  'allergySeverity',
+  'additionalAllergies',
+] as const);
 
 export const patientEditUiSchema = z
   .object({
