@@ -1,9 +1,12 @@
 import { ID_PROOF_TYPES, type IdProofType } from '@hms/shared';
 import { CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
+import { FileChooserButton } from '@/components/ui/file-chooser-button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { validateUploadFile } from '@/lib/fileValidation';
 import { useUploadPatientIdProofMutation, useUploadPatientPhotoMutation } from '../hooks/usePatientMutations';
+import { MAX_PATIENT_DOCUMENT_SIZE_BYTES, MAX_PATIENT_DOCUMENT_SIZE_MB } from '../documentUploadLimits';
 
 interface PatientDocumentUploadProps {
   patientId: string;
@@ -12,66 +15,80 @@ interface PatientDocumentUploadProps {
 }
 
 /**
- * Plain file inputs for Photo and ID Proof (docs/PatientRegistrationModule.md §12) — no
+ * Plain file pickers for Photo and ID Proof (docs/PatientRegistrationModule.md §12) — no
  * drag-drop zone, no webcam capture (§13 is deferred, see docs/DecisionLog.md). Uploaded
  * immediately on selection (unlike DocumentUploadStaging's create-flow deferral, this always
  * has a real patient id to attach to).
  *
- * The chosen filename is tracked here in state rather than read back off the native
- * <input>'s own display: the change handler clears event.target.value right after firing the
- * mutation (so re-selecting the identical file after a failed upload still fires onChange),
- * which — if the filename were only shown via the input's native "chosen file" text — made
- * the name flash and vanish in the same tick, reading as if nothing had happened at all.
+ * The chosen filename is tracked here in state rather than read back off a native file
+ * input's own display — see FileChooserButton's own doc comment for why that native text
+ * can't be trusted once the input is reset for re-selection.
  */
 export function PatientDocumentUpload({ patientId, bare = false }: PatientDocumentUploadProps) {
   const [idProofType, setIdProofType] = useState<IdProofType>('Aadhaar');
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const [idProofFileName, setIdProofFileName] = useState<string | null>(null);
+  const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
+  const [idProofValidationError, setIdProofValidationError] = useState<string | null>(null);
   const photoMutation = useUploadPatientPhotoMutation();
   const idProofMutation = useUploadPatientIdProofMutation();
 
-  function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) {
-      setPhotoFileName(file.name);
-      photoMutation.mutate({ id: patientId, file });
-    }
-    event.target.value = '';
+  async function handlePhotoChange(file: File) {
+    const error = await validateUploadFile(file, ['jpeg', 'png'], MAX_PATIENT_DOCUMENT_SIZE_BYTES);
+    setPhotoValidationError(error);
+    if (error) return;
+    setPhotoFileName(file.name);
+    photoMutation.mutate({ id: patientId, file });
   }
 
-  function handleIdProofChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) {
-      setIdProofFileName(file.name);
-      idProofMutation.mutate({ id: patientId, idProofType, file });
-    }
-    event.target.value = '';
+  async function handleIdProofChange(file: File) {
+    const error = await validateUploadFile(file, ['jpeg', 'png', 'pdf'], MAX_PATIENT_DOCUMENT_SIZE_BYTES);
+    setIdProofValidationError(error);
+    if (error) return;
+    setIdProofFileName(file.name);
+    idProofMutation.mutate({ id: patientId, file });
   }
+
+  const photoStatus =
+    photoFileName && !photoValidationError ? (
+      <>
+        {photoMutation.isPending && `Uploading ${photoFileName}…`}
+        {photoMutation.isSuccess && (
+          <span className="inline-flex items-center gap-1 text-success">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Uploaded {photoFileName}
+          </span>
+        )}
+        {photoMutation.isIdle && `Selected: ${photoFileName}`}
+      </>
+    ) : undefined;
+
+  const idProofStatus =
+    idProofFileName && !idProofValidationError ? (
+      <>
+        {idProofMutation.isPending && `Uploading ${idProofFileName}…`}
+        {idProofMutation.isSuccess && (
+          <span className="inline-flex items-center gap-1 text-success">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Uploaded {idProofFileName}
+          </span>
+        )}
+        {idProofMutation.isIdle && `Selected: ${idProofFileName}`}
+      </>
+    ) : undefined;
 
   const fields = (
     <>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="photo-upload">Patient photo (JPG/PNG, max 5MB)</Label>
-        <input
+        <Label htmlFor="photo-upload">Patient photo (JPG/PNG, max {MAX_PATIENT_DOCUMENT_SIZE_MB}MB)</Label>
+        <FileChooserButton
           id="photo-upload"
-          type="file"
           accept="image/jpeg,image/png"
-          onChange={handlePhotoChange}
           disabled={photoMutation.isPending}
-          className="text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+          onFileSelected={handlePhotoChange}
+          status={photoStatus}
         />
-        {photoFileName && (
-          <p className="text-xs text-muted-foreground">
-            {photoMutation.isPending && `Uploading ${photoFileName}…`}
-            {photoMutation.isSuccess && (
-              <span className="inline-flex items-center gap-1 text-success">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Uploaded {photoFileName}
-              </span>
-            )}
-            {photoMutation.isIdle && `Selected: ${photoFileName}`}
-          </p>
-        )}
+        {photoValidationError && <p className="text-sm text-destructive">{photoValidationError}</p>}
         {photoMutation.isError && <p className="text-sm text-destructive">Failed to upload {photoFileName ?? 'photo'} — please try again.</p>}
       </div>
 
@@ -91,28 +108,16 @@ export function PatientDocumentUpload({ patientId, bare = false }: PatientDocume
         </Select>
 
         <Label htmlFor="id-proof-upload" className="mt-2">
-          ID proof file (JPG/PNG/PDF, max 5MB)
+          ID proof file (JPG/PNG/PDF, max {MAX_PATIENT_DOCUMENT_SIZE_MB}MB)
         </Label>
-        <input
+        <FileChooserButton
           id="id-proof-upload"
-          type="file"
           accept="image/jpeg,image/png,application/pdf"
-          onChange={handleIdProofChange}
           disabled={idProofMutation.isPending}
-          className="text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+          onFileSelected={handleIdProofChange}
+          status={idProofStatus}
         />
-        {idProofFileName && (
-          <p className="text-xs text-muted-foreground">
-            {idProofMutation.isPending && `Uploading ${idProofFileName}…`}
-            {idProofMutation.isSuccess && (
-              <span className="inline-flex items-center gap-1 text-success">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Uploaded {idProofFileName}
-              </span>
-            )}
-            {idProofMutation.isIdle && `Selected: ${idProofFileName}`}
-          </p>
-        )}
+        {idProofValidationError && <p className="text-sm text-destructive">{idProofValidationError}</p>}
         {idProofMutation.isError && (
           <p className="text-sm text-destructive">Failed to upload {idProofFileName ?? 'ID proof'} — please try again.</p>
         )}

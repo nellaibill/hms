@@ -11,8 +11,6 @@ internal interface IConsultantRepository
 
     Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken);
 
-    Task<bool> ExistsByCodeAsync(string code, Guid? excludingId, CancellationToken cancellationToken);
-
     Task<(IReadOnlyList<Consultant> Items, int TotalCount)> GetPagedAsync(ConsultantListQuery query, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

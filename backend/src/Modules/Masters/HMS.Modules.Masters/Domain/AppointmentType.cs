@@ -9,7 +9,6 @@ namespace HMS.Modules.Masters.Domain;
 /// </summary>
 internal class AppointmentType : Entity
 {
-    public string Code { get; private set; } = null!;
     public string Name { get; private set; } = null!;
     public bool IsActive { get; private set; } = true;
 
@@ -20,29 +19,24 @@ internal class AppointmentType : Entity
 
     private AppointmentType(
         Guid id,
-        string code,
         string name,
         bool isActive,
         Guid? createdBy)
         : base(id, createdBy)
     {
-        Code = code;
         Name = name;
         IsActive = isActive;
     }
 
     public static AppointmentType Create(
-        string code,
         string name,
         bool isActive,
         Guid? createdBy)
     {
-        Guard.AgainstNullOrWhiteSpace(code, nameof(code));
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
 
         return new AppointmentType(
             Guid.CreateVersion7(),
-            code.Trim().ToUpperInvariant(),
             name.Trim(),
             isActive,
             createdBy);

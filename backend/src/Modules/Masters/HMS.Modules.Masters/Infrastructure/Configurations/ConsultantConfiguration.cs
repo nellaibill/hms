@@ -13,7 +13,6 @@ internal class ConsultantConfiguration : IEntityTypeConfiguration<Consultant>
         builder.HasKey(c => c.Id).HasName("pk_consultants");
         builder.Property(c => c.Id).HasColumnName("id").ValueGeneratedNever();
 
-        builder.Property(c => c.Code).HasColumnName("code").HasMaxLength(30).IsRequired();
         builder.Property(c => c.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
         builder.Property(c => c.DepartmentId).HasColumnName("department_id");
         builder.Property(c => c.Specialization).HasColumnName("specialization").HasMaxLength(150);
@@ -31,7 +30,11 @@ internal class ConsultantConfiguration : IEntityTypeConfiguration<Consultant>
 
         builder.HasQueryFilter(c => !c.IsDeleted);
 
-        builder.HasIndex(c => c.Code).IsUnique().HasDatabaseName("ux_consultants_code").HasFilter("is_deleted = false");
+        // No uniqueness constraint on Name — unlike AppointmentType/ConsultationType, two
+        // consultants legitimately can share a display name (e.g. two "Dr. Sharma"s); Code
+        // used to be the disambiguator, and removing it doesn't make duplicate names an
+        // error, just something the UI tells apart via Specialization instead (see
+        // ConsultantSelect's own comment).
         builder.HasIndex(c => c.DepartmentId).HasDatabaseName("ix_consultants_department_id");
 
         // Same-module reference — a real DB-level FK is fine here (unlike the Patients/HR

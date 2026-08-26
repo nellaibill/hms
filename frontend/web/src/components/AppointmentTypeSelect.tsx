@@ -18,12 +18,9 @@ export function AppointmentTypeSelect({ id, value, onValueChange, ariaLabel = 'A
     queryFn: () => appointmentTypesApi.getAppointmentTypes({ pageSize: 100, isActive: true }),
   });
 
-  // Always suffix the code — see DepartmentSelect's identical comment. Code is the only
-  // guaranteed-unique field.
   const options = (data?.items ?? []).map((appointmentType) => ({
     value: appointmentType.id,
-    label: `${appointmentType.name} (${appointmentType.code})`,
-    keywords: appointmentType.code,
+    label: appointmentType.name,
   }));
 
   return (
@@ -33,7 +30,7 @@ export function AppointmentTypeSelect({ id, value, onValueChange, ariaLabel = 'A
       onValueChange={onValueChange}
       options={options}
       placeholder="Select appointment type…"
-      searchPlaceholder="Search by name or code…"
+      searchPlaceholder="Search by name…"
       ariaLabel={ariaLabel}
       disabled={disabled}
     />

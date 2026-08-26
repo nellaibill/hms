@@ -24,6 +24,13 @@ export interface MasterFieldDef {
   required?: boolean;
   /** Show this field as its own column in the list table (default: true for text/number/boolean/select/reference, false for textarea). */
   showInTable?: boolean;
+  /**
+   * Opts this field out of the automatic "already in use" uniqueness check that otherwise
+   * applies to whichever field is config.codeField ?? config.nameField (see MasterForm's
+   * makeCodeUniquenessValidator) — for an entity like Consultant, where duplicate values are
+   * expected and legitimate (two consultants can share a display name), not a data-entry error.
+   */
+  skipUniquenessCheck?: boolean;
   /** Static options for type: 'select'. */
   options?: MasterSelectOption[];
   /** Entity key (MasterEntityConfig.key) this field references, for type: 'reference'. */

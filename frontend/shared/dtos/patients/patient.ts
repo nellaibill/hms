@@ -70,9 +70,6 @@ export interface Patient {
   allergies: Allergy[];
   emergencyContacts: EmergencyContact[];
 
-  photoPath?: string | null;
-  idProofPath?: string | null;
-
   /** Opaque optimistic-concurrency token (the row's Postgres xmin at read time) — echo this
    * back on UpdatePatientRequest.rowVersion so a save against stale data is rejected with a
    * clear conflict instead of silently overwriting someone else's edit. Always present on a

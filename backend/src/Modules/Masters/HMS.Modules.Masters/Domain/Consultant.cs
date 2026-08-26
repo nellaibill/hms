@@ -11,7 +11,6 @@ namespace HMS.Modules.Masters.Domain;
 /// </summary>
 internal class Consultant : Entity
 {
-    public string Code { get; private set; } = null!;
     public string Name { get; private set; } = null!;
     public Guid? DepartmentId { get; private set; }
     public string? Specialization { get; private set; }
@@ -24,7 +23,6 @@ internal class Consultant : Entity
 
     private Consultant(
         Guid id,
-        string code,
         string name,
         Guid? departmentId,
         string? specialization,
@@ -32,7 +30,6 @@ internal class Consultant : Entity
         Guid? createdBy)
         : base(id, createdBy)
     {
-        Code = code;
         Name = name;
         DepartmentId = departmentId;
         Specialization = specialization;
@@ -40,19 +37,16 @@ internal class Consultant : Entity
     }
 
     public static Consultant Create(
-        string code,
         string name,
         Guid? departmentId,
         string? specialization,
         bool isActive,
         Guid? createdBy)
     {
-        Guard.AgainstNullOrWhiteSpace(code, nameof(code));
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
 
         return new Consultant(
             Guid.CreateVersion7(),
-            code.Trim().ToUpperInvariant(),
             name.Trim(),
             departmentId,
             specialization?.Trim(),

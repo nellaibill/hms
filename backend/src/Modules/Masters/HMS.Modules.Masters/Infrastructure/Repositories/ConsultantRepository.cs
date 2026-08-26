@@ -23,9 +23,6 @@ internal class ConsultantRepository : IConsultantRepository
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Consultants.AnyAsync(c => c.Id == id, cancellationToken);
 
-    public Task<bool> ExistsByCodeAsync(string code, Guid? excludingId, CancellationToken cancellationToken)
-        => _dbContext.Consultants.AnyAsync(c => c.Code == code && c.Id != excludingId, cancellationToken);
-
     public async Task<(IReadOnlyList<Consultant> Items, int TotalCount)> GetPagedAsync(ConsultantListQuery query, CancellationToken cancellationToken)
     {
         var consultants = _dbContext.Consultants.AsQueryable();
@@ -43,7 +40,7 @@ internal class ConsultantRepository : IConsultantRepository
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = $"%{query.Search.Trim()}%";
-            consultants = consultants.Where(c => EF.Functions.ILike(c.Code, term) || EF.Functions.ILike(c.Name, term));
+            consultants = consultants.Where(c => EF.Functions.ILike(c.Name, term));
         }
 
         consultants = ApplySort(consultants, query.Sort);
@@ -69,7 +66,6 @@ internal class ConsultantRepository : IConsultantRepository
 
         return field.ToLowerInvariant() switch
         {
-            "code" => descending ? consultants.OrderByDescending(c => c.Code) : consultants.OrderBy(c => c.Code),
             "updatedat" => descending ? consultants.OrderByDescending(c => c.UpdatedAt) : consultants.OrderBy(c => c.UpdatedAt),
             _ => descending ? consultants.OrderByDescending(c => c.Name) : consultants.OrderBy(c => c.Name),
         };

@@ -4,7 +4,6 @@ namespace HMS.Modules.Masters.Contracts;
 
 public record CreateAppointmentTypeRequest
 {
-    public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public bool IsActive { get; init; } = true;
 }
@@ -19,7 +18,6 @@ public record UpdateAppointmentTypeRequest
 public record AppointmentTypeResponse
 {
     public Guid Id { get; init; }
-    public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public bool IsActive { get; init; }
     public DateTime CreatedAt { get; init; }

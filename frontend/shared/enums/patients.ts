@@ -33,6 +33,7 @@ export { MARITAL_STATUSES, type MaritalStatus } from './patientRegistrationUi';
 export { ALLERGY_CATEGORIES as ALLERGY_TYPES, type AllergyCategory as AllergyType } from './patientRegistrationUi';
 export { RELATIONSHIPS, type Relationship } from './patientRegistrationUi';
 export { ARRIVAL_SOURCE_CATEGORIES as MODE_OF_ARRIVAL_SOURCES, type ArrivalSourceCategory as ModeOfArrivalSource } from './patientRegistrationUi';
+export { ENCOUNTER_TYPES_UI as VISIT_TYPES, type EncounterTypeUi as VisitType } from './patientRegistrationUi';
 
 export const ALLERGY_SEVERITIES = ['Mild', 'Moderate', 'Severe'] as const;
 export type AllergySeverity = (typeof ALLERGY_SEVERITIES)[number];

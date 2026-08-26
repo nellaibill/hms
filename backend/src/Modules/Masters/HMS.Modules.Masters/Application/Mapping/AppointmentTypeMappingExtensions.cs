@@ -8,7 +8,6 @@ internal static class AppointmentTypeMappingExtensions
     public static AppointmentTypeResponse ToResponse(this AppointmentType appointmentType) => new()
     {
         Id = appointmentType.Id,
-        Code = appointmentType.Code,
         Name = appointmentType.Name,
         IsActive = appointmentType.IsActive,
         CreatedAt = appointmentType.CreatedAt,

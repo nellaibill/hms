@@ -35,12 +35,12 @@ internal class AppointmentTypeService : IAppointmentTypeService
 
     public async Task<Result<AppointmentTypeResponse>> CreateAsync(CreateAppointmentTypeRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
-        if (await _repository.ExistsByCodeAsync(request.Code.Trim().ToUpperInvariant(), excludingId: null, cancellationToken))
+        if (await _repository.ExistsByNameAsync(request.Name.Trim(), excludingId: null, cancellationToken))
         {
-            return Result<AppointmentTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Appointment type code '{request.Code}' is already in use.");
+            return Result<AppointmentTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Appointment type name '{request.Name}' is already in use.");
         }
 
-        var appointmentType = AppointmentType.Create(request.Code, request.Name, request.IsActive, actorId);
+        var appointmentType = AppointmentType.Create(request.Name, request.IsActive, actorId);
 
         await _repository.AddAsync(appointmentType, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -54,6 +54,15 @@ internal class AppointmentTypeService : IAppointmentTypeService
         if (appointmentType is null)
         {
             return Result<AppointmentTypeResponse>.Failure(MastersErrorCodes.NotFound, $"Appointment type '{id}' was not found.");
+        }
+
+        // Name is now the unique natural key (Code is gone) — an update can collide with
+        // another record the way Create always could, so it needs the same guard; without
+        // this, a rename would surface as a raw unhandled DB constraint violation instead of
+        // a clean validation error.
+        if (await _repository.ExistsByNameAsync(request.Name.Trim(), excludingId: id, cancellationToken))
+        {
+            return Result<AppointmentTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Appointment type name '{request.Name}' is already in use.");
         }
 
         appointmentType.Update(request.Name, request.IsActive, actorId);

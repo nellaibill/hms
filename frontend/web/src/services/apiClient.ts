@@ -6,7 +6,9 @@ import {
   BillingApi,
   BrandingApi,
   ConsultantsApi,
+  ConsultationTypesApi,
   DepartmentsApi,
+  DocumentsApi,
   EventsApi,
   HttpClient,
   IpdDashboardApi,
@@ -63,6 +65,7 @@ export const authApi = new AuthApi(httpClient);
 export const usersApi = new UsersApi(httpClient);
 export const rolesApi = new RolesApi(httpClient);
 export const patientsApi = new PatientsApi(httpClient);
+export const documentsApi = new DocumentsApi(httpClient);
 export const brandingApi = new BrandingApi(httpClient);
 export const mastersApi = new MastersApi(httpClient);
 export const productsApi = new ProductsApi(httpClient);
@@ -70,6 +73,7 @@ export const shiftsApi = new ShiftsApi(httpClient);
 export const departmentsApi = new DepartmentsApi(httpClient);
 export const consultantsApi = new ConsultantsApi(httpClient);
 export const appointmentTypesApi = new AppointmentTypesApi(httpClient);
+export const consultationTypesApi = new ConsultationTypesApi(httpClient);
 export const statesApi = new StatesApi(httpClient);
 export const staffAvailabilityApi = new StaffAvailabilityApi(httpClient);
 export const weeklyRostersApi = new WeeklyRostersApi(httpClient);

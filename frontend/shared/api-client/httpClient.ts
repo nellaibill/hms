@@ -106,6 +106,43 @@ export class HttpClient {
     return payload as ApiResponseEnvelope<T>;
   }
 
+  /**
+   * Fetches raw binary content (e.g. Documents module's GET .../content) — bypasses
+   * request()'s JSON-envelope parsing since the response body here is the file itself, not
+   * an ApiResponseEnvelope. Auth/correlation headers still apply, same as every other call.
+   */
+  async getBlob(path: string, options?: RequestOptions): Promise<Blob> {
+    const url = buildUrl(this.config.baseUrl, path, options?.query);
+    const headers: Record<string, string> = {};
+
+    const token = this.config.getAuthToken?.();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const correlationId = this.config.getCorrelationId?.();
+    if (correlationId) {
+      headers['X-Correlation-Id'] = correlationId;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(url, { method: 'GET', headers, signal: options?.signal });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw err;
+      }
+      throw new NetworkError();
+    }
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => undefined);
+      throw new ApiError(response.status, payload as ApiErrorResponse);
+    }
+
+    return response.blob();
+  }
+
   private async request<T>(
     method: string,
     path: string,
