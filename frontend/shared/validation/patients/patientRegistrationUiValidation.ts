@@ -184,17 +184,24 @@ const additionalConsultantSchema = z.object({
   consultationTypeId: z.string().trim().optional().or(z.literal('')),
 });
 
-// Exported (not just used internally) so a future "record a new visit" form can reuse this
-// exact schema instead of duplicating it — a follow-up visit's registration details are the
-// same shape as a first-time registration's, so they should share one validator.
+// Shared by registrationDetailsUiSchema (the wizard's Registration Details tab) and
+// recordVisitUiSchema (the standalone "Add Visit" page for an existing patient, below) — the
+// exact fields CreatePatientVisitRequest actually needs. admissionType/referral/category are
+// deliberately NOT part of this shared shape: they're UI-only everywhere (never sent to the
+// backend, see toCreatePatientVisitRequest in bridging.ts), so a schema built from just this
+// object has nothing to validate that isn't actually rendered/persisted.
+const visitCoreFieldsUiSchema = {
+  encounterType: z.enum(ENCOUNTER_TYPES_UI),
+  departmentId: z.string().trim().min(1, 'Department is required'),
+  consultantId: z.string().trim().min(1, 'Consultant is required'),
+  additionalConsultants: z.array(additionalConsultantSchema).max(3, 'Up to three additional consultants').default([]),
+  appointmentTypeId: z.string().trim().optional().or(z.literal('')),
+  consultationTypeId: z.string().trim().optional().or(z.literal('')),
+};
+
 export const registrationDetailsUiSchema = z
   .object({
-    encounterType: z.enum(ENCOUNTER_TYPES_UI),
-    departmentId: z.string().trim().min(1, 'Department is required'),
-    consultantId: z.string().trim().min(1, 'Consultant is required'),
-    additionalConsultants: z.array(additionalConsultantSchema).max(3, 'Up to three additional consultants').default([]),
-    appointmentTypeId: z.string().trim().optional().or(z.literal('')),
-    consultationTypeId: z.string().trim().optional().or(z.literal('')),
+    ...visitCoreFieldsUiSchema,
     admissionType: z.enum(['MLC', 'NMLC']).optional().or(z.literal('')),
     referral: referralColumnSchema.optional(),
     category: z.string().trim().max(100).optional().or(z.literal('')),
@@ -212,7 +219,14 @@ export const registrationDetailsUiSchema = z
     }
   });
 
+/** The standalone "Add Visit" page (an existing patient getting a new encounter) — same core
+ * fields as registrationDetailsUiSchema, minus the UI-only admissionType/referral/category
+ * that don't persist anywhere, so there's no field here that can fail validation without also
+ * being on screen to fix. */
+export const recordVisitUiSchema = z.object({ ...visitCoreFieldsUiSchema });
+
 export type RegistrationDetailsUiFormValues = z.infer<typeof registrationDetailsUiSchema>;
+export type RecordVisitUiFormValues = z.infer<typeof recordVisitUiSchema>;
 
 const demographicsUiSchema = {
   title: z.enum(TITLES),
