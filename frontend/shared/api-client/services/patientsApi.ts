@@ -79,4 +79,11 @@ export class PatientsApi {
     const response = await this.client.post<PatientVisit>(API_ROUTES.patients.visits(id), request);
     return response.data;
   }
+
+  /** Lists every visit recorded for a patient, newest first — mirrors PatientVisitsController's
+   * GET .../visits (list). */
+  async getVisits(id: string): Promise<PatientVisit[]> {
+    const response = await this.client.get<PatientVisit[]>(API_ROUTES.patients.visits(id));
+    return response.data;
+  }
 }
