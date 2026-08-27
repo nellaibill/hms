@@ -1,40 +1,73 @@
-import type { Patient } from '@hms/shared';
-import { CalendarClock, ClipboardList, FileText, HeartPulse, Loader2, type LucideIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { ALLERGY_TYPES, ALLERGY_SEVERITIES, type Allergy, type AllergySeverity, type AllergyType, type Patient } from '@hms/shared';
+import {
+  CalendarClock,
+  ClipboardList,
+  Download,
+  Eye,
+  FileText,
+  HeartPulse,
+  Loader2,
+  MapPin,
+  Plus,
+  Stethoscope,
+  User,
+  X,
+} from 'lucide-react';
+import { type ReactNode, useState } from 'react';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ConsultantName } from '@/components/ConsultantName';
+import { DepartmentName } from '@/components/DepartmentName';
 import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
 import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type BillingItem } from '@/features/billing';
-import { PatientDocumentUpload } from './PatientDocumentUpload';
-import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
-import { bloodGroupLabel } from '../bloodGroupLabel';
+import { documentsApi } from '../../../services/apiClient';
+import { useAuth } from '../../auth/AuthContext';
 import { humanize } from '../humanize';
+import { maritalStatusLabel } from '../maritalStatusLabel';
+import { maskIdNumber } from '../maskIdNumber';
+import { useAddPatientAllergyMutation, useRemovePatientAllergyMutation } from '../hooks/usePatientMutations';
+import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
+import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
+import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { PatientDocumentUpload } from './PatientDocumentUpload';
+import type { DocumentResponse, PatientVisit } from '@hms/shared';
 
 interface PatientDetailsProps {
   patient: Patient;
+  activeTab: string;
+  onActiveTabChange: (value: string) => void;
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 py-1.5">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+    <div className="flex flex-col gap-0.5 py-0.5">
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="text-sm text-foreground">{value}</dd>
     </div>
   );
 }
 
-/** A compact bordered white card — the "clean card" building block every Profile-tab
- * section is made of, laid out two-up on wide screens (see PatientProfileTab). */
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
+/** The compact bordered card every Overview section is built from. */
+function SectionCard({ title, icon: Icon, action, children }: { title: string; icon: React.ElementType; action?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
-      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-      <dl className="grid grid-cols-1 gap-x-4 divide-y divide-border sm:grid-cols-2 sm:divide-y-0">{children}</dl>
+    <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Icon className="h-4 w-4 text-primary" />
+          {title}
+        </h2>
+        {action}
+      </div>
+      {children}
     </div>
   );
 }
 
-function EmptyState({ icon: Icon, message }: { icon: LucideIcon; message: string }) {
+function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message: string }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
       <Icon className="h-6 w-6" />
@@ -43,76 +76,493 @@ function EmptyState({ icon: Icon, message }: { icon: LucideIcon; message: string
   );
 }
 
-function PatientProfileTab({ patient }: { patient: Patient }) {
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function severityBadgeVariant(severity: AllergySeverity): BadgeProps['variant'] {
+  if (severity === 'Severe') return 'destructive';
+  if (severity === 'Moderate') return 'warning';
+  return 'secondary';
+}
+
+function documentStatusBadgeVariant(status: DocumentResponse['status']): BadgeProps['variant'] {
+  if (status === 'Available') return 'success';
+  if (status === 'Pending') return 'warning';
+  return 'destructive';
+}
+
+/* ---------------------------------------------------------------------- Personal & Contact */
+
+function PersonalContactCard({ patient }: { patient: Patient }) {
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <InfoCard title="Demographics">
-        <Field label="UHID" value={<span className="font-mono">{patient.uhid}</span>} />
-        <Field label="Name" value={`${patient.title} ${patient.firstName} ${patient.lastName}`} />
-        <Field label="Date of birth" value={new Date(patient.dateOfBirth).toLocaleDateString('en-IN')} />
-        <Field label="Age" value={patient.age} />
-        <Field label="Gender" value={patient.gender} />
-        <Field label="Blood group" value={bloodGroupLabel(patient.bloodGroup)} />
-        <Field label="Marital status" value={patient.maritalStatus} />
-      </InfoCard>
-
-      <InfoCard title="Address">
-        <Field
-          label="Address"
-          value={[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}
-        />
-        <Field
-          label="District / State"
-          value={
-            <>
-              <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />,{' '}
-              <StateName stateId={patient.address.stateId} />
-            </>
-          }
-        />
-        <Field label="Pincode" value={patient.address.pincode} />
-      </InfoCard>
-
-      <InfoCard title="Contact">
-        <Field label="Primary phone" value={patient.primaryPhone} />
-        <Field label="Secondary phone" value={patient.secondaryPhone || '—'} />
-        <Field label="Email" value={patient.email || '—'} />
+    <SectionCard title="Personal & Contact" icon={User}>
+      <dl className="grid grid-cols-2 gap-x-3">
+        <Field label="Title" value={patient.title} />
+        <Field label="First name" value={patient.firstName} />
+        <Field label="Last name" value={patient.lastName} />
+        <Field label="Marital status" value={maritalStatusLabel(patient.maritalStatus)} />
         <Field label="Profession" value={patient.profession || '—'} />
-      </InfoCard>
+        <Field label="Email" value={patient.email || '—'} />
+        <Field label="Secondary phone" value={patient.secondaryPhone || '—'} />
+      </dl>
+    </SectionCard>
+  );
+}
 
-      <InfoCard title="Emergency Contacts">
+/* ------------------------------------------------------------------- Address & Emergency */
+
+function AddressEmergencyCard({ patient }: { patient: Patient }) {
+  const [showAll, setShowAll] = useState(false);
+  const visibleContacts = showAll ? patient.emergencyContacts : patient.emergencyContacts.slice(0, 2);
+
+  return (
+    <SectionCard title="Address & Emergency" icon={MapPin}>
+      <div className="text-sm text-foreground">
+        <p>{[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}</p>
+        <p className="text-muted-foreground">
+          <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />, <StateName stateId={patient.address.stateId} /> —{' '}
+          {patient.address.pincode}
+        </p>
+      </div>
+
+      <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Emergency contacts</span>
         {patient.emergencyContacts.length === 0 ? (
-          <Field label="Emergency contacts" value="—" />
+          <span className="text-sm text-muted-foreground">—</span>
         ) : (
-          patient.emergencyContacts.map((contact) => (
-            <Field
-              key={contact.id}
-              label={humanize(contact.relationship)}
-              value={`${contact.name} · ${contact.phone}`}
-            />
-          ))
+          <>
+            {visibleContacts.map((contact) => (
+              <div key={contact.id} className="flex items-center justify-between text-sm">
+                <span className="text-foreground">{contact.name}</span>
+                <span className="text-muted-foreground">
+                  {humanize(contact.relationship)} · {contact.phone}
+                </span>
+              </div>
+            ))}
+            {patient.emergencyContacts.length > 2 && (
+              <button
+                type="button"
+                onClick={() => setShowAll((prev) => !prev)}
+                className="w-fit text-xs font-medium text-primary hover:underline"
+              >
+                {showAll ? 'Show less' : `View all (${patient.emergencyContacts.length})`}
+              </button>
+            )}
+          </>
         )}
-      </InfoCard>
+      </div>
+    </SectionCard>
+  );
+}
 
-      <InfoCard title="Allergy Details">
-        <Field label="Known allergy" value={patient.allergies.length > 0 ? 'Yes' : 'No'} />
-        {patient.allergies.map((allergy) => (
-          <Field
-            key={allergy.id}
-            label={allergy.allergyType}
-            value={`${allergy.specify || '—'} · ${allergy.severity}`}
-          />
-        ))}
-      </InfoCard>
+/* ----------------------------------------------------------------- Registration Details */
 
-      <InfoCard title="Mode of Arrival">
-        <Field label="Source" value={humanize(patient.modeOfArrivalSource)} />
-        {patient.modeOfArrivalChannel && <Field label="Channel" value={humanize(patient.modeOfArrivalChannel)} />}
-        {patient.modeOfArrivalSpecify && <Field label="Details" value={patient.modeOfArrivalSpecify} />}
-      </InfoCard>
+function RegistrationDetailsCard({ patient }: { patient: Patient }) {
+  return (
+    <SectionCard title="Registration Details" icon={ClipboardList}>
+      <dl className="grid grid-cols-1 gap-x-3">
+        <Field label="Registration source" value={humanize(patient.modeOfArrivalSource)} />
+        {patient.modeOfArrivalChannel && <Field label="Arrival channel" value={humanize(patient.modeOfArrivalChannel)} />}
+        {patient.modeOfArrivalSpecify && <Field label="Arrival details" value={patient.modeOfArrivalSpecify} />}
+        <Field label="ID proof type" value={patient.idProofType ?? '—'} />
+        <Field label="ID proof number" value={patient.idProofNumber ? maskIdNumber(patient.idProofNumber) : '—'} />
+      </dl>
+    </SectionCard>
+  );
+}
+
+/* --------------------------------------------------------------------- Clinical Alerts */
+
+function AddAllergyForm({ patientId, onDone }: { patientId: string; onDone: () => void }) {
+  const addAllergyMutation = useAddPatientAllergyMutation();
+  const [draft, setDraft] = useState<{ allergyType: AllergyType | ''; specify: string; severity: AllergySeverity | '' }>({
+    allergyType: '',
+    specify: '',
+    severity: '',
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  function handleAdd() {
+    if (!draft.allergyType || !draft.severity) {
+      setError('Type and severity are required.');
+      return;
+    }
+    setError(null);
+    addAllergyMutation.mutate(
+      { id: patientId, request: { allergyType: draft.allergyType, specify: draft.specify.trim() || undefined, severity: draft.severity } },
+      { onSuccess: onDone },
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-2.5">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Select value={draft.allergyType || undefined} onValueChange={(value) => setDraft((prev) => ({ ...prev, allergyType: value as AllergyType }))}>
+          <SelectTrigger aria-label="Allergy type" className="h-8 text-xs">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            {ALLERGY_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Specify (e.g. Penicillin)"
+          value={draft.specify}
+          onChange={(event) => setDraft((prev) => ({ ...prev, specify: event.target.value }))}
+          className="h-8 text-xs"
+        />
+        <Select value={draft.severity || undefined} onValueChange={(value) => setDraft((prev) => ({ ...prev, severity: value as AllergySeverity }))}>
+          <SelectTrigger aria-label="Allergy severity" className="h-8 text-xs">
+            <SelectValue placeholder="Severity" />
+          </SelectTrigger>
+          <SelectContent>
+            {ALLERGY_SEVERITIES.map((severity) => (
+              <SelectItem key={severity} value={severity}>
+                {severity}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {addAllergyMutation.isError && <p className="text-xs text-destructive">Failed to add allergy — please try again.</p>}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button type="button" size="sm" onClick={handleAdd} disabled={addAllergyMutation.isPending}>
+          {addAllergyMutation.isPending ? 'Adding…' : 'Add'}
+        </Button>
+      </div>
     </div>
   );
 }
+
+function AllergyRow({ allergy, patientId, canEdit }: { allergy: Allergy; patientId: string; canEdit: boolean }) {
+  const removeAllergyMutation = useRemovePatientAllergyMutation();
+
+  return (
+    <div className="flex items-start justify-between gap-2 rounded-md border border-border/70 bg-accent/30 px-2.5 py-2">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{allergy.specify || allergy.allergyType}</p>
+        <p className="text-xs text-muted-foreground">{allergy.allergyType}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Badge variant={severityBadgeVariant(allergy.severity)} className="text-[10px]">
+          {allergy.severity}
+        </Badge>
+        {canEdit && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            aria-label={`Remove ${allergy.allergyType} allergy`}
+            disabled={removeAllergyMutation.isPending}
+            onClick={() => removeAllergyMutation.mutate({ id: patientId, allergyId: allergy.id })}
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClinicalAlertsCard({ patient }: { patient: Patient }) {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('patient-management.edit');
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  return (
+    <SectionCard
+      title="Clinical Alerts"
+      icon={HeartPulse}
+      action={
+        canEdit &&
+        !showAddForm && (
+          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => setShowAddForm(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Add Allergy
+          </Button>
+        )
+      }
+    >
+      <div className="flex flex-col gap-1.5">
+        {patient.allergies.length === 0 && !showAddForm && <p className="text-sm text-muted-foreground">No known allergies recorded.</p>}
+        {patient.allergies.map((allergy) => (
+          <AllergyRow key={allergy.id} allergy={allergy} patientId={patient.id} canEdit={canEdit} />
+        ))}
+        {showAddForm && <AddAllergyForm patientId={patient.id} onDone={() => setShowAddForm(false)} />}
+      </div>
+
+      <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Important medical information</span>
+        <p className="text-sm text-muted-foreground">No additional medical notes have been recorded for this patient.</p>
+      </div>
+    </SectionCard>
+  );
+}
+
+/* ------------------------------------------------------------------------ At a Glance */
+
+function StatItem({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex flex-1 flex-col gap-0.5 px-2 py-1.5 text-center">
+      <span className="text-base font-semibold tabular-nums text-foreground">{value}</span>
+      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+const VISIT_STAT_TYPES = ['OP', 'IP', 'Emergency', 'DayCare'] as const;
+const VISIT_STAT_LABELS: Record<(typeof VISIT_STAT_TYPES)[number], string> = {
+  OP: 'OP Visits',
+  IP: 'IP Admissions',
+  Emergency: 'Emergency',
+  DayCare: 'Day Care',
+};
+
+function AtAGlanceStrip({ patient }: { patient: Patient }) {
+  const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient.id);
+  const { data: documents, isPending: documentsPending } = usePatientDocumentsQuery(patient.id);
+  const { data: billings, isPending: billingsPending } = usePatientInvoicesQuery(patient.id);
+
+  const dash = <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin text-muted-foreground" />;
+
+  const visitCountByType = (type: (typeof VISIT_STAT_TYPES)[number]) => visits?.filter((v) => v.visitType === type).length ?? 0;
+  const lastVisit = visits?.[0];
+  const prescriptionCount = documents?.filter((doc) => doc.documentType === 'Prescription').length ?? 0;
+  const totalBills = billings?.reduce((sum, billing) => sum + billing.netAmount, 0) ?? 0;
+  const outstanding =
+    billings?.reduce((sum, billing) => sum + billing.items.filter((item) => item.paymentStatus === 'Pending').reduce((s, item) => s + item.total, 0), 0) ?? 0;
+
+  return (
+    <div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
+      <StatItem label="Total Visits" value={visitsPending ? dash : (visits?.length ?? 0)} />
+      {VISIT_STAT_TYPES.map((type) => (
+        <StatItem key={type} label={VISIT_STAT_LABELS[type]} value={visitsPending ? dash : visitCountByType(type)} />
+      ))}
+      <StatItem
+        label="Last Visit"
+        value={visitsPending ? dash : lastVisit ? new Date(lastVisit.createdAt).toLocaleDateString('en-IN') : '—'}
+      />
+      <StatItem label="Total Prescriptions" value={documentsPending ? dash : prescriptionCount} />
+      <StatItem label="Total Bills" value={billingsPending ? dash : formatCurrency(totalBills)} />
+      <StatItem label="Outstanding" value={billingsPending ? dash : formatCurrency(outstanding)} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------ Recent Visits */
+
+function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number }) {
+  const rows = limit ? visits.slice(0, limit) : visits;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/60 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2">Date</th>
+            <th className="px-3 py-2">Visit Type</th>
+            <th className="px-3 py-2">Department</th>
+            <th className="px-3 py-2">Consultant</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((visit) => {
+            const primary = visit.consultations[0];
+            const extra = visit.consultations.length - 1;
+            return (
+              <tr key={visit.visitId} className="hover:bg-muted/30">
+                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{new Date(visit.createdAt).toLocaleDateString('en-IN')}</td>
+                <td className="px-3 py-2">
+                  <Badge variant="outline" className="text-[10px]">
+                    {visit.visitType}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 text-foreground">{primary ? <DepartmentName departmentId={primary.departmentId} /> : '—'}</td>
+                <td className="px-3 py-2 text-foreground">
+                  {primary ? <ConsultantName consultantId={primary.consultantId} /> : '—'}
+                  {extra > 0 && <span className="text-muted-foreground"> +{extra}</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RecentVisitsCard({ patient, onViewAll }: { patient: Patient; onViewAll: () => void }) {
+  const { data: visits, isPending } = usePatientVisitsQuery(patient.id);
+
+  return (
+    <SectionCard
+      title="Recent Visits"
+      icon={Stethoscope}
+      action={
+        visits &&
+        visits.length > 0 && (
+          <button type="button" onClick={onViewAll} className="text-xs font-medium text-primary hover:underline">
+            View All Visits
+          </button>
+        )
+      }
+    >
+      {isPending ? (
+        <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading visits…
+        </div>
+      ) : !visits || visits.length === 0 ? (
+        <p className="py-2 text-sm text-muted-foreground">No visits recorded for this patient yet.</p>
+      ) : (
+        <VisitsTable visits={visits} limit={4} />
+      )}
+    </SectionCard>
+  );
+}
+
+/* --------------------------------------------------------------------- Recent Documents */
+
+async function openDocument(document: DocumentResponse, mode: 'view' | 'download') {
+  const blob = await documentsApi.getDocumentContent(document.id);
+  const url = URL.createObjectURL(blob);
+  if (mode === 'view') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  const link = window.document.createElement('a');
+  link.href = url;
+  link.download = document.originalFileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function DocumentRow({ document }: { document: DocumentResponse }) {
+  return (
+    <div className="flex items-center justify-between gap-2 py-1.5 text-sm">
+      <div className="min-w-0">
+        <p className="truncate font-medium text-foreground">{document.originalFileName}</p>
+        <p className="text-xs text-muted-foreground">
+          {humanize(document.documentType)} · {formatFileSize(document.sizeBytes)}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Badge variant={documentStatusBadgeVariant(document.status)} className="text-[10px]">
+          {document.status}
+        </Badge>
+        {document.status === 'Available' && (
+          <>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label={`View ${document.originalFileName}`} onClick={() => openDocument(document, 'view')}>
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label={`Download ${document.originalFileName}`}
+              onClick={() => openDocument(document, 'download')}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RecentDocumentsCard({ patient, onViewAll }: { patient: Patient; onViewAll: () => void }) {
+  const { data: documents, isPending } = usePatientDocumentsQuery(patient.id);
+  const recent = [...(documents ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <SectionCard
+      title="Recent Documents"
+      icon={FileText}
+      action={
+        documents &&
+        documents.length > 0 && (
+          <button type="button" onClick={onViewAll} className="text-xs font-medium text-primary hover:underline">
+            View All Documents ({documents.length})
+          </button>
+        )
+      }
+    >
+      {isPending ? (
+        <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading documents…
+        </div>
+      ) : recent.length === 0 ? (
+        <p className="py-2 text-sm text-muted-foreground">No documents uploaded for this patient yet.</p>
+      ) : (
+        <div className="flex flex-col divide-y divide-border">
+          {recent.slice(0, 4).map((document) => (
+            <DocumentRow key={document.id} document={document} />
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+/* ------------------------------------------------------------------------------ Overview */
+
+function OverviewTab({ patient, onNavigateToTab }: { patient: Patient; onNavigateToTab: (tab: string) => void }) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-4">
+        <PersonalContactCard patient={patient} />
+        <AddressEmergencyCard patient={patient} />
+        <RegistrationDetailsCard patient={patient} />
+        <ClinicalAlertsCard patient={patient} />
+      </div>
+
+      <AtAGlanceStrip patient={patient} />
+
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        <RecentVisitsCard patient={patient} onViewAll={() => onNavigateToTab('visits')} />
+        <RecentDocumentsCard patient={patient} onViewAll={() => onNavigateToTab('documents')} />
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------------- Visits */
+
+function PatientVisitsTab({ patient }: { patient: Patient }) {
+  const { data: visits, isPending } = usePatientVisitsQuery(patient.id);
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading visits…
+      </div>
+    );
+  }
+
+  if (!visits || visits.length === 0) {
+    return <EmptyState icon={CalendarClock} message="No visits have been recorded for this patient yet." />;
+  }
+
+  return <VisitsTable visits={visits} />;
+}
+
+/* ---------------------------------------------------------------------------- Billing */
 
 function BillingLineItem({ item }: { item: BillingItem }) {
   const { serviceLabel, consultantName } = describeBillingItem(item);
@@ -155,8 +605,8 @@ function PatientBillingTab({ patientId }: { patientId: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-border p-4 sm:p-5">
-      <div className="flex flex-col gap-4">
+    <div className="rounded-lg border border-border p-3">
+      <div className="flex flex-col gap-3">
         {billings.map((billing) => (
           <div key={billing.id} className="flex flex-col divide-y divide-border">
             {billing.items.map((item) => (
@@ -176,86 +626,117 @@ function PatientBillingTab({ patientId }: { patientId: string }) {
   );
 }
 
+/* -------------------------------------------------------------------------- Documents */
+
 function PatientDocumentsTab({ patient }: { patient: Patient }) {
   const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
   const idProofUrl = usePatientDocumentUrl(patient.id, 'IdProof');
+  const { data: documents, isPending } = usePatientDocumentsQuery(patient.id);
+  const sorted = [...(documents ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">On file</h2>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Patient photo</span>
-          {photoUrl ? (
-            <img
-              src={photoUrl}
-              alt={`${patient.firstName} ${patient.lastName}`}
-              className="mt-1 h-28 w-28 rounded-md border border-border object-cover"
-            />
-          ) : (
-            <span className="text-sm text-muted-foreground">Not uploaded.</span>
-          )}
+    <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-card p-3">
+          <h2 className="text-sm font-semibold text-foreground">On file</h2>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Patient photo</span>
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt={`${patient.firstName} ${patient.lastName}`}
+                className="mt-1 h-28 w-28 rounded-md border border-border object-cover"
+              />
+            ) : (
+              <span className="text-sm text-muted-foreground">Not uploaded.</span>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ID proof</span>
+            {idProofUrl ? (
+              <a href={idProofUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                {patient.idProofType} on file — view
+              </a>
+            ) : (
+              <span className="text-sm text-muted-foreground">Not uploaded.</span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ID proof</span>
-          {idProofUrl ? (
-            <a href={idProofUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-              {patient.idProofType} on file — view
-            </a>
-          ) : (
-            <span className="text-sm text-muted-foreground">Not uploaded.</span>
-          )}
+
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Upload new</h2>
+          <PatientDocumentUpload patientId={patient.id} bare />
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Upload new</h2>
-        <PatientDocumentUpload patientId={patient.id} bare />
+      <div className="rounded-lg border border-border bg-card p-3">
+        <h2 className="mb-2 text-sm font-semibold text-foreground">All documents</h2>
+        {isPending ? (
+          <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading documents…
+          </div>
+        ) : sorted.length === 0 ? (
+          <p className="py-2 text-sm text-muted-foreground">No documents uploaded for this patient yet.</p>
+        ) : (
+          <div className="flex flex-col divide-y divide-border">
+            {sorted.map((document) => (
+              <DocumentRow key={document.id} document={document} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export function PatientDetails({ patient }: PatientDetailsProps) {
+/* ------------------------------------------------------------------------------- Root */
+
+export function PatientDetails({ patient, activeTab, onActiveTabChange }: PatientDetailsProps) {
   return (
-    <Tabs defaultValue="profile">
+    <Tabs value={activeTab} onValueChange={onActiveTabChange}>
       <TabsList>
-        <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="visits">Visits</TabsTrigger>
-        <TabsTrigger value="billing">Billing</TabsTrigger>
+        <TabsTrigger value="encounters">Encounters</TabsTrigger>
+        <TabsTrigger value="medical-information">Medical Information</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
+        <TabsTrigger value="billing">Billing</TabsTrigger>
         <TabsTrigger value="timeline">Timeline</TabsTrigger>
-        <TabsTrigger value="medical-history">Medical History</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="profile" className="pt-4">
-        <PatientProfileTab patient={patient} />
+      <TabsContent value="overview" className="pt-2.5">
+        <OverviewTab patient={patient} onNavigateToTab={onActiveTabChange} />
       </TabsContent>
 
-      <TabsContent value="visits" className="pt-4">
+      <TabsContent value="visits" className="pt-2.5">
+        <PatientVisitsTab patient={patient} />
+      </TabsContent>
+
+      <TabsContent value="encounters" className="pt-2.5">
         <EmptyState
-          icon={CalendarClock}
-          message="Visit/encounter history isn't tracked yet — registering a patient today only captures their demographics, contact, and medical information."
+          icon={Stethoscope}
+          message="Encounters aren't tracked as a separate record yet — each visit's consultation lines (department + consultant) are shown on the Visits tab."
         />
       </TabsContent>
 
-      <TabsContent value="billing" className="pt-4">
-        <PatientBillingTab patientId={patient.id} />
+      <TabsContent value="medical-information" className="pt-2.5">
+        <EmptyState
+          icon={HeartPulse}
+          message="Detailed medical history (diagnoses, medications, past procedures) isn't tracked in this system yet — see the Clinical Alerts card on the Overview tab for what is captured today."
+        />
       </TabsContent>
 
-      <TabsContent value="documents" className="pt-4">
+      <TabsContent value="documents" className="pt-2.5">
         <PatientDocumentsTab patient={patient} />
       </TabsContent>
 
-      <TabsContent value="timeline" className="pt-4">
-        <EmptyState icon={ClipboardList} message="No timeline activity has been recorded for this patient yet." />
+      <TabsContent value="billing" className="pt-2.5">
+        <PatientBillingTab patientId={patient.id} />
       </TabsContent>
 
-      <TabsContent value="medical-history" className="pt-4">
-        <EmptyState
-          icon={HeartPulse}
-          message="Detailed medical history (diagnoses, medications, past procedures) isn't tracked in this system yet — see the Allergy Details card on the Profile tab for what is captured today."
-        />
+      <TabsContent value="timeline" className="pt-2.5">
+        <EmptyState icon={ClipboardList} message="No timeline activity has been recorded for this patient yet." />
       </TabsContent>
     </Tabs>
   );

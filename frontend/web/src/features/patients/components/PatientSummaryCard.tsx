@@ -1,72 +1,146 @@
 import type { Patient } from '@hms/shared';
-import { Droplet, Pencil, Phone, User, UserRound, VenusAndMars, type LucideIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Droplet, FileUp, MoreHorizontal, Pencil, Printer, Trash2, UserRound, VenusAndMars } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useAuth } from '../../auth/AuthContext';
 import { bloodGroupLabel } from '../bloodGroupLabel';
+import { useDeletePatientMutation } from '../hooks/usePatientMutations';
 import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
+import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { DeletePatientDialog } from './DeletePatientDialog';
 
 interface PatientSummaryCardProps {
   patient: Patient;
+  /** Jumps the tab strip below to Documents — see PatientViewPage, which owns the controlled tab state. */
+  onAddDocument: () => void;
 }
 
-function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2.5 py-2">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-muted-foreground">
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="flex min-w-0 flex-col">
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
-        <span className="truncate text-sm font-medium text-foreground">{value}</span>
-      </div>
-    </div>
-  );
+function MetaItem({ children }: { children: React.ReactNode }) {
+  return <span className="inline-flex items-center gap-1 text-sm text-foreground">{children}</span>;
 }
 
-/** Compact left-rail identity card — photo, name, UHID, and the handful of facts a
- * receptionist or doctor needs at a glance without opening the Profile tab. Replaces the
- * old full-width banner + Document Upload side panel (see PatientViewPage). */
-export function PatientSummaryCard({ patient }: PatientSummaryCardProps) {
+/** Compact, full-width identity + quick-glance bar for the patient view page — replaces the old
+ * left-rail card. Shows only fields that exist on the Patient record (plus Last Visit, sourced
+ * from the real visits list); there's deliberately no Patient Type / Primary Doctor / Next
+ * Appointment / Status row here since none of those are tracked in the schema yet. */
+export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCardProps) {
   const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
+  const { data: visits } = usePatientVisitsQuery(patient.id);
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
+  const deleteMutation = useDeletePatientMutation();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const lastVisit = visits?.[0];
+
+  function handleConfirmDelete() {
+    deleteMutation.mutate(patient.id, {
+      onSuccess: () => navigate('/patients/registration'),
+    });
+  }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 shadow-soft-md">
-      <div className="flex flex-col items-center gap-3 text-center">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 shadow-soft-md lg:flex-row lg:items-center lg:justify-between print:shadow-none">
+      <div className="flex items-center gap-3">
         {photoUrl ? (
           <img
             src={photoUrl}
             alt={`${patient.firstName} ${patient.lastName}`}
-            className="h-24 w-24 rounded-full border border-border object-cover"
+            className="h-14 w-14 shrink-0 rounded-full border border-border object-cover"
           />
         ) : (
-          <span className="flex h-24 w-24 items-center justify-center rounded-full border border-border bg-accent text-muted-foreground">
-            <UserRound className="h-10 w-10" />
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-accent text-accent-foreground">
+            <UserRound className="h-6 w-6" />
           </span>
         )}
+
         <div className="flex flex-col gap-1">
-          <h1 className="text-base font-semibold text-foreground">
-            {patient.title} {patient.firstName} {patient.lastName}
-          </h1>
-          <Badge variant="secondary" className="mx-auto font-mono text-[11px]">
-            {patient.uhid}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold leading-none text-foreground">
+              {patient.title} {patient.firstName} {patient.lastName}
+            </h1>
+            <Badge variant="secondary" className="font-mono text-[11px]">
+              {patient.uhid}
+            </Badge>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <MetaItem>{patient.age} Yrs</MetaItem>
+            <span className="text-border">·</span>
+            <MetaItem>
+              <VenusAndMars className="h-3.5 w-3.5" />
+              {patient.gender}
+            </MetaItem>
+            <span className="text-border">·</span>
+            <MetaItem>
+              <Droplet className="h-3.5 w-3.5" />
+              {bloodGroupLabel(patient.bloodGroup)}
+            </MetaItem>
+            <span className="text-border">·</span>
+            <MetaItem>{patient.primaryPhone}</MetaItem>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>Registered {new Date(patient.createdAt).toLocaleDateString('en-IN')}</span>
+            <span className="text-border">·</span>
+            <span>
+              Last visit{' '}
+              {lastVisit ? `${new Date(lastVisit.createdAt).toLocaleDateString('en-IN')} (${lastVisit.visitType})` : '—'}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col divide-y divide-border border-y border-border">
-        <Stat icon={User} label="Age" value={`${patient.age} yrs`} />
-        <Stat icon={VenusAndMars} label="Gender" value={patient.gender} />
-        <Stat icon={Droplet} label="Blood group" value={patient.bloodGroup ? bloodGroupLabel(patient.bloodGroup) : '—'} />
-        <Stat icon={Phone} label="Mobile" value={patient.primaryPhone} />
+      <div className="flex shrink-0 flex-wrap items-center gap-2 print:hidden">
+        {hasPermission('patient-management.edit') && (
+          <Button asChild size="sm" className="gap-1.5">
+            <Link to={`/patients/registration/${patient.id}/edit`}>
+              <Pencil className="h-4 w-4" />
+              Edit Patient
+            </Link>
+          </Button>
+        )}
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={onAddDocument}>
+          <FileUp className="h-4 w-4" />
+          Add Document
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+          <Printer className="h-4 w-4" />
+          Print
+        </Button>
+        {hasPermission('patient-management.delete') && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="More actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setConfirmingDelete(true)}>
+                <Trash2 className="h-4 w-4" />
+                Delete patient
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      <Button asChild variant="outline" className="gap-1.5">
-        <Link to={`/patients/registration/${patient.id}/edit`}>
-          <Pencil className="h-4 w-4" />
-          Edit patient
-        </Link>
-      </Button>
+      {confirmingDelete && (
+        <DeletePatientDialog
+          patient={patient}
+          isDeleting={deleteMutation.isPending}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }
