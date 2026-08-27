@@ -7,6 +7,8 @@ using HMS.Modules.HR;
 using HMS.Modules.Identity;
 using HMS.Modules.IPD;
 using HMS.Modules.Masters;
+using HMS.Modules.Messaging;
+using HMS.Modules.Notifications;
 using HMS.Modules.Patients;
 using HMS.Modules.Pharmacy;
 using HMS.Modules.Platform;
@@ -63,6 +65,20 @@ public static class ModuleRegistration
         // billing — ADR-028) public service seams, so it must register after all three —
         // same reasoning as IPD above.
         services.AddPharmacyModule(configuration);
+
+        // Notifications depends on Identity's IUserService public service seam (resolving a
+        // recipient's email/phone number for the background Email/Sms delivery pipeline —
+        // docs/DecisionLog.md ADR-032), so it must register after AddIdentityModule
+        // (satisfied at the top of this method). Placed here, after every business-domain
+        // module, because INotificationService is the thing Appointments/Patients/Billing/
+        // Pharmacy/IPD call into (a later phase wires the real call sites) — read naturally
+        // as "the last thing every other module depends on."
+        services.AddNotificationsModule(configuration);
+
+        // Messaging depends on Notifications' public INotificationService (the new-message
+        // in-app alert — docs/DecisionLog.md ADR-034), so it must register after
+        // AddNotificationsModule immediately above.
+        services.AddMessagingModule(configuration);
 
         // Platform is deliberately last and self-contained: it owns a separate physical
         // database (hms_platform via ConnectionStrings:Platform), not another schema in the

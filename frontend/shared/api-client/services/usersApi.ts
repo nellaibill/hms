@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateUserRequest, SetPasswordRequest, UpdateUserRequest, User, UserListQuery } from '../../dtos';
+import type { CreateUserRequest, SetPasswordRequest, StaffDirectoryEntry, UpdateUserRequest, User, UserListQuery } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -71,6 +71,13 @@ export class UsersApi {
     // parameter name, which ASP.NET Core model binding matches against.
     formData.append('photo', file);
     const response = await this.client.postFormData<User>(API_ROUTES.users.profilePhoto(id), formData);
+    return response.data;
+  }
+
+  /** The low-sensitivity staff picker (no admin permission required) — used by the
+   * messaging module's "start a conversation" screen. */
+  async getStaffDirectory(search?: string): Promise<StaffDirectoryEntry[]> {
+    const response = await this.client.get<StaffDirectoryEntry[]>(API_ROUTES.users.directory, { query: { search } });
     return response.data;
   }
 }

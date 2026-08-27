@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\src\Modules\IPD\HMS.Modules.IPD\HMS.Modules.IPD.csproj" />
     <ProjectReference Include="..\..\src\Modules\Platform\HMS.Modules.Platform\HMS.Modules.Platform.csproj" />
     <ProjectReference Include="..\..\src\Modules\Pharmacy\HMS.Modules.Pharmacy\HMS.Modules.Pharmacy.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Messaging\HMS.Modules.Messaging\HMS.Modules.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

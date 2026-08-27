@@ -37,6 +37,152 @@ _To be documented._
 
 ## Decisions
 
+### ADR-035: Messaging & Notification module Phase 8 — provisioning, staff directory, and the frontend
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-034 — the final phase of the design doc: promote the module out of `FeatureCatalog.UiOnly`, wire it into real tenant provisioning, and build the frontend (notification bell, notifications page, preferences page, messaging UI), replacing the `PlaceholderPage` at `/engagement/messages`. The design doc's Phase 8 also called for "add the actual NotifyAsync calls at each real trigger point in Appointments/Patients/Billing/Pharmacy/IPD" — investigated first, before writing any of that wiring.
+
+**Decision**
+1. **No automatic cross-module notification triggers were wired — investigated and confirmed there is nothing real to wire yet.** Checked `PatientService.CreateAsync`, `InvoiceService.CreateAsync`/`RecordPaymentAsync`, and HR's `ShiftAssignment` for a genuine `identity.users` id to notify: every one of them only has `actorId` (the caller themselves) in scope. `Masters.Consultant` and HR's `ShiftAssignment.StaffId` are both explicitly documented as separate, unrelated id spaces with no link to `identity.users` — "notify the consultant" or "notify the assigned staff member" is not representable today without adding that linkage first. There is also no "get users by role" capability anywhere (`IUserService`/`IRoleService` were checked in full) to support a generic "notify front-desk" broadcast. Rather than wire a self-notification (noisy, not a real feature) or invent a fake recipient, this is left undone and documented as a real, confirmed gap — the same "do the core piece fully, defer the adjacent architecture change explicitly" pattern as ADR-027/ADR-028's Pharmacy billing deferral. The `Appointments` module referenced in the design doc's examples doesn't exist as real code at all (a placeholder project, per `FeatureCatalog`'s own comment), so "appointment booked/reminder/cancelled" triggers have no home yet either. What *is* fully wired end-to-end today: the admin manual-send endpoint (`POST /api/v1/notifications`, `engagement.create`) and Messaging's new-message hook (ADR-034) — both live-verified.
+2. **`messages-and-notifications` promoted from `FeatureCatalog.UiOnly` to `.SchemaBacked`**, gating both `NotificationsDbContext` and `MessagingDbContext` behind the one toggle (`TenantMigrationService` migrates both when the feature is enabled) — mirrors how `Mandatory` already groups multiple schemas under one umbrella.
+3. **A new `IUserService.GetStaffDirectoryAsync`/`GET /api/v1/users/directory` endpoint** — discovered live, mid-phase, that the messaging UI's most basic requirement ("pick a colleague to message") had no accessible backend: the only existing user-listing endpoint (`GET /api/v1/users`) requires `identity-administration.view`, an admin-only permission, which would make "start a conversation" unusable for regular staff. Added a deliberately minimal, low-sensitivity `StaffDirectoryEntryResponse` (`Id`/`FirstName`/`LastName`/`RoleName` only — no email/phone/login metadata) behind `[Authorize]` alone, capped at 100 active users via the existing `PagedRequest.MaxPageSize`. This is completing what Phase 7's messaging feature fundamentally requires, not scope creep.
+4. **Live-verified end-to-end against the real backend**, not just `dotnet test` — this phase is entirely UI-facing. Registered a fresh throwaway tenant (`msgtest`) via the Platform Portal (own credentials, no reused secrets — mirrors the module-rollout precedent for Pharmacy), enabled the feature, and triggered `POST /api/platform/hospitals/{id}/migrate` (an existing operator action, `PlatformDashboardService.MigrateAsync`) since toggling a feature "on" via Manage Features does not itself run migrations — confirmed live (the first attempt, against the pre-existing "Dev Hospital" tenant, failed with `relation "notifications.notification_recipients" does not exist` until `/migrate` was called explicitly). Created a second staff user and, through the actual browser UI: started a 1:1 conversation, sent a message, confirmed it rendered instantly, confirmed the new-message notification fired (`NotificationService` logged "Created notification ... for 1 recipient(s), 1 queued Email/Sms deliveries"), and confirmed the background delivery pipeline resolved the recipient's email via Identity and the (unconfigured, per ADR-033) `SmtpEmailSender` logged a graceful warning rather than crashing. Also verified the Preferences tab's toggle-and-upsert round-trip live. No console errors, no failed requests beyond one unrelated pre-login 401.
+5. **The `Manage Features` toggle not auto-migrating on enable is a pre-existing gap, not introduced here** — left unfixed (out of scope for this module) but now confirmed and worth a future fix: today an operator must remember to also call `/migrate` after enabling any optional feature for an existing tenant, for every module, not just this one.
+
+**Consequences**
+- The frontend gained: `frontend/shared`'s Notifications/Messaging DTOs, enums, and four new API-client services (`NotificationsApi`, `NotificationPreferencesApi`, `NotificationTemplatesApi`, `ConversationsApi`); `frontend/web`'s `features/notifications` and `features/messaging` (hooks + components), `MessagesAndNotificationsPage` (Messages/Notifications/Preferences tabs), and a live-wired `NotificationsMenu` header bell (the old `mockNotifications.ts` was deleted, not left dead).
+- No websocket/real-time layer exists anywhere in this codebase — the bell, notification list, and conversation list all poll via React Query `refetchInterval` (30s/15s/8s depending on how actively the user is likely watching), the only established pattern here.
+- `NotificationTemplatesApi`/template-editor UI was built in `frontend/shared` but has no page wired up yet (no nav entry calls for a dedicated admin template-editor screen) — the backend CRUD (Phase 3) is complete and reachable directly via the API; a UI for it is a reasonable, small follow-up whenever an admin actually needs to author a template instead of relying on a notification's caller-supplied literal `Body`.
+
+---
+
+### ADR-034: Messaging & Notification module Phase 7 — internal messaging (conversations, participants, messages)
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+`HMS.Modules.Messaging`'s Domain/Infrastructure existed since Phase 1 (ADR-029) but had no Application/Endpoints layer. Phase 7 built the full messaging feature on top of it: start a conversation, list mine, read/send messages, mark read, plus the new-message notification hook.
+
+**Decision**
+1. **`ConversationParticipant` membership is the sole authorization check** for every per-conversation action (`GetMessagesAsync`, `SendMessageAsync`, `MarkReadAsync`) — a single `GetByConversationAndUserAsync` lookup returning null covers both "not a participant" *and* "conversation doesn't exist at all," collapsing both into one 403 (`ConversationErrorCodes.NotParticipant`). This is a stricter privacy property than Notifications' equivalent choice (ADR-030's `NOT_FOUND`): a caller can't even tell whether a given conversation id is valid, not just whether it's theirs.
+2. **A OneToOne "create conversation" call is idempotent** — `FindOneToOneConversationIdAsync` checks for an existing conversation between the same two users first and returns it instead of creating a duplicate thread. Not explicitly required by the design doc, but treated as basic correctness (clicking "message this person" from two different screens must not fork the thread), not scope creep.
+3. **`ConversationResponse` carries only participant `UserId`s, never names** — resolving display names/avatars is left to the frontend (a batched call to Identity's own Users API), keeping this module's one cross-module dependency (Notifications) from growing into two just to decorate a response DTO.
+4. **The new-message hook fires unconditionally for every other participant**, not only ones who are "away" — no presence/"currently active in this conversation" tracking exists (explicitly out of scope per the design doc), so every message raises one `INotificationService.NotifyAsync` call with a 200-character preview as the body. `NotifyAsync`'s own preference check (ADR-032) still governs whether Email/Sms also fire; this hook only ever asks for in-app.
+5. **`HMS.Modules.Messaging` now legitimately depends on `HMS.Modules.Notifications.Application`** (its public `INotificationService`) — same pattern as ADR-032's Notifications→Identity dependency. `NotificationsCrossModuleDependencyTests`' blanket ban now excludes Messaging, covered instead by a new `MessagingCrossModuleDependencyTests` (mirrors the established Application-allowed-but-not-Domain/Infrastructure shape). Messaging has no legitimate reason to touch Identity directly (it only ever carries opaque `UserId` values), so that ban stays a full blanket ban for Messaging.
+6. **Conversation listing (`GetMyConversationsAsync`) accepts N+1 queries** for per-conversation participants and unread counts — a user's conversation count is realistically dozens, not thousands, so the win from batching wasn't judged worth the added complexity at this scale (mirrors trade-offs already accepted elsewhere in this codebase, e.g. Pharmacy's product/batch/patient lookups on the Dispense list).
+
+**Consequences**
+- 13 new `ConversationServiceTests` cover participant-gating, the OneToOne dedup, group-size validation, and the notification hook's recipient exclusion.
+- No live browser verification — this phase has no frontend yet (a later phase builds the messaging UI).
+
+---
+
+### ADR-033: Messaging & Notification module Phase 5+6 — real Email (SMTP) and SMS (generic HTTP gateway) senders
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-032. The design doc scoped these as two separate phases, each needing "an infra decision for the user to make when this phase starts" (an SMTP account, an SMS gateway vendor) — done together here since neither decision was actually available mid-session, so both senders were built to the same "real but config-driven, gracefully degrades when unconfigured" shape instead of waiting.
+
+**Decision**
+1. **`SmtpEmailSender` replaces `LoggingEmailSender` outright** (the Phase 4 stub is deleted, not left dead/unregistered) — uses the .NET runtime's built-in `SmtpClient` rather than adding a NuGet dependency (e.g. MailKit) for one send operation. Reads `Notifications:Smtp:*` directly from `IConfiguration` in the constructor, mirroring `JwtTokenGenerator`'s identical pattern (no `IOptions<T>` wrapper).
+2. **`HttpSmsSender` replaces `LoggingSmsSender` outright**, same reasoning. No vendor SDK (Twilio, MSG91, etc.) is referenced — posts a generic `{ to, from, message }` JSON body with a Bearer `Notifications:Sms:ApiKey` to a configured `Notifications:Sms:BaseUrl`. Picking a specific gateway is left to whoever configures a real tenant's deployment; a gateway with a genuinely different contract gets its own `ISmsSender` implementation, not a change to this one.
+3. **Both senders no-op with a logged warning when unconfigured, rather than throwing** — deliberately different from `JwtTokenGenerator`'s missing-config-throws-at-startup behavior, since JWT signing is mandatory for the app to function at all while Email/Sms are best-effort channels by design (see ADR-029). A hospital that hasn't set up SMTP/SMS yet should not have every notification delivery attempt throw.
+4. **`appsettings.json` gained a `Notifications:Smtp`/`Notifications:Sms` section** with empty placeholder values, matching every other credential-shaped config block in this file (`Jwt:SigningKey`, `SuperAdminSeed:Password`, etc.) — real values are supplied per-environment, never committed.
+
+**Consequences**
+- `ISmsSender`/`IEmailSender`'s interfaces are unchanged from Phase 4 — nothing upstream (`NotificationDeliveryBackgroundService`) needed to change, confirming the swap-in design worked as intended.
+- 4 new unit tests cover only the "unconfigured → no-op, doesn't throw" path for each sender — the actual network call (real SMTP handshake, real HTTP POST) isn't unit-testable without a live endpoint, consistent with this codebase's existing line between unit and integration test scope.
+- Real end-to-end delivery (an actual email/SMS landing somewhere) is unverified — there is no SMTP account or SMS gateway configured in this environment. This is expected until a real deployment supplies both.
+
+---
+
+### ADR-032: Messaging & Notification module Phase 4 — background Email/Sms delivery pipeline
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-031. Phase 4's goal was the async delivery architecture itself (queue, worker, status tracking, stub senders) — proven correct before any real network dependency (Phase 5/6) is added.
+
+**Decision**
+1. **`NotificationDeliveryQueue`/`NotificationDeliveryBackgroundService` are a direct copy of `HMS.Modules.Documents`' scan pipeline shape** — a bounded (500) `Channel<T>`, one singleton queue, one hosted-service reader draining it with a fresh DI scope (and `ITenantContext.SetTenant`) per item, a top-level per-item try/catch so one failure never kills the reader loop. This is the second use of this exact mechanism in the codebase (see ADR-029's original reasoning for why a Hangfire/Redis-based queue wasn't introduced instead).
+2. **`NotifyAsync` now wires `NotificationPreferences` into delivery** (deferred from ADR-031 until there was an actual delivery pipeline to gate): for each recipient, `ResolveChannelsAsync` checks their preference row for the notification's `Category` — a missing row defaults to email-on/sms-off (matching `NotificationPreference.Create`'s own defaults, so "never saved a preference" and "saved the default explicitly" behave identically) — except `NotificationSeverity.Emergency`, which bypasses preferences entirely and always queues both channels.
+3. **Notifications depends on Identity's public `IUserService`** to resolve a recipient's actual email/phone number for delivery — the delivery pipeline has no other way to reach `identity.users`. This is the same cross-module pattern Pharmacy/Billing/IPD already use (`docs/DeveloperHandbook.md`'s "depend only on another module's Contracts/public Application seam" rule), extended for the first time to a module depending on **Identity** specifically. `HMS.ArchitectureTests.Modules.Identity.CrossModuleDependencyTests`' blanket ban (no module may reference `HMS.Modules.Identity.Application`) now excludes Notifications, covered instead by a new `NotificationsCrossModuleDependencyTests` (mirrors `ProductsCrossModuleDependencyTests`' Application-allowed-but-not-Domain/Infrastructure shape).
+4. **Deliveries are enqueued only after the triggering `SaveChangesAsync` commits**, never before — the background reader re-fetches each `NotificationDelivery` row by id from the database, so a queued item pointing at a not-yet-committed row would silently vanish (`GetByIdAsync` returns null, logged as a warning, delivery stays `Pending` forever). Mirrors `DocumentService.UploadAsync`'s identical save-then-enqueue ordering.
+5. **Both stub senders (`LoggingEmailSender`, `LoggingSmsSender`) log instead of sending** — mirrors `NullVirusScanner`'s exact reasoning: proves the pipeline's plumbing (queueing, status transitions, the `NotificationDelivery` state machine) is real and testable before any real network dependency's failure modes are in the mix. Superseded by real senders in ADR-033, built later the same session.
+
+**Consequences**
+- `NotificationDeliveryBackgroundService`, `NotificationDeliveryQueue`, and the stub senders have no dedicated unit tests — mirrors the Documents scan pipeline's identical (lack of) direct test coverage in this codebase; the pipeline is exercised through `NotificationServiceTests`' delivery-queueing assertions instead.
+- A queued delivery is lost if the process restarts before it's drained (in-memory queue) — the row stays `Pending` forever rather than being retried. Accepted at MVP scale, same trade-off `IDocumentScanQueue` already made.
+
+---
+
+### ADR-031: Messaging & Notification module Phase 3 — templates, preferences, and template-driven rendering
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-030. Phase 3's goal was to let every event in the design doc's event table be authored (subject/body text) without touching code, by wiring `NotificationTemplate`/`NotificationPreference` (built in Phase 1, unused since) into real CRUD and into `NotifyAsync` itself.
+
+**Decision**
+1. **`NotifyRequest.Body` became optional.** When omitted, `NotificationService.NotifyAsync` looks up the InApp-channel `NotificationTemplate` for `TemplateKey` and renders its `BodyTemplate` against `Placeholders` (new `TemplateRenderer` — flat `{{Key}}` substitution, unmatched tokens left literal rather than blanked). `Title` stays always-literal — short enough that a second templated field wasn't worth it. This is additive to Phase 2's contract, not a breaking change (`Body` was required before; nothing yet calls this method in anger).
+2. **`NotificationTemplateService`/`NotificationTemplatesController`**: CRUD gated by the existing `engagement.*` permissions (view/create/edit) — content and active-state are edited together in one `PUT`, no separate activate/deactivate route.
+3. **An expected validation failure that depends on already-loaded entity state stays a `Result`, never an exception.** `NotificationTemplate.UpdateContent`'s own guard (Email channel requires a Subject) would otherwise throw `ArgumentException` and surface as a 500 — `NotificationTemplateService.UpdateAsync` checks this itself (it already has the loaded template's `Channel` in hand) before calling `UpdateContent`, so the domain guard never actually fires on this path; it stays as defense-in-depth.
+4. **`NotificationPreferenceService`/`NotificationPreferencesController`**: self-service only (`[Authorize]`, no `RequirePermission`), `PUT` upserts one category at a time. `GetMyPreferencesAsync` returns only rows the caller has actually saved — a missing category means "use the default," not "explicitly disabled" (see `NotificationPreference`'s Phase 1 doc comment); no attempt is made to enumerate/seed every possible category up front, since the category list itself isn't a fixed catalog anywhere in this codebase.
+
+**Consequences**
+- `NotificationsModuleBoundaryTests`' allow-list grew to include `INotificationTemplateService` and `INotificationPreferenceService`.
+- Preference checks are still not wired into delivery — that's meaningless until Phase 4/5/6's Email/Sms pipeline exists to check them against. In-app delivery (Phase 2) intentionally ignores preferences entirely, matching the design doc's "in-app is always delivered" decision.
+- 26 new unit tests (`NotificationTemplateServiceTests`, `NotificationPreferenceServiceTests`, plus 2 new `NotificationServiceTests` covering the template-rendering fallback).
+
+---
+
+### ADR-030: Messaging & Notification module Phase 2 — in-app notifications end-to-end, no templates yet
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-029. Phase 2's goal was to prove the fan-out + read/unread mechanics end-to-end (service + API), deliberately before template rendering (Phase 3) or async Email/Sms delivery (Phase 4) exist.
+
+**Decision**
+1. **`NotifyRequest` carries already-rendered `Title`/`Body`**, not just a `TemplateKey` to look up — `NotificationTemplate` exists (Phase 1) but isn't wired to rendering yet, so the caller (a later phase's Appointments/Patients/etc., or today's admin manual-send endpoint) supplies final text directly. `TemplateKey` is still recorded, informationally, for when Phase 3 adds rendering in front of the same method.
+2. **`INotificationService` is the module's public seam** (mirrors `IUserService`'s CS0051 reasoning) and is also, deliberately, the same method every other module will call in-process in a later phase — no event bus, per ADR-029.
+3. **`NotifyAsync` only ever writes the in-app channel** (`Notification` + `NotificationRecipient` rows) in this phase — no `NotificationDelivery` rows yet, since Email/Sms don't exist until Phase 4/5/6.
+4. **"My notifications" endpoints need no `RequirePermission`** beyond `[Authorize]` — every read/write is scoped to the caller's own `UserId` from the JWT, so there's no parameter surface to gate. Only the admin manual-send `POST /api/v1/notifications` requires `engagement.create`.
+5. **`MarkAsReadAsync` returns the same `NOT_FOUND` code for "doesn't exist" and "belongs to someone else"** — deliberately not distinguished, so the endpoint can't be used to probe whether a given id belongs to another user (mirrors `AuthenticationService`'s generic login-failure message).
+6. **`NotificationResponse` is a recipient's view, not the `Notification` itself** — its `Id` is the `NotificationRecipient.Id` (what "mark as read" targets), with a separate `NotificationId` field. A `Notify` call's response is a distinct `NotificationBroadcastResponse` (`NotificationId` + `RecipientCount`), since one call fans out to N recipient rows with no single "the" response.
+
+**Consequences**
+- `NotificationsModuleBoundaryTests`' allow-list grew to include `INotificationService` alongside `NotificationsDbContext`.
+- No live browser verification — this phase has no frontend yet; `dotnet test` (10 new `NotificationServiceTests`) is the verification, consistent with [[feedback_no_live_verification_per_fix]]'s reasoning for backend-only phases.
+
+---
+
+### ADR-029: Messaging & Notification module — two modules, in-process seam, Phase 1 is Domain + Infrastructure only
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+The user asked for a full design (no code) for a Messaging & Notification module covering in-app/email/SMS notifications and internal staff messaging, then approved starting implementation. The `messages-and-notifications` feature key and `engagement` permission category already existed (`FeatureCatalog.UiOnly`, shared with Calendar), and `HMS.Modules.Notifications` already existed as an empty scaffold (`docs/DeveloperHandbook.md`'s reserved-module pattern) — this design filled that slot rather than inventing a new one. The full design (architecture diagram, flows, database, APIs, security, phased plan) was published as a standalone artifact for review before any code was written; this ADR only records the decisions embodied in Phase 1.
+
+**Decision**
+1. **Two modules, not one**: `HMS.Modules.Notifications` (schema `notifications` — templates, preferences, notification fan-out, delivery tracking) and a new `HMS.Modules.Messaging` (schema `messaging` — conversations, participants, messages). Different aggregates, different lifecycles, different failure modes (an email backlog shouldn't affect chat) — kept as two single-purpose schemas per the one-schema-per-module rule, sharing one feature flag and permission category because the product experience is one page.
+2. **No new infrastructure.** Cross-module notification triggers will go through a plain public `INotificationService` seam (added in a later phase), called in-process — the same pattern Pharmacy already uses for `IInvoiceService`. Async Email/SMS delivery (also a later phase) will reuse `HMS.Modules.Documents`' existing `Channel<T>` + `BackgroundService` pattern (`DocumentScanQueue`/`DocumentScanBackgroundService`) rather than introducing Hangfire/Redis/Kafka.
+3. **Phase 1 scope is deliberately narrow**: Domain entities (5 for Notifications, 3 for Messaging), their EF Core configurations, repositories, DbContexts, and the two initial migrations. No `Application` services, validators, or `Endpoints` controllers yet — those are later phases, so each `AddXModule` currently registers only a `DbContext` and its repositories.
+4. **No per-message read-receipt table.** `ConversationParticipant.LastReadAt` (a single timestamp) answers "what's unread" for one-to-one and small-group conversations without the write/join cost of a receipt-per-message table — cut per the brief's explicit "don't add advanced chat features unless required."
+5. **No DB-level FK to `identity.users`** for any `UserId`/`SenderId` column — cross-schema FK constraints are a deliberate, reviewed exception per `docs/DatabaseArchitecture.md` §7, not a default; mirrors Pharmacy's existing treatment of `PatientId`/`ProductId` (plain indexed column, no `HasOne<>()`). Intra-module FKs (e.g. `NotificationRecipient` → `Notification`, `Message` → `Conversation`) do use real constraints, all `DeleteBehavior.Restrict`.
+6. **`messages-and-notifications` stays in `FeatureCatalog.UiOnly` for now** — promoting it to `SchemaBacked` (which wires it into `TenantMigrationService` so new/existing tenants actually get the `notifications`/`messaging` schemas provisioned) is deferred to the phase where the module is functionally complete end-to-end, mirroring how Pharmacy's own `FeatureCatalog` promotion happened only once its workflow was real. Until then, the migrations exist and are verified via `dotnet ef database update` against a local dev database, but are not part of the automatic tenant-provisioning path.
+7. Both modules' architecture boundary tests (`NotificationsModuleBoundaryTests`, `MessagingModuleBoundaryTests`) currently allow only the `DbContext` type as public — the same allow-list pattern grows to include a public service interface (e.g. `INotificationService`) once one exists, the same way `IEventService` was added to Calendar's.
+
+**Consequences**
+- Phase 1 has no user-facing effect at all (no endpoints, no tenant provisioning change) — it's the load-bearing scaffold every later phase builds on, verified by 8 new domain-entity test classes and 2 new architecture-boundary test classes, all green, plus a clean `dotnet build` of the full solution.
+- `HMS.Modules.Notifications`' `.csproj` gained the same EF Core/Npgsql/FluentValidation/`FrameworkReference` shape Identity/Pharmacy already have, even though `FluentValidation` and `FrameworkReference` aren't exercised until the `Application`/`Endpoints` phases — added now so the scaffold doesn't need a second edit later.
+- `CrossModuleDependencyTests` gained a `HMS.Modules.Messaging` entry alongside the existing `HMS.Modules.Notifications` one.
+
+---
+
 ### ADR-028: Pharmacy dispense billing is best-effort, generated server-side, not atomic with the dispense
 **Date:** 2026-08-20
 **Status:** Accepted

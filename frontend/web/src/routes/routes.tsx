@@ -60,6 +60,7 @@ const ShiftSwapRequestViewPage = lazy(() => import('../pages/hr/ShiftSwapRequest
 const ShiftSwapRequestEditPage = lazy(() => import('../pages/hr/ShiftSwapRequestEditPage'));
 const MonthlyRosterCalendarPage = lazy(() => import('../pages/hr/MonthlyRosterCalendarPage'));
 const CalendarEventsPage = lazy(() => import('../pages/calendar/CalendarEventsPage'));
+const MessagesAndNotificationsPage = lazy(() => import('../pages/messaging/MessagesAndNotificationsPage'));
 const DocumentManagementPage = lazy(() => import('../pages/documents/DocumentManagementPage'));
 const IpdDashboardPage = lazy(() => import('../pages/ipd/IpdDashboardPage'));
 const WardsListPage = lazy(() => import('../pages/ipd/WardsListPage'));
@@ -105,6 +106,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/support/inventory': withSuspense(<ProductsListPage />),
   '/admin/hr': withSuspense(<HrHubPage />),
   '/engagement/programmes': withSuspense(<CalendarEventsPage />),
+  '/engagement/messages': withSuspense(<MessagesAndNotificationsPage />),
   '/documents': withSuspense(<DocumentManagementPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
   '/pharmacy': withSuspense(<PharmacyHubPage />),

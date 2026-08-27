@@ -7,12 +7,16 @@ import {
   BrandingApi,
   ConsultantsApi,
   ConsultationTypesApi,
+  ConversationsApi,
   DepartmentsApi,
   DocumentsApi,
   EventsApi,
   HttpClient,
   IpdDashboardApi,
   MastersApi,
+  NotificationPreferencesApi,
+  NotificationsApi,
+  NotificationTemplatesApi,
   PatientsApi,
   PharmacyApi,
   PlatformAuthApi,
@@ -86,3 +90,7 @@ export const admissionsApi = new AdmissionsApi(httpClient);
 export const ipdDashboardApi = new IpdDashboardApi(httpClient);
 export const billingApi = new BillingApi(httpClient);
 export const pharmacyApi = new PharmacyApi(httpClient);
+export const notificationsApi = new NotificationsApi(httpClient);
+export const notificationPreferencesApi = new NotificationPreferencesApi(httpClient);
+export const notificationTemplatesApi = new NotificationTemplatesApi(httpClient);
+export const conversationsApi = new ConversationsApi(httpClient);
