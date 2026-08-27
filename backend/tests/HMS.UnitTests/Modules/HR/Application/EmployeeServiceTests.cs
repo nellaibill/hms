@@ -22,11 +22,13 @@ public class EmployeeServiceTests
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IDesignationService _designationService = Substitute.For<IDesignationService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly ILeaveTypeRepository _leaveTypeRepository = Substitute.For<ILeaveTypeRepository>();
+    private readonly ILeaveRequestRepository _leaveRequestRepository = Substitute.For<ILeaveRequestRepository>();
     private readonly EmployeeService _sut;
 
     public EmployeeServiceTests()
     {
-        _sut = new EmployeeService(_repository, _departmentService, _designationService, _userService);
+        _sut = new EmployeeService(_repository, _departmentService, _designationService, _userService, _leaveTypeRepository, _leaveRequestRepository);
 
         _departmentService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Result<DepartmentResponse>.Success(new DepartmentResponse { Name = "Cardiology" }));
@@ -235,6 +237,50 @@ public class EmployeeServiceTests
 
         result.IsSuccess.Should().BeTrue();
         employee.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetLeaveBalancesAsync_ComputesRemainingDaysPerActiveLeaveType()
+    {
+        var employee = Employee.Create("EMP-1", "A", "B", Gender.Male, DateOfBirth, "p", "e@example.com", "addr", "c", "cp", Guid.NewGuid(), Guid.NewGuid(), EmployeeType.Permanent, JoiningDate, EmploymentStatus.Active, null, null, null, true, null);
+        _repository.ExistsAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var leaveType = LeaveType.Create("CL", "Casual Leave", 12, true, true, null);
+        _leaveTypeRepository.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(new List<LeaveType> { leaveType });
+        _leaveRequestRepository.GetApprovedDaysAsync(employee.Id, leaveType.Id, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(5);
+
+        var result = await _sut.GetLeaveBalancesAsync(employee.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+        result.Value![0].UsedDays.Should().Be(5);
+        result.Value[0].RemainingDays.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task GetLeaveBalancesAsync_WithUnlimitedLeaveType_HasNullRemainingDays()
+    {
+        var employee = Employee.Create("EMP-1", "A", "B", Gender.Male, DateOfBirth, "p", "e@example.com", "addr", "c", "cp", Guid.NewGuid(), Guid.NewGuid(), EmployeeType.Permanent, JoiningDate, EmploymentStatus.Active, null, null, null, true, null);
+        _repository.ExistsAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var leaveType = LeaveType.Create("UL", "Unlimited Leave", null, true, true, null);
+        _leaveTypeRepository.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(new List<LeaveType> { leaveType });
+        _leaveRequestRepository.GetApprovedDaysAsync(employee.Id, leaveType.Id, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(3);
+
+        var result = await _sut.GetLeaveBalancesAsync(employee.Id, CancellationToken.None);
+
+        result.Value![0].RemainingDays.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetLeaveBalancesAsync_WhenEmployeeNotFound_ReturnsNotFoundFailure()
+    {
+        _repository.ExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.GetLeaveBalancesAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.NotFound);
     }
 
     [Fact]

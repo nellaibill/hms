@@ -31,6 +31,12 @@ public interface IEmployeeService
     Task<Result<EmployeeResponse>> ActivateAsync(Guid id, Guid? actorId, CancellationToken cancellationToken);
 
     Task<Result<EmployeeResponse>> DeactivateAsync(Guid id, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Per active LeaveType: max days, days used this calendar year (sum of
+    /// Approved LeaveRequests' TotalDays whose StartDate falls in the current year — the
+    /// server's UTC "now" year, no fiscal-year config), and days remaining. No separate
+    /// LeaveBalance table — computed on read every time, per the HR MVP spec.</summary>
+    Task<Result<IReadOnlyList<EmployeeLeaveBalanceResponse>>> GetLeaveBalancesAsync(Guid employeeId, CancellationToken cancellationToken);
 }
 
 internal class EmployeeService : IEmployeeService
@@ -39,17 +45,23 @@ internal class EmployeeService : IEmployeeService
     private readonly IDepartmentService _departmentService;
     private readonly IDesignationService _designationService;
     private readonly IUserService _userService;
+    private readonly ILeaveTypeRepository _leaveTypeRepository;
+    private readonly ILeaveRequestRepository _leaveRequestRepository;
 
     public EmployeeService(
         IEmployeeRepository repository,
         IDepartmentService departmentService,
         IDesignationService designationService,
-        IUserService userService)
+        IUserService userService,
+        ILeaveTypeRepository leaveTypeRepository,
+        ILeaveRequestRepository leaveRequestRepository)
     {
         _repository = repository;
         _departmentService = departmentService;
         _designationService = designationService;
         _userService = userService;
+        _leaveTypeRepository = leaveTypeRepository;
+        _leaveRequestRepository = leaveRequestRepository;
     }
 
     public async Task<Result<EmployeeResponse>> CreateAsync(CreateEmployeeRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -190,6 +202,34 @@ internal class EmployeeService : IEmployeeService
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<EmployeeResponse>.Success(employee.ToResponse());
+    }
+
+    public async Task<Result<IReadOnlyList<EmployeeLeaveBalanceResponse>>> GetLeaveBalancesAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        if (!await _repository.ExistsAsync(employeeId, cancellationToken))
+        {
+            return Result<IReadOnlyList<EmployeeLeaveBalanceResponse>>.Failure(HRErrorCodes.NotFound, $"Employee '{employeeId}' was not found.");
+        }
+
+        var currentYear = DateTime.UtcNow.Year;
+        var leaveTypes = await _leaveTypeRepository.GetActiveAsync(cancellationToken);
+
+        var balances = new List<EmployeeLeaveBalanceResponse>();
+        foreach (var leaveType in leaveTypes)
+        {
+            var usedDays = await _leaveRequestRepository.GetApprovedDaysAsync(employeeId, leaveType.Id, currentYear, cancellationToken);
+
+            balances.Add(new EmployeeLeaveBalanceResponse
+            {
+                LeaveTypeId = leaveType.Id,
+                LeaveTypeName = leaveType.Name,
+                MaxDaysPerYear = leaveType.MaxDaysPerYear,
+                UsedDays = usedDays,
+                RemainingDays = leaveType.MaxDaysPerYear.HasValue ? leaveType.MaxDaysPerYear.Value - usedDays : null,
+            });
+        }
+
+        return Result<IReadOnlyList<EmployeeLeaveBalanceResponse>>.Success(balances);
     }
 
     // Resolves DepartmentName/DesignationName/ReportingManagerName for the single-record

@@ -28,6 +28,8 @@ public class HRDbContext : DbContext
     internal DbSet<ShiftSwapRequest> ShiftSwapRequests => Set<ShiftSwapRequest>();
     internal DbSet<Employee> Employees => Set<Employee>();
     internal DbSet<Attendance> Attendances => Set<Attendance>();
+    internal DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
+    internal DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

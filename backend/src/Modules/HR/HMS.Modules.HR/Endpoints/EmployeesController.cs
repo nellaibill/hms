@@ -145,6 +145,20 @@ public class EmployeesController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Per active LeaveType: max days/year, days used this calendar year, days remaining.</summary>
+    /// <response code="200">The employee's current leave balances.</response>
+    /// <response code="404">No employee was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("workforce-admin.view")]
+    [HttpGet("{id:guid}/leave-balances")]
+    public async Task<IActionResult> GetLeaveBalances(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _service.GetLeaveBalancesAsync(id, cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<IReadOnlyList<EmployeeLeaveBalanceResponse>> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     private static ApiResponse<EmployeeResponse> Envelope(EmployeeResponse? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)
