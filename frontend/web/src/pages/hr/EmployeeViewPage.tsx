@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useDepartmentNameById } from '@/features/calendarEvents/hooks/useDepartmentDirectory';
+import { EmployeeDocumentsPanel } from '../../features/employeeDocuments';
 import { EmploymentStatusBadge, useDesignationNameById, useEmployeeLeaveBalancesQuery, useEmployeeQuery } from '../../features/employees';
 import { NewLeaveRequestDialog } from '../../features/leaveRequests';
 
@@ -18,6 +19,7 @@ export default function EmployeeViewPage() {
   const designationNameById = useDesignationNameById();
   const { hasPermission } = useAuth();
   const [showRequestLeave, setShowRequestLeave] = useState(false);
+  const canViewDocuments = hasPermission('records-compliance.view');
 
   if (isPending) {
     return (
@@ -80,6 +82,7 @@ export default function EmployeeViewPage() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="leave-balances">Leave Balances</TabsTrigger>
+            {canViewDocuments && <TabsTrigger value="documents">Documents</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
@@ -158,6 +161,16 @@ export default function EmployeeViewPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {canViewDocuments && (
+            <TabsContent value="documents" className="mt-4">
+              <Card>
+                <CardContent className="py-6">
+                  <EmployeeDocumentsPanel employeeId={employee.id} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
