@@ -101,9 +101,9 @@ export default function EmployeeViewPage() {
                 <Field label="Reporting Manager" value={employee.reportingManagerName ?? '—'} />
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Active</p>
-                  <p className="mt-1">
+                  <div className="mt-1">
                     <Badge variant={employee.isActive ? 'success' : 'secondary'}>{employee.isActive ? 'Active' : 'Inactive'}</Badge>
-                  </p>
+                  </div>
                 </div>
                 <Field label="Created" value={new Date(employee.createdAt).toLocaleString('en-IN')} />
                 {employee.updatedAt && <Field label="Last updated" value={new Date(employee.updatedAt).toLocaleString('en-IN')} />}
