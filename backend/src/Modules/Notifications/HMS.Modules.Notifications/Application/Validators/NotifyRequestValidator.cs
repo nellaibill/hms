@@ -15,7 +15,9 @@ internal class NotifyRequestValidator : AbstractValidator<NotifyRequest>
         RuleFor(x => x.TemplateKey).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Category).NotEmpty().MaximumLength(50);
         RuleFor(x => x.Title).NotEmpty().MaximumLength(300);
-        RuleFor(x => x.Body).NotEmpty().MaximumLength(4000);
+        // Body is optional (falls back to InApp template rendering — see NotifyRequest.Body's
+        // own doc comment); only its length is bounded when supplied.
+        RuleFor(x => x.Body).MaximumLength(4000);
         RuleFor(x => x.SourceModule).NotEmpty().MaximumLength(100);
         RuleFor(x => x.RecipientUserIds).NotEmpty().WithMessage("At least one recipient is required.");
     }

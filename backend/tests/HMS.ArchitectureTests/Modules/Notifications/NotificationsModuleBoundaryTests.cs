@@ -21,7 +21,7 @@ public class NotificationsModuleBoundaryTests
 {
     private static readonly Assembly NotificationsAssembly = typeof(NotificationsController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^(NotificationsDbContext|INotificationService)$";
+    private const string AllowedPublicTypeNamePattern = "^(NotificationsDbContext|INotificationService|INotificationTemplateService|INotificationPreferenceService)$";
 
     [Theory]
     [InlineData("HMS.Modules.Notifications.Domain")]

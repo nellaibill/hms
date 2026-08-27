@@ -18,15 +18,18 @@ internal class NotificationService : INotificationService
 {
     private readonly INotificationRepository _notificationRepository;
     private readonly INotificationRecipientRepository _recipientRepository;
+    private readonly INotificationTemplateRepository _templateRepository;
     private readonly ILogger<NotificationService> _logger;
 
     public NotificationService(
         INotificationRepository notificationRepository,
         INotificationRecipientRepository recipientRepository,
+        INotificationTemplateRepository templateRepository,
         ILogger<NotificationService> logger)
     {
         _notificationRepository = notificationRepository;
         _recipientRepository = recipientRepository;
+        _templateRepository = templateRepository;
         _logger = logger;
     }
 
@@ -40,11 +43,28 @@ internal class NotificationService : INotificationService
                 "At least one recipient is required.");
         }
 
+        var body = request.Body;
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            // Body omitted — render the InApp-channel template instead (see NotifyRequest.
+            // Body's own doc comment). Email/Sms template resolution belongs to the
+            // background delivery pipeline (a later phase), not here.
+            var template = await _templateRepository.GetByKeyAndChannelAsync(request.TemplateKey, NotificationChannel.InApp, cancellationToken);
+            if (template is null || !template.IsActive)
+            {
+                return Result<NotificationBroadcastResponse>.Failure(
+                    NotificationErrorCodes.TemplateNotFound,
+                    $"No active InApp template exists for '{request.TemplateKey}', and no Body was supplied directly.");
+            }
+
+            body = TemplateRenderer.Render(template.BodyTemplate, request.Placeholders);
+        }
+
         var notification = Notification.Create(
             request.TemplateKey,
             request.Category,
             request.Title,
-            request.Body,
+            body,
             request.SourceModule,
             request.SourceEntityType,
             request.SourceEntityId,

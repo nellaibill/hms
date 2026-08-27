@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-031: Messaging & Notification module Phase 3 — templates, preferences, and template-driven rendering
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-030. Phase 3's goal was to let every event in the design doc's event table be authored (subject/body text) without touching code, by wiring `NotificationTemplate`/`NotificationPreference` (built in Phase 1, unused since) into real CRUD and into `NotifyAsync` itself.
+
+**Decision**
+1. **`NotifyRequest.Body` became optional.** When omitted, `NotificationService.NotifyAsync` looks up the InApp-channel `NotificationTemplate` for `TemplateKey` and renders its `BodyTemplate` against `Placeholders` (new `TemplateRenderer` — flat `{{Key}}` substitution, unmatched tokens left literal rather than blanked). `Title` stays always-literal — short enough that a second templated field wasn't worth it. This is additive to Phase 2's contract, not a breaking change (`Body` was required before; nothing yet calls this method in anger).
+2. **`NotificationTemplateService`/`NotificationTemplatesController`**: CRUD gated by the existing `engagement.*` permissions (view/create/edit) — content and active-state are edited together in one `PUT`, no separate activate/deactivate route.
+3. **An expected validation failure that depends on already-loaded entity state stays a `Result`, never an exception.** `NotificationTemplate.UpdateContent`'s own guard (Email channel requires a Subject) would otherwise throw `ArgumentException` and surface as a 500 — `NotificationTemplateService.UpdateAsync` checks this itself (it already has the loaded template's `Channel` in hand) before calling `UpdateContent`, so the domain guard never actually fires on this path; it stays as defense-in-depth.
+4. **`NotificationPreferenceService`/`NotificationPreferencesController`**: self-service only (`[Authorize]`, no `RequirePermission`), `PUT` upserts one category at a time. `GetMyPreferencesAsync` returns only rows the caller has actually saved — a missing category means "use the default," not "explicitly disabled" (see `NotificationPreference`'s Phase 1 doc comment); no attempt is made to enumerate/seed every possible category up front, since the category list itself isn't a fixed catalog anywhere in this codebase.
+
+**Consequences**
+- `NotificationsModuleBoundaryTests`' allow-list grew to include `INotificationTemplateService` and `INotificationPreferenceService`.
+- Preference checks are still not wired into delivery — that's meaningless until Phase 4/5/6's Email/Sms pipeline exists to check them against. In-app delivery (Phase 2) intentionally ignores preferences entirely, matching the design doc's "in-app is always delivered" decision.
+- 26 new unit tests (`NotificationTemplateServiceTests`, `NotificationPreferenceServiceTests`, plus 2 new `NotificationServiceTests` covering the template-rendering fallback).
+
+---
+
 ### ADR-030: Messaging & Notification module Phase 2 — in-app notifications end-to-end, no templates yet
 **Date:** 2026-08-27
 **Status:** Accepted

@@ -14,4 +14,11 @@ internal static class NotificationErrorCodes
     public const string NotFound = "NOTIFICATIONS.NOTIFICATION_NOT_FOUND";
 
     public const string NoRecipients = "NOTIFICATIONS.NO_RECIPIENTS";
+
+    /// <summary>NotifyAsync's Body was omitted but no active InApp template exists for the
+    /// given TemplateKey — see NotifyRequest.Body's own doc comment.</summary>
+    public const string TemplateNotFound = "NOTIFICATIONS.TEMPLATE_NOT_FOUND";
+
+    public const string DuplicateTemplate = "NOTIFICATIONS.TEMPLATE_DUPLICATE";
+    public const string EmailTemplateRequiresSubject = "NOTIFICATIONS.TEMPLATE_EMAIL_REQUIRES_SUBJECT";
 }

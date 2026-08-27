@@ -46,11 +46,16 @@ public static class NotificationsModule
         services.AddScoped<INotificationDeliveryRepository, NotificationDeliveryRepository>();
 
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
+        services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
 
         // Registered explicitly, not AddValidatorsFromAssemblyContaining — that scanner only
         // finds *public* IValidator<T> implementations, and this module's validators are
         // internal by design (docs/DeveloperHandbook.md §8/§20).
         services.AddScoped<IValidator<NotifyRequest>, NotifyRequestValidator>();
+        services.AddScoped<IValidator<CreateNotificationTemplateRequest>, CreateNotificationTemplateRequestValidator>();
+        services.AddScoped<IValidator<UpdateNotificationTemplateRequest>, UpdateNotificationTemplateRequestValidator>();
+        services.AddScoped<IValidator<UpdateNotificationPreferenceRequest>, UpdateNotificationPreferenceRequestValidator>();
 
         return services;
     }

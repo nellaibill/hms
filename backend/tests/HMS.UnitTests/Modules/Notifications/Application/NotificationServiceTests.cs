@@ -14,11 +14,12 @@ public class NotificationServiceTests
 {
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationRecipientRepository _recipientRepository = Substitute.For<INotificationRecipientRepository>();
+    private readonly INotificationTemplateRepository _templateRepository = Substitute.For<INotificationTemplateRepository>();
     private readonly NotificationService _sut;
 
     public NotificationServiceTests()
     {
-        _sut = new NotificationService(_notificationRepository, _recipientRepository, NullLogger<NotificationService>.Instance);
+        _sut = new NotificationService(_notificationRepository, _recipientRepository, _templateRepository, NullLogger<NotificationService>.Instance);
     }
 
     private static NotifyRequest Request(params Guid[] recipientUserIds) => new()
@@ -55,6 +56,40 @@ public class NotificationServiceTests
         var result = await _sut.NotifyAsync(Request(userId, userId), actorId: null, CancellationToken.None);
 
         result.Value!.RecipientCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task NotifyAsync_WithoutBody_RendersFromActiveInAppTemplate()
+    {
+        var template = NotificationTemplate.Create("appointment.booked", NotificationChannel.InApp, null, "Hello {{PatientName}}, your visit is confirmed.", null);
+        _templateRepository
+            .GetByKeyAndChannelAsync("appointment.booked", NotificationChannel.InApp, Arg.Any<CancellationToken>())
+            .Returns(template);
+
+        var request = Request(Guid.NewGuid()) with { Body = null, Placeholders = new Dictionary<string, string> { ["PatientName"] = "Aravind" } };
+
+        var result = await _sut.NotifyAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _notificationRepository.Received(1).AddAsync(
+            Arg.Is<Notification>(n => n.Body == "Hello Aravind, your visit is confirmed."),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task NotifyAsync_WithoutBodyAndNoActiveTemplate_ReturnsTemplateNotFoundFailure()
+    {
+        _templateRepository
+            .GetByKeyAndChannelAsync(Arg.Any<string>(), NotificationChannel.InApp, Arg.Any<CancellationToken>())
+            .Returns((NotificationTemplate?)null);
+
+        var request = Request(Guid.NewGuid()) with { Body = null };
+
+        var result = await _sut.NotifyAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(NotificationErrorCodes.TemplateNotFound);
+        await _notificationRepository.DidNotReceive().AddAsync(Arg.Any<Notification>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
