@@ -1,11 +1,14 @@
-import { ArrowLeft, Loader2, Pencil, Users } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Loader2, Pencil, Users } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useDepartmentNameById } from '@/features/calendarEvents/hooks/useDepartmentDirectory';
 import { EmploymentStatusBadge, useDesignationNameById, useEmployeeLeaveBalancesQuery, useEmployeeQuery } from '../../features/employees';
+import { NewLeaveRequestDialog } from '../../features/leaveRequests';
 
 export default function EmployeeViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +16,8 @@ export default function EmployeeViewPage() {
   const leaveBalancesQuery = useEmployeeLeaveBalancesQuery(id);
   const departmentNameById = useDepartmentNameById();
   const designationNameById = useDesignationNameById();
+  const { hasPermission } = useAuth();
+  const [showRequestLeave, setShowRequestLeave] = useState(false);
 
   if (isPending) {
     return (
@@ -105,7 +110,13 @@ export default function EmployeeViewPage() {
 
           <TabsContent value="leave-balances" className="mt-4">
             <Card>
-              <CardContent className="py-6">
+              <CardContent className="flex flex-col gap-4 py-6">
+                {hasPermission('workforce-admin.create') && (
+                  <Button variant="outline" size="sm" className="gap-1.5 self-start" onClick={() => setShowRequestLeave(true)}>
+                    <CalendarPlus className="h-4 w-4" />
+                    Request Leave
+                  </Button>
+                )}
                 {leaveBalancesQuery.isPending && (
                   <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -149,6 +160,8 @@ export default function EmployeeViewPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {showRequestLeave && <NewLeaveRequestDialog defaultEmployeeId={employee.id} onClose={() => setShowRequestLeave(false)} />}
     </div>
   );
 }

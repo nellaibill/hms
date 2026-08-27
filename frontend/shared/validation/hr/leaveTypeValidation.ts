@@ -8,7 +8,12 @@ import { z } from 'zod';
  */
 const leaveTypeCommonSchema = {
   name: z.string().trim().min(1, 'Name is required').max(150),
-  maxDaysPerYear: z.coerce.number().int().positive('Must be greater than 0').nullable().optional(),
+  // Preprocessed so a blank form field (empty string, from an <input type="number">) means
+  // "unlimited" (null) rather than failing coercion to 0/NaN.
+  maxDaysPerYear: z.preprocess(
+    (val) => (val === '' || val === undefined ? null : val),
+    z.union([z.null(), z.coerce.number().int().positive('Must be greater than 0')]),
+  ).optional(),
   isPaid: z.boolean(),
   isActive: z.boolean(),
 };
