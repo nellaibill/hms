@@ -70,6 +70,9 @@ public static class HRModule
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IEmployeeService, EmployeeService>();
 
+        services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+        services.AddScoped<IAttendanceService, AttendanceService>();
+
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations, and this module's
         // validators are internal by design (docs/DeveloperHandbook.md §8/§20).
@@ -92,6 +95,11 @@ public static class HRModule
 
         services.AddScoped<IValidator<CreateEmployeeRequest>, CreateEmployeeRequestValidator>();
         services.AddScoped<IValidator<UpdateEmployeeRequest>, UpdateEmployeeRequestValidator>();
+
+        services.AddScoped<IValidator<CreateAttendanceRequest>, CreateAttendanceRequestValidator>();
+        services.AddScoped<IValidator<UpdateAttendanceRequest>, UpdateAttendanceRequestValidator>();
+        services.AddScoped<IValidator<CheckInRequest>, CheckInRequestValidator>();
+        services.AddScoped<IValidator<CheckOutRequest>, CheckOutRequestValidator>();
 
         return services;
     }
