@@ -23,6 +23,11 @@ public class PatientsDbContext : DbContext
     // reachable only through Patient's navigation — no DbSet of their own.
     internal DbSet<Patient> Patients => Set<Patient>();
 
+    // PatientVisit is its own aggregate root (not reached through Patient's navigation) —
+    // Consultations, its 1:many child, has no DbSet of its own, reachable only via
+    // PatientVisit.Consultations, same as Address/Allergy/EmergencyContact off Patient.
+    internal DbSet<PatientVisit> PatientVisits => Set<PatientVisit>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);

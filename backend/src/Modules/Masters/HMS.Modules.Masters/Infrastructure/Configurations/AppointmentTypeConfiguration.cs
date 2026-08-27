@@ -13,7 +13,6 @@ internal class AppointmentTypeConfiguration : IEntityTypeConfiguration<Appointme
         builder.HasKey(a => a.Id).HasName("pk_appointment_types");
         builder.Property(a => a.Id).HasColumnName("id").ValueGeneratedNever();
 
-        builder.Property(a => a.Code).HasColumnName("code").HasMaxLength(30).IsRequired();
         builder.Property(a => a.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
         builder.Property(a => a.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
 
@@ -29,6 +28,6 @@ internal class AppointmentTypeConfiguration : IEntityTypeConfiguration<Appointme
 
         builder.HasQueryFilter(a => !a.IsDeleted);
 
-        builder.HasIndex(a => a.Code).IsUnique().HasDatabaseName("ux_appointment_types_code").HasFilter("is_deleted = false");
+        builder.HasIndex(a => a.Name).IsUnique().HasDatabaseName("ux_appointment_types_name").HasFilter("is_deleted = false");
     }
 }

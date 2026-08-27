@@ -6,7 +6,7 @@ import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
 import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type BillingItem } from '@/features/billing';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
-import { env } from '../../../config/env';
+import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { humanize } from '../humanize';
 
@@ -177,15 +177,18 @@ function PatientBillingTab({ patientId }: { patientId: string }) {
 }
 
 function PatientDocumentsTab({ patient }: { patient: Patient }) {
+  const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
+  const idProofUrl = usePatientDocumentUrl(patient.id, 'IdProof');
+
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold text-foreground">On file</h2>
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Patient photo</span>
-          {patient.photoPath ? (
+          {photoUrl ? (
             <img
-              src={`${env.apiBaseUrl}/${patient.photoPath}`}
+              src={photoUrl}
               alt={`${patient.firstName} ${patient.lastName}`}
               className="mt-1 h-28 w-28 rounded-md border border-border object-cover"
             />
@@ -195,13 +198,8 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ID proof</span>
-          {patient.idProofPath ? (
-            <a
-              href={`${env.apiBaseUrl}/${patient.idProofPath}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-primary hover:underline"
-            >
+          {idProofUrl ? (
+            <a href={idProofUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
               {patient.idProofType} on file — view
             </a>
           ) : (

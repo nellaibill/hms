@@ -2,11 +2,15 @@ import type {
   AllergyInput,
   AllergySeverity,
   AllergyType,
+  CreatePatientVisitRequest,
   EmergencyContactInput,
   Gender,
   ModeOfArrivalSource,
   PatientGenderUi,
   PatientRegistrationUiFormValues,
+  RegistrationDetailsUiFormValues,
+  VisitConsultation,
+  VisitType,
 } from '@hms/shared';
 
 /**
@@ -110,4 +114,32 @@ export function toModeOfArrivalRequest(arrivalSource: PatientRegistrationUiFormV
     };
   }
   return { modeOfArrivalSource: category };
+}
+
+/** Registration Details tab -> CreatePatientVisitRequest. The primary Department/Consultant/
+ * Consultation Type fields plus every additionalConsultants row that has both a department
+ * and a consultant become one consultation line each, all sharing the visit created from this
+ * one request (see PatientVisitService.CreateAsync) — a row opened via "Add another
+ * Consultant" but never filled in is silently dropped rather than sent as a malformed line. */
+export function toCreatePatientVisitRequest(registration: RegistrationDetailsUiFormValues): CreatePatientVisitRequest {
+  const consultations: VisitConsultation[] = [
+    {
+      departmentId: registration.departmentId,
+      consultantId: registration.consultantId,
+      consultationTypeId: registration.consultationTypeId || undefined,
+    },
+    ...registration.additionalConsultants
+      .filter((row) => row.departmentId && row.consultantId)
+      .map((row) => ({
+        departmentId: row.departmentId!,
+        consultantId: row.consultantId!,
+        consultationTypeId: row.consultationTypeId || undefined,
+      })),
+  ];
+
+  return {
+    visitType: registration.encounterType as VisitType,
+    appointmentTypeId: registration.appointmentTypeId || undefined,
+    consultations,
+  };
 }

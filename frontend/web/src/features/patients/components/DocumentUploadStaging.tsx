@@ -1,7 +1,11 @@
 import { ID_PROOF_TYPES, type IdProofType } from '@hms/shared';
+import { useState } from 'react';
+import { FileChooserButton } from '@/components/ui/file-chooser-button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { validateUploadFile } from '@/lib/fileValidation';
 import { Field } from './FormSection';
+import { MAX_PATIENT_DOCUMENT_SIZE_BYTES, MAX_PATIENT_DOCUMENT_SIZE_MB } from '../documentUploadLimits';
 
 export interface StagedDocuments {
   photo: File | null;
@@ -34,28 +38,45 @@ interface DocumentUploadStagingProps {
  * (PatientRegistrationCreatePage) uploads them right after the new patient is created.
  * ID proof number's own validation errors surface only via the tab-level error summary (see
  * idProofNumberError in PatientRegistrationForm) — not inline here, consistent with every
- * other field on this wizard.
+ * other field on this wizard. A bad photo/ID-proof file *is* shown inline (see
+ * photoError/idProofFileError below) since there's no equivalent tab-level summary field for
+ * it to fold into, and rejecting it here (never staging it) is what stops it from ever
+ * reaching the upload call this component's caller makes after the patient is created.
  */
 export function DocumentUploadStaging({ value, onChange }: DocumentUploadStagingProps) {
-  function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
-    onChange({ ...value, photo: event.target.files?.[0] ?? null });
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [idProofFileError, setIdProofFileError] = useState<string | null>(null);
+
+  async function handlePhotoChange(file: File) {
+    const error = await validateUploadFile(file, ['jpeg', 'png'], MAX_PATIENT_DOCUMENT_SIZE_BYTES);
+    setPhotoError(error);
+    if (!error) {
+      onChange({ ...value, photo: file });
+    }
   }
 
-  function handleIdProofChange(event: React.ChangeEvent<HTMLInputElement>) {
-    onChange({ ...value, idProofFile: event.target.files?.[0] ?? null });
+  async function handleIdProofChange(file: File) {
+    const error = await validateUploadFile(file, ['jpeg', 'png', 'pdf'], MAX_PATIENT_DOCUMENT_SIZE_BYTES);
+    setIdProofFileError(error);
+    if (!error) {
+      onChange({ ...value, idProofFile: file });
+    }
   }
 
   return (
     <>
-      <Field label="Patient photo (JPG/PNG, max 5MB)" htmlFor="photo-upload" className="flex min-w-[220px] max-w-sm flex-col gap-1.5">
-        <input
+      <Field
+        label={`Patient photo (JPG/PNG, max ${MAX_PATIENT_DOCUMENT_SIZE_MB}MB)`}
+        htmlFor="photo-upload"
+        error={photoError ?? undefined}
+        className="flex min-w-[220px] max-w-sm flex-col gap-1.5"
+      >
+        <FileChooserButton
           id="photo-upload"
-          type="file"
           accept="image/jpeg,image/png"
-          onChange={handlePhotoChange}
-          className="text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+          onFileSelected={handlePhotoChange}
+          status={value.photo && !photoError ? `Selected: ${value.photo.name}` : undefined}
         />
-        {value.photo && <p className="text-xs text-muted-foreground">Selected: {value.photo.name}</p>}
       </Field>
 
       <div className="flex flex-wrap gap-3">
@@ -82,15 +103,18 @@ export function DocumentUploadStaging({ value, onChange }: DocumentUploadStaging
           <Input id="id-proof-number" value={value.idProofNumber} onChange={(event) => onChange({ ...value, idProofNumber: event.target.value })} />
         </Field>
 
-        <Field label="ID proof file (JPG/PNG/PDF, max 5MB)" htmlFor="id-proof-upload" className="flex min-w-[220px] flex-1 flex-col gap-1">
-          <input
+        <Field
+          label={`ID proof file (JPG/PNG/PDF, max ${MAX_PATIENT_DOCUMENT_SIZE_MB}MB)`}
+          htmlFor="id-proof-upload"
+          error={idProofFileError ?? undefined}
+          className="flex min-w-[220px] flex-1 flex-col gap-1"
+        >
+          <FileChooserButton
             id="id-proof-upload"
-            type="file"
             accept="image/jpeg,image/png,application/pdf"
-            onChange={handleIdProofChange}
-            className="text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+            onFileSelected={handleIdProofChange}
+            status={value.idProofFile && !idProofFileError ? `Selected: ${value.idProofFile.name}` : undefined}
           />
-          {value.idProofFile && <p className="text-xs text-muted-foreground">Selected: {value.idProofFile.name}</p>}
         </Field>
       </div>
     </>

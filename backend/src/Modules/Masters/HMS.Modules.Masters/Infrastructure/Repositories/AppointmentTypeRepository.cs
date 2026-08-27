@@ -23,8 +23,8 @@ internal class AppointmentTypeRepository : IAppointmentTypeRepository
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.AppointmentTypes.AnyAsync(a => a.Id == id, cancellationToken);
 
-    public Task<bool> ExistsByCodeAsync(string code, Guid? excludingId, CancellationToken cancellationToken)
-        => _dbContext.AppointmentTypes.AnyAsync(a => a.Code == code && a.Id != excludingId, cancellationToken);
+    public Task<bool> ExistsByNameAsync(string name, Guid? excludingId, CancellationToken cancellationToken)
+        => _dbContext.AppointmentTypes.AnyAsync(a => EF.Functions.ILike(a.Name, name) && a.Id != excludingId, cancellationToken);
 
     public async Task<(IReadOnlyList<AppointmentType> Items, int TotalCount)> GetPagedAsync(AppointmentTypeListQuery query, CancellationToken cancellationToken)
     {
@@ -38,7 +38,7 @@ internal class AppointmentTypeRepository : IAppointmentTypeRepository
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = $"%{query.Search.Trim()}%";
-            appointmentTypes = appointmentTypes.Where(a => EF.Functions.ILike(a.Code, term) || EF.Functions.ILike(a.Name, term));
+            appointmentTypes = appointmentTypes.Where(a => EF.Functions.ILike(a.Name, term));
         }
 
         appointmentTypes = ApplySort(appointmentTypes, query.Sort);
@@ -64,7 +64,6 @@ internal class AppointmentTypeRepository : IAppointmentTypeRepository
 
         return field.ToLowerInvariant() switch
         {
-            "code" => descending ? appointmentTypes.OrderByDescending(a => a.Code) : appointmentTypes.OrderBy(a => a.Code),
             "updatedat" => descending ? appointmentTypes.OrderByDescending(a => a.UpdatedAt) : appointmentTypes.OrderBy(a => a.UpdatedAt),
             _ => descending ? appointmentTypes.OrderByDescending(a => a.Name) : appointmentTypes.OrderBy(a => a.Name),
         };

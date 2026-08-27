@@ -172,15 +172,16 @@ const referralColumnSchema = z.object({
   contactNumber: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
 });
 
-// UI-only demo affordance ("Add another Consultant") — each row is optional/unvalidated,
-// same as every other UI-only capture field in this schema. Deliberately not bridged into
-// CreatePatientRequest by
-// PatientRegistrationCreatePage's toRequest(): the backend contract only has one
-// Department/Consultant pair per registration today, so entries here are for the on-screen
-// experience only and are dropped, not silently mis-saved, at submit time.
+// "Add another Consultant" row — each field stays optional/unvalidated here (a half-filled
+// row you never finished isn't a validation error), but this IS bridged into
+// CreatePatientVisitRequest now (see bridging.ts's toCreatePatientVisitRequest, called from
+// PatientRegistrationCreatePage's handleSubmit): any row with both departmentId and
+// consultantId set becomes one consultation line on the visit; a row missing either is
+// silently dropped rather than sent as a malformed line.
 const additionalConsultantSchema = z.object({
   departmentId: z.string().trim().optional().or(z.literal('')),
   consultantId: z.string().trim().optional().or(z.literal('')),
+  consultationTypeId: z.string().trim().optional().or(z.literal('')),
 });
 
 // Exported (not just used internally) so a future "record a new visit" form can reuse this
@@ -193,6 +194,7 @@ export const registrationDetailsUiSchema = z
     consultantId: z.string().trim().min(1, 'Consultant is required'),
     additionalConsultants: z.array(additionalConsultantSchema).max(3, 'Up to three additional consultants').default([]),
     appointmentTypeId: z.string().trim().optional().or(z.literal('')),
+    consultationTypeId: z.string().trim().optional().or(z.literal('')),
     admissionType: z.enum(['MLC', 'NMLC']).optional().or(z.literal('')),
     referral: referralColumnSchema.optional(),
     category: z.string().trim().max(100).optional().or(z.literal('')),
@@ -209,6 +211,8 @@ export const registrationDetailsUiSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['referral', 'category'], message: 'Select a referral category' });
     }
   });
+
+export type RegistrationDetailsUiFormValues = z.infer<typeof registrationDetailsUiSchema>;
 
 const demographicsUiSchema = {
   title: z.enum(TITLES),

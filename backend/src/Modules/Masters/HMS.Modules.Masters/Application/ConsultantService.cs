@@ -37,17 +37,15 @@ internal class ConsultantService : IConsultantService
 
     public async Task<Result<ConsultantResponse>> CreateAsync(CreateConsultantRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
-        if (await _repository.ExistsByCodeAsync(request.Code.Trim().ToUpperInvariant(), excludingId: null, cancellationToken))
-        {
-            return Result<ConsultantResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Consultant code '{request.Code}' is already in use.");
-        }
-
+        // No duplicate-name check here, deliberately — unlike AppointmentType/ConsultationType,
+        // two consultants can legitimately share a display name (e.g. two "Dr. Sharma"s); see
+        // ConsultantConfiguration's own comment on why Name carries no uniqueness constraint.
         if (request.DepartmentId.HasValue && !await _departmentRepository.ExistsAsync(request.DepartmentId.Value, cancellationToken))
         {
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Department '{request.DepartmentId}' was not found.");
         }
 
-        var consultant = Consultant.Create(request.Code, request.Name, request.DepartmentId, request.Specialization, request.IsActive, actorId);
+        var consultant = Consultant.Create(request.Name, request.DepartmentId, request.Specialization, request.IsActive, actorId);
 
         await _repository.AddAsync(consultant, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);

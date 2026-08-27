@@ -1,6 +1,13 @@
 import { API_ROUTES } from '../../constants';
-import type { AddAllergyRequest, CreatePatientRequest, Patient, PatientListQuery, UpdatePatientRequest } from '../../dtos';
-import type { IdProofType } from '../../enums';
+import type {
+  AddAllergyRequest,
+  CreatePatientRequest,
+  CreatePatientVisitRequest,
+  Patient,
+  PatientListQuery,
+  PatientVisit,
+  UpdatePatientRequest,
+} from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -54,21 +61,6 @@ export class PatientsApi {
     await this.client.delete(API_ROUTES.patients.byId(id));
   }
 
-  async uploadPhoto(id: string, file: File): Promise<Patient> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await this.client.postFormData<Patient>(API_ROUTES.patients.photo(id), formData);
-    return response.data;
-  }
-
-  async uploadIdProof(id: string, idProofType: IdProofType, file: File): Promise<Patient> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('idProofType', idProofType);
-    const response = await this.client.postFormData<Patient>(API_ROUTES.patients.idProof(id), formData);
-    return response.data;
-  }
-
   /** Adds one allergy row to an existing patient — mirrors HMS.Modules.Patients.Endpoints.PatientsController's POST .../allergies. */
   async addAllergy(id: string, request: AddAllergyRequest): Promise<Patient> {
     const response = await this.client.post<Patient>(API_ROUTES.patients.allergies(id), request);
@@ -78,6 +70,13 @@ export class PatientsApi {
   /** Removes one allergy row — mirrors the DELETE .../allergies/{allergyId} endpoint. */
   async removeAllergy(id: string, allergyId: string): Promise<Patient> {
     const response = await this.client.delete<Patient>(API_ROUTES.patients.allergyById(id, allergyId));
+    return response.data;
+  }
+
+  /** Records one visit ("Registration Details") for an existing patient — mirrors
+   * HMS.Modules.Patients.Endpoints.PatientVisitsController's POST .../visits. */
+  async createVisit(id: string, request: CreatePatientVisitRequest): Promise<PatientVisit> {
+    const response = await this.client.post<PatientVisit>(API_ROUTES.patients.visits(id), request);
     return response.data;
   }
 }

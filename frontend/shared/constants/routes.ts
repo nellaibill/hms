@@ -52,14 +52,20 @@ export const API_ROUTES = {
   patients: {
     base: '/api/v1/patients',
     byId: (id: string) => `/api/v1/patients/${id}`,
-    photo: (id: string) => `/api/v1/patients/${id}/photo`,
-    idProof: (id: string) => `/api/v1/patients/${id}/id-proof`,
     allergies: (id: string) => `/api/v1/patients/${id}/allergies`,
     allergyById: (id: string, allergyId: string) => `/api/v1/patients/${id}/allergies/${allergyId}`,
+    visits: (id: string) => `/api/v1/patients/${id}/visits`,
+    visitById: (id: string, visitId: string) => `/api/v1/patients/${id}/visits/${visitId}`,
   },
   branding: {
     base: '/api/v1/branding',
     logo: '/api/v1/branding/logo',
+  },
+  /** Mirrors HMS.Modules.Documents.Endpoints.DocumentsController — see documentsApi.ts. */
+  documents: {
+    base: '/api/v1/documents',
+    byId: (id: string) => `/api/v1/documents/${id}`,
+    content: (id: string) => `/api/v1/documents/${id}/content`,
   },
   /**
    * Masters (Reference Data) — mirrors HMS.Modules.Masters.Endpoints.*Controller. Keyed by
@@ -70,6 +76,7 @@ export const API_ROUTES = {
     appointmentType: mastersEntity('appointment-types'),
     brand: mastersEntity('brands'),
     consultant: mastersEntity('consultants'),
+    consultationType: mastersEntity('consultation-types'),
     currency: mastersEntity('currencies'),
     customer: mastersEntity('customers'),
     department: mastersEntity('departments'),

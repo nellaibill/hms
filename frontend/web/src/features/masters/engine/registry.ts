@@ -1,6 +1,7 @@
 import { appointmentTypeConfig } from '../configs/appointmentType';
 import { brandConfig } from '../configs/brand';
 import { consultantConfig } from '../configs/consultant';
+import { consultationTypeConfig } from '../configs/consultationType';
 import { customerConfig } from '../configs/customer';
 import { currencyConfig } from '../configs/currency';
 import { departmentConfig } from '../configs/department';
@@ -29,6 +30,7 @@ export const MASTER_CONFIGS: MasterEntityConfig[] = [
   departmentConfig,
   consultantConfig,
   appointmentTypeConfig,
+  consultationTypeConfig,
   productCategoryConfig,
   productSubCategoryConfig,
   productGroupConfig,

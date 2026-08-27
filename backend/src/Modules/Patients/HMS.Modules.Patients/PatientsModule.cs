@@ -42,6 +42,9 @@ public static class PatientsModule
         services.AddScoped<IPatientIdentifierGenerator, PatientIdentifierGenerator>();
         services.AddScoped<IPatientService, PatientService>();
 
+        services.AddScoped<IPatientVisitRepository, PatientVisitRepository>();
+        services.AddScoped<IPatientVisitService, PatientVisitService>();
+
         // Lets HMS.Modules.Documents validate a Patient owner id exists before accepting an
         // upload against it.
         services.AddScoped<IDocumentOwnerExistenceChecker, PatientDocumentOwnerExistenceChecker>();
@@ -53,6 +56,7 @@ public static class PatientsModule
         services.AddScoped<IValidator<UpdatePatientRequest>, UpdatePatientRequestValidator>();
         services.AddScoped<IValidator<AddAllergyRequest>, AddAllergyRequestValidator>();
         services.AddScoped<IValidator<AddEmergencyContactRequest>, AddEmergencyContactRequestValidator>();
+        services.AddScoped<IValidator<CreatePatientVisitRequest>, CreatePatientVisitRequestValidator>();
 
         return services;
     }

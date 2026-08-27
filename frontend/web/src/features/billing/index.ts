@@ -14,5 +14,5 @@ export * from './hooks/useCreateInvoiceMutation';
 export * from './hooks/useInvoicesForReportQuery';
 export * from './hooks/usePatientInvoicesQuery';
 export * from './hooks/useRecordPaymentMutation';
-export type { PatientDisplaySnapshot } from './mockBillingStore';
+export type { PatientDisplaySnapshot } from './apiBillingRepository';
 export * from './types';

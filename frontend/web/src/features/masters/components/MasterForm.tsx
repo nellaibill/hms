@@ -269,7 +269,11 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
                 readOnly={readOnly || (mode === 'edit' && field.key === config.codeField)}
                 recordId={recordId}
                 scopeValue={field.referenceScopeField ? watch(field.referenceScopeField) : undefined}
-                validate={field.key === (config.codeField ?? config.nameField) ? makeCodeUniquenessValidator(field) : undefined}
+                validate={
+                  field.key === (config.codeField ?? config.nameField) && !field.skipUniquenessCheck
+                    ? makeCodeUniquenessValidator(field)
+                    : undefined
+                }
               />
             ))}
 

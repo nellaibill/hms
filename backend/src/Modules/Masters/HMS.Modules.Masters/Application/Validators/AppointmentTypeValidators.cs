@@ -7,7 +7,6 @@ internal class CreateAppointmentTypeRequestValidator : AbstractValidator<CreateA
 {
     public CreateAppointmentTypeRequestValidator()
     {
-        RuleFor(x => x.Code).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
     }
 }

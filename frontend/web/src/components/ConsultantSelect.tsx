@@ -24,12 +24,12 @@ export function ConsultantSelect({ id, value, onValueChange, departmentId, ariaL
     enabled: Boolean(departmentId),
   });
 
-  // Always suffix the code — see DepartmentSelect's identical comment. Doctors especially
-  // can share a display name (two "Dr. Sharma"s), and Code is the only guaranteed-unique field.
+  // Doctors especially can share a display name (two "Dr. Sharma"s) — Specialization is the
+  // best available disambiguator now that Code is gone (there's no other guaranteed-unique,
+  // human-readable field left on this entity).
   const options = (data?.items ?? []).map((consultant) => ({
     value: consultant.id,
-    label: `${consultant.name} (${consultant.code})`,
-    keywords: consultant.code,
+    label: consultant.specialization ? `${consultant.name} — ${consultant.specialization}` : consultant.name,
   }));
 
   return (
@@ -39,7 +39,7 @@ export function ConsultantSelect({ id, value, onValueChange, departmentId, ariaL
       onValueChange={onValueChange}
       options={options}
       placeholder={departmentId ? 'Select consultant…' : 'Select a department first…'}
-      searchPlaceholder="Search by name or code…"
+      searchPlaceholder="Search by name…"
       ariaLabel={ariaLabel}
       disabled={disabled || !departmentId}
     />

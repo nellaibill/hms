@@ -39,6 +39,7 @@ public class MastersDbContext : DbContext
     internal DbSet<Department> Departments => Set<Department>();
     internal DbSet<Consultant> Consultants => Set<Consultant>();
     internal DbSet<AppointmentType> AppointmentTypes => Set<AppointmentType>();
+    internal DbSet<ConsultationType> ConsultationTypes => Set<ConsultationType>();
     internal DbSet<Gender> Genders => Set<Gender>();
     internal DbSet<BloodGroup> BloodGroups => Set<BloodGroup>();
     internal DbSet<State> States => Set<State>();

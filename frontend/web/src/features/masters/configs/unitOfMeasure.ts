@@ -24,13 +24,4 @@ export const unitOfMeasureConfig: MasterEntityConfig = {
     { key: 'uomType', label: 'UOM Type', type: 'select', options: UOM_TYPE_OPTIONS, defaultValue: 'Count' },
     { key: 'isBaseUnit', label: 'Base Unit', type: 'boolean', defaultValue: false, helpText: 'Only one base unit should be allowed per product (enforced in the Product module).' },
   ],
-  seed: [
-    { id: 'uom-001', uomCode: 'PCS', uomName: 'Piece', uomType: 'Count', isBaseUnit: true },
-    { id: 'uom-002', uomCode: 'STRIP', uomName: 'Strip', uomType: 'Count', isBaseUnit: false },
-    { id: 'uom-003', uomCode: 'BOX', uomName: 'Box', uomType: 'Count', isBaseUnit: false },
-    { id: 'uom-004', uomCode: 'KG', uomName: 'Kilogram', uomType: 'Weight', isBaseUnit: true },
-    { id: 'uom-005', uomCode: 'GM', uomName: 'Gram', uomType: 'Weight', isBaseUnit: false },
-    { id: 'uom-006', uomCode: 'LTR', uomName: 'Litre', uomType: 'Volume', isBaseUnit: true },
-    { id: 'uom-007', uomCode: 'ML', uomName: 'Millilitre', uomType: 'Volume', isBaseUnit: false },
-  ],
 };

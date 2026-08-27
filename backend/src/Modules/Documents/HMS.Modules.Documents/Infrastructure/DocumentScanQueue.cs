@@ -14,16 +14,16 @@ internal class DocumentScanQueue : IDocumentScanQueue
 {
     // Bounded so a burst of uploads can't grow this without limit; a writer waits rather than
     // dropping work when full (BoundedChannelFullMode.Wait is the Channel default).
-    private readonly Channel<Guid> _channel = Channel.CreateBounded<Guid>(500);
+    private readonly Channel<ScanQueueItem> _channel = Channel.CreateBounded<ScanQueueItem>(500);
 
-    public ValueTask EnqueueAsync(Guid documentId, CancellationToken cancellationToken)
-        => _channel.Writer.WriteAsync(documentId, cancellationToken);
+    public ValueTask EnqueueAsync(ScanQueueItem item, CancellationToken cancellationToken)
+        => _channel.Writer.WriteAsync(item, cancellationToken);
 
-    public async IAsyncEnumerable<Guid> DequeueAllAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<ScanQueueItem> DequeueAllAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var documentId in _channel.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var item in _channel.Reader.ReadAllAsync(cancellationToken))
         {
-            yield return documentId;
+            yield return item;
         }
     }
 }

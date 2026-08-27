@@ -8,15 +8,8 @@ export const appointmentTypeConfig: MasterEntityConfig = {
   description: 'OP appointment categories (e.g. New, Follow-up, Referral) — shared reference data for Patient registration.',
   icon: CalendarClock,
   section: 'Hospital Reference Data',
-  codeField: 'code',
   nameField: 'name',
   fields: [
-    { key: 'code', label: 'Appointment Type Code', type: 'text', required: true },
     { key: 'name', label: 'Appointment Type Name', type: 'text', required: true },
-  ],
-  seed: [
-    { id: 'appointment-type-001', code: 'NEW', name: 'New' },
-    { id: 'appointment-type-002', code: 'FOLLOWUP', name: 'Follow-up' },
-    { id: 'appointment-type-003', code: 'REFERRAL', name: 'Referral' },
   ],
 };

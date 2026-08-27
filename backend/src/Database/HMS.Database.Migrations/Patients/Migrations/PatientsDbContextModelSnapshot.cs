@@ -295,6 +295,102 @@ namespace HMS.Database.Migrations.Patients.Migrations
                     b.ToTable("patients", "patients");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientVisit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("visit_id");
+
+                    b.Property<Guid?>("AppointmentTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_type_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("VisitType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("visit_type");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_patient_visits");
+
+                    b.HasIndex("PatientId")
+                        .HasDatabaseName("ix_patient_visits_patient_id");
+
+                    b.ToTable("patient_visits", "patients");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientVisitConsultation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConsultantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consultant_id");
+
+                    b.Property<Guid?>("ConsultationTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consultation_type_id");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_id");
+
+                    b.Property<Guid>("VisitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("visit_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_patient_visit_consultations");
+
+                    b.HasIndex("VisitId")
+                        .HasDatabaseName("ix_patient_visit_consultations_visit_id");
+
+                    b.ToTable("patient_visit_consultations", "patients");
+                });
+
             modelBuilder.Entity("HMS.Modules.Patients.Domain.Address", b =>
                 {
                     b.HasOne("HMS.Modules.Patients.Domain.Patient", null)
@@ -325,6 +421,26 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasConstraintName("fk_emergency_contacts_patient_id");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientVisit", b =>
+                {
+                    b.HasOne("HMS.Modules.Patients.Domain.Patient", null)
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_patient_visits_patient_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientVisitConsultation", b =>
+                {
+                    b.HasOne("HMS.Modules.Patients.Domain.PatientVisit", null)
+                        .WithMany("Consultations")
+                        .HasForeignKey("VisitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_patient_visit_consultations_visit_id");
+                });
+
             modelBuilder.Entity("HMS.Modules.Patients.Domain.Patient", b =>
                 {
                     b.Navigation("Address")
@@ -333,6 +449,11 @@ namespace HMS.Database.Migrations.Patients.Migrations
                     b.Navigation("Allergies");
 
                     b.Navigation("EmergencyContacts");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientVisit", b =>
+                {
+                    b.Navigation("Consultations");
                 });
 #pragma warning restore 612, 618
         }

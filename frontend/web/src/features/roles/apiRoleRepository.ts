@@ -5,26 +5,17 @@ import type {
   RoleResponse as RoleResponseDto,
   UpdateRoleRequest as UpdateRoleRequestDto,
 } from '@hms/shared';
-import { NetworkError } from '@hms/shared';
 import { rolesApi } from '@/services/apiClient';
-import { createMockRole, getMockRoleById, listMockRoles, updateMockRole } from './mockRolesStore';
 import { buildEmptyPermissions, ROLE_MODULES } from './modules';
 import { PERMISSION_ACTIONS, type ModulePermissions, type Role, type RoleFormValues, type RoleListQuery } from './types';
 
 export interface PagedRoles {
   items: Role[];
   meta: PaginationMeta;
-  /** 'mock' when the real backend was unreachable and this list came from the offline fallback below. */
-  source: 'live' | 'mock';
 }
 
 /**
- * Real, database-backed repository (HMS.Modules.Identity) — implements the same shape as
- * mockRolesStore.ts so the hooks built against the mock store keep working unchanged. Falls
- * back to that same mock store on NetworkError (backend genuinely unreachable, e.g. the
- * static GitHub Pages deploy) — a real ApiError (backend up, request rejected) still
- * surfaces normally. Mirrors the pattern in features/patients/mockPatientsStore.ts and
- * features/masters/engine/masterStoreFactory.ts.
+ * Real, database-backed repository (HMS.Modules.Identity).
  *
  * The backend only returns granted permission keys (e.g. "patient-management.view"), not
  * the full module x action grid the UI works with — fromDto() reconstructs the dense
@@ -86,71 +77,38 @@ function toListQueryDto(query: RoleListQuery): RoleListQueryDto {
 }
 
 export async function listRoles(query: RoleListQuery): Promise<PagedRoles> {
-  try {
-    const paged = await rolesApi.getRoles(toListQueryDto(query));
-    return {
-      items: paged.items.map(fromDto),
-      meta: paged.meta,
-      source: 'live',
-    };
-  } catch (err) {
-    if (err instanceof NetworkError) {
-      return { ...listMockRoles(query), source: 'mock' };
-    }
-    throw err;
-  }
+  const paged = await rolesApi.getRoles(toListQueryDto(query));
+  return {
+    items: paged.items.map(fromDto),
+    meta: paged.meta,
+  };
 }
 
 export async function getRoleById(id: string): Promise<Role> {
-  try {
-    const dto = await rolesApi.getRoleById(id);
-    return fromDto(dto);
-  } catch (err) {
-    if (err instanceof NetworkError) {
-      const mock = getMockRoleById(id);
-      if (mock) {
-        return mock;
-      }
-    }
-    throw err;
-  }
+  const dto = await rolesApi.getRoleById(id);
+  return fromDto(dto);
 }
 
 export async function createRole(values: RoleFormValues): Promise<Role> {
-  try {
-    const created = await rolesApi.createRole(toRequestBody(values));
+  const created = await rolesApi.createRole(toRequestBody(values));
 
-    // CreateRoleRequest has no status field yet — Role.Create() always creates as Active, so
-    // a follow-up call is only needed when Inactive was actually requested.
-    if (values.status === 'Inactive') {
-      const deactivated = await rolesApi.deactivateRole(created.id);
-      return fromDto(deactivated);
-    }
-
-    return fromDto(created);
-  } catch (err) {
-    if (err instanceof NetworkError) {
-      return createMockRole(values);
-    }
-    throw err;
+  // CreateRoleRequest has no status field yet — Role.Create() always creates as Active, so
+  // a follow-up call is only needed when Inactive was actually requested.
+  if (values.status === 'Inactive') {
+    const deactivated = await rolesApi.deactivateRole(created.id);
+    return fromDto(deactivated);
   }
+
+  return fromDto(created);
 }
 
 export async function updateRole(id: string, values: RoleFormValues): Promise<Role> {
-  try {
-    await rolesApi.updateRole(id, toRequestBody(values));
+  await rolesApi.updateRole(id, toRequestBody(values));
 
-    // UpdateRoleRequest doesn't carry status either — apply it via the dedicated
-    // activate/deactivate endpoints. Both are no-ops server-side if the role is already in
-    // the requested state, so calling unconditionally here is safe regardless of prior status.
-    const result =
-      values.status === 'Active' ? await rolesApi.activateRole(id) : await rolesApi.deactivateRole(id);
+  // UpdateRoleRequest doesn't carry status either — apply it via the dedicated
+  // activate/deactivate endpoints. Both are no-ops server-side if the role is already in
+  // the requested state, so calling unconditionally here is safe regardless of prior status.
+  const result = values.status === 'Active' ? await rolesApi.activateRole(id) : await rolesApi.deactivateRole(id);
 
-    return fromDto(result);
-  } catch (err) {
-    if (err instanceof NetworkError) {
-      return updateMockRole(id, values);
-    }
-    throw err;
-  }
+  return fromDto(result);
 }

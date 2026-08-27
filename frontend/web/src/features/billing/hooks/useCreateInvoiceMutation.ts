@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createInvoice } from '../apiBillingRepository';
+import { createInvoice, type PatientDisplaySnapshot } from '../apiBillingRepository';
 import type { BillingFormValues } from '../billingValidation';
-import type { PatientDisplaySnapshot } from '../mockBillingStore';
 
 export function useCreateInvoiceMutation() {
   const queryClient = useQueryClient();

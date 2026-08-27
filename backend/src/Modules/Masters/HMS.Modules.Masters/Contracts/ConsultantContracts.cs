@@ -4,7 +4,6 @@ namespace HMS.Modules.Masters.Contracts;
 
 public record CreateConsultantRequest
 {
-    public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public Guid? DepartmentId { get; init; }
     public string? Specialization { get; init; }
@@ -23,7 +22,6 @@ public record UpdateConsultantRequest
 public record ConsultantResponse
 {
     public Guid Id { get; init; }
-    public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public Guid? DepartmentId { get; init; }
     public string? Specialization { get; init; }

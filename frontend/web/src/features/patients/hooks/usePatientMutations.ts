@@ -1,17 +1,14 @@
-import type { AddAllergyRequest, CreatePatientRequest, IdProofType, UpdatePatientRequest } from '@hms/shared';
+import type { AddAllergyRequest, CreatePatientRequest, CreatePatientVisitRequest, UpdatePatientRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { patientsApi } from '../../../services/apiClient';
+import { documentsApi, patientsApi } from '../../../services/apiClient';
+import { patientDocumentsQueryKey } from './usePatientDocumentUrl';
 
 function useInvalidatePatients() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: ['patients'] });
 }
 
-// Unlike the read-side hooks (usePatientsQuery/usePatientQuery), writes never fall back to
-// the offline mock store on a NetworkError — silently "succeeding" a create/edit/delete
-// against fake local data (with no duplicate check, and a real hard-delete where the UI
-// promises a soft one — see mockPatientsStore.ts's history) is worse than just failing
-// loudly. The error propagates so the caller's apiError/toast handling can show it.
+// Write failures propagate so the caller's apiError/toast handling can show them.
 
 export function useCreatePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
@@ -37,20 +34,25 @@ export function useDeletePatientMutation() {
   });
 }
 
+// Photo/ID-proof files are stored as Documents (HMS.Modules.Documents), not on the Patient
+// row itself — there's no photo/idProof field on Patient to invalidate the patients cache
+// for, so unlike every other mutation here, these two invalidate the patient-documents query
+// (usePatientDocumentUrl) instead, so the profile photo/ID-proof view refreshes right away.
 export function useUploadPatientPhotoMutation() {
-  const invalidatePatients = useInvalidatePatients();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File }) => patientsApi.uploadPhoto(id, file),
-    onSuccess: invalidatePatients,
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      documentsApi.uploadDocument(file, { ownerType: 'Patient', ownerId: id, documentType: 'Other' }),
+    onSuccess: (_data, { id }) => queryClient.invalidateQueries({ queryKey: patientDocumentsQueryKey(id) }),
   });
 }
 
 export function useUploadPatientIdProofMutation() {
-  const invalidatePatients = useInvalidatePatients();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, idProofType, file }: { id: string; idProofType: IdProofType; file: File }) =>
-      patientsApi.uploadIdProof(id, idProofType, file),
-    onSuccess: invalidatePatients,
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      documentsApi.uploadDocument(file, { ownerType: 'Patient', ownerId: id, documentType: 'IdProof' }),
+    onSuccess: (_data, { id }) => queryClient.invalidateQueries({ queryKey: patientDocumentsQueryKey(id) }),
   });
 }
 
@@ -67,5 +69,13 @@ export function useRemovePatientAllergyMutation() {
   return useMutation({
     mutationFn: ({ id, allergyId }: { id: string; allergyId: string }) => patientsApi.removeAllergy(id, allergyId),
     onSuccess: invalidatePatients,
+  });
+}
+
+// A visit isn't part of the Patient response (it's fetched separately, same as Documents), so
+// unlike the allergy mutations above there's no `patients` query to invalidate here.
+export function useCreatePatientVisitMutation() {
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: CreatePatientVisitRequest }) => patientsApi.createVisit(id, request),
   });
 }

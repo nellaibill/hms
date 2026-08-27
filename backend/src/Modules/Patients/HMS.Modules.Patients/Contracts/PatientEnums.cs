@@ -104,3 +104,13 @@ public enum ModeOfArrivalSource
     OnlineAdvertisement,
     OfflineAdvertisement,
 }
+
+/// <summary>Matches the frontend's ENCOUNTER_TYPES_UI exactly.</summary>
+public enum VisitType
+{
+    OP,
+    IP,
+    Emergency,
+    DayCare,
+    Observation,
+}

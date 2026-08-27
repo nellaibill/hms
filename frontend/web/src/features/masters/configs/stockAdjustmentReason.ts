@@ -16,10 +16,4 @@ export const stockAdjustmentReasonConfig: MasterEntityConfig = {
     { key: 'affectsValuation', label: 'Affects Valuation', type: 'boolean', defaultValue: false },
     { key: 'description', label: 'Description', type: 'textarea' },
   ],
-  seed: [
-    { id: 'stock-adjustment-reason-001', reasonCode: 'DAMAGE', reasonName: 'Damaged', affectsValuation: true },
-    { id: 'stock-adjustment-reason-002', reasonCode: 'EXPIRY', reasonName: 'Expired', affectsValuation: true },
-    { id: 'stock-adjustment-reason-003', reasonCode: 'RECOUNT', reasonName: 'Physical Recount', affectsValuation: false },
-    { id: 'stock-adjustment-reason-004', reasonCode: 'THEFT', reasonName: 'Theft / Loss', affectsValuation: true },
-  ],
 };

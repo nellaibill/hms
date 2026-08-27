@@ -7,7 +7,6 @@ internal class CreateConsultantRequestValidator : AbstractValidator<CreateConsul
 {
     public CreateConsultantRequestValidator()
     {
-        RuleFor(x => x.Code).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Specialization).MaximumLength(150);
     }

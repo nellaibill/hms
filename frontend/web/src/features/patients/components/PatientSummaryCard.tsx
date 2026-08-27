@@ -3,8 +3,8 @@ import { Droplet, Pencil, Phone, User, UserRound, VenusAndMars, type LucideIcon 
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { env } from '../../../config/env';
 import { bloodGroupLabel } from '../bloodGroupLabel';
+import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 
 interface PatientSummaryCardProps {
   patient: Patient;
@@ -28,12 +28,14 @@ function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
  * receptionist or doctor needs at a glance without opening the Profile tab. Replaces the
  * old full-width banner + Document Upload side panel (see PatientViewPage). */
 export function PatientSummaryCard({ patient }: PatientSummaryCardProps) {
+  const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
+
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 shadow-soft-md">
       <div className="flex flex-col items-center gap-3 text-center">
-        {patient.photoPath ? (
+        {photoUrl ? (
           <img
-            src={`${env.apiBaseUrl}/${patient.photoPath}`}
+            src={photoUrl}
             alt={`${patient.firstName} ${patient.lastName}`}
             className="h-24 w-24 rounded-full border border-border object-cover"
           />

@@ -34,6 +34,7 @@ internal class DocumentService : IDocumentService
     private readonly IDocumentAccessPolicy _accessPolicy;
     private readonly IDocumentScanQueue _scanQueue;
     private readonly IReadOnlyDictionary<DocumentOwnerType, IDocumentOwnerExistenceChecker> _ownerCheckers;
+    private readonly ITenantContext _tenantContext;
     private readonly long _maxFileSizeBytes;
     private readonly ILogger<DocumentService> _logger;
 
@@ -43,6 +44,7 @@ internal class DocumentService : IDocumentService
         IDocumentAccessPolicy accessPolicy,
         IDocumentScanQueue scanQueue,
         IEnumerable<IDocumentOwnerExistenceChecker> ownerCheckers,
+        ITenantContext tenantContext,
         IConfiguration configuration,
         ILogger<DocumentService> logger)
     {
@@ -51,6 +53,7 @@ internal class DocumentService : IDocumentService
         _accessPolicy = accessPolicy;
         _scanQueue = scanQueue;
         _ownerCheckers = ownerCheckers.ToDictionary(c => c.OwnerType);
+        _tenantContext = tenantContext;
         _maxFileSizeBytes = configuration.GetValue("Documents:MaxFileSizeMb", 10) * 1024L * 1024L;
         _logger = logger;
     }
@@ -109,7 +112,15 @@ internal class DocumentService : IDocumentService
         await _repository.AddAsync(document, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        await _scanQueue.EnqueueAsync(document.Id, cancellationToken);
+        // The scan queue is drained by a background service with no HTTP request of its own —
+        // it can't resolve a tenant the way this call's own request scope just did, so the
+        // tenant it needs to reach the right database is captured here and carried through the
+        // queue item instead (see ScanQueueItem's own doc comment for what breaks without this).
+        if (!_tenantContext.IsResolved || _tenantContext.TenantId is null || _tenantContext.ConnectionString is null)
+        {
+            throw new InvalidOperationException("DocumentService.UploadAsync was called without a tenant having been established for this request.");
+        }
+        await _scanQueue.EnqueueAsync(new ScanQueueItem(document.Id, _tenantContext.TenantId.Value, _tenantContext.ConnectionString), cancellationToken);
 
         _logger.LogInformation("Document {DocumentId} uploaded for {OwnerType} {OwnerId} by {UserId}", document.Id, document.OwnerType, document.OwnerId, actor.UserId);
 

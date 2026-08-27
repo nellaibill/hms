@@ -8,7 +8,6 @@ internal static class ConsultantMappingExtensions
     public static ConsultantResponse ToResponse(this Consultant consultant) => new()
     {
         Id = consultant.Id,
-        Code = consultant.Code,
         Name = consultant.Name,
         DepartmentId = consultant.DepartmentId,
         Specialization = consultant.Specialization,

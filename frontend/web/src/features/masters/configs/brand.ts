@@ -15,9 +15,4 @@ export const brandConfig: MasterEntityConfig = {
     { key: 'brandName', label: 'Brand Name', type: 'text', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
   ],
-  seed: [
-    { id: 'brand-001', brandCode: 'CIPLA', brandName: 'Cipla' },
-    { id: 'brand-002', brandCode: 'JNJ', brandName: 'Johnson & Johnson' },
-    { id: 'brand-003', brandCode: 'BD', brandName: 'Becton Dickinson' },
-  ],
 };
