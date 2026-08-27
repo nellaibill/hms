@@ -11,9 +11,12 @@ interface EmployeeSelectProps {
   /** Exclude one employee id from the options — e.g. an employee can't be their own
    * reporting manager. */
   excludeId?: string;
-  /** Prepends a "— None —" option (value ""), for optional employee references like
-   * Employee.reportingManagerId. */
+  /** Prepends a leading option (value ""), for optional employee references like
+   * Employee.reportingManagerId, or an "All employees" filter option. */
   includeNoneOption?: boolean;
+  /** Label for the leading option when includeNoneOption is set. Defaults to "— None —"
+   * (an optional single-employee reference); pass "All employees" for a list filter. */
+  noneLabel?: string;
 }
 
 /**
@@ -30,6 +33,7 @@ export function EmployeeSelect({
   disabled,
   excludeId,
   includeNoneOption,
+  noneLabel = '— None —',
 }: EmployeeSelectProps) {
   const { data } = useQuery({
     queryKey: ['employees', 'select-list'],
@@ -44,7 +48,7 @@ export function EmployeeSelect({
       keywords: `${employee.employeeCode} ${employee.email}`,
     }));
 
-  const allOptions = includeNoneOption ? [{ value: '', label: '— None —' }, ...options] : options;
+  const allOptions = includeNoneOption ? [{ value: '', label: noneLabel }, ...options] : options;
 
   return (
     <SearchableSelect
