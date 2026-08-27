@@ -14,9 +14,4 @@ export const departmentConfig: MasterEntityConfig = {
     { key: 'code', label: 'Department Code', type: 'text', required: true },
     { key: 'name', label: 'Department Name', type: 'text', required: true },
   ],
-  seed: [
-    { id: 'department-001', code: 'CARD', name: 'Cardiology' },
-    { id: 'department-002', code: 'ORTHO', name: 'Orthopedics' },
-    { id: 'department-003', code: 'GEN', name: 'General Medicine' },
-  ],
 };

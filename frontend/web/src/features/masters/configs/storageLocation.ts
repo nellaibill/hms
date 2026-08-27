@@ -32,10 +32,4 @@ export const storageLocationConfig: MasterEntityConfig = {
       helpText: 'Optional — e.g. pick a Rack as the parent of a Shelf, in the same warehouse.',
     },
   ],
-  seed: [
-    { id: 'storage-location-001', warehouseId: 'warehouse-001', locationCode: 'RACK-A', locationName: 'Rack A', locationType: 'Rack' },
-    { id: 'storage-location-002', warehouseId: 'warehouse-001', locationCode: 'RACK-A-S1', locationName: 'Rack A / Shelf 1', locationType: 'Shelf', parentLocationId: 'storage-location-001' },
-    { id: 'storage-location-003', warehouseId: 'warehouse-001', locationCode: 'RACK-A-S1-B1', locationName: 'Rack A / Shelf 1 / Bin 1', locationType: 'Bin', parentLocationId: 'storage-location-002' },
-    { id: 'storage-location-004', warehouseId: 'warehouse-002', locationCode: 'RACK-P1', locationName: 'Pharmacy Rack 1', locationType: 'Rack' },
-  ],
 };

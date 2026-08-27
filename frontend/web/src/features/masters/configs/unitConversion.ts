@@ -19,10 +19,4 @@ export const unitConversionConfig: MasterEntityConfig = {
     values.fromUomId && values.toUomId && values.fromUomId === values.toUomId
       ? 'From Unit and To Unit cannot be the same.'
       : undefined,
-  seed: [
-    { id: 'unit-conversion-001', fromUomId: 'uom-003', toUomId: 'uom-002', conversionFactor: 10 },
-    { id: 'unit-conversion-002', fromUomId: 'uom-002', toUomId: 'uom-001', conversionFactor: 10 },
-    { id: 'unit-conversion-003', fromUomId: 'uom-004', toUomId: 'uom-005', conversionFactor: 1000 },
-    { id: 'unit-conversion-004', fromUomId: 'uom-006', toUomId: 'uom-007', conversionFactor: 1000 },
-  ],
 };

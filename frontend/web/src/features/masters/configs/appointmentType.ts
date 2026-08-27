@@ -12,9 +12,4 @@ export const appointmentTypeConfig: MasterEntityConfig = {
   fields: [
     { key: 'name', label: 'Appointment Type Name', type: 'text', required: true },
   ],
-  seed: [
-    { id: 'appointment-type-001', name: 'New' },
-    { id: 'appointment-type-002', name: 'Follow-up' },
-    { id: 'appointment-type-003', name: 'Referral' },
-  ],
 };

@@ -16,8 +16,4 @@ export const currencyConfig: MasterEntityConfig = {
     { key: 'symbol', label: 'Symbol', type: 'text', required: true },
     { key: 'decimalPlaces', label: 'Decimal Places', type: 'number', defaultValue: 2, min: 0, max: 6, step: 1 },
   ],
-  seed: [
-    { id: 'currency-001', currencyCode: 'INR', currencyName: 'Indian Rupee', symbol: '₹', decimalPlaces: 2 },
-    { id: 'currency-002', currencyCode: 'USD', currencyName: 'US Dollar', symbol: '$', decimalPlaces: 2 },
-  ],
 };

@@ -2,8 +2,7 @@ import { DOCTORS } from '@/config/hospitalData';
 
 /**
  * Mock billing reference data (departments/consultants/services with prices) — no billing
- * master-data API exists yet, so this stands in for it the same way features/patients'
- * mockPatients.ts stands in for a patients API. Consultants are drawn from the same
+ * master-data API exists yet, so this stands in for it. Consultants are drawn from the same
  * DOCTORS roster used across auth/patients/dashboard so names stay consistent app-wide.
  */
 

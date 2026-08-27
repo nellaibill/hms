@@ -44,9 +44,8 @@ export interface BillingItem {
 /** The bill for one visit — totals are always derived from `items`, never stored independently. */
 export interface Billing {
   id: string;
-  /** Human-readable business identifier (e.g. "INV-2026-000001") — only set for invoices
-   * created against the real backend; absent for pre-existing mock-store records, which
-   * only ever had `id`. Prefer this for display; `id` remains the routing/API key. */
+  /** Human-readable business identifier (e.g. "INV-2026-000001"). Prefer this for display;
+   * `id` remains the routing/API key. */
   invoiceNumber?: string;
   patientId: string;
   visitId: string;

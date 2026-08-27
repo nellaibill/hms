@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { listInvoices, type PagedBillings } from '../apiBillingRepository';
-import type { BillingListQuery } from '../mockBillingStore';
+import { listInvoices, type BillingListQuery, type PagedBillings } from '../apiBillingRepository';
 
 export const billingsQueryKey = (query: BillingListQuery) => ['billings', 'list', query] as const;
 

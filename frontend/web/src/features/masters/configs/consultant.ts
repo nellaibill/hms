@@ -17,8 +17,4 @@ export const consultantConfig: MasterEntityConfig = {
     { key: 'departmentId', label: 'Department', type: 'reference', referenceEntityKey: 'department' },
     { key: 'specialization', label: 'Specialization', type: 'text' },
   ],
-  seed: [
-    { id: 'consultant-001', name: 'Dr. Asha Verma', departmentId: 'department-001', specialization: 'Interventional Cardiology' },
-    { id: 'consultant-002', name: 'Dr. Rohan Mehta', departmentId: 'department-002', specialization: 'Joint Replacement' },
-  ],
 };

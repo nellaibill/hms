@@ -8,11 +8,7 @@ function useInvalidatePatients() {
   return () => queryClient.invalidateQueries({ queryKey: ['patients'] });
 }
 
-// Unlike the read-side hooks (usePatientsQuery/usePatientQuery), writes never fall back to
-// the offline mock store on a NetworkError — silently "succeeding" a create/edit/delete
-// against fake local data (with no duplicate check, and a real hard-delete where the UI
-// promises a soft one — see mockPatientsStore.ts's history) is worse than just failing
-// loudly. The error propagates so the caller's apiError/toast handling can show it.
+// Write failures propagate so the caller's apiError/toast handling can show them.
 
 export function useCreatePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
