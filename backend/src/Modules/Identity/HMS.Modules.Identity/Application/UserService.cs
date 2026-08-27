@@ -295,6 +295,29 @@ internal class UserService : IUserService
         return Result<UserResponse>.Success(user.ToResponse(role!.Name));
     }
 
+    public async Task<IReadOnlyList<StaffDirectoryEntryResponse>> GetStaffDirectoryAsync(string? search, CancellationToken cancellationToken)
+    {
+        // PagedRequest.MaxPageSize (100) caps this — a search-first picker, not a full staff
+        // browse, same trade-off as every other "select list" query in this codebase (e.g.
+        // HMS.Modules.Calendar's department directory fetch).
+        var query = new UserListQuery { IsActive = true, Search = search, Page = 1, PageSize = 100 };
+        var (items, _) = await _repository.GetPagedAsync(query, cancellationToken);
+
+        var roleIds = items.Select(u => u.RoleId).Distinct();
+        var roles = await _roleRepository.GetManyByIdsAsync(roleIds, cancellationToken);
+        var roleNameById = roles.ToDictionary(r => r.Id, r => r.Name);
+
+        return items
+            .Select(u => new StaffDirectoryEntryResponse
+            {
+                Id = u.Id,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                RoleName = roleNameById.GetValueOrDefault(u.RoleId, string.Empty),
+            })
+            .ToList();
+    }
+
     // A client-supplied extension and Content-Type header are just claims — this checks the
     // file's actual bytes against the well-known signatures for the three allowed formats,
     // so a renamed non-image (e.g. "virus.jpg" containing plain text) is still rejected.

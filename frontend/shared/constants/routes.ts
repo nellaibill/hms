@@ -42,6 +42,7 @@ export const API_ROUTES = {
     deactivate: (id: string) => `/api/v1/users/${id}/deactivate`,
     password: (id: string) => `/api/v1/users/${id}/password`,
     profilePhoto: (id: string) => `/api/v1/users/${id}/profile-photo`,
+    directory: '/api/v1/users/directory',
   },
   roles: {
     base: '/api/v1/roles',
@@ -204,5 +205,23 @@ export const API_ROUTES = {
       byProductBatch: (productId: string, productBatchId: string) => `/api/v1/pharmacy/stock-balances/${productId}/${productBatchId}`,
     },
     stockLedger: '/api/v1/pharmacy/stock-ledger',
+  },
+  /** Mirrors HMS.Modules.Notifications.Endpoints.*Controller. */
+  notifications: {
+    base: '/api/v1/notifications',
+    unreadCount: '/api/v1/notifications/unread-count',
+    markRead: (id: string) => `/api/v1/notifications/${id}/read`,
+    markAllRead: '/api/v1/notifications/read-all',
+  },
+  notificationPreferences: '/api/v1/notification-preferences',
+  notificationTemplates: {
+    base: '/api/v1/notification-templates',
+    byId: (id: string) => `/api/v1/notification-templates/${id}`,
+  },
+  /** Mirrors HMS.Modules.Messaging.Endpoints.ConversationsController. */
+  conversations: {
+    base: '/api/v1/conversations',
+    messages: (id: string) => `/api/v1/conversations/${id}/messages`,
+    read: (id: string) => `/api/v1/conversations/${id}/read`,
   },
 } as const;

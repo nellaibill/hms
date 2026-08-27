@@ -40,6 +40,13 @@ public static class FeatureCatalog
         "ipd",
         "pharmacy",
         "billing",
+
+        // Gates two DbContexts (HMS.Modules.Notifications' "notifications" schema and
+        // HMS.Modules.Messaging's "messaging" schema) behind one toggle — presented to a
+        // Platform Admin as a single feature since they're one product surface
+        // (/engagement/messages), same as how Mandatory below already groups multiple
+        // schemas under one always-on umbrella. See docs/DecisionLog.md ADR-035.
+        "messages-and-notifications",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate
@@ -57,7 +64,6 @@ public static class FeatureCatalog
         "finance",
         "records-and-certificates",
         "activity-log",
-        "messages-and-notifications",
         "reports",
         "e-mrd",
     ];

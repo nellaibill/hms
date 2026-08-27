@@ -31,3 +31,8 @@ export * from './pharmacy/dispense';
 export * from './pharmacy/dispenseCart';
 export * from './pharmacy/stockBalance';
 export * from './pharmacy/stockLedger';
+export * from './notifications/notification';
+export * from './notifications/notificationTemplate';
+export * from './notifications/notificationPreference';
+export * from './messaging/conversation';
+export * from './messaging/message';
