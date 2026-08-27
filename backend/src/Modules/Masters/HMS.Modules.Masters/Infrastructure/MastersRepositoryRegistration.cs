@@ -31,6 +31,7 @@ internal static class MastersRepositoryRegistration
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IDesignationRepository, DesignationRepository>();
         services.AddScoped<IConsultantRepository, ConsultantRepository>();
         services.AddScoped<IAppointmentTypeRepository, AppointmentTypeRepository>();
         services.AddScoped<IConsultationTypeRepository, ConsultationTypeRepository>();
