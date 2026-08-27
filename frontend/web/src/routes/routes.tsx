@@ -59,6 +59,14 @@ const ShiftSwapRequestCreatePage = lazy(() => import('../pages/hr/ShiftSwapReque
 const ShiftSwapRequestViewPage = lazy(() => import('../pages/hr/ShiftSwapRequestViewPage'));
 const ShiftSwapRequestEditPage = lazy(() => import('../pages/hr/ShiftSwapRequestEditPage'));
 const MonthlyRosterCalendarPage = lazy(() => import('../pages/hr/MonthlyRosterCalendarPage'));
+const HrDashboardPage = lazy(() => import('../pages/hr/HrDashboardPage'));
+const EmployeesListPage = lazy(() => import('../pages/hr/EmployeesListPage'));
+const EmployeeCreatePage = lazy(() => import('../pages/hr/EmployeeCreatePage'));
+const EmployeeViewPage = lazy(() => import('../pages/hr/EmployeeViewPage'));
+const EmployeeEditPage = lazy(() => import('../pages/hr/EmployeeEditPage'));
+const AttendanceListPage = lazy(() => import('../pages/hr/AttendanceListPage'));
+const LeaveTypesListPage = lazy(() => import('../pages/hr/LeaveTypesListPage'));
+const LeaveRequestsListPage = lazy(() => import('../pages/hr/LeaveRequestsListPage'));
 const CalendarEventsPage = lazy(() => import('../pages/calendar/CalendarEventsPage'));
 const MessagesAndNotificationsPage = lazy(() => import('../pages/messaging/MessagesAndNotificationsPage'));
 const DocumentManagementPage = lazy(() => import('../pages/documents/DocumentManagementPage'));
@@ -253,6 +261,14 @@ const hrRoutes = [
           { path: 'admin/hr/shift-swap-requests/:id', element: withSuspense(<ShiftSwapRequestViewPage />) },
           { path: 'admin/hr/shift-swap-requests/:id/edit', element: withSuspense(<ShiftSwapRequestEditPage />) },
           { path: 'admin/hr/monthly-calendar', element: withSuspense(<MonthlyRosterCalendarPage />) },
+          { path: 'admin/hr/dashboard', element: withSuspense(<HrDashboardPage />) },
+          { path: 'admin/hr/employees', element: withSuspense(<EmployeesListPage />) },
+          { path: 'admin/hr/employees/new', element: withSuspense(<EmployeeCreatePage />) },
+          { path: 'admin/hr/employees/:id', element: withSuspense(<EmployeeViewPage />) },
+          { path: 'admin/hr/employees/:id/edit', element: withSuspense(<EmployeeEditPage />) },
+          { path: 'admin/hr/attendance', element: withSuspense(<AttendanceListPage />) },
+          { path: 'admin/hr/leave-types', element: withSuspense(<LeaveTypesListPage />) },
+          { path: 'admin/hr/leave-requests', element: withSuspense(<LeaveRequestsListPage />) },
         ],
       },
     ],
