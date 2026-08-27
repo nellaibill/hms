@@ -37,3 +37,55 @@ public enum SwapRequestStatus
     Rejected,
     Cancelled,
 }
+
+/// <summary>Employee's self-identified gender — a closed enum (not a Masters lookup table)
+/// per the HR MVP spec.</summary>
+public enum Gender
+{
+    Male,
+    Female,
+    Other,
+}
+
+/// <summary>The nature of an employee's engagement with the hospital.</summary>
+public enum EmployeeType
+{
+    Permanent,
+    Contract,
+    Intern,
+    Consultant,
+    PartTime,
+}
+
+/// <summary>
+/// A richer HR-domain lifecycle status, independent of Employee.IsActive (the generic
+/// Activate/Deactivate toggle every master-ish entity in this codebase carries). An employee
+/// can be IsActive=true and EmploymentStatus=OnLeave at the same time — the two are
+/// deliberately orthogonal, per the HR MVP spec.
+/// </summary>
+public enum EmploymentStatus
+{
+    Active,
+    OnLeave,
+    Terminated,
+    Resigned,
+}
+
+/// <summary>A single day's attendance outcome for one employee.</summary>
+public enum AttendanceStatus
+{
+    Present,
+    Absent,
+    Late,
+    HalfDay,
+    OnLeave,
+}
+
+/// <summary>The lifecycle state of a leave request.</summary>
+public enum LeaveRequestStatus
+{
+    Pending,
+    Approved,
+    Rejected,
+    Cancelled,
+}

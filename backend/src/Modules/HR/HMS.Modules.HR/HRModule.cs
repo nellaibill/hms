@@ -66,6 +66,10 @@ public static class HRModule
         services.AddScoped<IShiftSwapRequestRepository, ShiftSwapRequestRepository>();
         services.AddScoped<IShiftSwapRequestService, ShiftSwapRequestService>();
 
+        // Hospital HR Management MVP (see docs/DecisionLog.md ADR-036).
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IEmployeeService, EmployeeService>();
+
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations, and this module's
         // validators are internal by design (docs/DeveloperHandbook.md §8/§20).
@@ -85,6 +89,9 @@ public static class HRModule
 
         services.AddScoped<IValidator<CreateSwapRequest>, CreateSwapRequestValidator>();
         services.AddScoped<IValidator<UpdateSwapRequest>, UpdateSwapRequestValidator>();
+
+        services.AddScoped<IValidator<CreateEmployeeRequest>, CreateEmployeeRequestValidator>();
+        services.AddScoped<IValidator<UpdateEmployeeRequest>, UpdateEmployeeRequestValidator>();
 
         return services;
     }

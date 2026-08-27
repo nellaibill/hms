@@ -36,4 +36,39 @@ internal static class HRErrorCodes
     // ShiftAssignment: the same staff member already has another assignment on the same
     // RosterDate whose shift time range overlaps this one's.
     public const string ShiftOverlap = "HR.SHIFT_OVERLAP";
+
+    // --- Employee/Attendance/LeaveType/LeaveRequest (Hospital HR Management MVP) ---
+
+    // Employee.DesignationId doesn't resolve to a real Masters.Designation record.
+    public const string InvalidDesignation = "HR.INVALID_DESIGNATION";
+
+    // Employee.ReportingManagerId doesn't resolve to a real Employee, or refers to the
+    // employee itself (an employee may not report to themselves).
+    public const string InvalidReportingManager = "HR.INVALID_REPORTING_MANAGER";
+
+    // Employee.UserId doesn't resolve to a real identity.users row — checked cross-module via
+    // Identity's public IUserService.GetByIdAsync only when a UserId is actually supplied
+    // (it's always optional).
+    public const string InvalidUser = "HR.INVALID_USER";
+
+    // Attendance.EmployeeId / LeaveRequest.EmployeeId doesn't resolve to a real Employee.
+    public const string InvalidEmployee = "HR.INVALID_EMPLOYEE";
+
+    // LeaveRequest.LeaveTypeId doesn't resolve to a real LeaveType.
+    public const string InvalidLeaveType = "HR.INVALID_LEAVE_TYPE";
+
+    // Attendance: another attendance row already exists for the same Employee + AttendanceDate.
+    public const string DuplicateAttendance = "HR.DUPLICATE_ATTENDANCE";
+
+    // Attendance check-in/check-out state machine.
+    public const string AlreadyCheckedIn = "HR.ALREADY_CHECKED_IN";
+    public const string NotCheckedIn = "HR.NOT_CHECKED_IN";
+    public const string AlreadyCheckedOut = "HR.ALREADY_CHECKED_OUT";
+
+    // LeaveRequest: EndDate earlier than StartDate.
+    public const string InvalidDateRange = "HR.INVALID_DATE_RANGE";
+
+    // LeaveRequest: Approve/Reject/Cancel attempted from a status other than the one each
+    // transition requires (all three only apply to Pending).
+    public const string InvalidStatusTransition = "HR.INVALID_STATUS_TRANSITION";
 }
