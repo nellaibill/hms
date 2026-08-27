@@ -37,6 +37,27 @@ _To be documented._
 
 ## Decisions
 
+### ADR-030: Messaging & Notification module Phase 2 — in-app notifications end-to-end, no templates yet
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-029. Phase 2's goal was to prove the fan-out + read/unread mechanics end-to-end (service + API), deliberately before template rendering (Phase 3) or async Email/Sms delivery (Phase 4) exist.
+
+**Decision**
+1. **`NotifyRequest` carries already-rendered `Title`/`Body`**, not just a `TemplateKey` to look up — `NotificationTemplate` exists (Phase 1) but isn't wired to rendering yet, so the caller (a later phase's Appointments/Patients/etc., or today's admin manual-send endpoint) supplies final text directly. `TemplateKey` is still recorded, informationally, for when Phase 3 adds rendering in front of the same method.
+2. **`INotificationService` is the module's public seam** (mirrors `IUserService`'s CS0051 reasoning) and is also, deliberately, the same method every other module will call in-process in a later phase — no event bus, per ADR-029.
+3. **`NotifyAsync` only ever writes the in-app channel** (`Notification` + `NotificationRecipient` rows) in this phase — no `NotificationDelivery` rows yet, since Email/Sms don't exist until Phase 4/5/6.
+4. **"My notifications" endpoints need no `RequirePermission`** beyond `[Authorize]` — every read/write is scoped to the caller's own `UserId` from the JWT, so there's no parameter surface to gate. Only the admin manual-send `POST /api/v1/notifications` requires `engagement.create`.
+5. **`MarkAsReadAsync` returns the same `NOT_FOUND` code for "doesn't exist" and "belongs to someone else"** — deliberately not distinguished, so the endpoint can't be used to probe whether a given id belongs to another user (mirrors `AuthenticationService`'s generic login-failure message).
+6. **`NotificationResponse` is a recipient's view, not the `Notification` itself** — its `Id` is the `NotificationRecipient.Id` (what "mark as read" targets), with a separate `NotificationId` field. A `Notify` call's response is a distinct `NotificationBroadcastResponse` (`NotificationId` + `RecipientCount`), since one call fans out to N recipient rows with no single "the" response.
+
+**Consequences**
+- `NotificationsModuleBoundaryTests`' allow-list grew to include `INotificationService` alongside `NotificationsDbContext`.
+- No live browser verification — this phase has no frontend yet; `dotnet test` (10 new `NotificationServiceTests`) is the verification, consistent with [[feedback_no_live_verification_per_fix]]'s reasoning for backend-only phases.
+
+---
+
 ### ADR-029: Messaging & Notification module — two modules, in-process seam, Phase 1 is Domain + Infrastructure only
 **Date:** 2026-08-27
 **Status:** Accepted

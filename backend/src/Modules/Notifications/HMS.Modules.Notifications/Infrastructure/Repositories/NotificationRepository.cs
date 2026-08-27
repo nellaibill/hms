@@ -19,6 +19,9 @@ internal class NotificationRepository : INotificationRepository
     public Task<Notification?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Notifications.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<Notification>> GetManyByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken)
+        => await _dbContext.Notifications.Where(n => ids.Contains(n.Id)).ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 }

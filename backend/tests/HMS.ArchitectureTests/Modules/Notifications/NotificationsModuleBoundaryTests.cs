@@ -1,6 +1,6 @@
 using System.Reflection;
 using FluentAssertions;
-using HMS.Modules.Notifications.Infrastructure;
+using HMS.Modules.Notifications.Endpoints;
 using NetArchTest.Rules;
 using Xunit;
 
@@ -10,18 +10,18 @@ namespace HMS.ArchitectureTests.Modules.Notifications;
 /// Enforces the module-boundary rules from docs/Architecture.md §3–4 for
 /// HMS.Modules.Notifications — mirrors HMS.ArchitectureTests.Modules.Calendar.
 /// CalendarModuleBoundaryTests. Everything outside Contracts is internal, and Contracts is
-/// the module's only public surface, with one deliberate, narrow exception (see
+/// the module's only public surface, with two deliberate, narrow exceptions (see
 /// <see cref="AllowedPublicTypeNamePattern"/>): NotificationsDbContext is public because
-/// it's resolved by type from HMS.Api's Program.cs for the startup-time migration call.
-/// Phase 1 has no public service interface yet (no Endpoints controller to require one) —
-/// this pattern grows to include it (e.g. INotificationService) in a later phase, the same
-/// way IEventService was added to Calendar's.
+/// it's resolved by type from HMS.Api's Program.cs for the startup-time migration call, and
+/// INotificationService is public for the same CS0051 reason as HMS.Modules.Identity's
+/// IUserService (NotificationsController's public constructor takes it as a dependency) —
+/// it's also this module's cross-module call seam, per docs/DecisionLog.md ADR-029.
 /// </summary>
 public class NotificationsModuleBoundaryTests
 {
-    private static readonly Assembly NotificationsAssembly = typeof(NotificationsDbContext).Assembly;
+    private static readonly Assembly NotificationsAssembly = typeof(NotificationsController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^(NotificationsDbContext)$";
+    private const string AllowedPublicTypeNamePattern = "^(NotificationsDbContext|INotificationService)$";
 
     [Theory]
     [InlineData("HMS.Modules.Notifications.Domain")]
