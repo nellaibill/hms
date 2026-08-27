@@ -98,7 +98,14 @@ export function SearchableSelect({
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="p-0">
+      {/* PopoverContent defaults to exactly the trigger's width (w-[--radix-popover-trigger-width])
+          — fine for a wide trigger, but this component is often used in a multi-column row
+          (e.g. Registration Details' 5-across Department/Consultant/Consultation Type fields)
+          where the trigger itself is narrow, which used to also clip every option's label down
+          to the same narrow width. w-max lets the panel size to its own content instead, floored
+          at the trigger's width (never narrower than what opened it) and capped so one very long
+          label can't blow out to something absurd on an ultrawide monitor. */}
+      <PopoverContent className="w-max min-w-[--radix-popover-trigger-width] max-w-[min(28rem,90vw)] p-0">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
@@ -125,14 +132,18 @@ export function SearchableSelect({
               onClick={() => selectOption(option)}
               onMouseEnter={() => setHighlighted(index)}
               className={cn(
-                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm',
+                'flex w-full items-start gap-2 rounded-sm px-2 py-1.5 text-left text-sm',
                 index === highlighted ? 'bg-accent text-accent-foreground' : 'text-foreground',
               )}
             >
-              <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+              <span className="mt-px flex h-3.5 w-3.5 shrink-0 items-center justify-center">
                 {option.value === value && <Check className="h-4 w-4" />}
               </span>
-              <span className="truncate">{option.label}</span>
+              {/* No truncate here on purpose — the whole point of widening the panel above is
+                  so a long option (a doctor's name with degrees, a long department name) is
+                  fully readable; wrapping instead of clipping is the fallback for anything
+                  still longer than the max-width cap. */}
+              <span className="whitespace-normal break-words">{option.label}</span>
             </button>
           ))}
         </div>
