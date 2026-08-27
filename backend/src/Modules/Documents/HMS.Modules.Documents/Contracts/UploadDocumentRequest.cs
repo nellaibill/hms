@@ -15,4 +15,9 @@ public record UploadDocumentRequest
     /// <summary>Defaults to <see cref="DocumentClassification.Internal"/> when not supplied —
     /// see <see cref="DocumentClassification"/> for why this is independent of owner type.</summary>
     public DocumentClassification? Classification { get; init; }
+
+    /// <summary>Optional — when the document itself has a renewal/expiry date (e.g. a Staff
+    /// ID proof or certification). Null for every owner type with no notion of expiry; see
+    /// Domain.Document.ExpiryDate's own remarks.</summary>
+    public DateOnly? ExpiryDate { get; init; }
 }

@@ -19,6 +19,8 @@ public record DocumentResponse
 
     public Guid? UploadedByUserId { get; init; }
 
+    public DateOnly? ExpiryDate { get; init; }
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

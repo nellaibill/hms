@@ -48,6 +48,15 @@ internal class DocumentRepository : IDocumentRepository
         };
     }
 
+    public Task<int> GetExpiringCountAsync(DocumentOwnerType ownerType, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken)
+        => _dbContext.Documents.CountAsync(
+            d => d.OwnerType == ownerType
+                && d.Status == DocumentStatus.Available
+                && d.ExpiryDate != null
+                && d.ExpiryDate >= fromDate
+                && d.ExpiryDate <= toDate,
+            cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 

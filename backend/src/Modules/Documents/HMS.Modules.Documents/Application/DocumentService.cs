@@ -107,7 +107,8 @@ internal class DocumentService : IDocumentService
             contentType,
             length,
             saved.ChecksumSha256,
-            actor.UserId);
+            actor.UserId,
+            request.ExpiryDate);
 
         await _repository.AddAsync(document, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -242,5 +243,11 @@ internal class DocumentService : IDocumentService
         _logger.LogInformation("Document {DocumentId} content downloaded by {UserId}", document.Id, actor.UserId);
 
         return Result<DocumentContent>.Success(new DocumentContent(stream, document.ContentType, document.OriginalFileName));
+    }
+
+    public Task<int> GetExpiringDocumentCountAsync(DocumentOwnerType ownerType, int withinDays, CancellationToken cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        return _repository.GetExpiringCountAsync(ownerType, today, today.AddDays(withinDays), cancellationToken);
     }
 }

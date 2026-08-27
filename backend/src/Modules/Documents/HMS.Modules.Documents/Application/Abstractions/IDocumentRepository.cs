@@ -18,5 +18,10 @@ internal interface IDocumentRepository
 
     Task<DocumentSummaryResponse> GetSummaryAsync(CancellationToken cancellationToken);
 
+    /// <summary>Count of non-deleted, Available-status documents of the given owner type
+    /// whose ExpiryDate falls within [fromDate, toDate] inclusive — backs
+    /// IDocumentService.GetExpiringDocumentCountAsync.</summary>
+    Task<int> GetExpiringCountAsync(DocumentOwnerType ownerType, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

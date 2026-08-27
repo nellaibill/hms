@@ -1,4 +1,5 @@
 using FluentValidation;
+using HMS.Modules.Documents.Application.Abstractions;
 using HMS.Modules.HR.Application;
 using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Application.Validators;
@@ -78,6 +79,15 @@ public static class HRModule
 
         services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
         services.AddScoped<ILeaveRequestService, LeaveRequestService>();
+
+        // Lets HMS.Modules.Documents validate DocumentOwnerType.Staff uploads against
+        // hr.employees — see StaffDocumentOwnerExistenceChecker's own remarks and
+        // docs/DecisionLog.md ADR-036. Registered here (not in AddDocumentsModule) because
+        // this module owns the checker, same as Patients registering its own from
+        // AddPatientsModule.
+        services.AddScoped<IDocumentOwnerExistenceChecker, StaffDocumentOwnerExistenceChecker>();
+
+        services.AddScoped<IHrDashboardService, HrDashboardService>();
 
         // Registered explicitly rather than via AddValidatorsFromAssemblyContaining: that
         // scanner only finds *public* IValidator<T> implementations, and this module's

@@ -29,6 +29,14 @@ public interface IDocumentService
     /// check as every other read — or a failure (not found, forbidden, or not yet available
     /// because it's still pending/quarantined scan).</summary>
     Task<Result<DocumentContent>> GetContentAsync(Guid id, DocumentActor actor, CancellationToken cancellationToken);
+
+    /// <summary>Counts non-deleted, Available-status documents of the given owner type whose
+    /// ExpiryDate falls within the next <paramref name="withinDays"/> days (inclusive of
+    /// today) — added for the Hospital HR Management MVP's HR dashboard "expiring documents"
+    /// tile (DocumentOwnerType.Staff), but generic across every owner type. Deliberately
+    /// unfiltered by any access policy (a cross-module count, not a per-caller document list)
+    /// — mirrors GetSummaryAsync's own "repository-wide" framing.</summary>
+    Task<int> GetExpiringDocumentCountAsync(DocumentOwnerType ownerType, int withinDays, CancellationToken cancellationToken);
 }
 
 /// <summary>A resolved, readable document stream plus the metadata a controller needs to
