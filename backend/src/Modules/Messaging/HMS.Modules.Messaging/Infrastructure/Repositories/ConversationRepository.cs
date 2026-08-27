@@ -19,6 +19,9 @@ internal class ConversationRepository : IConversationRepository
     public Task<Conversation?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Conversations.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<Conversation>> GetManyByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken)
+        => await _dbContext.Conversations.Where(c => ids.Contains(c.Id)).ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 }

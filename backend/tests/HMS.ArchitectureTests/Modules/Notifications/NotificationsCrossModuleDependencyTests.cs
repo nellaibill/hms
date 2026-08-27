@@ -16,6 +16,12 @@ namespace HMS.ArchitectureTests.Modules.Notifications;
 /// (used to resolve a recipient's email/phone number for the background delivery pipeline —
 /// docs/DecisionLog.md ADR-032), but never on Identity's Domain or Infrastructure — the two
 /// layers that are genuinely private to Identity.
+///
+/// HMS.Modules.Messaging is excluded from <see cref="OtherModules_ShouldNotDependOnNotificationsInternals"/>'s
+/// blanket ban for the same reason Notifications is excluded from Identity's: it legitimately
+/// depends on Notifications' public INotificationService (the new-message alert —
+/// docs/DecisionLog.md ADR-034), covered instead by its own
+/// HMS.ArchitectureTests.Modules.Messaging.MessagingCrossModuleDependencyTests.
 /// </summary>
 public class NotificationsCrossModuleDependencyTests
 {
@@ -38,7 +44,6 @@ public class NotificationsCrossModuleDependencyTests
     [InlineData("HMS.Modules.Staff")]
     [InlineData("HMS.Modules.Billing")]
     [InlineData("HMS.Modules.Pharmacy")]
-    [InlineData("HMS.Modules.Messaging")]
     public void OtherModules_ShouldNotDependOnNotificationsInternals(string otherModuleAssemblyName)
     {
         var otherModuleAssembly = Assembly.Load(otherModuleAssemblyName);

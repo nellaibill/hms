@@ -74,6 +74,10 @@ public static class ModuleRegistration
         // Pharmacy/IPD call into (a later phase wires the real call sites) — read naturally
         // as "the last thing every other module depends on."
         services.AddNotificationsModule(configuration);
+
+        // Messaging depends on Notifications' public INotificationService (the new-message
+        // in-app alert — docs/DecisionLog.md ADR-034), so it must register after
+        // AddNotificationsModule immediately above.
         services.AddMessagingModule(configuration);
 
         // Platform is deliberately last and self-contained: it owns a separate physical

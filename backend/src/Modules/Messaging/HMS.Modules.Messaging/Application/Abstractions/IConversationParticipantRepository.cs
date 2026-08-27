@@ -17,5 +17,11 @@ internal interface IConversationParticipantRepository
     /// <summary>"My conversations" — every conversation this user belongs to.</summary>
     Task<IReadOnlyList<ConversationParticipant>> GetByUserAsync(Guid userId, CancellationToken cancellationToken);
 
+    /// <summary>The existing OneToOne conversation between exactly these two users, if one
+    /// exists — CreateAsync uses this to avoid creating a duplicate thread when "start a
+    /// conversation" is invoked twice for the same pair. Null if no such conversation
+    /// exists yet.</summary>
+    Task<Guid?> FindOneToOneConversationIdAsync(Guid userId1, Guid userId2, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

@@ -1,6 +1,6 @@
 using System.Reflection;
 using FluentAssertions;
-using HMS.Modules.Messaging.Infrastructure;
+using HMS.Modules.Messaging.Endpoints;
 using NetArchTest.Rules;
 using Xunit;
 
@@ -9,18 +9,18 @@ namespace HMS.ArchitectureTests.Modules.Messaging;
 /// <summary>
 /// Enforces the module-boundary rules from docs/Architecture.md §3–4 for
 /// HMS.Modules.Messaging — mirrors HMS.ArchitectureTests.Modules.Notifications.
-/// NotificationsModuleBoundaryTests exactly (built in the same phase). Everything outside
-/// Contracts is internal, and Contracts is the module's only public surface, with one
-/// deliberate, narrow exception (see <see cref="AllowedPublicTypeNamePattern"/>):
-/// MessagingDbContext is public because it's resolved by type from HMS.Api's Program.cs for
-/// the startup-time migration call. Phase 1 has no public service interface yet — this
-/// pattern grows to include one (e.g. IConversationService) in a later phase.
+/// NotificationsModuleBoundaryTests exactly. Everything outside Contracts is internal, and
+/// Contracts is the module's only public surface, with two deliberate, narrow exceptions
+/// (see <see cref="AllowedPublicTypeNamePattern"/>): MessagingDbContext is public because
+/// it's resolved by type from HMS.Api's Program.cs for the startup-time migration call, and
+/// IConversationService is public for the same CS0051 reason as HMS.Modules.Identity's
+/// IUserService (ConversationsController's public constructor takes it as a dependency).
 /// </summary>
 public class MessagingModuleBoundaryTests
 {
-    private static readonly Assembly MessagingAssembly = typeof(MessagingDbContext).Assembly;
+    private static readonly Assembly MessagingAssembly = typeof(ConversationsController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^(MessagingDbContext)$";
+    private const string AllowedPublicTypeNamePattern = "^(MessagingDbContext|IConversationService)$";
 
     [Theory]
     [InlineData("HMS.Modules.Messaging.Domain")]

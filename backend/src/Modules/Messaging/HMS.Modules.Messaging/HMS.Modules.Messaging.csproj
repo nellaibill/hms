@@ -30,6 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Notifications\HMS.Modules.Notifications\HMS.Modules.Notifications.csproj" />
   </ItemGroup>
 
 </Project>

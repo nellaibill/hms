@@ -1,4 +1,5 @@
 using HMS.Modules.Messaging.Application.Abstractions;
+using HMS.Modules.Messaging.Contracts;
 using HMS.Modules.Messaging.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +28,26 @@ internal class ConversationParticipantRepository : IConversationParticipantRepos
 
     public async Task<IReadOnlyList<ConversationParticipant>> GetByUserAsync(Guid userId, CancellationToken cancellationToken)
         => await _dbContext.ConversationParticipants.Where(p => p.UserId == userId).ToListAsync(cancellationToken);
+
+    public async Task<Guid?> FindOneToOneConversationIdAsync(Guid userId1, Guid userId2, CancellationToken cancellationToken)
+    {
+        var userOneConversationIds = _dbContext.ConversationParticipants
+            .Where(p => p.UserId == userId1)
+            .Select(p => p.ConversationId);
+
+        // Relies on OneToOne conversations always having exactly the 2 participants they
+        // were created with (Conversation.Type is immutable, and ConversationService is the
+        // only writer) — a OneToOne row containing both users therefore can't be a group
+        // that happens to include them too.
+        return await (
+            from participant in _dbContext.ConversationParticipants
+            join conversation in _dbContext.Conversations on participant.ConversationId equals conversation.Id
+            where participant.UserId == userId2
+                && conversation.Type == ConversationType.OneToOne
+                && userOneConversationIds.Contains(participant.ConversationId)
+            select (Guid?)participant.ConversationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);

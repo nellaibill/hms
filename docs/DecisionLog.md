@@ -37,6 +37,27 @@ _To be documented._
 
 ## Decisions
 
+### ADR-034: Messaging & Notification module Phase 7 — internal messaging (conversations, participants, messages)
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+`HMS.Modules.Messaging`'s Domain/Infrastructure existed since Phase 1 (ADR-029) but had no Application/Endpoints layer. Phase 7 built the full messaging feature on top of it: start a conversation, list mine, read/send messages, mark read, plus the new-message notification hook.
+
+**Decision**
+1. **`ConversationParticipant` membership is the sole authorization check** for every per-conversation action (`GetMessagesAsync`, `SendMessageAsync`, `MarkReadAsync`) — a single `GetByConversationAndUserAsync` lookup returning null covers both "not a participant" *and* "conversation doesn't exist at all," collapsing both into one 403 (`ConversationErrorCodes.NotParticipant`). This is a stricter privacy property than Notifications' equivalent choice (ADR-030's `NOT_FOUND`): a caller can't even tell whether a given conversation id is valid, not just whether it's theirs.
+2. **A OneToOne "create conversation" call is idempotent** — `FindOneToOneConversationIdAsync` checks for an existing conversation between the same two users first and returns it instead of creating a duplicate thread. Not explicitly required by the design doc, but treated as basic correctness (clicking "message this person" from two different screens must not fork the thread), not scope creep.
+3. **`ConversationResponse` carries only participant `UserId`s, never names** — resolving display names/avatars is left to the frontend (a batched call to Identity's own Users API), keeping this module's one cross-module dependency (Notifications) from growing into two just to decorate a response DTO.
+4. **The new-message hook fires unconditionally for every other participant**, not only ones who are "away" — no presence/"currently active in this conversation" tracking exists (explicitly out of scope per the design doc), so every message raises one `INotificationService.NotifyAsync` call with a 200-character preview as the body. `NotifyAsync`'s own preference check (ADR-032) still governs whether Email/Sms also fire; this hook only ever asks for in-app.
+5. **`HMS.Modules.Messaging` now legitimately depends on `HMS.Modules.Notifications.Application`** (its public `INotificationService`) — same pattern as ADR-032's Notifications→Identity dependency. `NotificationsCrossModuleDependencyTests`' blanket ban now excludes Messaging, covered instead by a new `MessagingCrossModuleDependencyTests` (mirrors the established Application-allowed-but-not-Domain/Infrastructure shape). Messaging has no legitimate reason to touch Identity directly (it only ever carries opaque `UserId` values), so that ban stays a full blanket ban for Messaging.
+6. **Conversation listing (`GetMyConversationsAsync`) accepts N+1 queries** for per-conversation participants and unread counts — a user's conversation count is realistically dozens, not thousands, so the win from batching wasn't judged worth the added complexity at this scale (mirrors trade-offs already accepted elsewhere in this codebase, e.g. Pharmacy's product/batch/patient lookups on the Dispense list).
+
+**Consequences**
+- 13 new `ConversationServiceTests` cover participant-gating, the OneToOne dedup, group-size validation, and the notification hook's recipient exclusion.
+- No live browser verification — this phase has no frontend yet (a later phase builds the messaging UI).
+
+---
+
 ### ADR-033: Messaging & Notification module Phase 5+6 — real Email (SMTP) and SMS (generic HTTP gateway) senders
 **Date:** 2026-08-27
 **Status:** Accepted
