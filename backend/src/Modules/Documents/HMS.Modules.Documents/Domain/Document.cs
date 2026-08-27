@@ -32,6 +32,13 @@ internal class Document : Entity
 
     public Guid? UploadedByUserId { get; private set; }
 
+    /// <summary>Null for every owner type that has no notion of expiry — added for the
+    /// Hospital HR Management MVP's Staff document tracking (e.g. an ID proof or
+    /// certification with a renewal date), per docs/DecisionLog.md ADR-036. A small,
+    /// backward-compatible nullable-column addition: every other owner type just leaves it
+    /// null, unchanged from before this column existed.</summary>
+    public DateOnly? ExpiryDate { get; private set; }
+
     // Required by EF Core materialization.
     private Document()
     {
@@ -48,7 +55,8 @@ internal class Document : Entity
         string contentType,
         long sizeBytes,
         string checksumSha256,
-        Guid? uploadedByUserId)
+        Guid? uploadedByUserId,
+        DateOnly? expiryDate)
         : base(id, uploadedByUserId)
     {
         OwnerType = ownerType;
@@ -63,6 +71,7 @@ internal class Document : Entity
         UploadedByUserId = uploadedByUserId;
         Status = DocumentStatus.Pending;
         IsArchived = false;
+        ExpiryDate = expiryDate;
     }
 
     public static Document Create(
@@ -75,7 +84,8 @@ internal class Document : Entity
         string contentType,
         long sizeBytes,
         string checksumSha256,
-        Guid? uploadedByUserId)
+        Guid? uploadedByUserId,
+        DateOnly? expiryDate = null)
     {
         Guard.AgainstNullOrWhiteSpace(storageKey, nameof(storageKey));
         Guard.AgainstNullOrWhiteSpace(originalFileName, nameof(originalFileName));
@@ -93,7 +103,8 @@ internal class Document : Entity
             contentType.Trim(),
             sizeBytes,
             checksumSha256,
-            uploadedByUserId);
+            uploadedByUserId,
+            expiryDate);
     }
 
     /// <summary>Called by the scan pipeline (US-9) once content passes an AV scan.</summary>

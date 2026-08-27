@@ -69,6 +69,10 @@ namespace HMS.Database.Migrations.Documents.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("document_type");
 
+                    b.Property<DateOnly?>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
                     b.Property<bool>("IsArchived")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -133,6 +137,9 @@ namespace HMS.Database.Migrations.Documents.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_documents");
+
+                    b.HasIndex("ExpiryDate")
+                        .HasDatabaseName("ix_documents_expiry_date");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_documents_status");

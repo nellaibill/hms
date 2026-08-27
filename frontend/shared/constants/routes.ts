@@ -42,6 +42,7 @@ export const API_ROUTES = {
     deactivate: (id: string) => `/api/v1/users/${id}/deactivate`,
     password: (id: string) => `/api/v1/users/${id}/password`,
     profilePhoto: (id: string) => `/api/v1/users/${id}/profile-photo`,
+    directory: '/api/v1/users/directory',
   },
   roles: {
     base: '/api/v1/roles',
@@ -80,6 +81,7 @@ export const API_ROUTES = {
     currency: mastersEntity('currencies'),
     customer: mastersEntity('customers'),
     department: mastersEntity('departments'),
+    designation: mastersEntity('designations'),
     manufacturer: mastersEntity('manufacturers'),
     paymentMethod: mastersEntity('payment-methods'),
     paymentTerms: mastersEntity('payment-terms'),
@@ -150,6 +152,38 @@ export const API_ROUTES = {
     base: '/api/v1/shift-swap-requests',
     byId: (id: string) => `/api/v1/shift-swap-requests/${id}`,
   },
+  /** Mirrors HMS.Modules.HR.Endpoints.EmployeesController — Hospital HR Management MVP. */
+  employees: {
+    base: '/api/v1/employees',
+    byId: (id: string) => `/api/v1/employees/${id}`,
+    activate: (id: string) => `/api/v1/employees/${id}/activate`,
+    deactivate: (id: string) => `/api/v1/employees/${id}/deactivate`,
+    leaveBalances: (id: string) => `/api/v1/employees/${id}/leave-balances`,
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.AttendanceController — Hospital HR Management MVP. */
+  attendance: {
+    base: '/api/v1/attendance',
+    byId: (id: string) => `/api/v1/attendance/${id}`,
+    checkIn: '/api/v1/attendance/check-in',
+    checkOut: '/api/v1/attendance/check-out',
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.LeaveTypesController — Hospital HR Management MVP. */
+  leaveTypes: {
+    base: '/api/v1/leave-types',
+    byId: (id: string) => `/api/v1/leave-types/${id}`,
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.LeaveRequestsController — Hospital HR Management MVP. */
+  leaveRequests: {
+    base: '/api/v1/leave-requests',
+    byId: (id: string) => `/api/v1/leave-requests/${id}`,
+    approve: (id: string) => `/api/v1/leave-requests/${id}/approve`,
+    reject: (id: string) => `/api/v1/leave-requests/${id}/reject`,
+    cancel: (id: string) => `/api/v1/leave-requests/${id}/cancel`,
+  },
+  /** Mirrors HMS.Modules.HR.Endpoints.HrDashboardController — Hospital HR Management MVP. */
+  hrDashboard: {
+    base: '/api/v1/hr/dashboard',
+  },
   /** Mirrors HMS.Modules.Calendar.Endpoints.EventsController. */
   events: {
     base: '/api/v1/events',
@@ -204,5 +238,23 @@ export const API_ROUTES = {
       byProductBatch: (productId: string, productBatchId: string) => `/api/v1/pharmacy/stock-balances/${productId}/${productBatchId}`,
     },
     stockLedger: '/api/v1/pharmacy/stock-ledger',
+  },
+  /** Mirrors HMS.Modules.Notifications.Endpoints.*Controller. */
+  notifications: {
+    base: '/api/v1/notifications',
+    unreadCount: '/api/v1/notifications/unread-count',
+    markRead: (id: string) => `/api/v1/notifications/${id}/read`,
+    markAllRead: '/api/v1/notifications/read-all',
+  },
+  notificationPreferences: '/api/v1/notification-preferences',
+  notificationTemplates: {
+    base: '/api/v1/notification-templates',
+    byId: (id: string) => `/api/v1/notification-templates/${id}`,
+  },
+  /** Mirrors HMS.Modules.Messaging.Endpoints.ConversationsController. */
+  conversations: {
+    base: '/api/v1/conversations',
+    messages: (id: string) => `/api/v1/conversations/${id}/messages`,
+    read: (id: string) => `/api/v1/conversations/${id}/read`,
   },
 } as const;

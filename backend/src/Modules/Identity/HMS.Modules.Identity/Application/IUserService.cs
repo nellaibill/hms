@@ -32,4 +32,8 @@ public interface IUserService
     Task<Result<UserResponse>> UploadProfilePhotoAsync(Guid id, Stream content, string fileName, string contentType, long length, Guid? actorId, CancellationToken cancellationToken);
 
     Task<Result<UserResponse>> SetPasswordAsync(Guid id, string password, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Backs the low-sensitivity staff picker any authenticated user can call — see
+    /// StaffDirectoryEntryResponse's own doc comment. Active users only.</summary>
+    Task<IReadOnlyList<StaffDirectoryEntryResponse>> GetStaffDirectoryAsync(string? search, CancellationToken cancellationToken);
 }

@@ -1,10 +1,12 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { PatientDetails, PatientSummaryCard, usePatientQuery } from '../../features/patients';
 
 export default function PatientViewPage() {
   const { id } = useParams<{ id: string }>();
   const { data: patient, isPending, isError } = usePatientQuery(id);
+  const [activeTab, setActiveTab] = useState('overview');
 
   if (isPending) {
     return (
@@ -27,7 +29,7 @@ export default function PatientViewPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
+      <div className="px-3 pt-2 lg:px-4 print:hidden">
         <Link
           to="/patients/registration"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -37,12 +39,10 @@ export default function PatientViewPage() {
         </Link>
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <div className="mx-auto grid w-full max-w-[1600px] grid-cols-1 items-start gap-4 lg:grid-cols-[300px_1fr]">
-          <div className="lg:sticky lg:top-4">
-            <PatientSummaryCard patient={patient} />
-          </div>
-          <PatientDetails patient={patient} />
+      <div className="flex flex-1 flex-col gap-3 p-3 pt-2 lg:p-4 lg:pt-2">
+        <div className="flex w-full flex-col gap-3">
+          <PatientSummaryCard patient={patient} onAddDocument={() => setActiveTab('documents')} />
+          <PatientDetails patient={patient} activeTab={activeTab} onActiveTabChange={setActiveTab} />
         </div>
       </div>
     </div>

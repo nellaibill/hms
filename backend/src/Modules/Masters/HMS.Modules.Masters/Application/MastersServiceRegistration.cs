@@ -24,6 +24,7 @@ internal static class MastersServiceRegistration
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IDepartmentService, DepartmentService>();
+        services.AddScoped<IDesignationService, DesignationService>();
         services.AddScoped<IConsultantService, ConsultantService>();
         services.AddScoped<IAppointmentTypeService, AppointmentTypeService>();
         services.AddScoped<IConsultationTypeService, ConsultationTypeService>();

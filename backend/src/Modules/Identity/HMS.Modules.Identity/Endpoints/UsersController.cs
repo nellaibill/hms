@@ -198,6 +198,21 @@ public class UsersController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>A low-sensitivity staff picker — any authenticated user can look up a
+    /// colleague by name, e.g. HMS.Modules.Messaging's "start a conversation" screen. No
+    /// RequirePermission gate (unlike every other action here): this is deliberately not
+    /// admin data (no email/phone/login metadata, see StaffDirectoryEntryResponse's own doc
+    /// comment) — the same reasoning as NotificationsController's "my notifications" actions
+    /// needing only [Authorize].</summary>
+    /// <response code="200">Up to 100 matching active users.</response>
+    [Authorize]
+    [HttpGet("directory")]
+    public async Task<IActionResult> GetDirectory([FromQuery] string? search, CancellationToken cancellationToken)
+    {
+        var directory = await _userService.GetStaffDirectoryAsync(search, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<StaffDirectoryEntryResponse>> { Data = directory });
+    }
+
     private static ApiResponse<UserResponse> Envelope(UserResponse? data) => new() { Data = data };
 
     private ApiErrorResponse BuildFileRequiredError() => new()

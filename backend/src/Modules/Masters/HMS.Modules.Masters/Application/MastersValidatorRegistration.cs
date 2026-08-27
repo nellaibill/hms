@@ -50,6 +50,8 @@ internal static class MastersValidatorRegistration
         services.AddScoped<IValidator<UpdateCustomerRequest>, UpdateCustomerRequestValidator>();
         services.AddScoped<IValidator<CreateDepartmentRequest>, CreateDepartmentRequestValidator>();
         services.AddScoped<IValidator<UpdateDepartmentRequest>, UpdateDepartmentRequestValidator>();
+        services.AddScoped<IValidator<CreateDesignationRequest>, CreateDesignationRequestValidator>();
+        services.AddScoped<IValidator<UpdateDesignationRequest>, UpdateDesignationRequestValidator>();
         services.AddScoped<IValidator<CreateConsultantRequest>, CreateConsultantRequestValidator>();
         services.AddScoped<IValidator<UpdateConsultantRequest>, UpdateConsultantRequestValidator>();
         services.AddScoped<IValidator<CreateAppointmentTypeRequest>, CreateAppointmentTypeRequestValidator>();

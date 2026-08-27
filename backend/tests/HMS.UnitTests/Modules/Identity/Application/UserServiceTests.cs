@@ -36,6 +36,24 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task GetStaffDirectoryAsync_MapsActiveUsersWithRoleNames()
+    {
+        var role = Role.Create("Nurse", null, false, 0, null);
+        var user = User.Create("j.doe", "Jane", "Doe", "jane@example.com", null, role.Id, null);
+        _repository
+            .GetPagedAsync(Arg.Any<UserListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<User> { user }, 1));
+        _roleRepository.GetManyByIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns([role]);
+
+        var directory = await _sut.GetStaffDirectoryAsync(search: null, CancellationToken.None);
+
+        directory.Should().ContainSingle();
+        directory[0].Id.Should().Be(user.Id);
+        directory[0].FirstName.Should().Be("Jane");
+        directory[0].RoleName.Should().Be("Nurse");
+    }
+
+    [Fact]
     public async Task CreateAsync_WithNewUsernameAndEmail_CreatesUserAndReturnsSuccess()
     {
         _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);

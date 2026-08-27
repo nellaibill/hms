@@ -26,6 +26,10 @@ public class HRDbContext : DbContext
     internal DbSet<WeeklyRoster> WeeklyRosters => Set<WeeklyRoster>();
     internal DbSet<StaffAvailability> StaffAvailabilities => Set<StaffAvailability>();
     internal DbSet<ShiftSwapRequest> ShiftSwapRequests => Set<ShiftSwapRequest>();
+    internal DbSet<Employee> Employees => Set<Employee>();
+    internal DbSet<Attendance> Attendances => Set<Attendance>();
+    internal DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
+    internal DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

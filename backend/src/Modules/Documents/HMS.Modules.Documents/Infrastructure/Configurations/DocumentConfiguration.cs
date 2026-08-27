@@ -40,6 +40,11 @@ internal class DocumentConfiguration : IEntityTypeConfiguration<Document>
 
         builder.Property(d => d.UploadedByUserId).HasColumnName("uploaded_by_user_id");
 
+        // Nullable, backward-compatible addition (Hospital HR Management MVP — see
+        // docs/DecisionLog.md ADR-036): every owner type other than Staff just leaves this
+        // null.
+        builder.Property(d => d.ExpiryDate).HasColumnName("expiry_date").HasColumnType("date");
+
         // Standard audit columns (mirrors PatientConfiguration).
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(d => d.CreatedBy).HasColumnName("created_by");
@@ -61,5 +66,6 @@ internal class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.HasIndex(d => new { d.OwnerType, d.OwnerId, d.IsDeleted }).HasDatabaseName("ix_documents_owner");
         builder.HasIndex(d => d.Status).HasDatabaseName("ix_documents_status");
         builder.HasIndex(d => d.UploadedByUserId).HasDatabaseName("ix_documents_uploaded_by_user_id");
+        builder.HasIndex(d => d.ExpiryDate).HasDatabaseName("ix_documents_expiry_date");
     }
 }

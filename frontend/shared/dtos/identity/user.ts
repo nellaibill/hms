@@ -49,3 +49,14 @@ export interface UserListQuery {
 export interface SetPasswordRequest {
   password: string;
 }
+
+/** Mirrors HMS.Modules.Identity.Contracts.StaffDirectoryEntryResponse — a deliberately
+ * minimal, low-sensitivity user view any authenticated staff member can fetch (unlike
+ * `User` above, which needs an admin-level permission). Used for the messaging module's
+ * "start a conversation" staff picker. */
+export interface StaffDirectoryEntry {
+  id: string;
+  firstName: string;
+  lastName: string;
+  roleName: string;
+}

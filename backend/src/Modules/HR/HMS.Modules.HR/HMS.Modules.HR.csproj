@@ -36,6 +36,13 @@
          department list instead of maintaining two independently. Domain.Department stays
          internal to Masters; only IDepartmentService is public. -->
     <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
+    <!-- Only for IDocumentOwnerExistenceChecker/IDocumentService (public seams) — this module
+         implements the Staff owner-type existence checker (StaffDocumentOwnerExistenceChecker)
+         so the generic Documents module can validate uploads against hr.employees, mirroring
+         HMS.Modules.Patients' identical one-directional dependency on Documents for its own
+         checker. Domain/Application internals of Documents stay internal; only the two public
+         interfaces above are referenced. -->
+    <ProjectReference Include="..\..\Documents\HMS.Modules.Documents\HMS.Modules.Documents.csproj" />
   </ItemGroup>
 
 </Project>

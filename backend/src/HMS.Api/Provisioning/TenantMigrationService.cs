@@ -6,6 +6,8 @@ using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.IPD.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
+using HMS.Modules.Messaging.Infrastructure;
+using HMS.Modules.Notifications.Infrastructure;
 using HMS.Modules.Patients.Infrastructure;
 using HMS.Modules.Pharmacy.Infrastructure;
 using HMS.Modules.Platform.Application.Abstractions;
@@ -107,6 +109,17 @@ public sealed class TenantMigrationService : ITenantMigrationService
         {
             await using var db = new BillingDbContext(BuildOptions<BillingDbContext>(tenantConnectionString, BillingDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // One toggle, two schemas — see FeatureCatalog.SchemaBacked's own doc comment
+        // (docs/DecisionLog.md ADR-035).
+        if (resolved.Contains("messages-and-notifications"))
+        {
+            await using var notificationsDb = new NotificationsDbContext(BuildOptions<NotificationsDbContext>(tenantConnectionString, NotificationsDbContext.SchemaName));
+            await notificationsDb.Database.MigrateAsync(cancellationToken);
+
+            await using var messagingDb = new MessagingDbContext(BuildOptions<MessagingDbContext>(tenantConnectionString, MessagingDbContext.SchemaName));
+            await messagingDb.Database.MigrateAsync(cancellationToken);
         }
     }
 

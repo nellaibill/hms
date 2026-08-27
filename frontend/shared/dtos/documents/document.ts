@@ -38,6 +38,9 @@ export interface UploadDocumentRequest {
   documentType: DocumentType;
   /** Defaults to 'Internal' server-side when omitted. */
   classification?: DocumentClassification;
+  /** Optional — when the document itself has a renewal/expiry date (e.g. a Staff ID proof
+   * or certification). ISO date string (e.g. "2027-01-15"). */
+  expiryDate?: string | null;
 }
 
 /** Mirrors HMS.Modules.Documents.Contracts.DocumentResponse. */
@@ -53,6 +56,8 @@ export interface DocumentResponse {
   status: DocumentStatus;
   isArchived: boolean;
   uploadedByUserId?: string | null;
+  /** ISO date string (e.g. "2027-01-15"), when this document has a renewal/expiry date. */
+  expiryDate?: string | null;
   createdAt: string;
   updatedAt?: string | null;
 }

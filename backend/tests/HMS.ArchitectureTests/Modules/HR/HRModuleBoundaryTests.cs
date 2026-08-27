@@ -25,7 +25,7 @@ public class HRModuleBoundaryTests
     private static readonly Assembly HRAssembly = typeof(ShiftsController).Assembly;
 
     private const string AllowedPublicTypeNamePattern =
-        "^(IShiftService|IShiftAssignmentService|IWeeklyRosterService|IStaffAvailabilityService|IShiftSwapRequestService|HRDbContext)$";
+        "^(IShiftService|IShiftAssignmentService|IWeeklyRosterService|IStaffAvailabilityService|IShiftSwapRequestService|IEmployeeService|IAttendanceService|ILeaveTypeService|ILeaveRequestService|IHrDashboardService|HRDbContext)$";
 
     [Theory]
     [InlineData("HMS.Modules.HR.Domain")]
