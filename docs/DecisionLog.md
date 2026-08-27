@@ -37,6 +37,29 @@ _To be documented._
 
 ## Decisions
 
+### ADR-029: Messaging & Notification module — two modules, in-process seam, Phase 1 is Domain + Infrastructure only
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+The user asked for a full design (no code) for a Messaging & Notification module covering in-app/email/SMS notifications and internal staff messaging, then approved starting implementation. The `messages-and-notifications` feature key and `engagement` permission category already existed (`FeatureCatalog.UiOnly`, shared with Calendar), and `HMS.Modules.Notifications` already existed as an empty scaffold (`docs/DeveloperHandbook.md`'s reserved-module pattern) — this design filled that slot rather than inventing a new one. The full design (architecture diagram, flows, database, APIs, security, phased plan) was published as a standalone artifact for review before any code was written; this ADR only records the decisions embodied in Phase 1.
+
+**Decision**
+1. **Two modules, not one**: `HMS.Modules.Notifications` (schema `notifications` — templates, preferences, notification fan-out, delivery tracking) and a new `HMS.Modules.Messaging` (schema `messaging` — conversations, participants, messages). Different aggregates, different lifecycles, different failure modes (an email backlog shouldn't affect chat) — kept as two single-purpose schemas per the one-schema-per-module rule, sharing one feature flag and permission category because the product experience is one page.
+2. **No new infrastructure.** Cross-module notification triggers will go through a plain public `INotificationService` seam (added in a later phase), called in-process — the same pattern Pharmacy already uses for `IInvoiceService`. Async Email/SMS delivery (also a later phase) will reuse `HMS.Modules.Documents`' existing `Channel<T>` + `BackgroundService` pattern (`DocumentScanQueue`/`DocumentScanBackgroundService`) rather than introducing Hangfire/Redis/Kafka.
+3. **Phase 1 scope is deliberately narrow**: Domain entities (5 for Notifications, 3 for Messaging), their EF Core configurations, repositories, DbContexts, and the two initial migrations. No `Application` services, validators, or `Endpoints` controllers yet — those are later phases, so each `AddXModule` currently registers only a `DbContext` and its repositories.
+4. **No per-message read-receipt table.** `ConversationParticipant.LastReadAt` (a single timestamp) answers "what's unread" for one-to-one and small-group conversations without the write/join cost of a receipt-per-message table — cut per the brief's explicit "don't add advanced chat features unless required."
+5. **No DB-level FK to `identity.users`** for any `UserId`/`SenderId` column — cross-schema FK constraints are a deliberate, reviewed exception per `docs/DatabaseArchitecture.md` §7, not a default; mirrors Pharmacy's existing treatment of `PatientId`/`ProductId` (plain indexed column, no `HasOne<>()`). Intra-module FKs (e.g. `NotificationRecipient` → `Notification`, `Message` → `Conversation`) do use real constraints, all `DeleteBehavior.Restrict`.
+6. **`messages-and-notifications` stays in `FeatureCatalog.UiOnly` for now** — promoting it to `SchemaBacked` (which wires it into `TenantMigrationService` so new/existing tenants actually get the `notifications`/`messaging` schemas provisioned) is deferred to the phase where the module is functionally complete end-to-end, mirroring how Pharmacy's own `FeatureCatalog` promotion happened only once its workflow was real. Until then, the migrations exist and are verified via `dotnet ef database update` against a local dev database, but are not part of the automatic tenant-provisioning path.
+7. Both modules' architecture boundary tests (`NotificationsModuleBoundaryTests`, `MessagingModuleBoundaryTests`) currently allow only the `DbContext` type as public — the same allow-list pattern grows to include a public service interface (e.g. `INotificationService`) once one exists, the same way `IEventService` was added to Calendar's.
+
+**Consequences**
+- Phase 1 has no user-facing effect at all (no endpoints, no tenant provisioning change) — it's the load-bearing scaffold every later phase builds on, verified by 8 new domain-entity test classes and 2 new architecture-boundary test classes, all green, plus a clean `dotnet build` of the full solution.
+- `HMS.Modules.Notifications`' `.csproj` gained the same EF Core/Npgsql/FluentValidation/`FrameworkReference` shape Identity/Pharmacy already have, even though `FluentValidation` and `FrameworkReference` aren't exercised until the `Application`/`Endpoints` phases — added now so the scaffold doesn't need a second edit later.
+- `CrossModuleDependencyTests` gained a `HMS.Modules.Messaging` entry alongside the existing `HMS.Modules.Notifications` one.
+
+---
+
 ### ADR-028: Pharmacy dispense billing is best-effort, generated server-side, not atomic with the dispense
 **Date:** 2026-08-20
 **Status:** Accepted

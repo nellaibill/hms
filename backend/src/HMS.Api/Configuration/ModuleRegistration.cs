@@ -7,6 +7,8 @@ using HMS.Modules.HR;
 using HMS.Modules.Identity;
 using HMS.Modules.IPD;
 using HMS.Modules.Masters;
+using HMS.Modules.Messaging;
+using HMS.Modules.Notifications;
 using HMS.Modules.Patients;
 using HMS.Modules.Pharmacy;
 using HMS.Modules.Platform;
@@ -63,6 +65,15 @@ public static class ModuleRegistration
         // billing — ADR-028) public service seams, so it must register after all three —
         // same reasoning as IPD above.
         services.AddPharmacyModule(configuration);
+
+        // Notifications and Messaging have no dependency on any other module's public
+        // service seam yet (Phase 1 is DbContext + repositories only — see each module's
+        // own AddXModule doc comment), so registration order relative to the modules above
+        // doesn't matter; placed here because a later phase's INotificationService will be
+        // the thing Appointments/Patients/Billing/Pharmacy/IPD call into, so it's read
+        // naturally as "the last thing every other module depends on."
+        services.AddNotificationsModule(configuration);
+        services.AddMessagingModule(configuration);
 
         // Platform is deliberately last and self-contained: it owns a separate physical
         // database (hms_platform via ConnectionStrings:Platform), not another schema in the

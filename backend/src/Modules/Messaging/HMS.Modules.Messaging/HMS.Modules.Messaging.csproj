@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- NotificationsController (added in a later phase) will live in this module, not
+    <!-- ConversationsController (added in a later phase) will live in this module, not
          HMS.Api, so its <summary> comments must be generated here for Swashbuckle. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- CS1591 (missing XML comment on a public member) is not useful here: this module is
