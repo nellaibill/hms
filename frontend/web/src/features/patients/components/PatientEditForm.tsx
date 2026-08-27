@@ -222,8 +222,9 @@ export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitt
     }
   };
 
+  // Widened to match PatientRegistrationForm.tsx — same reasoning, see its own comment.
   return (
-    <div className="flex w-full max-w-6xl flex-col gap-5">
+    <div className="flex w-full max-w-[100rem] flex-col gap-5">
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         onKeyDown={blockEnterKeySubmit}

@@ -405,8 +405,12 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
     }
   };
 
+  // max-w-6xl used to leave most of the page blank on anything wider than a laptop —
+  // Registration Details' 5-across row (Encounter/Appointment/Department/Consultant/
+  // Consultation Type) needs the room most, but every tab benefits from it. AppLayout itself
+  // has no content-width cap, so this is the only thing actually constraining it.
   return (
-    <div ref={formTopRef} className="flex w-full max-w-6xl scroll-mt-20 flex-col gap-5">
+    <div ref={formTopRef} className="flex w-full max-w-[100rem] scroll-mt-20 flex-col gap-5">
       <form
         onSubmit={handleSubmit(onValidSubmit, onInvalid)}
         onKeyDown={blockEnterKeySubmit}
