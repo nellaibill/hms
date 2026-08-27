@@ -45,6 +45,19 @@ public static class NotificationsModule
         services.AddScoped<INotificationRecipientRepository, NotificationRecipientRepository>();
         services.AddScoped<INotificationDeliveryRepository, NotificationDeliveryRepository>();
 
+        // Background delivery pipeline (Email/Sms): one queue for the process's lifetime and
+        // one background reader — see NotificationDeliveryQueue's own doc comment. Mirrors
+        // HMS.Modules.Documents' identical scan pipeline registration exactly.
+        services.AddSingleton<INotificationDeliveryQueue, NotificationDeliveryQueue>();
+
+        // Real senders, config-driven under Notifications:Smtp:*/Notifications:Sms:* — both
+        // no-op with a logged warning when unconfigured rather than throwing, since Email/Sms
+        // are best-effort channels (see each sender's own doc comment).
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddHttpClient<ISmsSender, HttpSmsSender>();
+
+        services.AddHostedService<NotificationDeliveryBackgroundService>();
+
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();

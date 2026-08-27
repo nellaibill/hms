@@ -37,6 +37,46 @@ _To be documented._
 
 ## Decisions
 
+### ADR-033: Messaging & Notification module Phase 5+6 — real Email (SMTP) and SMS (generic HTTP gateway) senders
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-032. The design doc scoped these as two separate phases, each needing "an infra decision for the user to make when this phase starts" (an SMTP account, an SMS gateway vendor) — done together here since neither decision was actually available mid-session, so both senders were built to the same "real but config-driven, gracefully degrades when unconfigured" shape instead of waiting.
+
+**Decision**
+1. **`SmtpEmailSender` replaces `LoggingEmailSender` outright** (the Phase 4 stub is deleted, not left dead/unregistered) — uses the .NET runtime's built-in `SmtpClient` rather than adding a NuGet dependency (e.g. MailKit) for one send operation. Reads `Notifications:Smtp:*` directly from `IConfiguration` in the constructor, mirroring `JwtTokenGenerator`'s identical pattern (no `IOptions<T>` wrapper).
+2. **`HttpSmsSender` replaces `LoggingSmsSender` outright**, same reasoning. No vendor SDK (Twilio, MSG91, etc.) is referenced — posts a generic `{ to, from, message }` JSON body with a Bearer `Notifications:Sms:ApiKey` to a configured `Notifications:Sms:BaseUrl`. Picking a specific gateway is left to whoever configures a real tenant's deployment; a gateway with a genuinely different contract gets its own `ISmsSender` implementation, not a change to this one.
+3. **Both senders no-op with a logged warning when unconfigured, rather than throwing** — deliberately different from `JwtTokenGenerator`'s missing-config-throws-at-startup behavior, since JWT signing is mandatory for the app to function at all while Email/Sms are best-effort channels by design (see ADR-029). A hospital that hasn't set up SMTP/SMS yet should not have every notification delivery attempt throw.
+4. **`appsettings.json` gained a `Notifications:Smtp`/`Notifications:Sms` section** with empty placeholder values, matching every other credential-shaped config block in this file (`Jwt:SigningKey`, `SuperAdminSeed:Password`, etc.) — real values are supplied per-environment, never committed.
+
+**Consequences**
+- `ISmsSender`/`IEmailSender`'s interfaces are unchanged from Phase 4 — nothing upstream (`NotificationDeliveryBackgroundService`) needed to change, confirming the swap-in design worked as intended.
+- 4 new unit tests cover only the "unconfigured → no-op, doesn't throw" path for each sender — the actual network call (real SMTP handshake, real HTTP POST) isn't unit-testable without a live endpoint, consistent with this codebase's existing line between unit and integration test scope.
+- Real end-to-end delivery (an actual email/SMS landing somewhere) is unverified — there is no SMTP account or SMS gateway configured in this environment. This is expected until a real deployment supplies both.
+
+---
+
+### ADR-032: Messaging & Notification module Phase 4 — background Email/Sms delivery pipeline
+**Date:** 2026-08-27
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-031. Phase 4's goal was the async delivery architecture itself (queue, worker, status tracking, stub senders) — proven correct before any real network dependency (Phase 5/6) is added.
+
+**Decision**
+1. **`NotificationDeliveryQueue`/`NotificationDeliveryBackgroundService` are a direct copy of `HMS.Modules.Documents`' scan pipeline shape** — a bounded (500) `Channel<T>`, one singleton queue, one hosted-service reader draining it with a fresh DI scope (and `ITenantContext.SetTenant`) per item, a top-level per-item try/catch so one failure never kills the reader loop. This is the second use of this exact mechanism in the codebase (see ADR-029's original reasoning for why a Hangfire/Redis-based queue wasn't introduced instead).
+2. **`NotifyAsync` now wires `NotificationPreferences` into delivery** (deferred from ADR-031 until there was an actual delivery pipeline to gate): for each recipient, `ResolveChannelsAsync` checks their preference row for the notification's `Category` — a missing row defaults to email-on/sms-off (matching `NotificationPreference.Create`'s own defaults, so "never saved a preference" and "saved the default explicitly" behave identically) — except `NotificationSeverity.Emergency`, which bypasses preferences entirely and always queues both channels.
+3. **Notifications depends on Identity's public `IUserService`** to resolve a recipient's actual email/phone number for delivery — the delivery pipeline has no other way to reach `identity.users`. This is the same cross-module pattern Pharmacy/Billing/IPD already use (`docs/DeveloperHandbook.md`'s "depend only on another module's Contracts/public Application seam" rule), extended for the first time to a module depending on **Identity** specifically. `HMS.ArchitectureTests.Modules.Identity.CrossModuleDependencyTests`' blanket ban (no module may reference `HMS.Modules.Identity.Application`) now excludes Notifications, covered instead by a new `NotificationsCrossModuleDependencyTests` (mirrors `ProductsCrossModuleDependencyTests`' Application-allowed-but-not-Domain/Infrastructure shape).
+4. **Deliveries are enqueued only after the triggering `SaveChangesAsync` commits**, never before — the background reader re-fetches each `NotificationDelivery` row by id from the database, so a queued item pointing at a not-yet-committed row would silently vanish (`GetByIdAsync` returns null, logged as a warning, delivery stays `Pending` forever). Mirrors `DocumentService.UploadAsync`'s identical save-then-enqueue ordering.
+5. **Both stub senders (`LoggingEmailSender`, `LoggingSmsSender`) log instead of sending** — mirrors `NullVirusScanner`'s exact reasoning: proves the pipeline's plumbing (queueing, status transitions, the `NotificationDelivery` state machine) is real and testable before any real network dependency's failure modes are in the mix. Superseded by real senders in ADR-033, built later the same session.
+
+**Consequences**
+- `NotificationDeliveryBackgroundService`, `NotificationDeliveryQueue`, and the stub senders have no dedicated unit tests — mirrors the Documents scan pipeline's identical (lack of) direct test coverage in this codebase; the pipeline is exercised through `NotificationServiceTests`' delivery-queueing assertions instead.
+- A queued delivery is lost if the process restarts before it's drained (in-memory queue) — the row stays `Pending` forever rather than being retried. Accepted at MVP scale, same trade-off `IDocumentScanQueue` already made.
+
+---
+
 ### ADR-031: Messaging & Notification module Phase 3 — templates, preferences, and template-driven rendering
 **Date:** 2026-08-27
 **Status:** Accepted

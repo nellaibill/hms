@@ -15,11 +15,28 @@ public class NotificationServiceTests
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationRecipientRepository _recipientRepository = Substitute.For<INotificationRecipientRepository>();
     private readonly INotificationTemplateRepository _templateRepository = Substitute.For<INotificationTemplateRepository>();
+    private readonly INotificationPreferenceRepository _preferenceRepository = Substitute.For<INotificationPreferenceRepository>();
+    private readonly INotificationDeliveryRepository _deliveryRepository = Substitute.For<INotificationDeliveryRepository>();
+    private readonly INotificationDeliveryQueue _deliveryQueue = Substitute.For<INotificationDeliveryQueue>();
+    private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly NotificationService _sut;
 
     public NotificationServiceTests()
     {
-        _sut = new NotificationService(_notificationRepository, _recipientRepository, _templateRepository, NullLogger<NotificationService>.Instance);
+        // A resolved tenant, matching what's already guaranteed by the time NotifyAsync
+        // reaches its enqueue step in real usage (see that method's own doc comment).
+        _tenantContext.TenantId.Returns(Guid.NewGuid());
+        _tenantContext.ConnectionString.Returns("Host=localhost;Database=test");
+
+        _sut = new NotificationService(
+            _notificationRepository,
+            _recipientRepository,
+            _templateRepository,
+            _preferenceRepository,
+            _deliveryRepository,
+            _deliveryQueue,
+            _tenantContext,
+            NullLogger<NotificationService>.Instance);
     }
 
     private static NotifyRequest Request(params Guid[] recipientUserIds) => new()
@@ -56,6 +73,56 @@ public class NotificationServiceTests
         var result = await _sut.NotifyAsync(Request(userId, userId), actorId: null, CancellationToken.None);
 
         result.Value!.RecipientCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task NotifyAsync_WithNoSavedPreference_QueuesOnlyEmailDelivery()
+    {
+        // Default when no NotificationPreference row exists: email on, sms off — mirrors
+        // NotificationPreference.Create's own defaults (see ResolveChannelsAsync's doc
+        // comment).
+        _preferenceRepository
+            .GetByUserAndCategoryAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((NotificationPreference?)null);
+
+        await _sut.NotifyAsync(Request(Guid.NewGuid()), actorId: null, CancellationToken.None);
+
+        await _deliveryRepository.Received(1).AddRangeAsync(
+            Arg.Is<IEnumerable<NotificationDelivery>>(d => d.Count() == 1 && d.Single().Channel == NotificationChannel.Email),
+            Arg.Any<CancellationToken>());
+        await _deliveryQueue.Received(1).EnqueueAsync(Arg.Any<NotificationDeliveryQueueItem>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task NotifyAsync_WithBothChannelsDisabled_QueuesNoDeliveries()
+    {
+        var userId = Guid.NewGuid();
+        var preference = NotificationPreference.Create(userId, "appointment", null);
+        preference.UpdateChannels(inAppEnabled: true, emailEnabled: false, smsEnabled: false, null);
+        _preferenceRepository.GetByUserAndCategoryAsync(userId, "appointment", Arg.Any<CancellationToken>()).Returns(preference);
+
+        await _sut.NotifyAsync(Request(userId), actorId: null, CancellationToken.None);
+
+        await _deliveryRepository.DidNotReceive().AddRangeAsync(Arg.Any<IEnumerable<NotificationDelivery>>(), Arg.Any<CancellationToken>());
+        await _deliveryQueue.DidNotReceive().EnqueueAsync(Arg.Any<NotificationDeliveryQueueItem>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task NotifyAsync_WithEmergencySeverity_QueuesBothChannelsRegardlessOfPreference()
+    {
+        var userId = Guid.NewGuid();
+        var preference = NotificationPreference.Create(userId, "emergency", null);
+        preference.UpdateChannels(inAppEnabled: true, emailEnabled: false, smsEnabled: false, null);
+        _preferenceRepository.GetByUserAndCategoryAsync(userId, "emergency", Arg.Any<CancellationToken>()).Returns(preference);
+
+        var request = Request(userId) with { Category = "emergency", Severity = NotificationSeverity.Emergency };
+
+        await _sut.NotifyAsync(request, actorId: null, CancellationToken.None);
+
+        await _deliveryRepository.Received(1).AddRangeAsync(
+            Arg.Is<IEnumerable<NotificationDelivery>>(d => d.Count() == 2),
+            Arg.Any<CancellationToken>());
+        await _deliveryQueue.Received(2).EnqueueAsync(Arg.Any<NotificationDeliveryQueueItem>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

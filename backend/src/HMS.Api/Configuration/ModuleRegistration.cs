@@ -66,12 +66,13 @@ public static class ModuleRegistration
         // same reasoning as IPD above.
         services.AddPharmacyModule(configuration);
 
-        // Notifications and Messaging have no dependency on any other module's public
-        // service seam yet (Phase 1 is DbContext + repositories only — see each module's
-        // own AddXModule doc comment), so registration order relative to the modules above
-        // doesn't matter; placed here because a later phase's INotificationService will be
-        // the thing Appointments/Patients/Billing/Pharmacy/IPD call into, so it's read
-        // naturally as "the last thing every other module depends on."
+        // Notifications depends on Identity's IUserService public service seam (resolving a
+        // recipient's email/phone number for the background Email/Sms delivery pipeline —
+        // docs/DecisionLog.md ADR-032), so it must register after AddIdentityModule
+        // (satisfied at the top of this method). Placed here, after every business-domain
+        // module, because INotificationService is the thing Appointments/Patients/Billing/
+        // Pharmacy/IPD call into (a later phase wires the real call sites) — read naturally
+        // as "the last thing every other module depends on."
         services.AddNotificationsModule(configuration);
         services.AddMessagingModule(configuration);
 
