@@ -27,6 +27,9 @@ export class DocumentsApi {
     if (request.classification) {
       formData.append('classification', request.classification);
     }
+    if (request.expiryDate) {
+      formData.append('expiryDate', request.expiryDate);
+    }
     const response = await this.client.postFormData<DocumentResponse>(API_ROUTES.documents.base, formData);
     return response.data;
   }
@@ -43,5 +46,9 @@ export class DocumentsApi {
 
   async getDocumentContent(id: string): Promise<Blob> {
     return this.client.getBlob(API_ROUTES.documents.content(id));
+  }
+
+  async deleteDocument(id: string): Promise<void> {
+    await this.client.delete(API_ROUTES.documents.byId(id));
   }
 }

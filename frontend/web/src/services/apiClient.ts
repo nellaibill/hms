@@ -1,6 +1,7 @@
 import {
   AdmissionsApi,
   AppointmentTypesApi,
+  AttendanceApi,
   AuthApi,
   BedsApi,
   BillingApi,
@@ -10,9 +11,13 @@ import {
   ConversationsApi,
   DepartmentsApi,
   DocumentsApi,
+  EmployeesApi,
   EventsApi,
+  HrDashboardApi,
   HttpClient,
   IpdDashboardApi,
+  LeaveRequestsApi,
+  LeaveTypesApi,
   MastersApi,
   NotificationPreferencesApi,
   NotificationsApi,
@@ -94,3 +99,8 @@ export const notificationsApi = new NotificationsApi(httpClient);
 export const notificationPreferencesApi = new NotificationPreferencesApi(httpClient);
 export const notificationTemplatesApi = new NotificationTemplatesApi(httpClient);
 export const conversationsApi = new ConversationsApi(httpClient);
+export const employeesApi = new EmployeesApi(httpClient);
+export const attendanceApi = new AttendanceApi(httpClient);
+export const leaveTypesApi = new LeaveTypesApi(httpClient);
+export const leaveRequestsApi = new LeaveRequestsApi(httpClient);
+export const hrDashboardApi = new HrDashboardApi(httpClient);

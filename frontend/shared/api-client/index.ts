@@ -30,3 +30,8 @@ export * from './services/notificationsApi';
 export * from './services/notificationPreferencesApi';
 export * from './services/notificationTemplatesApi';
 export * from './services/conversationsApi';
+export * from './services/employeesApi';
+export * from './services/attendanceApi';
+export * from './services/leaveTypesApi';
+export * from './services/leaveRequestsApi';
+export * from './services/hrDashboardApi';
