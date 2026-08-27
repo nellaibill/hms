@@ -73,6 +73,11 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
                       <Link to={`/patients/registration/${patient.id}/edit`}>Edit</Link>
                     </Button>
                   )}
+                  {canEdit && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/patients/registration/${patient.id}/visits/new`}>Add Visit</Link>
+                    </Button>
+                  )}
                   {canDelete && (
                     <Button
                       variant="ghost"

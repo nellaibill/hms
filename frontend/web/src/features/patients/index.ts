@@ -8,6 +8,7 @@ export * from './components/PatientListToolbar';
 export * from './components/PatientRegistrationForm';
 export * from './components/PatientSummaryCard';
 export * from './components/PatientTable';
+export * from './components/RecordVisitForm';
 export * from './hooks/usePatientMutations';
 export * from './hooks/usePatientQuery';
 export * from './hooks/usePatientsQuery';

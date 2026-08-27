@@ -23,6 +23,7 @@ const PatientsListPage = lazy(() => import('../pages/patients/PatientsListPage')
 const PatientRegistrationCreatePage = lazy(() => import('../pages/patients/PatientRegistrationCreatePage'));
 const PatientViewPage = lazy(() => import('../pages/patients/PatientViewPage'));
 const PatientEditPage = lazy(() => import('../pages/patients/PatientEditPage'));
+const PatientRecordVisitPage = lazy(() => import('../pages/patients/PatientRecordVisitPage'));
 const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
 const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
 const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettingsPage'));
@@ -140,6 +141,7 @@ const patientRoutes = [
   { path: 'patients/registration/new', element: withSuspense(<PatientRegistrationCreatePage />) },
   { path: 'patients/registration/:id', element: withSuspense(<PatientViewPage />) },
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
+  { path: 'patients/registration/:id/visits/new', element: withSuspense(<PatientRecordVisitPage />) },
 ];
 
 // Roles Management (UI-only, mock data — no backend module yet) — reachable from the

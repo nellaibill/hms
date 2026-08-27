@@ -8,7 +8,7 @@ import type {
   ModeOfArrivalSource,
   PatientGenderUi,
   PatientRegistrationUiFormValues,
-  RegistrationDetailsUiFormValues,
+  RecordVisitUiFormValues,
   VisitConsultation,
   VisitType,
 } from '@hms/shared';
@@ -116,12 +116,14 @@ export function toModeOfArrivalRequest(arrivalSource: PatientRegistrationUiFormV
   return { modeOfArrivalSource: category };
 }
 
-/** Registration Details tab -> CreatePatientVisitRequest. The primary Department/Consultant/
- * Consultation Type fields plus every additionalConsultants row that has both a department
- * and a consultant become one consultation line each, all sharing the visit created from this
- * one request (see PatientVisitService.CreateAsync) — a row opened via "Add another
- * Consultant" but never filled in is silently dropped rather than sent as a malformed line. */
-export function toCreatePatientVisitRequest(registration: RegistrationDetailsUiFormValues): CreatePatientVisitRequest {
+/** Registration Details tab (or the standalone "Add Visit" page's RecordVisitUiFormValues,
+ * which shares this exact same core shape) -> CreatePatientVisitRequest. The primary
+ * Department/Consultant/Consultation Type fields plus every additionalConsultants row that
+ * has both a department and a consultant become one consultation line each, all sharing the
+ * visit created from this one request (see PatientVisitService.CreateAsync) — a row opened
+ * via "Add another Consultant" but never filled in is silently dropped rather than sent as a
+ * malformed line. */
+export function toCreatePatientVisitRequest(registration: RecordVisitUiFormValues): CreatePatientVisitRequest {
   const consultations: VisitConsultation[] = [
     {
       departmentId: registration.departmentId,
