@@ -97,11 +97,13 @@ function Get-AllPaged {
         $cacheBust = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
         $uri = "$ApiBaseUrl/api/v1/masters/$Entity`?page=$page&pageSize=100&_=$cacheBust"
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $authHeaders
-        # Leading-comma trick: PowerShell auto-unrolls a returned array back down to its bare
-        # element(s) as it crosses the function's output stream, so a 0- or 1-element @(...)
-        # would otherwise arrive at the caller as $null or a bare object - see
-        # seed-departments-and-doctors.ps1's identical comment for the full explanation.
-        $all.AddRange([object[]](, @($response.data)))
+        # No leading-comma trick here - unlike the `return , $all` below, this AddRange call
+        # doesn't cross a function output/pipeline boundary, so @($response.data) alone already
+        # gives a flat array of this page's items. Adding the leading comma here (as an earlier
+        # version of this script did) wraps the whole per-page array as a single nested element
+        # instead of flattening it, so AddRange adds exactly one (wrong) item per page instead of
+        # up to 100 - confirmed live: it silently under-fetched every paged entity in this script.
+        $all.AddRange([object[]]@($response.data))
         $totalPages = $response.meta.totalPages
         $page++
     } while ($page -le $totalPages)
