@@ -1,6 +1,7 @@
 import type { Patient } from '@hms/shared';
 import { Loader2, Search, UserPlus2 } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast-context';
 import {
@@ -19,6 +20,7 @@ const RESULTS_PAGE_SIZE = 100;
 
 /** "Old Patient Registration" — the Reception & Registration hub's existing-patient search + list (docs/ScreenInventory.md). */
 export default function PatientsListPage() {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<PatientSearchFilters>(emptyPatientSearchFilters);
   const [activeFilters, setActiveFilters] = useState<PatientSearchFilters | null>(null);
   const [page, setPage] = useState(1);
@@ -100,7 +102,13 @@ export default function PatientsListPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-      <PatientListToolbar filters={filters} onFilterChange={handleFilterChange} onSearch={handleSearch} onClear={handleClear} />
+      <PatientListToolbar
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onSearch={handleSearch}
+        onClear={handleClear}
+        onSuggestionSelect={(patient) => navigate(`/patients/registration/${patient.id}`)}
+      />
 
       {!hasSearched && (
         <Card className="border-dashed">
