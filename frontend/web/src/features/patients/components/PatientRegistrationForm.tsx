@@ -22,7 +22,7 @@ import {
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useController, useFieldArray, useForm, type Control, type FieldErrors } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -1067,10 +1067,23 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
 
         <TabsContent value="registration-details" className="pt-4">
         <TabErrorSummary messages={tabMessages('registration-details')} />
+        {/* "Save and proceed to Registration" (Medical Information) already created the
+            patient by the time this tab is reached — reception needs that to be obvious at a
+            glance, not buried in a small corner badge, since Registration Details is where
+            they'll be looking next while the save itself happened a tab ago. Same
+            success-tint treatment as the toast success variant (see toaster.tsx), just as a
+            banner instead of a transient toast, since this should stay visible for as long as
+            the tab is open, not disappear after a few seconds. */}
         {savedPatient && (
-          <div className="mb-4 flex w-fit items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-sm">
-            <span className="font-medium text-foreground">UHID:</span>
-            <span className="font-mono text-foreground">{savedPatient.uhid}</span>
+          <div className="mb-4 flex flex-col items-center gap-1 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-center">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-success" />
+              <span className="text-sm font-semibold text-foreground">Patient registered successfully</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">UHID</span>
+              <span className="font-mono text-xl font-bold text-foreground">{savedPatient.uhid}</span>
+            </div>
           </div>
         )}
         <FormSection id="registration-details" title="Registration / Encounter Details">

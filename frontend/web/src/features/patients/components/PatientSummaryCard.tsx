@@ -138,8 +138,11 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
             </DropdownMenu>
           )}
         </div>
+        {/* Primary color + default (not sm) size — same treatment as Edit Patient above, since
+            this is just as consequential an action and was getting lost visually as a small
+            outline button. */}
         {hasPermission('patient-management.edit') && (
-          <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <Button asChild className="gap-1.5">
             <Link to={`/patients/registration/${patient.id}/visits/new`}>
               <CalendarPlus className="h-4 w-4" />
               Add Visit

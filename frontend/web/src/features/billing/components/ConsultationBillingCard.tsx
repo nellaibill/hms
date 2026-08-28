@@ -94,6 +94,7 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
 
   const departmentId = watch(`${basePath}.departmentId`);
   const consultationTypeId = watch(`${basePath}.consultationTypeId`);
+  const fromVisit = watch(`${basePath}.fromVisit`);
   const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);
   const quantity = watch(`${basePath}.quantity`);
@@ -120,7 +121,7 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
     <div className={showRemove || !isLast ? 'flex flex-col gap-4 border-b border-dashed border-border pb-4' : 'flex flex-col gap-4'}>
       <div className="flex flex-wrap items-start gap-3">
         <Field
-          label="Department"
+          label={fromVisit ? 'Department (from registration)' : 'Department'}
           htmlFor={`${basePath}-department`}
           error={rowErrors?.departmentId?.message}
           className="flex w-full flex-col gap-1 sm:w-56"
@@ -139,12 +140,17 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
                   // consultant scoped to the old department isn't valid for the new one.
                   setValue(`${basePath}.consultantId`, '');
                 }}
+                // Locked when this row came straight from the patient's recorded visit —
+                // billing shouldn't be able to silently disagree with who the visit record
+                // says actually saw the patient. See fromVisit's own comment in
+                // billingValidation.ts for why Consultation Type below isn't locked the same way.
+                disabled={fromVisit}
               />
             )}
           />
         </Field>
         <Field
-          label="Consultant"
+          label={fromVisit ? 'Consultant (from registration)' : 'Consultant'}
           htmlFor={`${basePath}-consultant`}
           error={rowErrors?.consultantId?.message}
           className="flex min-w-[200px] flex-1 flex-col gap-1"
@@ -158,6 +164,7 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
                 value={field.value}
                 onValueChange={field.onChange}
                 departmentId={departmentId || undefined}
+                disabled={fromVisit}
               />
             )}
           />

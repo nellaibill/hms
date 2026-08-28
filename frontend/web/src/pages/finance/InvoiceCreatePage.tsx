@@ -53,6 +53,9 @@ export default function InvoiceCreatePage() {
       // effect in ConsultationBillingCard only fires once a real type is selected, and forcing
       // one here could bill the wrong category.
       consultationTypeId: c.consultationTypeId ?? '',
+      // Locks Department/Consultant in ConsultationBillingCard — see fromVisit's own comment
+      // in billingValidation.ts for why Consultation Type isn't included in that lock.
+      fromVisit: true,
     }));
     return { ...defaultBillingFormValues, consultation };
   }, [visits]);
