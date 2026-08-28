@@ -31,6 +31,11 @@ export interface BillingItem {
   departmentId?: string;
   consultantId?: string;
   serviceId?: string;
+  /** Set for a Laboratory line that represents a DiagnosticPackage rather than a single
+   * DiagnosticService — mutually exclusive with serviceId (never both set on one row). See
+   * billingCalculations.ts's laboratoryRowToBillingItem for how a row's itemType/itemId splits
+   * into serviceId/packageId. */
+  packageId?: string;
   quantity: number;
   unitPrice: number;
   discount: number;

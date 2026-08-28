@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isConsultationEntryActive, isServiceEntryActive } from './billingActivity';
+import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive } from './billingActivity';
 import { PAYMENT_STATUSES } from './types';
 
 /**
@@ -74,6 +74,53 @@ export const serviceBillingSchema = z
   });
 
 /**
+ * Laboratory's own row schema — forked from serviceBillingSchema rather than reusing it,
+ * since a Laboratory row can pick either a DiagnosticService or a DiagnosticPackage
+ * (itemType/itemId), not just a service (serviceId). Radiology/Procedure are untouched and
+ * keep using serviceBillingSchema/serviceArraySchema above. Same superRefine rules as
+ * serviceBillingSchema (required-once-active, discount <= charge*quantity), just keyed off
+ * itemType+itemId instead of serviceId.
+ */
+export const laboratoryBillingSchema = z
+  .object({
+    itemType: z.enum(['service', 'package']).default('service'),
+    itemId: z.string().default(''),
+    consultantId: z.string().default(''),
+    charge: z.number().min(0).default(0),
+    quantity: z.number().int().min(1).default(1),
+    discount: z.number().min(0).default(0),
+    discountApproved: z.boolean().default(false),
+    discountApprovedBy: z.string().default(''),
+  })
+  .superRefine((data, ctx) => {
+    if (!isLaboratoryEntryActive(data)) return;
+    if (!data.itemId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['itemId'], message: 'Item is required' });
+    if (!data.consultantId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['consultantId'], message: 'Consultant is required' });
+    if (data.discount > data.charge * data.quantity) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
+    }
+  });
+
+function laboratoryArraySchema() {
+  return z.array(laboratoryBillingSchema).superRefine((rows, ctx) => {
+    const firstIndexByKey = new Map<string, number>();
+    rows.forEach((row, index) => {
+      if (!row.itemId) return;
+      const key = `${row.itemType}:${row.itemId}`;
+      if (!firstIndexByKey.has(key)) {
+        firstIndexByKey.set(key, index);
+        return;
+      }
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, 'itemId'],
+        message: 'This item is already added in another row above — remove it here, or change the row above.',
+      });
+    });
+  });
+}
+
+/**
  * Flags a row as a duplicate of an earlier row in the same array — same service picked twice,
  * or (for Consultation) the exact same department+consultant+type combo twice. Only rows with
  * every key field filled in are compared, so a still-being-filled-out row never gets flagged
@@ -121,7 +168,7 @@ function consultationArraySchema() {
 export const billingFormSchema = z.object({
   consultation: consultationArraySchema().default([]),
   radiology: serviceArraySchema().default([]),
-  laboratory: serviceArraySchema().default([]),
+  laboratory: laboratoryArraySchema().default([]),
   procedure: serviceArraySchema().default([]),
   paymentStatus: z.enum(PAYMENT_STATUSES).default('Pending'),
 });
@@ -129,7 +176,9 @@ export const billingFormSchema = z.object({
 export type BillingFormValues = z.infer<typeof billingFormSchema>;
 export type ConsultationBillingFormValues = z.infer<typeof consultationBillingSchema>;
 export type ServiceBillingRowFormValues = z.infer<typeof serviceBillingSchema>;
-export type ServiceBillingCategory = 'radiology' | 'laboratory' | 'procedure';
+export type LaboratoryBillingRowFormValues = z.infer<typeof laboratoryBillingSchema>;
+/** Radiology/Procedure only now — Laboratory forked off to its own schema/row shape above. */
+export type ServiceBillingCategory = 'radiology' | 'procedure';
 
 export const emptyConsultation: ConsultationBillingFormValues = {
   departmentId: '',
@@ -153,10 +202,21 @@ export const emptyServiceRow: ServiceBillingRowFormValues = {
   discountApprovedBy: '',
 };
 
+export const emptyLaboratoryRow: LaboratoryBillingRowFormValues = {
+  itemType: 'service',
+  itemId: '',
+  consultantId: '',
+  charge: 0,
+  quantity: 1,
+  discount: 0,
+  discountApproved: false,
+  discountApprovedBy: '',
+};
+
 export const defaultBillingFormValues: BillingFormValues = {
   consultation: [{ ...emptyConsultation }],
   radiology: [{ ...emptyServiceRow }],
-  laboratory: [{ ...emptyServiceRow }],
+  laboratory: [{ ...emptyLaboratoryRow }],
   procedure: [{ ...emptyServiceRow }],
   paymentStatus: 'Pending',
 };

@@ -17,10 +17,22 @@ interface ServiceEntryLike {
   discount: number;
 }
 
+/** Laboratory's own row shape (itemType/itemId, not serviceId — see billingValidation.ts's
+ * laboratoryBillingSchema) is otherwise identical to ServiceEntryLike. */
+interface LaboratoryEntryLike {
+  itemId: string;
+  consultantId: string;
+  discount: number;
+}
+
 export function isConsultationEntryActive(entry: ConsultationEntryLike): boolean {
   return Boolean(entry.departmentId || entry.consultantId || entry.consultationTypeId || entry.discount > 0);
 }
 
 export function isServiceEntryActive(entry: ServiceEntryLike): boolean {
   return Boolean(entry.serviceId || entry.consultantId || entry.discount > 0);
+}
+
+export function isLaboratoryEntryActive(entry: LaboratoryEntryLike): boolean {
+  return Boolean(entry.itemId || entry.consultantId || entry.discount > 0);
 }

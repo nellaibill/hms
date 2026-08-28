@@ -97,6 +97,23 @@ export const API_ROUTES = {
     unitOfMeasure: mastersEntity('units-of-measure'),
     warehouse: mastersEntity('warehouses'),
   },
+  /**
+   * Central Laboratory's typed Masters entities (DiagnosticCategory/Provider/Service/Package)
+   * — kept as their own top-level section rather than folded into `masters` above, mirroring
+   * dtos/diagnostics' own deliberate split from dtos/masters (bespoke UI, not the generic
+   * MasterRecordDto engine), even though the URLs are still under /api/v1/masters/... since
+   * that's the real backend route (HMS.Modules.Masters.Endpoints.Diagnostic*Controller).
+   */
+  diagnostics: {
+    categories: mastersEntity('diagnostic-categories'),
+    providers: mastersEntity('diagnostic-providers'),
+    services: mastersEntity('diagnostic-services'),
+    packages: {
+      ...mastersEntity('diagnostic-packages'),
+      items: (packageId: string) => `/api/v1/masters/diagnostic-packages/${packageId}/items`,
+      itemById: (packageId: string, itemId: string) => `/api/v1/masters/diagnostic-packages/${packageId}/items/${itemId}`,
+    },
+  },
   /** Mirrors HMS.Modules.Products.Endpoints.ProductsController (core Product CRUD only). */
   products: {
     base: '/api/v1/products',

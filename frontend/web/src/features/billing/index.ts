@@ -1,6 +1,7 @@
 export * from './components/BillingStep';
 export * from './components/InvoiceDetailCard';
 export * from './components/InvoiceLedgerTable';
+export * from './components/LabDetailsCard';
 export * from './components/InvoiceListToolbar';
 export * from './components/Pagination';
 export * from './components/PatientPicker';

@@ -19,3 +19,7 @@ export * from './platform/hospitalValidation';
 export * from './pharmacy/stockReceiptValidation';
 export * from './pharmacy/dispenseValidation';
 export * from './pharmacy/dispenseCartValidation';
+export * from './diagnostics/diagnosticCategoryValidation';
+export * from './diagnostics/diagnosticProviderValidation';
+export * from './diagnostics/diagnosticServiceValidation';
+export * from './diagnostics/diagnosticPackageValidation';

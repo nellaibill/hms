@@ -2,6 +2,7 @@ import { Receipt } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency, summarizeBilling, toBillingItems } from '../billingCalculations';
 import type { BillingFormValues } from '../billingValidation';
@@ -28,6 +29,11 @@ export function BillingSummaryCard() {
   useMasterOptionsQuery('department');
   useMasterOptionsQuery('consultant');
   useMasterOptionsQuery('consultationType');
+  // Radiology/Laboratory now read the new typed DiagnosticService/DiagnosticPackage catalogs
+  // (see billingCalculations.ts's describeBillingItem) — these prime that cache the same way.
+  useDiagnosticServices('Radiology');
+  useDiagnosticServices('Laboratory');
+  usePrimeDiagnosticPackageCache();
   const summary = summarizeBilling(values);
   const items = toBillingItems(values);
 

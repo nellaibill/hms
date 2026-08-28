@@ -1,8 +1,10 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   InvoiceDetailCard,
+  LabDetailsCard,
   RecordPaymentDialog,
   VoidInvoiceDialog,
   describeBillingItem,
@@ -53,6 +55,10 @@ export default function InvoiceDetailPage() {
     );
   }
 
+  // "Lab Details" only makes sense once there's at least one Laboratory line — an invoice with
+  // none (the common case for most bills) keeps today's single-card layout, no empty tab strip.
+  const hasLaboratoryItems = billing.items.some((item) => item.billingType === 'Laboratory');
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
@@ -66,7 +72,22 @@ export default function InvoiceDetailPage() {
         {/* Left-aligned, not centered — matches PatientRegistrationForm/InvoiceCreatePage
             rather than leaving a large empty gutter before the card. */}
         <div className="w-full max-w-3xl">
-          <InvoiceDetailCard billing={billing} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
+          {hasLaboratoryItems ? (
+            <Tabs defaultValue="summary">
+              <TabsList>
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="lab-details">Lab Details</TabsTrigger>
+              </TabsList>
+              <TabsContent value="summary" className="mt-4">
+                <InvoiceDetailCard billing={billing} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
+              </TabsContent>
+              <TabsContent value="lab-details" className="mt-4">
+                <LabDetailsCard billing={billing} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <InvoiceDetailCard billing={billing} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
+          )}
         </div>
       </div>
 

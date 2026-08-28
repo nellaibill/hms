@@ -6,6 +6,9 @@ export interface CreateInvoiceLineItemRequest {
   departmentId?: string | null;
   consultantId?: string | null;
   serviceId?: string | null;
+  /** App-level reference into Masters' DiagnosticPackage — set for a package line, null for a
+   * plain service line. */
+  packageId?: string | null;
   quantity: number;
   unitPrice: number;
   discount: number;
@@ -39,6 +42,7 @@ export interface InvoiceLineItemResponse {
   departmentId?: string | null;
   consultantId?: string | null;
   serviceId?: string | null;
+  packageId?: string | null;
   quantity: number;
   unitPrice: number;
   discount: number;

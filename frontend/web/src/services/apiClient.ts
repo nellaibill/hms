@@ -10,6 +10,10 @@ import {
   ConsultationTypesApi,
   ConversationsApi,
   DepartmentsApi,
+  DiagnosticCategoriesApi,
+  DiagnosticPackagesApi,
+  DiagnosticProvidersApi,
+  DiagnosticServicesApi,
   DocumentsApi,
   EmployeesApi,
   EventsApi,
@@ -83,6 +87,10 @@ export const departmentsApi = new DepartmentsApi(httpClient);
 export const consultantsApi = new ConsultantsApi(httpClient);
 export const appointmentTypesApi = new AppointmentTypesApi(httpClient);
 export const consultationTypesApi = new ConsultationTypesApi(httpClient);
+export const diagnosticCategoriesApi = new DiagnosticCategoriesApi(httpClient);
+export const diagnosticProvidersApi = new DiagnosticProvidersApi(httpClient);
+export const diagnosticServicesApi = new DiagnosticServicesApi(httpClient);
+export const diagnosticPackagesApi = new DiagnosticPackagesApi(httpClient);
 export const statesApi = new StatesApi(httpClient);
 export const staffAvailabilityApi = new StaffAvailabilityApi(httpClient);
 export const weeklyRostersApi = new WeeklyRostersApi(httpClient);
