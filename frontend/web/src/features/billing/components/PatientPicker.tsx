@@ -71,7 +71,13 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <PatientListToolbar filters={filters} onFilterChange={handleFilterChange} onSearch={handleSearch} onClear={handleClear} />
+      <PatientListToolbar
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onSearch={handleSearch}
+        onClear={handleClear}
+        onSuggestionSelect={onSelect}
+      />
 
       {!hasSearched && (
         <Card className="border-dashed">
