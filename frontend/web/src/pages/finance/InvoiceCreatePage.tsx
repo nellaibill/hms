@@ -80,9 +80,9 @@ export default function InvoiceCreatePage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        {/* Left-aligned, not centered — matches PatientRegistrationForm, which renders
+        {/* Full width, not centered — matches PatientRegistrationForm, which renders
             this same BillingStep component in the registration wizard. */}
-        <div className="flex w-full max-w-6xl flex-col gap-4">
+        <div className="flex w-full flex-col gap-4">
           {!patient ? (
             <PatientPicker onSelect={setPatient} />
           ) : (
