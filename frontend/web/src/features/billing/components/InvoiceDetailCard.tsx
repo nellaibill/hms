@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import type { Billing, BillingItem } from '../types';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
@@ -15,6 +16,13 @@ interface InvoiceDetailCardProps {
 export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCardProps) {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('finance-billing.edit');
+  // Primes the Masters reference cache describeBillingItem reads from below, so every line
+  // item resolves to its real name instead of a raw id — this page can be opened directly,
+  // without ever visiting the live billing form.
+  useMasterOptionsQuery('diagnosticTest');
+  useMasterOptionsQuery('department');
+  useMasterOptionsQuery('consultant');
+  useMasterOptionsQuery('consultationType');
   return (
     <Card>
       <CardHeader className="flex-row items-center gap-3 space-y-0">

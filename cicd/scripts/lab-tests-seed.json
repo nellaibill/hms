@@ -1,0 +1,2354 @@
+[
+  {
+    "name": "Haemoglobin",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Total WBC Count (TC)",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Platelet Count",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 100.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "RBC Count",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Differential Count",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Packed Cell Volume (PCV)",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 70.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "MCV",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 30.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "ESR",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 60.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Blood Grouping & Rh Typing",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 100.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Mantoux Test",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 100.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "CRP",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 350.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Uric Acid (UA)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 120.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "RA Factor (RF)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "ASO Titre",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urea",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 75.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Creatinine",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 75.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Calcium",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Lactate Dehydrogenase (LDH)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 400.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Serum Amylase",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Serum Lipase",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 400.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Bilirubin (Total+Direct)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "S G O T",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 175.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "S G P T",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 175.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Protein",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Albumin",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 70.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Alk.Phosphatase",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "A/G Ratio",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Total Cholesterol",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 100.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Triglycerides",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 120.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "HDL",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Prothrombin Time (PT)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 250.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "APTT",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "INR",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 100.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Bleeding Time (BT)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Clotting Time (CT)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Capillary Blood Glucose (CBG) - Strip test",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 30.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Random Blood Sugar (RBS)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Fasting Blood Sugar (FBS)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Post Prandial Blood Sugar (PPBS)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "HbA1C",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 450.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Glucose Challenge Test (GCT)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Glucose Tolerance Test (GTT)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 450.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Serum Iron",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Transferrin Saturation",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 800.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Total Iron Binding Capacity (TIBC)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Sodium",
+    "serviceType": "Laboratory",
+    "category": "ELECTROLYTES",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Potassium",
+    "serviceType": "Laboratory",
+    "category": "ELECTROLYTES",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Chloride",
+    "serviceType": "Laboratory",
+    "category": "ELECTROLYTES",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Bicarbonate",
+    "serviceType": "Laboratory",
+    "category": "ELECTROLYTES",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Anti-CCP",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "25-OH-Vitamin D2",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1350.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "D-Dimer",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 550.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Ferritin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 700.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Vitamin B12",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "T3",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "T4",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "TSH",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "FT3",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "FT4",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Anti TPO",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Beta HCG",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "LH",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 250.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "FSH",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 250.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "E2",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "FE3",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Progesterone",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "17-OH-Progesterone",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Total Testosterone",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 650.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "DHEAS",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2800.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "AMH",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1800.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Prolactin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "HIV",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 250.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "HBsAg",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "HCV",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "VDRL",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Dengue NS1 Ag + IgG-M Ab",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 600.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urine Pregnancy Test (UPT)",
+    "serviceType": "Laboratory",
+    "category": "PREGNANCY TEST",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urine Sugar",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 25.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urine Albumin",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 25.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urine Deposits",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 30.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urine Acetone",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urine Bile Salts-Bile Pigments (BS/BP)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Urobilinogen",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 25.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Stool for Occult Blood",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 100.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Stool for Ova / Cyst",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 50.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Semen Analysis",
+    "serviceType": "Laboratory",
+    "category": "SEMEN",
+    "price": 200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Absolute Eosinophil Count",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Reticulocyte Count",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Peripheral Smear (Path)",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Hb Electrophoresis",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 1300.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Serum Electrophoresis",
+    "serviceType": "Laboratory",
+    "category": "HAEMATOLOGY",
+    "price": 1300.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "hs CRP",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Serum Lactate",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Ammonia",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 550.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Serum Homocysteine",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 1200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Gamma Glutamyl Transferase (GGT)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Acid Phosphatase",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Serum Bile Acid",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 1750.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Cholinesterase",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Magnesium",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Phosphorus",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Lithium",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 700.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Zinc",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 700.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Serum Copper",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Serum Cerruloplasmin",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Heavy Metal Screening",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 4500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Direct Coombs Test",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Indirect Coombs Test",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Influenza Screening",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 5000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Widal",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Malarial Optimal Card",
+    "serviceType": "Laboratory",
+    "category": "IMMUNOLOGY",
+    "price": 150.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Smear for MP",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Smear for MF",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Smear for Gram Stain",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 150.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Smear for AFB",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 175.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Smear for Fungal Stain",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Blood Culture and Sensitivity",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 750.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Mycobacterium TB Culture",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti-HAV IgM Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HIV - ELISA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HIV - Western Blot",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HBV - ELISA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HBeAg",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 750.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HBV-DNA PCR Quantitative",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HCV - ELISA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HCV RNA PCR (Qualitative)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HCV RNA PCR (Quantitative)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti-HEV IgM Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti-HEV IgG Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HSV I & II IgM & IgG",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Serological Test for Syphilis (STS)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "TPHA for Syphilis",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "TB PCR",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1800.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "TB Gold Assay",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti TB IgM",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti TB IgA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti TB IgG",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Leptospiral Antibody IgM / IgG (ICT)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Scrub Typhus",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Scrub Typhus ELISA IgM / IgG",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Chikungunya IgM",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "TORCH Panel IgM",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 800.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "TORCH Panel IgM + IgG",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "IgA Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "IgE Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "IgG Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "IgM Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "cf DNA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 15000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "DS DNA - ELISA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "ANA - ELISA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "ANA - IF",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1200.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "ANA BLOT",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "ANCA (C+P)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3500.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Myoglobin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 400.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Smooth Muscular Antibody (SMA)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti-Beta 2 (β2) Microglobulin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1400.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Anti-Beta 2 (β2) Glycoprotein IgM",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1400.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Anti-Cardiolipin Antibody IgM / IgA / IgG",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 800.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Lipoprotein (a)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 950.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Anti GBM Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2500.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Anti Thyroglobulin Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Thyroglobulin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 700.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "TSH Receptor Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 4300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "APLA IgM",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "APLA IgG",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti Mitochondrial Antibody (AMA)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Anti LKM",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "ASMA",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Lupus Anticoagulant",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Double Marker",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Quadruple Marker",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Triple Marker",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2500.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "NIPT (Non Invasive Pregnancy Test)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 15000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Free Testosterone",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 900.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Androgen",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Alpha Feto Protein (AFP)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 850.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Growth Hormone (GH)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "EGFR",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 100.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Adreno Cortico Trophic Hormone (ACTH)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Cortisol",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 650.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Serum Insulin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Folic Acid",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 900.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "C Antibody",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "C3 Complement",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "C4 Complement",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "NT Pro BNP",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Interleukin (IL) - 6",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1800.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Procalcitonin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Vitamin D3 - 1,25 OH",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Intact PTH (Para Thyroid Hormone)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "HLA B27",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "C-Peptide",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Serum Protein Electrophoresis",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Protein C",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Protein S",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Anti Thrombin III",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2100.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Factor VIII Inhibitor",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 2600.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "CA-15.3",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "CA-19.9",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 900.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "CA-125",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 550.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "CEA (Carcino Embryonic Antigen)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 750.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Plasma Fibrinogen",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "FDP (Fibrin Degradation Products)",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Digoxin",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1200.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Prostate Specific Antigen (PSA) - Total",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 450.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Prostate Specific Antigen (PSA) - Free",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Troponin T",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 900.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Troponin I",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 750.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "CPK Total",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "CPK MB",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Rh Antibody Titre",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 750.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "POC (Products Of Conception) for TORCH",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 10000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "POC for QF PCR",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 12000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Fetal POC Test - 5 Chr",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 9000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Chromosome Analysis / Karyotyping",
+    "serviceType": "Laboratory",
+    "category": "ENDOCRINOLOGY",
+    "price": 3000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Arterial Blood Gas Analysis (ABG)",
+    "serviceType": "Laboratory",
+    "category": "BLOOD GAS",
+    "price": 1200.0,
+    "isOutsourced": true,
+    "referenceLab": "LIBERTY (Chendur)"
+  },
+  {
+    "name": "Serum Osmolarity",
+    "serviceType": "Laboratory",
+    "category": "BLOOD GAS",
+    "price": 900.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Blood pH - Gel",
+    "serviceType": "Laboratory",
+    "category": "BLOOD GAS",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Urine For Micro-albumin",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 300.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "24 Hrs Urinary Creatinine",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "24 Hrs Urinary Protein",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 100.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Urine Spot Sodium",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "24 Hrs Urinary Sodium",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 200.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "24 Hrs Urinary Potasium",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "24 Hrs Urinary Copper",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 1400.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Bence - Jones Protein",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Urine Osmolarity",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 700.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Urine PCR",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Urine VMA Spot",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 1500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Urine VMA 24 Hours",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 3500.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Stone Analysis",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Urine Culture and Sensitivity",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Stool Culture & Sensitivity",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Stool for Rotavirus",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 950.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Stool Reducing Substances",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 50.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Sputum / Aspirate / Swab / Tip - Pus C/S",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Sputum / Aspirate / Swab for Mycobacterium TB Culture",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Sputum / Aspirate / Swab for Gram Stain",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 150.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Sputum / Aspirate / Swab for AFB",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 175.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Sputum / Aspirate / Swab for Fungal Stain",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Cervical-Vaginal Swab / PAP for Human Papilloma Virus (HPV)",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 2000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Fungal C/S",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - C/S",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 350.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Mycobacterium TB Culture",
+    "serviceType": "Laboratory",
+    "category": "MICROBIOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "Q - LAB"
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Cell Count",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": null
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Protein",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 150.0,
+    "isOutsourced": true,
+    "referenceLab": null
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Sugar / Glucose",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 100.0,
+    "isOutsourced": true,
+    "referenceLab": null
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Adenosine Deaminase (ADA) for MTB",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": null
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Lactate Dehydrogenase (LDH)",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 550.0,
+    "isOutsourced": true,
+    "referenceLab": null
+  },
+  {
+    "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Malignant Cells",
+    "serviceType": "Laboratory",
+    "category": "BIOCHEMISTRY",
+    "price": 250.0,
+    "isOutsourced": true,
+    "referenceLab": null
+  },
+  {
+    "name": "Biopsy Small (Appendix/Tubes/Scopy specimens/Colon/ Synovium/Curettage/Nodes/Small Bone Tumors/ Trucut/Swellings/Skin/Small Wide local excisions)",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 700.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Biopsy Medium (Uterus + Cx + Ovaries/Huge Myomas/ Thyroid/Testes/Medium Bone Tumors/Fingers and Toes)",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 1000.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Biopsy Large (MRM with Nodes/Large Uterine-Ovarian Tumors/Large Bone Tumors/Large Body parts)",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 1800.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Emergency Biopsies - Trucut / Frozen section",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 1800.0,
+    "isOutsourced": true,
+    "referenceLab": null
+  },
+  {
+    "name": "PAP Smear",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 750.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Swabs / Aspirates / Other Samples HPE",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 600.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "D&C Sample - Endometrial Curetage",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 800.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "FNAC - 4 slides",
+    "serviceType": "Laboratory",
+    "category": "HISTOPATHOLOGY",
+    "price": 800.0,
+    "isOutsourced": true,
+    "referenceLab": "ANDERSON"
+  },
+  {
+    "name": "Digital X-ray",
+    "serviceType": "Radiology",
+    "category": "DIGITAL X-RAY",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Digital X-ray Large films for Femur/Tibia/Humerus",
+    "serviceType": "Radiology",
+    "category": "DIGITAL X-RAY",
+    "price": 350.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Digital X-ray Long Leg View Scannogram",
+    "serviceType": "Radiology",
+    "category": "DIGITAL X-RAY",
+    "price": 400.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "ECG",
+    "serviceType": "Radiology",
+    "category": "CARDIOLOGY",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "2D ECHO",
+    "serviceType": "Radiology",
+    "category": "CARDIOLOGY",
+    "price": 1500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Fetal ECHO",
+    "serviceType": "Radiology",
+    "category": "CARDIOLOGY",
+    "price": 2500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "Neonatal / Paediatric ECHO",
+    "serviceType": "Radiology",
+    "category": "CARDIOLOGY",
+    "price": 5000.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "COMPLETE BLOOD COUNT (CBC)",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 300.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "CBC + ESR",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 350.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "HB+TC+DC+ESR",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "RENAL/KIDNEY FUNCTION TESTS (RFT/KFT)",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "LIVER FUNCTION TESTS (LFT)",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 900.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "LIPID PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 450.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "COAGULATION PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 600.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "DIABETIC PROFILE 1",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "DIABETIC PROFILE 2",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 100.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "SERUM ELECTROLYTES",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 450.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "THYROID PROFILE 1",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 1700.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "THYROID PROFILE 2",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "THYROID PROFILE 3",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 450.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "SEROLOGY 1",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 800.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "SEROLOGY 2",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 650.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "RHEUMATOID PROFILE - 1 (CBC,ESR,CRP,RF,ACPA,UA,ASO,Vit D2)",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 3600.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "RHEUMATOID PROFILE - 2 (CBC,ESR,CRP,RF,UA,Vit D2)",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 2400.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "URINE ROUTINE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 75.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "URINE ANALYSIS",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "STOOL ROUTINE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 150.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "IRON PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 2000.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "ANEMIA PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 4000.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "FEVER PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 3200.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "BIO - RBS, RFT, Sr.Bil, Cholesterol",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "ORTHO PRE-OP PACKAGE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 3000.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "ANC PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 3700.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "LABOUR PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 2400.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "ECLAMPSIA PROFILE",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 2700.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  },
+  {
+    "name": "SYNOVIAL FLUID ANALYSIS",
+    "serviceType": "Laboratory",
+    "category": "Package",
+    "price": 2500.0,
+    "isOutsourced": false,
+    "referenceLab": null
+  }
+]

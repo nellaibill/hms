@@ -24,6 +24,7 @@ import { DepartmentName } from '@/components/DepartmentName';
 import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
 import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type BillingItem } from '@/features/billing';
+import { useMasterOptionsQuery } from '@/features/masters';
 import { documentsApi } from '../../../services/apiClient';
 import { useAuth } from '../../auth/AuthContext';
 import { humanize } from '../humanize';
@@ -590,6 +591,12 @@ function BillingLineItem({ item }: { item: BillingItem }) {
 /** Billing is its own bounded context (see features/billing) — this reads it read-only for display via the real Billing API, the same way it reads DocumentUpload's storage elsewhere. A patient can have zero billing records (every category is optional at registration) — that's shown explicitly rather than hiding the section, so "no charges were entered" reads as a fact, not a missing feature. */
 function PatientBillingTab({ patientId }: { patientId: string }) {
   const { data: billings, isPending } = usePatientInvoicesQuery(patientId);
+  // Primes the Masters reference cache describeBillingItem reads from in BillingLineItem
+  // below, so every line item resolves to its real name instead of a raw id.
+  useMasterOptionsQuery('diagnosticTest');
+  useMasterOptionsQuery('department');
+  useMasterOptionsQuery('consultant');
+  useMasterOptionsQuery('consultationType');
 
   if (isPending) {
     return (

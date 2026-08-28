@@ -25,6 +25,8 @@ interface ServiceBillingCardProps {
   expanded: boolean;
   onToggle: () => void;
   hasError: boolean;
+  /** True while `services` is still loading from its source (e.g. an API-backed catalog) — disables the Service dropdown so it doesn't briefly render empty. */
+  isLoadingServices?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export function ServiceBillingCard({
   expanded,
   onToggle,
   hasError,
+  isLoadingServices = false,
 }: ServiceBillingCardProps) {
   const { control } = useFormContext<BillingFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: category });
@@ -81,6 +84,7 @@ export function ServiceBillingCard({
           showRemove={fields.length > 1}
           onRemove={() => remove(index)}
           isLast={index === fields.length - 1}
+          isLoadingServices={isLoadingServices}
         />
       ))}
       <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyServiceRow })}>
@@ -99,9 +103,10 @@ interface ServiceBillingRowProps {
   showRemove: boolean;
   onRemove: () => void;
   isLast: boolean;
+  isLoadingServices: boolean;
 }
 
-function ServiceBillingRow({ category, index, services, consultants, showRemove, onRemove, isLast }: ServiceBillingRowProps) {
+function ServiceBillingRow({ category, index, services, consultants, showRemove, onRemove, isLast, isLoadingServices }: ServiceBillingRowProps) {
   const {
     control,
     setValue,
@@ -144,8 +149,9 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
                 value={field.value}
                 onValueChange={field.onChange}
                 options={serviceOptions}
-                placeholder="Select service"
+                placeholder={isLoadingServices ? 'Loading services…' : 'Select service'}
                 searchPlaceholder="Search services…"
+                disabled={isLoadingServices}
               />
             )}
           />

@@ -1,15 +1,5 @@
+import { resolveRecordLabel } from '@/features/masters';
 import { isConsultationEntryActive, isServiceEntryActive } from './billingActivity';
-import {
-  CONSULTATION_CONSULTANTS,
-  CONSULTATION_DEPARTMENTS,
-  CONSULTATION_TYPES,
-  LABORATORY_CONSULTANTS,
-  LABORATORY_SERVICES,
-  PROCEDURE_CONSULTANTS,
-  PROCEDURE_SERVICES,
-  RADIOLOGY_CONSULTANTS,
-  RADIOLOGY_SERVICES,
-} from './billingCatalog';
 import type { BillingFormValues, ConsultationBillingFormValues, ServiceBillingCategory, ServiceBillingRowFormValues } from './billingValidation';
 import type { BillingItem, BillingType, PaymentStatus } from './types';
 
@@ -28,7 +18,7 @@ export interface BillingSummaryLine {
   charge: number;
   discount: number;
   net: number;
-  /** How many active (non-empty) entries make up this line — mainly meaningful for the array-based service categories. */
+  /** How many active (non-empty) entries make up this line. */
   count: number;
   active: boolean;
 }
@@ -52,8 +42,9 @@ const SERVICE_BILLING_TYPES: Record<ServiceBillingCategory, BillingType> = {
   procedure: 'Procedure',
 };
 
-function summarizeServiceRows(rows: ServiceBillingRowFormValues[]) {
-  const activeRows = rows.filter(isServiceEntryActive);
+/** Generic over any row shape carrying `charge`/`discount` — reused for both Consultation rows and the three Service-category row shapes, which otherwise differ (departmentId+consultationTypeId vs. serviceId). */
+function summarizeRows<T extends { charge: number; discount: number }>(rows: T[], isActive: (row: T) => boolean) {
+  const activeRows = rows.filter(isActive);
   const charge = activeRows.reduce((sum, row) => sum + row.charge, 0);
   const discount = activeRows.reduce((sum, row) => sum + row.discount, 0);
   return { charge, discount, count: activeRows.length };
@@ -61,19 +52,19 @@ function summarizeServiceRows(rows: ServiceBillingRowFormValues[]) {
 
 /** Recomputed from current form values on every change — never cached, so it can't drift out of sync with the cards. */
 export function summarizeBilling(values: BillingFormValues): BillingSummary {
-  const consultationActive = isConsultationEntryActive(values.consultation);
+  const consultationSummary = summarizeRows(values.consultation, isConsultationEntryActive);
   const lines: BillingSummaryLine[] = [
     {
       billingType: 'Consultation',
       label: 'Consultation',
-      charge: values.consultation.charge,
-      discount: values.consultation.discount,
-      net: Math.max(values.consultation.charge - values.consultation.discount, 0),
-      count: consultationActive ? 1 : 0,
-      active: consultationActive,
+      charge: consultationSummary.charge,
+      discount: consultationSummary.discount,
+      net: Math.max(consultationSummary.charge - consultationSummary.discount, 0),
+      count: consultationSummary.count,
+      active: consultationSummary.count > 0,
     },
     ...(Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).map((category) => {
-      const { charge, discount, count } = summarizeServiceRows(values[category]);
+      const { charge, discount, count } = summarizeRows(values[category], isServiceEntryActive);
       return {
         billingType: SERVICE_BILLING_TYPES[category],
         label: SERVICE_LABELS[category],
@@ -94,9 +85,9 @@ export function summarizeBilling(values: BillingFormValues): BillingSummary {
   return { lines, grossTotal, discountTotal, netTotal };
 }
 
-function consultationToBillingItem(entry: ConsultationBillingFormValues, paymentStatus: PaymentStatus): BillingItem {
+function consultationRowToBillingItem(entry: ConsultationBillingFormValues, index: number, paymentStatus: PaymentStatus): BillingItem {
   return {
-    id: 'consultation',
+    id: `consultation-${index}`,
     billingType: 'Consultation',
     departmentId: entry.departmentId,
     consultantId: entry.consultantId,
@@ -134,17 +125,18 @@ function serviceRowToBillingItem(
 
 /**
  * Flattens the form's per-category shape into the normalized BillingItem[] model — only
- * entries actually in use produce a line, and a service category can contribute more than
- * one. `values.paymentStatus` is the single whole-bill status (see billingValidation.ts);
- * every produced line starts there and can only diverge later via the Record Payment
- * action on an already-saved invoice, not at creation time.
+ * entries actually in use produce a line, and every category (Consultation included) can
+ * contribute more than one. `values.paymentStatus` is the single whole-bill status (see
+ * billingValidation.ts); every produced line starts there and can only diverge later via the
+ * Record Payment action on an already-saved invoice, not at creation time.
  */
 export function toBillingItems(values: BillingFormValues): BillingItem[] {
   const items: BillingItem[] = [];
 
-  if (isConsultationEntryActive(values.consultation)) {
-    items.push(consultationToBillingItem(values.consultation, values.paymentStatus));
-  }
+  values.consultation.forEach((entry, index) => {
+    if (!isConsultationEntryActive(entry)) return;
+    items.push(consultationRowToBillingItem(entry, index, values.paymentStatus));
+  });
 
   (Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).forEach((category) => {
     values[category].forEach((row, index) => {
@@ -156,32 +148,28 @@ export function toBillingItems(values: BillingFormValues): BillingItem[] {
   return items;
 }
 
-const SERVICE_CATALOGS = {
-  Radiology: RADIOLOGY_SERVICES,
-  Laboratory: LABORATORY_SERVICES,
-  Procedure: PROCEDURE_SERVICES,
-} as const;
-
-const SERVICE_CONSULTANT_CATALOGS = {
-  Radiology: RADIOLOGY_CONSULTANTS,
-  Laboratory: LABORATORY_CONSULTANTS,
-  Procedure: PROCEDURE_CONSULTANTS,
-} as const;
-
 export interface BillingItemDescription {
   serviceLabel: string;
   consultantName: string;
 }
 
-/** A saved BillingItem only stores catalog IDs (department/service/consultant) — this resolves them back to display names using the same catalogs the Billing step itself reads from, for read-only views like the patient detail page. */
+/**
+ * A saved BillingItem only stores Masters ids (department/service/consultant) — this resolves
+ * them back to display names for read-only views like the patient detail page, via the
+ * Masters engine's reference cache (registry.ts's resolveRecordLabel) — the same synchronous
+ * id→label lookup reference fields use elsewhere. That cache is populated by a
+ * `useMasterOptionsQuery(entityKey)` call somewhere in the calling page (see
+ * LaboratoryBillingCard/ConsultationBillingCard/InvoiceDetailCard/BillingSummaryCard/
+ * PatientBillingTab) — falls back to the raw id until that query resolves, then self-corrects
+ * on the next render.
+ */
 export function describeBillingItem(item: BillingItem): BillingItemDescription {
   if (item.billingType === 'Consultation') {
-    const department = CONSULTATION_DEPARTMENTS.find((d) => d.id === item.departmentId);
-    const type = CONSULTATION_TYPES.find((t) => t.id === item.serviceId);
-    const consultant = CONSULTATION_CONSULTANTS.find((c) => c.id === item.consultantId);
+    const departmentLabel = item.departmentId ? resolveRecordLabel('department', item.departmentId) : undefined;
+    const typeLabel = item.serviceId ? resolveRecordLabel('consultationType', item.serviceId) : undefined;
     return {
-      serviceLabel: [department?.name, type?.name].filter(Boolean).join(' — ') || 'Consultation',
-      consultantName: consultant?.name ?? '—',
+      serviceLabel: [departmentLabel, typeLabel].filter(Boolean).join(' — ') || 'Consultation',
+      consultantName: item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : '—',
     };
   }
 
@@ -192,10 +180,9 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     return { serviceLabel: item.serviceId ?? 'Pharmacy', consultantName: '—' };
   }
 
-  const service = SERVICE_CATALOGS[item.billingType].find((s) => s.id === item.serviceId);
-  const consultant = SERVICE_CONSULTANT_CATALOGS[item.billingType].find((c) => c.id === item.consultantId);
+  // Radiology/Laboratory/Procedure: serviceId is a DiagnosticTest id, consultantId a real Consultant id.
   return {
-    serviceLabel: service?.name ?? item.billingType,
-    consultantName: consultant?.name ?? '—',
+    serviceLabel: item.serviceId ? resolveRecordLabel('diagnosticTest', item.serviceId) : item.billingType,
+    consultantName: item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : '—',
   };
 }

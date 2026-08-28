@@ -2,6 +2,7 @@ import { Receipt } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency, summarizeBilling, toBillingItems } from '../billingCalculations';
 import type { BillingFormValues } from '../billingValidation';
 import { PaymentStatusControl } from './PaymentStatusControl';
@@ -19,6 +20,14 @@ import { PaymentStatusControl } from './PaymentStatusControl';
 export function BillingSummaryCard() {
   const { watch, setValue } = useFormContext<BillingFormValues>();
   const values = watch();
+  // Primes the Masters reference cache describeBillingItem reads from below, so Consultation
+  // line items resolve to real department/consultant/type names — Consultation Billing uses
+  // the dedicated department/consultant/consultationType typed API clients (via
+  // DepartmentSelect/ConsultantSelect/ConsultationTypeSelect), which don't share the generic
+  // Masters engine's cache the way useMasterOptionsQuery does.
+  useMasterOptionsQuery('department');
+  useMasterOptionsQuery('consultant');
+  useMasterOptionsQuery('consultationType');
   const summary = summarizeBilling(values);
   const items = toBillingItems(values);
 

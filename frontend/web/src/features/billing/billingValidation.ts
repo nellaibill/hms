@@ -10,9 +10,9 @@ import { PAYMENT_STATUSES } from './types';
  * always passes validation — which also means an empty row can simply be removed rather
  * than needing to be "cleared" first.
  *
- * Radiology/Laboratory/Procedure are arrays (a visit can need several lab tests or several
- * procedures); Consultation stays a single entry — one primary consultation per
- * registration is the realistic case, and multi-consultation is a separate future step.
+ * Consultation/Radiology/Laboratory/Procedure are all arrays — a visit can need several lab
+ * tests, several procedures, or (a patient seen by more than one specialist in one visit)
+ * several consultations.
  *
  * Payment status is deliberately *not* a per-line field — a visit is settled in one
  * transaction at the counter, not per category, so asking Pending/Paid four separate times
@@ -60,13 +60,7 @@ export const serviceBillingSchema = z
   });
 
 export const billingFormSchema = z.object({
-  consultation: consultationBillingSchema,
-  // UI-only demo affordance ("Add another Consultation") — kept as a separate field rather
-  // than turning `consultation` itself into an array like radiology/laboratory/procedure
-  // above, since that would ripple into billingCalculations.ts's summary math and eventually
-  // the real invoice-creation payload. Entries here render and behave like the real thing but
-  // aren't read by summarizeBilling/toBillingItems, so they never reach an actual invoice.
-  additionalConsultations: z.array(consultationBillingSchema).default([]),
+  consultation: z.array(consultationBillingSchema).default([]),
   radiology: z.array(serviceBillingSchema).default([]),
   laboratory: z.array(serviceBillingSchema).default([]),
   procedure: z.array(serviceBillingSchema).default([]),
@@ -74,11 +68,11 @@ export const billingFormSchema = z.object({
 });
 
 export type BillingFormValues = z.infer<typeof billingFormSchema>;
-export type ConsultationBillingFormValues = BillingFormValues['consultation'];
+export type ConsultationBillingFormValues = z.infer<typeof consultationBillingSchema>;
 export type ServiceBillingRowFormValues = z.infer<typeof serviceBillingSchema>;
 export type ServiceBillingCategory = 'radiology' | 'laboratory' | 'procedure';
 
-const emptyConsultation: ConsultationBillingFormValues = {
+export const emptyConsultation: ConsultationBillingFormValues = {
   departmentId: '',
   consultantId: '',
   consultationTypeId: '',
@@ -98,8 +92,7 @@ export const emptyServiceRow: ServiceBillingRowFormValues = {
 };
 
 export const defaultBillingFormValues: BillingFormValues = {
-  consultation: { ...emptyConsultation },
-  additionalConsultations: [],
+  consultation: [{ ...emptyConsultation }],
   radiology: [{ ...emptyServiceRow }],
   laboratory: [{ ...emptyServiceRow }],
   procedure: [{ ...emptyServiceRow }],
