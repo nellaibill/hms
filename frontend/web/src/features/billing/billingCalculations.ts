@@ -42,10 +42,10 @@ const SERVICE_BILLING_TYPES: Record<ServiceBillingCategory, BillingType> = {
   procedure: 'Procedure',
 };
 
-/** Generic over any row shape carrying `charge`/`discount` — reused for both Consultation rows and the three Service-category row shapes, which otherwise differ (departmentId+consultationTypeId vs. serviceId). */
-function summarizeRows<T extends { charge: number; discount: number }>(rows: T[], isActive: (row: T) => boolean) {
+/** Generic over any row shape carrying `charge`/`quantity`/`discount` — reused for both Consultation rows and the three Service-category row shapes, which otherwise differ (departmentId+consultationTypeId vs. serviceId). */
+function summarizeRows<T extends { charge: number; quantity: number; discount: number }>(rows: T[], isActive: (row: T) => boolean) {
   const activeRows = rows.filter(isActive);
-  const charge = activeRows.reduce((sum, row) => sum + row.charge, 0);
+  const charge = activeRows.reduce((sum, row) => sum + row.charge * row.quantity, 0);
   const discount = activeRows.reduce((sum, row) => sum + row.discount, 0);
   return { charge, discount, count: activeRows.length };
 }
@@ -92,13 +92,13 @@ function consultationRowToBillingItem(entry: ConsultationBillingFormValues, inde
     departmentId: entry.departmentId,
     consultantId: entry.consultantId,
     serviceId: entry.consultationTypeId,
-    quantity: 1,
+    quantity: entry.quantity,
     unitPrice: entry.charge,
     discount: entry.discount,
     discountApproved: entry.discountApproved,
     discountApprovedBy: entry.discountApprovedBy || undefined,
     paymentStatus,
-    total: Math.max(entry.charge - entry.discount, 0),
+    total: Math.max(entry.quantity * entry.charge - entry.discount, 0),
   };
 }
 
@@ -113,13 +113,13 @@ function serviceRowToBillingItem(
     billingType: SERVICE_BILLING_TYPES[category],
     consultantId: entry.consultantId,
     serviceId: entry.serviceId,
-    quantity: 1,
+    quantity: entry.quantity,
     unitPrice: entry.charge,
     discount: entry.discount,
     discountApproved: entry.discountApproved,
     discountApprovedBy: entry.discountApprovedBy || undefined,
     paymentStatus,
-    total: Math.max(entry.charge - entry.discount, 0),
+    total: Math.max(entry.quantity * entry.charge - entry.discount, 0),
   };
 }
 

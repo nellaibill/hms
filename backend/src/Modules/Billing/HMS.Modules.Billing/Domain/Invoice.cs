@@ -44,6 +44,11 @@ internal class Invoice : Entity
     private readonly List<InvoiceLineItem> _items = [];
     public IReadOnlyCollection<InvoiceLineItem> Items => _items.AsReadOnly();
 
+    public bool IsVoided { get; private set; }
+    public DateTime? VoidedAt { get; private set; }
+    public Guid? VoidedBy { get; private set; }
+    public string? VoidReason { get; private set; }
+
     /// <summary>Derived, not stored — Paid only once every line item is Paid, matching
     /// frontend/web/src/features/billing/billingCalculations.ts's getOverallPaymentStatus.</summary>
     public PaymentStatus PaymentStatus =>
@@ -133,5 +138,35 @@ internal class Invoice : Entity
         var item = _items.First(i => i.Id == itemId);
         item.MarkPaid(updatedBy);
         return item;
+    }
+
+    /// <summary>
+    /// Cancels the invoice — a mis-billed invoice can otherwise never be corrected, only
+    /// superseded by a second one, leaving the wrong one live forever. Deliberately not the
+    /// base Entity's SoftDelete: a voided invoice must stay visible/queryable (it's still a
+    /// real record for audit purposes), not disappear from every query like a deleted row.
+    /// Blocked once any payment has been recorded — reversing real collected money needs a
+    /// refund process, not a void, and no refund feature exists yet. Caller (InvoiceService)
+    /// has already checked both preconditions (not already voided, no paid items) so it can
+    /// return a proper Result.Failure instead of this throwing; the checks are repeated here
+    /// too since they're genuine invariants of a voided Invoice, not just HTTP-layer concerns.
+    /// </summary>
+    public void Void(string reason, Guid? voidedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(reason, nameof(reason));
+        if (IsVoided)
+        {
+            throw new InvalidOperationException("This invoice has already been voided.");
+        }
+        if (_items.Any(i => i.PaymentStatus == Contracts.PaymentStatus.Paid))
+        {
+            throw new InvalidOperationException("An invoice with a recorded payment cannot be voided.");
+        }
+
+        IsVoided = true;
+        VoidedAt = DateTime.UtcNow;
+        VoidedBy = voidedBy;
+        VoidReason = reason.Trim();
+        MarkUpdated(voidedBy);
     }
 }

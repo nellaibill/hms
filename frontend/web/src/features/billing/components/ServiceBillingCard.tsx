@@ -54,7 +54,7 @@ export function ServiceBillingCard({
 
   const activeRows = (rows ?? []).filter(isServiceEntryActive);
   const isActive = activeRows.length > 0;
-  const categoryTotal = activeRows.reduce((sum, row) => sum + Math.max(row.charge - row.discount, 0), 0);
+  const categoryTotal = activeRows.reduce((sum, row) => sum + Math.max(row.quantity * row.charge - row.discount, 0), 0);
 
   return (
     <CollapsibleCard
@@ -118,6 +118,7 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
   const serviceId = watch(`${basePath}.serviceId`);
   const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);
+  const quantity = watch(`${basePath}.quantity`);
   const discountApproved = watch(`${basePath}.discountApproved`);
   const discountApprovedBy = watch(`${basePath}.discountApprovedBy`);
 
@@ -197,6 +198,23 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
 
       <div className="flex flex-wrap items-end gap-3">
         <ChargeDisplay id={`${basePath}-charge`} amount={charge} />
+        <Field label="Quantity" htmlFor={`${basePath}-quantity`} error={rowErrors?.quantity?.message} className="flex w-full flex-col gap-1 sm:w-24">
+          <Controller
+            name={`${basePath}.quantity`}
+            control={control}
+            render={({ field }) => (
+              <Input
+                id={`${basePath}-quantity`}
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                value={field.value}
+                onChange={(e) => field.onChange(e.target.value === '' ? 1 : Math.max(1, Math.trunc(Number(e.target.value))))}
+              />
+            )}
+          />
+        </Field>
         <Field label="Discount (₹)" htmlFor={`${basePath}-discount`} error={rowErrors?.discount?.message} className="flex w-full flex-col gap-1 sm:w-36">
           <Controller
             name={`${basePath}.discount`}
@@ -206,7 +224,7 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
                 id={`${basePath}-discount`}
                 type="number"
                 min={0}
-                max={charge}
+                max={charge * quantity}
                 inputMode="decimal"
                 value={field.value}
                 onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}

@@ -25,6 +25,7 @@ export const consultationBillingSchema = z
     consultantId: z.string().default(''),
     consultationTypeId: z.string().default(''),
     charge: z.number().min(0).default(0),
+    quantity: z.number().int().min(1).default(1),
     discount: z.number().min(0).default(0),
     discountApproved: z.boolean().default(false),
     discountApprovedBy: z.string().default(''),
@@ -36,7 +37,7 @@ export const consultationBillingSchema = z
     if (!data.consultationTypeId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['consultationTypeId'], message: 'Consultation type is required' });
     }
-    if (data.discount > data.charge) {
+    if (data.discount > data.charge * data.quantity) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
     }
   });
@@ -46,6 +47,7 @@ export const serviceBillingSchema = z
     serviceId: z.string().default(''),
     consultantId: z.string().default(''),
     charge: z.number().min(0).default(0),
+    quantity: z.number().int().min(1).default(1),
     discount: z.number().min(0).default(0),
     discountApproved: z.boolean().default(false),
     discountApprovedBy: z.string().default(''),
@@ -54,16 +56,61 @@ export const serviceBillingSchema = z
     if (!isServiceEntryActive(data)) return;
     if (!data.serviceId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['serviceId'], message: 'Service is required' });
     if (!data.consultantId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['consultantId'], message: 'Consultant is required' });
-    if (data.discount > data.charge) {
+    if (data.discount > data.charge * data.quantity) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
     }
   });
 
+/**
+ * Flags a row as a duplicate of an earlier row in the same array — same service picked twice,
+ * or (for Consultation) the exact same department+consultant+type combo twice. Only rows with
+ * every key field filled in are compared, so a still-being-filled-out row never gets flagged
+ * against another still-being-filled-out row. The error lands on the *later* row (the one the
+ * receptionist just added), matching how MasterForm's uniqueness check flags the new entry
+ * rather than the original.
+ */
+function serviceArraySchema() {
+  return z.array(serviceBillingSchema).superRefine((rows, ctx) => {
+    const firstIndexById = new Map<string, number>();
+    rows.forEach((row, index) => {
+      if (!row.serviceId) return;
+      if (!firstIndexById.has(row.serviceId)) {
+        firstIndexById.set(row.serviceId, index);
+        return;
+      }
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, 'serviceId'],
+        message: 'This service is already added in another row above — remove it here, or change the row above.',
+      });
+    });
+  });
+}
+
+function consultationArraySchema() {
+  return z.array(consultationBillingSchema).superRefine((rows, ctx) => {
+    const firstIndexByKey = new Map<string, number>();
+    rows.forEach((row, index) => {
+      if (!row.departmentId || !row.consultantId || !row.consultationTypeId) return;
+      const key = `${row.departmentId}|${row.consultantId}|${row.consultationTypeId}`;
+      if (!firstIndexByKey.has(key)) {
+        firstIndexByKey.set(key, index);
+        return;
+      }
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, 'consultationTypeId'],
+        message: 'This same department, consultant, and consultation type is already added in another row above.',
+      });
+    });
+  });
+}
+
 export const billingFormSchema = z.object({
-  consultation: z.array(consultationBillingSchema).default([]),
-  radiology: z.array(serviceBillingSchema).default([]),
-  laboratory: z.array(serviceBillingSchema).default([]),
-  procedure: z.array(serviceBillingSchema).default([]),
+  consultation: consultationArraySchema().default([]),
+  radiology: serviceArraySchema().default([]),
+  laboratory: serviceArraySchema().default([]),
+  procedure: serviceArraySchema().default([]),
   paymentStatus: z.enum(PAYMENT_STATUSES).default('Pending'),
 });
 
@@ -77,6 +124,7 @@ export const emptyConsultation: ConsultationBillingFormValues = {
   consultantId: '',
   consultationTypeId: '',
   charge: 0,
+  quantity: 1,
   discount: 0,
   discountApproved: false,
   discountApprovedBy: '',
@@ -86,6 +134,7 @@ export const emptyServiceRow: ServiceBillingRowFormValues = {
   serviceId: '',
   consultantId: '',
   charge: 0,
+  quantity: 1,
   discount: 0,
   discountApproved: false,
   discountApprovedBy: '',

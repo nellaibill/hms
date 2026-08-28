@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateInvoiceRequest, InvoiceListQuery, InvoiceResponse, RecordPaymentRequest } from '../../dtos';
+import type { CreateInvoiceRequest, InvoiceListQuery, InvoiceResponse, RecordPaymentRequest, VoidInvoiceRequest } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -49,6 +49,11 @@ export class BillingApi {
 
   async recordPayment(invoiceId: string, itemId: string, request: RecordPaymentRequest): Promise<InvoiceResponse> {
     const response = await this.client.post<InvoiceResponse>(API_ROUTES.billing.invoices.recordPayment(invoiceId, itemId), request);
+    return response.data;
+  }
+
+  async voidInvoice(id: string, request: VoidInvoiceRequest): Promise<InvoiceResponse> {
+    const response = await this.client.post<InvoiceResponse>(API_ROUTES.billing.invoices.void(id), request);
     return response.data;
   }
 }

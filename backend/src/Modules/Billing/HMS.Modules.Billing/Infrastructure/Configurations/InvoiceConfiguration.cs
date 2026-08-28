@@ -26,6 +26,11 @@ internal class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         // PaymentStatus is derived from Items (see Domain/Invoice.cs) — not a column.
         builder.Ignore(i => i.PaymentStatus);
 
+        builder.Property(i => i.IsVoided).HasColumnName("is_voided").IsRequired().HasDefaultValue(false);
+        builder.Property(i => i.VoidedAt).HasColumnName("voided_at");
+        builder.Property(i => i.VoidedBy).HasColumnName("voided_by");
+        builder.Property(i => i.VoidReason).HasColumnName("void_reason").HasMaxLength(500);
+
         builder.Property(i => i.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(i => i.CreatedBy).HasColumnName("created_by");
         builder.Property(i => i.UpdatedAt).HasColumnName("updated_at");

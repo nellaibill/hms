@@ -1,4 +1,4 @@
-import { Receipt } from 'lucide-react';
+import { Receipt, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -11,11 +11,14 @@ import { PaymentStatusBadge } from './PaymentStatusBadge';
 interface InvoiceDetailCardProps {
   billing: Billing;
   onRecordPayment: (item: BillingItem) => void;
+  onVoidInvoice: () => void;
 }
 
-export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCardProps) {
+export function InvoiceDetailCard({ billing, onRecordPayment, onVoidInvoice }: InvoiceDetailCardProps) {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('finance-billing.edit');
+  const canVoid = hasPermission('finance-billing.delete');
+  const hasAnyPayment = billing.items.some((item) => item.paymentStatus === 'Paid');
   // Primes the Masters reference cache describeBillingItem reads from below, so every line
   // item resolves to its real name instead of a raw id — this page can be opened directly,
   // without ever visiting the live billing form.
@@ -29,7 +32,7 @@ export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCar
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
           <Receipt className="h-5 w-5" />
         </span>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-1 flex-col gap-1">
           <CardTitle className="text-lg">
             {billing.patientName} <span className="font-normal text-muted-foreground">· {billing.patientUhid}</span>
           </CardTitle>
@@ -37,8 +40,24 @@ export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCar
             Invoice {billing.invoiceNumber ?? billing.id} · {new Date(billing.createdAt).toLocaleString('en-IN')}
           </CardDescription>
         </div>
+        {!billing.isVoided && !hasAnyPayment && canVoid && (
+          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onVoidInvoice}>
+            Void Invoice
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4 pt-0">
+        {billing.isVoided && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="flex flex-col">
+              <span className="font-medium">
+                Voided{billing.voidedAt ? ` on ${new Date(billing.voidedAt).toLocaleString('en-IN')}` : ''}
+              </span>
+              {billing.voidReason && <span>{billing.voidReason}</span>}
+            </div>
+          </div>
+        )}
         <div className="flex flex-col divide-y divide-border rounded-md border border-border">
           {billing.items.map((item) => {
             const { serviceLabel, consultantName } = describeBillingItem(item);
@@ -59,7 +78,7 @@ export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCar
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-foreground">{formatCurrency(item.total)}</span>
                   <PaymentStatusBadge status={item.paymentStatus} />
-                  {item.paymentStatus === 'Pending' && canEdit && (
+                  {item.paymentStatus === 'Pending' && canEdit && !billing.isVoided && (
                     <Button size="sm" variant="outline" onClick={() => onRecordPayment(item)}>
                       Record Payment
                     </Button>

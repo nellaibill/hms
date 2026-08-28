@@ -4,9 +4,11 @@ import { Link, useParams } from 'react-router-dom';
 import {
   InvoiceDetailCard,
   RecordPaymentDialog,
+  VoidInvoiceDialog,
   describeBillingItem,
   useBillingQuery,
   useRecordPaymentMutation,
+  useVoidInvoiceMutation,
   type BillingItem,
   type PaymentMethod,
 } from '../../features/billing';
@@ -15,7 +17,9 @@ export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: billing, isPending, isError } = useBillingQuery(id);
   const [itemPendingPayment, setItemPendingPayment] = useState<BillingItem | null>(null);
+  const [isVoiding, setIsVoiding] = useState(false);
   const recordPaymentMutation = useRecordPaymentMutation();
+  const voidInvoiceMutation = useVoidInvoiceMutation();
 
   function handleConfirmPayment(method: PaymentMethod) {
     if (!billing || !itemPendingPayment) return;
@@ -23,6 +27,11 @@ export default function InvoiceDetailPage() {
       { billingId: billing.id, itemId: itemPendingPayment.id, method },
       { onSuccess: () => setItemPendingPayment(null) },
     );
+  }
+
+  function handleConfirmVoid(reason: string) {
+    if (!billing) return;
+    voidInvoiceMutation.mutate({ billingId: billing.id, reason }, { onSuccess: () => setIsVoiding(false) });
   }
 
   if (isPending) {
@@ -57,7 +66,7 @@ export default function InvoiceDetailPage() {
         {/* Left-aligned, not centered — matches PatientRegistrationForm/InvoiceCreatePage
             rather than leaving a large empty gutter before the card. */}
         <div className="w-full max-w-3xl">
-          <InvoiceDetailCard billing={billing} onRecordPayment={setItemPendingPayment} />
+          <InvoiceDetailCard billing={billing} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
         </div>
       </div>
 
@@ -68,6 +77,15 @@ export default function InvoiceDetailPage() {
           isSaving={recordPaymentMutation.isPending}
           onConfirm={handleConfirmPayment}
           onCancel={() => setItemPendingPayment(null)}
+        />
+      )}
+
+      {isVoiding && billing && (
+        <VoidInvoiceDialog
+          invoiceLabel={`Invoice ${billing.invoiceNumber ?? billing.id}`}
+          isSaving={voidInvoiceMutation.isPending}
+          onConfirm={handleConfirmVoid}
+          onCancel={() => setIsVoiding(false)}
         />
       )}
     </div>
