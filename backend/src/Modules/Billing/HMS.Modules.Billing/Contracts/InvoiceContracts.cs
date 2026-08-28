@@ -45,6 +45,11 @@ public record RecordPaymentRequest
     public PaymentMethod Method { get; init; }
 }
 
+public record VoidInvoiceRequest
+{
+    public string Reason { get; init; } = string.Empty;
+}
+
 public record InvoiceLineItemResponse
 {
     public Guid Id { get; init; }
@@ -78,6 +83,10 @@ public record InvoiceResponse
     /// <summary>Derived — Paid only once every line item is Paid, matching the frontend's
     /// getOverallPaymentStatus so the ledger and the detail page never disagree.</summary>
     public PaymentStatus PaymentStatus { get; init; }
+
+    public bool IsVoided { get; init; }
+    public DateTime? VoidedAt { get; init; }
+    public string? VoidReason { get; init; }
 }
 
 /// <summary>Standard pagination/sort/search shape (docs/ApiStandards.md §6), plus the one

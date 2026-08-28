@@ -61,4 +61,7 @@ export interface Billing {
   grossAmount: number;
   totalDiscount: number;
   netAmount: number;
+  isVoided: boolean;
+  voidedAt?: string;
+  voidReason?: string;
 }

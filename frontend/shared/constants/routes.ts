@@ -221,6 +221,7 @@ export const API_ROUTES = {
       byId: (id: string) => `/api/v1/billing/invoices/${id}`,
       byPatientId: (patientId: string) => `/api/v1/billing/invoices/by-patient/${patientId}`,
       recordPayment: (invoiceId: string, itemId: string) => `/api/v1/billing/invoices/${invoiceId}/items/${itemId}/payments`,
+      void: (id: string) => `/api/v1/billing/invoices/${id}/void`,
     },
   },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */

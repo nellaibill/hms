@@ -27,6 +27,11 @@ export interface RecordPaymentRequest {
   method: PaymentMethod;
 }
 
+/** Mirrors HMS.Modules.Billing.Contracts.VoidInvoiceRequest. */
+export interface VoidInvoiceRequest {
+  reason: string;
+}
+
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceLineItemResponse. */
 export interface InvoiceLineItemResponse {
   id: string;
@@ -57,6 +62,9 @@ export interface InvoiceResponse {
   totalDiscount: number;
   netAmount: number;
   paymentStatus: InvoicePaymentStatus;
+  isVoided: boolean;
+  voidedAt?: string | null;
+  voidReason?: string | null;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceListQuery. */

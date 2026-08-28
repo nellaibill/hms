@@ -1,9 +1,10 @@
 import type { Patient } from '@hms/shared';
 import { ArrowLeft, FilePlus2 } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useBlocker, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   BillingStep,
   PatientPicker,
@@ -28,6 +29,67 @@ export default function InvoiceCreatePage() {
   const billingRef = useRef<BillingStepHandle>(null);
   const createInvoiceMutation = useCreateInvoiceMutation();
 
+  // Guards against losing an in-progress, unsaved invoice — a receptionist part-way through
+  // billing several items who accidentally hits back/closes the tab previously lost
+  // everything with no warning. isDirtyRef mirrors isDirty for the blocker's shouldBlock
+  // function (refs read synchronously, so handleSave can clear it immediately before its own
+  // navigate() call — a plain state read there could still see the stale `true` from before
+  // this render committed).
+  const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
+
+  // In-app navigation (sidebar links, "Back to Accounts and Finance") — react-router's own
+  // blocker, only reachable via the RouterProvider/data-router setup this app uses.
+  const blocker = useBlocker(() => isDirtyRef.current);
+
+  // Actual tab close/refresh/URL-bar navigation — react-router's blocker can't see these,
+  // only the browser's native beforeunload prompt can.
+  useEffect(() => {
+    if (!isDirty) return;
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // "Change patient" resets local state rather than navigating, so the router blocker above
+  // never sees it — a separate, lighter-weight confirmation for this one case.
+  const [confirmChangePatient, setConfirmChangePatient] = useState(false);
+
+  function handleChangePatientClick() {
+    if (isDirty) {
+      setConfirmChangePatient(true);
+    } else {
+      setPatient(null);
+    }
+  }
+
+  const showUnsavedDialog = blocker.state === 'blocked' || confirmChangePatient;
+
+  function handleConfirmDiscard() {
+    if (blocker.state === 'blocked') {
+      blocker.proceed();
+    }
+    if (confirmChangePatient) {
+      setPatient(null);
+      setConfirmChangePatient(false);
+      setIsDirty(false);
+      isDirtyRef.current = false;
+    }
+  }
+
+  function handleCancelDiscard() {
+    if (blocker.state === 'blocked') {
+      blocker.reset();
+    }
+    setConfirmChangePatient(false);
+  }
+
   async function handleSave() {
     if (!patient || !billingRef.current) return;
     setSaveError(null);
@@ -50,6 +112,10 @@ export default function InvoiceCreatePage() {
         setSaveError('Add at least one billing item before saving.');
         return;
       }
+      // Clear the dirty flag before navigating so the blocker above doesn't intercept this
+      // very navigation — the invoice is safely saved, there's nothing left to lose.
+      setIsDirty(false);
+      isDirtyRef.current = false;
       navigate(`/finance/accounts/${billing.id}`);
     } catch {
       setSaveError('Could not save the invoice. Please try again.');
@@ -96,13 +162,13 @@ export default function InvoiceCreatePage() {
                       <span className="font-normal text-muted-foreground">· {patient.uhid}</span>
                     </span>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setPatient(null)}>
+                  <Button variant="outline" size="sm" onClick={handleChangePatientClick}>
                     Change patient
                   </Button>
                 </CardContent>
               </Card>
 
-              <BillingStep ref={billingRef} defaultValues={defaultBillingFormValues} />
+              <BillingStep ref={billingRef} defaultValues={defaultBillingFormValues} onDirtyChange={setIsDirty} />
 
               {saveError && (
                 <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -119,6 +185,26 @@ export default function InvoiceCreatePage() {
           )}
         </div>
       </div>
+
+      <Dialog open={showUnsavedDialog} onOpenChange={(open) => !open && handleCancelDiscard()}>
+        <DialogContent aria-labelledby="discard-invoice-title">
+          <DialogHeader>
+            <DialogTitle id="discard-invoice-title">Discard this invoice?</DialogTitle>
+            <DialogDescription>
+              You've entered billing details that haven't been saved yet. Leaving now will lose everything entered for this
+              invoice.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDiscard}>
+              Keep editing
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDiscard}>
+              Discard and leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

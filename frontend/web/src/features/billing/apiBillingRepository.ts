@@ -59,6 +59,9 @@ function fromDto(dto: InvoiceResponseDto): Billing {
     grossAmount: dto.grossAmount,
     totalDiscount: dto.totalDiscount,
     netAmount: dto.netAmount,
+    isVoided: dto.isVoided,
+    voidedAt: dto.voidedAt ?? undefined,
+    voidReason: dto.voidReason ?? undefined,
   };
 }
 
@@ -123,6 +126,11 @@ export async function createInvoice(
 
 export async function recordPayment(billingId: string, itemId: string, method: 'Cash' | 'Card' | 'Upi' | 'BankTransfer'): Promise<Billing> {
   const updated = await billingApi.recordPayment(billingId, itemId, { method });
+  return fromDto(updated);
+}
+
+export async function voidInvoice(billingId: string, reason: string): Promise<Billing> {
+  const updated = await billingApi.voidInvoice(billingId, { reason });
   return fromDto(updated);
 }
 

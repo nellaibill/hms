@@ -20,6 +20,8 @@ interface BillingStepProps {
   onChange?: (values: BillingFormValues) => void;
   /** Reports whether the Billing tab should show its error dot — true once at least one category has been attempted and currently has an error. */
   onErrorStateChange?: (hasError: boolean) => void;
+  /** Reports whether the form has any unsaved edits — true the moment a field first differs from its default, so the caller can warn before navigating away. */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const CATEGORY_FIELD = {
@@ -38,7 +40,7 @@ const CATEGORY_ORDER: BillingType[] = ['Consultation', 'Radiology', 'Laboratory'
  * exposed `validate`/`getValues` handle the same way it drives per-tab validation elsewhere.
  */
 export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(function BillingStep(
-  { defaultValues, onChange, onErrorStateChange },
+  { defaultValues, onChange, onErrorStateChange, onDirtyChange },
   ref,
 ) {
   const methods = useForm<BillingFormValues>({
@@ -50,7 +52,7 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
     trigger,
     watch,
     getValues,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = methods;
 
   const [expanded, setExpanded] = useState<Record<BillingType, boolean>>({
@@ -83,6 +85,10 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
     const hasAnyError = CATEGORY_ORDER.some((category) => attempted.has(category) && Boolean(errors[CATEGORY_FIELD[category]]));
     onErrorStateChange?.(hasAnyError);
   }, [errors, attempted, onErrorStateChange]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   async function toggleCategory(category: BillingType) {
     const willExpand = !expanded[category];

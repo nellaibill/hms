@@ -41,3 +41,11 @@ internal class CreateInvoiceLineItemRequestValidator : AbstractValidator<CreateI
             .WithName("Discount");
     }
 }
+
+internal class VoidInvoiceRequestValidator : AbstractValidator<VoidInvoiceRequest>
+{
+    public VoidInvoiceRequestValidator()
+    {
+        RuleFor(x => x.Reason).NotEmpty().MaximumLength(500);
+    }
+}

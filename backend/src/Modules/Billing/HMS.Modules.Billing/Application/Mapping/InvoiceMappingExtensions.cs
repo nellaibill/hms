@@ -35,5 +35,8 @@ internal static class InvoiceMappingExtensions
         TotalDiscount = invoice.TotalDiscount,
         NetAmount = invoice.NetAmount,
         PaymentStatus = invoice.PaymentStatus,
+        IsVoided = invoice.IsVoided,
+        VoidedAt = invoice.VoidedAt,
+        VoidReason = invoice.VoidReason,
     };
 }

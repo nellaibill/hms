@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, getOverallPaymentStatus } from '../billingCalculations';
 import type { Billing } from '../types';
@@ -62,7 +63,7 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
               </td>
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(billing.netAmount)}</td>
               <td className="px-4 py-3">
-                <PaymentStatusBadge status={getOverallPaymentStatus(billing.items)} />
+                {billing.isVoided ? <Badge variant="secondary">Voided</Badge> : <PaymentStatusBadge status={getOverallPaymentStatus(billing.items)} />}
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end">

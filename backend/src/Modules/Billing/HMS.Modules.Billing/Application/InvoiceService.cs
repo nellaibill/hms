@@ -24,6 +24,8 @@ public interface IInvoiceService
     Task<Result<IReadOnlyList<InvoiceResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 
     Task<Result<InvoiceResponse>> RecordPaymentAsync(Guid invoiceId, Guid itemId, RecordPaymentRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    Task<Result<InvoiceResponse>> VoidAsync(Guid id, VoidInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken);
 }
 
 internal class InvoiceService : IInvoiceService
@@ -138,6 +140,30 @@ internal class InvoiceService : IInvoiceService
         var payment = Payment.Create(invoice.Id, paidItem.Id, paidItem.Total, request.Method, actorId);
 
         await _paymentRepository.AddAsync(payment, cancellationToken);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        return Result<InvoiceResponse>.Success(invoice.ToResponse());
+    }
+
+    public async Task<Result<InvoiceResponse>> VoidAsync(Guid id, VoidInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var invoice = await _repository.GetByIdAsync(id, cancellationToken);
+        if (invoice is null)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.NotFound, $"Invoice '{id}' was not found.");
+        }
+
+        if (invoice.IsVoided)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.AlreadyVoided, "This invoice has already been voided.");
+        }
+
+        if (invoice.Items.Any(i => i.PaymentStatus == Contracts.PaymentStatus.Paid))
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.HasPayments, "An invoice with a recorded payment cannot be voided. Record a refund or contact accounts first.");
+        }
+
+        invoice.Void(request.Reason, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<InvoiceResponse>.Success(invoice.ToResponse());

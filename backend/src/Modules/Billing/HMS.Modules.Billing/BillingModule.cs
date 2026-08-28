@@ -41,6 +41,7 @@ public static class BillingModule
         services.AddScoped<IInvoiceService, InvoiceService>();
 
         services.AddScoped<IValidator<CreateInvoiceRequest>, CreateInvoiceRequestValidator>();
+        services.AddScoped<IValidator<VoidInvoiceRequest>, VoidInvoiceRequestValidator>();
 
         return services;
     }

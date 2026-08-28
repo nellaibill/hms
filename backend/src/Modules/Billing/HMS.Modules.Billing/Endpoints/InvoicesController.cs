@@ -23,11 +23,13 @@ public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _service;
     private readonly IValidator<CreateInvoiceRequest> _createValidator;
+    private readonly IValidator<VoidInvoiceRequest> _voidValidator;
 
-    public InvoicesController(IInvoiceService service, IValidator<CreateInvoiceRequest> createValidator)
+    public InvoicesController(IInvoiceService service, IValidator<CreateInvoiceRequest> createValidator, IValidator<VoidInvoiceRequest> voidValidator)
     {
         _service = service;
         _createValidator = createValidator;
+        _voidValidator = voidValidator;
     }
 
     /// <summary>Creates a new invoice with its line items in one call.</summary>
@@ -101,6 +103,27 @@ public class InvoicesController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Cancels an invoice that hasn't had any payment recorded against it — see
+    /// Domain/Invoice.cs's Void for why a paid invoice is rejected instead. Requires the
+    /// "delete" permission (already seeded, previously unused by Billing) rather than
+    /// "edit" — voiding is a more sensitive action than recording a payment.</summary>
+    [Authorize]
+    [RequirePermission("finance-billing.delete")]
+    [HttpPost("{id:guid}/void")]
+    [ProducesResponseType(typeof(ApiResponse<InvoiceResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Void(Guid id, [FromBody] VoidInvoiceRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _voidValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.VoidAsync(id, request, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     private static ApiResponse<T> Envelope<T>(T? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)
@@ -110,6 +133,8 @@ public class InvoicesController : ControllerBase
             BillingErrorCodes.NotFound => StatusCodes.Status404NotFound,
             BillingErrorCodes.LineItemNotFound => StatusCodes.Status404NotFound,
             BillingErrorCodes.LineItemAlreadyPaid => StatusCodes.Status409Conflict,
+            BillingErrorCodes.AlreadyVoided => StatusCodes.Status409Conflict,
+            BillingErrorCodes.HasPayments => StatusCodes.Status409Conflict,
             BillingErrorCodes.EmptyInvoice => StatusCodes.Status400BadRequest,
             BillingErrorCodes.InvalidPatient => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
