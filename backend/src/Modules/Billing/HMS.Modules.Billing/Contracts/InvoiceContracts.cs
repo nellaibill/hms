@@ -11,6 +11,11 @@ public record CreateInvoiceLineItemRequest
     public string? DepartmentId { get; init; }
     public string? ConsultantId { get; init; }
     public string? ServiceId { get; init; }
+
+    /// <summary>App-level reference into Masters' DiagnosticPackage — set for a package line,
+    /// null for a plain service line. See Domain/InvoiceLineItem.cs.</summary>
+    public Guid? PackageId { get; init; }
+
     public int Quantity { get; init; } = 1;
     public decimal UnitPrice { get; init; }
     public decimal Discount { get; init; }
@@ -57,6 +62,7 @@ public record InvoiceLineItemResponse
     public string? DepartmentId { get; init; }
     public string? ConsultantId { get; init; }
     public string? ServiceId { get; init; }
+    public Guid? PackageId { get; init; }
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal Discount { get; init; }

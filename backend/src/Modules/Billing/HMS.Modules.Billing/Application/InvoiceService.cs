@@ -67,6 +67,7 @@ internal class InvoiceService : IInvoiceService
                 i.DepartmentId,
                 i.ConsultantId,
                 i.ServiceId,
+                i.PackageId,
                 i.Quantity,
                 i.UnitPrice,
                 i.Discount,

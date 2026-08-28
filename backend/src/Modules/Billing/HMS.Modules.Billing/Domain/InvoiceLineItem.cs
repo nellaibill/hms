@@ -23,6 +23,14 @@ internal class InvoiceLineItem : Entity
     public string? DepartmentId { get; private set; }
     public string? ConsultantId { get; private set; }
     public string? ServiceId { get; private set; }
+
+    /// <summary>App-level reference into Masters' DiagnosticPackage — set for a package line,
+    /// null for a plain service line. Unlike DepartmentId/ConsultantId/ServiceId above this is
+    /// a real Guid (Masters IDs are Guids, not the free-text billing-catalog identifiers those
+    /// three carry), but the convention is otherwise identical: no DB FK, no existence
+    /// validation at the Billing layer — Billing doesn't reach into Masters for this.</summary>
+    public Guid? PackageId { get; private set; }
+
     public int Quantity { get; private set; }
     public decimal UnitPrice { get; private set; }
     public decimal Discount { get; private set; }
@@ -50,6 +58,7 @@ internal class InvoiceLineItem : Entity
         string? departmentId,
         string? consultantId,
         string? serviceId,
+        Guid? packageId,
         int quantity,
         decimal unitPrice,
         decimal discount,
@@ -63,6 +72,7 @@ internal class InvoiceLineItem : Entity
         DepartmentId = string.IsNullOrWhiteSpace(departmentId) ? null : departmentId.Trim();
         ConsultantId = string.IsNullOrWhiteSpace(consultantId) ? null : consultantId.Trim();
         ServiceId = serviceId;
+        PackageId = packageId;
         Quantity = quantity;
         UnitPrice = unitPrice;
         Discount = discount;
@@ -78,6 +88,7 @@ internal class InvoiceLineItem : Entity
         string? departmentId,
         string? consultantId,
         string? serviceId,
+        Guid? packageId,
         int quantity,
         decimal unitPrice,
         decimal discount,
@@ -92,6 +103,7 @@ internal class InvoiceLineItem : Entity
             departmentId,
             consultantId,
             string.IsNullOrWhiteSpace(serviceId) ? null : serviceId.Trim(),
+            packageId,
             quantity,
             unitPrice,
             discount,

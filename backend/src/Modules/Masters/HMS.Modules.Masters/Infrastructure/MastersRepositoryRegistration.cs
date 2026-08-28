@@ -36,6 +36,10 @@ internal static class MastersRepositoryRegistration
         services.AddScoped<IAppointmentTypeRepository, AppointmentTypeRepository>();
         services.AddScoped<IConsultationTypeRepository, ConsultationTypeRepository>();
         services.AddScoped<IDiagnosticTestRepository, DiagnosticTestRepository>();
+        services.AddScoped<IDiagnosticCategoryRepository, DiagnosticCategoryRepository>();
+        services.AddScoped<IDiagnosticProviderRepository, DiagnosticProviderRepository>();
+        services.AddScoped<IDiagnosticServiceRepository, DiagnosticServiceRepository>();
+        services.AddScoped<IDiagnosticPackageRepository, DiagnosticPackageRepository>();
         services.AddScoped<IStateRepository, StateRepository>();
         services.AddScoped<IDistrictRepository, DistrictRepository>();
 
