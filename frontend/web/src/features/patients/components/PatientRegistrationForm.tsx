@@ -297,6 +297,9 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
       const idProofError = idProofNumberValidationError(documents);
       if (idProofError) {
         setIdProofNumberError(idProofError);
+        // 'instant', not 'smooth' — see formTopRef's own tab-change effect above for why a
+        // smooth scroll here gets cancelled by the layout shift from the banner mounting.
+        formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
         return;
       }
       setIdProofNumberError(null);
@@ -309,14 +312,24 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
       const parsed = patientRegistrationCoreUiSchema.safeParse(getValues());
       if (!parsed.success) {
         setNavigationError('Something went wrong checking this step. Please try again — if it keeps happening, refresh the page.');
+        formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
         return;
       }
       const succeeded = await onSaveAndProceed(parsed.data, documents);
       if (succeeded) {
         setActiveTab('registration-details');
+      } else {
+        // A failure here (validation/duplicate/server error) is surfaced via the apiError
+        // banner at the very top of the form — but the user is often scrolled deep into this
+        // tab (e.g. Document Upload) when they click this button, so without an explicit
+        // scroll the banner renders entirely off-screen above the viewport and the click looks
+        // like it silently did nothing. Every other "stay on this tab" error path in this
+        // function has the same problem, so they scroll too (see above/below).
+        formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
       }
     } catch {
       setNavigationError('Something went wrong saving this patient. Please try again — if it keeps happening, refresh the page.');
+      formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
     }
   };
 
