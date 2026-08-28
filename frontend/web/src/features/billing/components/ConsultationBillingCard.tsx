@@ -93,7 +93,6 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
   const basePath = `consultation.${index}` as const;
 
   const departmentId = watch(`${basePath}.departmentId`);
-  const consultantId = watch(`${basePath}.consultantId`);
   const consultationTypeId = watch(`${basePath}.consultationTypeId`);
   const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);

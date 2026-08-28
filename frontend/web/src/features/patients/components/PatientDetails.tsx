@@ -175,7 +175,7 @@ function RegistrationDetailsCard({ patient }: { patient: Patient }) {
   );
 }
 
-/* --------------------------------------------------------------------- Clinical Alerts */
+/* --------------------------------------------------------------------- Allergy Details */
 
 function AddAllergyForm({ patientId, onDone }: { patientId: string; onDone: () => void }) {
   const addAllergyMutation = useAddPatientAllergyMutation();
@@ -277,14 +277,14 @@ function AllergyRow({ allergy, patientId, canEdit }: { allergy: Allergy; patient
   );
 }
 
-function ClinicalAlertsCard({ patient }: { patient: Patient }) {
+function AllergyDetailsCard({ patient }: { patient: Patient }) {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('patient-management.edit');
   const [showAddForm, setShowAddForm] = useState(false);
 
   return (
     <SectionCard
-      title="Clinical Alerts"
+      title="Allergy Details"
       icon={HeartPulse}
       action={
         canEdit &&
@@ -529,7 +529,7 @@ function OverviewTab({ patient, onNavigateToTab }: { patient: Patient; onNavigat
         <PersonalContactCard patient={patient} />
         <AddressEmergencyCard patient={patient} />
         <RegistrationDetailsCard patient={patient} />
-        <ClinicalAlertsCard patient={patient} />
+        <AllergyDetailsCard patient={patient} />
       </div>
 
       <AtAGlanceStrip patient={patient} />
@@ -730,7 +730,7 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       <TabsContent value="medical-information" className="pt-2.5">
         <EmptyState
           icon={HeartPulse}
-          message="Detailed medical history (diagnoses, medications, past procedures) isn't tracked in this system yet — see the Clinical Alerts card on the Overview tab for what is captured today."
+          message="Detailed medical history (diagnoses, medications, past procedures) isn't tracked in this system yet — see the Allergy Details card on the Overview tab for what is captured today."
         />
       </TabsContent>
 

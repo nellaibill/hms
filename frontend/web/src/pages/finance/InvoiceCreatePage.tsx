@@ -1,6 +1,6 @@
 import type { Patient } from '@hms/shared';
-import { ArrowLeft, FilePlus2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, FilePlus2, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,9 +9,13 @@ import {
   BillingStep,
   PatientPicker,
   defaultBillingFormValues,
+  emptyConsultation,
   useCreateInvoiceMutation,
+  type BillingFormValues,
   type BillingStepHandle,
+  type ConsultationBillingFormValues,
 } from '../../features/billing';
+import { usePatientVisitsQuery } from '../../features/patients';
 
 /**
  * OPD Billing Entry — the "Manual Invoice Entry" screen from the Finance & Billing domain
@@ -28,6 +32,30 @@ export default function InvoiceCreatePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const billingRef = useRef<BillingStepHandle>(null);
   const createInvoiceMutation = useCreateInvoiceMutation();
+
+  // Registration Details already captured Department/Consultant/Consultation Type for this
+  // patient's visit — re-asking for the same three fields here would just be redundant data
+  // entry for the common case (billing the visit that was just registered). Prefilled from the
+  // patient's most recent visit only; a patient with none (never went through Registration
+  // Details, or was created before the visit feature existed) falls back to one blank row,
+  // same as before this change.
+  const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient?.id);
+  const billingDefaultValues = useMemo<BillingFormValues>(() => {
+    const latestVisit = visits?.[0];
+    if (!latestVisit || latestVisit.consultations.length === 0) {
+      return defaultBillingFormValues;
+    }
+    const consultation: ConsultationBillingFormValues[] = latestVisit.consultations.map((c) => ({
+      ...emptyConsultation,
+      departmentId: c.departmentId,
+      consultantId: c.consultantId,
+      // Left blank (not required at Registration Details) rather than guessed — the charge
+      // effect in ConsultationBillingCard only fires once a real type is selected, and forcing
+      // one here could bill the wrong category.
+      consultationTypeId: c.consultationTypeId ?? '',
+    }));
+    return { ...defaultBillingFormValues, consultation };
+  }, [visits]);
 
   // Guards against losing an in-progress, unsaved invoice — a receptionist part-way through
   // billing several items who accidentally hits back/closes the tab previously lost
@@ -168,7 +196,17 @@ export default function InvoiceCreatePage() {
                 </CardContent>
               </Card>
 
-              <BillingStep ref={billingRef} defaultValues={defaultBillingFormValues} onDirtyChange={setIsDirty} />
+              {visitsPending ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading this patient's visit details…
+                </div>
+              ) : (
+                // key forces a fresh BillingStep (and a fresh RHF form) per patient — defaultValues
+                // is only ever read once by useForm, so without this, picking a different patient
+                // after the form already mounted would keep showing the first patient's prefill.
+                <BillingStep key={patient.id} ref={billingRef} defaultValues={billingDefaultValues} onDirtyChange={setIsDirty} />
+              )}
 
               {saveError && (
                 <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
