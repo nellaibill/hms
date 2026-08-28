@@ -11,9 +11,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.Modules.Masters.Endpoints;
 
 /// <summary>
-/// Diagnostic Test master CRUD — billable laboratory/radiology tests and packages with their
-/// standard price (e.g. "Complete Blood Count", ₹250), feeding Billing's Laboratory/Radiology
-/// service dropdowns. Mirrors ConsultationTypesController's shape.
+/// Diagnostic Test master CRUD — billable laboratory/radiology tests, packages, and procedures
+/// with their standard price (e.g. "Complete Blood Count", ₹250), feeding Billing's
+/// Laboratory/Radiology/Procedure service dropdowns. Mirrors ConsultationTypesController's shape.
 /// </summary>
 [ApiController]
 [Route("api/v1/masters/diagnostic-tests")]

@@ -16,10 +16,13 @@ interface InvoiceDetailCardProps {
 export function InvoiceDetailCard({ billing, onRecordPayment }: InvoiceDetailCardProps) {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('finance-billing.edit');
-  // Primes the diagnosticTest reference cache describeBillingItem reads from below, so
-  // Radiology/Laboratory line items resolve to their real test name instead of a raw id —
-  // this page can be opened directly, without ever visiting the live billing form.
+  // Primes the Masters reference cache describeBillingItem reads from below, so every line
+  // item resolves to its real name instead of a raw id — this page can be opened directly,
+  // without ever visiting the live billing form.
   useMasterOptionsQuery('diagnosticTest');
+  useMasterOptionsQuery('department');
+  useMasterOptionsQuery('consultant');
+  useMasterOptionsQuery('consultationType');
   return (
     <Card>
       <CardHeader className="flex-row items-center gap-3 space-y-0">

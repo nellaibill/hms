@@ -4,10 +4,11 @@ using HMS.Shared.Kernel;
 namespace HMS.Modules.Masters.Domain;
 
 /// <summary>
-/// A billable laboratory or radiology test/package (e.g. "Complete Blood Count", "Digital
-/// X-ray", "LFT Package") with its standard patient-facing price — shared reference data for
-/// Billing's Laboratory/Radiology sections, replacing the frontend's former hardcoded catalog.
-/// ServiceType picks which billing section offers the test. IsOutsourced/ReferenceLab record
+/// A billable laboratory test, radiology test, or minor procedure (e.g. "Complete Blood
+/// Count", "Digital X-ray", "Wound Dressing") with its standard patient-facing price — shared
+/// reference data for Billing's Laboratory/Radiology/Procedure sections, replacing the
+/// frontend's former hardcoded catalogs. ServiceType picks which billing section offers the
+/// item. IsOutsourced/ReferenceLab record
 /// that an in-house lab routes the sample to an external lab (e.g. Q-LAB) rather than running
 /// it itself — informational for now, not used in any billing calculation.
 /// </summary>

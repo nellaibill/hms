@@ -6,6 +6,11 @@ public enum DiagnosticTestServiceType
 {
     Laboratory = 0,
     Radiology = 1,
+    /// <summary>Minor procedures/bedside interventions (e.g. wound dressing, suturing) — a
+    /// billable service priced the same way as a lab/radiology test, not literally a
+    /// "diagnostic test," but reuses this entity rather than standing up a near-identical
+    /// third master for one more service category.</summary>
+    Procedure = 2,
 }
 
 public record CreateDiagnosticTestRequest

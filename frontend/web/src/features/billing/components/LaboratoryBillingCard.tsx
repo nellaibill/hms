@@ -1,5 +1,5 @@
 import { FlaskConical } from 'lucide-react';
-import { LABORATORY_CONSULTANTS } from '../billingCatalog';
+import { useAllActiveConsultants } from '../hooks/useAllActiveConsultants';
 import { useDiagnosticTestServices } from '../hooks/useDiagnosticTestServices';
 import { ServiceBillingCard } from './ServiceBillingCard';
 
@@ -11,6 +11,7 @@ interface LaboratoryBillingCardProps {
 
 export function LaboratoryBillingCard(props: LaboratoryBillingCardProps) {
   const { services, isLoading } = useDiagnosticTestServices('Laboratory');
+  const { consultants } = useAllActiveConsultants();
 
   return (
     <ServiceBillingCard
@@ -19,7 +20,7 @@ export function LaboratoryBillingCard(props: LaboratoryBillingCardProps) {
       description="Pathology and diagnostic lab tests for this visit."
       icon={<FlaskConical className="h-5 w-5" />}
       services={services}
-      consultants={LABORATORY_CONSULTANTS}
+      consultants={consultants}
       isLoadingServices={isLoading}
       {...props}
     />

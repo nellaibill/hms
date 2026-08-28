@@ -4,13 +4,14 @@ import type { MasterEntityConfig } from '../engine/types';
 export const DIAGNOSTIC_TEST_SERVICE_TYPE_OPTIONS = [
   { value: 'Laboratory', label: 'Laboratory' },
   { value: 'Radiology', label: 'Radiology' },
+  { value: 'Procedure', label: 'Procedure' },
 ];
 
 export const diagnosticTestConfig: MasterEntityConfig = {
   key: 'diagnosticTest',
   label: 'Diagnostic Test',
   labelPlural: 'Diagnostic Tests',
-  description: 'Billable laboratory/radiology tests and packages with their standard price — feeds Billing’s Laboratory and Radiology sections.',
+  description: 'Billable laboratory/radiology tests, packages, and procedures with their standard price — feeds Billing’s Laboratory, Radiology, and Procedure sections.',
   icon: FlaskConical,
   section: 'Hospital Reference Data',
   nameField: 'name',

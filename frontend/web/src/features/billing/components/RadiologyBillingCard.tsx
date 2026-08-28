@@ -1,5 +1,5 @@
 import { Scan } from 'lucide-react';
-import { RADIOLOGY_CONSULTANTS } from '../billingCatalog';
+import { useAllActiveConsultants } from '../hooks/useAllActiveConsultants';
 import { useDiagnosticTestServices } from '../hooks/useDiagnosticTestServices';
 import { ServiceBillingCard } from './ServiceBillingCard';
 
@@ -11,6 +11,7 @@ interface RadiologyBillingCardProps {
 
 export function RadiologyBillingCard(props: RadiologyBillingCardProps) {
   const { services, isLoading } = useDiagnosticTestServices('Radiology');
+  const { consultants } = useAllActiveConsultants();
 
   return (
     <ServiceBillingCard
@@ -19,7 +20,7 @@ export function RadiologyBillingCard(props: RadiologyBillingCardProps) {
       description="Imaging services (X-Ray, CT, MRI, Ultrasound…) for this visit."
       icon={<Scan className="h-5 w-5" />}
       services={services}
-      consultants={RADIOLOGY_CONSULTANTS}
+      consultants={consultants}
       isLoadingServices={isLoading}
       {...props}
     />
