@@ -1,5 +1,5 @@
 import type { Patient } from '@hms/shared';
-import { Droplet, FileUp, MoreHorizontal, Pencil, Printer, Trash2, UserRound, VenusAndMars } from 'lucide-react';
+import { CalendarPlus, Droplet, FileUp, MoreHorizontal, Pencil, Printer, Trash2, UserRound, VenusAndMars } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -99,37 +99,55 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 print:hidden">
+      {/* Add Visit sits in its own centered row under the main action row, rather than
+          alongside it — this page's main actions (Edit/Add Document/Print/…) are all about
+          the patient record itself, where Add Visit starts a whole separate flow (a new
+          registration/encounter) that deserves its own visual weight, not to compete for
+          space in an already-full row. */}
+      <div className="flex shrink-0 flex-col items-center gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2">
+          {hasPermission('patient-management.edit') && (
+            <Button asChild size="sm" className="gap-1.5">
+              <Link to={`/patients/registration/${patient.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+                Edit Patient
+              </Link>
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={onAddDocument}>
+            <FileUp className="h-4 w-4" />
+            Add Document
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+          {hasPermission('patient-management.delete') && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="More actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setConfirmingDelete(true)}>
+                  <Trash2 className="h-4 w-4" />
+                  Delete patient
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+        {/* Primary color + default (not sm) size — same treatment as Edit Patient above, since
+            this is just as consequential an action and was getting lost visually as a small
+            outline button. */}
         {hasPermission('patient-management.edit') && (
-          <Button asChild size="sm" className="gap-1.5">
-            <Link to={`/patients/registration/${patient.id}/edit`}>
-              <Pencil className="h-4 w-4" />
-              Edit Patient
+          <Button asChild className="gap-1.5">
+            <Link to={`/patients/registration/${patient.id}/visits/new`}>
+              <CalendarPlus className="h-4 w-4" />
+              Add Visit
             </Link>
           </Button>
-        )}
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={onAddDocument}>
-          <FileUp className="h-4 w-4" />
-          Add Document
-        </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
-          <Printer className="h-4 w-4" />
-          Print
-        </Button>
-        {hasPermission('patient-management.delete') && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="More actions">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setConfirmingDelete(true)}>
-                <Trash2 className="h-4 w-4" />
-                Delete patient
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         )}
       </div>
 

@@ -29,6 +29,18 @@ export const consultationBillingSchema = z
     discount: z.number().min(0).default(0),
     discountApproved: z.boolean().default(false),
     discountApprovedBy: z.string().default(''),
+    // True only for a row InvoiceCreatePage.tsx prefilled from the patient's own recorded
+    // visit — ConsultationBillingCard locks Department/Consultant for such a row, so billing
+    // can't silently disagree with who the visit record says actually saw the patient.
+    // Consultation Type deliberately stays editable even when prefilled: unlike
+    // Department/Consultant it isn't always captured at Registration Details (it's optional
+    // there), so locking it would sometimes lock in a *blank*, required field with no way to
+    // fill it in — and it's the more billing-side judgment call anyway (a visit that ran
+    // longer than expected legitimately might warrant a different consultation category),
+    // matching the same reasoning already applied to Charge just below. A row added via "Add
+    // another Consultation" isn't tied to any visit, so it keeps the default false and stays
+    // fully editable.
+    fromVisit: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     if (!isConsultationEntryActive(data)) return;
@@ -128,6 +140,7 @@ export const emptyConsultation: ConsultationBillingFormValues = {
   discount: 0,
   discountApproved: false,
   discountApprovedBy: '',
+  fromVisit: false,
 };
 
 export const emptyServiceRow: ServiceBillingRowFormValues = {
