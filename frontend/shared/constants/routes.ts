@@ -81,6 +81,7 @@ export const API_ROUTES = {
     currency: mastersEntity('currencies'),
     customer: mastersEntity('customers'),
     department: mastersEntity('departments'),
+    diagnosticTest: mastersEntity('diagnostic-tests'),
     designation: mastersEntity('designations'),
     manufacturer: mastersEntity('manufacturers'),
     paymentMethod: mastersEntity('payment-methods'),

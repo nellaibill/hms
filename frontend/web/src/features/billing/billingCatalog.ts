@@ -92,32 +92,10 @@ export function getConsultationCharge(departmentId: string, consultantId: string
   return Math.round(raw / 5) * 5;
 }
 
-export const RADIOLOGY_SERVICES: BillingService[] = [
-  { id: 'xray-chest', name: 'X-Ray — Chest', price: 300 },
-  { id: 'xray-limb', name: 'X-Ray — Limb', price: 350 },
-  { id: 'usg-abdomen', name: 'Ultrasound — Abdomen', price: 800 },
-  { id: 'ct-head', name: 'CT Scan — Head', price: 2500 },
-  { id: 'ct-chest', name: 'CT Scan — Chest', price: 3000 },
-  { id: 'mri-brain', name: 'MRI — Brain', price: 5500 },
-  { id: 'mri-spine', name: 'MRI — Spine', price: 6000 },
-  { id: 'mammography', name: 'Mammography', price: 1200 },
-];
-
 export const RADIOLOGY_CONSULTANTS: ServiceConsultant[] = [
   { id: 'dr-nirmala', name: 'Dr. Nirmala (Radiologist)' },
   { id: 'dr-ashok-kumar', name: 'Dr. Ashok Kumar (Radiologist)' },
   { id: 'ms-divya', name: 'Ms. Divya (Radiology Technician)' },
-];
-
-export const LABORATORY_SERVICES: BillingService[] = [
-  { id: 'cbc', name: 'Complete Blood Count (CBC)', price: 250 },
-  { id: 'blood-sugar-fasting', name: 'Blood Sugar — Fasting', price: 100 },
-  { id: 'lipid-profile', name: 'Lipid Profile', price: 600 },
-  { id: 'lft', name: 'Liver Function Test (LFT)', price: 550 },
-  { id: 'kft', name: 'Kidney Function Test (KFT)', price: 500 },
-  { id: 'urine-routine', name: 'Urine — Routine', price: 150 },
-  { id: 'thyroid-profile', name: 'Thyroid Profile', price: 700 },
-  { id: 'covid-rtpcr', name: 'COVID-19 RT-PCR', price: 900 },
 ];
 
 export const LABORATORY_CONSULTANTS: ServiceConsultant[] = [

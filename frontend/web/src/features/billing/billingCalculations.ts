@@ -1,14 +1,13 @@
+import { resolveRecordLabel } from '@/features/masters';
 import { isConsultationEntryActive, isServiceEntryActive } from './billingActivity';
 import {
   CONSULTATION_CONSULTANTS,
   CONSULTATION_DEPARTMENTS,
   CONSULTATION_TYPES,
   LABORATORY_CONSULTANTS,
-  LABORATORY_SERVICES,
   PROCEDURE_CONSULTANTS,
   PROCEDURE_SERVICES,
   RADIOLOGY_CONSULTANTS,
-  RADIOLOGY_SERVICES,
 } from './billingCatalog';
 import type { BillingFormValues, ConsultationBillingFormValues, ServiceBillingCategory, ServiceBillingRowFormValues } from './billingValidation';
 import type { BillingItem, BillingType, PaymentStatus } from './types';
@@ -157,8 +156,6 @@ export function toBillingItems(values: BillingFormValues): BillingItem[] {
 }
 
 const SERVICE_CATALOGS = {
-  Radiology: RADIOLOGY_SERVICES,
-  Laboratory: LABORATORY_SERVICES,
   Procedure: PROCEDURE_SERVICES,
 } as const;
 
@@ -173,7 +170,16 @@ export interface BillingItemDescription {
   consultantName: string;
 }
 
-/** A saved BillingItem only stores catalog IDs (department/service/consultant) — this resolves them back to display names using the same catalogs the Billing step itself reads from, for read-only views like the patient detail page. */
+/**
+ * A saved BillingItem only stores catalog IDs (department/service/consultant) — this resolves
+ * them back to display names for read-only views like the patient detail page. Radiology and
+ * Laboratory serviceIds are DiagnosticTest master-data ids (real API data, not a static
+ * catalog), resolved via the Masters engine's reference cache (registry.ts's
+ * resolveRecordLabel) — the same synchronous id→label lookup reference fields use elsewhere.
+ * That cache is populated by a `useMasterOptionsQuery('diagnosticTest')` call somewhere in the
+ * calling page (see LaboratoryBillingCard/InvoiceDetailCard/PatientBillingTab) — falls back to
+ * the raw id until that query resolves, then self-corrects on the next render.
+ */
 export function describeBillingItem(item: BillingItem): BillingItemDescription {
   if (item.billingType === 'Consultation') {
     const department = CONSULTATION_DEPARTMENTS.find((d) => d.id === item.departmentId);
@@ -192,8 +198,15 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     return { serviceLabel: item.serviceId ?? 'Pharmacy', consultantName: '—' };
   }
 
-  const service = SERVICE_CATALOGS[item.billingType].find((s) => s.id === item.serviceId);
   const consultant = SERVICE_CONSULTANT_CATALOGS[item.billingType].find((c) => c.id === item.consultantId);
+  if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {
+    return {
+      serviceLabel: resolveRecordLabel('diagnosticTest', item.serviceId),
+      consultantName: consultant?.name ?? '—',
+    };
+  }
+
+  const service = SERVICE_CATALOGS[item.billingType].find((s) => s.id === item.serviceId);
   return {
     serviceLabel: service?.name ?? item.billingType,
     consultantName: consultant?.name ?? '—',

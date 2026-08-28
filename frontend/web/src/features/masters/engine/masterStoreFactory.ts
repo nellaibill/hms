@@ -15,8 +15,8 @@ export interface MasterStore {
   update(id: string, values: Record<string, unknown>): Promise<MasterRecord>;
 }
 
-/** These lookup lists are small enough that a single large page approximates "all records" — there's no true unpaged endpoint. */
-const ALL_RECORDS_PAGE_SIZE = 1000;
+/** The server clamps pageSize to this (see HMS.Shared.Kernel.PagedRequest.MaxPageSize) — there's no true unpaged endpoint, so "all records" means walking every page at the server's ceiling. */
+const SERVER_MAX_PAGE_SIZE = 100;
 
 export function createMasterStore(config: MasterEntityConfig): MasterStore {
   const entityKey = config.key as MastersEntityKey;
@@ -31,8 +31,13 @@ export function createMasterStore(config: MasterEntityConfig): MasterStore {
   }
 
   async function getAll(): Promise<MasterRecord[]> {
-    const result = await mastersApi.list(entityKey, { page: 1, pageSize: ALL_RECORDS_PAGE_SIZE });
-    return result.items as MasterRecord[];
+    const first = await mastersApi.list(entityKey, { page: 1, pageSize: SERVER_MAX_PAGE_SIZE });
+    const items = [...first.items] as MasterRecord[];
+    for (let page = 2; page <= first.meta.totalPages; page += 1) {
+      const next = await mastersApi.list(entityKey, { page, pageSize: SERVER_MAX_PAGE_SIZE });
+      items.push(...(next.items as MasterRecord[]));
+    }
+    return items;
   }
 
   async function create(values: Record<string, unknown>): Promise<MasterRecord> {

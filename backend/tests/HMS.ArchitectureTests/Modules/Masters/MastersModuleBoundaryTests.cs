@@ -30,7 +30,7 @@ public class MastersModuleBoundaryTests
         "|ISupplierService|ICustomerService" +
         "|ICurrencyService|IPaymentTermService|IPaymentMethodService" +
         "|IStockAdjustmentReasonService|IDepartmentService|IDesignationService|IConsultantService|IAppointmentTypeService" +
-        "|IConsultationTypeService" +
+        "|IConsultationTypeService|IDiagnosticTestService" +
         "|IStateService|IDistrictService)$";
 
     [Theory]

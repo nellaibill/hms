@@ -6,6 +6,7 @@ import { customerConfig } from '../configs/customer';
 import { currencyConfig } from '../configs/currency';
 import { departmentConfig } from '../configs/department';
 import { designationConfig } from '../configs/designation';
+import { diagnosticTestConfig } from '../configs/diagnosticTest';
 import { manufacturerConfig } from '../configs/manufacturer';
 import { paymentMethodConfig } from '../configs/paymentMethod';
 import { paymentTermsConfig } from '../configs/paymentTerms';
@@ -33,6 +34,7 @@ export const MASTER_CONFIGS: MasterEntityConfig[] = [
   consultantConfig,
   appointmentTypeConfig,
   consultationTypeConfig,
+  diagnosticTestConfig,
   productCategoryConfig,
   productSubCategoryConfig,
   productGroupConfig,
