@@ -1,6 +1,6 @@
 import type { DiagnosticPackage } from '@hms/shared';
 import { FlaskConical, Plus, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,18 +72,18 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
   const isActive = activeRows.length > 0;
   const categoryTotal = activeRows.reduce((sum, row) => sum + Math.max(row.quantity * row.charge - row.discount, 0), 0);
 
-  const itemOptions: SearchableSelectOption[] = [
-    ...services.map((service) => ({
-      value: toOptionValue('service', service.id),
-      label: `${service.name} — ${formatCurrency(service.price)}`,
-      keywords: service.name,
-    })),
-    ...packages.map((pkg) => ({
-      value: toOptionValue('package', pkg.id),
-      label: `${pkg.name} (Package) — ${formatCurrency(pkg.totalPrice)}`,
-      keywords: pkg.name,
-    })),
-  ];
+  // Split rather than one combined list — each row's Services/Packages toggle picks which of
+  // these two the SearchableSelect actually shows (see LaboratoryBillingRow below).
+  const serviceOptions: SearchableSelectOption[] = services.map((service) => ({
+    value: toOptionValue('service', service.id),
+    label: `${service.name} — ${formatCurrency(service.price)}`,
+    keywords: service.name,
+  }));
+  const packageOptions: SearchableSelectOption[] = packages.map((pkg) => ({
+    value: toOptionValue('package', pkg.id),
+    label: `${pkg.name} — ${formatCurrency(pkg.totalPrice)}`,
+    keywords: pkg.name,
+  }));
 
   const isLoadingItems = isLoadingServices || packagesQuery.isPending;
 
@@ -109,7 +109,8 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
         <LaboratoryBillingRow
           key={field.id}
           index={index}
-          itemOptions={itemOptions}
+          serviceOptions={serviceOptions}
+          packageOptions={packageOptions}
           services={services}
           packages={packages}
           consultants={consultants}
@@ -129,7 +130,8 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
 
 interface LaboratoryBillingRowProps {
   index: number;
-  itemOptions: SearchableSelectOption[];
+  serviceOptions: SearchableSelectOption[];
+  packageOptions: SearchableSelectOption[];
   services: BillingServiceOption[];
   packages: DiagnosticPackage[];
   consultants: ServiceConsultant[];
@@ -139,7 +141,18 @@ interface LaboratoryBillingRowProps {
   isLoadingItems: boolean;
 }
 
-function LaboratoryBillingRow({ index, itemOptions, services, packages, consultants, showRemove, onRemove, isLast, isLoadingItems }: LaboratoryBillingRowProps) {
+function LaboratoryBillingRow({
+  index,
+  serviceOptions,
+  packageOptions,
+  services,
+  packages,
+  consultants,
+  showRemove,
+  onRemove,
+  isLast,
+  isLoadingItems,
+}: LaboratoryBillingRowProps) {
   const {
     control,
     setValue,
@@ -150,6 +163,22 @@ function LaboratoryBillingRow({ index, itemOptions, services, packages, consulta
 
   const itemType = watch(`${basePath}.itemType`);
   const itemId = watch(`${basePath}.itemId`);
+  // Which of the two lists this row's item picker currently shows — defaults to whatever the
+  // row's real selection already is (so an existing package row reopens showing Packages, not
+  // Services), 'service' for a brand-new blank row. Switching it clears the current selection
+  // if that selection no longer matches the newly-picked type (a stale package id sitting under
+  // "Services" would otherwise look selected but be invisible in the filtered list).
+  const [filterType, setFilterType] = useState<'service' | 'package'>(itemType === 'package' ? 'package' : 'service');
+  const filteredOptions = filterType === 'package' ? packageOptions : serviceOptions;
+
+  function handleFilterTypeChange(next: 'service' | 'package') {
+    if (next === filterType) return;
+    setFilterType(next);
+    if (itemId && itemType !== next) {
+      setValue(`${basePath}.itemType`, next);
+      setValue(`${basePath}.itemId`, '');
+    }
+  }
   const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);
   const quantity = watch(`${basePath}.quantity`);
@@ -176,6 +205,26 @@ function LaboratoryBillingRow({ index, itemOptions, services, packages, consulta
         </div>
 
         <Field label="Item" htmlFor={`${basePath}-item`} error={rowErrors?.itemId?.message} className="flex min-w-[240px] flex-1 flex-col gap-1">
+          <div className="mb-1 inline-flex w-fit overflow-hidden rounded-md border border-input">
+            <button
+              type="button"
+              onClick={() => handleFilterTypeChange('service')}
+              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                filterType === 'service' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              Services
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFilterTypeChange('package')}
+              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                filterType === 'package' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              Packages
+            </button>
+          </div>
           <Controller
             name={`${basePath}.itemId`}
             control={control}
@@ -183,16 +232,16 @@ function LaboratoryBillingRow({ index, itemOptions, services, packages, consulta
               <SearchableSelect
                 id={`${basePath}-item`}
                 ariaLabel="Laboratory item"
-                value={itemType && field.value ? toOptionValue(itemType, field.value) : ''}
+                value={itemType === filterType && field.value ? toOptionValue(itemType, field.value) : ''}
                 onValueChange={(value) => {
                   const parsed = parseOptionValue(value);
                   if (!parsed) return;
                   setValue(`${basePath}.itemType`, parsed.itemType);
                   field.onChange(parsed.itemId);
                 }}
-                options={itemOptions}
-                placeholder={isLoadingItems ? 'Loading items…' : 'Select a test or package'}
-                searchPlaceholder="Search tests and packages…"
+                options={filteredOptions}
+                placeholder={isLoadingItems ? 'Loading items…' : filterType === 'package' ? 'Select a package' : 'Select a test'}
+                searchPlaceholder={filterType === 'package' ? 'Search packages…' : 'Search tests…'}
                 disabled={isLoadingItems}
               />
             )}
