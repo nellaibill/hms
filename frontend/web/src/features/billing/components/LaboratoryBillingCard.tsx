@@ -257,6 +257,12 @@ function LaboratoryBillingRow({
           error={rowErrors?.consultantId?.message}
           className="flex min-w-[200px] flex-1 flex-col gap-1"
         >
+          {/* Matches the Services/Packages toggle's height above Item's select, so the two
+              selects line up on the same row instead of Consultant's sitting one row higher. */}
+          <div className="mb-1 inline-flex w-fit overflow-hidden rounded-md border border-input opacity-0" aria-hidden="true">
+            <span className="px-2.5 py-1 text-xs font-medium">Services</span>
+            <span className="px-2.5 py-1 text-xs font-medium">Packages</span>
+          </div>
           <Controller
             name={`${basePath}.consultantId`}
             control={control}
