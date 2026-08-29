@@ -7,7 +7,7 @@ export const customerConfig: MasterEntityConfig = {
   labelPlural: 'Customers',
   description: 'Institutional/bulk customer master for sales and billing (distinct from individual patients).',
   icon: UserRoundCog,
-  section: 'Business Partners',
+  section: 'Finance',
   codeField: 'customerCode',
   nameField: 'customerName',
   fields: [

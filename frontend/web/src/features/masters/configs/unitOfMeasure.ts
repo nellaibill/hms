@@ -15,7 +15,7 @@ export const unitOfMeasureConfig: MasterEntityConfig = {
   labelPlural: 'Units of Measure',
   description: 'Base and derived units used for stock quantities (e.g. Box, Strip, Piece).',
   icon: Ruler,
-  section: 'Units & Tax',
+  section: 'Pharmacy & Inventory',
   codeField: 'uomCode',
   nameField: 'uomName',
   fields: [

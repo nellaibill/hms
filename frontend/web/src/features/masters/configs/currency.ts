@@ -7,7 +7,7 @@ export const currencyConfig: MasterEntityConfig = {
   labelPlural: 'Currencies',
   description: 'Currencies used for pricing and payments.',
   icon: Coins,
-  section: 'Finance & Payment',
+  section: 'Finance',
   codeField: 'currencyCode',
   nameField: 'currencyName',
   fields: [

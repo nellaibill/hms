@@ -7,7 +7,7 @@ export const supplierConfig: MasterEntityConfig = {
   labelPlural: 'Suppliers',
   description: 'Vendor master for purchasing goods and services.',
   icon: Truck,
-  section: 'Business Partners',
+  section: 'Pharmacy & Inventory',
   codeField: 'supplierCode',
   nameField: 'supplierName',
   fields: [

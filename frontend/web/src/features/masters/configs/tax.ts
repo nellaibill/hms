@@ -15,7 +15,7 @@ export const taxConfig: MasterEntityConfig = {
   labelPlural: 'Taxes',
   description: 'Tax rates applied to purchases and sales (e.g. GST, VAT).',
   icon: Percent,
-  section: 'Units & Tax',
+  section: 'Finance',
   codeField: 'taxCode',
   nameField: 'taxName',
   fields: [

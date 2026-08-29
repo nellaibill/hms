@@ -7,7 +7,7 @@ export const warehouseConfig: MasterEntityConfig = {
   labelPlural: 'Warehouses',
   description: 'Physical storage facilities used across Inventory & ERP.',
   icon: Warehouse,
-  section: 'Warehouse & Location',
+  section: 'Pharmacy & Inventory',
   codeField: 'warehouseCode',
   nameField: 'warehouseName',
   fields: [

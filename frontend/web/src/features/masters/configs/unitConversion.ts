@@ -7,7 +7,7 @@ export const unitConversionConfig: MasterEntityConfig = {
   labelPlural: 'Unit Conversions',
   description: 'Conversion factors between two Units of Measure (e.g. 1 Box = 10 Strip).',
   icon: ArrowLeftRight,
-  section: 'Units & Tax',
+  section: 'Pharmacy & Inventory',
   fields: [
     { key: 'fromUomId', label: 'From Unit', type: 'reference', referenceEntityKey: 'unitOfMeasure', required: true },
     { key: 'toUomId', label: 'To Unit', type: 'reference', referenceEntityKey: 'unitOfMeasure', required: true },

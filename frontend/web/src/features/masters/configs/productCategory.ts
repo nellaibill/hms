@@ -7,7 +7,7 @@ export const productCategoryConfig: MasterEntityConfig = {
   labelPlural: 'Product Categories',
   description: 'Top-level product classification (e.g. Pharmacy, Consumables, Equipment).',
   icon: FolderTree,
-  section: 'Product Classification',
+  section: 'Pharmacy & Inventory',
   codeField: 'categoryCode',
   nameField: 'categoryName',
   fields: [

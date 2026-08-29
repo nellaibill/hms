@@ -7,7 +7,7 @@ export const stockAdjustmentReasonConfig: MasterEntityConfig = {
   labelPlural: 'Stock Adjustment Reasons',
   description: 'Lookup reasons for manual stock adjustments (e.g. Damage, Expiry, Recount).',
   icon: ClipboardEdit,
-  section: 'Inventory Lookup',
+  section: 'Pharmacy & Inventory',
   codeField: 'reasonCode',
   nameField: 'reasonName',
   fields: [

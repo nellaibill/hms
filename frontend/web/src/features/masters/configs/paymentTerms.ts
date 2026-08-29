@@ -7,7 +7,7 @@ export const paymentTermsConfig: MasterEntityConfig = {
   labelPlural: 'Payment Terms',
   description: 'Standard payment terms offered to/by Suppliers and Customers (e.g. Net 30).',
   icon: CalendarClock,
-  section: 'Finance & Payment',
+  section: 'Finance',
   nameField: 'termName',
   fields: [
     { key: 'termName', label: 'Term Name', type: 'text', required: true, placeholder: 'e.g. Net 30' },
