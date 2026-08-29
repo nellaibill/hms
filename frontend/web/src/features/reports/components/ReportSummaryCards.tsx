@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowUpCircle, Scale } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Hourglass, Scale } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/features/billing';
 import { cn } from '@/lib/utils';
@@ -10,7 +10,7 @@ interface ReportSummaryCardsProps {
 
 export function ReportSummaryCards({ totals }: ReportSummaryCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Card>
         <CardContent className="flex items-center gap-3 py-4">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-success/15 text-success">
@@ -30,6 +30,17 @@ export function ReportSummaryCards({ totals }: ReportSummaryCardsProps) {
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Total Expenses</span>
             <span className="text-lg font-semibold text-foreground">{formatCurrency(totals.totalExpense)}</span>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="flex items-center gap-3 py-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-warning/15 text-warning">
+            <Hourglass className="h-5 w-5" />
+          </span>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Pending (Receivable)</span>
+            <span className="text-lg font-semibold text-foreground">{formatCurrency(totals.pendingAmount)}</span>
           </div>
         </CardContent>
       </Card>

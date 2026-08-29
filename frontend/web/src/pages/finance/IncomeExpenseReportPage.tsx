@@ -3,9 +3,12 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useInvoicesForReportQuery } from '@/features/billing';
 import {
+  CategoryBreakdownCard,
   ExpenseTable,
   ExportButtons,
   getExpenseRows,
+  getExpensesByCategory,
+  getIncomeByBillingType,
   getIncomeRows,
   getReportTotals,
   IncomeTable,
@@ -39,6 +42,8 @@ export default function IncomeExpenseReportPage() {
   const incomeRows = useMemo(() => getIncomeRows(billings ?? [], range), [billings, range]);
   const expenseRows = useMemo(() => getExpenseRows(range), [range]);
   const totals = useMemo(() => getReportTotals(incomeRows, expenseRows), [incomeRows, expenseRows]);
+  const incomeByType = useMemo(() => getIncomeByBillingType(billings ?? [], range), [billings, range]);
+  const expensesByCategory = useMemo(() => getExpensesByCategory(expenseRows), [expenseRows]);
 
   const pagedIncome = paginate(incomeRows, incomePage, ROWS_PER_PAGE);
   const pagedExpense = paginate(expenseRows, expensePage, ROWS_PER_PAGE);
@@ -73,13 +78,18 @@ export default function IncomeExpenseReportPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <div className="flex w-full max-w-6xl flex-col gap-4">
+        <div className="flex w-full flex-col gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <ReportDateRangeFilter range={range} onChange={handleRangeChange} />
             <ExportButtons range={range} income={incomeRows} expense={expenseRows} />
           </div>
 
           <ReportSummaryCards totals={totals} />
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <CategoryBreakdownCard title="Income by Billing Type" rows={incomeByType} tone="success" />
+            <CategoryBreakdownCard title="Expenses by Category" rows={expensesByCategory} tone="destructive" />
+          </div>
 
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-foreground">
