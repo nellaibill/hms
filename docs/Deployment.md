@@ -1,7 +1,10 @@
 # Deployment
 
 ## Purpose
-This document explains how the application is built and deployed, kept intentionally simple for an MVP without complex infrastructure (no containers, no orchestration).
+This document explains how the application is built and deployed. The app ships as three
+Docker images (`postgres`, `HMS.Api`, and an nginx-served frontend build) orchestrated by
+the root `docker-compose.yml` — see that file plus `.env.example` for the runnable stack;
+no separate orchestration platform (Kubernetes, etc.) is used at this MVP stage.
 
 ## Scope
 Covers environments, build process, deployment process, database migration deployment, and rollback strategy.
