@@ -1,10 +1,10 @@
 <#
-  HMS native dev environment — batch installer for Windows Server 2025.
+  HMS native dev environment - batch installer for Windows Server 2025.
   Run this in an ELEVATED PowerShell (Run as Administrator).
 
   Installs: Git, .NET 10 SDK, dotnet-ef, Node.js 20 LTS, PostgreSQL 16, VS Code.
   Docker is handled separately at the bottom because enabling the Windows
-  "Containers" feature forces a reboot — don't want that happening as a
+  "Containers" feature forces a reboot - don't want that happening as a
   side effect of an unattended batch run.
 
   Usage:
@@ -40,8 +40,8 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 # ------------------------------------------------------------
 $packages = @(
     'git',
-    'dotnet-10.0-sdk',   # .NET 10 SDK — matches Directory.Build.props TargetFramework net10.0
-    'nodejs-lts',        # Node.js 20.x LTS — matches frontend/web/Dockerfile's node:20-alpine
+    'dotnet-10.0-sdk',   # .NET 10 SDK - matches Directory.Build.props TargetFramework net10.0
+    'nodejs-lts',        # Node.js 20.x LTS - matches frontend/web/Dockerfile's node:20-alpine
     'postgresql16',      # matches docker-compose.yml's postgres:16-alpine
     'vscode'             # optional editor; skip if you already have Visual Studio 2022
 )
@@ -63,7 +63,7 @@ dotnet tool install --global dotnet-ef
 Write-Host ""
 Write-Host "Done: Git, .NET 10 SDK, dotnet-ef, Node.js LTS, PostgreSQL 16, VS Code installed." -ForegroundColor Green
 Write-Host "Note: postgresql16's Chocolatey package sets its own 'postgres' superuser password" -ForegroundColor Yellow
-Write-Host "      during install (or prompts for one) — check the choco install output above." -ForegroundColor Yellow
+Write-Host "      during install (or prompts for one) - check the choco install output above." -ForegroundColor Yellow
 Write-Host ""
-Write-Host "Docker was NOT installed by this script — see install-docker-engine.ps1" -ForegroundColor Yellow
+Write-Host "Docker was NOT installed by this script - see install-docker-engine.ps1" -ForegroundColor Yellow
 Write-Host "(separate step: it enables a Windows feature and requires a reboot)." -ForegroundColor Yellow

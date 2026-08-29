@@ -1,5 +1,5 @@
 <#
-  Docker Engine (Moby) for Windows Server 2025 — NOT Docker Desktop.
+  Docker Engine (Moby) for Windows Server 2025 - NOT Docker Desktop.
   Docker Desktop isn't the supported path on Server editions.
 
   This enables the Windows "Containers" feature, which requires a reboot,
@@ -37,9 +37,9 @@ if (-not $feature.Installed) {
     return
 }
 
-Write-Host "'Containers' feature already enabled — installing Docker Engine." -ForegroundColor Cyan
+Write-Host "'Containers' feature already enabled - installing Docker Engine." -ForegroundColor Cyan
 
-# Official Docker Engine install script for Windows (Moby) — not Docker Desktop.
+# Official Docker Engine install script for Windows (Moby) - not Docker Desktop.
 Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" -OutFile "$env:TEMP\install-docker-ce.ps1"
 & "$env:TEMP\install-docker-ce.ps1"
 
