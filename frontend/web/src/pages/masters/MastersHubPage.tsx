@@ -34,7 +34,7 @@ export default function MastersHubPage() {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
             <Database className="h-5 w-5" />
           </span>
-          <h1 className="text-xl font-semibold tracking-tight">Masters (Reference Data)</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Hospital Reference Data</h1>  {/*Masters (Reference Data)*/}
         </div>
         <p className="max-w-2xl text-sm text-page-banner-foreground/85">
           Reference data grouped by the module that owns it — Hospital, HR, Pharmacy &amp; Inventory, and Finance.

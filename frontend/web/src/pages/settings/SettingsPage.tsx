@@ -33,7 +33,7 @@ const sections: SettingsSection[] = [
     permission: 'identity-administration.view',
   },
   {
-    title: 'Master Data',
+    title: 'Hospital Reference Data', /*Master Data)*/
     description: 'Product classification, brands, units, tax, warehouses, business partners, and finance reference data.',
     icon: Database,
     path: '/admin/masters',
