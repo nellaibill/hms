@@ -3,7 +3,6 @@ import { FlaskConical, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { primeDiagnosticPackageCache, useDiagnosticPackagesQuery, useDiagnosticServices, type BillingServiceOption } from '@/features/diagnostics';
@@ -15,7 +14,6 @@ import { emptyLaboratoryRow, type BillingFormValues } from '../billingValidation
 import { useAllActiveConsultants } from '../hooks/useAllActiveConsultants';
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
-import { DiscountApprovalControl } from './DiscountApprovalControl';
 
 interface LaboratoryBillingCardProps {
   expanded: boolean;
@@ -179,8 +177,6 @@ function LaboratoryBillingRow({
   const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);
   const quantity = watch(`${basePath}.quantity`);
-  const discountApproved = watch(`${basePath}.discountApproved`);
-  const discountApprovedBy = watch(`${basePath}.discountApprovedBy`);
 
   useEffect(() => {
     setValue(`${basePath}.charge`, findPrice(services, packages, itemType, itemId), { shouldValidate: true });
@@ -277,41 +273,6 @@ function LaboratoryBillingRow({
           />
         </Field>
 
-        <ChargeDisplay id={`${basePath}-charge`} amount={charge} label="Unit Price" />
-        <Field label="Quantity" htmlFor={`${basePath}-quantity`} error={rowErrors?.quantity?.message} className="flex w-full flex-col gap-1 sm:w-24">
-          <Controller
-            name={`${basePath}.quantity`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-quantity`}
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 1 : Math.max(1, Math.trunc(Number(e.target.value))))}
-              />
-            )}
-          />
-        </Field>
-        <Field label="Discount (₹)" htmlFor={`${basePath}-discount`} error={rowErrors?.discount?.message} className="flex w-full flex-col gap-1 sm:w-36">
-          <Controller
-            name={`${basePath}.discount`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-discount`}
-                type="number"
-                min={0}
-                max={charge * quantity}
-                inputMode="decimal"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-              />
-            )}
-          />
-        </Field>
         <ChargeDisplay id={`${basePath}-amount`} amount={amount} label="Amount" />
 
         {showRemove && (
@@ -327,16 +288,6 @@ function LaboratoryBillingRow({
           </Button>
         )}
       </div>
-      <DiscountApprovalControl
-        id={`${basePath}-discount-approved`}
-        approved={discountApproved}
-        approvedBy={discountApprovedBy}
-        discount={discount}
-        onChange={(approved, approvedBy) => {
-          setValue(`${basePath}.discountApproved`, approved);
-          setValue(`${basePath}.discountApprovedBy`, approvedBy);
-        }}
-      />
     </div>
   );
 }

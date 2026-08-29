@@ -13,7 +13,6 @@ import { isConsultationEntryActive } from '../billingActivity';
 import { formatCurrency } from '../billingCalculations';
 import { emptyConsultation, type BillingFormValues } from '../billingValidation';
 import { CollapsibleCard } from './CollapsibleCard';
-import { DiscountApprovalControl } from './DiscountApprovalControl';
 
 interface ConsultationBillingCardProps {
   expanded: boolean;
@@ -93,11 +92,6 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
   const departmentId = watch(`${basePath}.departmentId`);
   const consultationTypeId = watch(`${basePath}.consultationTypeId`);
   const fromVisit = watch(`${basePath}.fromVisit`);
-  const discount = watch(`${basePath}.discount`);
-  const charge = watch(`${basePath}.charge`);
-  const quantity = watch(`${basePath}.quantity`);
-  const discountApproved = watch(`${basePath}.discountApproved`);
-  const discountApprovedBy = watch(`${basePath}.discountApprovedBy`);
 
   // Same query key ConsultationTypeSelect uses below, so this is a cache read, not an extra
   // request — just here to look up the selected type's real fee for the charge effect.
@@ -200,40 +194,6 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
             )}
           />
         </Field>
-        <Field label="Quantity" htmlFor={`${basePath}-quantity`} error={rowErrors?.quantity?.message} className="flex w-full flex-col gap-1 sm:w-24">
-          <Controller
-            name={`${basePath}.quantity`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-quantity`}
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 1 : Math.max(1, Math.trunc(Number(e.target.value))))}
-              />
-            )}
-          />
-        </Field>
-        <Field label="Discount (₹)" htmlFor={`${basePath}-discount`} error={rowErrors?.discount?.message} className="flex w-full flex-col gap-1 sm:w-36">
-          <Controller
-            name={`${basePath}.discount`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-discount`}
-                type="number"
-                min={0}
-                max={charge * quantity}
-                inputMode="decimal"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-              />
-            )}
-          />
-        </Field>
         {showRemove && (
           <Button
             type="button"
@@ -247,16 +207,6 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
           </Button>
         )}
       </div>
-      <DiscountApprovalControl
-        id={`${basePath}-discount-approved`}
-        approved={discountApproved}
-        approvedBy={discountApprovedBy}
-        discount={discount}
-        onChange={(approved, approvedBy) => {
-          setValue(`${basePath}.discountApproved`, approved);
-          setValue(`${basePath}.discountApprovedBy`, approvedBy);
-        }}
-      />
     </div>
   );
 }
