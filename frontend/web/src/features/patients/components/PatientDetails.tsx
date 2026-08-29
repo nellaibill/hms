@@ -101,7 +101,7 @@ function documentStatusBadgeVariant(status: DocumentResponse['status']): BadgePr
 function PersonalContactCard({ patient }: { patient: Patient }) {
   return (
     <SectionCard title="Personal & Contact" icon={User}>
-      <dl className="grid grid-cols-1 gap-x-3">
+      <dl className="grid grid-cols-2 gap-x-3">
         <Field label="Title" value={patient.title} />
         <Field label="First name" value={patient.firstName} />
         <Field label="Last name" value={patient.lastName} />
@@ -165,7 +165,7 @@ function AddressEmergencyCard({ patient }: { patient: Patient }) {
 function RegistrationDetailsCard({ patient }: { patient: Patient }) {
   return (
     <SectionCard title="Registration Details" icon={ClipboardList}>
-      <dl className="grid grid-cols-1 gap-x-3">
+      <dl className="grid grid-cols-2 gap-x-3">
         <Field label="Registration source" value={humanize(patient.modeOfArrivalSource)} />
         {patient.modeOfArrivalChannel && <Field label="Arrival channel" value={humanize(patient.modeOfArrivalChannel)} />}
         {patient.modeOfArrivalSpecify && <Field label="Arrival details" value={patient.modeOfArrivalSpecify} />}
