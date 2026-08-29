@@ -157,28 +157,29 @@ function laboratoryRowToBillingItem(entry: LaboratoryBillingRowFormValues, index
 /**
  * Flattens the form's per-category shape into the normalized BillingItem[] model — only
  * entries actually in use produce a line, and every category (Consultation included) can
- * contribute more than one. `values.paymentStatus` is the single whole-bill status (see
- * billingValidation.ts); every produced line starts there and can only diverge later via the
- * Record Payment action on an already-saved invoice, not at creation time.
+ * contribute more than one. Every produced line starts Pending, matching what the backend
+ * actually does at creation — whether it ends up Paid depends on the Payment Section (see
+ * billingValidation.ts's amountReceived/paymentMode), which InvoiceService applies
+ * server-side, not something this pre-save preview can know for certain.
  */
 export function toBillingItems(values: BillingFormValues): BillingItem[] {
   const items: BillingItem[] = [];
 
   values.consultation.forEach((entry, index) => {
     if (!isConsultationEntryActive(entry)) return;
-    items.push(consultationRowToBillingItem(entry, index, values.paymentStatus));
+    items.push(consultationRowToBillingItem(entry, index, 'Pending'));
   });
 
   (Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).forEach((category) => {
     values[category].forEach((row, index) => {
       if (!isServiceEntryActive(row)) return;
-      items.push(serviceRowToBillingItem(category, row, index, values.paymentStatus));
+      items.push(serviceRowToBillingItem(category, row, index, 'Pending'));
     });
   });
 
   values.laboratory.forEach((row, index) => {
     if (!isLaboratoryEntryActive(row)) return;
-    items.push(laboratoryRowToBillingItem(row, index, values.paymentStatus));
+    items.push(laboratoryRowToBillingItem(row, index, 'Pending'));
   });
 
   return items;

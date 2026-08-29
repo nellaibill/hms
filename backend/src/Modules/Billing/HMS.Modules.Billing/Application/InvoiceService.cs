@@ -85,6 +85,22 @@ internal class InvoiceService : IInvoiceService
             actorId);
 
         await _repository.AddAsync(invoice, cancellationToken);
+
+        // Optional pay-in-full-at-creation: mark every line item Paid and record its Payment
+        // in the same save as the invoice itself, so there's no window where the invoice
+        // exists with some lines paid and others not from a partial failure. Mirrors
+        // RecordPaymentAsync's per-line Payment.Create call below, just looped and unsaved
+        // until this one shared SaveChangesAsync.
+        if (request.Payment is not null)
+        {
+            foreach (var item in invoice.Items)
+            {
+                var paidItem = invoice.MarkItemPaid(item.Id, actorId);
+                var payment = Payment.Create(invoice.Id, paidItem.Id, paidItem.Total, request.Payment.Method, request.Payment.ReferenceNumber, actorId);
+                await _paymentRepository.AddAsync(payment, cancellationToken);
+            }
+        }
+
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<InvoiceResponse>.Success(invoice.ToResponse());
@@ -138,7 +154,7 @@ internal class InvoiceService : IInvoiceService
         }
 
         var paidItem = invoice.MarkItemPaid(itemId, actorId);
-        var payment = Payment.Create(invoice.Id, paidItem.Id, paidItem.Total, request.Method, actorId);
+        var payment = Payment.Create(invoice.Id, paidItem.Id, paidItem.Total, request.Method, null, actorId);
 
         await _paymentRepository.AddAsync(payment, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive } from './billingActivity';
-import { PAYMENT_STATUSES } from './types';
+import { PAYMENT_METHODS } from './types';
 
 /**
  * Each billing category is entirely optional (per the spec: a receptionist may bill only
@@ -14,10 +14,13 @@ import { PAYMENT_STATUSES } from './types';
  * tests, several procedures, or (a patient seen by more than one specialist in one visit)
  * several consultations.
  *
- * Payment status is deliberately *not* a per-line field — a visit is settled in one
- * transaction at the counter, not per category, so asking Pending/Paid four separate times
- * read as confusing/redundant. It's a single top-level field on billingFormSchema instead
- * (see the Billing Summary card), applied to every line item the bill produces.
+ * Payment collection (amountReceived/paymentMode/referenceNumber) is deliberately *not* a
+ * per-line field either, for the same reason — a visit is settled in one transaction at the
+ * counter. It's full-or-nothing: leave amountReceived at 0 to save Pending (today's only
+ * behavior before this field existed), or enter an amount >= the invoice's net total to pay
+ * it in full on save — there's no partial-payment concept in the backend to support anything
+ * in between, so the schema rejects it below rather than silently accepting a value that
+ * can't actually be recorded.
  */
 export const consultationBillingSchema = z
   .object({
@@ -165,13 +168,51 @@ function consultationArraySchema() {
   });
 }
 
-export const billingFormSchema = z.object({
-  consultation: consultationArraySchema().default([]),
-  radiology: serviceArraySchema().default([]),
-  laboratory: laboratoryArraySchema().default([]),
-  procedure: serviceArraySchema().default([]),
-  paymentStatus: z.enum(PAYMENT_STATUSES).default('Pending'),
-});
+/** Local, self-contained net-total calculation — mirrors billingCalculations.ts's
+ * summarizeBilling but kept separate to avoid a circular import (billingCalculations.ts
+ * already imports types from this file). Only what the superRefine below needs: gross minus
+ * per-line discount, clamped at 0. */
+function computeNetTotal(values: {
+  consultation: ConsultationBillingFormValues[];
+  radiology: ServiceBillingRowFormValues[];
+  laboratory: LaboratoryBillingRowFormValues[];
+  procedure: ServiceBillingRowFormValues[];
+}): number {
+  const rows: { charge: number; quantity: number; discount: number }[] = [
+    ...values.consultation.filter(isConsultationEntryActive),
+    ...values.radiology.filter(isServiceEntryActive),
+    ...values.laboratory.filter(isLaboratoryEntryActive),
+    ...values.procedure.filter(isServiceEntryActive),
+  ];
+  const gross = rows.reduce((sum, row) => sum + row.charge * row.quantity, 0);
+  const discount = rows.reduce((sum, row) => sum + row.discount, 0);
+  return Math.max(gross - discount, 0);
+}
+
+export const billingFormSchema = z
+  .object({
+    consultation: consultationArraySchema().default([]),
+    radiology: serviceArraySchema().default([]),
+    laboratory: laboratoryArraySchema().default([]),
+    procedure: serviceArraySchema().default([]),
+    amountReceived: z.number().min(0).default(0),
+    paymentMode: z.enum(PAYMENT_METHODS).optional(),
+    referenceNumber: z.string().default(''),
+  })
+  .superRefine((data, ctx) => {
+    if (data.amountReceived <= 0) return;
+    if (!data.paymentMode) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentMode'], message: 'Payment mode is required when an amount is received' });
+    }
+    const netTotal = computeNetTotal(data);
+    if (data.amountReceived < netTotal) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['amountReceived'],
+        message: 'Amount received must be at least the net amount, or left blank to save as pending',
+      });
+    }
+  });
 
 export type BillingFormValues = z.infer<typeof billingFormSchema>;
 export type ConsultationBillingFormValues = z.infer<typeof consultationBillingSchema>;
@@ -218,5 +259,7 @@ export const defaultBillingFormValues: BillingFormValues = {
   radiology: [{ ...emptyServiceRow }],
   laboratory: [{ ...emptyLaboratoryRow }],
   procedure: [{ ...emptyServiceRow }],
-  paymentStatus: 'Pending',
+  amountReceived: 0,
+  paymentMode: undefined,
+  referenceNumber: '',
 };

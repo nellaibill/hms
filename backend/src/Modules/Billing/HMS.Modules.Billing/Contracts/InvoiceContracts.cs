@@ -43,6 +43,27 @@ public record CreateInvoiceRequest
     public string PatientUhid { get; init; } = string.Empty;
 
     public IReadOnlyList<CreateInvoiceLineItemRequest> Items { get; init; } = [];
+
+    /// <summary>Optional — when supplied, the whole invoice is paid in full at creation time
+    /// (every line item marked Paid, one Payment row per line, same as the standalone Record
+    /// Payment flow but atomic with the invoice's own save). Null means save Pending, exactly
+    /// like every invoice created before this field existed — there's no partial-amount
+    /// concept here; "how much cash changes hands" (Amount Received vs. Net Payable, and any
+    /// change to return) is a front-desk/UI calculation only, never sent to or stored by the
+    /// server.</summary>
+    public CreateInvoicePaymentRequest? Payment { get; init; }
+}
+
+/// <summary>The invoice-creation-time equivalent of <see cref="RecordPaymentRequest"/> — see
+/// <see cref="CreateInvoiceRequest.Payment"/> for why this exists instead of just reusing
+/// RecordPaymentRequest per line item after the fact.</summary>
+public record CreateInvoicePaymentRequest
+{
+    public PaymentMethod Method { get; init; }
+
+    /// <summary>Optional free-text transaction/reference number (UPI ref, card slip, bank
+    /// transfer UTR). See Domain/Payment.cs.</summary>
+    public string? ReferenceNumber { get; init; }
 }
 
 public record RecordPaymentRequest

@@ -17,6 +17,20 @@ internal class CreateInvoiceRequestValidator : AbstractValidator<CreateInvoiceRe
         RuleFor(x => x.Items).NotEmpty().WithMessage("At least one billing item is required.");
 
         RuleForEach(x => x.Items).SetValidator(new CreateInvoiceLineItemRequestValidator());
+
+        When(x => x.Payment is not null, () =>
+        {
+            RuleFor(x => x.Payment!).SetValidator(new CreateInvoicePaymentRequestValidator());
+        });
+    }
+}
+
+internal class CreateInvoicePaymentRequestValidator : AbstractValidator<CreateInvoicePaymentRequest>
+{
+    public CreateInvoicePaymentRequestValidator()
+    {
+        RuleFor(x => x.Method).IsInEnum();
+        RuleFor(x => x.ReferenceNumber).MaximumLength(100);
     }
 }
 

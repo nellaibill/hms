@@ -1,25 +1,33 @@
 import { Receipt } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
+import { Field } from '@/features/patients/components/FormSection';
 import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency, summarizeBilling, toBillingItems } from '../billingCalculations';
 import type { BillingFormValues } from '../billingValidation';
-import { PaymentStatusControl } from './PaymentStatusControl';
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
 
 /**
- * Recomputed live from the four category cards, plus the one whole-bill Payment status
- * control — a visit is settled in a single transaction at the counter, not per category,
- * so this replaced four separate per-card Pending/Paid toggles that read as confusing.
- * Sticky on large screens so it stays in view while a long bill is being built up.
+ * Recomputed live from the four category cards, plus a whole-bill Payment Section (Amount
+ * Received / Payment Mode / Reference No.) — a visit is settled in a single transaction at
+ * the counter, not per category, so this is one shared block rather than four separate
+ * per-card controls. Sticky on large screens so it stays in view while a long bill is being
+ * built up.
  *
  * Lines itemize by service (not just "Laboratory (2)") — reuses describeBillingItem, the
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
  * name reads identically everywhere it's shown.
  */
 export function BillingSummaryCard() {
-  const { watch, setValue } = useFormContext<BillingFormValues>();
+  const {
+    watch,
+    control,
+    formState: { errors },
+  } = useFormContext<BillingFormValues>();
   const values = watch();
   // Primes the Masters reference cache describeBillingItem reads from below, so Consultation
   // line items resolve to real department/consultant/type names — Consultation Billing uses
@@ -70,7 +78,15 @@ export function BillingSummaryCard() {
         <Separator />
 
         <div className="flex flex-col gap-1.5 text-sm">
-          <div className="flex items-center justify-between gap-3">
+          {summary.lines
+            .filter((line) => line.active)
+            .map((line) => (
+              <div key={line.billingType} className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{line.label} Total</span>
+                <span className="font-medium text-foreground">{formatCurrency(line.net)}</span>
+              </div>
+            ))}
+          <div className="mt-1 flex items-center justify-between gap-3 border-t border-border pt-2">
             <span className="text-muted-foreground">Gross total</span>
             <span className="font-medium text-foreground">{formatCurrency(summary.grossTotal)}</span>
           </div>
@@ -81,18 +97,77 @@ export function BillingSummaryCard() {
             </span>
           </div>
           <div className="mt-1 flex items-center justify-between gap-3 border-t border-border pt-2">
-            <span className="text-base font-semibold text-foreground">Net amount</span>
+            <span className="text-base font-semibold text-foreground">Net Payable</span>
             <span className="text-base font-bold text-primary">{formatCurrency(summary.netTotal)}</span>
           </div>
         </div>
 
         <Separator />
 
-        <PaymentStatusControl
-          id="billing-payment-status"
-          value={values.paymentStatus}
-          onChange={(status) => setValue('paymentStatus', status, { shouldValidate: true })}
-        />
+        <div className="flex flex-col gap-3">
+          <span className="text-sm font-semibold text-foreground">Payment Section</span>
+
+          <Field label="Amount Received (₹)" htmlFor="billing-amount-received" error={errors.amountReceived?.message} className="flex flex-col gap-1">
+            <Controller
+              name="amountReceived"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id="billing-amount-received"
+                  type="number"
+                  min={0}
+                  inputMode="decimal"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                />
+              )}
+            />
+          </Field>
+
+          {values.amountReceived > 0 && (
+            <>
+              <Field label="Payment Mode" htmlFor="billing-payment-mode" error={errors.paymentMode?.message} className="flex flex-col gap-1">
+                <Controller
+                  name="paymentMode"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                      <SelectTrigger id="billing-payment-mode">
+                        <SelectValue placeholder="Select payment mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {PAYMENT_METHOD_LABELS[option]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+
+              <Field label="Reference / Transaction No. (Optional)" htmlFor="billing-reference-number" className="flex flex-col gap-1">
+                <Controller
+                  name="referenceNumber"
+                  control={control}
+                  render={({ field }) => (
+                    <Input id="billing-reference-number" placeholder="Enter reference or transaction number" value={field.value} onChange={field.onChange} />
+                  )}
+                />
+              </Field>
+
+              {values.amountReceived > summary.netTotal && (
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium text-success">Change (to be returned)</span>
+                  <span className="font-bold text-success">{formatCurrency(values.amountReceived - summary.netTotal)}</span>
+                </div>
+              )}
+            </>
+          )}
+
+          <p className="text-xs text-muted-foreground">You can save the invoice in Pending status and collect payment later.</p>
+        </div>
       </CardContent>
     </Card>
   );

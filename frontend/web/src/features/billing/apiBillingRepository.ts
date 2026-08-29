@@ -84,6 +84,10 @@ function toCreateRequest(patientId: string, visitId: string, values: BillingForm
       discountApproved: item.discountApproved,
       discountApprovedBy: item.discountApprovedBy ?? null,
     })),
+    // Amount Received/Change are a front-desk cash-drawer calculation only (billingValidation.ts's
+    // superRefine already guarantees amountReceived is 0 or >= the net total) — the server only
+    // needs to know "pay the whole thing" plus how/reference, never the tendered amount itself.
+    payment: values.amountReceived > 0 ? { method: values.paymentMode!, referenceNumber: values.referenceNumber || null } : undefined,
   };
 }
 
