@@ -101,7 +101,7 @@ function documentStatusBadgeVariant(status: DocumentResponse['status']): BadgePr
 function PersonalContactCard({ patient }: { patient: Patient }) {
   return (
     <SectionCard title="Personal & Contact" icon={User}>
-      <dl className="grid grid-cols-2 gap-x-3">
+      <dl className="grid grid-cols-1 gap-x-3">
         <Field label="Title" value={patient.title} />
         <Field label="First name" value={patient.firstName} />
         <Field label="Last name" value={patient.lastName} />
@@ -711,7 +711,6 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       <TabsList>
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="visits">Visits</TabsTrigger>
-        <TabsTrigger value="encounters">Encounters</TabsTrigger>
         <TabsTrigger value="medical-information">Medical Information</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -724,13 +723,6 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
 
       <TabsContent value="visits" className="pt-2.5">
         <PatientVisitsTab patient={patient} />
-      </TabsContent>
-
-      <TabsContent value="encounters" className="pt-2.5">
-        <EmptyState
-          icon={Stethoscope}
-          message="Encounters aren't tracked as a separate record yet — each visit's consultation lines (department + consultant) are shown on the Visits tab."
-        />
       </TabsContent>
 
       <TabsContent value="medical-information" className="pt-2.5">
