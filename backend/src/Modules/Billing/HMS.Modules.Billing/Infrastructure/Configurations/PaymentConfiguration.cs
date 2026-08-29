@@ -17,6 +17,7 @@ internal class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(p => p.InvoiceLineItemId).HasColumnName("invoice_line_item_id").IsRequired();
         builder.Property(p => p.Amount).HasColumnName("amount").HasColumnType("numeric(12,2)").IsRequired();
         builder.Property(p => p.Method).HasColumnName("method").HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(p => p.ReferenceNumber).HasColumnName("reference_number").HasMaxLength(100);
 
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(p => p.CreatedBy).HasColumnName("created_by");

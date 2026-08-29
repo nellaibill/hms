@@ -16,6 +16,12 @@ export interface CreateInvoiceLineItemRequest {
   discountApprovedBy?: string | null;
 }
 
+/** Mirrors HMS.Modules.Billing.Contracts.CreateInvoicePaymentRequest. */
+export interface CreateInvoicePaymentRequest {
+  method: PaymentMethod;
+  referenceNumber?: string | null;
+}
+
 /** Mirrors HMS.Modules.Billing.Contracts.CreateInvoiceRequest. */
 export interface CreateInvoiceRequest {
   patientId: string;
@@ -23,6 +29,9 @@ export interface CreateInvoiceRequest {
   patientName: string;
   patientUhid: string;
   items: CreateInvoiceLineItemRequest[];
+  /** Optional — when supplied, the whole invoice is paid in full at creation time. Null/undefined
+   * saves Pending, exactly like before this field existed. See Contracts/InvoiceContracts.cs. */
+  payment?: CreateInvoicePaymentRequest | null;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.RecordPaymentRequest. */

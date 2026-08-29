@@ -67,6 +67,41 @@ public class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithNoPayment_LeavesEveryItemPending()
+    {
+        var result = await _sut.CreateAsync(ValidRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Pending);
+        result.Value.Items.Single().PaymentStatus.Should().Be(PaymentStatus.Pending);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithPayment_MarksEveryItemPaidAndPostsOnePaymentPerItem()
+    {
+        var request = ValidRequest() with
+        {
+            Items =
+            [
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "cardiology", ConsultantId = "dr-revathi", Quantity = 1, UnitPrice = 720m },
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ConsultantId = "dr-revathi", ServiceId = "svc-cbc", Quantity = 1, UnitPrice = 300m },
+            ],
+            Payment = new CreateInvoicePaymentRequest { Method = PaymentMethod.Upi, ReferenceNumber = "UPI-REF-12345" },
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        result.Value.Items.Should().OnlyContain(i => i.PaymentStatus == PaymentStatus.Paid);
+        await _paymentRepository.Received(2).AddAsync(
+            Arg.Is<Payment>(p => p.Method == PaymentMethod.Upi && p.ReferenceNumber == "UPI-REF-12345"),
+            Arg.Any<CancellationToken>());
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenPatientDoesNotExist_ReturnsInvalidPatientFailure()
     {
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
