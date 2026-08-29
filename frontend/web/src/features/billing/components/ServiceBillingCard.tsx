@@ -180,21 +180,6 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
             )}
           />
         </Field>
-        {showRemove && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Remove this item"
-            className="mt-6 shrink-0"
-            onClick={onRemove}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
         <ChargeDisplay id={`${basePath}-charge`} amount={charge} />
         <Field label="Quantity" htmlFor={`${basePath}-quantity`} error={rowErrors?.quantity?.message} className="flex w-full flex-col gap-1 sm:w-24">
           <Controller
@@ -230,6 +215,18 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
             )}
           />
         </Field>
+        {showRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Remove this item"
+            className="mt-6 shrink-0"
+            onClick={onRemove}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       <DiscountApprovalControl
         id={`${basePath}-discount-approved`}

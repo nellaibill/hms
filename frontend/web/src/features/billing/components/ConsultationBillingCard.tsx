@@ -179,21 +179,6 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
             render={({ field }) => <ConsultationTypeSelect id={`${basePath}-type`} value={field.value} onValueChange={field.onChange} />}
           />
         </Field>
-        {showRemove && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Remove this consultation"
-            className="mt-6 shrink-0"
-            onClick={onRemove}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
         <Field
           label="Consultation charge (₹)"
           htmlFor={`${basePath}-charge`}
@@ -249,6 +234,18 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
             )}
           />
         </Field>
+        {showRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Remove this consultation"
+            className="mt-6 shrink-0"
+            onClick={onRemove}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       <DiscountApprovalControl
         id={`${basePath}-discount-approved`}

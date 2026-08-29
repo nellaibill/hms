@@ -194,28 +194,37 @@ function LaboratoryBillingRow({
 
   return (
     <div className={showRemove || !isLast ? 'flex flex-col gap-4 border-b border-dashed border-border pb-4' : 'flex flex-col gap-4'}>
+      {/* Its own line, above the field row — nesting it inside "Item"'s Field (between the
+          label and the select) was what forced every sibling field to carry a matching
+          invisible spacer just to keep their inputs lined up with Item's. Hoisting it out
+          means every field below has the same plain label+control shape, so plain
+          items-start alignment lines them all up with no extra bookkeeping. */}
+      <div>
+        <span className="mb-1 block text-sm font-medium leading-none text-foreground">Item type</span>
+        <div className="inline-flex w-fit overflow-hidden rounded-md border border-input">
+          <button
+            type="button"
+            onClick={() => handleFilterTypeChange('service')}
+            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+              filterType === 'service' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
+            }`}
+          >
+            Services
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFilterTypeChange('package')}
+            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+              filterType === 'package' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
+            }`}
+          >
+            Packages
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-start gap-3">
         <Field label="Item" htmlFor={`${basePath}-item`} error={rowErrors?.itemId?.message} className="flex min-w-[240px] flex-1 flex-col gap-1">
-          <div className="mb-1 inline-flex w-fit overflow-hidden rounded-md border border-input">
-            <button
-              type="button"
-              onClick={() => handleFilterTypeChange('service')}
-              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                filterType === 'service' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              Services
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterTypeChange('package')}
-              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                filterType === 'package' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              Packages
-            </button>
-          </div>
           <Controller
             name={`${basePath}.itemId`}
             control={control}
@@ -248,12 +257,6 @@ function LaboratoryBillingRow({
           error={rowErrors?.consultantId?.message}
           className="flex min-w-[200px] flex-1 flex-col gap-1"
         >
-          {/* Matches the Services/Packages toggle's height above Item's select, so the two
-              selects line up on the same row instead of Consultant's sitting one row higher. */}
-          <div className="mb-1 inline-flex w-fit overflow-hidden rounded-md border border-input opacity-0" aria-hidden="true">
-            <span className="px-2.5 py-1 text-xs font-medium">Services</span>
-            <span className="px-2.5 py-1 text-xs font-medium">Packages</span>
-          </div>
           <Controller
             name={`${basePath}.consultantId`}
             control={control}
@@ -274,21 +277,6 @@ function LaboratoryBillingRow({
           />
         </Field>
 
-        {showRemove && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Remove this item"
-            className="mt-6 shrink-0"
-            onClick={onRemove}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
         <ChargeDisplay id={`${basePath}-charge`} amount={charge} label="Unit Price" />
         <Field label="Quantity" htmlFor={`${basePath}-quantity`} error={rowErrors?.quantity?.message} className="flex w-full flex-col gap-1 sm:w-24">
           <Controller
@@ -325,6 +313,19 @@ function LaboratoryBillingRow({
           />
         </Field>
         <ChargeDisplay id={`${basePath}-amount`} amount={amount} label="Amount" />
+
+        {showRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Remove this item"
+            className="mt-6 shrink-0"
+            onClick={onRemove}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       <DiscountApprovalControl
         id={`${basePath}-discount-approved`}
