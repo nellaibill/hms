@@ -48,16 +48,18 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 shadow-soft-md lg:flex-row lg:items-center lg:justify-between print:shadow-none">
+    // Soft primary-tinted gradient + left accent bar — gives the identity header some warmth
+    // without competing with the section cards below it (which stay plain bg-card).
+    <div className="flex flex-col gap-3 rounded-lg border border-border border-l-4 border-l-primary bg-gradient-to-r from-primary/[0.06] via-card to-card p-3 shadow-soft-md lg:flex-row lg:items-center lg:justify-between print:border-l-border print:bg-none print:shadow-none">
       <div className="flex items-center gap-3">
         {photoUrl ? (
           <img
             src={photoUrl}
             alt={`${patient.firstName} ${patient.lastName}`}
-            className="h-14 w-14 shrink-0 rounded-full border border-border object-cover"
+            className="h-14 w-14 shrink-0 rounded-full border-2 border-primary/30 object-cover"
           />
         ) : (
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-accent text-accent-foreground">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-primary/30 bg-primary/10 text-primary">
             <UserRound className="h-6 w-6" />
           </span>
         )}
@@ -81,7 +83,7 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
             </MetaItem>
             <span className="text-border">·</span>
             <MetaItem>
-              <Droplet className="h-3.5 w-3.5" />
+              <Droplet className="h-3.5 w-3.5 text-destructive" />
               {bloodGroupLabel(patient.bloodGroup)}
             </MetaItem>
             <span className="text-border">·</span>

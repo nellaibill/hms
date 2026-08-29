@@ -165,7 +165,7 @@ function AddressEmergencyCard({ patient }: { patient: Patient }) {
 function RegistrationDetailsCard({ patient }: { patient: Patient }) {
   return (
     <SectionCard title="Registration Details" icon={ClipboardList}>
-      <dl className="grid grid-cols-1 gap-x-3">
+      <dl className="grid grid-cols-2 gap-x-3">
         <Field label="Registration source" value={humanize(patient.modeOfArrivalSource)} />
         {patient.modeOfArrivalChannel && <Field label="Arrival channel" value={humanize(patient.modeOfArrivalChannel)} />}
         {patient.modeOfArrivalSpecify && <Field label="Arrival details" value={patient.modeOfArrivalSpecify} />}
@@ -711,7 +711,6 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       <TabsList>
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="visits">Visits</TabsTrigger>
-        <TabsTrigger value="encounters">Encounters</TabsTrigger>
         <TabsTrigger value="medical-information">Medical Information</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -724,13 +723,6 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
 
       <TabsContent value="visits" className="pt-2.5">
         <PatientVisitsTab patient={patient} />
-      </TabsContent>
-
-      <TabsContent value="encounters" className="pt-2.5">
-        <EmptyState
-          icon={Stethoscope}
-          message="Encounters aren't tracked as a separate record yet — each visit's consultation lines (department + consultant) are shown on the Visits tab."
-        />
       </TabsContent>
 
       <TabsContent value="medical-information" className="pt-2.5">
