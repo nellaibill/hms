@@ -117,7 +117,12 @@ export function BillingSummaryCard() {
                   type="number"
                   min={0}
                   inputMode="decimal"
-                  value={field.value}
+                  // Showing literal 0 here would make it uneditable — deleting it just
+                  // re-renders back to "0" every keystroke (field.value is never truly empty),
+                  // so a receptionist could never clear it to type a real amount. Blank reads
+                  // the same as 0 to every calculation/validation already (netTotal check,
+                  // Change display, the create request), so hiding it costs nothing.
+                  value={field.value === 0 ? '' : field.value}
                   onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
                 />
               )}

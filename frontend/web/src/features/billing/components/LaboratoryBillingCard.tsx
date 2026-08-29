@@ -1,8 +1,7 @@
 import type { DiagnosticPackage } from '@hms/shared';
-import { FlaskConical, Plus, X } from 'lucide-react';
+import { FlaskConical, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
@@ -104,6 +103,8 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
           </span>
         ) : undefined
       }
+      onAdd={() => append({ ...emptyLaboratoryRow })}
+      addLabel="Add another laboratory item"
     >
       {fields.map((field, index) => (
         <LaboratoryBillingRow
@@ -120,10 +121,6 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
           isLoadingItems={isLoadingItems}
         />
       ))}
-      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyLaboratoryRow })}>
-        <Plus className="h-4 w-4" />
-        Add another laboratory item
-      </Button>
     </CollapsibleCard>
   );
 }
@@ -198,12 +195,6 @@ function LaboratoryBillingRow({
   return (
     <div className={showRemove || !isLast ? 'flex flex-col gap-4 border-b border-dashed border-border pb-4' : 'flex flex-col gap-4'}>
       <div className="flex flex-wrap items-start gap-3">
-        <div className="flex w-24 shrink-0 flex-col gap-1 pt-6">
-          <Badge variant={itemType === 'package' ? 'default' : 'secondary'} className="w-fit">
-            {itemType === 'package' ? 'Package' : 'Service'}
-          </Badge>
-        </div>
-
         <Field label="Item" htmlFor={`${basePath}-item`} error={rowErrors?.itemId?.message} className="flex min-w-[240px] flex-1 flex-col gap-1">
           <div className="mb-1 inline-flex w-fit overflow-hidden rounded-md border border-input">
             <button

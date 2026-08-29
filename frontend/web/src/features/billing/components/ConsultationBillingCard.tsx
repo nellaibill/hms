@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Stethoscope, X } from 'lucide-react';
+import { Stethoscope, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,8 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
           </span>
         ) : undefined
       }
+      onAdd={() => append({ ...emptyConsultation })}
+      addLabel="Add another Consultation"
     >
       {fields.map((field, index) => (
         <ConsultationBillingRow
@@ -68,10 +70,6 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
           isLast={index === fields.length - 1}
         />
       ))}
-      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyConsultation })}>
-        <Plus className="h-4 w-4" />
-        Add another Consultation
-      </Button>
     </CollapsibleCard>
   );
 }

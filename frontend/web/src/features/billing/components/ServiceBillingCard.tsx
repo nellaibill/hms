@@ -1,4 +1,4 @@
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
@@ -73,6 +73,8 @@ export function ServiceBillingCard({
           </span>
         ) : undefined
       }
+      onAdd={() => append({ ...emptyServiceRow })}
+      addLabel={`Add another ${title.replace(' Billing', '').toLowerCase()}`}
     >
       {fields.map((field, index) => (
         <ServiceBillingRow
@@ -87,10 +89,6 @@ export function ServiceBillingCard({
           isLoadingServices={isLoadingServices}
         />
       ))}
-      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyServiceRow })}>
-        <Plus className="h-4 w-4" />
-        Add another {title.replace(' Billing', '').toLowerCase()}
-      </Button>
     </CollapsibleCard>
   );
 }
