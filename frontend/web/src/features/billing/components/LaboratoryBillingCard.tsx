@@ -1,10 +1,8 @@
 import type { DiagnosticPackage } from '@hms/shared';
-import { FlaskConical, Plus, X } from 'lucide-react';
+import { FlaskConical, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { primeDiagnosticPackageCache, useDiagnosticPackagesQuery, useDiagnosticServices, type BillingServiceOption } from '@/features/diagnostics';
@@ -16,7 +14,6 @@ import { emptyLaboratoryRow, type BillingFormValues } from '../billingValidation
 import { useAllActiveConsultants } from '../hooks/useAllActiveConsultants';
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
-import { DiscountApprovalControl } from './DiscountApprovalControl';
 
 interface LaboratoryBillingCardProps {
   expanded: boolean;
@@ -104,6 +101,8 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
           </span>
         ) : undefined
       }
+      onAdd={() => append({ ...emptyLaboratoryRow })}
+      addLabel="Add another laboratory item"
     >
       {fields.map((field, index) => (
         <LaboratoryBillingRow
@@ -120,10 +119,6 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
           isLoadingItems={isLoadingItems}
         />
       ))}
-      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyLaboratoryRow })}>
-        <Plus className="h-4 w-4" />
-        Add another laboratory item
-      </Button>
     </CollapsibleCard>
   );
 }
@@ -182,8 +177,6 @@ function LaboratoryBillingRow({
   const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);
   const quantity = watch(`${basePath}.quantity`);
-  const discountApproved = watch(`${basePath}.discountApproved`);
-  const discountApprovedBy = watch(`${basePath}.discountApprovedBy`);
 
   useEffect(() => {
     setValue(`${basePath}.charge`, findPrice(services, packages, itemType, itemId), { shouldValidate: true });
@@ -197,34 +190,37 @@ function LaboratoryBillingRow({
 
   return (
     <div className={showRemove || !isLast ? 'flex flex-col gap-4 border-b border-dashed border-border pb-4' : 'flex flex-col gap-4'}>
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex w-24 shrink-0 flex-col gap-1 pt-6">
-          <Badge variant={itemType === 'package' ? 'default' : 'secondary'} className="w-fit">
-            {itemType === 'package' ? 'Package' : 'Service'}
-          </Badge>
+      {/* Its own line, above the field row — nesting it inside "Item"'s Field (between the
+          label and the select) was what forced every sibling field to carry a matching
+          invisible spacer just to keep their inputs lined up with Item's. Hoisting it out
+          means every field below has the same plain label+control shape, so plain
+          items-start alignment lines them all up with no extra bookkeeping. */}
+      <div>
+        <span className="mb-1 block text-sm font-medium leading-none text-foreground">Item type</span>
+        <div className="inline-flex w-fit overflow-hidden rounded-md border border-input">
+          <button
+            type="button"
+            onClick={() => handleFilterTypeChange('service')}
+            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+              filterType === 'service' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
+            }`}
+          >
+            Services
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFilterTypeChange('package')}
+            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+              filterType === 'package' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
+            }`}
+          >
+            Packages
+          </button>
         </div>
+      </div>
 
+      <div className="flex flex-wrap items-start gap-3">
         <Field label="Item" htmlFor={`${basePath}-item`} error={rowErrors?.itemId?.message} className="flex min-w-[240px] flex-1 flex-col gap-1">
-          <div className="mb-1 inline-flex w-fit overflow-hidden rounded-md border border-input">
-            <button
-              type="button"
-              onClick={() => handleFilterTypeChange('service')}
-              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                filterType === 'service' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              Services
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterTypeChange('package')}
-              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                filterType === 'package' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              Packages
-            </button>
-          </div>
           <Controller
             name={`${basePath}.itemId`}
             control={control}
@@ -277,6 +273,8 @@ function LaboratoryBillingRow({
           />
         </Field>
 
+        <ChargeDisplay id={`${basePath}-amount`} amount={amount} label="Amount" />
+
         {showRemove && (
           <Button
             type="button"
@@ -290,55 +288,6 @@ function LaboratoryBillingRow({
           </Button>
         )}
       </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <ChargeDisplay id={`${basePath}-charge`} amount={charge} label="Unit Price" />
-        <Field label="Quantity" htmlFor={`${basePath}-quantity`} error={rowErrors?.quantity?.message} className="flex w-full flex-col gap-1 sm:w-24">
-          <Controller
-            name={`${basePath}.quantity`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-quantity`}
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 1 : Math.max(1, Math.trunc(Number(e.target.value))))}
-              />
-            )}
-          />
-        </Field>
-        <Field label="Discount (₹)" htmlFor={`${basePath}-discount`} error={rowErrors?.discount?.message} className="flex w-full flex-col gap-1 sm:w-36">
-          <Controller
-            name={`${basePath}.discount`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-discount`}
-                type="number"
-                min={0}
-                max={charge * quantity}
-                inputMode="decimal"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-              />
-            )}
-          />
-        </Field>
-        <ChargeDisplay id={`${basePath}-amount`} amount={amount} label="Amount" />
-      </div>
-      <DiscountApprovalControl
-        id={`${basePath}-discount-approved`}
-        approved={discountApproved}
-        approvedBy={discountApprovedBy}
-        discount={discount}
-        onChange={(approved, approvedBy) => {
-          setValue(`${basePath}.discountApproved`, approved);
-          setValue(`${basePath}.discountApprovedBy`, approvedBy);
-        }}
-      />
     </div>
   );
 }

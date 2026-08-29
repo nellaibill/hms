@@ -1,9 +1,8 @@
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field } from '@/features/patients/components/FormSection';
@@ -13,7 +12,6 @@ import { getServicePrice, type BillingService, type ServiceConsultant } from '..
 import { emptyServiceRow, type BillingFormValues, type ServiceBillingCategory } from '../billingValidation';
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
-import { DiscountApprovalControl } from './DiscountApprovalControl';
 
 interface ServiceBillingCardProps {
   category: ServiceBillingCategory;
@@ -73,6 +71,8 @@ export function ServiceBillingCard({
           </span>
         ) : undefined
       }
+      onAdd={() => append({ ...emptyServiceRow })}
+      addLabel={`Add another ${title.replace(' Billing', '').toLowerCase()}`}
     >
       {fields.map((field, index) => (
         <ServiceBillingRow
@@ -87,10 +87,6 @@ export function ServiceBillingCard({
           isLoadingServices={isLoadingServices}
         />
       ))}
-      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptyServiceRow })}>
-        <Plus className="h-4 w-4" />
-        Add another {title.replace(' Billing', '').toLowerCase()}
-      </Button>
     </CollapsibleCard>
   );
 }
@@ -116,11 +112,7 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
   const basePath = `${category}.${index}` as const;
 
   const serviceId = watch(`${basePath}.serviceId`);
-  const discount = watch(`${basePath}.discount`);
   const charge = watch(`${basePath}.charge`);
-  const quantity = watch(`${basePath}.quantity`);
-  const discountApproved = watch(`${basePath}.discountApproved`);
-  const discountApprovedBy = watch(`${basePath}.discountApprovedBy`);
 
   useEffect(() => {
     setValue(`${basePath}.charge`, getServicePrice(services, serviceId), { shouldValidate: true });
@@ -182,6 +174,7 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
             )}
           />
         </Field>
+        <ChargeDisplay id={`${basePath}-charge`} amount={charge} />
         {showRemove && (
           <Button
             type="button"
@@ -195,54 +188,6 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
           </Button>
         )}
       </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <ChargeDisplay id={`${basePath}-charge`} amount={charge} />
-        <Field label="Quantity" htmlFor={`${basePath}-quantity`} error={rowErrors?.quantity?.message} className="flex w-full flex-col gap-1 sm:w-24">
-          <Controller
-            name={`${basePath}.quantity`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-quantity`}
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 1 : Math.max(1, Math.trunc(Number(e.target.value))))}
-              />
-            )}
-          />
-        </Field>
-        <Field label="Discount (₹)" htmlFor={`${basePath}-discount`} error={rowErrors?.discount?.message} className="flex w-full flex-col gap-1 sm:w-36">
-          <Controller
-            name={`${basePath}.discount`}
-            control={control}
-            render={({ field }) => (
-              <Input
-                id={`${basePath}-discount`}
-                type="number"
-                min={0}
-                max={charge * quantity}
-                inputMode="decimal"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-              />
-            )}
-          />
-        </Field>
-      </div>
-      <DiscountApprovalControl
-        id={`${basePath}-discount-approved`}
-        approved={discountApproved}
-        approvedBy={discountApprovedBy}
-        discount={discount}
-        onChange={(approved, approvedBy) => {
-          setValue(`${basePath}.discountApproved`, approved);
-          setValue(`${basePath}.discountApprovedBy`, approvedBy);
-        }}
-      />
     </div>
   );
 }
