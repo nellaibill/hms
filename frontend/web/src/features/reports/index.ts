@@ -1,3 +1,4 @@
+export * from './components/CategoryBreakdownCard';
 export * from './components/ExpenseTable';
 export * from './components/ExportButtons';
 export * from './components/IncomeTable';
