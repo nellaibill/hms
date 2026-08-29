@@ -60,6 +60,15 @@ internal static class MastersValidatorRegistration
         services.AddScoped<IValidator<UpdateConsultationTypeRequest>, UpdateConsultationTypeRequestValidator>();
         services.AddScoped<IValidator<CreateDiagnosticTestRequest>, CreateDiagnosticTestRequestValidator>();
         services.AddScoped<IValidator<UpdateDiagnosticTestRequest>, UpdateDiagnosticTestRequestValidator>();
+        services.AddScoped<IValidator<CreateDiagnosticCategoryRequest>, CreateDiagnosticCategoryRequestValidator>();
+        services.AddScoped<IValidator<UpdateDiagnosticCategoryRequest>, UpdateDiagnosticCategoryRequestValidator>();
+        services.AddScoped<IValidator<CreateDiagnosticProviderRequest>, CreateDiagnosticProviderRequestValidator>();
+        services.AddScoped<IValidator<UpdateDiagnosticProviderRequest>, UpdateDiagnosticProviderRequestValidator>();
+        services.AddScoped<IValidator<CreateDiagnosticServiceRequest>, CreateDiagnosticServiceRequestValidator>();
+        services.AddScoped<IValidator<UpdateDiagnosticServiceRequest>, UpdateDiagnosticServiceRequestValidator>();
+        services.AddScoped<IValidator<CreateDiagnosticPackageRequest>, CreateDiagnosticPackageRequestValidator>();
+        services.AddScoped<IValidator<UpdateDiagnosticPackageRequest>, UpdateDiagnosticPackageRequestValidator>();
+        services.AddScoped<IValidator<AddDiagnosticPackageItemRequest>, AddDiagnosticPackageItemRequestValidator>();
 
         return services;
     }

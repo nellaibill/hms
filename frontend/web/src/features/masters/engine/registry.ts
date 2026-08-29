@@ -53,17 +53,11 @@ export const MASTER_CONFIGS: MasterEntityConfig[] = [
   stockAdjustmentReasonConfig,
 ];
 
-/** Section order for the hub page — mirrors the ERD's "Table Classification" legend. */
-export const MASTER_SECTIONS = [
-  'Hospital Reference Data',
-  'Product Classification',
-  'Brand & Manufacturer',
-  'Units & Tax',
-  'Warehouse & Location',
-  'Business Partners',
-  'Finance & Payment',
-  'Inventory Lookup',
-];
+/** Section order for the hub page's tabs — grouped by the hospital's actual functional
+ * modules (Hospital/Clinical, HR, Pharmacy & Inventory, Finance) rather than the ERD's more
+ * abstract table-classification legend, so each tab reads as "the reference data that module
+ * owns" instead of a generic schema grouping. */
+export const MASTER_SECTIONS = ['Hospital Reference Data', 'HR', 'Pharmacy & Inventory', 'Finance'];
 
 const configByKey = new Map(MASTER_CONFIGS.map((config) => [config.key, config]));
 const storeByKey = new Map<string, MasterStore>(MASTER_CONFIGS.map((config) => [config.key, createMasterStore(config)]));

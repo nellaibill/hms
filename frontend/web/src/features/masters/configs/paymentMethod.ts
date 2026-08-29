@@ -7,7 +7,7 @@ export const paymentMethodConfig: MasterEntityConfig = {
   labelPlural: 'Payment Methods',
   description: 'Methods available for recording payments (e.g. Cash, Card, Bank Transfer).',
   icon: CreditCard,
-  section: 'Finance & Payment',
+  section: 'Finance',
   codeField: 'methodCode',
   nameField: 'methodName',
   fields: [

@@ -88,6 +88,15 @@ const StockReceiptCreatePage = lazy(() => import('../pages/pharmacy/StockReceipt
 const DispensesListPage = lazy(() => import('../pages/pharmacy/DispensesListPage'));
 const DispenseCreatePage = lazy(() => import('../pages/pharmacy/DispenseCreatePage'));
 const StockLedgerPage = lazy(() => import('../pages/pharmacy/StockLedgerPage'));
+const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
+const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
+const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
+const DiagnosticServicesListPage = lazy(() => import('../pages/diagnostics/DiagnosticServicesListPage'));
+const DiagnosticServiceCreatePage = lazy(() => import('../pages/diagnostics/DiagnosticServiceCreatePage'));
+const DiagnosticServiceEditPage = lazy(() => import('../pages/diagnostics/DiagnosticServiceEditPage'));
+const DiagnosticPackagesListPage = lazy(() => import('../pages/diagnostics/DiagnosticPackagesListPage'));
+const DiagnosticPackageCreatePage = lazy(() => import('../pages/diagnostics/DiagnosticPackageCreatePage'));
+const LabPackageDetailPage = lazy(() => import('../pages/diagnostics/LabPackageDetailPage'));
 
 // Platform Portal — entirely separate from the hospital app above (own login, own
 // session, own protected-route gate). Not nested under AppLayout: it has no hospital
@@ -119,6 +128,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/documents': withSuspense(<DocumentManagementPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
   '/pharmacy': withSuspense(<PharmacyHubPage />),
+  '/diagnostics/lab': withSuspense(<CentralLaboratoryHubPage />),
 };
 
 // '/finance/accounts' is deliberately excluded from specialPages above and handled by
@@ -329,6 +339,34 @@ const pharmacyRoutes = [
   },
 ];
 
+// Central Laboratory (HMS.Modules.Masters' Diagnostic* entities), reachable from the
+// '/diagnostics/lab' nav leaf (wired via specialPages above — the hub itself). Route-gated via
+// RequirePermissionRoute since the nav-level permission filter alone doesn't block direct URL
+// access — mirrors pharmacyRoutes' reasoning, using the nav leaf's own permission
+// ('diagnostics', config/navigation.ts) at the '.view' grain the controllers actually check.
+// Nested inside RequireFeatureRoute (Tenant Feature/Module Management) the same way
+// pharmacyRoutes is, using the nav leaf's own feature ('central-laboratory').
+const diagnosticsRoutes = [
+  {
+    element: <RequireFeatureRoute feature="central-laboratory" />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="diagnostics.view" />,
+        children: [
+          { path: 'diagnostics/lab/categories', element: withSuspense(<DiagnosticCategoriesListPage />) },
+          { path: 'diagnostics/lab/external-labs', element: withSuspense(<ExternalLabsListPage />) },
+          { path: 'diagnostics/lab/services', element: withSuspense(<DiagnosticServicesListPage />) },
+          { path: 'diagnostics/lab/services/new', element: withSuspense(<DiagnosticServiceCreatePage />) },
+          { path: 'diagnostics/lab/services/:id/edit', element: withSuspense(<DiagnosticServiceEditPage />) },
+          { path: 'diagnostics/lab/packages', element: withSuspense(<DiagnosticPackagesListPage />) },
+          { path: 'diagnostics/lab/packages/new', element: withSuspense(<DiagnosticPackageCreatePage />) },
+          { path: 'diagnostics/lab/packages/:id', element: withSuspense(<LabPackageDetailPage />) },
+        ],
+      },
+    ],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -367,6 +405,7 @@ export const router = createBrowserRouter(
             ...hrRoutes,
             ...ipdRoutes,
             ...pharmacyRoutes,
+            ...diagnosticsRoutes,
           ],
         },
       ],

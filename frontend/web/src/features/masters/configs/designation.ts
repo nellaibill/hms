@@ -7,7 +7,7 @@ export const designationConfig: MasterEntityConfig = {
   labelPlural: 'Designations',
   description: 'Employee designation/job-title directory — reference data for HR Employee records.',
   icon: IdCard,
-  section: 'Hospital Reference Data',
+  section: 'HR',
   codeField: 'code',
   nameField: 'name',
   fields: [

@@ -1,6 +1,13 @@
+import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
 import { resolveRecordLabel } from '@/features/masters';
-import { isConsultationEntryActive, isServiceEntryActive } from './billingActivity';
-import type { BillingFormValues, ConsultationBillingFormValues, ServiceBillingCategory, ServiceBillingRowFormValues } from './billingValidation';
+import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive } from './billingActivity';
+import type {
+  BillingFormValues,
+  ConsultationBillingFormValues,
+  LaboratoryBillingRowFormValues,
+  ServiceBillingCategory,
+  ServiceBillingRowFormValues,
+} from './billingValidation';
 import type { BillingItem, BillingType, PaymentStatus } from './types';
 
 export function formatCurrency(amount: number): string {
@@ -30,15 +37,15 @@ export interface BillingSummary {
   netTotal: number;
 }
 
+/** Radiology/Procedure only now — Laboratory forked to its own row shape/schema
+ * (billingValidation.ts's laboratoryBillingSchema), handled explicitly below. */
 const SERVICE_LABELS: Record<ServiceBillingCategory, string> = {
   radiology: 'Radiology',
-  laboratory: 'Laboratory',
   procedure: 'Procedure',
 };
 
 const SERVICE_BILLING_TYPES: Record<ServiceBillingCategory, BillingType> = {
   radiology: 'Radiology',
-  laboratory: 'Laboratory',
   procedure: 'Procedure',
 };
 
@@ -50,31 +57,29 @@ function summarizeRows<T extends { charge: number; quantity: number; discount: n
   return { charge, discount, count: activeRows.length };
 }
 
+/** Turns a {charge, discount, count} summary into a full BillingSummaryLine. */
+function toSummaryLine(billingType: BillingType, label: string, summary: { charge: number; discount: number; count: number }): BillingSummaryLine {
+  return {
+    billingType,
+    label,
+    charge: summary.charge,
+    discount: summary.discount,
+    net: Math.max(summary.charge - summary.discount, 0),
+    count: summary.count,
+    active: summary.count > 0,
+  };
+}
+
 /** Recomputed from current form values on every change — never cached, so it can't drift out of sync with the cards. */
 export function summarizeBilling(values: BillingFormValues): BillingSummary {
-  const consultationSummary = summarizeRows(values.consultation, isConsultationEntryActive);
+  // Explicit Consultation/Radiology/Laboratory/Procedure order (matches the cards) — Laboratory
+  // sits between Radiology and Procedure here even though it's summarized separately from the
+  // SERVICE_LABELS-driven categories below, since its row shape (itemType/itemId) differs.
   const lines: BillingSummaryLine[] = [
-    {
-      billingType: 'Consultation',
-      label: 'Consultation',
-      charge: consultationSummary.charge,
-      discount: consultationSummary.discount,
-      net: Math.max(consultationSummary.charge - consultationSummary.discount, 0),
-      count: consultationSummary.count,
-      active: consultationSummary.count > 0,
-    },
-    ...(Object.keys(SERVICE_LABELS) as ServiceBillingCategory[]).map((category) => {
-      const { charge, discount, count } = summarizeRows(values[category], isServiceEntryActive);
-      return {
-        billingType: SERVICE_BILLING_TYPES[category],
-        label: SERVICE_LABELS[category],
-        charge,
-        discount,
-        net: Math.max(charge - discount, 0),
-        count,
-        active: count > 0,
-      };
-    }),
+    toSummaryLine('Consultation', 'Consultation', summarizeRows(values.consultation, isConsultationEntryActive)),
+    toSummaryLine('Radiology', SERVICE_LABELS.radiology, summarizeRows(values.radiology, isServiceEntryActive)),
+    toSummaryLine('Laboratory', 'Laboratory', summarizeRows(values.laboratory, isLaboratoryEntryActive)),
+    toSummaryLine('Procedure', SERVICE_LABELS.procedure, summarizeRows(values.procedure, isServiceEntryActive)),
   ];
 
   const activeLines = lines.filter((line) => line.active);
@@ -124,6 +129,32 @@ function serviceRowToBillingItem(
 }
 
 /**
+ * Laboratory's own row -> BillingItem mapping — this is where a row's itemType/itemId splits
+ * into serviceId/packageId for the API (see apiBillingRepository.ts's toCreateRequest, which
+ * passes both straight through to CreateInvoiceLineItemRequest): a 'service' row sets serviceId
+ * and leaves packageId undefined (unchanged from how Laboratory always worked); a 'package' row
+ * sets packageId and leaves serviceId undefined — the two are never both set on one row, so
+ * every other place that already reads BillingItem.serviceId (describeBillingItem's Pharmacy
+ * case, PatientDetails, etc.) keeps working unmodified for plain-service Laboratory lines.
+ */
+function laboratoryRowToBillingItem(entry: LaboratoryBillingRowFormValues, index: number, paymentStatus: PaymentStatus): BillingItem {
+  return {
+    id: `laboratory-${index}`,
+    billingType: 'Laboratory',
+    consultantId: entry.consultantId,
+    serviceId: entry.itemType === 'service' ? entry.itemId : undefined,
+    packageId: entry.itemType === 'package' ? entry.itemId : undefined,
+    quantity: entry.quantity,
+    unitPrice: entry.charge,
+    discount: entry.discount,
+    discountApproved: entry.discountApproved,
+    discountApprovedBy: entry.discountApprovedBy || undefined,
+    paymentStatus,
+    total: Math.max(entry.quantity * entry.charge - entry.discount, 0),
+  };
+}
+
+/**
  * Flattens the form's per-category shape into the normalized BillingItem[] model — only
  * entries actually in use produce a line, and every category (Consultation included) can
  * contribute more than one. `values.paymentStatus` is the single whole-bill status (see
@@ -145,6 +176,11 @@ export function toBillingItems(values: BillingFormValues): BillingItem[] {
     });
   });
 
+  values.laboratory.forEach((row, index) => {
+    if (!isLaboratoryEntryActive(row)) return;
+    items.push(laboratoryRowToBillingItem(row, index, values.paymentStatus));
+  });
+
   return items;
 }
 
@@ -154,14 +190,17 @@ export interface BillingItemDescription {
 }
 
 /**
- * A saved BillingItem only stores Masters ids (department/service/consultant) — this resolves
- * them back to display names for read-only views like the patient detail page, via the
- * Masters engine's reference cache (registry.ts's resolveRecordLabel) — the same synchronous
- * id→label lookup reference fields use elsewhere. That cache is populated by a
- * `useMasterOptionsQuery(entityKey)` call somewhere in the calling page (see
- * LaboratoryBillingCard/ConsultationBillingCard/InvoiceDetailCard/BillingSummaryCard/
- * PatientBillingTab) — falls back to the raw id until that query resolves, then self-corrects
- * on the next render.
+ * A saved BillingItem only stores Masters/diagnostics ids (department/service/package/
+ * consultant) — this resolves them back to display names for read-only views like the patient
+ * detail page, via one of two synchronous id->label caches: the Masters engine's
+ * (registry.ts's resolveRecordLabel, for Consultation/Procedure, which still read the old
+ * DiagnosticTest catalog) or the standalone diagnostics one (referenceCache.ts's
+ * resolveDiagnosticServiceLabel/resolveDiagnosticPackageLabel, for Radiology/Laboratory, which
+ * now read the new typed DiagnosticService/DiagnosticPackage catalogs). Both are populated by a
+ * priming query call somewhere in the calling page (see LaboratoryBillingCard/
+ * RadiologyBillingCard/ConsultationBillingCard/InvoiceDetailCard/BillingSummaryCard/
+ * PatientDetails) — falls back to the raw id until that query resolves, then self-corrects on
+ * the next render.
  */
 export function describeBillingItem(item: BillingItem): BillingItemDescription {
   if (item.billingType === 'Consultation') {
@@ -180,9 +219,22 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     return { serviceLabel: item.serviceId ?? 'Pharmacy', consultantName: '—' };
   }
 
-  // Radiology/Laboratory/Procedure: serviceId is a DiagnosticTest id, consultantId a real Consultant id.
+  const consultantName = item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : '—';
+
+  if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {
+    // Both now read the new typed DiagnosticService catalog (Radiology's data source swapped
+    // from the old DiagnosticTest master — see hooks/useDiagnosticServices.ts). Laboratory can
+    // additionally be a package line (packageId set, serviceId unset — see
+    // laboratoryRowToBillingItem above).
+    if (item.billingType === 'Laboratory' && item.packageId) {
+      return { serviceLabel: resolveDiagnosticPackageLabel(item.packageId), consultantName };
+    }
+    return { serviceLabel: item.serviceId ? resolveDiagnosticServiceLabel(item.serviceId) : item.billingType, consultantName };
+  }
+
+  // Procedure only: serviceId is still a DiagnosticTest id, untouched by this feature.
   return {
     serviceLabel: item.serviceId ? resolveRecordLabel('diagnosticTest', item.serviceId) : item.billingType,
-    consultantName: item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : '—',
+    consultantName,
   };
 }

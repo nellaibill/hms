@@ -24,6 +24,7 @@ import { DepartmentName } from '@/components/DepartmentName';
 import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
 import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type BillingItem } from '@/features/billing';
+import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
 import { documentsApi } from '../../../services/apiClient';
 import { useAuth } from '../../auth/AuthContext';
@@ -597,6 +598,11 @@ function PatientBillingTab({ patientId }: { patientId: string }) {
   useMasterOptionsQuery('department');
   useMasterOptionsQuery('consultant');
   useMasterOptionsQuery('consultationType');
+  // Radiology/Laboratory now read the new typed DiagnosticService/DiagnosticPackage catalogs
+  // (see billingCalculations.ts's describeBillingItem) — these prime that cache the same way.
+  useDiagnosticServices('Radiology');
+  useDiagnosticServices('Laboratory');
+  usePrimeDiagnosticPackageCache();
 
   if (isPending) {
     return (

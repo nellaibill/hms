@@ -7,7 +7,7 @@ export const brandConfig: MasterEntityConfig = {
   labelPlural: 'Brands',
   description: 'Product brand master used across Inventory & ERP.',
   icon: Tag,
-  section: 'Brand & Manufacturer',
+  section: 'Pharmacy & Inventory',
   codeField: 'brandCode',
   nameField: 'brandName',
   fields: [

@@ -12,6 +12,7 @@ internal static class InvoiceMappingExtensions
         DepartmentId = item.DepartmentId,
         ConsultantId = item.ConsultantId,
         ServiceId = item.ServiceId,
+        PackageId = item.PackageId,
         Quantity = item.Quantity,
         UnitPrice = item.UnitPrice,
         Discount = item.Discount,

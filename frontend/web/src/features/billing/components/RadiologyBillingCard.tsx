@@ -1,6 +1,6 @@
 import { Scan } from 'lucide-react';
+import { useDiagnosticServices } from '@/features/diagnostics';
 import { useAllActiveConsultants } from '../hooks/useAllActiveConsultants';
-import { useDiagnosticTestServices } from '../hooks/useDiagnosticTestServices';
 import { ServiceBillingCard } from './ServiceBillingCard';
 
 interface RadiologyBillingCardProps {
@@ -9,8 +9,13 @@ interface RadiologyBillingCardProps {
   hasError: boolean;
 }
 
+/** Data source swapped from the old untyped DiagnosticTest master to the new typed
+ * DiagnosticService catalog (useDiagnosticServices) — UI/schema completely unchanged, since
+ * useDiagnosticServices maps to the same {id, name, price} shape useDiagnosticTestServices
+ * already returned. Laboratory forked off entirely (see LaboratoryBillingCard.tsx); Procedure
+ * stays on useDiagnosticTestServices, untouched. */
 export function RadiologyBillingCard(props: RadiologyBillingCardProps) {
-  const { services, isLoading } = useDiagnosticTestServices('Radiology');
+  const { services, isLoading } = useDiagnosticServices('Radiology');
   const { consultants } = useAllActiveConsultants();
 
   return (

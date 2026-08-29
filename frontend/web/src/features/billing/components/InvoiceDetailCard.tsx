@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import type { Billing, BillingItem } from '../types';
@@ -26,6 +27,11 @@ export function InvoiceDetailCard({ billing, onRecordPayment, onVoidInvoice }: I
   useMasterOptionsQuery('department');
   useMasterOptionsQuery('consultant');
   useMasterOptionsQuery('consultationType');
+  // Radiology/Laboratory now read the new typed DiagnosticService/DiagnosticPackage catalogs
+  // (see billingCalculations.ts's describeBillingItem) — these prime that cache the same way.
+  useDiagnosticServices('Radiology');
+  useDiagnosticServices('Laboratory');
+  usePrimeDiagnosticPackageCache();
   return (
     <Card>
       <CardHeader className="flex-row items-center gap-3 space-y-0">

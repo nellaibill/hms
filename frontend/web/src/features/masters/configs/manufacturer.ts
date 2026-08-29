@@ -7,7 +7,7 @@ export const manufacturerConfig: MasterEntityConfig = {
   labelPlural: 'Manufacturers',
   description: 'Manufacturer master with contact details, used across Inventory & ERP.',
   icon: Factory,
-  section: 'Brand & Manufacturer',
+  section: 'Pharmacy & Inventory',
   codeField: 'manufacturerCode',
   nameField: 'manufacturerName',
   fields: [

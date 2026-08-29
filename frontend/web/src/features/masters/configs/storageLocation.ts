@@ -13,7 +13,7 @@ export const storageLocationConfig: MasterEntityConfig = {
   labelPlural: 'Storage Locations',
   description: 'Rack/Shelf/Bin hierarchy within a Warehouse.',
   icon: MapPin,
-  section: 'Warehouse & Location',
+  section: 'Pharmacy & Inventory',
   codeField: 'locationCode',
   nameField: 'locationName',
   uniqueScopeField: 'warehouseId',

@@ -12,7 +12,7 @@ public class InvoiceTests
         int quantity = 1,
         decimal unitPrice = 500m,
         decimal discount = 0m) =>
-        new(billingType, "cardiology", "dr-revathi", "svc", quantity, unitPrice, discount, discount > 0, discount > 0 ? "Supervisor" : null);
+        new(billingType, "cardiology", "dr-revathi", "svc", null, quantity, unitPrice, discount, discount > 0, discount > 0 ? "Supervisor" : null);
 
     [Fact]
     public void Create_ComputesGrossDiscountAndNetFromItems()

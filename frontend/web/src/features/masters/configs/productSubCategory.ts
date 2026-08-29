@@ -7,7 +7,7 @@ export const productSubCategoryConfig: MasterEntityConfig = {
   labelPlural: 'Product Sub Categories',
   description: 'Second-level classification, each belonging to one Product Category.',
   icon: FolderTree,
-  section: 'Product Classification',
+  section: 'Pharmacy & Inventory',
   codeField: 'subCategoryCode',
   nameField: 'subCategoryName',
   fields: [

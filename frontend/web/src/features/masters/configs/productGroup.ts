@@ -7,7 +7,7 @@ export const productGroupConfig: MasterEntityConfig = {
   labelPlural: 'Product Groups',
   description: 'Third-level classification, each belonging to one Product Sub Category.',
   icon: FolderTree,
-  section: 'Product Classification',
+  section: 'Pharmacy & Inventory',
   codeField: 'groupCode',
   nameField: 'groupName',
   fields: [

@@ -88,7 +88,7 @@ public class InvoiceServiceTests
             Guid.NewGuid(),
             "Aravind Nadar",
             "NH20260001",
-            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, 1, 720m, 0m, false, null)],
+            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 0m, false, null)],
             createdBy: null);
         var itemId = invoice.Items.Single().Id;
         _repository.GetByIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
@@ -121,7 +121,7 @@ public class InvoiceServiceTests
             Guid.NewGuid(),
             "Aravind Nadar",
             "NH20260001",
-            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, 1, 720m, 0m, false, null)],
+            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 0m, false, null)],
             createdBy: null);
         var itemId = invoice.Items.Single().Id;
         invoice.MarkItemPaid(itemId, updatedBy: null);
