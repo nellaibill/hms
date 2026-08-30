@@ -112,7 +112,10 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
 
   return (
     <FormProvider {...methods}>
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {/* 340px matches DispenseCartForm's own cart-summary sidebar (frontend/web/src/features/
+          pharmacy/dispenses/components/DispenseCartForm.tsx) — same layout shape (line items
+          left, running summary + action right), so the two stay visually consistent. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-4">
           <ConsultationBillingCard
             expanded={expanded.Consultation}
