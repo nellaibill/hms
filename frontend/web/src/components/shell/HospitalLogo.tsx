@@ -41,11 +41,16 @@ export function HospitalLogo({ className, showName = true, invert = false, image
 
   return (
     <div className={cn('flex items-center gap-4', className)}>
-      {/* rounded-full (not rounded-md) so the chip reads as an intentional pill/circle against
-          any logo shape — square corners around a circular or near-square logo look like a
-          mistake; a pill shape doesn't, whether the logo inside is a circle or a wide
-          wordmark. */}
-      <span className={cn('flex shrink-0 rounded-full', invert && 'bg-white p-1.5 shadow-soft')}>
+      {/* overflow-hidden lives on this SAME element as the rounding and the white background —
+          not just on the inner LOGO_BOX — so whatever's visible is always clipped flush with
+          the chip's own shape. Splitting those across two nested boxes (padding+round on the
+          outer, clip only on the inner) let a squarish image's corners poke past the rounded
+          white background into the bare header color behind it, which is exactly the "doesn't
+          look right" case a square/near-square upload hit. rounded-lg (not rounded-full): a
+          full circle/pill clips real content off a wide wordmark's corners, which a small
+          fixed radius doesn't — it still reads as an intentional shape against a round logo
+          without cropping a landscape one. */}
+      <span className={cn('flex shrink-0 items-center justify-center overflow-hidden rounded-lg', invert && 'bg-white p-1.5 shadow-soft')}>
         <span className={cn(LOGO_BOX, imageClassName)}>
           <img src={logoUrl} alt={hospitalName} className="max-h-full max-w-full object-contain" />
         </span>
