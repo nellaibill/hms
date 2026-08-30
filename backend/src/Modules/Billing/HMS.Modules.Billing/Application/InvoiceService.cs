@@ -93,29 +93,43 @@ internal class InvoiceService : IInvoiceService
         {
             var totalTendered = payments.Sum(p => p.Amount);
 
-            // Splitting across more than one method must land exactly on the total — there's
-            // no single method left to hand change back to. A single method may still
-            // overtender (cash change), same as before this field supported more than one row.
-            if (payments.Count > 1 && totalTendered != invoice.NetAmount)
-            {
-                return Result<InvoiceResponse>.Failure(
-                    BillingErrorCodes.PaymentAmountMismatch,
-                    $"Split payments must add up to exactly the invoice's net amount ({invoice.NetAmount:C}) — there's no change when paying with more than one method.");
-            }
-            if (payments.Count == 1 && totalTendered < invoice.NetAmount)
+            if (totalTendered < invoice.NetAmount)
             {
                 return Result<InvoiceResponse>.Failure(
                     BillingErrorCodes.PaymentAmountMismatch,
                     $"The amount received ({totalTendered:C}) is less than the invoice's net amount ({invoice.NetAmount:C}).");
             }
 
+            // Cash is the only method that can realistically hand back change at the counter —
+            // a Card/Upi/BankTransfer row can't be partially refunded on the spot, so those
+            // rows must land within their actual share of the bill. E.g. a ₹700 bill paid as
+            // ₹570 Upi + ₹200 Cash is fine (₹70 change comes back in cash); ₹700 Upi + ₹200 Cash
+            // "just in case" isn't, since the Upi row alone already covers the whole bill with
+            // nowhere for that excess to realistically come from. A single row may still
+            // overtender regardless of method (this check only applies once split).
+            if (payments.Count > 1)
+            {
+                var nonCashTendered = payments.Where(p => p.Method != PaymentMethod.Cash).Sum(p => p.Amount);
+                if (nonCashTendered > invoice.NetAmount)
+                {
+                    return Result<InvoiceResponse>.Failure(
+                        BillingErrorCodes.PaymentAmountMismatch,
+                        $"Card, Upi, and BankTransfer amounts can't add up to more than the invoice's net amount ({invoice.NetAmount:C}) — any extra should be paid in Cash so change can be given back.");
+                }
+            }
+
             // Waterfall: apply each row's tendered amount against line items in order. Payment
             // still records per line item (see Domain/Payment.cs), so a row here may end up
             // split across more than one item, and an item may end up covered by more than one
-            // row — the validation above guarantees every item's Total is fully covered by the
-            // time this finishes (any leftover on the last row, only possible with a single
-            // overtendered row, is genuine change and is never persisted).
-            var remaining = payments.Select(p => (p.Method, p.ReferenceNumber, Amount: p.Amount)).ToList();
+            // row. Non-Cash rows are consumed before Cash rows regardless of the order they
+            // were entered in, so any leftover (change) always lands on Cash — the validation
+            // above guarantees the non-Cash rows alone never exceed NetAmount, so they're
+            // always fully consumed by the time Cash rows are reached; only Cash can end up
+            // with genuine, never-persisted leftover.
+            var remaining = payments
+                .OrderBy(p => p.Method == PaymentMethod.Cash)
+                .Select(p => (p.Method, p.ReferenceNumber, Amount: p.Amount))
+                .ToList();
             var payIndex = 0;
             foreach (var item in invoice.Items)
             {

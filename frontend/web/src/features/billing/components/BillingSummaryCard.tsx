@@ -23,10 +23,12 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
  * Payment is mandatory: a single row's Amount auto-fills to Net Payable the moment there's
  * something to bill (still editable, e.g. for a cash-tendered amount that computes change), and
  * the form schema (billingValidation.ts) rejects a save unless every row has a method and the
- * rows' amounts add up correctly — there's no "save as Pending, collect later" path from this
- * screen. "Add another payment method" splits the bill across more than one method (e.g. part
- * Cash, part UPI) — once split, the amounts must add up to *exactly* Net Payable, since there's
- * no single method left to hand change back to.
+ * rows add up to at least Net Payable — there's no "save as Pending, collect later" path from
+ * this screen. "Add another payment method" splits the bill across more than one method (e.g.
+ * ₹570 UPI + ₹200 Cash against a ₹700 bill) — any excess (₹70 here) still becomes Change, same
+ * as a single-row overpayment, but only Cash can actually cover it: the schema rejects a split
+ * where the non-Cash rows alone already exceed Net Payable, since a UPI/Card/Bank Transfer row
+ * can't be partially handed back at the counter the way cash can.
  *
  * Lines itemize by service (not just "Laboratory (2)") — reuses describeBillingItem, the
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
@@ -276,13 +278,18 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
               {paymentFields.length > 1 && (
                 <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-muted-foreground">Total entered</span>
-                  <span className={totalTendered === summary.netTotal ? 'font-medium text-success' : 'font-medium text-destructive'}>
+                  <span className={totalTendered >= summary.netTotal ? 'font-medium text-success' : 'font-medium text-destructive'}>
                     {formatCurrency(totalTendered)} of {formatCurrency(summary.netTotal)}
                   </span>
                 </div>
               )}
 
-              {paymentFields.length === 1 && totalTendered > summary.netTotal && (
+              {/* Change is a Cash concept, not tied to having exactly one row — a ₹700 bill
+                  paid as ₹570 UPI + ₹200 Cash is ₹70 change back in cash, same math as a
+                  single ₹770 Cash row against the same bill. The superRefine above is what
+                  actually keeps this honest (non-Cash rows can't be the source of the excess),
+                  so this display doesn't need to re-derive that itself. */}
+              {totalTendered > summary.netTotal && (
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="font-medium text-success">Change (to be returned)</span>
                   <span className="font-bold text-success">{formatCurrency(totalTendered - summary.netTotal)}</span>

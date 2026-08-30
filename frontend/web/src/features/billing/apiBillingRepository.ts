@@ -85,9 +85,10 @@ function toCreateRequest(patientId: string, visitId: string, values: BillingForm
       discountApprovedBy: item.discountApprovedBy ?? null,
     })),
     // billingValidation.ts's superRefine already guarantees every row has a method and the
-    // rows add up correctly (exactly the net total when split, or at least the net total for
-    // a single row) whenever anything's billed — non-null assertion on method mirrors that
-    // same established guarantee already relied on elsewhere in this file.
+    // rows add up to at least the net total whenever anything's billed (with any non-Cash
+    // excess rejected, since only Cash can realistically hand back change) — non-null
+    // assertion on method mirrors that same established guarantee already relied on elsewhere
+    // in this file.
     payments: values.payments.map((row) => ({ method: row.method!, amount: row.amount, referenceNumber: row.referenceNumber || null })),
   };
 }

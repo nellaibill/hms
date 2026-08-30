@@ -50,10 +50,21 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
   { defaultValues, onChange, onErrorStateChange, onDirtyChange, onSave, isSaving, saveError, saveErrorDetails },
   ref,
 ) {
+  // No `mode: 'onChange'` — with a whole-schema Zod resolver (not per-field), that mode fires
+  // one full-form async validation pass on every single field change, and several of those
+  // firing in quick succession (e.g. filling in a second Collect Payment row: amount, mode
+  // select, then another row) can resolve out of order, letting an earlier pass's now-stale
+  // result overwrite a later, correct one — surfacing a phantom error on a field that's
+  // actually valid. Same root cause and same fix already applied to
+  // PatientRegistrationForm.tsx for this exact symptom. RHF's default `reValidateMode:
+  // 'onChange'` still live-clears an error once a field has been validated at least once (via
+  // toggleCategory's per-category trigger() on collapse, or Save's full validate()), so nothing
+  // about the tab-dot/error-summary/inline-message UX regresses — errors just don't start
+  // appearing before the user has attempted to proceed, which matches how every other tab in
+  // this app already behaves.
   const methods = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
     defaultValues: defaultValues ?? defaultBillingFormValues,
-    mode: 'onChange',
   });
   const {
     trigger,

@@ -46,15 +46,17 @@ public record CreateInvoiceRequest
 
     /// <summary>Optional — when supplied, the whole invoice is paid in full at creation time
     /// (every line item marked Paid, atomic with the invoice's own save). Null/empty means
-    /// save Pending, exactly like every invoice created before this field existed. One row is
-    /// the common case (pay in full with a single method — may tender more than NetAmount,
-    /// with the excess treated as change and not persisted); more than one row is a split
-    /// payment across methods (e.g. part Cash, part UPI) and must add up to exactly NetAmount,
-    /// since there's no single method left to hand change back to. InvoiceService applies each
-    /// row against line items in order — a Payment row still records against one line item
-    /// each (see Domain/Payment.cs), so a single tendered amount here may end up split across
-    /// more than one Payment record, or one line item's Total may end up covered by more than
-    /// one row.</summary>
+    /// save Pending, exactly like every invoice created before this field existed. Every row
+    /// together must add up to at least NetAmount; any excess is treated as change (not
+    /// persisted) — same whether it's one row (e.g. a single Cash row tendering more than
+    /// NetAmount) or several (e.g. part Upi, part Cash, with the excess coming back in Cash).
+    /// Once split across more than one row, only Cash may be the source of that excess — the
+    /// non-Cash rows alone can't add up to more than NetAmount, since a Card/Upi/BankTransfer
+    /// row can't be partially handed back at the counter. InvoiceService applies each row
+    /// against line items in order (Cash rows last, so any leftover always lands there) — a
+    /// Payment row still records against one line item each (see Domain/Payment.cs), so a
+    /// single tendered amount here may end up split across more than one Payment record, or
+    /// one line item's Total may end up covered by more than one row.</summary>
     public IReadOnlyList<CreateInvoicePaymentRequest>? Payments { get; init; }
 }
 

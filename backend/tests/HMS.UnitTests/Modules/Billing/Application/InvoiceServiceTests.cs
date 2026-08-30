@@ -127,16 +127,19 @@ public class InvoiceServiceTests
     [Fact]
     public async Task CreateAsync_WithSplitPaymentMatchingTotal_PostsOnePaymentPerMethodPerItemSplit()
     {
-        // 1020 total, split 720 Cash + 300 Upi — the Cash row exactly covers the first item and
-        // the Upi row exactly covers the second, so this is still one Payment per item, but a
+        // 1020 total, split 300 Upi + 720 Cash — the Upi row exactly covers the first item and
+        // the Cash row exactly covers the second, so this is still one Payment per item, but a
         // 1:1 method-to-item split isn't guaranteed in general (see the next test for a split
-        // that crosses an item boundary).
+        // that crosses an item boundary). Non-Cash rows are always applied before Cash ones
+        // regardless of the order they're listed in the request (see InvoiceService.CreateAsync's
+        // own comment on why), which is why this item order matches Upi-then-Cash rather than
+        // the payments list's own order.
         var request = ValidRequest() with
         {
             Items =
             [
-                new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "cardiology", ConsultantId = "dr-revathi", Quantity = 1, UnitPrice = 720m },
-                new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ConsultantId = "dr-revathi", ServiceId = "svc-cbc", Quantity = 1, UnitPrice = 300m },
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "cardiology", ConsultantId = "dr-revathi", Quantity = 1, UnitPrice = 300m },
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ConsultantId = "dr-revathi", ServiceId = "svc-cbc", Quantity = 1, UnitPrice = 720m },
             ],
             Payments =
             [
@@ -149,16 +152,18 @@ public class InvoiceServiceTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
-        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash && p.Amount == 720m), Arg.Any<CancellationToken>());
+        await _paymentRepository.Received(2).AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Upi && p.Amount == 300m && p.ReferenceNumber == "UPI-REF-99"), Arg.Any<CancellationToken>());
+        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash && p.Amount == 720m), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task CreateAsync_WithSplitPaymentCrossingAnItemBoundary_AllocatesEachRowAcrossItemsAsNeeded()
     {
-        // 1000 total across 2 items (600 + 400), split 700 Cash + 300 Upi — neither row lines
-        // up with an item boundary, so the waterfall must produce: item1 gets 600 from Cash;
-        // item2 gets the Cash row's remaining 100 plus 300 from Upi (2 Payment rows on item2).
+        // 1000 total across 2 items (600 + 400), split 300 Upi + 700 Cash — neither row lines up
+        // with an item boundary, so the waterfall must produce: item1 gets 300 from Upi plus 300
+        // from Cash; item2 gets the rest of Cash (400). Upi always applies before Cash (see
+        // InvoiceService.CreateAsync), so this is Upi-first regardless of the payments list order.
         var request = ValidRequest() with
         {
             Items =
@@ -178,9 +183,36 @@ public class InvoiceServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
         await _paymentRepository.Received(3).AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
-        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash && p.Amount == 600m), Arg.Any<CancellationToken>());
-        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash && p.Amount == 100m), Arg.Any<CancellationToken>());
         await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Upi && p.Amount == 300m), Arg.Any<CancellationToken>());
+        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash && p.Amount == 300m), Arg.Any<CancellationToken>());
+        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash && p.Amount == 400m), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithSplitPaymentOvertenderedInCash_TreatsTheExcessAsChangeFromCash()
+    {
+        // The real-world case this exists for: a 700 bill paid as 570 Upi + 200 Cash — 770
+        // tendered, 70 over. Since only Cash can realistically hand back change at the counter,
+        // the 70 must come out of the Cash row (130 of it applied, not the full 200), never out
+        // of Upi — confirmed by asserting the Upi Payment is for the full 570 tendered, and Cash
+        // for exactly 130 (not 200), with nothing persisted for the 70 unconsumed remainder.
+        var request = ValidRequest() with
+        {
+            Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "cardiology", ConsultantId = "dr-revathi", Quantity = 1, UnitPrice = 700m }],
+            Payments =
+            [
+                new CreateInvoicePaymentRequest { Method = PaymentMethod.Upi, Amount = 570m },
+                new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 200m },
+            ],
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        await _paymentRepository.Received(2).AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Upi && p.Amount == 570m), Arg.Any<CancellationToken>());
+        await _paymentRepository.Received(1).AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash && p.Amount == 130m), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -216,6 +248,30 @@ public class InvoiceServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(BillingErrorCodes.PaymentAmountMismatch);
         await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNonCashRowsAloneExceedingTotal_ReturnsPaymentAmountMismatchFailure()
+    {
+        // 700 bill, Upi 750 + Cash 100 — the Upi row alone already covers more than the whole
+        // bill, and Upi can't hand back the 50 it's over by the way Cash could, so this must be
+        // rejected even though the combined total (850) is more than enough.
+        var request = ValidRequest() with
+        {
+            Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "cardiology", ConsultantId = "dr-revathi", Quantity = 1, UnitPrice = 700m }],
+            Payments =
+            [
+                new CreateInvoicePaymentRequest { Method = PaymentMethod.Upi, Amount = 750m },
+                new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 100m },
+            ],
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.PaymentAmountMismatch);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

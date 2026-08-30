@@ -226,22 +226,27 @@ export const billingFormSchema = z
     });
 
     const totalTendered = data.payments.reduce((sum, row) => sum + row.amount, 0);
-    if (data.payments.length > 1) {
-      // Split across more than one method must land exactly on the total — there's no single
-      // method left to hand change back to.
-      if (totalTendered !== netTotal) {
+    if (totalTendered < netTotal) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: data.payments.length > 1 ? ['payments'] : ['payments', 0, 'amount'],
+        message: 'Full payment is required before this invoice can be saved',
+      });
+    } else if (data.payments.length > 1) {
+      // Cash is the only method that can realistically hand back change at the counter — a
+      // UPI/Card/Bank Transfer row can't be partially refunded on the spot, so those rows must
+      // land within their actual share of the bill. E.g. a ₹700 bill paid as ₹570 UPI + ₹200
+      // Cash is fine (₹70 change comes back in cash); ₹700 UPI + ₹200 Cash "just in case" isn't,
+      // since the UPI alone already exceeds the whole bill with nowhere for that excess to
+      // realistically come from.
+      const nonCashTendered = data.payments.filter((row) => row.method !== 'Cash').reduce((sum, row) => sum + row.amount, 0);
+      if (nonCashTendered > netTotal) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['payments'],
-          message: "Split payments must add up to exactly the Net Payable amount — there's no change when paying with more than one method.",
+          message: "Card, UPI, and Bank Transfer amounts can't add up to more than the Net Payable amount — any extra should be paid in Cash so change can be given back.",
         });
       }
-    } else if (totalTendered < netTotal) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['payments', 0, 'amount'],
-        message: 'Full payment is required before this invoice can be saved',
-      });
     }
   });
 
