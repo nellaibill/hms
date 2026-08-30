@@ -157,10 +157,10 @@ function laboratoryRowToBillingItem(entry: LaboratoryBillingRowFormValues, index
 /**
  * Flattens the form's per-category shape into the normalized BillingItem[] model — only
  * entries actually in use produce a line, and every category (Consultation included) can
- * contribute more than one. Every produced line starts Pending, matching what the backend
- * actually does at creation — whether it ends up Paid depends on the Payment Section (see
- * billingValidation.ts's amountReceived/paymentMode), which InvoiceService applies
- * server-side, not something this pre-save preview can know for certain.
+ * contribute more than one. Every produced line starts Pending here — the form itself requires
+ * full payment before save (see billingValidation.ts's amountReceived/paymentMode), but marking
+ * every item Paid is something InvoiceService applies server-side once the save actually
+ * succeeds, not something this pre-save preview does.
  */
 export function toBillingItems(values: BillingFormValues): BillingItem[] {
   const items: BillingItem[] = [];

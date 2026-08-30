@@ -132,11 +132,13 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
                   // consultant scoped to the old department isn't valid for the new one.
                   setValue(`${basePath}.consultantId`, '');
                 }}
-                // Locked when this row came straight from the patient's recorded visit —
-                // billing shouldn't be able to silently disagree with who the visit record
-                // says actually saw the patient. See fromVisit's own comment in
-                // billingValidation.ts for why Consultation Type below isn't locked the same way.
-                disabled={fromVisit}
+                // Deliberately NOT locked even when fromVisit — OPD Billing Entry bills any
+                // existing visit, not just the one right after registration, so the patient's
+                // last recorded department/consultant can legitimately differ from who they're
+                // actually seeing today. The "(from registration)" label above is enough of a
+                // hint; forcing staff to bill the wrong doctor because the field was locked was
+                // a real problem, not a safeguard. Same reasoning already applied to
+                // Consultation Type below — this just extends it consistently.
               />
             )}
           />
@@ -156,7 +158,6 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
                 value={field.value}
                 onValueChange={field.onChange}
                 departmentId={departmentId || undefined}
-                disabled={fromVisit}
               />
             )}
           />
