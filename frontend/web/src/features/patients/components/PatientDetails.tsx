@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
 import { DistrictName } from '@/components/DistrictName';
@@ -36,7 +37,7 @@ import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
 import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
-import type { DocumentResponse, PatientVisit } from '@hms/shared';
+import type { DocumentResponse, PatientVisit, VisitConsultation } from '@hms/shared';
 
 interface PatientDetailsProps {
   patient: Patient;
@@ -54,16 +55,44 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
 }
 
 /** The compact bordered card every Overview section is built from. */
-function SectionCard({ title, icon: Icon, action, children }: { title: string; icon: React.ElementType; action?: ReactNode; children: ReactNode }) {
+function SectionCard({
+  title,
+  icon: Icon,
+  action,
+  centerTitle,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  action?: ReactNode;
+  /** Centers the title within the header row instead of the default left alignment — used by
+   * the Overview tab's top row of cards (Personal & Contact, Address & Emergency, Registration
+   * Details, Allergy Details). These cards are narrow (4 to a row), so an action button (e.g.
+   * Allergy Details' "+ Add Allergy") can't sit inline beside a truly centered title without
+   * overlapping it — it's stacked on its own centered row underneath instead. */
+  centerTitle?: boolean;
+  children: ReactNode;
+}) {
+  const heading = (
+    <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+      <Icon className="h-4 w-4 text-primary" />
+      {title}
+    </h2>
+  );
+
   return (
     <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-3">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          <Icon className="h-4 w-4 text-primary" />
-          {title}
-        </h2>
-        {action}
-      </div>
+      {centerTitle ? (
+        <div className="flex flex-col items-center gap-1.5">
+          {heading}
+          {action}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          {heading}
+          {action}
+        </div>
+      )}
       {children}
     </div>
   );
@@ -100,7 +129,7 @@ function documentStatusBadgeVariant(status: DocumentResponse['status']): BadgePr
 
 function PersonalContactCard({ patient }: { patient: Patient }) {
   return (
-    <SectionCard title="Personal & Contact" icon={User}>
+    <SectionCard title="Personal & Contact" icon={User} centerTitle>
       <dl className="grid grid-cols-2 gap-x-3">
         <Field label="Title" value={patient.title} />
         <Field label="First name" value={patient.firstName} />
@@ -121,7 +150,7 @@ function AddressEmergencyCard({ patient }: { patient: Patient }) {
   const visibleContacts = showAll ? patient.emergencyContacts : patient.emergencyContacts.slice(0, 2);
 
   return (
-    <SectionCard title="Address & Emergency" icon={MapPin}>
+    <SectionCard title="Address & Emergency" icon={MapPin} centerTitle>
       <div className="text-sm text-foreground">
         <p>{[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}</p>
         <p className="text-muted-foreground">
@@ -164,7 +193,7 @@ function AddressEmergencyCard({ patient }: { patient: Patient }) {
 
 function RegistrationDetailsCard({ patient }: { patient: Patient }) {
   return (
-    <SectionCard title="Registration Details" icon={ClipboardList}>
+    <SectionCard title="Registration Details" icon={ClipboardList} centerTitle>
       <dl className="grid grid-cols-2 gap-x-3">
         <Field label="Registration source" value={humanize(patient.modeOfArrivalSource)} />
         {patient.modeOfArrivalChannel && <Field label="Arrival channel" value={humanize(patient.modeOfArrivalChannel)} />}
@@ -287,6 +316,7 @@ function AllergyDetailsCard({ patient }: { patient: Patient }) {
     <SectionCard
       title="Allergy Details"
       icon={HeartPulse}
+      centerTitle
       action={
         canEdit &&
         !showAddForm && (
@@ -365,6 +395,44 @@ function AtAGlanceStrip({ patient }: { patient: Patient }) {
 
 /* ------------------------------------------------------------------------ Recent Visits */
 
+/** The primary consultant is shown inline; any additional ones (a visit can have more than one —
+ * e.g. a referring and a consulting doctor) used to collapse into a dead-end "+N" label with no
+ * way to see who they were. The badge is now a tooltip trigger that lists every extra consultant
+ * by name, resolved the same way the primary one is. */
+function ConsultantsCell({ consultations }: { consultations: VisitConsultation[] }) {
+  const [primary, ...rest] = consultations;
+  if (!primary) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <ConsultantName consultantId={primary.consultantId} />
+      {rest.length > 0 && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              +{rest.length}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <ul className="flex flex-col gap-0.5">
+              {rest.map((consultation) => (
+                <li key={consultation.consultantId}>
+                  <ConsultantName consultantId={consultation.consultantId} />
+                </li>
+              ))}
+            </ul>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </span>
+  );
+}
+
 function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number }) {
   const rows = limit ? visits.slice(0, limit) : visits;
 
@@ -382,7 +450,6 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
         <tbody className="divide-y divide-border">
           {rows.map((visit) => {
             const primary = visit.consultations[0];
-            const extra = visit.consultations.length - 1;
             return (
               <tr key={visit.visitId} className="hover:bg-muted/30">
                 <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{new Date(visit.createdAt).toLocaleDateString('en-IN')}</td>
@@ -393,8 +460,7 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
                 </td>
                 <td className="px-3 py-2 text-foreground">{primary ? <DepartmentName departmentId={primary.departmentId} /> : '—'}</td>
                 <td className="px-3 py-2 text-foreground">
-                  {primary ? <ConsultantName consultantId={primary.consultantId} /> : '—'}
-                  {extra > 0 && <span className="text-muted-foreground"> +{extra}</span>}
+                  <ConsultantsCell consultations={visit.consultations} />
                 </td>
               </tr>
             );
