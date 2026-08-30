@@ -112,10 +112,11 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
 
   return (
     <FormProvider {...methods}>
-      {/* 340px matches DispenseCartForm's own cart-summary sidebar (frontend/web/src/features/
-          pharmacy/dispenses/components/DispenseCartForm.tsx) — same layout shape (line items
-          left, running summary + action right), so the two stay visually consistent. */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      {/* 380px matches BrandingForm's own two-column sidebar (frontend/web/src/features/
+          branding/components/BrandingForm.tsx) — the widest sidebar width already established
+          in this codebase, needed here since Collect Payment now packs three fields (Amount/
+          Mode/Reference) per payment row plus the split-payment controls. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
           <ConsultationBillingCard
             expanded={expanded.Consultation}
