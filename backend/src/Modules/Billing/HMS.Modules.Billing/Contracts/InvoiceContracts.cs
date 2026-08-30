@@ -45,21 +45,30 @@ public record CreateInvoiceRequest
     public IReadOnlyList<CreateInvoiceLineItemRequest> Items { get; init; } = [];
 
     /// <summary>Optional — when supplied, the whole invoice is paid in full at creation time
-    /// (every line item marked Paid, one Payment row per line, same as the standalone Record
-    /// Payment flow but atomic with the invoice's own save). Null means save Pending, exactly
-    /// like every invoice created before this field existed — there's no partial-amount
-    /// concept here; "how much cash changes hands" (Amount Received vs. Net Payable, and any
-    /// change to return) is a front-desk/UI calculation only, never sent to or stored by the
-    /// server.</summary>
-    public CreateInvoicePaymentRequest? Payment { get; init; }
+    /// (every line item marked Paid, atomic with the invoice's own save). Null/empty means
+    /// save Pending, exactly like every invoice created before this field existed. One row is
+    /// the common case (pay in full with a single method — may tender more than NetAmount,
+    /// with the excess treated as change and not persisted); more than one row is a split
+    /// payment across methods (e.g. part Cash, part UPI) and must add up to exactly NetAmount,
+    /// since there's no single method left to hand change back to. InvoiceService applies each
+    /// row against line items in order — a Payment row still records against one line item
+    /// each (see Domain/Payment.cs), so a single tendered amount here may end up split across
+    /// more than one Payment record, or one line item's Total may end up covered by more than
+    /// one row.</summary>
+    public IReadOnlyList<CreateInvoicePaymentRequest>? Payments { get; init; }
 }
 
-/// <summary>The invoice-creation-time equivalent of <see cref="RecordPaymentRequest"/> — see
-/// <see cref="CreateInvoiceRequest.Payment"/> for why this exists instead of just reusing
+/// <summary>One payment-method row at invoice-creation time — see
+/// <see cref="CreateInvoiceRequest.Payments"/> for why this is a list rather than reusing
 /// RecordPaymentRequest per line item after the fact.</summary>
 public record CreateInvoicePaymentRequest
 {
     public PaymentMethod Method { get; init; }
+
+    /// <summary>How much was tendered via this method — unlike RecordPaymentRequest (which
+    /// always pays a line item's own Total), this is real user input, needed once more than
+    /// one row can exist for the same invoice.</summary>
+    public decimal Amount { get; init; }
 
     /// <summary>Optional free-text transaction/reference number (UPI ref, card slip, bank
     /// transfer UTR). See Domain/Payment.cs.</summary>

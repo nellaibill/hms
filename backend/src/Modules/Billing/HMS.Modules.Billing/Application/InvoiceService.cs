@@ -86,18 +86,56 @@ internal class InvoiceService : IInvoiceService
 
         await _repository.AddAsync(invoice, cancellationToken);
 
-        // Optional pay-in-full-at-creation: mark every line item Paid and record its Payment
+        // Optional pay-in-full-at-creation: mark every line item Paid and record Payment rows
         // in the same save as the invoice itself, so there's no window where the invoice
-        // exists with some lines paid and others not from a partial failure. Mirrors
-        // RecordPaymentAsync's per-line Payment.Create call below, just looped and unsaved
-        // until this one shared SaveChangesAsync.
-        if (request.Payment is not null)
+        // exists with some lines paid and others not from a partial failure.
+        if (request.Payments is { Count: > 0 } payments)
         {
+            var totalTendered = payments.Sum(p => p.Amount);
+
+            // Splitting across more than one method must land exactly on the total — there's
+            // no single method left to hand change back to. A single method may still
+            // overtender (cash change), same as before this field supported more than one row.
+            if (payments.Count > 1 && totalTendered != invoice.NetAmount)
+            {
+                return Result<InvoiceResponse>.Failure(
+                    BillingErrorCodes.PaymentAmountMismatch,
+                    $"Split payments must add up to exactly the invoice's net amount ({invoice.NetAmount:C}) — there's no change when paying with more than one method.");
+            }
+            if (payments.Count == 1 && totalTendered < invoice.NetAmount)
+            {
+                return Result<InvoiceResponse>.Failure(
+                    BillingErrorCodes.PaymentAmountMismatch,
+                    $"The amount received ({totalTendered:C}) is less than the invoice's net amount ({invoice.NetAmount:C}).");
+            }
+
+            // Waterfall: apply each row's tendered amount against line items in order. Payment
+            // still records per line item (see Domain/Payment.cs), so a row here may end up
+            // split across more than one item, and an item may end up covered by more than one
+            // row — the validation above guarantees every item's Total is fully covered by the
+            // time this finishes (any leftover on the last row, only possible with a single
+            // overtendered row, is genuine change and is never persisted).
+            var remaining = payments.Select(p => (p.Method, p.ReferenceNumber, Amount: p.Amount)).ToList();
+            var payIndex = 0;
             foreach (var item in invoice.Items)
             {
-                var paidItem = invoice.MarkItemPaid(item.Id, actorId);
-                var payment = Payment.Create(invoice.Id, paidItem.Id, paidItem.Total, request.Payment.Method, request.Payment.ReferenceNumber, actorId);
-                await _paymentRepository.AddAsync(payment, cancellationToken);
+                var owed = item.Total;
+                while (owed > 0 && payIndex < remaining.Count)
+                {
+                    var (method, referenceNumber, available) = remaining[payIndex];
+                    var applied = Math.Min(owed, available);
+                    if (applied > 0)
+                    {
+                        await _paymentRepository.AddAsync(Payment.Create(invoice.Id, item.Id, applied, method, referenceNumber, actorId), cancellationToken);
+                        owed -= applied;
+                        remaining[payIndex] = (method, referenceNumber, available - applied);
+                    }
+                    if (remaining[payIndex].Amount <= 0)
+                    {
+                        payIndex++;
+                    }
+                }
+                invoice.MarkItemPaid(item.Id, actorId);
             }
         }
 

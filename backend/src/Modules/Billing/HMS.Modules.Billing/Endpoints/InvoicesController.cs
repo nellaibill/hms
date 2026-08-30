@@ -137,6 +137,7 @@ public class InvoicesController : ControllerBase
             BillingErrorCodes.HasPayments => StatusCodes.Status409Conflict,
             BillingErrorCodes.EmptyInvoice => StatusCodes.Status400BadRequest,
             BillingErrorCodes.InvalidPatient => StatusCodes.Status400BadRequest,
+            BillingErrorCodes.PaymentAmountMismatch => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

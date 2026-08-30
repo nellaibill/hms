@@ -16,9 +16,11 @@ export interface CreateInvoiceLineItemRequest {
   discountApprovedBy?: string | null;
 }
 
-/** Mirrors HMS.Modules.Billing.Contracts.CreateInvoicePaymentRequest. */
+/** Mirrors HMS.Modules.Billing.Contracts.CreateInvoicePaymentRequest — one payment-method row. */
 export interface CreateInvoicePaymentRequest {
   method: PaymentMethod;
+  /** How much was tendered via this method. */
+  amount: number;
   referenceNumber?: string | null;
 }
 
@@ -29,9 +31,12 @@ export interface CreateInvoiceRequest {
   patientName: string;
   patientUhid: string;
   items: CreateInvoiceLineItemRequest[];
-  /** Optional — when supplied, the whole invoice is paid in full at creation time. Null/undefined
-   * saves Pending, exactly like before this field existed. See Contracts/InvoiceContracts.cs. */
-  payment?: CreateInvoicePaymentRequest | null;
+  /** Optional — when supplied, the whole invoice is paid in full at creation time. Null/undefined/
+   * empty saves Pending, exactly like before this field existed. One row pays in full with a
+   * single method (may tender more than the net total, with the excess treated as change and
+   * not stored); more than one row is a split payment across methods and must add up to exactly
+   * the net total. See Contracts/InvoiceContracts.cs. */
+  payments?: CreateInvoicePaymentRequest[] | null;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.RecordPaymentRequest. */
