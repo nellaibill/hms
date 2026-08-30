@@ -25,8 +25,8 @@ export default function LoginPage() {
   const { data: brandingConfig } = useBrandingQuery();
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
 
-  const [hospitalCode, setHospitalCode] = useState('');
-  const [role, setRole] = useState<Role>('doctor');
+  const [hospitalCode, setHospitalCode] = useState('lhs');
+  const [role, setRole] = useState<Role>('superAdmin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +86,7 @@ export default function LoginPage() {
               <Input
                 id="hospitalCode"
                 autoComplete="organization"
-                placeholder="e.g. kauvery"
+                placeholder="e.g. cauvery"
                 value={hospitalCode}
                 onChange={(event) => setHospitalCode(event.target.value)}
               />
