@@ -46,7 +46,7 @@ public class BrandingController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Uploads/replaces the hospital logo (PNG/JPG/WEBP/SVG, max 500KB).</summary>
+    /// <summary>Uploads/replaces the hospital logo (PNG/JPG/WEBP/SVG, max 500KB, 16-2000px per side for raster formats — content is decoded/sanity-checked, not just trusted by extension).</summary>
     /// <response code="200">The logo was uploaded and set.</response>
     /// <response code="400">The file is missing or failed validation.</response>
     [HttpPost("logo")]
