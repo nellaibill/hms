@@ -16,11 +16,11 @@ import { PAYMENT_METHODS } from './types';
  *
  * Payment collection (amountReceived/paymentMode/referenceNumber) is deliberately *not* a
  * per-line field either, for the same reason — a visit is settled in one transaction at the
- * counter. It's full-or-nothing: leave amountReceived at 0 to save Pending (today's only
- * behavior before this field existed), or enter an amount >= the invoice's net total to pay
- * it in full on save — there's no partial-payment concept in the backend to support anything
- * in between, so the schema rejects it below rather than silently accepting a value that
- * can't actually be recorded.
+ * counter. It's mandatory once anything is billed: the patient is only sent through to the
+ * consultant once the counter is paid in full, so the top-level superRefine below rejects a
+ * save unless amountReceived >= the invoice's net total and a paymentMode is set — there's no
+ * "save as Pending and collect later" path from this screen, and no partial-payment concept in
+ * the backend to support anything less than the full amount either.
  */
 export const consultationBillingSchema = z
   .object({
@@ -200,16 +200,22 @@ export const billingFormSchema = z
     referenceNumber: z.string().default(''),
   })
   .superRefine((data, ctx) => {
-    if (data.amountReceived <= 0) return;
-    if (!data.paymentMode) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentMode'], message: 'Payment mode is required when an amount is received' });
-    }
     const netTotal = computeNetTotal(data);
+    // Nothing billed yet — "at least one item is required" is enforced separately once Save
+    // is actually attempted (apiBillingRepository.ts), not here on every keystroke.
+    if (netTotal <= 0) return;
+    // Full payment is required to save from this screen — the patient is only sent through to
+    // the consultant once billing is settled at the counter, so there's no "save as Pending
+    // and collect later" path here anymore (unlike the standalone Invoice Detail page, which
+    // still supports recording payment after the fact for whatever reason).
+    if (!data.paymentMode) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentMode'], message: 'Payment mode is required' });
+    }
     if (data.amountReceived < netTotal) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['amountReceived'],
-        message: 'Amount received must be at least the net amount, or left blank to save as pending',
+        message: 'Full payment is required before this invoice can be saved',
       });
     }
   });
