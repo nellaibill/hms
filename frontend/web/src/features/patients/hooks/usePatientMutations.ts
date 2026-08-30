@@ -73,9 +73,14 @@ export function useRemovePatientAllergyMutation() {
 }
 
 // A visit isn't part of the Patient response (it's fetched separately, same as Documents), so
-// unlike the allergy mutations above there's no `patients` query to invalidate here.
+// unlike the allergy mutations above there's no `patients` query to invalidate here — instead
+// invalidate ['patient-visits', id] (usePatientVisitsQuery), which is what the Overview tab's
+// Recent Visits card and At-a-Glance stats actually read. Without this, the newly recorded visit
+// stayed invisible on the page navigated back to until the 30s query staleTime lapsed.
 export function useCreatePatientVisitMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, request }: { id: string; request: CreatePatientVisitRequest }) => patientsApi.createVisit(id, request),
+    onSuccess: (_data, { id }) => queryClient.invalidateQueries({ queryKey: ['patient-visits', id] }),
   });
 }
