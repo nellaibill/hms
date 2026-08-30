@@ -89,7 +89,12 @@ $envVars = @(
     "PlatformAdminSeed__Password=$PlatformAdminPassword",
     "Cors__AllowedOrigins__0=$PublicOrigin"
 )
-nssm set $ServiceName AppEnvironmentExtra ($envVars -join "`0")
+# NSSM expects each KEY=VALUE pair as its own command-line argument (it builds the
+# REG_MULTI_SZ registry value internally) - NOT one string joined by a delimiter. Passing
+# $envVars directly here lets PowerShell expand the array into separate native-command
+# arguments; joining them into a single string (e.g. with a null character) previously
+# caused everything after the first entry to be silently dropped.
+nssm set $ServiceName AppEnvironmentExtra $envVars
 
 Write-Host "Starting service '$ServiceName'..." -ForegroundColor Cyan
 nssm start $ServiceName
