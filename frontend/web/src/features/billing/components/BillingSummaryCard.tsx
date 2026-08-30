@@ -1,4 +1,5 @@
 import { Receipt } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,11 +13,16 @@ import type { BillingFormValues } from '../billingValidation';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
 
 /**
- * Recomputed live from the four category cards, plus a whole-bill Payment Section (Amount
- * Received / Payment Mode / Reference No.) — a visit is settled in a single transaction at
- * the counter, not per category, so this is one shared block rather than four separate
- * per-card controls. Sticky on large screens so it stays in view while a long bill is being
- * built up.
+ * Recomputed live from the four category cards, plus a whole-bill "Collect Payment" block
+ * (Amount Received / Payment Mode / Reference No.) — a visit is settled in a single
+ * transaction at the counter, not per category, so this is one shared block rather than four
+ * separate per-card controls. Sticky on large screens so it stays in view while a long bill is
+ * being built up.
+ *
+ * Payment is mandatory: Amount Received auto-fills to Net Payable the moment there's something
+ * to bill (still editable, e.g. for a cash-tendered amount that computes change), and the form
+ * schema (billingValidation.ts) rejects a save unless the full amount and a payment mode are
+ * present — there's no "save as Pending, collect later" path from this screen.
  *
  * Lines itemize by service (not just "Laboratory (2)") — reuses describeBillingItem, the
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
@@ -26,6 +32,7 @@ export function BillingSummaryCard() {
   const {
     watch,
     control,
+    setValue,
     formState: { errors },
   } = useFormContext<BillingFormValues>();
   const values = watch();
@@ -44,6 +51,19 @@ export function BillingSummaryCard() {
   usePrimeDiagnosticPackageCache();
   const summary = summarizeBilling(values);
   const items = toBillingItems(values);
+
+  // Payment is mandatory before this invoice can be saved (the patient isn't sent through to
+  // the consultant until billing is settled at the counter), so Amount Received defaults to the
+  // exact Net Payable as soon as there's something to bill — staff only need to type over it for
+  // a cash-tendered amount that differs (to compute change), not to enter the number from
+  // scratch every time. Stops re-asserting itself the moment the field is manually edited, so it
+  // never fights typing.
+  const amountManuallyEditedRef = useRef(false);
+  useEffect(() => {
+    if (!amountManuallyEditedRef.current) {
+      setValue('amountReceived', summary.netTotal, { shouldValidate: true });
+    }
+  }, [summary.netTotal, setValue]);
 
   return (
     <Card className="lg:sticky lg:top-20">
@@ -105,7 +125,12 @@ export function BillingSummaryCard() {
         <Separator />
 
         <div className="flex flex-col gap-3">
-          <span className="text-sm font-semibold text-foreground">Payment Section</span>
+          <span className="text-sm font-semibold text-foreground">Collect Payment</span>
+          {items.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Full payment is required before this invoice can be saved — the patient proceeds to the consultant only once billing is settled here.
+            </p>
+          )}
 
           <Field label="Amount Received (₹)" htmlFor="billing-amount-received" error={errors.amountReceived?.message} className="flex flex-col gap-1">
             <Controller
@@ -123,13 +148,16 @@ export function BillingSummaryCard() {
                   // the same as 0 to every calculation/validation already (netTotal check,
                   // Change display, the create request), so hiding it costs nothing.
                   value={field.value === 0 ? '' : field.value}
-                  onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                  onChange={(e) => {
+                    amountManuallyEditedRef.current = true;
+                    field.onChange(e.target.value === '' ? 0 : Number(e.target.value));
+                  }}
                 />
               )}
             />
           </Field>
 
-          {values.amountReceived > 0 && (
+          {items.length > 0 && (
             <>
               <Field label="Payment Mode" htmlFor="billing-payment-mode" error={errors.paymentMode?.message} className="flex flex-col gap-1">
                 <Controller
@@ -170,8 +198,6 @@ export function BillingSummaryCard() {
               )}
             </>
           )}
-
-          <p className="text-xs text-muted-foreground">You can save the invoice in Pending status and collect payment later.</p>
         </div>
       </CardContent>
     </Card>

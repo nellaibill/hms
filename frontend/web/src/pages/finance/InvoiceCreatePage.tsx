@@ -55,11 +55,6 @@ export default function InvoiceCreatePage() {
   const recordPaymentMutation = useRecordPaymentMutation();
   const voidInvoiceMutation = useVoidInvoiceMutation();
 
-  // Drives the Save button's label below — reused from BillingStep's already-exposed onChange
-  // (fired on every form change) rather than plumbing new state through BillingSummaryCard,
-  // since this is the one place outside BillingStep that needs to know amountReceived live.
-  const [amountReceived, setAmountReceived] = useState(0);
-
   // Registration Details already captured Department/Consultant/Consultation Type for this
   // patient's visit — re-asking for the same three fields here would just be redundant data
   // entry for the common case (billing the visit that was just registered). Prefilled from the
@@ -203,7 +198,6 @@ export default function InvoiceCreatePage() {
     setPatient(null);
     setSavedInvoice(null);
     setSaveError(null);
-    setAmountReceived(0);
   }
 
   return (
@@ -298,7 +292,6 @@ export default function InvoiceCreatePage() {
                       ref={billingRef}
                       defaultValues={billingDefaultValues}
                       onDirtyChange={setIsDirty}
-                      onChange={(values) => setAmountReceived(values.amountReceived)}
                     />
                   )}
 
@@ -310,13 +303,7 @@ export default function InvoiceCreatePage() {
 
                   <div className="flex justify-end">
                     <Button onClick={handleSave} disabled={createInvoiceMutation.isPending}>
-                      {createInvoiceMutation.isPending
-                        ? amountReceived > 0
-                          ? 'Recording…'
-                          : 'Saving…'
-                        : amountReceived > 0
-                          ? 'Save & Record Payment'
-                          : 'Save Invoice'}
+                      {createInvoiceMutation.isPending ? 'Collecting…' : 'Collect Payment'}
                     </Button>
                   </div>
                 </>
