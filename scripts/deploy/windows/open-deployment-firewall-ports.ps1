@@ -1,6 +1,6 @@
 <#
   Opens exactly the ports this deployment needs publicly reachable, and nothing else.
-  PostgreSQL (5432) is deliberately never touched here — it must stay reachable only from
+  PostgreSQL (5432) is deliberately never touched here - it must stay reachable only from
   localhost (the API running on the same VPS), never from the public internet.
 
   Run this in an ELEVATED PowerShell (Run as Administrator).
@@ -31,7 +31,7 @@ Assert-Admin
 
 function Add-RuleIfMissing($name, $port) {
     if (Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue) {
-        Write-Host "Rule '$name' already exists — skipping." -ForegroundColor DarkGray
+        Write-Host "Rule '$name' already exists - skipping." -ForegroundColor DarkGray
         return
     }
     New-NetFirewallRule -DisplayName $name -Direction Inbound -Protocol TCP -LocalPort $port -Action Allow | Out-Null
@@ -49,6 +49,6 @@ if ($ExposeApiPortDirectly) {
 }
 
 Write-Host ""
-Write-Host "PostgreSQL port 5432 was NOT opened — it stays private to this machine by design." -ForegroundColor Yellow
+Write-Host "PostgreSQL port 5432 was NOT opened - it stays private to this machine by design." -ForegroundColor Yellow
 Write-Host "Current inbound rules matching this deployment:" -ForegroundColor Cyan
 Get-NetFirewallRule -DisplayName "HMS*" | Select-Object DisplayName, Enabled, Direction, Action

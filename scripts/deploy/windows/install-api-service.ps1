@@ -1,10 +1,10 @@
 <#
   Installs the published HMS.Api as a Windows Service (via NSSM) so it runs continuously,
-  survives reboots, and restarts on crash — the native-Windows equivalent of a systemd unit
+  survives reboots, and restarts on crash - the native-Windows equivalent of a systemd unit
   or Docker's `restart: unless-stopped`. No application code changes required: this wraps
   the exact same `dotnet HMS.Api.dll` process `dotnet run` uses in dev, just published and
   configured entirely through environment variables (the same Section__Key convention
-  docker-compose.yml already uses for the Docker deployment — see docs/Configuration.md).
+  docker-compose.yml already uses for the Docker deployment - see docs/Configuration.md).
 
   Run this in an ELEVATED PowerShell (Run as Administrator), after `dotnet publish` (see
   docs/Deployment.md's Manual Deployment Steps for the full sequence).
@@ -48,7 +48,7 @@ function Assert-Admin {
 Assert-Admin
 
 if (-not (Test-Path (Join-Path $PublishDir "HMS.Api.dll"))) {
-    throw "HMS.Api.dll not found in $PublishDir — run 'dotnet publish' first (see docs/Deployment.md)."
+    throw "HMS.Api.dll not found in $PublishDir - run 'dotnet publish' first (see docs/Deployment.md)."
 }
 
 if (-not (Get-Command nssm -ErrorAction SilentlyContinue)) {
@@ -59,7 +59,7 @@ if (-not (Get-Command nssm -ErrorAction SilentlyContinue)) {
 $dotnetPath = (Get-Command dotnet).Source
 
 if (Get-Service $ServiceName -ErrorAction SilentlyContinue) {
-    Write-Host "Service '$ServiceName' already exists — stopping and removing it first." -ForegroundColor Yellow
+    Write-Host "Service '$ServiceName' already exists - stopping and removing it first." -ForegroundColor Yellow
     nssm stop $ServiceName confirm | Out-Null
     nssm remove $ServiceName confirm | Out-Null
 }
@@ -75,7 +75,7 @@ nssm set $ServiceName AppRotateFiles 1
 # Kept as ASPNETCORE_ENVIRONMENT=Development deliberately, matching the working setup
 # already validated by hand earlier in this deployment: it auto-applies EF Core migrations
 # and seeds Platform Admin / the legacy tenant on every startup (Program.cs), same as
-# `dotnet run` does. This is an MVP deployment (per docs/Deployment.md — no secrets-manager
+# `dotnet run` does. This is an MVP deployment (per docs/Deployment.md - no secrets-manager
 # integration exists yet either), not a hardened production posture; see that doc for the
 # `dotnet HMS.Api.dll migrate` alternative if you want migrations decoupled from app startup.
 $envVars = @(

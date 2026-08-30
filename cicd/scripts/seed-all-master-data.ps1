@@ -6,7 +6,7 @@
     already exist), so this is safe to re-run.
 
 .DESCRIPTION
-    A thin wrapper — no seeding logic of its own — that forwards the same
+    A thin wrapper - no seeding logic of its own - that forwards the same
     HospitalCode/Username/Password/ApiBaseUrl to seed-departments-and-doctors.ps1,
     seed-appointment-and-consultation-types.ps1, and seed-diagnostic-tests.ps1 in sequence,
     so a fresh tenant's master data can be seeded with one command instead of three.
