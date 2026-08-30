@@ -1,7 +1,7 @@
 import type { Patient } from '@hms/shared';
 import { Loader2, Search, UserPlus2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast-context';
 import {
@@ -21,8 +21,16 @@ const RESULTS_PAGE_SIZE = 100;
 /** "Old Patient Registration" — the Reception & Registration hub's existing-patient search + list (docs/ScreenInventory.md). */
 export default function PatientsListPage() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<PatientSearchFilters>(emptyPatientSearchFilters);
-  const [activeFilters, setActiveFilters] = useState<PatientSearchFilters | null>(null);
+  // The header's Patient Search box lands here with a typed-but-unpicked query via router state
+  // (see HeaderSearchBox) — seed both the visible field and an already-active search so results
+  // show immediately instead of requiring a second, redundant click on Search.
+  const location = useLocation();
+  const initialName = (location.state as { name?: string } | null)?.name?.trim();
+  const initialFilters: PatientSearchFilters = initialName
+    ? { ...emptyPatientSearchFilters, name: initialName }
+    : emptyPatientSearchFilters;
+  const [filters, setFilters] = useState<PatientSearchFilters>(initialFilters);
+  const [activeFilters, setActiveFilters] = useState<PatientSearchFilters | null>(initialName ? initialFilters : null);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState('-createdAt');
   const [patientPendingDelete, setPatientPendingDelete] = useState<Patient | null>(null);
