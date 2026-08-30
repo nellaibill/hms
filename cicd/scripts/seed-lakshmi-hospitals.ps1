@@ -423,9 +423,19 @@ if ($migratableTests.Count -gt 0) {
     $existingProviders = Get-AllPaged -Entity 'diagnostic-providers'
     $existingServices = Get-AllPaged -Entity 'diagnostic-services'
 
-    $usedCategoryCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]($existingCategories | ForEach-Object { $_.code }))
-    $usedProviderCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]($existingProviders | ForEach-Object { $_.code }))
-    $usedServiceCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]($existingServices | ForEach-Object { $_.code }))
+    # @(...) around each pipeline is load-bearing, not stylistic: on a fresh tenant these
+    # existing-* lists are empty, so `$list | ForEach-Object { ... }` emits zero objects, and a
+    # zero-object pipeline expression evaluates to $null rather than an empty array (the same
+    # auto-unrolling behavior Get-AllPaged's own leading-comma return guards against above).
+    # [string[]]$null is still $null, and HashSet[string]::new($null) fails with "Multiple
+    # ambiguous overloads found for 'new' and the argument count: 1" - PowerShell can't tell
+    # whether a null argument means the IEnumerable<T> constructor or the int-capacity one.
+    # @() forces a real (possibly empty) array through the cast every time, which is
+    # unambiguous. Confirmed live: this only ever surfaced on a genuinely empty tenant - every
+    # run against lhs already had existing rows, so the pipeline was never actually empty here.
+    $usedCategoryCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]@($existingCategories | ForEach-Object { $_.code }))
+    $usedProviderCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]@($existingProviders | ForEach-Object { $_.code }))
+    $usedServiceCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]@($existingServices | ForEach-Object { $_.code }))
 
     $categoriesCreated = 0
     $providersCreated = 0
