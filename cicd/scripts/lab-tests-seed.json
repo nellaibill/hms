@@ -1240,22 +1240,6 @@
     "referenceLab": "Q - LAB"
   },
   {
-    "name": "Anti-Beta 2 (β2) Microglobulin",
-    "serviceType": "Laboratory",
-    "category": "ENDOCRINOLOGY",
-    "price": 1400.0,
-    "isOutsourced": true,
-    "referenceLab": "ANDERSON"
-  },
-  {
-    "name": "Anti-Beta 2 (β2) Glycoprotein IgM",
-    "serviceType": "Laboratory",
-    "category": "ENDOCRINOLOGY",
-    "price": 1400.0,
-    "isOutsourced": true,
-    "referenceLab": "ANDERSON"
-  },
-  {
     "name": "Anti-Cardiolipin Antibody IgM / IgA / IgG",
     "serviceType": "Laboratory",
     "category": "ENDOCRINOLOGY",
