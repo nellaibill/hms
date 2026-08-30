@@ -1,19 +1,30 @@
 import type { Patient } from '@hms/shared';
 import { ArrowLeft, FilePlus2, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useBlocker, useNavigate } from 'react-router-dom';
+import { Link, useBlocker } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BillingStep,
+  InvoiceDetailCard,
+  LabDetailsCard,
   PatientPicker,
+  RecordPaymentDialog,
+  VoidInvoiceDialog,
   defaultBillingFormValues,
+  describeBillingItem,
   emptyConsultation,
   useCreateInvoiceMutation,
+  useRecordPaymentMutation,
+  useVoidInvoiceMutation,
+  type Billing,
   type BillingFormValues,
+  type BillingItem,
   type BillingStepHandle,
   type ConsultationBillingFormValues,
+  type PaymentMethod,
 } from '../../features/billing';
 import { usePatientVisitsQuery } from '../../features/patients';
 
@@ -27,11 +38,22 @@ import { usePatientVisitsQuery } from '../../features/patients';
  * forking it, so the two entry points can never drift out of sync.
  */
 export default function InvoiceCreatePage() {
-  const navigate = useNavigate();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const billingRef = useRef<BillingStepHandle>(null);
   const createInvoiceMutation = useCreateInvoiceMutation();
+
+  // Set once Save succeeds — swaps the editable billing form for the real invoice view
+  // (InvoiceDetailCard, same component the standalone Invoice Detail page uses) rendered
+  // right here, so billing a patient never has to leave this page. Kept in local state
+  // rather than a query subscription: this page doesn't otherwise know the invoice's id
+  // until the create call returns, and Record Payment/Void below update it directly from
+  // their own mutation results rather than refetching.
+  const [savedInvoice, setSavedInvoice] = useState<Billing | null>(null);
+  const [itemPendingPayment, setItemPendingPayment] = useState<BillingItem | null>(null);
+  const [isVoiding, setIsVoiding] = useState(false);
+  const recordPaymentMutation = useRecordPaymentMutation();
+  const voidInvoiceMutation = useVoidInvoiceMutation();
 
   // Drives the Save button's label below — reused from BillingStep's already-exposed onChange
   // (fired on every form change) rather than plumbing new state through BillingSummaryCard,
@@ -148,14 +170,40 @@ export default function InvoiceCreatePage() {
         setSaveError('Add at least one billing item before saving.');
         return;
       }
-      // Clear the dirty flag before navigating so the blocker above doesn't intercept this
-      // very navigation — the invoice is safely saved, there's nothing left to lose.
+      // Clear the dirty flag so the unsaved-changes blocker doesn't fire once the form below
+      // is replaced by the read-only invoice view — there's nothing left to lose.
       setIsDirty(false);
       isDirtyRef.current = false;
-      navigate(`/finance/accounts/${billing.id}`);
+      setSavedInvoice(billing);
     } catch {
       setSaveError('Could not save the invoice. Please try again.');
     }
+  }
+
+  function handleConfirmPayment(method: PaymentMethod) {
+    if (!savedInvoice || !itemPendingPayment) return;
+    recordPaymentMutation.mutate(
+      { billingId: savedInvoice.id, itemId: itemPendingPayment.id, method },
+      { onSuccess: (updated) => { setSavedInvoice(updated); setItemPendingPayment(null); } },
+    );
+  }
+
+  function handleConfirmVoid(reason: string) {
+    if (!savedInvoice) return;
+    voidInvoiceMutation.mutate(
+      { billingId: savedInvoice.id, reason },
+      { onSuccess: (updated) => { setSavedInvoice(updated); setIsVoiding(false); } },
+    );
+  }
+
+  // Resets the page for the next patient without leaving it — same reasoning as saving
+  // itself staying on this page: a receptionist billing several walk-ins in a row shouldn't
+  // have to navigate back to Accounts and Finance and re-open OPD Billing Entry each time.
+  function handleBillAnotherPatient() {
+    setPatient(null);
+    setSavedInvoice(null);
+    setSaveError(null);
+    setAmountReceived(0);
   }
 
   return (
@@ -204,41 +252,75 @@ export default function InvoiceCreatePage() {
                 </CardContent>
               </Card>
 
-              {visitsPending ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading this patient's visit details…
-                </div>
+              {savedInvoice ? (
+                // Saved — shows the real invoice view right here (same InvoiceDetailCard the
+                // standalone Invoice Detail page renders) instead of navigating there, so
+                // billing this patient never leaves this page. Record Payment/Void still work,
+                // same as on that page.
+                <>
+                  <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
+                    Invoice {savedInvoice.invoiceNumber ?? savedInvoice.id} saved.
+                  </p>
+                  {savedInvoice.items.some((item) => item.billingType === 'Laboratory') ? (
+                    <Tabs defaultValue="summary">
+                      <TabsList>
+                        <TabsTrigger value="summary">Summary</TabsTrigger>
+                        <TabsTrigger value="lab-details">Lab Details</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="summary" className="mt-4">
+                        <InvoiceDetailCard billing={savedInvoice} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
+                      </TabsContent>
+                      <TabsContent value="lab-details" className="mt-4">
+                        <LabDetailsCard billing={savedInvoice} />
+                      </TabsContent>
+                    </Tabs>
+                  ) : (
+                    <InvoiceDetailCard billing={savedInvoice} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
+                  )}
+                  <div className="flex justify-end">
+                    <Button onClick={handleBillAnotherPatient}>Bill Another Patient</Button>
+                  </div>
+                </>
               ) : (
-                // key forces a fresh BillingStep (and a fresh RHF form) per patient — defaultValues
-                // is only ever read once by useForm, so without this, picking a different patient
-                // after the form already mounted would keep showing the first patient's prefill.
-                <BillingStep
-                  key={patient.id}
-                  ref={billingRef}
-                  defaultValues={billingDefaultValues}
-                  onDirtyChange={setIsDirty}
-                  onChange={(values) => setAmountReceived(values.amountReceived)}
-                />
-              )}
+                <>
+                  {visitsPending ? (
+                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading this patient's visit details…
+                    </div>
+                  ) : (
+                    // key forces a fresh BillingStep (and a fresh RHF form) per patient -
+                    // defaultValues is only ever read once by useForm, so without this, picking
+                    // a different patient after the form already mounted would keep showing the
+                    // first patient's prefill.
+                    <BillingStep
+                      key={patient.id}
+                      ref={billingRef}
+                      defaultValues={billingDefaultValues}
+                      onDirtyChange={setIsDirty}
+                      onChange={(values) => setAmountReceived(values.amountReceived)}
+                    />
+                  )}
 
-              {saveError && (
-                <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {saveError}
-                </p>
-              )}
+                  {saveError && (
+                    <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {saveError}
+                    </p>
+                  )}
 
-              <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={createInvoiceMutation.isPending}>
-                  {createInvoiceMutation.isPending
-                    ? amountReceived > 0
-                      ? 'Recording…'
-                      : 'Saving…'
-                    : amountReceived > 0
-                      ? 'Save & Record Payment'
-                      : 'Save Invoice'}
-                </Button>
-              </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handleSave} disabled={createInvoiceMutation.isPending}>
+                      {createInvoiceMutation.isPending
+                        ? amountReceived > 0
+                          ? 'Recording…'
+                          : 'Saving…'
+                        : amountReceived > 0
+                          ? 'Save & Record Payment'
+                          : 'Save Invoice'}
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -263,6 +345,25 @@ export default function InvoiceCreatePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {itemPendingPayment && (
+        <RecordPaymentDialog
+          serviceLabel={`${itemPendingPayment.billingType} — ${describeBillingItem(itemPendingPayment).serviceLabel}`}
+          amount={itemPendingPayment.total}
+          isSaving={recordPaymentMutation.isPending}
+          onConfirm={handleConfirmPayment}
+          onCancel={() => setItemPendingPayment(null)}
+        />
+      )}
+
+      {isVoiding && savedInvoice && (
+        <VoidInvoiceDialog
+          invoiceLabel={`Invoice ${savedInvoice.invoiceNumber ?? savedInvoice.id}`}
+          isSaving={voidInvoiceMutation.isPending}
+          onConfirm={handleConfirmVoid}
+          onCancel={() => setIsVoiding(false)}
+        />
+      )}
     </div>
   );
 }
