@@ -32,10 +32,13 @@ export function BrandingLivePreview({ hospitalName, appTitle, logoUrl, fontFamil
     <div style={scopeStyle} className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex items-center gap-3 bg-header px-4 py-3 text-header-foreground">
         {logoUrl ? (
-          // Fixed box, never stretched/cropped — same containment HospitalLogo.tsx uses for
-          // the real header, so this preview doesn't understate how a badly-shaped upload
-          // (very tall, very wide, etc.) will actually render once saved.
-          <span className="flex h-7 w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-white/90 px-1">
+          // Same containment + shrink-to-fit chip as the real header (HospitalLogo.tsx): never
+          // stretched/cropped, and the white background hugs the image's actual rendered size
+          // (w-auto, capped by max-w-20) rather than always spanning a fixed width — a fixed
+          // width left an obviously boxy white margin around anything narrower than the cap,
+          // most visibly a square/circular logo. rounded-full for the same reason that
+          // component uses it: square corners read as a mistake against a circular logo.
+          <span className="flex h-7 w-auto max-w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 px-1.5">
             <img src={logoUrl} alt={hospitalName} className="max-h-full max-w-full object-contain" />
           </span>
         ) : (
