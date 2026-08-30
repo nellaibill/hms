@@ -32,13 +32,11 @@ export function BrandingLivePreview({ hospitalName, appTitle, logoUrl, fontFamil
     <div style={scopeStyle} className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex items-center gap-3 bg-header px-4 py-3 text-header-foreground">
         {logoUrl ? (
-          // Same chip as the real header (HospitalLogo.tsx) — shrink-to-fit width (never a
-          // boxy fixed-width margin around a small logo), rounded-lg rather than a full
-          // circle/pill (which would clip real content off a wide wordmark's corners), and
-          // overflow-hidden on this same padded/rounded element so nothing pokes past the
-          // white background's edge the way a squarish image could when clipping only
-          // happened on an inner, unpadded box.
-          <span className="flex h-7 w-auto max-w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/90 px-1.5">
+          // Same as the real header (HospitalLogo.tsx) — shrink-to-fit width, no background
+          // chip. A background behind the image kept fighting whatever the actual logo looked
+          // like (a visible box around a logo with its own backing, corners of an opaque image
+          // poking past a rounded edge) — see that component's own doc comment for the detail.
+          <span className="flex h-7 w-auto max-w-20 shrink-0 items-center justify-center overflow-hidden">
             <img src={logoUrl} alt={hospitalName} className="max-h-full max-w-full object-contain" />
           </span>
         ) : (
