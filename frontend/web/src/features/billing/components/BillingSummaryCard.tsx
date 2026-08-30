@@ -1,6 +1,7 @@
-import { Receipt } from 'lucide-react';
+import { Plus, Receipt, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { Controller, useFormContext } from 'react-hook-form';
+import { Controller, useFieldArray, useFormContext } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,7 +10,7 @@ import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/feature
 import { Field } from '@/features/patients/components/FormSection';
 import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency, summarizeBilling, toBillingItems } from '../billingCalculations';
-import type { BillingFormValues } from '../billingValidation';
+import { emptyPaymentSplit, type BillingFormValues } from '../billingValidation';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
 
 /**
@@ -19,16 +20,35 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
  * separate per-card controls. Sticky on large screens so it stays in view while a long bill is
  * being built up.
  *
- * Payment is mandatory: Amount Received auto-fills to Net Payable the moment there's something
- * to bill (still editable, e.g. for a cash-tendered amount that computes change), and the form
- * schema (billingValidation.ts) rejects a save unless the full amount and a payment mode are
- * present — there's no "save as Pending, collect later" path from this screen.
+ * Payment is mandatory: a single row's Amount auto-fills to Net Payable the moment there's
+ * something to bill (still editable, e.g. for a cash-tendered amount that computes change), and
+ * the form schema (billingValidation.ts) rejects a save unless every row has a method and the
+ * rows add up to at least Net Payable — there's no "save as Pending, collect later" path from
+ * this screen. "Add another payment method" splits the bill across more than one method (e.g.
+ * ₹570 UPI + ₹200 Cash against a ₹700 bill) — any excess (₹70 here) still becomes Change, same
+ * as a single-row overpayment, but only Cash can actually cover it: the schema rejects a split
+ * where the non-Cash rows alone already exceed Net Payable, since a UPI/Card/Bank Transfer row
+ * can't be partially handed back at the counter the way cash can.
  *
  * Lines itemize by service (not just "Laboratory (2)") — reuses describeBillingItem, the
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
  * name reads identically everywhere it's shown.
+ *
+ * The save action itself (onSave/isSaving/saveError) also renders here, inside this sticky
+ * card, rather than below the four billing category cards — this card's height doesn't change
+ * when a category expands, so an action anchored here stays put instead of jumping down the
+ * page every time a section opens. Optional: InvoiceCreatePage is the only caller that wires
+ * these up today (BillingStep's own doc comment has the details); omitting onSave renders the
+ * summary with no save action at all.
  */
-export function BillingSummaryCard() {
+interface BillingSummaryCardProps {
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveError?: string | null;
+  saveErrorDetails?: string[];
+}
+
+export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetails }: BillingSummaryCardProps) {
   const {
     watch,
     control,
@@ -51,19 +71,22 @@ export function BillingSummaryCard() {
   usePrimeDiagnosticPackageCache();
   const summary = summarizeBilling(values);
   const items = toBillingItems(values);
+  const { fields: paymentFields, append: appendPayment, remove: removePayment } = useFieldArray({ control, name: 'payments' });
+  const totalTendered = values.payments.reduce((sum, row) => sum + row.amount, 0);
 
   // Payment is mandatory before this invoice can be saved (the patient isn't sent through to
-  // the consultant until billing is settled at the counter), so Amount Received defaults to the
-  // exact Net Payable as soon as there's something to bill — staff only need to type over it for
-  // a cash-tendered amount that differs (to compute change), not to enter the number from
-  // scratch every time. Stops re-asserting itself the moment the field is manually edited, so it
-  // never fights typing.
-  const amountManuallyEditedRef = useRef(false);
+  // the consultant until billing is settled at the counter), so a single row's Amount defaults
+  // to the exact Net Payable as soon as there's something to bill — staff only need to type
+  // over it for a cash-tendered amount that differs (to compute change), not to enter the
+  // number from scratch every time. Stops re-asserting itself the moment any row is touched —
+  // including splitting into a second row, since "auto equals the total" no longer makes sense
+  // once the counter is manually dividing it up — so it never fights typing.
+  const paymentsManuallyEditedRef = useRef(false);
   useEffect(() => {
-    if (!amountManuallyEditedRef.current) {
-      setValue('amountReceived', summary.netTotal, { shouldValidate: true });
+    if (!paymentsManuallyEditedRef.current && paymentFields.length === 1) {
+      setValue('payments.0.amount', summary.netTotal, { shouldValidate: true });
     }
-  }, [summary.netTotal, setValue]);
+  }, [summary.netTotal, setValue, paymentFields.length]);
 
   return (
     <Card className="lg:sticky lg:top-20">
@@ -127,78 +150,177 @@ export function BillingSummaryCard() {
         <div className="flex flex-col gap-3">
           <span className="text-sm font-semibold text-foreground">Collect Payment</span>
           {items.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Full payment is required before this invoice can be saved — the patient proceeds to the consultant only once billing is settled here.
-            </p>
-          )}
-
-          <Field label="Amount Received (₹)" htmlFor="billing-amount-received" error={errors.amountReceived?.message} className="flex flex-col gap-1">
-            <Controller
-              name="amountReceived"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  id="billing-amount-received"
-                  type="number"
-                  min={0}
-                  inputMode="decimal"
-                  // Showing literal 0 here would make it uneditable — deleting it just
-                  // re-renders back to "0" every keystroke (field.value is never truly empty),
-                  // so a receptionist could never clear it to type a real amount. Blank reads
-                  // the same as 0 to every calculation/validation already (netTotal check,
-                  // Change display, the create request), so hiding it costs nothing.
-                  value={field.value === 0 ? '' : field.value}
-                  onChange={(e) => {
-                    amountManuallyEditedRef.current = true;
-                    field.onChange(e.target.value === '' ? 0 : Number(e.target.value));
-                  }}
-                />
-              )}
-            />
-          </Field>
-
-          {items.length > 0 && (
             <>
-              <Field label="Payment Mode" htmlFor="billing-payment-mode" error={errors.paymentMode?.message} className="flex flex-col gap-1">
-                <Controller
-                  name="paymentMode"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                      <SelectTrigger id="billing-payment-mode">
-                        <SelectValue placeholder="Select payment mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PAYMENT_METHODS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {PAYMENT_METHOD_LABELS[option]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
+              <p className="text-xs text-muted-foreground">
+                Full payment is required before this invoice can be saved — the patient proceeds to the consultant only once billing is settled here.
+              </p>
 
-              <Field label="Reference / Transaction No. (Optional)" htmlFor="billing-reference-number" className="flex flex-col gap-1">
-                <Controller
-                  name="referenceNumber"
-                  control={control}
-                  render={({ field }) => (
-                    <Input id="billing-reference-number" placeholder="Enter reference or transaction number" value={field.value} onChange={field.onChange} />
+              {paymentFields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className={paymentFields.length > 1 ? 'flex flex-col gap-3 border-b border-dashed border-border pb-3' : 'flex flex-col gap-3'}
+                >
+                  {paymentFields.length > 1 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Payment method {index + 1}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remove this payment method"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          paymentsManuallyEditedRef.current = true;
+                          removePayment(index);
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   )}
-                />
-              </Field>
 
-              {values.amountReceived > summary.netTotal && (
+                  <Field
+                    label="Amount (₹)"
+                    htmlFor={`billing-payment-${index}-amount`}
+                    error={errors.payments?.[index]?.amount?.message}
+                    className="flex flex-col gap-1"
+                  >
+                    <Controller
+                      name={`payments.${index}.amount`}
+                      control={control}
+                      render={({ field: amountField }) => (
+                        <Input
+                          id={`billing-payment-${index}-amount`}
+                          type="number"
+                          min={0}
+                          inputMode="decimal"
+                          // Showing literal 0 here would make it uneditable — deleting it just
+                          // re-renders back to "0" every keystroke (field.value is never truly
+                          // empty), so a receptionist could never clear it to type a real
+                          // amount. Blank reads the same as 0 to every calculation/validation
+                          // already (netTotal check, Change display, the create request), so
+                          // hiding it costs nothing.
+                          value={amountField.value === 0 ? '' : amountField.value}
+                          onChange={(e) => {
+                            paymentsManuallyEditedRef.current = true;
+                            amountField.onChange(e.target.value === '' ? 0 : Number(e.target.value));
+                          }}
+                        />
+                      )}
+                    />
+                  </Field>
+
+                  <Field
+                    label="Payment Mode"
+                    htmlFor={`billing-payment-${index}-mode`}
+                    error={errors.payments?.[index]?.method?.message}
+                    className="flex flex-col gap-1"
+                  >
+                    <Controller
+                      name={`payments.${index}.method`}
+                      control={control}
+                      render={({ field: methodField }) => (
+                        <Select value={methodField.value ?? ''} onValueChange={methodField.onChange}>
+                          <SelectTrigger id={`billing-payment-${index}-mode`}>
+                            <SelectValue placeholder="Select payment mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PAYMENT_METHODS.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {PAYMENT_METHOD_LABELS[option]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </Field>
+
+                  <Field label="Reference / Transaction No. (Optional)" htmlFor={`billing-payment-${index}-reference`} className="flex flex-col gap-1">
+                    <Controller
+                      name={`payments.${index}.referenceNumber`}
+                      control={control}
+                      render={({ field: referenceField }) => (
+                        <Input
+                          id={`billing-payment-${index}-reference`}
+                          placeholder="Enter reference or transaction number"
+                          value={referenceField.value}
+                          onChange={referenceField.onChange}
+                        />
+                      )}
+                    />
+                  </Field>
+                </div>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5"
+                onClick={() => {
+                  paymentsManuallyEditedRef.current = true;
+                  appendPayment({ ...emptyPaymentSplit });
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add another payment method
+              </Button>
+
+              {/* A superRefine issue at path ['payments'] (the array itself, not one row) lands
+                  under RHF's `root` key once the field is registered via useFieldArray, not
+                  directly on `errors.payments.message` — this covers both, since which one
+                  RHF actually uses isn't part of its public contract. */}
+              {(errors.payments?.root?.message ?? errors.payments?.message) && (
+                <p className="text-xs text-destructive">{errors.payments?.root?.message ?? errors.payments?.message}</p>
+              )}
+
+              {paymentFields.length > 1 && (
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-muted-foreground">Total entered</span>
+                  <span className={totalTendered >= summary.netTotal ? 'font-medium text-success' : 'font-medium text-destructive'}>
+                    {formatCurrency(totalTendered)} of {formatCurrency(summary.netTotal)}
+                  </span>
+                </div>
+              )}
+
+              {/* Change is a Cash concept, not tied to having exactly one row — a ₹700 bill
+                  paid as ₹570 UPI + ₹200 Cash is ₹70 change back in cash, same math as a
+                  single ₹770 Cash row against the same bill. The superRefine above is what
+                  actually keeps this honest (non-Cash rows can't be the source of the excess),
+                  so this display doesn't need to re-derive that itself. */}
+              {totalTendered > summary.netTotal && (
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="font-medium text-success">Change (to be returned)</span>
-                  <span className="font-bold text-success">{formatCurrency(values.amountReceived - summary.netTotal)}</span>
+                  <span className="font-bold text-success">{formatCurrency(totalTendered - summary.netTotal)}</span>
                 </div>
               )}
             </>
           )}
         </div>
+
+        {onSave && (
+          <>
+            <Separator />
+
+            {(saveError || (saveErrorDetails && saveErrorDetails.length > 0)) && (
+              <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {saveError && <p>{saveError}</p>}
+                {saveErrorDetails && saveErrorDetails.length > 0 && (
+                  <ul className="list-inside list-disc">
+                    {saveErrorDetails.map((message) => (
+                      <li key={message}>{message}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <Button onClick={onSave} disabled={isSaving} className="w-full">
+              {isSaving ? 'Collecting…' : 'Collect Payment'}
+            </Button>
+          </>
+        )}
       </CardContent>
     </Card>
   );

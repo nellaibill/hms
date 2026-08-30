@@ -14,13 +14,15 @@ import { PAYMENT_METHODS } from './types';
  * tests, several procedures, or (a patient seen by more than one specialist in one visit)
  * several consultations.
  *
- * Payment collection (amountReceived/paymentMode/referenceNumber) is deliberately *not* a
- * per-line field either, for the same reason — a visit is settled in one transaction at the
- * counter. It's mandatory once anything is billed: the patient is only sent through to the
- * consultant once the counter is paid in full, so the top-level superRefine below rejects a
- * save unless amountReceived >= the invoice's net total and a paymentMode is set — there's no
- * "save as Pending and collect later" path from this screen, and no partial-payment concept in
- * the backend to support anything less than the full amount either.
+ * Payment collection (`payments`) is deliberately *not* a per-line field either, for the same
+ * reason — a visit is settled in one transaction at the counter. It's mandatory once anything
+ * is billed: the patient is only sent through to the consultant once the counter is paid in
+ * full, so the top-level superRefine below rejects a save unless every row has a method and the
+ * rows' amounts add up correctly. `payments` is a list rather than a single amount/mode/
+ * reference set so the counter can split one bill across more than one method (part Cash, part
+ * UPI) — the common case is still exactly one row. A single row may tender more than the net
+ * total (change); more than one row must add up to *exactly* the net total, since there's no
+ * single method left to hand change back to once it's split.
  */
 export const consultationBillingSchema = z
   .object({
@@ -189,34 +191,62 @@ function computeNetTotal(values: {
   return Math.max(gross - discount, 0);
 }
 
+/** One payment-method row within `payments` below — see that field's own comment for why this
+ * is a list rather than a single amount/mode/reference set. */
+export const paymentSplitSchema = z.object({
+  method: z.enum(PAYMENT_METHODS).optional(),
+  amount: z.number().min(0).default(0),
+  referenceNumber: z.string().default(''),
+});
+
 export const billingFormSchema = z
   .object({
     consultation: consultationArraySchema().default([]),
     radiology: serviceArraySchema().default([]),
     laboratory: laboratoryArraySchema().default([]),
     procedure: serviceArraySchema().default([]),
-    amountReceived: z.number().min(0).default(0),
-    paymentMode: z.enum(PAYMENT_METHODS).optional(),
-    referenceNumber: z.string().default(''),
+    payments: z.array(paymentSplitSchema).default([{ method: undefined, amount: 0, referenceNumber: '' }]),
   })
   .superRefine((data, ctx) => {
     const netTotal = computeNetTotal(data);
     // Nothing billed yet — "at least one item is required" is enforced separately once Save
     // is actually attempted (apiBillingRepository.ts), not here on every keystroke.
     if (netTotal <= 0) return;
+
     // Full payment is required to save from this screen — the patient is only sent through to
     // the consultant once billing is settled at the counter, so there's no "save as Pending
     // and collect later" path here anymore (unlike the standalone Invoice Detail page, which
-    // still supports recording payment after the fact for whatever reason).
-    if (!data.paymentMode) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentMode'], message: 'Payment mode is required' });
-    }
-    if (data.amountReceived < netTotal) {
+    // still supports recording payment after the fact for whatever reason). Every row present
+    // needs its own method — an abandoned, still-empty "add another" row can't silently ride
+    // along as free money from nowhere.
+    data.payments.forEach((row, index) => {
+      if (!row.method) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['payments', index, 'method'], message: 'Payment mode is required' });
+      }
+    });
+
+    const totalTendered = data.payments.reduce((sum, row) => sum + row.amount, 0);
+    if (totalTendered < netTotal) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['amountReceived'],
+        path: data.payments.length > 1 ? ['payments'] : ['payments', 0, 'amount'],
         message: 'Full payment is required before this invoice can be saved',
       });
+    } else if (data.payments.length > 1) {
+      // Cash is the only method that can realistically hand back change at the counter — a
+      // UPI/Card/Bank Transfer row can't be partially refunded on the spot, so those rows must
+      // land within their actual share of the bill. E.g. a ₹700 bill paid as ₹570 UPI + ₹200
+      // Cash is fine (₹70 change comes back in cash); ₹700 UPI + ₹200 Cash "just in case" isn't,
+      // since the UPI alone already exceeds the whole bill with nowhere for that excess to
+      // realistically come from.
+      const nonCashTendered = data.payments.filter((row) => row.method !== 'Cash').reduce((sum, row) => sum + row.amount, 0);
+      if (nonCashTendered > netTotal) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['payments'],
+          message: "Card, UPI, and Bank Transfer amounts can't add up to more than the Net Payable amount — any extra should be paid in Cash so change can be given back.",
+        });
+      }
     }
   });
 
@@ -224,6 +254,7 @@ export type BillingFormValues = z.infer<typeof billingFormSchema>;
 export type ConsultationBillingFormValues = z.infer<typeof consultationBillingSchema>;
 export type ServiceBillingRowFormValues = z.infer<typeof serviceBillingSchema>;
 export type LaboratoryBillingRowFormValues = z.infer<typeof laboratoryBillingSchema>;
+export type PaymentSplitFormValues = z.infer<typeof paymentSplitSchema>;
 /** Radiology/Procedure only now — Laboratory forked off to its own schema/row shape above. */
 export type ServiceBillingCategory = 'radiology' | 'procedure';
 
@@ -260,12 +291,16 @@ export const emptyLaboratoryRow: LaboratoryBillingRowFormValues = {
   discountApprovedBy: '',
 };
 
+export const emptyPaymentSplit: PaymentSplitFormValues = {
+  method: undefined,
+  amount: 0,
+  referenceNumber: '',
+};
+
 export const defaultBillingFormValues: BillingFormValues = {
   consultation: [{ ...emptyConsultation }],
   radiology: [{ ...emptyServiceRow }],
   laboratory: [{ ...emptyLaboratoryRow }],
   procedure: [{ ...emptyServiceRow }],
-  amountReceived: 0,
-  paymentMode: undefined,
-  referenceNumber: '',
+  payments: [{ ...emptyPaymentSplit }],
 };
