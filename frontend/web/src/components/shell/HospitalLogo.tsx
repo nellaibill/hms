@@ -9,8 +9,21 @@ interface HospitalLogoProps {
   showName?: boolean;
   /** Use on a solid `bg-primary` surface (e.g. the top header) — wraps the logo in a white chip (its artwork assumes a light backing) and lightens the system-name text. */
   invert?: boolean;
+  /** Overrides the fixed logo-box size (defaults to `h-10 w-32`) — pass Tailwind height/width utilities only; every other constraint (object-contain, overflow-hidden, centering) is fixed and not meant to be overridden per call site. */
   imageClassName?: string;
 }
+
+/**
+ * Tenants upload logos of wildly different dimensions/aspect ratios/shapes (wide, tall,
+ * square, circular) — the box below is a fixed-size slot every logo scales *inside* of,
+ * never the other way around. `max-h-full max-w-full` + `object-contain` (never
+ * `object-cover`) means the image is clamped down to fit without ever being stretched,
+ * cropped, or allowed to grow the box — a tiny logo just renders at its natural size,
+ * centered, rather than being blown up and blurred. `overflow-hidden` on the box is a
+ * safety net for any image whose intrinsic sizing tries to escape the clamp anyway (e.g. an
+ * SVG with a `width`/`height` attribute of its own).
+ */
+const LOGO_BOX = 'flex h-10 w-32 shrink-0 items-center justify-center overflow-hidden';
 
 export function HospitalLogo({ className, showName = true, invert = false, imageClassName }: HospitalLogoProps) {
   const { data: brandingConfig } = useBrandingQuery();
@@ -21,9 +34,10 @@ export function HospitalLogo({ className, showName = true, invert = false, image
 
   return (
     <div className={cn('flex items-center gap-4', className)}>
-      <span className={cn('flex shrink-0 items-center justify-center rounded-md', invert && 'bg-white px-3 shadow-soft')}>
-        {/* Fixed width (not height) so the ~3.3:1 landscape logo scales up without distortion — h-auto keeps its natural aspect ratio. */}
-        <img src={logoUrl} alt={hospitalName} className={cn('h-auto w-48 object-contain', imageClassName)} />
+      <span className={cn('flex shrink-0 rounded-md', invert && 'bg-white p-1.5 shadow-soft')}>
+        <span className={cn(LOGO_BOX, imageClassName)}>
+          <img src={logoUrl} alt={hospitalName} className="max-h-full max-w-full object-contain" />
+        </span>
       </span>
       {showName && (
         <span

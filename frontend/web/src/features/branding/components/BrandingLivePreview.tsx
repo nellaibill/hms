@@ -32,7 +32,12 @@ export function BrandingLivePreview({ hospitalName, appTitle, logoUrl, fontFamil
     <div style={scopeStyle} className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex items-center gap-3 bg-header px-4 py-3 text-header-foreground">
         {logoUrl ? (
-          <img src={logoUrl} alt={hospitalName} className="h-7 w-auto rounded bg-white/90 object-contain px-1" />
+          // Fixed box, never stretched/cropped — same containment HospitalLogo.tsx uses for
+          // the real header, so this preview doesn't understate how a badly-shaped upload
+          // (very tall, very wide, etc.) will actually render once saved.
+          <span className="flex h-7 w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-white/90 px-1">
+            <img src={logoUrl} alt={hospitalName} className="max-h-full max-w-full object-contain" />
+          </span>
         ) : (
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/20 text-xs font-bold">
             {hospitalName.slice(0, 1)}
