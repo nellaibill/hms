@@ -22,6 +22,13 @@ interface BillingStepProps {
   onErrorStateChange?: (hasError: boolean) => void;
   /** Reports whether the form has any unsaved edits — true the moment a field first differs from its default, so the caller can warn before navigating away. */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Passed straight through to BillingSummaryCard, which renders the actual save button/error
+   * inside its own sticky sidebar — see that component's props for why it lives there instead
+   * of below this step. Omit entirely to render the summary with no save action. */
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveError?: string | null;
+  saveErrorDetails?: string[];
 }
 
 const CATEGORY_FIELD = {
@@ -40,7 +47,7 @@ const CATEGORY_ORDER: BillingType[] = ['Consultation', 'Radiology', 'Laboratory'
  * exposed `validate`/`getValues` handle the same way it drives per-tab validation elsewhere.
  */
 export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(function BillingStep(
-  { defaultValues, onChange, onErrorStateChange, onDirtyChange },
+  { defaultValues, onChange, onErrorStateChange, onDirtyChange, onSave, isSaving, saveError, saveErrorDetails },
   ref,
 ) {
   const methods = useForm<BillingFormValues>({
@@ -120,7 +127,7 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
           />
           <ProcedureBillingCard expanded={expanded.Procedure} onToggle={() => toggleCategory('Procedure')} hasError={hasFieldError('Procedure')} />
         </div>
-        <BillingSummaryCard />
+        <BillingSummaryCard onSave={onSave} isSaving={isSaving} saveError={saveError} saveErrorDetails={saveErrorDetails} />
       </div>
     </FormProvider>
   );

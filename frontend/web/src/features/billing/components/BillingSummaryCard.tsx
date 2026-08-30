@@ -1,6 +1,7 @@
 import { Receipt } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,8 +28,22 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
  * Lines itemize by service (not just "Laboratory (2)") — reuses describeBillingItem, the
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
  * name reads identically everywhere it's shown.
+ *
+ * The save action itself (onSave/isSaving/saveError) also renders here, inside this sticky
+ * card, rather than below the four billing category cards — this card's height doesn't change
+ * when a category expands, so an action anchored here stays put instead of jumping down the
+ * page every time a section opens. Optional: InvoiceCreatePage is the only caller that wires
+ * these up today (BillingStep's own doc comment has the details); omitting onSave renders the
+ * summary with no save action at all.
  */
-export function BillingSummaryCard() {
+interface BillingSummaryCardProps {
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveError?: string | null;
+  saveErrorDetails?: string[];
+}
+
+export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetails }: BillingSummaryCardProps) {
   const {
     watch,
     control,
@@ -199,6 +214,29 @@ export function BillingSummaryCard() {
             </>
           )}
         </div>
+
+        {onSave && (
+          <>
+            <Separator />
+
+            {(saveError || (saveErrorDetails && saveErrorDetails.length > 0)) && (
+              <div role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {saveError && <p>{saveError}</p>}
+                {saveErrorDetails && saveErrorDetails.length > 0 && (
+                  <ul className="list-inside list-disc">
+                    {saveErrorDetails.map((message) => (
+                      <li key={message}>{message}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <Button onClick={onSave} disabled={isSaving} className="w-full">
+              {isSaving ? 'Collecting…' : 'Collect Payment'}
+            </Button>
+          </>
+        )}
       </CardContent>
     </Card>
   );

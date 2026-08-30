@@ -1,4 +1,4 @@
-import type { Patient } from '@hms/shared';
+import { ApiError, NetworkError, type Patient } from '@hms/shared';
 import { ArrowLeft, FilePlus2, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker } from 'react-router-dom';
@@ -29,6 +29,22 @@ import {
 import { usePatientVisitsQuery } from '../../features/patients';
 
 /**
+ * Turns a thrown createInvoiceMutation error into what a receptionist actually needs to see —
+ * the real server message (e.g. a specific validation failure) rather than a generic "please
+ * try again" that gives no clue what went wrong or how to fix it. Mirrors the
+ * ApiError/NetworkError pattern PatientRegistrationForm already uses (see
+ * features/patients/apiErrorDisplay.ts) rather than a patients-specific import, since this is
+ * unrelated to that feature.
+ */
+function describeSaveError(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof NetworkError) {
+    return 'Could not reach the server — this invoice was NOT saved. Check your connection and try again.';
+  }
+  return 'Something went wrong while saving this invoice. Please try again.';
+}
+
+/**
  * OPD Billing Entry — the "Manual Invoice Entry" screen from the Finance & Billing domain
  * (docs/ScreenInventory.md), scoped to OPD (Consultation/Radiology/Laboratory/Procedure —
  * there's no IPD billing type yet). Closes the gap where only a patient's very first visit
@@ -40,6 +56,7 @@ import { usePatientVisitsQuery } from '../../features/patients';
 export default function InvoiceCreatePage() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveErrorDetails, setSaveErrorDetails] = useState<string[]>([]);
   const billingRef = useRef<BillingStepHandle>(null);
   const createInvoiceMutation = useCreateInvoiceMutation();
 
@@ -146,6 +163,7 @@ export default function InvoiceCreatePage() {
   async function handleSave() {
     if (!patient || !billingRef.current) return;
     setSaveError(null);
+    setSaveErrorDetails([]);
 
     const valid = await billingRef.current.validate();
     if (!valid) return;
@@ -170,8 +188,9 @@ export default function InvoiceCreatePage() {
       setIsDirty(false);
       isDirtyRef.current = false;
       setSavedInvoice(billing);
-    } catch {
-      setSaveError('Could not save the invoice. Please try again.');
+    } catch (error) {
+      setSaveError(describeSaveError(error));
+      setSaveErrorDetails(error instanceof ApiError ? (error.validationErrors?.map((issue) => issue.message) ?? []) : []);
     }
   }
 
@@ -198,6 +217,7 @@ export default function InvoiceCreatePage() {
     setPatient(null);
     setSavedInvoice(null);
     setSaveError(null);
+    setSaveErrorDetails([]);
   }
 
   return (
@@ -287,25 +307,23 @@ export default function InvoiceCreatePage() {
                     // defaultValues is only ever read once by useForm, so without this, picking
                     // a different patient after the form already mounted would keep showing the
                     // first patient's prefill.
+                    // onSave/isSaving/saveError render inside BillingSummaryCard's sticky
+                    // sidebar (not below the two-column grid) — that grid's overall height
+                    // follows whichever billing category card is currently expanded, so a
+                    // button placed below it would visibly jump down the page every time a
+                    // section opened. The summary sidebar doesn't grow that way, so the action
+                    // that actually depends on it stays anchored there instead.
                     <BillingStep
                       key={patient.id}
                       ref={billingRef}
                       defaultValues={billingDefaultValues}
                       onDirtyChange={setIsDirty}
+                      onSave={handleSave}
+                      isSaving={createInvoiceMutation.isPending}
+                      saveError={saveError}
+                      saveErrorDetails={saveErrorDetails}
                     />
                   )}
-
-                  {saveError && (
-                    <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                      {saveError}
-                    </p>
-                  )}
-
-                  <div className="flex justify-end">
-                    <Button onClick={handleSave} disabled={createInvoiceMutation.isPending}>
-                      {createInvoiceMutation.isPending ? 'Collecting…' : 'Collect Payment'}
-                    </Button>
-                  </div>
                 </>
               )}
             </>
