@@ -22,6 +22,13 @@ interface BillingStepProps {
   onErrorStateChange?: (hasError: boolean) => void;
   /** Reports whether the form has any unsaved edits — true the moment a field first differs from its default, so the caller can warn before navigating away. */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Passed straight through to BillingSummaryCard, which renders the actual save button/error
+   * inside its own sticky sidebar — see that component's props for why it lives there instead
+   * of below this step. Omit entirely to render the summary with no save action. */
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveError?: string | null;
+  saveErrorDetails?: string[];
 }
 
 const CATEGORY_FIELD = {
@@ -40,13 +47,24 @@ const CATEGORY_ORDER: BillingType[] = ['Consultation', 'Radiology', 'Laboratory'
  * exposed `validate`/`getValues` handle the same way it drives per-tab validation elsewhere.
  */
 export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(function BillingStep(
-  { defaultValues, onChange, onErrorStateChange, onDirtyChange },
+  { defaultValues, onChange, onErrorStateChange, onDirtyChange, onSave, isSaving, saveError, saveErrorDetails },
   ref,
 ) {
+  // No `mode: 'onChange'` — with a whole-schema Zod resolver (not per-field), that mode fires
+  // one full-form async validation pass on every single field change, and several of those
+  // firing in quick succession (e.g. filling in a second Collect Payment row: amount, mode
+  // select, then another row) can resolve out of order, letting an earlier pass's now-stale
+  // result overwrite a later, correct one — surfacing a phantom error on a field that's
+  // actually valid. Same root cause and same fix already applied to
+  // PatientRegistrationForm.tsx for this exact symptom. RHF's default `reValidateMode:
+  // 'onChange'` still live-clears an error once a field has been validated at least once (via
+  // toggleCategory's per-category trigger() on collapse, or Save's full validate()), so nothing
+  // about the tab-dot/error-summary/inline-message UX regresses — errors just don't start
+  // appearing before the user has attempted to proceed, which matches how every other tab in
+  // this app already behaves.
   const methods = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
     defaultValues: defaultValues ?? defaultBillingFormValues,
-    mode: 'onChange',
   });
   const {
     trigger,
@@ -105,7 +123,11 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
 
   return (
     <FormProvider {...methods}>
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {/* 380px matches BrandingForm's own two-column sidebar (frontend/web/src/features/
+          branding/components/BrandingForm.tsx) — the widest sidebar width already established
+          in this codebase, needed here since Collect Payment now packs three fields (Amount/
+          Mode/Reference) per payment row plus the split-payment controls. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
           <ConsultationBillingCard
             expanded={expanded.Consultation}
@@ -120,7 +142,7 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
           />
           <ProcedureBillingCard expanded={expanded.Procedure} onToggle={() => toggleCategory('Procedure')} hasError={hasFieldError('Procedure')} />
         </div>
-        <BillingSummaryCard />
+        <BillingSummaryCard onSave={onSave} isSaving={isSaving} saveError={saveError} saveErrorDetails={saveErrorDetails} />
       </div>
     </FormProvider>
   );

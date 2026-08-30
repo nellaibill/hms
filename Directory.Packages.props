@@ -33,6 +33,13 @@
     <!-- Excel parsing (Patient Import module only) -->
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
 
+    <!-- Image decoding (Branding module only) — confirms an uploaded logo's actual content
+         decodes as a real raster image and reads its real pixel dimensions, rather than
+         trusting the filename extension alone. -->
+    <!-- Pinned to a version past GHSA-rxmq-m78w-7wmc (GIF decoder infinite-loop DoS, fixed in
+         3.1.11) — relevant here since logo uploads are untrusted user content. -->
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
+
     <!-- API documentation -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
 

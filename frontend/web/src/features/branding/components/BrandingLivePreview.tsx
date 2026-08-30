@@ -32,7 +32,13 @@ export function BrandingLivePreview({ hospitalName, appTitle, logoUrl, fontFamil
     <div style={scopeStyle} className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex items-center gap-3 bg-header px-4 py-3 text-header-foreground">
         {logoUrl ? (
-          <img src={logoUrl} alt={hospitalName} className="h-7 w-auto rounded bg-white/90 object-contain px-1" />
+          // Same as the real header (HospitalLogo.tsx) — shrink-to-fit width, no background
+          // chip. A background behind the image kept fighting whatever the actual logo looked
+          // like (a visible box around a logo with its own backing, corners of an opaque image
+          // poking past a rounded edge) — see that component's own doc comment for the detail.
+          <span className="flex h-7 w-auto max-w-20 shrink-0 items-center justify-center overflow-hidden">
+            <img src={logoUrl} alt={hospitalName} className="max-h-full max-w-full object-contain" />
+          </span>
         ) : (
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/20 text-xs font-bold">
             {hospitalName.slice(0, 1)}

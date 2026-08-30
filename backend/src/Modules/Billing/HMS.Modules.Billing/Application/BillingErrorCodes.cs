@@ -9,4 +9,5 @@ internal static class BillingErrorCodes
     public const string LineItemAlreadyPaid = "BILLING.LINE_ITEM_ALREADY_PAID";
     public const string AlreadyVoided = "BILLING.ALREADY_VOIDED";
     public const string HasPayments = "BILLING.HAS_PAYMENTS";
+    public const string PaymentAmountMismatch = "BILLING.PAYMENT_AMOUNT_MISMATCH";
 }

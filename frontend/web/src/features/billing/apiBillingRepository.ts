@@ -84,10 +84,12 @@ function toCreateRequest(patientId: string, visitId: string, values: BillingForm
       discountApproved: item.discountApproved,
       discountApprovedBy: item.discountApprovedBy ?? null,
     })),
-    // Amount Received/Change are a front-desk cash-drawer calculation only (billingValidation.ts's
-    // superRefine already guarantees amountReceived is 0 or >= the net total) — the server only
-    // needs to know "pay the whole thing" plus how/reference, never the tendered amount itself.
-    payment: values.amountReceived > 0 ? { method: values.paymentMode!, referenceNumber: values.referenceNumber || null } : undefined,
+    // billingValidation.ts's superRefine already guarantees every row has a method and the
+    // rows add up to at least the net total whenever anything's billed (with any non-Cash
+    // excess rejected, since only Cash can realistically hand back change) — non-null
+    // assertion on method mirrors that same established guarantee already relied on elsewhere
+    // in this file.
+    payments: values.payments.map((row) => ({ method: row.method!, amount: row.amount, referenceNumber: row.referenceNumber || null })),
   };
 }
 

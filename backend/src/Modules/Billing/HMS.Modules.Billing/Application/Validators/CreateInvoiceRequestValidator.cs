@@ -18,9 +18,13 @@ internal class CreateInvoiceRequestValidator : AbstractValidator<CreateInvoiceRe
 
         RuleForEach(x => x.Items).SetValidator(new CreateInvoiceLineItemRequestValidator());
 
-        When(x => x.Payment is not null, () =>
+        // Per-row shape only (Method/Amount/ReferenceNumber) — whether the rows' amounts add
+        // up correctly (exactly NetAmount when split across more than one row, at least
+        // NetAmount for a single row) depends on the invoice's own computed total, which isn't
+        // known until InvoiceService builds it; that cross-field check lives there instead.
+        When(x => x.Payments is { Count: > 0 }, () =>
         {
-            RuleFor(x => x.Payment!).SetValidator(new CreateInvoicePaymentRequestValidator());
+            RuleForEach(x => x.Payments!).SetValidator(new CreateInvoicePaymentRequestValidator());
         });
     }
 }
@@ -30,6 +34,7 @@ internal class CreateInvoicePaymentRequestValidator : AbstractValidator<CreateIn
     public CreateInvoicePaymentRequestValidator()
     {
         RuleFor(x => x.Method).IsInEnum();
+        RuleFor(x => x.Amount).GreaterThan(0);
         RuleFor(x => x.ReferenceNumber).MaximumLength(100);
     }
 }

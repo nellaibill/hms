@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { ApiError } from '@hms/shared';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Upload } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { hexToHslTriple, hslTripleToHex } from '@/lib/color';
 import { useBrandingQuery } from '../hooks/useBrandingQuery';
-import { useResetBrandingMutation, useUpdateBrandingMutation } from '../hooks/useBrandingMutations';
+import { useResetBrandingMutation, useUpdateBrandingMutation, useUploadLogoMutation } from '../hooks/useBrandingMutations';
 import {
   FONT_FAMILIES,
   FONT_FAMILY_LABELS,
@@ -97,14 +98,44 @@ export function BrandingForm() {
   const query = useBrandingQuery();
   const updateMutation = useUpdateBrandingMutation();
   const resetMutation = useResetBrandingMutation();
+  const uploadLogoMutation = useUploadLogoMutation();
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   const [editingTheme, setEditingTheme] = useState<'light' | 'dark'>('light');
   const [draftTokensLight, setDraftTokensLight] = useState<Record<string, string>>({});
   const [draftTokensDark, setDraftTokensDark] = useState<Record<string, string>>({});
-  // Still synced from the persisted config (below) and fed into the live preview even
-  // though the upload UI that used to let you set it is hidden — see the Identity tab.
+  // Synced from the persisted config (below) and fed into the live preview, and now also the
+  // actual upload target — see the Identity tab's Hospital logo control.
   const [previewLogoUrl, setPreviewLogoUrl] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState(false);
+
+  // The real validation (content decode, exact pixel bounds) is server-side — see
+  // BrandingService.UploadLogoAsync — so this is just fast, obvious-case feedback before
+  // spending a request; the server's own message is what's shown on rejection either way.
+  function handleLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setLogoError(null);
+    setSavedMessage(false);
+
+    if (file.size > 500 * 1024) {
+      setLogoError('Logo must be 500KB or smaller.');
+      return;
+    }
+    if (!/\.(png|jpe?g|webp|svg)$/i.test(file.name)) {
+      setLogoError('Logo must be a PNG, JPG, WEBP, or SVG image.');
+      return;
+    }
+
+    uploadLogoMutation.mutate(file, {
+      onError: (error) => {
+        setLogoError(error instanceof ApiError ? error.message : 'Could not upload the logo. Please try again.');
+      },
+    });
+  }
 
   const {
     register,
@@ -197,6 +228,41 @@ export function BrandingForm() {
                 {errors.appTitle && <p className="text-sm text-destructive">{errors.appTitle.message}</p>}
               </div>
 
+              <div className="flex flex-col gap-1.5">
+                <Label>Hospital logo</Label>
+                <div className="flex items-center gap-3">
+                  {/* Same fixed-box containment as the real header (HospitalLogo.tsx) — the
+                      preview here should honestly reflect how any shape will actually render
+                      once saved, not a generously-sized preview that hides a bad upload. */}
+                  <span className="flex h-10 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+                    {previewLogoUrl ? (
+                      <img src={previewLogoUrl} alt="Current logo" className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No logo</span>
+                    )}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={uploadLogoMutation.isPending}
+                    onClick={() => logoFileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {uploadLogoMutation.isPending ? 'Uploading…' : 'Upload logo'}
+                  </Button>
+                  <input
+                    ref={logoFileInputRef}
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={handleLogoFileChange}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">PNG, JPG, WEBP, or SVG · max 500KB · 16–2000px per side. Applies immediately once uploaded.</p>
+                {logoError && <p className="text-sm text-destructive">{logoError}</p>}
+              </div>
             </div>
           </TabsContent>
 
