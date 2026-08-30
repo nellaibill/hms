@@ -166,3 +166,35 @@
     font-family: var(--font-sans, Inter, 'Segoe UI', system-ui, -apple-system, sans-serif);
   }
 }
+
+/*
+ * Print-one-element trick: give whatever should end up on paper (and only that) the
+ * `print-target` class. Everything else on the page — the app shell (sidebar/topbar),
+ * dashboards, other cards — has no such rule, so `body *` hides it all first, then the
+ * second rule un-hides just the target subtree. `visibility` (not `display`) is used
+ * deliberately so the target's own layout/position isn't disturbed by ancestors that got
+ * hidden around it; the final rule then pulls it out of that (now invisible) flow so it
+ * isn't offset by whatever space its hidden ancestors would have occupied. Reusable by any
+ * future "Print this" feature — not specific to invoices.
+ */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-target,
+  .print-target * {
+    visibility: visible;
+  }
+
+  .print-target {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

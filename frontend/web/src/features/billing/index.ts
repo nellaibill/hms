@@ -3,6 +3,7 @@ export * from './components/InvoiceDetailCard';
 export * from './components/InvoiceLedgerTable';
 export * from './components/LabDetailsCard';
 export * from './components/InvoiceListToolbar';
+export * from './components/InvoicePrintTemplate';
 export * from './components/Pagination';
 export * from './components/PatientPicker';
 export * from './components/PaymentStatusBadge';
