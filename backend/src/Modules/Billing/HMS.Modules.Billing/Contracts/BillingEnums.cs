@@ -14,6 +14,14 @@ public enum BillingType
     Laboratory,
     Procedure,
 
+    /// <summary>Injections administered during a visit — no consultant/doctor involved, just a
+    /// priced service (see Masters' DiagnosticTestServiceType.Injection).</summary>
+    Injection,
+
+    /// <summary>File/documentation charges (General Blue File, ANC File…) — no consultant/
+    /// doctor involved, just a priced service (see Masters' DiagnosticTestServiceType.File).</summary>
+    File,
+
     /// <summary>A Pharmacy dispense (HMS.Modules.Pharmacy.Application.DispenseService) — the
     /// one line item's UnitPrice is the dispense's total price (Quantity × Product.SellingPrice)
     /// rather than a per-unit rate, because this record's own Quantity is `int` (see this

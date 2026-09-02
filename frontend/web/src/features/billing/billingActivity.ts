@@ -17,6 +17,13 @@ interface ServiceEntryLike {
   discount: number;
 }
 
+/** Injection/File rows have no consultant field at all (see billingValidation.ts's
+ * simpleServiceBillingSchema) — otherwise identical to ServiceEntryLike. */
+interface SimpleServiceEntryLike {
+  serviceId: string;
+  discount: number;
+}
+
 /** Laboratory's own row shape (itemType/itemId, not serviceId — see billingValidation.ts's
  * laboratoryBillingSchema) is otherwise identical to ServiceEntryLike. */
 interface LaboratoryEntryLike {
@@ -31,6 +38,10 @@ export function isConsultationEntryActive(entry: ConsultationEntryLike): boolean
 
 export function isServiceEntryActive(entry: ServiceEntryLike): boolean {
   return Boolean(entry.serviceId || entry.consultantId || entry.discount > 0);
+}
+
+export function isSimpleServiceEntryActive(entry: SimpleServiceEntryLike): boolean {
+  return Boolean(entry.serviceId || entry.discount > 0);
 }
 
 export function isLaboratoryEntryActive(entry: LaboratoryEntryLike): boolean {

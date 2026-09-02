@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive } from './billingActivity';
+import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
 import { PAYMENT_METHODS } from './types';
 
 /**
@@ -10,9 +10,9 @@ import { PAYMENT_METHODS } from './types';
  * always passes validation — which also means an empty row can simply be removed rather
  * than needing to be "cleared" first.
  *
- * Consultation/Radiology/Laboratory/Procedure are all arrays — a visit can need several lab
- * tests, several procedures, or (a patient seen by more than one specialist in one visit)
- * several consultations.
+ * Consultation/Radiology/Laboratory/Procedure/Injection/File are all arrays — a visit can need
+ * several lab tests, several procedures, or (a patient seen by more than one specialist in one
+ * visit) several consultations.
  *
  * Payment collection (`payments`) is deliberately *not* a per-line field either, for the same
  * reason — a visit is settled in one transaction at the counter. It's mandatory once anything
@@ -20,9 +20,9 @@ import { PAYMENT_METHODS } from './types';
  * full, so the top-level superRefine below rejects a save unless every row has a method and the
  * rows' amounts add up correctly. `payments` is a list rather than a single amount/mode/
  * reference set so the counter can split one bill across more than one method (part Cash, part
- * UPI) — the common case is still exactly one row. A single row may tender more than the net
- * total (change); more than one row must add up to *exactly* the net total, since there's no
- * single method left to hand change back to once it's split.
+ * UPI) — the common case is still exactly one row. No row may ever exceed the net total (capped
+ * both here and in BillingSummaryCard's Amount input) — there's no "tender more, get change
+ * back" flow from this screen.
  */
 export const consultationBillingSchema = z
   .object({
@@ -73,6 +73,28 @@ export const serviceBillingSchema = z
     if (!isServiceEntryActive(data)) return;
     if (!data.serviceId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['serviceId'], message: 'Service is required' });
     if (!data.consultantId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['consultantId'], message: 'Consultant is required' });
+    if (data.discount > data.charge * data.quantity) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
+    }
+  });
+
+/**
+ * Injection/File rows — same shape as serviceBillingSchema minus consultantId: neither category
+ * involves a doctor/consultant, just a priced service picked off the shared DiagnosticTest
+ * catalog (Masters' DiagnosticTestServiceType.Injection/File).
+ */
+export const simpleServiceBillingSchema = z
+  .object({
+    serviceId: z.string().default(''),
+    charge: z.number().min(0).default(0),
+    quantity: z.number().int().min(1).default(1),
+    discount: z.number().min(0).default(0),
+    discountApproved: z.boolean().default(false),
+    discountApprovedBy: z.string().default(''),
+  })
+  .superRefine((data, ctx) => {
+    if (!isSimpleServiceEntryActive(data)) return;
+    if (!data.serviceId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['serviceId'], message: 'Service is required' });
     if (data.discount > data.charge * data.quantity) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
     }
@@ -151,6 +173,26 @@ function serviceArraySchema() {
   });
 }
 
+/** Injection/File array — same duplicate-service check as serviceArraySchema, keyed off the
+ * same serviceId field (these rows just lack consultantId). */
+function simpleServiceArraySchema() {
+  return z.array(simpleServiceBillingSchema).superRefine((rows, ctx) => {
+    const firstIndexById = new Map<string, number>();
+    rows.forEach((row, index) => {
+      if (!row.serviceId) return;
+      if (!firstIndexById.has(row.serviceId)) {
+        firstIndexById.set(row.serviceId, index);
+        return;
+      }
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, 'serviceId'],
+        message: 'This service is already added in another row above — remove it here, or change the row above.',
+      });
+    });
+  });
+}
+
 function consultationArraySchema() {
   return z.array(consultationBillingSchema).superRefine((rows, ctx) => {
     const firstIndexByKey = new Map<string, number>();
@@ -179,12 +221,16 @@ function computeNetTotal(values: {
   radiology: ServiceBillingRowFormValues[];
   laboratory: LaboratoryBillingRowFormValues[];
   procedure: ServiceBillingRowFormValues[];
+  injection: SimpleServiceBillingRowFormValues[];
+  file: SimpleServiceBillingRowFormValues[];
 }): number {
   const rows: { charge: number; quantity: number; discount: number }[] = [
     ...values.consultation.filter(isConsultationEntryActive),
     ...values.radiology.filter(isServiceEntryActive),
     ...values.laboratory.filter(isLaboratoryEntryActive),
     ...values.procedure.filter(isServiceEntryActive),
+    ...values.injection.filter(isSimpleServiceEntryActive),
+    ...values.file.filter(isSimpleServiceEntryActive),
   ];
   const gross = rows.reduce((sum, row) => sum + row.charge * row.quantity, 0);
   const discount = rows.reduce((sum, row) => sum + row.discount, 0);
@@ -205,6 +251,8 @@ export const billingFormSchema = z
     radiology: serviceArraySchema().default([]),
     laboratory: laboratoryArraySchema().default([]),
     procedure: serviceArraySchema().default([]),
+    injection: simpleServiceArraySchema().default([]),
+    file: simpleServiceArraySchema().default([]),
     payments: z.array(paymentSplitSchema).default([{ method: undefined, amount: 0, referenceNumber: '' }]),
   })
   .superRefine((data, ctx) => {
@@ -223,6 +271,16 @@ export const billingFormSchema = z
       if (!row.method) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['payments', index, 'method'], message: 'Payment mode is required' });
       }
+      // No row may tender more than the whole bill — there's no "give change back" flow from
+      // this screen, so an amount above Net Payable can only ever be a mistake (e.g. a stray
+      // extra digit), not a legitimate cash-tendered figure.
+      if (row.amount > netTotal) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['payments', index, 'amount'],
+          message: 'Amount cannot exceed the Net Payable amount',
+        });
+      }
     });
 
     const totalTendered = data.payments.reduce((sum, row) => sum + row.amount, 0);
@@ -232,21 +290,6 @@ export const billingFormSchema = z
         path: data.payments.length > 1 ? ['payments'] : ['payments', 0, 'amount'],
         message: 'Full payment is required before this invoice can be saved',
       });
-    } else if (data.payments.length > 1) {
-      // Cash is the only method that can realistically hand back change at the counter — a
-      // UPI/Card/Bank Transfer row can't be partially refunded on the spot, so those rows must
-      // land within their actual share of the bill. E.g. a ₹700 bill paid as ₹570 UPI + ₹200
-      // Cash is fine (₹70 change comes back in cash); ₹700 UPI + ₹200 Cash "just in case" isn't,
-      // since the UPI alone already exceeds the whole bill with nowhere for that excess to
-      // realistically come from.
-      const nonCashTendered = data.payments.filter((row) => row.method !== 'Cash').reduce((sum, row) => sum + row.amount, 0);
-      if (nonCashTendered > netTotal) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['payments'],
-          message: "Card, UPI, and Bank Transfer amounts can't add up to more than the Net Payable amount — any extra should be paid in Cash so change can be given back.",
-        });
-      }
     }
   });
 
@@ -254,9 +297,12 @@ export type BillingFormValues = z.infer<typeof billingFormSchema>;
 export type ConsultationBillingFormValues = z.infer<typeof consultationBillingSchema>;
 export type ServiceBillingRowFormValues = z.infer<typeof serviceBillingSchema>;
 export type LaboratoryBillingRowFormValues = z.infer<typeof laboratoryBillingSchema>;
+export type SimpleServiceBillingRowFormValues = z.infer<typeof simpleServiceBillingSchema>;
 export type PaymentSplitFormValues = z.infer<typeof paymentSplitSchema>;
 /** Radiology/Procedure only now — Laboratory forked off to its own schema/row shape above. */
 export type ServiceBillingCategory = 'radiology' | 'procedure';
+/** Injection/File — same row shape as each other, minus consultantId (see simpleServiceBillingSchema). */
+export type SimpleServiceBillingCategory = 'injection' | 'file';
 
 export const emptyConsultation: ConsultationBillingFormValues = {
   departmentId: '',
@@ -291,6 +337,15 @@ export const emptyLaboratoryRow: LaboratoryBillingRowFormValues = {
   discountApprovedBy: '',
 };
 
+export const emptySimpleServiceRow: SimpleServiceBillingRowFormValues = {
+  serviceId: '',
+  charge: 0,
+  quantity: 1,
+  discount: 0,
+  discountApproved: false,
+  discountApprovedBy: '',
+};
+
 export const emptyPaymentSplit: PaymentSplitFormValues = {
   method: undefined,
   amount: 0,
@@ -302,5 +357,7 @@ export const defaultBillingFormValues: BillingFormValues = {
   radiology: [{ ...emptyServiceRow }],
   laboratory: [{ ...emptyLaboratoryRow }],
   procedure: [{ ...emptyServiceRow }],
+  injection: [{ ...emptySimpleServiceRow }],
+  file: [{ ...emptySimpleServiceRow }],
   payments: [{ ...emptyPaymentSplit }],
 };

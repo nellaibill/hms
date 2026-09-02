@@ -3,14 +3,16 @@ import { useMasterOptionsQuery } from '@/features/masters';
 import type { BillingService } from '../billingCatalog';
 
 /**
- * Laboratory/Radiology/Procedure Billing's Service dropdown, backed by the real DiagnosticTest
- * master data (replaces the old hardcoded LABORATORY_SERVICES/RADIOLOGY_SERVICES/
- * PROCEDURE_SERVICES arrays). Filters the shared diagnosticTest catalog down to one service
- * type and active records client-side — there's no per-field filter on the generic Masters
- * list endpoint, and the full catalog is only ~300 rows, so fetching once and filtering in
- * memory is simplest.
+ * Procedure/Injection/File Billing's Service dropdown (Radiology/Laboratory have since moved to
+ * the newer typed DiagnosticService catalog — see useDiagnosticServices), backed by the real
+ * DiagnosticTest master data. Filters the shared diagnosticTest catalog down to one service type
+ * and active records client-side — there's no per-field filter on the generic Masters list
+ * endpoint, and the full catalog is only ~300 rows, so fetching once and filtering in memory is
+ * simplest.
  */
-export function useDiagnosticTestServices(serviceType: 'Laboratory' | 'Radiology' | 'Procedure'): { services: BillingService[]; isLoading: boolean } {
+export function useDiagnosticTestServices(
+  serviceType: 'Laboratory' | 'Radiology' | 'Procedure' | 'Injection' | 'File',
+): { services: BillingService[]; isLoading: boolean } {
   const { data, isLoading } = useMasterOptionsQuery('diagnosticTest');
 
   const services = useMemo<BillingService[]>(

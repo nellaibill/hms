@@ -21,14 +21,12 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
  * being built up.
  *
  * Payment is mandatory: a single row's Amount auto-fills to Net Payable the moment there's
- * something to bill (still editable, e.g. for a cash-tendered amount that computes change), and
- * the form schema (billingValidation.ts) rejects a save unless every row has a method and the
- * rows add up to at least Net Payable — there's no "save as Pending, collect later" path from
- * this screen. "Add another payment method" splits the bill across more than one method (e.g.
- * ₹570 UPI + ₹200 Cash against a ₹700 bill) — any excess (₹70 here) still becomes Change, same
- * as a single-row overpayment, but only Cash can actually cover it: the schema rejects a split
- * where the non-Cash rows alone already exceed Net Payable, since a UPI/Card/Bank Transfer row
- * can't be partially handed back at the counter the way cash can.
+ * something to bill (still editable, e.g. to split across methods), and the form schema
+ * (billingValidation.ts) rejects a save unless every row has a method and the rows add up to
+ * exactly Net Payable — there's no "save as Pending, collect later" path from this screen, and
+ * no row may ever be entered above Net Payable (capped both here in the input and in the schema
+ * — there's no "tender more than the bill, get change back" flow). "Add another payment method"
+ * splits the bill across more than one method (e.g. ₹500 UPI + ₹200 Cash against a ₹700 bill).
  *
  * Lines itemize by service (not just "Laboratory (2)") — reuses describeBillingItem, the
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
@@ -193,17 +191,21 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                           id={`billing-payment-${index}-amount`}
                           type="number"
                           min={0}
+                          max={summary.netTotal}
                           inputMode="decimal"
                           // Showing literal 0 here would make it uneditable — deleting it just
                           // re-renders back to "0" every keystroke (field.value is never truly
                           // empty), so a receptionist could never clear it to type a real
                           // amount. Blank reads the same as 0 to every calculation/validation
-                          // already (netTotal check, Change display, the create request), so
-                          // hiding it costs nothing.
+                          // already (netTotal check, the create request), so hiding it costs
+                          // nothing.
                           value={amountField.value === 0 ? '' : amountField.value}
                           onChange={(e) => {
                             paymentsManuallyEditedRef.current = true;
-                            amountField.onChange(e.target.value === '' ? 0 : Number(e.target.value));
+                            // Hard-capped at Net Payable — there's no "tender more, get change
+                            // back" flow, so nothing entered here should ever exceed the bill.
+                            const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                            amountField.onChange(Number.isNaN(raw) ? 0 : Math.min(raw, summary.netTotal));
                           }}
                         />
                       )}
@@ -281,18 +283,6 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                   <span className={totalTendered >= summary.netTotal ? 'font-medium text-success' : 'font-medium text-destructive'}>
                     {formatCurrency(totalTendered)} of {formatCurrency(summary.netTotal)}
                   </span>
-                </div>
-              )}
-
-              {/* Change is a Cash concept, not tied to having exactly one row — a ₹700 bill
-                  paid as ₹570 UPI + ₹200 Cash is ₹70 change back in cash, same math as a
-                  single ₹770 Cash row against the same bill. The superRefine above is what
-                  actually keeps this honest (non-Cash rows can't be the source of the excess),
-                  so this display doesn't need to re-derive that itself. */}
-              {totalTendered > summary.netTotal && (
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-success">Change (to be returned)</span>
-                  <span className="font-bold text-success">{formatCurrency(totalTendered - summary.netTotal)}</span>
                 </div>
               )}
             </>
