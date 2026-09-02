@@ -1,5 +1,18 @@
-import type { Patient } from '@hms/shared';
-import { CalendarPlus, Droplet, FileUp, MoreHorizontal, Pencil, Printer, Trash2, UserRound, VenusAndMars } from 'lucide-react';
+import type { Gender, Patient } from '@hms/shared';
+import {
+  CalendarPlus,
+  Droplet,
+  FileUp,
+  Mars,
+  MoreHorizontal,
+  Pencil,
+  Printer,
+  Transgender,
+  Trash2,
+  UserRound,
+  Venus,
+  VenusAndMars,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +38,22 @@ interface PatientSummaryCardProps {
 
 function MetaItem({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center gap-1 text-sm text-foreground">{children}</span>;
+}
+
+/** Was previously a single hardcoded VenusAndMars (⚥) icon for every patient regardless of
+ * gender — this maps each real Gender value to its own symbol, falling back to the combined
+ * ⚥ glyph only for 'NA' (not known/not recorded), where no single symbol would be accurate. */
+function GenderIcon({ gender, className }: { gender: Gender; className?: string }) {
+  switch (gender) {
+    case 'Male':
+      return <Mars className={className} />;
+    case 'Female':
+      return <Venus className={className} />;
+    case 'Transgender':
+      return <Transgender className={className} />;
+    case 'NA':
+      return <VenusAndMars className={className} />;
+  }
 }
 
 /** Compact, full-width identity + quick-glance bar for the patient view page — replaces the old
@@ -78,7 +107,7 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
             <MetaItem>{patient.age} Yrs</MetaItem>
             <span className="text-border">·</span>
             <MetaItem>
-              <VenusAndMars className="h-3.5 w-3.5" />
+              <GenderIcon gender={patient.gender} className="h-3.5 w-3.5" />
               {patient.gender}
             </MetaItem>
             <span className="text-border">·</span>

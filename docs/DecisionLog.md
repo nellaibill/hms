@@ -37,6 +37,21 @@ _To be documented._
 
 ## Decisions
 
+### ADR-044: Patient View gender icon now matches the patient's actual gender
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Twelfth item of a user-supplied 22-issue backlog ("Gender Symbol should be fixed in the patient view form"). `PatientSummaryCard.tsx` rendered the same generic `VenusAndMars` (⚥, combined Venus/Mars) icon next to every patient's gender text regardless of `patient.gender` — the only place in the Patients feature that shows gender as a symbol/icon at all (every other screen renders it as plain text or a select).
+
+**Decision**
+Added a small `GenderIcon` component mapping each real `Gender` value (`Male`/`Female`/`Transgender`/`NA`) to its own `lucide-react` icon (`Mars`/`Venus`/`Transgender`), falling back to the original combined `VenusAndMars` glyph only for `NA` (not known/not recorded), where no single gendered symbol would be accurate.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
 ### ADR-043: UHID sequence restarted at 40001
 **Date:** 2026-09-02
 **Status:** Accepted
