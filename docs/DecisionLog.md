@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-050: Unsaved-changes guard extracted into a reusable hook, applied to Patient Registration/Edit/Add Visit
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Eleventh item of a user-supplied 22-issue backlog ("Show an unsaved changes alert when leaving a page without saving"). A complete implementation of this already existed, but only on `InvoiceCreatePage.tsx` (`isDirty`/`isDirtyRef` + `useBlocker` for in-app navigation + a `beforeunload` listener for tab close/refresh + a confirm/discard dialog) — Patient Registration, Patient Edit, and the standalone "Add Visit" page had none of it.
+
+**Decision**
+1. Extracted the reusable half of InvoiceCreatePage's original pattern into `frontend/web/src/hooks/useUnsavedChangesGuard.ts` (takes `isDirty: boolean`, returns `{ showUnsavedDialog, confirmDiscard, cancelDiscard, markSaved }`) and `frontend/web/src/components/UnsavedChangesDialog.tsx` (the paired confirm/discard dialog). `InvoiceCreatePage.tsx` itself was left untouched — its own `isDirty` is driven by a custom `BillingStep` ref, not a plain React Hook Form instance, and it has an extra bespoke "change patient" case the new hook doesn't need to model; not worth forcing it onto the new shared hook in the same pass as adding the guard elsewhere.
+2. Each of `PatientRegistrationForm.tsx`/`PatientEditForm.tsx`/`RecordVisitForm.tsx` gained an `onDirtyChange?: (isDirty: boolean) => void` prop, wired from React Hook Form's own `formState.isDirty` via a `useEffect`. The guard hook itself lives in each form's *parent page* (`PatientRegistrationCreatePage`/`PatientEditPage`/`PatientRecordVisitPage`), not the form component — the parent is where the post-save `navigate()` call already lives, and that's exactly where the guard needs to be told "this navigation is fine, a save just succeeded."
+3. **`markSaved()`, not just passing `isDirty={false}`**: React Hook Form's `formState.isDirty` doesn't reset until a `reset()` call takes effect on a *later* render, so a `navigate()` fired immediately after a successful save could still see the pre-save `isDirty=true` and get wrongly blocked by the guard's own confirm dialog. `markSaved()` writes straight to the hook's internal ref (bypassing the render/effect round-trip) and is called synchronously right before each success-path `navigate()` call in all three parent pages. Note this is a genuinely new addition, not something lifted from `InvoiceCreatePage.tsx` — that page's own `setIsDirty(false)` on save success never needed this fix, because its success path doesn't `navigate()` at all (it swaps the editable form for a read-only view in place, same route); the three new call sites all do navigate on success, so they needed the extra care `InvoiceCreatePage` never had to take.
+
+**Consequences**
+- Live browser verification (a genuinely new, stateful, cross-navigation UI interaction) could not be completed — the only dev login path needs the seeded Super Admin password, which lives solely in `dotnet user-secrets`, correctly blocked from being read by the auto-mode safety classifier (same gap noted in ADR-040/041). Verified instead via `tsc --noEmit` + `eslint` (both clean) and by tracing through the exact render/effect timing `markSaved()` is meant to sidestep.
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
 ### ADR-049: Consultant sort order — a real per-consultant Priority field, not a hardcoded name match
 **Date:** 2026-09-02
 **Status:** Accepted

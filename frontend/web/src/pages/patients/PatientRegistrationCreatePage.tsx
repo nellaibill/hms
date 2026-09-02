@@ -3,6 +3,8 @@ import { ArrowLeft, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import {
   PatientRegistrationForm,
@@ -116,6 +118,9 @@ export default function PatientRegistrationCreatePage() {
   // updated_at/updated_by in the database for a write that changed nothing — a real record of
   // "who touched this and when" needs that to only happen on an actual edit.
   const [lastSavedPayloadJson, setLastSavedPayloadJson] = useState<string | null>(null);
+
+  const [isDirty, setIsDirty] = useState(false);
+  const { showUnsavedDialog, confirmDiscard, cancelDiscard, markSaved } = useUnsavedChangesGuard(isDirty);
 
   function uploadStagedDocuments(patientId: string, documents: StagedDocuments) {
     if (documents.photo) {
@@ -236,6 +241,7 @@ export default function PatientRegistrationCreatePage() {
         // Surfaced via the existing apiError prop — stay on the form.
         return;
       }
+      markSaved();
       navigate(`/patients/registration/${patientId}`);
       return;
     }
@@ -253,6 +259,7 @@ export default function PatientRegistrationCreatePage() {
       setLastSavedPayloadJson(JSON.stringify(toRequest(values, documents)));
       uploadStagedDocuments(patient.id, documents);
       await createVisitMutation.mutateAsync({ id: patient.id, request: toCreatePatientVisitRequest(values.registration) });
+      markSaved();
       navigate(`/patients/registration/${patient.id}`);
     } catch {
       // Surfaced via the existing apiError prop — stay on the form.
@@ -294,9 +301,12 @@ export default function PatientRegistrationCreatePage() {
           savedPatient={savedPatient}
           onSaveAndProceed={handleSaveAndProceed}
           onSubmit={handleSubmit}
+          onDirtyChange={setIsDirty}
         />
       </RequirePermission>
       </div>
+
+      <UnsavedChangesDialog open={showUnsavedDialog} onConfirmDiscard={confirmDiscard} onCancel={cancelDiscard} />
     </div>
   );
 }

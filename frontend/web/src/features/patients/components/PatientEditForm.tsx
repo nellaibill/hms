@@ -16,7 +16,7 @@ import {
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +47,9 @@ interface PatientEditFormProps {
   apiError: ApiError | null;
   onSubmit: (values: PatientEditUiFormValues) => void;
   onCancel: () => void;
+  /** Mirrors the form's own dirty state up to the parent page, which owns the actual
+   * unsaved-changes navigation guard (useUnsavedChangesGuard). */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info'] as const;
@@ -85,7 +88,16 @@ function isTabId(value: string): value is TabId {
 }
 
 /** Updates a patient's demographic/master-data fields only — Registration Details and Billing are intentionally not editable here (see docs/DecisionLog.md ADR-008). */
-export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
+export function PatientEditForm({
+  patientId,
+  allergies,
+  defaultValues,
+  isSubmitting,
+  apiError,
+  onSubmit,
+  onCancel,
+  onDirtyChange,
+}: PatientEditFormProps) {
   const {
     register,
     control,
@@ -93,13 +105,17 @@ export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitt
     watch,
     trigger,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PatientEditUiFormValues>({
     resolver: zodResolver(patientEditUiSchema),
     defaultValues,
     // Deliberately not `mode: 'onChange'` — see PatientRegistrationForm's identical fix for
     // why: it races an overlapping validation pass against goToTab's own trigger() call.
   });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const idProofType = watch('idProofType');
   const state = watch('state');

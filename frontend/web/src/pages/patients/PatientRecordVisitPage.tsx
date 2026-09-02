@@ -1,7 +1,10 @@
 import type { RecordVisitUiFormValues } from '@hms/shared';
 import { ArrowLeft, ClipboardList, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { RecordVisitForm, useCreatePatientVisitMutation, usePatientQuery } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
@@ -18,6 +21,8 @@ export default function PatientRecordVisitPage() {
   const { toast } = useToast();
   const { data: patient, isPending, isError } = usePatientQuery(id);
   const mutation = useCreatePatientVisitMutation();
+  const [isDirty, setIsDirty] = useState(false);
+  const { showUnsavedDialog, confirmDiscard, cancelDiscard, markSaved } = useUnsavedChangesGuard(isDirty);
 
   if (isPending) {
     return (
@@ -49,6 +54,7 @@ export default function PatientRecordVisitPage() {
       {
         onSuccess: () => {
           toast({ title: 'Visit recorded', description: `A new visit was added to UHID ${uhid}.`, variant: 'success' });
+          markSaved();
           navigate(`/patients/registration/${id}`);
         },
       },
@@ -87,9 +93,12 @@ export default function PatientRecordVisitPage() {
             apiError={toDisplayError(mutation.error)}
             onSubmit={handleSubmit}
             onCancel={() => navigate(`/patients/registration/${id}`)}
+            onDirtyChange={setIsDirty}
           />
         </RequirePermission>
       </div>
+
+      <UnsavedChangesDialog open={showUnsavedDialog} onConfirmDiscard={confirmDiscard} onCancel={cancelDiscard} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { ENCOUNTER_TYPES_UI, recordVisitUiSchema, type ApiError, type RecordVisitUiFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, X } from 'lucide-react';
+import { useEffect } from 'react';
 import { Controller, useController, useFieldArray, useForm, type Control } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,6 +17,9 @@ interface RecordVisitFormProps {
   apiError: ApiError | null;
   onSubmit: (values: RecordVisitUiFormValues) => void;
   onCancel: () => void;
+  /** Mirrors the form's own dirty state up to the parent page, which owns the actual
+   * unsaved-changes navigation guard (useUnsavedChangesGuard). */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const defaultValues: RecordVisitUiFormValues = {
@@ -35,17 +39,21 @@ const defaultValues: RecordVisitUiFormValues = {
  * tab component directly — that component is typed to the wizard's own
  * Control<PatientRegistrationUiFormValues> and `registration.*` field paths, which don't
  * apply here. */
-export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel }: RecordVisitFormProps) {
+export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, onDirtyChange }: RecordVisitFormProps) {
   const {
     control,
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<RecordVisitUiFormValues>({
     resolver: zodResolver(recordVisitUiSchema),
     defaultValues,
   });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const encounterType = watch('encounterType');
   const departmentId = watch('departmentId');
