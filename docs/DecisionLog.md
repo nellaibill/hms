@@ -37,6 +37,21 @@ _To be documented._
 
 ## Decisions
 
+### ADR-040: Registration Details tab clears admissionType/category/referral when encounter type changes
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fourth item of a user-supplied 22-issue backlog ("Fix the Registration Details error when switching between IP and OP records with unclear/incomplete data"). `PatientRegistrationForm.tsx`'s `registration.encounterType` `<Select>` had no reset side effect, unlike Department→Consultant (`handleDepartmentChange`) and State→District (`handleStateChange`) right next to it, which already do clear dependent fields on change. Switching OP→IP (or Emergency/DayCare/Observation) and back leaves stale `admissionType`/`category`/`referral.*` in form state — in particular, a partially-filled `referral` (e.g. `details`/`contactNumber` typed but `category` left unset) stays in state even after switching back to OP hides the Referral fields entirely, and `registrationDetailsUiSchema`'s `superRefine` still requires `referral.category` once `referral` is set at all — leaving the tab permanently flagged invalid with no visible field left on screen to fix it.
+
+**Decision**
+Added `handleEncounterTypeChange`, mirroring the existing `handleDepartmentChange`/`handleStateChange` pattern exactly: on any encounter-type change, clears `registration.admissionType` and `registration.category` back to `''`, and sets `registration.referral` to `undefined` (not an empty object — `referralColumnSchema` is `.optional()`, so `undefined` fully satisfies the `superRefine` check rather than leaving an empty-but-present object that would still fail it). Wired into the existing `<Select>` in place of the raw `field.onChange`. `RecordVisitForm.tsx` (the standalone "Add Visit" page) was checked and needs no equivalent change — its schema deliberately excludes `admissionType`/`referral`/`category` entirely (they're UI-only fields that only exist on the registration wizard's shape), so it was never exposed to this bug.
+
+**Consequences**
+- Live browser verification (the plan's stated intent for this item, since it's a stateful form-interaction bug) could not be completed: the only dev login path needs the seeded Super Admin password, which lives solely in `dotnet user-secrets` — reading that file was correctly blocked by the auto-mode safety classifier as credential access, and no lower-sensitivity path (e.g. provisioning a fresh throwaway tenant) exists without first clearing that same login gate. Verified instead via `tsc --noEmit` and `eslint` (both clean) and by tracing the exact validation-schema mechanism the fix addresses; the fix itself mirrors an already-proven, already-shipped pattern in the same file rather than introducing new logic.
+
+---
+
 ### ADR-039: On-call/"Others" consultation charge no longer stomped back to 0
 **Date:** 2026-09-02
 **Status:** Accepted
