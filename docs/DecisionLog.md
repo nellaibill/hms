@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-047: State/City on hospital creation — State is a real dropdown, City is a suggested (not locked) free-text field
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Sixteenth item of a user-supplied 22-issue backlog ("Add State and City dropdowns to the hospital creation page"). `HospitalForm.tsx`'s City/State were both plain free-text inputs. A real Masters `State`/`District` catalog already exists and already has reusable picker components (`StateSelect.tsx`/`DistrictSelect.tsx`, backing Patient Registration's Address section) — but that catalog is tenant-scoped (`GET /api/v1/masters/states` resolves against a specific hospital's own database via `TenantResolutionMiddleware`), and hospital creation runs *before* any tenant database exists. There is nothing yet to query it against, so those existing components can't be reused here; Platform Portal needs its own standalone reference data.
+
+**Decision**
+1. Added `frontend/web/src/features/platformHospitals/indiaStatesAndCities.ts` — a static, closed list of all 28 states + 8 union territories (`INDIAN_STATES_AND_UTS`), and a representative (not exhaustive) `CITIES_BY_STATE` map of major cities per state.
+2. `State` is now a real `<Select>` (the closed list is genuinely exhaustive — India has a fixed, well-known set of states/UTs, so a hard picklist has no false-negative risk). Changing it clears `city`, mirroring `PatientRegistrationForm`'s established Department→Consultant / State→District reset pattern.
+3. `City` stays a free-text `<Input>`, deliberately **not** a locked picklist — paired with a native `<datalist>` scoped to the selected state for dropdown-style suggestions. An exhaustive list of every Indian city isn't realistic to maintain, and a real hospital's actual city missing from a strict dropdown would block onboarding entirely; a suggestion list gets the "dropdown" UX the ask wanted without that failure mode.
+
+**Consequences**
+- No backend change: `CreateHospitalRequestValidator`/`Tenant.Create` already treat `city`/`state` as plain non-empty strings — a real state name now always reaches it (Select-enforced), city remains an arbitrary string as before.
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
 ### ADR-046: Reusable PasswordInput (show/hide toggle) added and applied to every password-creation field
 **Date:** 2026-09-02
 **Status:** Accepted
