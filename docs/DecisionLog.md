@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-041: Login page no longer hardcodes the seed tenant's hospital code as the default
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fifth item of a user-supplied 22-issue backlog ("logging into a newly created hospital using Super Admin works sometimes but fails at other times"). Backend tenant provisioning (`HospitalRegistrationService.RegisterCoreAsync` → `TenantProvisioningService.ProvisionAsync` → `TenantMigrationService.MigrateAsync` → `IdentityModule.ProvisionTenantSuperAdminAsync`) is fully synchronous and awaited end-to-end, so there is no real backend race. `LoginPage.tsx`'s `hospitalCode` field, however, was hardcoded to default to `'lhs'` (the original seed tenant, "Lakshmi Hospitals") with no pre-fill/redirect carrying a newly created hospital's actual code. Anyone testing a fresh hospital's Super Admin login who didn't think to clear that stale default had their login request silently resolve against the wrong tenant (via the `X-Hospital-Code` header) and fail with the same generic "Invalid username or password" a real credential error produces (deliberate anti-enumeration design) — matching the reported "works sometimes (when manually corrected), fails other times (when it wasn't)" symptom exactly, with no backend concurrency involved.
+
+**Decision**
+Replaced the hardcoded `'lhs'` default with a value read from `localStorage` (the last hospital code actually used to sign in successfully on this browser, saved on every successful login), falling back to an empty field (with the existing "e.g. cauvery" placeholder) when nothing has been saved yet. This keeps the convenience of a remembered default for the common repeat-login case without ever silently guessing a specific tenant. Live-verified visually in the browser (the field renders empty with no prior login, per the existing placeholder) — a full login-flow verification (confirming a fresh hospital's Super Admin can sign in first try with the field left as its new default) could not be completed for the same reason as ADR-040: the dev Super Admin password lives only in `dotnet user-secrets`, which the safety classifier correctly blocks reading.
+Deliberately did not change the "Sign in as" role default (`superAdmin`) — that wasn't part of the diagnosed root cause (a fresh hospital's first login genuinely is a Super Admin), and touching it wasn't asked for. Also deliberately did not build a cross-app deep-link from hospital-creation success into this login page — the Platform Admin can already see the new hospital's code on the dashboard they land on after creation, and Platform Portal login/Tenant login are separate, unrelated auth contexts; wiring a redirect between them was scope this issue didn't call for.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038/039).
+
+---
+
 ### ADR-040: Registration Details tab clears admissionType/category/referral when encounter type changes
 **Date:** 2026-09-02
 **Status:** Accepted

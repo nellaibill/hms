@@ -18,6 +18,22 @@ interface LocationState {
   from?: string;
 }
 
+// Remembers the last hospital code someone actually signed in with on this browser, so
+// repeat visits (the common case) still get a helpful default without ever guessing at a
+// specific tenant. Previously hardcoded to 'lhs' (the original seed tenant) — after creating
+// a *different* hospital, that stale default silently resolved login against the wrong
+// tenant's database unless someone remembered to clear it, producing the exact "works
+// sometimes, fails other times" symptom depending on whether they noticed and retyped it.
+const LAST_HOSPITAL_CODE_KEY = 'hms.lastHospitalCode';
+
+function readLastHospitalCode(): string {
+  try {
+    return localStorage.getItem(LAST_HOSPITAL_CODE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -25,7 +41,7 @@ export default function LoginPage() {
   const { data: brandingConfig } = useBrandingQuery();
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
 
-  const [hospitalCode, setHospitalCode] = useState('lhs');
+  const [hospitalCode, setHospitalCode] = useState(readLastHospitalCode);
   const [role, setRole] = useState<Role>('superAdmin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -43,7 +59,14 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(hospitalCode.trim(), role, username.trim(), password);
+      const trimmedHospitalCode = hospitalCode.trim();
+      await login(trimmedHospitalCode, role, username.trim(), password);
+      try {
+        localStorage.setItem(LAST_HOSPITAL_CODE_KEY, trimmedHospitalCode);
+      } catch {
+        // Best-effort convenience only — a blocked/full localStorage shouldn't fail a
+        // successful login.
+      }
       const from = (location.state as LocationState | null)?.from ?? '/dashboard';
       navigate(from, { replace: true });
     } catch (err) {
