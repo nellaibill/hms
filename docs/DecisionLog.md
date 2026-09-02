@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-042: Date of Birth restricted to a 4-digit year at both the picker and the validation layer
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Seventh item of a user-supplied 22-issue backlog ("Allow 4-digit birth years in the DOB field during registration — can go up to 6 digits currently"). The native `<input type="date">` in `PatientRegistrationForm.tsx`/`PatientEditForm.tsx` had no `min`/`max` attributes, and neither the shared Zod schema (`patientRegistrationUiValidation.ts`'s `demographicsUiSchema.dateOfBirth`) nor the backend (`CreatePatientRequestValidator`) checked the year's digit count — both only range-checked (≤ today, ≥ 130 years ago) via `new Date(value)`/`DateOnly` comparisons, which don't reject a malformed year outright.
+
+**Decision**
+1. Added `dateOfBirthInputBounds()` to `frontend/web/src/features/patients/detailedAge.ts` (the existing shared home for both forms' DOB-derived helpers) returning `min`/`max` ISO date strings (130-year floor, today's ceiling) — spread onto both `<Input type="date">` elements so the native picker itself is bounded.
+2. Added a `.regex(/^\d{4}-\d{2}-\d{2}$/)` check to the Zod schema, ahead of the existing range refinements, so a malformed year is rejected outright rather than silently mis-parsed by `new Date(value)`.
+3. **No backend change was needed**: `CreatePatientRequest.DateOfBirth`/`UpdatePatientRequest.DateOfBirth` are `DateOnly`-typed, and .NET's built-in `System.Text.Json` `DateOnly` converter already strictly requires the exact 10-character `yyyy-MM-dd` shape — a 6-digit-year string fails JSON model binding with a 400 before FluentValidation ever runs. Confirmed no custom `JsonConverter` is registered for `DateOnly` anywhere in the API that could loosen this. Adding a redundant backend regex would validate a scenario the type system already makes impossible.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
 ### ADR-041: Login page no longer hardcodes the seed tenant's hospital code as the default
 **Date:** 2026-09-02
 **Status:** Accepted
