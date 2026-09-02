@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
 import { DistrictName } from '@/components/DistrictName';
@@ -395,40 +394,25 @@ function AtAGlanceStrip({ patient }: { patient: Patient }) {
 
 /* ------------------------------------------------------------------------ Recent Visits */
 
-/** The primary consultant is shown inline; any additional ones (a visit can have more than one —
- * e.g. a referring and a consulting doctor) used to collapse into a dead-end "+N" label with no
- * way to see who they were. The badge is now a tooltip trigger that lists every extra consultant
- * by name, resolved the same way the primary one is. */
+/** Every consultant on the visit is listed directly (comma-separated, wrapping naturally in
+ * the table cell) — a visit can have more than one (e.g. a referring and a consulting doctor,
+ * "Add another Consultant" on Registration Details). This previously showed only the first
+ * consultant inline with the rest hidden behind a "+N" badge that needed a hover to reveal —
+ * not actually visible at a glance, and unreachable at all on touch devices. Handles any
+ * count (1, 2, 3, or more) the same way, so nothing special happens at any particular size. */
 function ConsultantsCell({ consultations }: { consultations: VisitConsultation[] }) {
-  const [primary, ...rest] = consultations;
-  if (!primary) {
+  if (consultations.length === 0) {
     return <span className="text-muted-foreground">—</span>;
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <ConsultantName consultantId={primary.consultantId} />
-      {rest.length > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              +{rest.length}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <ul className="flex flex-col gap-0.5">
-              {rest.map((consultation) => (
-                <li key={consultation.consultantId}>
-                  <ConsultantName consultantId={consultation.consultantId} />
-                </li>
-              ))}
-            </ul>
-          </TooltipContent>
-        </Tooltip>
-      )}
+    <span className="inline-flex flex-wrap items-center gap-x-1">
+      {consultations.map((consultation, index) => (
+        <span key={consultation.consultantId}>
+          <ConsultantName consultantId={consultation.consultantId} />
+          {index < consultations.length - 1 && ','}
+        </span>
+      ))}
     </span>
   );
 }

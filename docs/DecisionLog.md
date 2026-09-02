@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-054: Patient visit list shows every consultant directly, not just the first behind a hover tooltip
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Twenty-first item of a user-supplied 22-issue backlog, re-scoped by the user mid-session from the original vague "Recent Visits +1" wording (which never reproduced anywhere in the code — see the earlier investigation note) into a concrete, confirmed bug: a visit with 2 or 3 consultants ("Add another Consultant" on Registration Details) only showed the first one in the Patient View's Visits table, with the rest hidden behind a "+N" badge that needed a hover to reveal — not actually visible at a glance, and unreachable at all on touch devices. Backend already fully supported multiple consultants per visit end to end (`PatientVisitConsultation` is a genuine 1:many child of `PatientVisit`, and `PatientVisitMappingExtensions` already mapped every one of them into the API response) — the bug was purely in `PatientDetails.tsx`'s `ConsultantsCell` rendering.
+
+**Decision**
+Rewrote `ConsultantsCell` to render every consultant on the visit directly, comma-separated, wrapping naturally within the table cell — removed the tooltip-hide mechanism entirely. Handles 1, 2, 3, or any number of consultants the same way, with no special-casing at any particular count. Both surfaces that show a patient's visits (the "Recent Visits" card and the full "Visits" tab) share the same `VisitsTable`/`ConsultantsCell` component, so the fix covers both automatically.
+
+**Consequences**
+- Live-verified end to end by the user themselves with real data (a visit with 2 consultants, both now showing directly: "Dr. K. Bala Ganesh, M.D., D.M (Cardio), Dr. E. Kandaswamy, M.D., D.M (Gastro)") — confirmed working, including as a side effect confirming the UHID-restart fix (ADR-043) is also live (`P-2026-040001`).
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
 ### ADR-053: DatabaseArchitecture.md updated — multi-tenancy is implemented, not a future option; tenant-provisioning code layout documented
 **Date:** 2026-09-02
 **Status:** Accepted
