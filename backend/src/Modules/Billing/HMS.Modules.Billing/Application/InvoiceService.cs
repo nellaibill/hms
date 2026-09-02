@@ -2,9 +2,12 @@ using HMS.Modules.Billing.Application.Abstractions;
 using HMS.Modules.Billing.Application.Mapping;
 using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Domain;
+using HMS.Modules.Laboratory.Application;
+using HMS.Modules.Laboratory.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Kernel;
+using Microsoft.Extensions.Logging;
 
 namespace HMS.Modules.Billing.Application;
 
@@ -42,19 +45,25 @@ internal class InvoiceService : IInvoiceService
     private readonly IInvoiceNumberGenerator _numberGenerator;
     private readonly IPatientService _patientService;
     private readonly IPatientVisitService _patientVisitService;
+    private readonly ILabOrderService _labOrderService;
+    private readonly ILogger<InvoiceService> _logger;
 
     public InvoiceService(
         IInvoiceRepository repository,
         IPaymentRepository paymentRepository,
         IInvoiceNumberGenerator numberGenerator,
         IPatientService patientService,
-        IPatientVisitService patientVisitService)
+        IPatientVisitService patientVisitService,
+        ILabOrderService labOrderService,
+        ILogger<InvoiceService> logger)
     {
         _repository = repository;
         _paymentRepository = paymentRepository;
         _numberGenerator = numberGenerator;
         _patientService = patientService;
         _patientVisitService = patientVisitService;
+        _labOrderService = labOrderService;
+        _logger = logger;
     }
 
     public async Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -164,6 +173,77 @@ internal class InvoiceService : IInvoiceService
         }
 
         await _repository.SaveChangesAsync(cancellationToken);
+
+        // Best-effort, not part of this invoice's atomic commit — mirrors ADR-028's Pharmacy
+        // dispense billing precedent (stock/ledger commits first, billing is attempted only
+        // after and never rolled back on failure). Here it's inverted: the invoice is already
+        // the thing that's committed, and raising the corresponding lab order is the
+        // best-effort follow-on. A Laboratory-module failure (unreachable, a genuine
+        // exception, or a Result.Failure) must never fail Reception's billing/payment flow —
+        // the invoice itself always still succeeds; lab staff have no path to act on an
+        // un-raised order today (no manual "create lab order" screen, by design, see
+        // HMS.Modules.Laboratory's own doc comments), so this is logged as a warning for
+        // operational visibility rather than silently swallowed.
+        if (invoice.Items.Any(i => i.BillingType == BillingType.Laboratory))
+        {
+            try
+            {
+                string? source = null;
+                var visitResult = await _patientVisitService.GetByIdAsync(request.PatientId, request.VisitId, cancellationToken);
+                if (visitResult.IsSuccess)
+                {
+                    source = visitResult.Value!.VisitType.ToString();
+                }
+
+                var lines = invoice.Items
+                    .Where(i => i.BillingType == BillingType.Laboratory)
+                    .Select(i =>
+                    {
+                        Guid.TryParse(i.ServiceId, out var serviceId);
+                        Guid.TryParse(i.DepartmentId, out var departmentId);
+                        Guid.TryParse(i.ConsultantId, out var consultantId);
+
+                        return new CreateLabOrderLineRequest
+                        {
+                            InvoiceLineItemId = i.Id,
+                            ServiceId = i.PackageId is null && serviceId != Guid.Empty ? serviceId : null,
+                            PackageId = i.PackageId,
+                            DepartmentId = departmentId != Guid.Empty ? departmentId : null,
+                            ConsultantId = consultantId != Guid.Empty ? consultantId : null,
+                        };
+                    })
+                    .Where(l => l.ServiceId is not null || l.PackageId is not null)
+                    .ToList();
+
+                if (lines.Count > 0)
+                {
+                    var labOrderResult = await _labOrderService.CreateFromInvoiceAsync(
+                        new CreateLabOrderFromInvoiceRequest
+                        {
+                            InvoiceId = invoice.Id,
+                            PatientId = invoice.PatientId,
+                            PatientName = invoice.PatientName,
+                            PatientUhid = invoice.PatientUhid,
+                            VisitId = invoice.VisitId,
+                            Source = source,
+                            Lines = lines,
+                        },
+                        actorId,
+                        cancellationToken);
+
+                    if (!labOrderResult.IsSuccess)
+                    {
+                        _logger.LogWarning(
+                            "Laboratory: could not raise a lab order for invoice '{InvoiceId}' — {ErrorCode}: {Error}",
+                            invoice.Id, labOrderResult.ErrorCode, labOrderResult.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Laboratory: raising a lab order for invoice '{InvoiceId}' threw unexpectedly — the invoice itself still succeeded.", invoice.Id);
+            }
+        }
 
         return Result<InvoiceResponse>.Success(invoice.ToResponse());
     }

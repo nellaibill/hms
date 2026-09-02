@@ -5,6 +5,7 @@ using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.IPD.Infrastructure;
+using HMS.Modules.Laboratory.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Modules.Messaging.Infrastructure;
 using HMS.Modules.Notifications.Infrastructure;
@@ -108,6 +109,17 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("billing"))
         {
             await using var db = new BillingDbContext(BuildOptions<BillingDbContext>(tenantConnectionString, BillingDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // Laboratory depends on Billing existing first only in the sense that a LabOrder is
+        // always created from an already-persisted Invoice — the two schemas have no actual
+        // foreign key between them (every cross-module reference in this codebase is
+        // app-level, never a DB FK), but migrating it after "billing" here keeps the ordering
+        // readable/consistent with that dependency.
+        if (resolved.Contains("laboratory"))
+        {
+            await using var db = new LaboratoryDbContext(BuildOptions<LaboratoryDbContext>(tenantConnectionString, LaboratoryDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
 
