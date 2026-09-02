@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-046: Reusable PasswordInput (show/hide toggle) added and applied to every password-creation field
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fifteenth item of a user-supplied 22-issue backlog ("Add a Retype Password field with an eye icon to show/hide the password" on hospital creation). `HospitalForm.tsx` had one plain `type="password"` field, no confirm field, and no show/hide toggle anywhere in the app — a repo-wide search found zero existing show/hide-password component to reuse (`Eye`/`EyeOff` from `lucide-react` were unused).
+
+**Decision**
+1. Built `frontend/web/src/components/ui/password-input.tsx` — a small `PasswordInput` wrapping the existing `Input` with an `Eye`/`EyeOff` toggle button that only flips the input's own `type`, not form state.
+2. `HospitalForm.tsx`: added `superAdminConfirmPassword` to `createHospitalSchema` (client-only, `.refine`-checked against `superAdminPassword`; not part of `CreateHospitalRequest` — `CreateHospitalPage.tsx`'s `handleSubmit` destructures it out before calling the mutation so it's never sent to the API) and a "Retype Password" field, both using `PasswordInput`.
+3. Applied the same new component to every other place a password is typed and would benefit from a reveal toggle, since it was trivial and directly consistent with what was just built: `SetPasswordDialog.tsx` (admin reset — already had confirm-password, just no toggle), the tenant `ChangePasswordPage.tsx`, and the Platform `ChangePasswordCard` added in ADR-045. **Deliberately left the two login pages (`LoginPage.tsx`/`PlatformLoginPage.tsx`) untouched** — a reveal toggle at sign-in time is a separate UX call nobody asked for, not the same "did I type my new password correctly" concern the other five fields share.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
 ### ADR-045: Platform Admin self-service password change
 **Date:** 2026-09-02
 **Status:** Accepted

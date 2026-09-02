@@ -3,8 +3,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 
 interface SetPasswordDialogProps {
   user: User;
@@ -54,13 +54,13 @@ export function SetPasswordDialog({ user, isSubmitting, apiError, onSubmit, onCa
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="password">New password</Label>
-            <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
+            <PasswordInput id="password" autoComplete="new-password" {...register('password')} />
             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="confirmPassword">Confirm password</Label>
-            <Input id="confirmPassword" type="password" autoComplete="new-password" {...register('confirmPassword')} />
+            <PasswordInput id="confirmPassword" autoComplete="new-password" {...register('confirmPassword')} />
             {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
           </div>
         </form>

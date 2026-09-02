@@ -8,6 +8,7 @@ import { ArrowLeft, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { platformAuthApi } from '@/services/apiClient';
@@ -59,29 +60,19 @@ function ChangePasswordCard() {
         <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="platform-currentPassword">Current password</Label>
-            <Input
-              id="platform-currentPassword"
-              type="password"
-              autoComplete="current-password"
-              {...register('currentPassword')}
-            />
+            <PasswordInput id="platform-currentPassword" autoComplete="current-password" {...register('currentPassword')} />
             {errors.currentPassword && <p className="text-sm text-destructive">{errors.currentPassword.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="platform-newPassword">New password</Label>
-            <Input id="platform-newPassword" type="password" autoComplete="new-password" {...register('newPassword')} />
+            <PasswordInput id="platform-newPassword" autoComplete="new-password" {...register('newPassword')} />
             {errors.newPassword && <p className="text-sm text-destructive">{errors.newPassword.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="platform-confirmNewPassword">Confirm new password</Label>
-            <Input
-              id="platform-confirmNewPassword"
-              type="password"
-              autoComplete="new-password"
-              {...register('confirmNewPassword')}
-            />
+            <PasswordInput id="platform-confirmNewPassword" autoComplete="new-password" {...register('confirmNewPassword')} />
             {errors.confirmNewPassword && (
               <p className="text-sm text-destructive">{errors.confirmNewPassword.message}</p>
             )}

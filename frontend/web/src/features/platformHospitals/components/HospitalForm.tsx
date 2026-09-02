@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { featureLabel, OPTIONAL_FEATURE_KEYS } from '../featureCatalog';
 
 interface HospitalFormProps {
@@ -32,7 +33,11 @@ function TextField({ name, label, register, errors, type = 'text' }: TextFieldPr
         {label}
         <span className="text-destructive"> *</span>
       </Label>
-      <Input id={inputId} type={type} {...register(name)} />
+      {type === 'password' ? (
+        <PasswordInput id={inputId} {...register(name)} />
+      ) : (
+        <Input id={inputId} type={type} {...register(name)} />
+      )}
       {error && <p className="text-sm text-destructive">{String(error.message)}</p>}
     </div>
   );
@@ -60,6 +65,7 @@ export function HospitalForm({ onSubmit, isSubmitting, submitLabel, apiError }: 
       superAdminEmail: '',
       superAdminPhoneNumber: '',
       superAdminPassword: '',
+      superAdminConfirmPassword: '',
       enabledFeatureKeys: [],
     },
   });
@@ -132,6 +138,13 @@ export function HospitalForm({ onSubmit, isSubmitting, submitLabel, apiError }: 
           <TextField name="superAdminEmail" label="Email" type="email" register={register} errors={errors} />
           <TextField name="superAdminPhoneNumber" label="Phone Number" register={register} errors={errors} />
           <TextField name="superAdminPassword" label="Password" type="password" register={register} errors={errors} />
+          <TextField
+            name="superAdminConfirmPassword"
+            label="Retype Password"
+            type="password"
+            register={register}
+            errors={errors}
+          />
         </CardContent>
       </Card>
 
