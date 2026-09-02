@@ -37,7 +37,7 @@ _To be documented._
 
 ## Decisions
 
-### ADR-037: On-call/"Others" consultation charge no longer stomped back to 0
+### ADR-039: On-call/"Others" consultation charge no longer stomped back to 0
 **Date:** 2026-09-02
 **Status:** Accepted
 
@@ -50,6 +50,38 @@ The effect now only overwrites `charge` when the selected type's master `amount`
 **Consequences**
 - Scoped narrowly to the reported symptom (the null-amount case); did not add "has the user manually edited this field" tracking for fixed-fee types, which is a broader behavior change nobody asked for here.
 - Verified via `tsc --noEmit` and `eslint` (both clean) — this repo has no frontend test runner/config anywhere, so there's no existing baseline to add an automated test to.
+
+---
+
+### ADR-038: Voided invoices excluded from the Income & Expense Report's revenue totals
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Second item of a user-supplied 22-issue backlog ("Fix the issue where discarded billing details are still being added to Accounts & Finance"). "Discarding" a bill in this codebase means voiding it (`Invoice.IsVoided`) — there is no separate soft-delete-style cancellation status. The Unified Invoice Ledger intentionally still lists voided invoices (an audit trail, not a "vanish" — see ADR-037), but `frontend/web/src/features/reports/incomeExpenseReport.ts`'s `getIncomeRows`/`getIncomeByBillingType` — which drive the Income & Expense Report's Total Income and per-billing-type breakdown — summed every invoice's `netAmount` with no `isVoided` check at all, so a discarded bill's amount was still counted as real revenue.
+
+**Decision**
+`getIncomeRows` and `getIncomeByBillingType` now both skip any `billing.isVoided` invoice before aggregating. The Ledger itself is untouched (still shows voided rows with their existing "Voided" badge) — only the two revenue-aggregation functions changed, so voided invoices stay visible for audit purposes everywhere except in the actual income totals.
+
+**Consequences**
+- No frontend automated test was added: this repo has no frontend test runner/config anywhere (`frontend/web/tests` is an empty directory, no `*.test.ts(x)` file exists in the whole repo) — verified via `tsc --noEmit` (clean) and `eslint` (clean) on the touched file instead, consistent with there being no existing frontend-test baseline to extend.
+
+---
+
+### ADR-037: Billing — a voided invoice can no longer receive a payment; voided invoices excluded from the Pending filter
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+First item of a user-supplied 22-issue backlog ("Fix the Billing status issue between Pending and Paid"). `InvoiceService.VoidAsync`/`Invoice.Void()` already block voiding an invoice that has any Paid line item, but the reverse was never enforced: `RecordPaymentAsync` never checked `Invoice.IsVoided`, so a voided invoice could still receive `RecordPaymentAsync` calls against its (unpaid) line items — picking up a real `Payment` row and a Paid line item on an invoice the domain considers cancelled. Separately, `InvoiceRepository.GetPagedAsync`'s "Pending" filter (used by the Unified Invoice Ledger) matched purely on line-item status with no `IsVoided` exclusion, so a voided invoice with no paid items showed up mixed into "Pending" results even though the UI labels it "Voided".
+
+**Decision**
+1. `InvoiceService.RecordPaymentAsync` now rejects any payment attempt against a voided invoice with a new `BillingErrorCodes.InvoiceVoided` (409 Conflict, mapped in `InvoicesController.MapFailure` alongside the existing `AlreadyVoided`/`LineItemAlreadyPaid` codes) — checked before the existing "already paid" guard so the more specific reason surfaces first.
+2. `InvoiceRepository.GetPagedAsync`'s Pending branch now also excludes `IsVoided` invoices. The "Paid" branch needed no change: with (1) in place a voided invoice can never acquire a Paid line item going forward, so it can never spuriously match "Paid" either. Voided invoices remain visible in the unfiltered Ledger (existing by-design behavior per `Domain/Invoice.cs`'s own comment — a voided invoice must stay queryable for audit purposes, not disappear like a soft-deleted row) — only the Pending/Paid status filter now excludes them.
+
+**Consequences**
+- Closes the one-directional gap: Void→blocked-by-Paid was already enforced, Paid→blocked-by-Voided now is too, for both the previously-reachable direct-API race and the semantically-nonsensical result of a "cancelled" invoice quietly earning revenue.
+- No repository-level test was added (no repository/DB-level test harness exists anywhere in this codebase — every existing Billing test substitutes `IInvoiceRepository`); the query fix mirrors the existing predicate style in the same method and was verified by build + the full `dotnet test` suite (732 unit + 88 architecture tests, all passing).
 
 ---
 
