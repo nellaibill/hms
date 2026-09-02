@@ -200,6 +200,11 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.LineItemNotFound, $"Line item '{itemId}' was not found on invoice '{invoiceId}'.");
         }
 
+        if (invoice.IsVoided)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.InvoiceVoided, $"Invoice '{invoiceId}' has been voided and can no longer receive payments.");
+        }
+
         if (item.PaymentStatus == Contracts.PaymentStatus.Paid)
         {
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.LineItemAlreadyPaid, $"Line item '{itemId}' is already paid.");

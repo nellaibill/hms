@@ -42,7 +42,11 @@ internal class InvoiceRepository : IInvoiceRepository
         }
         else if (query.PaymentStatus == Contracts.PaymentStatus.Pending)
         {
-            invoices = invoices.Where(i => !i.Items.Any() || i.Items.Any(li => li.PaymentStatus != Contracts.PaymentStatus.Paid));
+            // Excludes voided invoices: a voided invoice has no real payment status of its
+            // own (Domain/Invoice.cs's PaymentStatus getter only speaks to Pending/Paid) and
+            // must not surface as "Pending" collections work — it's shown separately via its
+            // own IsVoided flag/badge, not folded into either status filter.
+            invoices = invoices.Where(i => !i.IsVoided && (!i.Items.Any() || i.Items.Any(li => li.PaymentStatus != Contracts.PaymentStatus.Paid)));
         }
 
         invoices = ApplySort(invoices, query.Sort);
