@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-045: Platform Admin self-service password change
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fourteenth item of a user-supplied 22-issue backlog ("Password Reset Option" for Platform Portal / Hospital Management). Confirmed gap: `PlatformAuthenticationService` had no password-mutation method at all — only login/MFA. Unlike the tenant side (`HMS.Modules.Identity`, which has both a self-service `POST /api/v1/auth/change-password` and an admin-triggered `SetPassword` reset with a forced-change-on-next-login flag, ADR-023), Platform Admin accounts had neither.
+
+**Decision**
+Added the self-service half only, mirroring Identity's `ChangePasswordAsync`/`ChangePasswordRequest`/`ChangePasswordRequestValidator` pattern exactly (same shared `PasswordPolicy`, same "verify current password, then rotate" shape): `PlatformUser.ChangePassword(newPasswordHash)` (domain), `PlatformChangePasswordRequest`/`PlatformChangePasswordRequestValidator`, `IPlatformAuthenticationService.ChangePasswordAsync`, `POST /api/platform/auth/change-password` (`[Authorize(Policy = "Platform")]`), and a `ChangePasswordCard` on `PlatformSecuritySettingsPage.tsx` reusing the existing shared `changePasswordSchema`/`ChangePasswordFormValues` (the shape is identical to Identity's, no Platform-specific schema needed). **Did not** add an admin-resets-another-admin flow (no cross-admin authorization model exists for Platform accounts today, and the user's ask didn't specifically call for it) — scoped to self-service only, per the plan's explicit note to confirm before expanding scope; flag to the user if cross-admin reset turns out to be what's actually wanted.
+
+**Consequences**
+- **DI registration risk, deliberately guarded against**: a prior fix on this codebase hit a real incident where a new `IValidator<T>` was added to Identity but never registered in DI, causing every hospital login to 500. Registered `IValidator<PlatformChangePasswordRequest>` in `PlatformModule.cs` alongside the other Platform validators, then verified live (not just by reading the registration) by hitting the anonymous `POST /api/platform/auth/login` endpoint with a bogus body via the running dev API and confirming a normal 400 validation response rather than a 500 — since ASP.NET Core resolves *every* constructor dependency of a controller on first use regardless of which action is called, this proves the new validator resolves correctly without needing real Platform Admin credentials (which this session cannot obtain — `dotnet user-secrets` is classifier-blocked).
+- No repository-level or full end-to-end login test — verified via unit tests (`ChangePasswordAsync_WithCorrectCurrentPassword_RotatesTheHash`/`_WithWrongCurrentPassword_...`) plus the live DI-resolution check above.
+
+---
+
 ### ADR-044: Patient View gender icon now matches the patient's actual gender
 **Date:** 2026-09-02
 **Status:** Accepted

@@ -32,4 +32,8 @@ internal static class PlatformErrorCodes
     public const string ConfirmationMismatch = "PLATFORM.CONFIRMATION_MISMATCH";
 
     public const string NotDeleted = "PLATFORM.NOT_DELETED";
+
+    /// <summary>ChangePasswordAsync's current-password check failed — mirrors
+    /// HMS.Modules.Identity.Application.AuthenticationErrorCodes.InvalidCurrentPassword.</summary>
+    public const string InvalidCurrentPassword = "PLATFORM.INVALID_CURRENT_PASSWORD";
 }

@@ -300,4 +300,35 @@ public class PlatformAuthenticationServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PlatformErrorCodes.MfaNotEnabled);
     }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WithCorrectCurrentPassword_RotatesTheHash()
+    {
+        var user = NewUser(PlatformRole.SuperAdmin);
+        _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        _passwordHasher.VerifyPassword("OldPass1!", user.PasswordHash).Returns(true);
+        _passwordHasher.HashPassword("NewPass1!").Returns("new-hash");
+
+        var result = await _sut.ChangePasswordAsync(user.Id, "OldPass1!", "NewPass1!", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        user.PasswordHash.Should().Be("new-hash");
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WithWrongCurrentPassword_ReturnsFailureAndDoesNotRotateTheHash()
+    {
+        var user = NewUser(PlatformRole.SuperAdmin);
+        var originalHash = user.PasswordHash;
+        _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        _passwordHasher.VerifyPassword("WrongPass1!", user.PasswordHash).Returns(false);
+
+        var result = await _sut.ChangePasswordAsync(user.Id, "WrongPass1!", "NewPass1!", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PlatformErrorCodes.InvalidCurrentPassword);
+        user.PasswordHash.Should().Be(originalHash);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
 }
