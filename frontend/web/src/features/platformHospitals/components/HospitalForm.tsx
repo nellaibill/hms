@@ -1,13 +1,15 @@
 import { ApiError, createHospitalSchema, type CreateHospitalFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { useForm, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { featureLabel, OPTIONAL_FEATURE_KEYS } from '../featureCatalog';
+import { CITIES_BY_STATE, INDIAN_STATES_AND_UTS, type IndianStateOrUt } from '../indiaStatesAndCities';
 
 interface HospitalFormProps {
   onSubmit: (values: CreateHospitalFormValues) => void;
@@ -43,11 +45,88 @@ function TextField({ name, label, register, errors, type = 'text' }: TextFieldPr
   );
 }
 
+interface StateFieldProps {
+  control: Control<CreateHospitalFormValues>;
+  errors: FieldErrors<CreateHospitalFormValues>;
+  onStateChange: (newState: string) => void;
+}
+
+function StateField({ control, errors, onStateChange }: StateFieldProps) {
+  return (
+    <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+      <Label htmlFor="hospital-field-state">
+        State
+        <span className="text-destructive"> *</span>
+      </Label>
+      <Controller
+        name="state"
+        control={control}
+        render={({ field }) => (
+          <Select
+            value={field.value}
+            onValueChange={(value) => {
+              field.onChange(value);
+              onStateChange(value);
+            }}
+          >
+            <SelectTrigger id="hospital-field-state" aria-label="State">
+              <SelectValue placeholder="Select state…" />
+            </SelectTrigger>
+            <SelectContent>
+              {INDIAN_STATES_AND_UTS.map((state) => (
+                <SelectItem key={state} value={state}>
+                  {state}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
+      {errors.state && <p className="text-sm text-destructive">{String(errors.state.message)}</p>}
+    </div>
+  );
+}
+
+interface CityFieldProps {
+  register: UseFormRegister<CreateHospitalFormValues>;
+  errors: FieldErrors<CreateHospitalFormValues>;
+  state: string;
+}
+
+/** A free-text input, not a locked picklist — an exhaustive list of every Indian city isn't
+ * realistic to maintain, and a hospital's actual city missing from a strict dropdown would
+ * block onboarding entirely. The `<datalist>` still gives a native dropdown-style suggestion
+ * list, scoped to the selected state, without preventing a custom entry. */
+function CityField({ register, errors, state }: CityFieldProps) {
+  const suggestions = (INDIAN_STATES_AND_UTS as readonly string[]).includes(state)
+    ? CITIES_BY_STATE[state as IndianStateOrUt]
+    : [];
+
+  return (
+    <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+      <Label htmlFor="hospital-field-city">
+        City
+        <span className="text-destructive"> *</span>
+      </Label>
+      <Input id="hospital-field-city" list="hospital-city-suggestions" {...register('city')} />
+      <datalist id="hospital-city-suggestions">
+        {suggestions.map((city) => (
+          <option key={city} value={city} />
+        ))}
+      </datalist>
+      {errors.city && <p className="text-sm text-destructive">{String(errors.city.message)}</p>}
+    </div>
+  );
+}
+
 export function HospitalForm({ onSubmit, isSubmitting, submitLabel, apiError }: HospitalFormProps) {
   const {
     register,
+    control,
     handleSubmit,
     setError,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<CreateHospitalFormValues>({
     resolver: zodResolver(createHospitalSchema),
@@ -69,6 +148,14 @@ export function HospitalForm({ onSubmit, isSubmitting, submitLabel, apiError }: 
       enabledFeatureKeys: [],
     },
   });
+
+  const selectedState = watch('state');
+
+  // A city picked under the previous state is meaningless once the state changes — same
+  // reasoning as PatientRegistrationForm's handleDepartmentChange/handleStateChange.
+  function handleStateChange() {
+    setValue('city', '');
+  }
 
   // Mandatory features (identity/masters/patients/documents/branding) are always provisioned
   // server-side regardless of this selection — only the optional ones are choosable here.
@@ -121,8 +208,8 @@ export function HospitalForm({ onSubmit, isSubmitting, submitLabel, apiError }: 
           <TextField name="hospitalCode" label="Hospital Code" register={register} errors={errors} />
           <TextField name="mobileNumber" label="Mobile Number" register={register} errors={errors} />
           <TextField name="address" label="Address" register={register} errors={errors} />
-          <TextField name="city" label="City" register={register} errors={errors} />
-          <TextField name="state" label="State" register={register} errors={errors} />
+          <StateField control={control} errors={errors} onStateChange={handleStateChange} />
+          <CityField register={register} errors={errors} state={selectedState} />
           <TextField name="pincode" label="Pincode" register={register} errors={errors} />
         </CardContent>
       </Card>
