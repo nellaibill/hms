@@ -26,6 +26,7 @@ import {
   NotificationPreferencesApi,
   NotificationsApi,
   NotificationTemplatesApi,
+  PatientImportApi,
   PatientsApi,
   PharmacyApi,
   PlatformAuthApi,
@@ -78,6 +79,7 @@ export const authApi = new AuthApi(httpClient);
 export const usersApi = new UsersApi(httpClient);
 export const rolesApi = new RolesApi(httpClient);
 export const patientsApi = new PatientsApi(httpClient);
+export const patientImportApi = new PatientImportApi(httpClient);
 export const documentsApi = new DocumentsApi(httpClient);
 export const brandingApi = new BrandingApi(httpClient);
 export const mastersApi = new MastersApi(httpClient);

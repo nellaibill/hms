@@ -45,6 +45,16 @@ public static class PatientsModule
         services.AddScoped<IPatientVisitRepository, PatientVisitRepository>();
         services.AddScoped<IPatientVisitService, PatientVisitService>();
 
+        // Bulk Excel import (Super Admin only — see PermissionSeedData's
+        // "patient-management.import" entry). One in-memory queue/hosted-service pair each for
+        // the validate and commit passes, mirroring Documents' scan pipeline — see
+        // Infrastructure/PatientImportQueue.cs's remarks.
+        services.AddScoped<IPatientImportRepository, PatientImportRepository>();
+        services.AddScoped<IPatientImportService, PatientImportService>();
+        services.AddSingleton<IPatientImportQueue, PatientImportQueue>();
+        services.AddHostedService<PatientImportValidationBackgroundService>();
+        services.AddHostedService<PatientImportCommitBackgroundService>();
+
         // Lets HMS.Modules.Documents validate a Patient owner id exists before accepting an
         // upload against it.
         services.AddScoped<IDocumentOwnerExistenceChecker, PatientDocumentOwnerExistenceChecker>();

@@ -45,3 +45,11 @@ export type AllergySeverity = (typeof ALLERGY_SEVERITIES)[number];
 // avoid colliding with this export in the shared barrel.
 export const ADMISSION_TYPES = ['MLC', 'NMLC'] as const;
 export type AdmissionType = (typeof ADMISSION_TYPES)[number];
+
+/** Mirrors HMS.Modules.Patients.Contracts.ImportBatchStatus (bulk patient import). */
+export const IMPORT_BATCH_STATUSES = ['Validating', 'ReadyForReview', 'Committing', 'Completed', 'Failed'] as const;
+export type ImportBatchStatus = (typeof IMPORT_BATCH_STATUSES)[number];
+
+/** Mirrors HMS.Modules.Patients.Contracts.ImportRowStatus. */
+export const IMPORT_ROW_STATUSES = ['Valid', 'Invalid', 'Created', 'CommitFailed'] as const;
+export type ImportRowStatus = (typeof IMPORT_ROW_STATUSES)[number];

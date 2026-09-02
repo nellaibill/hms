@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardList, UserPlus, UserSearch, Wallet } from 'lucide-react';
+import { ArrowRight, ClipboardList, CloudUpload, UserPlus, UserSearch, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -29,12 +29,25 @@ const billingSection = {
   permission: 'finance-billing.view',
 };
 
+// Super Admin only (see PermissionSeedData's "patient-management.import" entry — no other
+// role is granted it by default) — deliberately not surfaced via the main sidebar, whose
+// leaves only support gating by a module's blanket `.view` permission, not this narrower key.
+const bulkImportSection = {
+  title: 'Bulk Patient Import',
+  description: 'Upload an Excel file to register many patients at once — validated and reviewed before anything is saved.',
+  icon: CloudUpload,
+  path: '/patients/import',
+  permission: 'patient-management.import',
+};
+
 /** Reception & Registration landing hub — the single entry point for both registration flows. */
 export default function PatientRegistrationHubPage() {
   const { hasPermission } = useAuth();
   const visibleSections = sections.filter((section) => hasPermission(section.permission));
   const showBilling = hasPermission(billingSection.permission);
   const BillingIcon = billingSection.icon;
+  const showBulkImport = hasPermission(bulkImportSection.permission);
+  const BulkImportIcon = bulkImportSection.icon;
   return (
     <RequirePermission permission="patient-management.view">
     <div className="flex flex-1 flex-col">
@@ -99,6 +112,23 @@ export default function PatientRegistrationHubPage() {
                 </div>
                 <CardTitle className="text-base">{billingSection.title}</CardTitle>
                 <CardDescription>{billingSection.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+        )}
+
+        {showBulkImport && (
+          <Link to={bulkImportSection.path} className="block w-full max-w-sm sm:max-w-md">
+            <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
+              <CardHeader className="p-7 sm:p-8">
+                <div className="flex items-center justify-between">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <BulkImportIcon className="h-5 w-5" />
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <CardTitle className="text-base">{bulkImportSection.title}</CardTitle>
+                <CardDescription>{bulkImportSection.description}</CardDescription>
               </CardHeader>
             </Card>
           </Link>

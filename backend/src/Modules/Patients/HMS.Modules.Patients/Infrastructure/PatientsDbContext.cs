@@ -28,6 +28,13 @@ public class PatientsDbContext : DbContext
     // PatientVisit.Consultations, same as Address/Allergy/EmergencyContact off Patient.
     internal DbSet<PatientVisit> PatientVisits => Set<PatientVisit>();
 
+    // Bulk Excel import (see Application/PatientImportService.cs). Both queried directly by
+    // id/BatchId rather than through an aggregate navigation — a batch can have tens of
+    // thousands of rows, so the review UI pages PatientImportRows on its own rather than
+    // loading them all through PatientImportBatch.
+    internal DbSet<PatientImportBatch> PatientImportBatches => Set<PatientImportBatch>();
+    internal DbSet<PatientImportRow> PatientImportRows => Set<PatientImportRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);

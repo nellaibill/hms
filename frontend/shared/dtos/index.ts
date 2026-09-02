@@ -5,6 +5,7 @@ export * from './platform/auth';
 export * from './platform/hospital';
 export * from './patients/patient';
 export * from './patients/patientVisit';
+export * from './patients/patientImport';
 export * from './documents/document';
 export * from './branding/branding';
 export * from './products/product';

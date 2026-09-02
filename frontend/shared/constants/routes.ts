@@ -59,6 +59,15 @@ export const API_ROUTES = {
     visits: (id: string) => `/api/v1/patients/${id}/visits`,
     visitById: (id: string, visitId: string) => `/api/v1/patients/${id}/visits/${visitId}`,
   },
+  /** Bulk patient import (Super Admin only) — mirrors HMS.Modules.Patients.Endpoints.PatientImportController. */
+  patientImport: {
+    base: '/api/v1/patients/import',
+    template: '/api/v1/patients/import/template',
+    byId: (batchId: string) => `/api/v1/patients/import/${batchId}`,
+    rows: (batchId: string) => `/api/v1/patients/import/${batchId}/rows`,
+    report: (batchId: string) => `/api/v1/patients/import/${batchId}/report`,
+    commit: (batchId: string) => `/api/v1/patients/import/${batchId}/commit`,
+  },
   branding: {
     base: '/api/v1/branding',
     logo: '/api/v1/branding/logo',

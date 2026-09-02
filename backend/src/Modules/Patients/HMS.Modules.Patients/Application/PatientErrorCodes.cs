@@ -19,4 +19,9 @@ internal static class PatientErrorCodes
     public const string InvalidConsultant = "PATIENTS.INVALID_CONSULTANT";
     public const string InvalidAppointmentType = "PATIENTS.INVALID_APPOINTMENT_TYPE";
     public const string InvalidConsultationType = "PATIENTS.INVALID_CONSULTATION_TYPE";
+
+    public const string ImportBatchNotFound = "PATIENTS.IMPORT_BATCH_NOT_FOUND";
+    public const string ImportBatchNotReady = "PATIENTS.IMPORT_BATCH_NOT_READY";
+    public const string ImportFileInvalid = "PATIENTS.IMPORT_FILE_INVALID";
+    public const string ImportFileTooLarge = "PATIENTS.IMPORT_FILE_TOO_LARGE";
 }
