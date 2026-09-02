@@ -1,6 +1,9 @@
 import type { Patient, PatientEditUiFormValues, UpdatePatientRequest } from '@hms/shared';
 import { ArrowLeft, Loader2, UserCog } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
@@ -104,6 +107,8 @@ export default function PatientEditPage() {
   const navigate = useNavigate();
   const { data: patient, isPending, isError } = usePatientQuery(id);
   const mutation = useUpdatePatientMutation();
+  const [isDirty, setIsDirty] = useState(false);
+  const { showUnsavedDialog, confirmDiscard, cancelDiscard, markSaved } = useUnsavedChangesGuard(isDirty);
 
   if (isPending) {
     return (
@@ -133,7 +138,12 @@ export default function PatientEditPage() {
   function handleSubmit(values: PatientEditUiFormValues) {
     mutation.mutate(
       { id: id as string, request: toRequest(values, rowVersion, loadedPatient) },
-      { onSuccess: () => navigate(`/patients/registration/${id}`) },
+      {
+        onSuccess: () => {
+          markSaved();
+          navigate(`/patients/registration/${id}`);
+        },
+      },
     );
   }
 
@@ -173,9 +183,12 @@ export default function PatientEditPage() {
           defaultValues={toDefaultValues(patient)}
           onSubmit={handleSubmit}
           onCancel={() => navigate(`/patients/registration/${id}`)}
+          onDirtyChange={setIsDirty}
         />
       </RequirePermission>
       </div>
+
+      <UnsavedChangesDialog open={showUnsavedDialog} onConfirmDiscard={confirmDiscard} onCancel={cancelDiscard} />
     </div>
   );
 }

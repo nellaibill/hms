@@ -62,6 +62,10 @@ interface PatientRegistrationFormProps {
    * apiError). */
   onSaveAndProceed: (values: PatientRegistrationCoreUiFormValues, documents: StagedDocuments) => Promise<boolean>;
   onSubmit: (values: PatientRegistrationUiFormValues, documents: StagedDocuments) => void;
+  /** Mirrors the form's own dirty state up to the parent page, which owns the actual
+   * unsaved-changes navigation guard (useUnsavedChangesGuard) — see that hook's own comment
+   * for why the guard itself has to live where the post-save navigate() call does. */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details'] as const;
@@ -162,7 +166,15 @@ const defaultValues: PatientRegistrationUiFormValues = {
  * button on Medical Information, which persists the patient at that point). Registration
  * Details stays UI-only — the Patients backend has no encounter/visit concept yet.
  */
-export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, apiError, savedPatient, onSaveAndProceed, onSubmit }: PatientRegistrationFormProps) {
+export function PatientRegistrationForm({
+  isSubmitting,
+  isSavingAndProceeding,
+  apiError,
+  savedPatient,
+  onSaveAndProceed,
+  onSubmit,
+  onDirtyChange,
+}: PatientRegistrationFormProps) {
   const navigate = useNavigate();
 
   const {
@@ -173,7 +185,7 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
     trigger,
     getValues,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
     defaultValues,
@@ -237,6 +249,10 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
   useEffect(() => {
     formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
   }, [activeTab]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
   // Tabs the user has actually tried to leave (via Next) or a final submit attempt — a tab
   // the user hasn't reached yet shouldn't show an error dot just because its untouched
   // required fields are technically invalid.
