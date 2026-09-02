@@ -1,6 +1,7 @@
 const path = require('path');
 const runners = require('./runners');
 const processes = require('./processes');
+const { npmCommand } = require('./npmCommand');
 
 function paths(basePath) {
   return {
@@ -14,17 +15,14 @@ function paths(basePath) {
 // "file:../shared", so installing from the root is what actually links them.
 function install(basePath) {
   const { workspaceRootDir } = paths(basePath);
-  return runners.runOneShot('frontend', 'npm install', 'npm', ['install'], workspaceRootDir);
+  const { cmd, args, shell } = npmCommand(['install']);
+  return runners.runOneShot('frontend', 'npm install', cmd, args, workspaceRootDir, {}, shell);
 }
 
 function startOptions(basePath) {
   const { webDir } = paths(basePath);
-  return {
-    cmd: 'npm',
-    args: ['run', 'dev', '--', '--host', '0.0.0.0'],
-    cwd: webDir,
-    env: {},
-  };
+  const { cmd, args, shell } = npmCommand(['run', 'dev', '--', '--host', '0.0.0.0']);
+  return { cmd, args, cwd: webDir, env: {}, shell };
 }
 
 function start(basePath) {

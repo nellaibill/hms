@@ -1,14 +1,16 @@
-const { spawn, exec } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const logs = require('./logs');
 
 // Tracks the two long-running dev processes (backend, frontend) this tool starts.
 // Windows-only stop path: `taskkill /T` kills the whole process tree rooted at the PID we
 // spawned, which is required here — `dotnet run` and `npm run dev` both launch a child
 // process (the real apphost / vite), so killing only the parent leaves the actual server
-// running and the port held.
+// running and the port held. Uses execFile (spawns taskkill.exe directly, no shell) rather
+// than exec (which always goes through cmd.exe) — see runners.js's comment for why this
+// dashboard avoids depending on cmd.exe being spawnable at all.
 const processes = new Map(); // name -> { proc, pid, status, startedAt, command }
 
-function start(name, { cmd, args, cwd, env = {} }) {
+function start(name, { cmd, args, cwd, env = {}, shell = false }) {
   const existing = processes.get(name);
   if (existing && existing.status === 'running') {
     return { started: false, reason: `${name} is already running (pid ${existing.pid})`, status: describe(name) };
@@ -20,7 +22,7 @@ function start(name, { cmd, args, cwd, env = {} }) {
   const child = spawn(cmd, args, {
     cwd,
     env: { ...process.env, ...env },
-    shell: true,
+    shell,
     windowsHide: true,
   });
 
@@ -56,7 +58,7 @@ function stop(name) {
     }
 
     logs.append(name, `stopping (taskkill /PID ${entry.pid} /T /F)...`, 'cmd');
-    exec(`taskkill /PID ${entry.pid} /T /F`, (err) => {
+    execFile('taskkill', ['/PID', String(entry.pid), '/T', '/F'], (err) => {
       if (err) {
         logs.append(name, `taskkill error: ${err.message}`, 'error');
       }
