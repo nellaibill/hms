@@ -1,3 +1,4 @@
+import type { DocumentType as ApiDocumentType } from '@hms/shared';
 import type { DocumentType, EntityType } from './types';
 
 export interface EntityTypeMeta {
@@ -27,6 +28,31 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   Report: 'Report',
   Invoice: 'Invoice',
   'Consent Form': 'Consent Form',
+  Insurance: 'Insurance',
+  Certificate: 'Certificate',
+  Other: 'Other',
+};
+
+// Translates between this UI's display labels and HMS.Modules.Documents.Contracts.DocumentType's
+// enum member names, which the backend model binder matches by name (e.g. query/form string
+// "IdProof", not "ID Proof").
+export const DOCUMENT_TYPE_TO_API: Record<DocumentType, ApiDocumentType> = {
+  'ID Proof': 'IdProof',
+  Prescription: 'Prescription',
+  Report: 'Report',
+  Invoice: 'Invoice',
+  'Consent Form': 'ConsentForm',
+  Insurance: 'Insurance',
+  Certificate: 'Certificate',
+  Other: 'Other',
+};
+
+export const API_DOCUMENT_TYPE_TO_UI: Record<ApiDocumentType, DocumentType> = {
+  IdProof: 'ID Proof',
+  Prescription: 'Prescription',
+  Report: 'Report',
+  Invoice: 'Invoice',
+  ConsentForm: 'Consent Form',
   Insurance: 'Insurance',
   Certificate: 'Certificate',
   Other: 'Other',

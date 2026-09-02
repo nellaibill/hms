@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FolderKanban, RefreshCw, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -13,10 +13,10 @@ import {
   EmptyState,
   FilterBar,
   FilterBarSkeleton,
-  getMockDocumentSummary,
-  getMockUploaders,
   PreviewPanel,
   PreviewPanelSkeleton,
+  resolveEntityLabel,
+  resolveUploaderLabel,
   SummaryCards,
   SummaryCardsSkeleton,
   TableSkeleton,
@@ -24,9 +24,15 @@ import {
   useArchiveDocumentMutation,
   useDeleteDocumentMutation,
   useDocumentsQuery,
+  useDocumentSummaryQuery,
+  usePatientDirectory,
+  useStaffDirectory,
+  useUploaderDirectory,
 } from '@/features/documents';
 import type { DocumentFilters, HmsDocument } from '@/features/documents';
 import { useAuth } from '@/features/auth/AuthContext';
+
+const EMPTY_SUMMARY = { total: 0, uploadedToday: 0, archived: 0, storageUsedBytes: 0 };
 
 export default function DocumentManagementPage() {
   const { hasPermission } = useAuth();
@@ -40,22 +46,31 @@ export default function DocumentManagementPage() {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   const documentsQuery = useDocumentsQuery(filters);
+  const summaryQuery = useDocumentSummaryQuery();
+  const { data: patients = [] } = usePatientDirectory();
+  const { data: staff = [] } = useStaffDirectory();
+  const { data: uploaders = [] } = useUploaderDirectory();
   const archiveMutation = useArchiveDocumentMutation();
   const deleteMutation = useDeleteDocumentMutation();
 
   const documents = useMemo(() => documentsQuery.data ?? [], [documentsQuery.data]);
   const selectedDoc = useMemo(() => documents.find((d) => d.id === selectedId) ?? null, [documents, selectedId]);
-  const summary = getMockDocumentSummary();
-  const uploaders = getMockUploaders();
+  const summary = summaryQuery.data ?? EMPTY_SUMMARY;
 
-  function handleDownload(doc: HmsDocument) {
-    const started = downloadDocument(doc);
+  const getEntityLabel = useCallback(
+    (doc: HmsDocument) => resolveEntityLabel(doc.entityType, doc.entityId, patients, staff),
+    [patients, staff],
+  );
+  const getUploaderLabel = useCallback((doc: HmsDocument) => resolveUploaderLabel(doc.uploadedBy, uploaders), [uploaders]);
+
+  async function handleDownload(doc: HmsDocument) {
+    const started = await downloadDocument(doc);
     if (started) {
       toast({ title: 'Download started', description: doc.originalFileName });
     } else {
       toast({
-        title: 'No file content available',
-        description: 'This demo document has no downloadable file attached.',
+        title: 'Download failed',
+        description: "This document's content isn't available yet (still being scanned) or could not be reached.",
         variant: 'warning',
       });
     }
@@ -64,20 +79,28 @@ export default function DocumentManagementPage() {
   function handleConfirmArchive() {
     if (!archiveTarget) return;
     const target = archiveTarget;
-    archiveMutation.archive(target.id, () => {
-      toast({ title: 'Document archived', description: `${target.originalFileName} is now hidden from active searches.` });
-      setArchiveTarget(null);
-    });
+    archiveMutation.archive(
+      target.id,
+      () => {
+        toast({ title: 'Document archived', description: `${target.originalFileName} is now hidden from active searches.` });
+        setArchiveTarget(null);
+      },
+      (message) => toast({ title: 'Failed to archive document', description: message, variant: 'warning' }),
+    );
   }
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
     const target = deleteTarget;
-    deleteMutation.remove(target.id, () => {
-      toast({ title: 'Document deleted', description: target.originalFileName, variant: 'success' });
-      if (selectedId === target.id) setSelectedId(null);
-      setDeleteTarget(null);
-    });
+    deleteMutation.remove(
+      target.id,
+      () => {
+        toast({ title: 'Document deleted', description: target.originalFileName, variant: 'success' });
+        if (selectedId === target.id) setSelectedId(null);
+        setDeleteTarget(null);
+      },
+      (message) => toast({ title: 'Failed to delete document', description: message, variant: 'warning' }),
+    );
   }
 
   const isPending = documentsQuery.isPending;
@@ -96,7 +119,14 @@ export default function DocumentManagementPage() {
 
       <div className="flex flex-1 flex-col gap-5 p-6 lg:p-8">
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" onClick={() => documentsQuery.refetch()} disabled={documentsQuery.isFetching}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              documentsQuery.refetch();
+              summaryQuery.refetch();
+            }}
+            disabled={documentsQuery.isFetching}
+          >
             <RefreshCw className={documentsQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
             Refresh
           </Button>
@@ -108,8 +138,19 @@ export default function DocumentManagementPage() {
           )}
         </div>
 
-        {isPending ? <SummaryCardsSkeleton /> : <SummaryCards stats={summary} />}
-        {isPending ? <FilterBarSkeleton /> : <FilterBar filters={filters} onApply={setFilters} onReset={() => setFilters(createEmptyFilters())} uploaders={uploaders} />}
+        {summaryQuery.isPending ? <SummaryCardsSkeleton /> : <SummaryCards stats={summary} />}
+        {isPending ? (
+          <FilterBarSkeleton />
+        ) : (
+          <FilterBar
+            filters={filters}
+            onApply={setFilters}
+            onReset={() => setFilters(createEmptyFilters())}
+            uploaders={uploaders}
+            patients={patients}
+            staff={staff}
+          />
+        )}
 
         <div className="flex flex-1 gap-5">
           <div className="min-w-0 flex-1">
@@ -125,6 +166,8 @@ export default function DocumentManagementPage() {
                 onDownload={handleDownload}
                 onArchive={setArchiveTarget}
                 onDelete={setDeleteTarget}
+                getEntityLabel={getEntityLabel}
+                getUploaderLabel={getUploaderLabel}
               />
             )}
           </div>
@@ -141,6 +184,8 @@ export default function DocumentManagementPage() {
                     onDownload={handleDownload}
                     onArchive={setArchiveTarget}
                     onDelete={setDeleteTarget}
+                    getEntityLabel={getEntityLabel}
+                    getUploaderLabel={getUploaderLabel}
                     className="h-full"
                   />
                 )
@@ -160,6 +205,8 @@ export default function DocumentManagementPage() {
               onDownload={handleDownload}
               onArchive={setArchiveTarget}
               onDelete={setDeleteTarget}
+              getEntityLabel={getEntityLabel}
+              getUploaderLabel={getUploaderLabel}
               className="h-full"
             />
           )}

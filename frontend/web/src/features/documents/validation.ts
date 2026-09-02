@@ -1,5 +1,4 @@
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES, VALIDATION_MESSAGES } from './constants';
-import { entityExists } from './mockEntities';
 import type { DocumentUploadFormValues } from './types';
 
 export interface UploadFormErrors {
@@ -14,7 +13,9 @@ export function validateUploadForm(values: DocumentUploadFormValues): UploadForm
 
   if (!values.entityType) {
     errors.entityType = VALIDATION_MESSAGES.entityTypeRequired;
-  } else if (!values.entityId || !entityExists(values.entityType, values.entityId)) {
+  } else if (!values.entityId?.trim()) {
+    // Existence is authoritative on the server (404 OwnerNotFound) — this only guards against
+    // submitting the form with the field left blank.
     errors.entity = VALIDATION_MESSAGES.entityRequired;
   }
 

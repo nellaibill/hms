@@ -2,10 +2,10 @@ import { Archive, Files, HardDrive, UploadCloud } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatFileSize } from '../utils/format';
-import type { DocumentSummaryStats } from '../mockDocumentsStore';
+import type { DocumentSummaryResponse } from '@hms/shared';
 
 interface SummaryCardsProps {
-  stats: DocumentSummaryStats;
+  stats: DocumentSummaryResponse;
 }
 
 const CARD_META = [

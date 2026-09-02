@@ -1,5 +1,6 @@
 import { API_ROUTES } from '../../constants';
-import type { DocumentOwnerType, DocumentResponse, DocumentType, UploadDocumentRequest } from '../../dtos';
+import type { DocumentOwnerType, DocumentResponse, DocumentSearchQuery, DocumentSummaryResponse, DocumentType, UploadDocumentRequest } from '../../dtos';
+import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
 export interface DocumentListQuery {
@@ -8,10 +9,14 @@ export interface DocumentListQuery {
   documentType?: DocumentType;
 }
 
+export interface PagedDocuments {
+  items: DocumentResponse[];
+  meta: PaginationMeta;
+}
+
 /**
  * Typed API service for the Documents module's generic endpoints, built on the shared HTTP
- * client (docs/FrontendArchitecture.md §6). Only covers upload/list/content — see document.ts's
- * own doc comment for why the rest of the Documents contract surface isn't modeled here yet.
+ * client (docs/FrontendArchitecture.md §6).
  */
 export class DocumentsApi {
   constructor(private readonly client: HttpClient) {}
@@ -50,5 +55,42 @@ export class DocumentsApi {
 
   async deleteDocument(id: string): Promise<void> {
     await this.client.delete(API_ROUTES.documents.byId(id));
+  }
+
+  /** Paged, multi-filter search across every owner — backs the Document Management dashboard
+   * (frontend/web/src/features/documents), as opposed to listDocuments' "one owner" shape used
+   * by the Patient/Employee document tabs. Mirrors DocumentsController.GetPaged. */
+  async getDocuments(query: DocumentSearchQuery = {}): Promise<PagedDocuments> {
+    const response = await this.client.get<DocumentResponse[]>(API_ROUTES.documents.base, {
+      query: {
+        page: query.page,
+        pageSize: query.pageSize,
+        sort: query.sort,
+        search: query.search,
+        ownerType: query.ownerType,
+        ownerId: query.ownerId,
+        documentType: query.documentType,
+        uploadedByUserId: query.uploadedByUserId,
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+        status: query.status,
+      },
+    });
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
+  }
+
+  /** Server-computed KPI aggregate — mirrors DocumentsController.GetSummary. */
+  async getSummary(): Promise<DocumentSummaryResponse> {
+    const response = await this.client.get<DocumentSummaryResponse>(API_ROUTES.documents.summary);
+    return response.data;
+  }
+
+  /** Mirrors DocumentsController.Archive (idempotent). */
+  async archiveDocument(id: string): Promise<DocumentResponse> {
+    const response = await this.client.patch<DocumentResponse>(API_ROUTES.documents.archive(id));
+    return response.data;
   }
 }
