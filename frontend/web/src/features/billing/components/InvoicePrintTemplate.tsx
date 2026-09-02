@@ -49,23 +49,10 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
       className="print-target hidden bg-white p-10 text-black print:block"
       style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
-      <div className="flex items-start justify-between gap-6 border-b-2 border-black pb-4">
-        <div className="flex items-center gap-4">
-          <img src={logoUrl} alt={hospitalName} className="h-16 w-auto object-contain" />
-          <div className="flex flex-col">
-            <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
-            <span className="text-xs text-gray-600">{appTitle}</span>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1 text-right">
-          <span className="text-lg font-bold uppercase tracking-widest">Invoice</span>
-          <span className="text-sm">
-            <span className="text-gray-600">No.</span> {billing.invoiceNumber ?? billing.id}
-          </span>
-          <span className="text-sm text-gray-600">
-            {new Date(billing.createdAt).toLocaleString('en-IN')}
-          </span>
-        </div>
+      <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-4 text-center">
+        <img src={logoUrl} alt={hospitalName} className="h-20 w-auto object-contain" />
+        <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
+        <span className="text-xs text-gray-600">{appTitle}</span>
       </div>
 
       <div className="mt-6 flex items-start justify-between gap-6">
@@ -76,9 +63,16 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
           <span className="text-base font-semibold">{billing.patientName}</span>
           <span className="text-sm text-gray-700">UHID: {billing.patientUhid}</span>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+          <span className="text-lg font-bold uppercase tracking-widest">Invoice</span>
+          <span className="whitespace-nowrap text-sm">
+            <span className="text-gray-600">No.</span> {billing.invoiceNumber ?? billing.id}
+          </span>
+          <span className="whitespace-nowrap text-sm text-gray-600">
+            {new Date(billing.createdAt).toLocaleString('en-IN')}
+          </span>
           <span
-            className="border-2 px-3 py-1 text-sm font-bold uppercase tracking-widest"
+            className="mt-1 border-2 px-3 py-1 text-sm font-bold uppercase tracking-widest"
             style={{ borderColor: 'black', color: statusLabel === 'PENDING' ? '#92400e' : 'black' }}
           >
             {statusLabel}
@@ -94,10 +88,7 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
           <tr className="border-y-2 border-black">
             <th className="py-2 pr-2 text-left font-semibold">#</th>
             <th className="py-2 pr-2 text-left font-semibold">Description</th>
-            <th className="py-2 pr-2 text-left font-semibold">Rendered by</th>
-            <th className="py-2 pr-2 text-right font-semibold">Qty</th>
-            <th className="py-2 pr-2 text-right font-semibold">Unit Price</th>
-            <th className="py-2 pr-2 text-right font-semibold">Discount</th>
+            <th className="py-2 pr-2 text-left font-semibold">Consultant Doctor</th>
             <th className="py-2 text-right font-semibold">Amount</th>
           </tr>
         </thead>
@@ -111,11 +102,6 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
                   {item.billingType} — {serviceLabel}
                 </td>
                 <td className="py-2 pr-2 align-top text-gray-600">{consultantName}</td>
-                <td className="py-2 pr-2 text-right align-top">{item.quantity}</td>
-                <td className="py-2 pr-2 text-right align-top">{formatCurrency(item.unitPrice)}</td>
-                <td className="py-2 pr-2 text-right align-top">
-                  {item.discount > 0 ? formatCurrency(item.discount) : '—'}
-                </td>
                 <td className="py-2 text-right align-top font-medium">
                   {formatCurrency(item.total)}
                 </td>
@@ -130,14 +116,6 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Gross total</span>
             <span>{formatCurrency(billing.grossAmount)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Discount</span>
-            <span>
-              {billing.totalDiscount > 0
-                ? `- ${formatCurrency(billing.totalDiscount)}`
-                : formatCurrency(0)}
-            </span>
           </div>
           <div className="flex items-center justify-between border-t-2 border-black pt-1.5 text-base font-bold">
             <span>Net Payable</span>
