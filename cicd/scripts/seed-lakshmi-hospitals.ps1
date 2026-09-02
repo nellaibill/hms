@@ -165,6 +165,21 @@ function Invoke-WithRetry {
                 Start-Sleep -Seconds 65
                 continue
             }
+            # PowerShell's own error ("(400) Bad Request") never includes the server's actual
+            # validation message, which previously meant tracking down a real cause (e.g. a
+            # DUPLICATE_CODE conflict) needed a separate throwaway repro script. Reading the
+            # response stream here surfaces that message directly in the failure output instead.
+            $responseBody = $null
+            try {
+                $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $responseBody = $reader.ReadToEnd()
+            }
+            catch {
+                # Best-effort - if the stream can't be read, fall through to the plain rethrow below.
+            }
+            if ($responseBody) {
+                Write-Host "  HTTP $statusCode calling '$Label': $responseBody" -ForegroundColor Red
+            }
             throw
         }
     }
