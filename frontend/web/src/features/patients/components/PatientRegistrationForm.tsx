@@ -40,7 +40,7 @@ import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } fro
 import { Field, FormSection } from './FormSection';
 import { TabErrorSummary } from './TabErrorSummary';
 import { bloodGroupLabel } from '../bloodGroupLabel';
-import { calculateDetailedAge } from '../detailedAge';
+import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
 import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLabel';
 import { tabErrorMessages } from '../formErrorSummary';
 import { humanize } from '../humanize';
@@ -524,7 +524,7 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
               <Input id="lastName" {...register('lastName')} />
             </Field>
             <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
-              <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+              <Input id="dateOfBirth" type="date" {...dateOfBirthInputBounds()} {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>

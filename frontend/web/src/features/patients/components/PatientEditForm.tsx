@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DistrictSelect } from '@/components/DistrictSelect';
 import { StateSelect } from '@/components/StateSelect';
 import { bloodGroupLabel } from '../bloodGroupLabel';
-import { calculateDetailedAge } from '../detailedAge';
+import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
 import { tabErrorMessages } from '../formErrorSummary';
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
@@ -302,7 +302,7 @@ export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitt
               <Input id="lastName" {...register('lastName')} />
             </Field>
             <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
-              <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+              <Input id="dateOfBirth" type="date" {...dateOfBirthInputBounds()} {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>

@@ -46,3 +46,18 @@ export function calculateDetailedAge(dateOfBirth: string, today: Date = new Date
 
   return parts.join(', ');
 }
+
+/**
+ * `min`/`max` bounds for a Date of Birth `<input type="date">` — a native date input has no
+ * built-in limit on how many digits can be typed into its year segment (Chromium allows up
+ * to 6), so without these a stray extra digit (e.g. "202506") can slip through. `max` blocks
+ * a future date at the picker level; `min` mirrors the 130-year floor already enforced by
+ * patientRegistrationUiValidation.ts's Zod schema and the backend's
+ * CreatePatientRequestValidator.MinDateOfBirth, so all three stay in sync.
+ */
+export function dateOfBirthInputBounds(today: Date = new Date()): { min: string; max: string } {
+  const toIsoDate = (date: Date) => date.toISOString().slice(0, 10);
+  const minDate = new Date(today);
+  minDate.setFullYear(minDate.getFullYear() - 130);
+  return { min: toIsoDate(minDate), max: toIsoDate(today) };
+}
