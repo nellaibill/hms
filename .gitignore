@@ -51,6 +51,9 @@ frontend/mobile/ios/DerivedData/
 # Claude Code: per-session/local permission grants, not shared team config.
 .claude/settings.local.json
 
+# HMS Dev Helper: per-developer VM path/secrets, same handling as .env above.
+scripts/dev-helper/config.local.json
+
 # =========================
 # OS
 # =========================

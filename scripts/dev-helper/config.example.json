@@ -1,0 +1,39 @@
+{
+  "basePath": "D:\\hms",
+  "dashboardPort": 4500,
+
+  "postgres": {
+    "host": "localhost",
+    "port": 5432,
+    "user": "hms",
+    "password": "hms",
+    "maintenanceDatabase": "postgres",
+    "platformDatabase": "hms_platform",
+    "defaultDatabase": "hms_platform"
+  },
+
+  "backend": {
+    "environment": "Development",
+    "jwtSigningKey": "",
+    "superAdminSeedPassword": "",
+    "platformAdminPassword": "",
+    "platformAdminEmail": "support@yourhms.com",
+    "seedLegacyTenant": true,
+    "baseUrl": "http://localhost:58158"
+  },
+
+  "frontend": {
+    "url": "http://localhost:5173"
+  },
+
+  "tenantSeedDefaults": {
+    "mobileNumber": "9999999999",
+    "address": "Dev Address",
+    "city": "Dev City",
+    "state": "Dev State",
+    "pincode": "600001",
+    "superAdminFirstName": "Super",
+    "superAdminLastName": "Admin",
+    "superAdminEmailDomain": "hms.local"
+  }
+}
