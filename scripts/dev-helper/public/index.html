@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HMS Dev Helper</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>HMS VM Development Helper</h1>
+    <div class="topbar-right">
+      <span id="basePathLabel" class="base-path"></span>
+      <button id="settingsBtn" class="btn btn-ghost">Settings</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="status-grid">
+      <div class="status-card" id="status-git">
+        <h3>Git</h3>
+        <div class="status-body">Loading…</div>
+      </div>
+      <div class="status-card" id="status-db">
+        <h3>Database</h3>
+        <div class="status-body">Loading…</div>
+      </div>
+      <div class="status-card" id="status-backend">
+        <h3>Backend</h3>
+        <div class="status-body">Loading…</div>
+      </div>
+      <div class="status-card" id="status-frontend">
+        <h3>Frontend</h3>
+        <div class="status-body">Loading…</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Full Setup</h2>
+      <p class="hint">Git fetch → Git pull → Build backend → Install frontend deps → Create Platform DB → Create Tenant DB → Run migrations &amp; seed → Start backend → Start frontend.</p>
+      <button id="fullSetupBtn" class="btn btn-primary">Run Full Setup</button>
+      <pre class="log" id="log-fullsetup"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Git</h2>
+      <div class="actions">
+        <button class="btn" data-action="git/fetch">Fetch</button>
+        <button class="btn" data-action="git/pull">Pull</button>
+      </div>
+      <pre class="log" id="log-git"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Database</h2>
+      <p class="hint">Uses the Platform/Tenant (Default) connection strings from Settings. "Run Migrations" applies every module's EF Core migrations and runs this app's own seed step (Platform Admin + optional legacy tenant) — see Program.cs.</p>
+      <div class="actions">
+        <button class="btn" data-action="db/create-platform">Create Platform DB</button>
+        <button class="btn" data-action="db/create-tenant">Create Tenant DB</button>
+        <button class="btn" data-action="db/migrate">Run All Migrations</button>
+        <button class="btn" data-action="db/seed">Seed Data</button>
+      </div>
+      <pre class="log" id="log-db"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Backend <span class="subtitle">dotnet run --project HMS.Api</span></h2>
+      <div class="actions">
+        <button class="btn" data-action="backend/build">Build</button>
+        <button class="btn btn-start" data-action="backend/start">Start</button>
+        <button class="btn btn-stop" data-action="backend/stop">Stop</button>
+        <button class="btn" data-action="backend/restart">Restart</button>
+      </div>
+      <pre class="log" id="log-backend"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Frontend <span class="subtitle">npm run dev -- --host 0.0.0.0</span></h2>
+      <div class="actions">
+        <button class="btn" data-action="frontend/install">Install</button>
+        <button class="btn btn-start" data-action="frontend/start">Start</button>
+        <button class="btn btn-stop" data-action="frontend/stop">Stop</button>
+        <button class="btn" data-action="frontend/restart">Restart</button>
+      </div>
+      <pre class="log" id="log-frontend"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Tenant Seed</h2>
+      <p class="hint">Registers a new hospital via POST /api/platform/hospitals, logging in as the seeded Platform Admin first. Requires the backend to be running and Database → Run Migrations to have already seeded the Platform Admin account.</p>
+      <form id="tenantForm" class="form">
+        <div class="form-row">
+          <label>Hospital Code<input name="hospitalCode" required placeholder="e.g. demo" /></label>
+          <label>Super Admin Username<input name="superAdminUsername" required placeholder="e.g. demoadmin" /></label>
+          <label>Super Admin Password<input name="superAdminPassword" type="password" required /></label>
+        </div>
+        <details>
+          <summary>Advanced (optional — sensible dev defaults are used if left blank)</summary>
+          <div class="form-row">
+            <label>Hospital Name<input name="hospitalName" placeholder="defaults to Hospital Code" /></label>
+            <label>Mobile Number<input name="mobileNumber" placeholder="10 digits" /></label>
+            <label>Pincode<input name="pincode" placeholder="6 digits" /></label>
+          </div>
+          <div class="form-row">
+            <label>Address<input name="address" /></label>
+            <label>City<input name="city" /></label>
+            <label>State<input name="state" /></label>
+          </div>
+          <div class="form-row">
+            <label>Super Admin First Name<input name="superAdminFirstName" /></label>
+            <label>Super Admin Last Name<input name="superAdminLastName" /></label>
+            <label>Super Admin Email<input name="superAdminEmail" placeholder="defaults to username@hms.local" /></label>
+          </div>
+        </details>
+        <button type="submit" class="btn btn-primary">Create Hospital</button>
+      </form>
+      <pre class="log" id="log-tenant"></pre>
+    </section>
+  </main>
+
+  <div id="settingsOverlay" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="closeSettingsBtn" class="btn btn-ghost">×</button>
+      </div>
+      <form id="settingsForm" class="form">
+        <fieldset>
+          <legend>Project</legend>
+          <label>HMS Folder (Base Path)<input name="basePath" required /></label>
+          <button type="button" id="importEnvBtn" class="btn">Import defaults from &lt;basePath&gt;\.env</button>
+          <div id="importEnvResult" class="hint"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>PostgreSQL</legend>
+          <div class="form-row">
+            <label>Host<input name="postgres.host" /></label>
+            <label>Port<input name="postgres.port" type="number" /></label>
+            <label>User<input name="postgres.user" /></label>
+            <label>Password<input name="postgres.password" type="password" /></label>
+          </div>
+          <div class="form-row">
+            <label>Maintenance DB<input name="postgres.maintenanceDatabase" /></label>
+            <label>Platform DB name<input name="postgres.platformDatabase" /></label>
+            <label>Tenant (Default) DB name<input name="postgres.defaultDatabase" /></label>
+          </div>
+          <p class="hint">Native dev convention in this repo points Default and Platform at the same physical database (see Program.cs) — set Tenant DB name to something else (e.g. hms_qa) to mirror the Docker/production model of separate databases instead.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Backend</legend>
+          <div class="form-row">
+            <label>Base URL<input name="backend.baseUrl" /></label>
+            <label>ASPNETCORE_ENVIRONMENT<input name="backend.environment" /></label>
+          </div>
+          <div class="form-row">
+            <label>Jwt Signing Key<input name="backend.jwtSigningKey" /></label>
+          </div>
+          <div class="form-row">
+            <label>Platform Admin Email<input name="backend.platformAdminEmail" /></label>
+            <label>Platform Admin Password<input name="backend.platformAdminPassword" type="password" /></label>
+            <label>Legacy Tenant Super Admin Password<input name="backend.superAdminSeedPassword" type="password" /></label>
+          </div>
+          <label class="checkbox"><input name="backend.seedLegacyTenant" type="checkbox" /> Seed the built-in "legacy" hospital tenant on migrate</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Frontend</legend>
+          <label>URL<input name="frontend.url" /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Tenant Seed defaults</legend>
+          <div class="form-row">
+            <label>Mobile Number<input name="tenantSeedDefaults.mobileNumber" /></label>
+            <label>Pincode<input name="tenantSeedDefaults.pincode" /></label>
+          </div>
+          <div class="form-row">
+            <label>Address<input name="tenantSeedDefaults.address" /></label>
+            <label>City<input name="tenantSeedDefaults.city" /></label>
+            <label>State<input name="tenantSeedDefaults.state" /></label>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
