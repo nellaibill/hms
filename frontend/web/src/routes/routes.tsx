@@ -99,6 +99,9 @@ const DiagnosticServiceEditPage = lazy(() => import('../pages/diagnostics/Diagno
 const DiagnosticPackagesListPage = lazy(() => import('../pages/diagnostics/DiagnosticPackagesListPage'));
 const DiagnosticPackageCreatePage = lazy(() => import('../pages/diagnostics/DiagnosticPackageCreatePage'));
 const LabPackageDetailPage = lazy(() => import('../pages/diagnostics/LabPackageDetailPage'));
+const LabDashboardPage = lazy(() => import('../pages/diagnostics/LabDashboardPage'));
+const LabWorklistPage = lazy(() => import('../pages/diagnostics/LabWorklistPage'));
+const LabOrderDetailPage = lazy(() => import('../pages/diagnostics/LabOrderDetailPage'));
 
 // Platform Portal — entirely separate from the hospital app above (own login, own
 // session, own protected-route gate). Not nested under AppLayout: it has no hospital
@@ -135,8 +138,13 @@ const specialPages: Record<string, React.ReactNode> = {
 
 // '/finance/accounts' is deliberately excluded from specialPages above and handled by
 // financeRoutes' own RequirePermissionRoute-wrapped entry instead — see financeRoutes'
-// comment for why (it used to leak through here with no permission gate).
-const routeGatedLeafPaths = new Set(['/finance/accounts']);
+// comment for why (it used to leak through here with no permission gate). '/diagnostics/
+// lab/dashboard' (this nav leaf's own path) is excluded the same way, handled by
+// labWorkflowRoutes' own RequireFeatureRoute/RequirePermissionRoute-wrapped entry below —
+// unlike the pre-existing hub pages (e.g. '/diagnostics/lab', '/pharmacy'), which rely on
+// nav-level filtering alone with no route-level guard, every Laboratory Workflow page
+// (dashboard included) gets a real guard since this is a brand-new module surface.
+const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard']);
 
 const moduleRoutes = getAllLeaves()
   .filter((leaf) => !routeGatedLeafPaths.has(leaf.path))
@@ -376,6 +384,32 @@ const diagnosticsRoutes = [
   },
 ];
 
+// Laboratory Workflow (HMS.Modules.Laboratory) — sample collection through result entry,
+// verification, and report generation/release. Reachable from the '/diagnostics/lab/dashboard'
+// nav leaf above and from a card on CentralLaboratoryHubPage. Route-gated via
+// RequirePermissionRoute using the nav leaf's own permission ('diagnostics', config/
+// navigation.ts) at the '.view' grain the controller actually checks — mirrors
+// diagnosticsRoutes' own reasoning. Nested inside RequireFeatureRoute using the nav leaf's own
+// feature ('laboratory') — deliberately a distinct key from diagnosticsRoutes' own
+// 'central-laboratory': that one gates Masters' pre-existing diagnostics-admin catalog pages, a
+// separate concern from this real backend workflow module (see FeatureCatalog.cs's own doc
+// comment on the two keys).
+const labWorkflowRoutes = [
+  {
+    element: <RequireFeatureRoute feature="laboratory" />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="diagnostics.view" />,
+        children: [
+          { path: 'diagnostics/lab/dashboard', element: withSuspense(<LabDashboardPage />) },
+          { path: 'diagnostics/lab/worklist', element: withSuspense(<LabWorklistPage />) },
+          { path: 'diagnostics/lab/orders/:id', element: withSuspense(<LabOrderDetailPage />) },
+        ],
+      },
+    ],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -415,6 +449,7 @@ export const router = createBrowserRouter(
             ...ipdRoutes,
             ...pharmacyRoutes,
             ...diagnosticsRoutes,
+            ...labWorkflowRoutes,
           ],
         },
       ],

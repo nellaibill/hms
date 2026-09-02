@@ -6,6 +6,7 @@ using HMS.Modules.Documents;
 using HMS.Modules.HR;
 using HMS.Modules.Identity;
 using HMS.Modules.IPD;
+using HMS.Modules.Laboratory;
 using HMS.Modules.Masters;
 using HMS.Modules.Messaging;
 using HMS.Modules.Notifications;
@@ -54,6 +55,17 @@ public static class ModuleRegistration
         // seams for cross-module admission reference validation, so it must register
         // after both.
         services.AddIPDModule(configuration);
+
+        // Laboratory depends on Masters' (DiagnosticService/DiagnosticPackage existence) and
+        // Patients' public service seams (see HMS.Modules.Laboratory.csproj's own comment on
+        // why Patients isn't a direct project reference today), so it registers after both —
+        // same reasoning as IPD above. Placed immediately before Billing since Billing's own
+        // InvoiceService calls into ILabOrderService (best-effort, in-process) right after an
+        // invoice with a Laboratory line item is persisted — DI registration order doesn't
+        // itself affect resolution (every AddXxxModule call here just adds descriptors to the
+        // same collection), but this ordering reads naturally as "the thing Billing depends on
+        // registers first."
+        services.AddLaboratoryModule(configuration);
 
         // Billing depends on Patients' (PatientId existence) and Masters' (Department/
         // Consultant existence) public service seams for invoice-creation validation, so it

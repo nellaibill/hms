@@ -254,6 +254,28 @@ export const API_ROUTES = {
       void: (id: string) => `/api/v1/billing/invoices/${id}/void`,
     },
   },
+  /** Mirrors HMS.Modules.Laboratory.Endpoints.LabOrdersController — the lab worklist: sample
+   * collection through result entry, verification, and report generation/release. Deliberately
+   * has no `base` POST — orders are only ever created in-process by Billing, never via HTTP. */
+  laboratory: {
+    orders: {
+      base: '/api/v1/laboratory/orders',
+      dashboardSummary: '/api/v1/laboratory/orders/dashboard-summary',
+      byId: (id: string) => `/api/v1/laboratory/orders/${id}`,
+      byPatientId: (patientId: string) => `/api/v1/laboratory/orders/by-patient/${patientId}`,
+      collectSample: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/collect-sample`,
+      rejectSample: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/reject-sample`,
+      recollect: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/recollect`,
+      receive: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/receive`,
+      startProcessing: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/start-processing`,
+      resultDraft: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/result-draft`,
+      submitForVerification: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/submit-for-verification`,
+      verify: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/verify`,
+      rejectForCorrection: (itemId: string) => `/api/v1/laboratory/orders/items/${itemId}/reject-for-correction`,
+      generateReport: (id: string) => `/api/v1/laboratory/orders/${id}/generate-report`,
+      releaseReport: (id: string) => `/api/v1/laboratory/orders/${id}/release-report`,
+    },
+  },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
   pharmacy: {
     stockReceipts: {

@@ -23,6 +23,7 @@ public class CrossModuleDependencyTests
     [InlineData("HMS.Modules.Appointments")]
     [InlineData("HMS.Modules.Staff")]
     [InlineData("HMS.Modules.Billing")]
+    [InlineData("HMS.Modules.Laboratory")]
     [InlineData("HMS.Modules.Messaging")]
     [InlineData("HMS.Modules.Pharmacy")]
     public void OtherModules_ShouldNotDependOnIdentityInternals(string otherModuleAssemblyName)

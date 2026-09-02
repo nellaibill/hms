@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\Modules\Appointments\HMS.Modules.Appointments\HMS.Modules.Appointments.csproj" />
     <ProjectReference Include="..\..\src\Modules\Staff\HMS.Modules.Staff\HMS.Modules.Staff.csproj" />
     <ProjectReference Include="..\..\src\Modules\Billing\HMS.Modules.Billing\HMS.Modules.Billing.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Laboratory\HMS.Modules.Laboratory\HMS.Modules.Laboratory.csproj" />
     <ProjectReference Include="..\..\src\Modules\Notifications\HMS.Modules.Notifications\HMS.Modules.Notifications.csproj" />
     <ProjectReference Include="..\..\src\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\src\Modules\HR\HMS.Modules.HR\HMS.Modules.HR.csproj" />

@@ -36,6 +36,7 @@ export * from './ipd/admission';
 export * from './ipd/charge';
 export * from './ipd/dashboard';
 export * from './billing/invoice';
+export * from './laboratory/labOrder';
 export * from './pharmacy/stockReceipt';
 export * from './pharmacy/dispense';
 export * from './pharmacy/dispenseCart';

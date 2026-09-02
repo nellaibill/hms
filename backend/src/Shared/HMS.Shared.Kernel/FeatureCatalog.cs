@@ -41,6 +41,16 @@ public static class FeatureCatalog
         "pharmacy",
         "billing",
 
+        // The real backend workflow module (HMS.Modules.Laboratory, schema "laboratory") —
+        // sample collection through result entry, verification, and report generation/
+        // release. Deliberately a distinct key from "central-laboratory" below: that one is
+        // the pre-existing UiOnly key gating Masters' diagnostics-admin frontend pages (test/
+        // package/tariff catalog management), a separate concern from this workflow module,
+        // which only ever references Masters' DiagnosticService/DiagnosticPackage by Guid.
+        // Both keys can be enabled independently; a tenant needs "central-laboratory" for the
+        // admin catalog pages and "laboratory" for the actual order/worklist backend.
+        "laboratory",
+
         // Gates two DbContexts (HMS.Modules.Notifications' "notifications" schema and
         // HMS.Modules.Messaging's "messaging" schema) behind one toggle — presented to a
         // Platform Admin as a single feature since they're one product surface
@@ -57,6 +67,12 @@ public static class FeatureCatalog
     [
         "opd",
         "ot",
+
+        // Superseded/paired, not replaced, by the new SchemaBacked "laboratory" key above:
+        // this one still legitimately gates Masters' pre-existing diagnostics-admin frontend
+        // pages (DiagnosticService/DiagnosticPackage/DiagnosticCategory/DiagnosticProvider
+        // catalog management) — a separate concern from the new workflow module, so it stays
+        // here rather than being renamed or removed.
         "central-laboratory",
         "radiology",
         "blood-bank",

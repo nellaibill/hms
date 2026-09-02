@@ -3,9 +3,11 @@ using HMS.Modules.Billing.Application;
 using HMS.Modules.Billing.Application.Abstractions;
 using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Domain;
+using HMS.Modules.Laboratory.Application;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Kernel;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
 
@@ -18,12 +20,14 @@ public class InvoiceServiceTests
     private readonly IInvoiceNumberGenerator _numberGenerator = Substitute.For<IInvoiceNumberGenerator>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
+    private readonly ILabOrderService _labOrderService = Substitute.For<ILabOrderService>();
+    private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
     private readonly InvoiceService _sut;
     private readonly Guid _patientId = Guid.NewGuid();
 
     public InvoiceServiceTests()
     {
-        _sut = new InvoiceService(_repository, _paymentRepository, _numberGenerator, _patientService, _patientVisitService);
+        _sut = new InvoiceService(_repository, _paymentRepository, _numberGenerator, _patientService, _patientVisitService, _labOrderService, _logger);
 
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientResponse>.Success(new PatientResponse()));
