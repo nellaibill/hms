@@ -76,6 +76,21 @@ public class InvoicesController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>The latest bills across every patient, composed with patient/visit context
+    /// (age, gender, contact, registration type, consultant(s)) — backs the Patient Billing
+    /// page's "Recent Patient Bills" table. Gated by the same "finance-billing.view" permission
+    /// as every other read here, so visibility already follows whatever a Doctor/Receptionist/
+    /// Super Admin's assigned role grants — no role-specific filtering is hard-coded.</summary>
+    [Authorize]
+    [RequirePermission("finance-billing.view")]
+    [HttpGet("recent")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<RecentPatientBillResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRecent([FromQuery] int count, CancellationToken cancellationToken)
+    {
+        var result = await _service.GetRecentAsync(count <= 0 ? 10 : count, cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     /// <summary>Lists every invoice for one patient, newest first — used by the patient detail page's Billing tab.</summary>
     [Authorize]
     [RequirePermission("finance-billing.view")]

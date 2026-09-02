@@ -17,12 +17,13 @@ public class InvoiceServiceTests
     private readonly IPaymentRepository _paymentRepository = Substitute.For<IPaymentRepository>();
     private readonly IInvoiceNumberGenerator _numberGenerator = Substitute.For<IInvoiceNumberGenerator>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
+    private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
     private readonly InvoiceService _sut;
     private readonly Guid _patientId = Guid.NewGuid();
 
     public InvoiceServiceTests()
     {
-        _sut = new InvoiceService(_repository, _paymentRepository, _numberGenerator, _patientService);
+        _sut = new InvoiceService(_repository, _paymentRepository, _numberGenerator, _patientService, _patientVisitService);
 
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientResponse>.Success(new PatientResponse()));
@@ -386,5 +387,94 @@ public class InvoiceServiceTests
         result.ErrorCode.Should().Be(BillingErrorCodes.InvoiceVoided);
         await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_ComposesPatientAndVisitContextIncludingMultipleConsultants()
+    {
+        var invoice = Invoice.Create(
+            "INV-2026-000002",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, "cardiology", "dr-revathi", null, null, 1, 720m, 0m, false, null)],
+            createdBy: null);
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice> { invoice }, 1));
+
+        var departmentId = Guid.NewGuid();
+        var cardiologistId = Guid.NewGuid();
+        var referringId = Guid.NewGuid();
+        _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientResponse>.Success(new PatientResponse { Age = 42, Gender = Gender.Male, PrimaryPhone = "9876543210" }));
+        _patientVisitService.GetByIdAsync(_patientId, invoice.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse
+            {
+                VisitId = invoice.VisitId,
+                PatientId = _patientId,
+                VisitType = VisitType.OP,
+                Consultations =
+                [
+                    new VisitConsultationResponse { DepartmentId = departmentId, ConsultantId = cardiologistId },
+                    new VisitConsultationResponse { DepartmentId = departmentId, ConsultantId = referringId },
+                ],
+            }));
+
+        var result = await _sut.GetRecentAsync(10, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var row = result.Value!.Single();
+        row.Age.Should().Be(42);
+        row.Gender.Should().Be(Gender.Male);
+        row.ContactNumber.Should().Be("9876543210");
+        row.RegistrationType.Should().Be(VisitType.OP);
+        row.Consultants.Should().HaveCount(2);
+        row.Consultants.Should().Contain(c => c.ConsultantId == cardiologistId && c.DepartmentId == departmentId);
+        row.Consultants.Should().Contain(c => c.ConsultantId == referringId && c.DepartmentId == departmentId);
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_WhenVisitCannotBeResolved_FallsBackToInvoiceCreatedAtAndEmptyConsultants()
+    {
+        // Mirrors CreateInvoiceRequest.VisitId's own documented fallback: some invoices carry
+        // a VisitId that never had a real PatientVisit behind it (e.g. OPD Billing Entry for a
+        // returning patient before the Visit concept existed) — the feed must degrade
+        // gracefully instead of failing the whole row.
+        var invoice = Invoice.Create(
+            "INV-2026-000003",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 500m, 0m, false, null)],
+            createdBy: null);
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice> { invoice }, 1));
+
+        _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientResponse>.Success(new PatientResponse { Age = 30, Gender = Gender.Female, PrimaryPhone = "9000000000" }));
+        _patientVisitService.GetByIdAsync(_patientId, invoice.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Failure("VISIT.NOT_FOUND", "not found"));
+
+        var result = await _sut.GetRecentAsync(10, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var row = result.Value!.Single();
+        row.RegistrationType.Should().BeNull();
+        row.Consultants.Should().BeEmpty();
+        row.AppointmentDateTime.Should().Be(invoice.CreatedAt);
+        row.Age.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_ClampsAnOutOfRangeCountToTheAllowedMaximum()
+    {
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice>(), 0));
+
+        await _sut.GetRecentAsync(500, CancellationToken.None);
+
+        await _repository.Received(1).GetPagedAsync(Arg.Is<InvoiceListQuery>(q => q.PageSize == 50), Arg.Any<CancellationToken>());
     }
 }
