@@ -37,6 +37,21 @@ _To be documented._
 
 ## Decisions
 
+### ADR-038: Voided invoices excluded from the Income & Expense Report's revenue totals
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Second item of a user-supplied 22-issue backlog ("Fix the issue where discarded billing details are still being added to Accounts & Finance"). "Discarding" a bill in this codebase means voiding it (`Invoice.IsVoided`) — there is no separate soft-delete-style cancellation status. The Unified Invoice Ledger intentionally still lists voided invoices (an audit trail, not a "vanish" — see ADR-037), but `frontend/web/src/features/reports/incomeExpenseReport.ts`'s `getIncomeRows`/`getIncomeByBillingType` — which drive the Income & Expense Report's Total Income and per-billing-type breakdown — summed every invoice's `netAmount` with no `isVoided` check at all, so a discarded bill's amount was still counted as real revenue.
+
+**Decision**
+`getIncomeRows` and `getIncomeByBillingType` now both skip any `billing.isVoided` invoice before aggregating. The Ledger itself is untouched (still shows voided rows with their existing "Voided" badge) — only the two revenue-aggregation functions changed, so voided invoices stay visible for audit purposes everywhere except in the actual income totals.
+
+**Consequences**
+- No frontend automated test was added: this repo has no frontend test runner/config anywhere (`frontend/web/tests` is an empty directory, no `*.test.ts(x)` file exists in the whole repo) — verified via `tsc --noEmit` (clean) and `eslint` (clean) on the touched file instead, consistent with there being no existing frontend-test baseline to extend.
+
+---
+
 ### ADR-037: Billing — a voided invoice can no longer receive a payment; voided invoices excluded from the Pending filter
 **Date:** 2026-09-02
 **Status:** Accepted
