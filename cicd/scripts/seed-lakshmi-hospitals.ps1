@@ -627,7 +627,11 @@ $newServices = @(
     @{ code = 'ANTIB2GLYIGM'; name = 'Anti-Beta 2 (β2) Glycoprotein IgM' }
 )
 foreach ($n in $newServices) {
-    if ($services | Where-Object { $_.name -eq $n.name }) { continue }
+    # Matched by code, not name: Windows PowerShell 5.1's Invoke-RestMethod sends a string
+    # -Body using the system's default codepage rather than UTF-8, so the "β" in these two
+    # names can arrive at the server mangled (observed live as a literal "?"). Code is plain
+    # ASCII and always round-trips correctly, so it's the only reliable idempotency key here.
+    if ($services | Where-Object { $_.code -eq $n.code }) { continue }
     $body = @{ code = $n.code; name = $n.name; categoryId = $endocrinology.id; serviceType = 'Laboratory'; isOutsourced = $true; providerId = $anderson.id; price = 1400; isActive = $true } | ConvertTo-Json
     $created = Invoke-WithRetry -Method Post -Uri "$ApiBaseUrl/api/v1/masters/diagnostic-services" -Body $body -Label $n.name
     $services.Add($created.data)
