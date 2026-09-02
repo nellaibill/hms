@@ -12,6 +12,7 @@ internal static class ConsultantMappingExtensions
         DepartmentId = consultant.DepartmentId,
         Specialization = consultant.Specialization,
         IsActive = consultant.IsActive,
+        Priority = consultant.Priority,
         CreatedAt = consultant.CreatedAt,
         UpdatedAt = consultant.UpdatedAt,
     };

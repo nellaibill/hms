@@ -16,5 +16,12 @@ export const consultantConfig: MasterEntityConfig = {
     { key: 'name', label: 'Consultant Name', type: 'text', required: true, skipUniquenessCheck: true },
     { key: 'departmentId', label: 'Department', type: 'reference', referenceEntityKey: 'department' },
     { key: 'specialization', label: 'Specialization', type: 'text' },
+    {
+      key: 'priority',
+      label: 'Priority',
+      type: 'number',
+      min: 1,
+      helpText: 'Controls display order in consultant pickers (Registration, Billing, etc.) — lower shows first. Leave blank for no preference.',
+    },
   ],
 };

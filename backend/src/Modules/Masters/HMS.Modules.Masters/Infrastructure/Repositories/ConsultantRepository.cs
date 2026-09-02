@@ -56,9 +56,15 @@ internal class ConsultantRepository : IConsultantRepository
 
     private static IQueryable<Consultant> ApplySort(IQueryable<Consultant> consultants, string? sort)
     {
+        // Default (and unrecognized-field) ordering: Priority first — a manual sort weight
+        // set on the Consultant record itself (lower shows first; null/unset sorts after
+        // every prioritized consultant), then alphabetical among ties. ConsultantSelect
+        // (Registration, Billing, and everywhere else consultants are picked) never passes
+        // an explicit `sort`, so this is the ordering every one of those pickers actually
+        // sees — a real per-consultant field beats a single hardcoded name match.
         if (string.IsNullOrWhiteSpace(sort))
         {
-            return consultants.OrderBy(c => c.Name);
+            return consultants.OrderBy(c => c.Priority ?? int.MaxValue).ThenBy(c => c.Name);
         }
 
         var descending = sort.StartsWith('-');
@@ -67,7 +73,8 @@ internal class ConsultantRepository : IConsultantRepository
         return field.ToLowerInvariant() switch
         {
             "updatedat" => descending ? consultants.OrderByDescending(c => c.UpdatedAt) : consultants.OrderBy(c => c.UpdatedAt),
-            _ => descending ? consultants.OrderByDescending(c => c.Name) : consultants.OrderBy(c => c.Name),
+            "name" => descending ? consultants.OrderByDescending(c => c.Name) : consultants.OrderBy(c => c.Name),
+            _ => consultants.OrderBy(c => c.Priority ?? int.MaxValue).ThenBy(c => c.Name),
         };
     }
 }

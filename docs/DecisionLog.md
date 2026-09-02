@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-049: Consultant sort order — a real per-consultant Priority field, not a hardcoded name match
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Tenth item of a user-supplied 22-issue backlog, originally worded as "Dr. Karthikeyan's name should appear at the top ahead of other consultants" in the Registration Details consultant search. Rather than hardcoding one specific name into `ConsultantRepository.ApplySort` (the original plan's default, before this session's fix), the user asked for a general, admin-configurable priority/weightage field on the Consultant record itself, applied consistently everywhere consultants are picked (Registration, Billing, etc.) — confirmed direction: lower number = higher priority.
+
+**Decision**
+Added `Consultant.Priority` (`int?`, nullable — unset consultants sort after every prioritized one) end to end: `Domain/Consultant.cs`, `CreateConsultantRequest`/`UpdateConsultantRequest`/`ConsultantResponse`, both validators (`Priority >= 1` when supplied), the mapping extension, `ConsultantService`, `ConsultantConfiguration` (new nullable `priority` column), and a new `AddConsultantPriority` migration. `ConsultantRepository.ApplySort`'s default case (used whenever no explicit `sort` is passed — which is every real caller, since `ConsultantSelect.tsx` never sets one) now orders by `Priority ?? int.MaxValue` then `Name`, replacing the old plain alphabetical default. Frontend: added one `priority` field (`type: 'number'`, `min: 1`) to the Consultant Masters config (`frontend/web/src/features/masters/configs/consultant.ts`) — Masters is a fully config-driven CRUD engine, so this single field addition automatically gets a form input, list column, and client-side validation with zero other frontend code.
+
+**Consequences**
+- Every consumer of `ConsultantSelect` (Patient Registration, Billing's `ConsultationBillingCard`, IPD admission, etc.) picks up the new ordering automatically and uniformly — no per-page changes needed, since none of them ever pass an explicit `sort`.
+- To actually put a specific consultant (e.g. Dr. Karthikeyan) at the top, an admin now sets their Priority via the Masters → Consultant edit page — this ships the mechanism, not a pre-set value for any particular doctor, matching "a real per-consultant field beats a single hardcoded name match."
+- Covered by 10 new unit tests (`ConsultantServiceTests`, `ConsultantValidatorTests`) — no prior test coverage existed for Consultant at all in this codebase; added a minimal but real suite rather than leaving the new field untested. No repository-level test for the actual sort-query translation (see ADR-037's identical note — no DB-backed test harness exists anywhere here).
+
+---
+
 ### ADR-048: Consultant cleared from a billing line item once it's paid
 **Date:** 2026-09-02
 **Status:** Accepted
