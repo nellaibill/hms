@@ -37,7 +37,19 @@ _To be documented._
 
 ## Decisions
 
-### ADR-052: Local dev/Windows installer stop creating a separate hms_qa database
+### ADR-053: DatabaseArchitecture.md updated — multi-tenancy is implemented, not a future option; tenant-provisioning code layout documented
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Twentieth item of a user-supplied 22-issue backlog ("Review and organize the Tenant folder structure"). Investigation (already done in a prior session pass) found there's no single "Tenant" folder — provisioning code is deliberately split three ways (`Modules/Platform` owns the `Tenant` aggregate, `HMS.Api/Provisioning` does the actual `CREATE DATABASE`/migrate work since it needs a reference to every module's `DbContext`, `HMS.Api/Middleware` resolves the runtime tenant per request), a documented, intentional layering rather than disorganization. Separately, closer reading of `docs/DatabaseArchitecture.md` found it genuinely stale: its top summary still says "single-tenant (MVP)" and its §1 "Future migration path to multi-tenancy" describes database-per-tenant as a hypothetical future option — but that's exactly what already shipped (ADR-013 onward). At least 10 code comments across the codebase already reference "docs/DatabaseArchitecture.md's SaaS provisioning ADR," content that never actually existed in the file.
+
+**Decision**
+Updated `docs/DatabaseArchitecture.md`: the top summary line and §1's stale "future migration path" subsection now state multi-tenancy is implemented (database-per-tenant), not deferred. Added new §13 "Multi-Tenancy — SaaS Provisioning" documenting the actual three-way code split with real file paths and the reasoning already captured in `ITenantProvisioner`'s own doc comment (avoiding a circular module dependency) — this is now the actual target of every existing "SaaS provisioning ADR" code comment. Renumbered the old §13 "Deliverables" to §14 to make room; no other section content changed.
+
+**Consequences**
+- Purely documentation — no code or test changes. The ~10 existing code comments that reference this doc by name weren't individually updated to cite the new §13 specifically (they already correctly name the file; adding a section number to each is cosmetic precision not worth a 10-file sweep for a Tier-2 documentation item).
+- No PR test plan beyond confirming the new section numbering is sequential with no gaps (verified: 1-14, no duplicates).
 **Date:** 2026-09-02
 **Status:** Accepted
 

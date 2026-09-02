@@ -3,7 +3,7 @@
 This document defines the database architecture and the standards every future database object must follow. It is a design and standards document — it contains no SQL, no business tables, no Entity Framework models, and no relationships between actual hospital entities. It complements [Architecture.md](Architecture.md) (system architecture) and [DatabaseGuidelines.md](DatabaseGuidelines.md) (lightweight index, which points here for depth).
 
 **Stack:** PostgreSQL, .NET 10, Entity Framework Core
-**Architecture:** Modular Monolith, single PostgreSQL database, schema-per-module, single-tenant (MVP)
+**Architecture:** Modular Monolith, schema-per-module within each database. Two kinds of physical database: one shared `hms_platform` database (the Platform module's own tenant registry) and one physical database per hospital tenant, database-per-tenant already implemented (not the future option §1 used to describe it as) — see §13.
 
 ---
 
@@ -30,14 +30,8 @@ PostgreSQL schemas are lightweight, free logical namespaces within one database.
 - One additional schema, `shared`, holds cross-module reference data with no single owning module (see §2).
 - No application tables live in `public`. Reserved/system schemas (`public`, `information_schema`, `pg_catalog`) are left untouched, so every object's ownership is explicit rather than defaulted.
 
-### Future migration path to multi-tenancy
-MVP is single-tenant (one hospital/organization). Three paths exist if multi-tenancy becomes a real requirement, in order of increasing isolation and operational cost:
-
-1. **Shared schema, `tenant_id` column** — add a tenant discriminator column (and index) to every business table; enforce isolation via an EF Core global query filter and/or PostgreSQL Row-Level Security. Lowest operational overhead; the natural first step from single-tenant.
-2. **Schema-per-tenant** — duplicate the schema set per tenant. Stronger isolation, but multiplies migration and maintenance effort per tenant; justified only when tenants require strict data separation (e.g., regulatory) or very different scale.
-3. **Database-per-tenant** — strongest isolation, highest cost; a natural extension when a specific tenant needs physically dedicated infrastructure or data residency.
-
-**Recommendation:** if/when multi-tenancy becomes a real requirement, start with option 1 — it requires the least structural change to the schema-per-module design already in place and is the most reversible. Escalate to options 2 or 3 only for tenants that specifically need it. This is a future decision, not an MVP one; when it becomes concrete, record it in [DecisionLog.md](DecisionLog.md).
+### Multi-tenancy: already implemented, not a future option
+This subsection originally listed three hypothetical future multi-tenancy paths (shared schema + `tenant_id`, schema-per-tenant, database-per-tenant) as MVP-deferred options. That's now stale: multi-tenancy shipped as **database-per-tenant**, the strongest-isolation option, starting with the Platform/hospital-registration work (`docs/DecisionLog.md` ADR-013 onward). Every hospital gets its own physical PostgreSQL database, still schema-per-module *within* that database (the design described throughout the rest of this document is unchanged, just now applied per-tenant rather than to one single database). See §13 for how the provisioning code that creates and migrates those per-tenant databases is organized — several code comments elsewhere in this codebase reference "this document's SaaS provisioning ADR," which is that section.
 
 ---
 
@@ -204,7 +198,23 @@ No actual entities or relationships between hospital modules are defined here �
 
 ---
 
-## 13. Deliverables
+## 13. Multi-Tenancy — SaaS Provisioning
+
+Item #20 of a user-supplied issue backlog asked to "review and organize the Tenant folder structure" — investigation found there is no single "Tenant" folder; tenant-provisioning code is deliberately split three ways, functionally organized rather than accidentally scattered:
+
+- **`backend/src/Modules/Platform/HMS.Modules.Platform/`** — owns the `Tenant` aggregate itself (the platform-side row mapping a hospital to its database), `TenantFeature`, `PlatformUser`, and the rest of the Platform module's own domain/application/infrastructure layers, following the same layering every other module uses (see §1's schema-per-module rationale — Platform is a module like any other, just one whose "business data" is the tenant registry rather than hospital operations).
+- **`backend/src/HMS.Api/Provisioning/`** — `TenantProvisioningService.cs` (implements `ITenantProvisioner`: `CREATE DATABASE` for a new tenant, with rollback via `DROP DATABASE` on failure) and `TenantMigrationService.cs` (implements `ITenantMigrationService`: runs every hospital module's own `DbContext.Database.MigrateAsync()` against the new tenant's database). These live in `HMS.Api`, not the Platform module, because they need a compile-time reference to *every* other module's `DbContext` to migrate them all — the Platform module itself cannot take that dependency without creating a circular project reference (every other module already depends on shared kernel code, not on Platform). `ITenantProvisioner`'s own doc comment documents this reasoning at the interface definition.
+- **`backend/src/HMS.Api/Middleware/TenantResolutionMiddleware.cs`** — the runtime seam: resolves `ITenantContext` per request, either from the `TenantId` claim on an already-issued hospital JWT, or from the `X-Hospital-Code` header during login (before any JWT exists yet).
+- **`backend/src/Shared/HMS.Shared.Kernel/TenantContext.cs`** — the request-scoped `ITenantContext` interface every tenant-aware module's `DbContext` reads its connection string from.
+- **`backend/src/Database/HMS.Database.Migrations/Platform/Migrations/`** — the Platform module's own migration history (separate from every hospital module's migrations, which live under that module's own `Migrations/` folder and get applied per-tenant by `TenantMigrationService` above, not centrally).
+
+Physical layout: one `hms_platform` database holds the Platform module's own `platform` schema (the tenant registry, Platform Admin accounts). Each hospital gets its own physical database, named `hms_{slug}_hospital(s)` by convention, containing one schema per hospital module exactly as described in §1-§12 — the schema-per-module design in the rest of this document is unchanged, it's just replicated per tenant now instead of applying to one single database.
+
+A newcomer has to know to look in `HMS.Api`, not the Platform module, for the actual database-creation/migration mechanics — that's the one genuinely non-obvious part of this layout, which is why it's called out here rather than left to be rediscovered from the code alone.
+
+---
+
+## 14. Deliverables
 
 This document is the Database Architecture Design deliverable for the HMS project, maintained at `docs/DatabaseArchitecture.md`. It should be read alongside:
 
@@ -212,6 +222,6 @@ This document is the Database Architecture Design deliverable for the HMS projec
 - [DatabaseGuidelines.md](DatabaseGuidelines.md) — lightweight index/template pointing here for depth
 - [NamingConventions.md](NamingConventions.md) — general naming rules across the whole codebase
 - [Security.md](Security.md), [Configuration.md](Configuration.md) — secrets and environment handling
-- [DecisionLog.md](DecisionLog.md) — where future deviations from this document (e.g., the multi-tenancy path, or a BIGINT PK exception) should be recorded when they actually occur
+- [DecisionLog.md](DecisionLog.md) — where deviations from this document get recorded when they occur (the multi-tenancy path already did — see ADR-013 onward — and §13 above; a future example might be a BIGINT PK exception)
 
 No SQL, business tables, Entity Framework models, or relationships between hospital modules were generated — this is architecture, conventions, and standards only.
