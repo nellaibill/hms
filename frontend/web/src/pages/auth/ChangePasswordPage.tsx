@@ -4,8 +4,8 @@ import { ApiError, changePasswordSchema, type ChangePasswordFormValues } from '@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { HospitalLogo } from '@/components/shell/HospitalLogo';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
@@ -65,29 +65,19 @@ export default function ChangePasswordPage() {
           <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="currentPassword">Current password</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                autoComplete="current-password"
-                {...register('currentPassword')}
-              />
+              <PasswordInput id="currentPassword" autoComplete="current-password" {...register('currentPassword')} />
               {errors.currentPassword && <p className="text-sm text-destructive">{errors.currentPassword.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="newPassword">New password</Label>
-              <Input id="newPassword" type="password" autoComplete="new-password" {...register('newPassword')} />
+              <PasswordInput id="newPassword" autoComplete="new-password" {...register('newPassword')} />
               {errors.newPassword && <p className="text-sm text-destructive">{errors.newPassword.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="confirmNewPassword">Confirm new password</Label>
-              <Input
-                id="confirmNewPassword"
-                type="password"
-                autoComplete="new-password"
-                {...register('confirmNewPassword')}
-              />
+              <PasswordInput id="confirmNewPassword" autoComplete="new-password" {...register('confirmNewPassword')} />
               {errors.confirmNewPassword && (
                 <p className="text-sm text-destructive">{errors.confirmNewPassword.message}</p>
               )}

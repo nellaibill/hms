@@ -99,6 +99,7 @@ public class InvoiceServiceTests
             Arg.Is<Payment>(p => p.Method == PaymentMethod.Upi && p.ReferenceNumber == "UPI-REF-12345"),
             Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        result.Value.Items.Should().OnlyContain(i => i.ConsultantId == null);
     }
 
     [Fact]
@@ -310,6 +311,28 @@ public class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task RecordPaymentAsync_WithValidLineItem_ClearsTheConsultant()
+    {
+        var invoice = Invoice.Create(
+            "INV-2026-000001",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, "cardiology", "dr-revathi", null, null, 1, 720m, 0m, false, null)],
+            createdBy: null);
+        var itemId = invoice.Items.Single().Id;
+        invoice.Items.Single().ConsultantId.Should().Be("dr-revathi");
+        _repository.GetByIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+
+        var result = await _sut.RecordPaymentAsync(invoice.Id, itemId, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Single().ConsultantId.Should().BeNull();
+        invoice.Items.Single().ConsultantId.Should().BeNull();
+    }
+
+    [Fact]
     public async Task RecordPaymentAsync_WhenInvoiceDoesNotExist_ReturnsNotFoundFailure()
     {
         _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Invoice?)null);
@@ -340,5 +363,28 @@ public class InvoiceServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(BillingErrorCodes.LineItemAlreadyPaid);
         await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordPaymentAsync_WhenInvoiceIsVoided_ReturnsInvoiceVoidedFailure()
+    {
+        var invoice = Invoice.Create(
+            "INV-2026-000001",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 0m, false, null)],
+            createdBy: null);
+        var itemId = invoice.Items.Single().Id;
+        invoice.Void("Billed in error", voidedBy: null);
+        _repository.GetByIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+
+        var result = await _sut.RecordPaymentAsync(invoice.Id, itemId, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.InvoiceVoided);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

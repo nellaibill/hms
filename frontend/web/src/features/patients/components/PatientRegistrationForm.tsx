@@ -40,7 +40,7 @@ import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } fro
 import { Field, FormSection } from './FormSection';
 import { TabErrorSummary } from './TabErrorSummary';
 import { bloodGroupLabel } from '../bloodGroupLabel';
-import { calculateDetailedAge } from '../detailedAge';
+import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
 import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLabel';
 import { tabErrorMessages } from '../formErrorSummary';
 import { humanize } from '../humanize';
@@ -62,6 +62,10 @@ interface PatientRegistrationFormProps {
    * apiError). */
   onSaveAndProceed: (values: PatientRegistrationCoreUiFormValues, documents: StagedDocuments) => Promise<boolean>;
   onSubmit: (values: PatientRegistrationUiFormValues, documents: StagedDocuments) => void;
+  /** Mirrors the form's own dirty state up to the parent page, which owns the actual
+   * unsaved-changes navigation guard (useUnsavedChangesGuard) — see that hook's own comment
+   * for why the guard itself has to live where the post-save navigate() call does. */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details'] as const;
@@ -162,7 +166,15 @@ const defaultValues: PatientRegistrationUiFormValues = {
  * button on Medical Information, which persists the patient at that point). Registration
  * Details stays UI-only — the Patients backend has no encounter/visit concept yet.
  */
-export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, apiError, savedPatient, onSaveAndProceed, onSubmit }: PatientRegistrationFormProps) {
+export function PatientRegistrationForm({
+  isSubmitting,
+  isSavingAndProceeding,
+  apiError,
+  savedPatient,
+  onSaveAndProceed,
+  onSubmit,
+  onDirtyChange,
+}: PatientRegistrationFormProps) {
   const navigate = useNavigate();
 
   const {
@@ -173,7 +185,7 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
     trigger,
     getValues,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
     defaultValues,
@@ -237,6 +249,10 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
   useEffect(() => {
     formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
   }, [activeTab]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
   // Tabs the user has actually tried to leave (via Next) or a final submit attempt — a tab
   // the user hasn't reached yet shouldn't show an error dot just because its untouched
   // required fields are technically invalid.
@@ -397,6 +413,19 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
     setValue('district', '');
   }
 
+  // admissionType/category/referral are only ever shown for IP/Emergency/DayCare/Observation
+  // (see showReferralColumn below) — same reasoning as handleDepartmentChange above: values
+  // entered under the previous encounter type are meaningless (and, for referral, can leave
+  // the tab permanently invalid — registrationDetailsUiSchema's superRefine still requires
+  // referral.category once `referral` is set, even after switching back to OP hides the field
+  // that would fix it) once the encounter type changes.
+  function handleEncounterTypeChange(newEncounterType: string, onChange: (value: string) => void) {
+    onChange(newEncounterType);
+    setValue('registration.admissionType', '');
+    setValue('registration.category', '');
+    setValue('registration.referral', undefined);
+  }
+
   // Server-side validation errors can't be mapped 1:1 to this form's field paths — the
   // submitted request is bridged/composed into the backend's narrower DTO shape by the
   // caller (see toRequest() in PatientRegistrationCreatePage), so a server field name
@@ -511,7 +540,7 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
               <Input id="lastName" {...register('lastName')} />
             </Field>
             <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
-              <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+              <Input id="dateOfBirth" type="date" {...dateOfBirthInputBounds()} {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>
@@ -1106,7 +1135,7 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
                 name="registration.encounterType"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={(value) => handleEncounterTypeChange(value, field.onChange)}>
                     <SelectTrigger id="encounterType" aria-label="Encounter type">
                       {/* Duration guidance shows only in the open dropdown list (see
                           encounterTypeLabel) — once selected, the trigger displays just the

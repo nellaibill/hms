@@ -37,6 +37,252 @@ _To be documented._
 
 ## Decisions
 
+### ADR-051: Masters edits now invalidate the dedicated picker components' own query caches
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Live-verification follow-up on ADR-049 (Consultant Priority): the user set a Consultant's Priority via Masters → Consultant → Edit, saved successfully, but the Billing/Registration consultant dropdown kept showing the old order — asked whether backend seed data was missing. It wasn't a backend issue at all: `useMasterMutations.ts`'s `useInvalidateMasters` only invalidates `['masters', entityKey]`, the Masters admin screen's own cache. Four entities — Consultant, Department, AppointmentType, ConsultationType — also have their own dedicated picker component (`ConsultantSelect`, `DepartmentSelect`, etc., built before this generic Masters engine existed) querying under a *different*, unrelated top-level cache key (e.g. `['consultants', 'select-list', departmentId]`). Saving a Masters edit never touched that second cache, so every picker elsewhere in the app kept serving its stale list until something else happened to refetch it (a full page reload, cache staleness). One Masters entity, Designation, doesn't have this problem — `DesignationSelect` already queries under `['masters', 'designation', 'select-list']`, so it was already covered.
+
+**Decision**
+`useInvalidateMasters` now also invalidates a second, entity-specific query key for the four affected entities, via an explicit `PICKER_QUERY_KEY_BY_ENTITY` map (not a computed pluralization — safer than guessing "+s" would hold for every current and future entity key). react-query's `invalidateQueries` matches by prefix, so invalidating the one-element key (e.g. `['consultants']`) covers every differently-suffixed variant a picker or name-lookup component might use (`ConsultantSelect`'s `[...,departmentId]` and `ConsultantName`'s plain 2-element key both match).
+
+**Consequences**
+- Fixes the reported symptom for all four affected entities at once, not just Consultant — Department/AppointmentType/ConsultationType edits had the identical stale-picker bug, just not yet noticed/reported.
+- If a future Masters entity gains its own dedicated picker component with a separate query key (rather than following Designation's `['masters', entityKey, ...]` convention), it needs a new entry in `PICKER_QUERY_KEY_BY_ENTITY` — flagged directly in the map's own comment.
+- No frontend automated test added — no test runner exists in this repo (see ADR-038). Not yet re-verified live by the user against this specific fix — the original report is what surfaced it.
+
+---
+
+### ADR-050: Unsaved-changes guard extracted into a reusable hook, applied to Patient Registration/Edit/Add Visit
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Eleventh item of a user-supplied 22-issue backlog ("Show an unsaved changes alert when leaving a page without saving"). A complete implementation of this already existed, but only on `InvoiceCreatePage.tsx` (`isDirty`/`isDirtyRef` + `useBlocker` for in-app navigation + a `beforeunload` listener for tab close/refresh + a confirm/discard dialog) — Patient Registration, Patient Edit, and the standalone "Add Visit" page had none of it.
+
+**Decision**
+1. Extracted the reusable half of InvoiceCreatePage's original pattern into `frontend/web/src/hooks/useUnsavedChangesGuard.ts` (takes `isDirty: boolean`, returns `{ showUnsavedDialog, confirmDiscard, cancelDiscard, markSaved }`) and `frontend/web/src/components/UnsavedChangesDialog.tsx` (the paired confirm/discard dialog). `InvoiceCreatePage.tsx` itself was left untouched — its own `isDirty` is driven by a custom `BillingStep` ref, not a plain React Hook Form instance, and it has an extra bespoke "change patient" case the new hook doesn't need to model; not worth forcing it onto the new shared hook in the same pass as adding the guard elsewhere.
+2. Each of `PatientRegistrationForm.tsx`/`PatientEditForm.tsx`/`RecordVisitForm.tsx` gained an `onDirtyChange?: (isDirty: boolean) => void` prop, wired from React Hook Form's own `formState.isDirty` via a `useEffect`. The guard hook itself lives in each form's *parent page* (`PatientRegistrationCreatePage`/`PatientEditPage`/`PatientRecordVisitPage`), not the form component — the parent is where the post-save `navigate()` call already lives, and that's exactly where the guard needs to be told "this navigation is fine, a save just succeeded."
+3. **`markSaved()`, not just passing `isDirty={false}`**: React Hook Form's `formState.isDirty` doesn't reset until a `reset()` call takes effect on a *later* render, so a `navigate()` fired immediately after a successful save could still see the pre-save `isDirty=true` and get wrongly blocked by the guard's own confirm dialog. `markSaved()` writes straight to the hook's internal ref (bypassing the render/effect round-trip) and is called synchronously right before each success-path `navigate()` call in all three parent pages. Note this is a genuinely new addition, not something lifted from `InvoiceCreatePage.tsx` — that page's own `setIsDirty(false)` on save success never needed this fix, because its success path doesn't `navigate()` at all (it swaps the editable form for a read-only view in place, same route); the three new call sites all do navigate on success, so they needed the extra care `InvoiceCreatePage` never had to take.
+
+**Consequences**
+- Live browser verification (a genuinely new, stateful, cross-navigation UI interaction) could not be completed — the only dev login path needs the seeded Super Admin password, which lives solely in `dotnet user-secrets`, correctly blocked from being read by the auto-mode safety classifier (same gap noted in ADR-040/041). Verified instead via `tsc --noEmit` + `eslint` (both clean) and by tracing through the exact render/effect timing `markSaved()` is meant to sidestep.
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
+### ADR-049: Consultant sort order — a real per-consultant Priority field, not a hardcoded name match
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Tenth item of a user-supplied 22-issue backlog, originally worded as "Dr. Karthikeyan's name should appear at the top ahead of other consultants" in the Registration Details consultant search. Rather than hardcoding one specific name into `ConsultantRepository.ApplySort` (the original plan's default, before this session's fix), the user asked for a general, admin-configurable priority/weightage field on the Consultant record itself, applied consistently everywhere consultants are picked (Registration, Billing, etc.) — confirmed direction: lower number = higher priority.
+
+**Decision**
+Added `Consultant.Priority` (`int?`, nullable — unset consultants sort after every prioritized one) end to end: `Domain/Consultant.cs`, `CreateConsultantRequest`/`UpdateConsultantRequest`/`ConsultantResponse`, both validators (`Priority >= 1` when supplied), the mapping extension, `ConsultantService`, `ConsultantConfiguration` (new nullable `priority` column), and a new `AddConsultantPriority` migration. `ConsultantRepository.ApplySort`'s default case (used whenever no explicit `sort` is passed — which is every real caller, since `ConsultantSelect.tsx` never sets one) now orders by `Priority ?? int.MaxValue` then `Name`, replacing the old plain alphabetical default. Frontend: added one `priority` field (`type: 'number'`, `min: 1`) to the Consultant Masters config (`frontend/web/src/features/masters/configs/consultant.ts`) — Masters is a fully config-driven CRUD engine, so this single field addition automatically gets a form input, list column, and client-side validation with zero other frontend code.
+
+**Consequences**
+- Every consumer of `ConsultantSelect` (Patient Registration, Billing's `ConsultationBillingCard`, IPD admission, etc.) picks up the new ordering automatically and uniformly — no per-page changes needed, since none of them ever pass an explicit `sort`.
+- To actually put a specific consultant (e.g. Dr. Karthikeyan) at the top, an admin now sets their Priority via the Masters → Consultant edit page — this ships the mechanism, not a pre-set value for any particular doctor, matching "a real per-consultant field beats a single hardcoded name match."
+- Covered by 10 new unit tests (`ConsultantServiceTests`, `ConsultantValidatorTests`) — no prior test coverage existed for Consultant at all in this codebase; added a minimal but real suite rather than leaving the new field untested. No repository-level test for the actual sort-query translation (see ADR-037's identical note — no DB-backed test harness exists anywhere here).
+
+---
+
+### ADR-048: Consultant cleared from a billing line item once it's paid
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Ninth item of a user-supplied 22-issue backlog ("A consultant is always assigned to a patient, even after paid — Remove this feature"). `InvoiceLineItem.MarkPaid()` set `PaymentStatus = Paid` but never touched `ConsultantId`, so a paid line item kept showing its consultant indefinitely — user confirmed (after clarification) that the consultant field should be cleared once a line item is paid.
+
+**Decision**
+`MarkPaid()` now also sets `ConsultantId = null`. Confirmed via search that no report or endpoint in the Billing module aggregates by `ConsultantId` on paid items (`Payment` itself never carried a `ConsultantId` either), so nothing downstream depends on it surviving payment. The frontend needed no change — `describeBillingItem` in `billingCalculations.ts` already renders `'—'` for a null `consultantId`.
+
+**Consequences**
+- **Genuine, permanent loss of attribution**: once a line item is paid, there is no other record anywhere of which consultant it was originally billed under (`Payment` doesn't carry one either). Acceptable per the fix's own "remove this feature" framing, but a future "per-consultant paid revenue" report would need a new field that survives payment, not a reuse of this one — flagged directly in `MarkPaid`'s own doc comment.
+- Covered by a new unit test (`RecordPaymentAsync_WithValidLineItem_ClearsTheConsultant`) plus an added assertion on the existing pay-at-creation test — both passing alongside the full 735-test suite.
+
+---
+
+### ADR-047: State/City on hospital creation — State is a real dropdown, City is a suggested (not locked) free-text field
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Sixteenth item of a user-supplied 22-issue backlog ("Add State and City dropdowns to the hospital creation page"). `HospitalForm.tsx`'s City/State were both plain free-text inputs. A real Masters `State`/`District` catalog already exists and already has reusable picker components (`StateSelect.tsx`/`DistrictSelect.tsx`, backing Patient Registration's Address section) — but that catalog is tenant-scoped (`GET /api/v1/masters/states` resolves against a specific hospital's own database via `TenantResolutionMiddleware`), and hospital creation runs *before* any tenant database exists. There is nothing yet to query it against, so those existing components can't be reused here; Platform Portal needs its own standalone reference data.
+
+**Decision**
+1. Added `frontend/web/src/features/platformHospitals/indiaStatesAndCities.ts` — a static, closed list of all 28 states + 8 union territories (`INDIAN_STATES_AND_UTS`), and a representative (not exhaustive) `CITIES_BY_STATE` map of major cities per state.
+2. `State` is now a real `<Select>` (the closed list is genuinely exhaustive — India has a fixed, well-known set of states/UTs, so a hard picklist has no false-negative risk). Changing it clears `city`, mirroring `PatientRegistrationForm`'s established Department→Consultant / State→District reset pattern.
+3. `City` stays a free-text `<Input>`, deliberately **not** a locked picklist — paired with a native `<datalist>` scoped to the selected state for dropdown-style suggestions. An exhaustive list of every Indian city isn't realistic to maintain, and a real hospital's actual city missing from a strict dropdown would block onboarding entirely; a suggestion list gets the "dropdown" UX the ask wanted without that failure mode.
+
+**Consequences**
+- No backend change: `CreateHospitalRequestValidator`/`Tenant.Create` already treat `city`/`state` as plain non-empty strings — a real state name now always reaches it (Select-enforced), city remains an arbitrary string as before.
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
+### ADR-046: Reusable PasswordInput (show/hide toggle) added and applied to every password-creation field
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fifteenth item of a user-supplied 22-issue backlog ("Add a Retype Password field with an eye icon to show/hide the password" on hospital creation). `HospitalForm.tsx` had one plain `type="password"` field, no confirm field, and no show/hide toggle anywhere in the app — a repo-wide search found zero existing show/hide-password component to reuse (`Eye`/`EyeOff` from `lucide-react` were unused).
+
+**Decision**
+1. Built `frontend/web/src/components/ui/password-input.tsx` — a small `PasswordInput` wrapping the existing `Input` with an `Eye`/`EyeOff` toggle button that only flips the input's own `type`, not form state.
+2. `HospitalForm.tsx`: added `superAdminConfirmPassword` to `createHospitalSchema` (client-only, `.refine`-checked against `superAdminPassword`; not part of `CreateHospitalRequest` — `CreateHospitalPage.tsx`'s `handleSubmit` destructures it out before calling the mutation so it's never sent to the API) and a "Retype Password" field, both using `PasswordInput`.
+3. Applied the same new component to every other place a password is typed and would benefit from a reveal toggle, since it was trivial and directly consistent with what was just built: `SetPasswordDialog.tsx` (admin reset — already had confirm-password, just no toggle), the tenant `ChangePasswordPage.tsx`, and the Platform `ChangePasswordCard` added in ADR-045. **Deliberately left the two login pages (`LoginPage.tsx`/`PlatformLoginPage.tsx`) untouched** — a reveal toggle at sign-in time is a separate UX call nobody asked for, not the same "did I type my new password correctly" concern the other five fields share.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
+### ADR-045: Platform Admin self-service password change
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fourteenth item of a user-supplied 22-issue backlog ("Password Reset Option" for Platform Portal / Hospital Management). Confirmed gap: `PlatformAuthenticationService` had no password-mutation method at all — only login/MFA. Unlike the tenant side (`HMS.Modules.Identity`, which has both a self-service `POST /api/v1/auth/change-password` and an admin-triggered `SetPassword` reset with a forced-change-on-next-login flag, ADR-023), Platform Admin accounts had neither.
+
+**Decision**
+Added the self-service half only, mirroring Identity's `ChangePasswordAsync`/`ChangePasswordRequest`/`ChangePasswordRequestValidator` pattern exactly (same shared `PasswordPolicy`, same "verify current password, then rotate" shape): `PlatformUser.ChangePassword(newPasswordHash)` (domain), `PlatformChangePasswordRequest`/`PlatformChangePasswordRequestValidator`, `IPlatformAuthenticationService.ChangePasswordAsync`, `POST /api/platform/auth/change-password` (`[Authorize(Policy = "Platform")]`), and a `ChangePasswordCard` on `PlatformSecuritySettingsPage.tsx` reusing the existing shared `changePasswordSchema`/`ChangePasswordFormValues` (the shape is identical to Identity's, no Platform-specific schema needed). **Did not** add an admin-resets-another-admin flow (no cross-admin authorization model exists for Platform accounts today, and the user's ask didn't specifically call for it) — scoped to self-service only, per the plan's explicit note to confirm before expanding scope; flag to the user if cross-admin reset turns out to be what's actually wanted.
+
+**Consequences**
+- **DI registration risk, deliberately guarded against**: a prior fix on this codebase hit a real incident where a new `IValidator<T>` was added to Identity but never registered in DI, causing every hospital login to 500. Registered `IValidator<PlatformChangePasswordRequest>` in `PlatformModule.cs` alongside the other Platform validators, then verified live (not just by reading the registration) by hitting the anonymous `POST /api/platform/auth/login` endpoint with a bogus body via the running dev API and confirming a normal 400 validation response rather than a 500 — since ASP.NET Core resolves *every* constructor dependency of a controller on first use regardless of which action is called, this proves the new validator resolves correctly without needing real Platform Admin credentials (which this session cannot obtain — `dotnet user-secrets` is classifier-blocked).
+- No repository-level or full end-to-end login test — verified via unit tests (`ChangePasswordAsync_WithCorrectCurrentPassword_RotatesTheHash`/`_WithWrongCurrentPassword_...`) plus the live DI-resolution check above.
+
+---
+
+### ADR-044: Patient View gender icon now matches the patient's actual gender
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Twelfth item of a user-supplied 22-issue backlog ("Gender Symbol should be fixed in the patient view form"). `PatientSummaryCard.tsx` rendered the same generic `VenusAndMars` (⚥, combined Venus/Mars) icon next to every patient's gender text regardless of `patient.gender` — the only place in the Patients feature that shows gender as a symbol/icon at all (every other screen renders it as plain text or a select).
+
+**Decision**
+Added a small `GenderIcon` component mapping each real `Gender` value (`Male`/`Female`/`Transgender`/`NA`) to its own `lucide-react` icon (`Mars`/`Venus`/`Transgender`), falling back to the original combined `VenusAndMars` glyph only for `NA` (not known/not recorded), where no single gendered symbol would be accurate.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
+### ADR-043: UHID sequence restarted at 40001
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Eighth item of a user-supplied 22-issue backlog ("UHID should be changed, it should start from 40,001"). UHID is generated by `PatientIdentifierGenerator.NextUhidAsync` as `P-{year}-{sequence:D6}` from a real Postgres sequence (`patients.uhid_seq`, `PatientsDbContext.cs`), previously `StartsAt(1)`. The user was asked whether "start from 40,001" meant restarting this existing sequence (keeping the `P-YYYY-NNNNNN` format) or switching to a bare running number with no prefix, and said no preference — proceeded with the smaller, less invasive change: restart the existing sequence, format unchanged.
+
+**Decision**
+Changed `PatientsDbContext.OnModelCreating` to `StartsAt(40001)` and generated migration `RestartUhidSequenceAt40001` via `dotnet ef migrations add` — EF Core produced a `RestartSequence` operation (`ALTER SEQUENCE ... RESTART WITH 40001` under Npgsql), not just a model-metadata change, so this correctly affects both a brand-new tenant's sequence (created via the existing `CreateSequence` in `InitialCreatePatients`, then immediately restarted by this migration) and every already-provisioned tenant's sequence once they run this migration — the next patient created after this migration runs gets `P-{year}-040001`, regardless of whatever the sequence's current value was.
+
+**Consequences**
+- This restarts the counter forward for every tenant, including ones that already have patients — if a tenant somehow already had 40,000+ patients (none currently do, per this app's early rollout stage), this would risk a duplicate UHID; not a concern at present scale but worth remembering if this migration is ever run against a much older, larger production tenant later.
+- No repository-level test exists for the sequence's numeric value (no repository/DB test harness anywhere in this codebase — see ADR-037's identical note); verified via `dotnet ef migrations add` producing the expected `RestartSequence` operation, a clean build, and the full `dotnet test` suite passing (148 Patients-scoped unit tests, 88 architecture tests).
+
+---
+
+### ADR-042: Date of Birth restricted to a 4-digit year at both the picker and the validation layer
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Seventh item of a user-supplied 22-issue backlog ("Allow 4-digit birth years in the DOB field during registration — can go up to 6 digits currently"). The native `<input type="date">` in `PatientRegistrationForm.tsx`/`PatientEditForm.tsx` had no `min`/`max` attributes, and neither the shared Zod schema (`patientRegistrationUiValidation.ts`'s `demographicsUiSchema.dateOfBirth`) nor the backend (`CreatePatientRequestValidator`) checked the year's digit count — both only range-checked (≤ today, ≥ 130 years ago) via `new Date(value)`/`DateOnly` comparisons, which don't reject a malformed year outright.
+
+**Decision**
+1. Added `dateOfBirthInputBounds()` to `frontend/web/src/features/patients/detailedAge.ts` (the existing shared home for both forms' DOB-derived helpers) returning `min`/`max` ISO date strings (130-year floor, today's ceiling) — spread onto both `<Input type="date">` elements so the native picker itself is bounded.
+2. Added a `.regex(/^\d{4}-\d{2}-\d{2}$/)` check to the Zod schema, ahead of the existing range refinements, so a malformed year is rejected outright rather than silently mis-parsed by `new Date(value)`.
+3. **No backend change was needed**: `CreatePatientRequest.DateOfBirth`/`UpdatePatientRequest.DateOfBirth` are `DateOnly`-typed, and .NET's built-in `System.Text.Json` `DateOnly` converter already strictly requires the exact 10-character `yyyy-MM-dd` shape — a 6-digit-year string fails JSON model binding with a 400 before FluentValidation ever runs. Confirmed no custom `JsonConverter` is registered for `DateOnly` anywhere in the API that could loosen this. Adding a redundant backend regex would validate a scenario the type system already makes impossible.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
+### ADR-041: Login page no longer hardcodes the seed tenant's hospital code as the default
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fifth item of a user-supplied 22-issue backlog ("logging into a newly created hospital using Super Admin works sometimes but fails at other times"). Backend tenant provisioning (`HospitalRegistrationService.RegisterCoreAsync` → `TenantProvisioningService.ProvisionAsync` → `TenantMigrationService.MigrateAsync` → `IdentityModule.ProvisionTenantSuperAdminAsync`) is fully synchronous and awaited end-to-end, so there is no real backend race. `LoginPage.tsx`'s `hospitalCode` field, however, was hardcoded to default to `'lhs'` (the original seed tenant, "Lakshmi Hospitals") with no pre-fill/redirect carrying a newly created hospital's actual code. Anyone testing a fresh hospital's Super Admin login who didn't think to clear that stale default had their login request silently resolve against the wrong tenant (via the `X-Hospital-Code` header) and fail with the same generic "Invalid username or password" a real credential error produces (deliberate anti-enumeration design) — matching the reported "works sometimes (when manually corrected), fails other times (when it wasn't)" symptom exactly, with no backend concurrency involved.
+
+**Decision**
+Replaced the hardcoded `'lhs'` default with a value read from `localStorage` (the last hospital code actually used to sign in successfully on this browser, saved on every successful login), falling back to an empty field (with the existing "e.g. cauvery" placeholder) when nothing has been saved yet. This keeps the convenience of a remembered default for the common repeat-login case without ever silently guessing a specific tenant. Live-verified visually in the browser (the field renders empty with no prior login, per the existing placeholder) — a full login-flow verification (confirming a fresh hospital's Super Admin can sign in first try with the field left as its new default) could not be completed for the same reason as ADR-040: the dev Super Admin password lives only in `dotnet user-secrets`, which the safety classifier correctly blocks reading.
+Deliberately did not change the "Sign in as" role default (`superAdmin`) — that wasn't part of the diagnosed root cause (a fresh hospital's first login genuinely is a Super Admin), and touching it wasn't asked for. Also deliberately did not build a cross-app deep-link from hospital-creation success into this login page — the Platform Admin can already see the new hospital's code on the dashboard they land on after creation, and Platform Portal login/Tenant login are separate, unrelated auth contexts; wiring a redirect between them was scope this issue didn't call for.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038/039).
+
+---
+
+### ADR-040: Registration Details tab clears admissionType/category/referral when encounter type changes
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Fourth item of a user-supplied 22-issue backlog ("Fix the Registration Details error when switching between IP and OP records with unclear/incomplete data"). `PatientRegistrationForm.tsx`'s `registration.encounterType` `<Select>` had no reset side effect, unlike Department→Consultant (`handleDepartmentChange`) and State→District (`handleStateChange`) right next to it, which already do clear dependent fields on change. Switching OP→IP (or Emergency/DayCare/Observation) and back leaves stale `admissionType`/`category`/`referral.*` in form state — in particular, a partially-filled `referral` (e.g. `details`/`contactNumber` typed but `category` left unset) stays in state even after switching back to OP hides the Referral fields entirely, and `registrationDetailsUiSchema`'s `superRefine` still requires `referral.category` once `referral` is set at all — leaving the tab permanently flagged invalid with no visible field left on screen to fix it.
+
+**Decision**
+Added `handleEncounterTypeChange`, mirroring the existing `handleDepartmentChange`/`handleStateChange` pattern exactly: on any encounter-type change, clears `registration.admissionType` and `registration.category` back to `''`, and sets `registration.referral` to `undefined` (not an empty object — `referralColumnSchema` is `.optional()`, so `undefined` fully satisfies the `superRefine` check rather than leaving an empty-but-present object that would still fail it). Wired into the existing `<Select>` in place of the raw `field.onChange`. `RecordVisitForm.tsx` (the standalone "Add Visit" page) was checked and needs no equivalent change — its schema deliberately excludes `admissionType`/`referral`/`category` entirely (they're UI-only fields that only exist on the registration wizard's shape), so it was never exposed to this bug.
+
+**Consequences**
+- Live browser verification (the plan's stated intent for this item, since it's a stateful form-interaction bug) could not be completed: the only dev login path needs the seeded Super Admin password, which lives solely in `dotnet user-secrets` — reading that file was correctly blocked by the auto-mode safety classifier as credential access, and no lower-sensitivity path (e.g. provisioning a fresh throwaway tenant) exists without first clearing that same login gate. Verified instead via `tsc --noEmit` and `eslint` (both clean) and by tracing the exact validation-schema mechanism the fix addresses; the fix itself mirrors an already-proven, already-shipped pattern in the same file rather than introducing new logic.
+
+---
+
+### ADR-039: On-call/"Others" consultation charge no longer stomped back to 0
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Third item of a user-supplied 22-issue backlog ("the amount field has 0, it should be editable" for Doctor's Consultation - Others/On-call). `ConsultationTypeSelect` already shows "Amount to be filled" for consultation types with a null master `amount` (by design — see `Masters.ConsultationType`'s own doc comment), and the charge `<Input>` in `ConsultationBillingCard.tsx` was never actually `disabled`. The real bug was a `useEffect` (lines ~103-108) that unconditionally reset `charge` to `selectedType?.amount ?? 0` — for a null-amount type that's always 0, and it re-ran on *any* new `consultationTypes` react-query object reference (a refetch on window focus, a cache invalidation from an unrelated mutation, etc.), not just on an actual type change — so any amount staff typed in kept getting wiped back to 0.
+
+**Decision**
+The effect now only overwrites `charge` when the selected type's master `amount` is non-null, and its dependency array was narrowed to `consultationTypeId` alone (dropping `consultationTypes`) — React effects still close over the latest render's values, so this doesn't need a ref; it just stops the effect from re-running on a same-selection data refetch.
+
+**Consequences**
+- Scoped narrowly to the reported symptom (the null-amount case); did not add "has the user manually edited this field" tracking for fixed-fee types, which is a broader behavior change nobody asked for here.
+- Verified via `tsc --noEmit` and `eslint` (both clean) — this repo has no frontend test runner/config anywhere, so there's no existing baseline to add an automated test to.
+
+---
+
+### ADR-038: Voided invoices excluded from the Income & Expense Report's revenue totals
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Second item of a user-supplied 22-issue backlog ("Fix the issue where discarded billing details are still being added to Accounts & Finance"). "Discarding" a bill in this codebase means voiding it (`Invoice.IsVoided`) — there is no separate soft-delete-style cancellation status. The Unified Invoice Ledger intentionally still lists voided invoices (an audit trail, not a "vanish" — see ADR-037), but `frontend/web/src/features/reports/incomeExpenseReport.ts`'s `getIncomeRows`/`getIncomeByBillingType` — which drive the Income & Expense Report's Total Income and per-billing-type breakdown — summed every invoice's `netAmount` with no `isVoided` check at all, so a discarded bill's amount was still counted as real revenue.
+
+**Decision**
+`getIncomeRows` and `getIncomeByBillingType` now both skip any `billing.isVoided` invoice before aggregating. The Ledger itself is untouched (still shows voided rows with their existing "Voided" badge) — only the two revenue-aggregation functions changed, so voided invoices stay visible for audit purposes everywhere except in the actual income totals.
+
+**Consequences**
+- No frontend automated test was added: this repo has no frontend test runner/config anywhere (`frontend/web/tests` is an empty directory, no `*.test.ts(x)` file exists in the whole repo) — verified via `tsc --noEmit` (clean) and `eslint` (clean) on the touched file instead, consistent with there being no existing frontend-test baseline to extend.
+
+---
+
+### ADR-037: Billing — a voided invoice can no longer receive a payment; voided invoices excluded from the Pending filter
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+First item of a user-supplied 22-issue backlog ("Fix the Billing status issue between Pending and Paid"). `InvoiceService.VoidAsync`/`Invoice.Void()` already block voiding an invoice that has any Paid line item, but the reverse was never enforced: `RecordPaymentAsync` never checked `Invoice.IsVoided`, so a voided invoice could still receive `RecordPaymentAsync` calls against its (unpaid) line items — picking up a real `Payment` row and a Paid line item on an invoice the domain considers cancelled. Separately, `InvoiceRepository.GetPagedAsync`'s "Pending" filter (used by the Unified Invoice Ledger) matched purely on line-item status with no `IsVoided` exclusion, so a voided invoice with no paid items showed up mixed into "Pending" results even though the UI labels it "Voided".
+
+**Decision**
+1. `InvoiceService.RecordPaymentAsync` now rejects any payment attempt against a voided invoice with a new `BillingErrorCodes.InvoiceVoided` (409 Conflict, mapped in `InvoicesController.MapFailure` alongside the existing `AlreadyVoided`/`LineItemAlreadyPaid` codes) — checked before the existing "already paid" guard so the more specific reason surfaces first.
+2. `InvoiceRepository.GetPagedAsync`'s Pending branch now also excludes `IsVoided` invoices. The "Paid" branch needed no change: with (1) in place a voided invoice can never acquire a Paid line item going forward, so it can never spuriously match "Paid" either. Voided invoices remain visible in the unfiltered Ledger (existing by-design behavior per `Domain/Invoice.cs`'s own comment — a voided invoice must stay queryable for audit purposes, not disappear like a soft-deleted row) — only the Pending/Paid status filter now excludes them.
+
+**Consequences**
+- Closes the one-directional gap: Void→blocked-by-Paid was already enforced, Paid→blocked-by-Voided now is too, for both the previously-reachable direct-API race and the semantically-nonsensical result of a "cancelled" invoice quietly earning revenue.
+- No repository-level test was added (no repository/DB-level test harness exists anywhere in this codebase — every existing Billing test substitutes `IInvoiceRepository`); the query fix mirrors the existing predicate style in the same method and was verified by build + the full `dotnet test` suite (732 unit + 88 architecture tests, all passing).
+
+---
+
 ### ADR-036: Hospital HR Management MVP — Employee/Staff/Consultant separation, module split, and Documents reuse
 **Date:** 2026-08-27
 **Status:** Accepted

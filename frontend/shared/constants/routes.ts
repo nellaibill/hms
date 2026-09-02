@@ -22,6 +22,7 @@ export const API_ROUTES = {
     mfaSetup: '/api/platform/auth/mfa/setup',
     mfaEnable: '/api/platform/auth/mfa/enable',
     mfaDisable: '/api/platform/auth/mfa/disable',
+    changePassword: '/api/platform/auth/change-password',
   },
   /** Mirrors HMS.Modules.Platform.Endpoints.HospitalsController. */
   platformHospitals: {
@@ -67,6 +68,8 @@ export const API_ROUTES = {
     base: '/api/v1/documents',
     byId: (id: string) => `/api/v1/documents/${id}`,
     content: (id: string) => `/api/v1/documents/${id}/content`,
+    archive: (id: string) => `/api/v1/documents/${id}/archive`,
+    summary: '/api/v1/documents/summary',
   },
   /**
    * Masters (Reference Data) — mirrors HMS.Modules.Masters.Endpoints.*Controller. Keyed by

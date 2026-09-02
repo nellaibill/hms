@@ -7,8 +7,11 @@ export default function CreateHospitalPage() {
   const navigate = useNavigate();
   const mutation = useCreateHospitalMutation();
 
-  function handleSubmit(values: CreateHospitalFormValues) {
-    mutation.mutate(values, {
+  function handleSubmit({ superAdminConfirmPassword, ...request }: CreateHospitalFormValues) {
+    // superAdminConfirmPassword only exists to validate that the password was typed
+    // correctly — it's not part of CreateHospitalRequest and must not be sent to the API.
+    void superAdminConfirmPassword;
+    mutation.mutate(request, {
       onSuccess: () => navigate('/platform/dashboard'),
     });
   }

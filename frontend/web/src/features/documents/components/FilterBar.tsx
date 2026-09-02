@@ -8,7 +8,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { DOCUMENT_TYPE_LABELS, ENTITY_TYPE_META } from '../constants';
-import { ENTITY_OPTIONS } from '../mockEntities';
+import { buildEntityOptions, isEntityPickerSupported, type DirectoryEntry } from '../hooks/useDirectories';
 import { createEmptyFilters, DOCUMENT_TYPES, ENTITY_TYPES } from '../types';
 import type { DocumentFilters, DocumentStatusFilter, EntityType } from '../types';
 
@@ -18,10 +18,12 @@ interface FilterBarProps {
   filters: DocumentFilters;
   onApply: (filters: DocumentFilters) => void;
   onReset: () => void;
-  uploaders: string[];
+  uploaders: DirectoryEntry[];
+  patients: DirectoryEntry[];
+  staff: DirectoryEntry[];
 }
 
-export function FilterBar({ filters, onApply, onReset, uploaders }: FilterBarProps) {
+export function FilterBar({ filters, onApply, onReset, uploaders, patients, staff }: FilterBarProps) {
   const [draft, setDraft] = useState<DocumentFilters>(filters);
 
   // Keep the draft in sync when filters are reset/changed from outside (e.g. Reset button).
@@ -29,7 +31,8 @@ export function FilterBar({ filters, onApply, onReset, uploaders }: FilterBarPro
     setDraft(filters);
   }, [filters]);
 
-  const entityOptions = draft.entityType ? ENTITY_OPTIONS[draft.entityType].map((e) => ({ value: e.id, label: e.label })) : [];
+  const entityPickerSupported = isEntityPickerSupported(draft.entityType);
+  const entityOptions = buildEntityOptions(draft.entityType, patients, staff);
 
   function handleEntityTypeChange(value: string) {
     const entityType = value === 'all' ? undefined : (value as EntityType);
@@ -67,16 +70,25 @@ export function FilterBar({ filters, onApply, onReset, uploaders }: FilterBarPro
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="filter-entity">Entity</Label>
-          <SearchableSelect
-            id="filter-entity"
-            value={draft.entityId ?? ''}
-            onValueChange={(value) => setDraft((prev) => ({ ...prev, entityId: value || undefined }))}
-            options={entityOptions}
-            placeholder={draft.entityType ? 'All entities' : 'Select entity type first'}
-            searchPlaceholder="Search entity…"
-            ariaLabel="Entity"
-            disabled={!draft.entityType}
-          />
+          {entityPickerSupported ? (
+            <SearchableSelect
+              id="filter-entity"
+              value={draft.entityId ?? ''}
+              onValueChange={(value) => setDraft((prev) => ({ ...prev, entityId: value || undefined }))}
+              options={entityOptions}
+              placeholder="All entities"
+              searchPlaceholder="Search entity…"
+              ariaLabel="Entity"
+            />
+          ) : (
+            <Input
+              id="filter-entity"
+              value={draft.entityId ?? ''}
+              onChange={(e) => setDraft((prev) => ({ ...prev, entityId: e.target.value || undefined }))}
+              placeholder={draft.entityType ? 'Paste an entity ID' : 'Select entity type first'}
+              disabled={!draft.entityType}
+            />
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -110,9 +122,9 @@ export function FilterBar({ filters, onApply, onReset, uploaders }: FilterBarPro
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Anyone</SelectItem>
-              {uploaders.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
+              {uploaders.map((uploader) => (
+                <SelectItem key={uploader.id} value={uploader.id}>
+                  {uploader.label}
                 </SelectItem>
               ))}
             </SelectContent>

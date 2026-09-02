@@ -13,7 +13,7 @@ const tenDigitPhone = z
   .length(10, 'Must be exactly 10 digits')
   .regex(/^\d+$/, 'Digits only');
 
-export const createHospitalSchema = z.object({
+const createHospitalObjectSchema = z.object({
   hospitalName: z.string().trim().min(1, 'Hospital name is required').max(200),
   hospitalCode: z
     .string()
@@ -41,9 +41,17 @@ export const createHospitalSchema = z.object({
     .string()
     .min(PASSWORD_MIN_LENGTH, `Must be at least ${PASSWORD_MIN_LENGTH} characters`)
     .regex(PASSWORD_COMPLEXITY_PATTERN, PASSWORD_COMPLEXITY_MESSAGE),
+  /** Client-only — confirms superAdminPassword was typed correctly. Not part of
+   * CreateHospitalRequest; CreateHospitalPage strips it before submitting. */
+  superAdminConfirmPassword: z.string().min(1, 'Confirm the password'),
 
   /** Optional FeatureCatalog keys beyond the always-included mandatory set. */
   enabledFeatureKeys: z.array(z.string()).default([]),
 });
+
+export const createHospitalSchema = createHospitalObjectSchema.refine(
+  (data) => data.superAdminPassword === data.superAdminConfirmPassword,
+  { message: 'Passwords do not match', path: ['superAdminConfirmPassword'] },
+);
 
 export type CreateHospitalFormValues = z.infer<typeof createHospitalSchema>;

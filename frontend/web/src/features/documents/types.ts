@@ -29,21 +29,23 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 export type DocumentStatusFilter = 'All' | 'Active' | 'Archived';
 
 /**
- * Mirrors the single generic `Document` table — EntityType + EntityId is the only link to the
- * owning record, so this module never needs to know anything about Patients, Staff, Billing,
- * etc. beyond that pair.
+ * Mirrors the single generic `Document` table (HMS.Modules.Documents) — EntityType + EntityId
+ * is the only link to the owning record, so this module never needs to know anything about
+ * Patients, Staff, Billing, etc. beyond that pair.
  */
 export interface HmsDocument {
   id: string;
   entityType: EntityType;
   entityId: string;
   documentType: DocumentType;
+  /** The backend only exposes OriginalFileName (its internal storage key is never returned) —
+   * this mirrors that value; there is no separate "system" file name. */
   fileName: string;
   originalFileName: string;
-  /** Object URL (session-only) for real uploads, or a small embedded demo asset for seed data — never a server path, since there's no backend yet. */
-  filePath: string;
   fileSize: number;
   mimeType: string;
+  /** The uploader's user id (Guid) — resolve to a display name via a directory lookup
+   * (see hooks/useDirectories.ts), since the API only returns the raw id. */
   uploadedBy: string;
   uploadedAt: string;
   isArchived: boolean;

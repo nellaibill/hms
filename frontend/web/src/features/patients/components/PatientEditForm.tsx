@@ -16,7 +16,7 @@ import {
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DistrictSelect } from '@/components/DistrictSelect';
 import { StateSelect } from '@/components/StateSelect';
 import { bloodGroupLabel } from '../bloodGroupLabel';
-import { calculateDetailedAge } from '../detailedAge';
+import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
 import { tabErrorMessages } from '../formErrorSummary';
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
@@ -47,6 +47,9 @@ interface PatientEditFormProps {
   apiError: ApiError | null;
   onSubmit: (values: PatientEditUiFormValues) => void;
   onCancel: () => void;
+  /** Mirrors the form's own dirty state up to the parent page, which owns the actual
+   * unsaved-changes navigation guard (useUnsavedChangesGuard). */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info'] as const;
@@ -85,7 +88,16 @@ function isTabId(value: string): value is TabId {
 }
 
 /** Updates a patient's demographic/master-data fields only — Registration Details and Billing are intentionally not editable here (see docs/DecisionLog.md ADR-008). */
-export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: PatientEditFormProps) {
+export function PatientEditForm({
+  patientId,
+  allergies,
+  defaultValues,
+  isSubmitting,
+  apiError,
+  onSubmit,
+  onCancel,
+  onDirtyChange,
+}: PatientEditFormProps) {
   const {
     register,
     control,
@@ -93,13 +105,17 @@ export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitt
     watch,
     trigger,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PatientEditUiFormValues>({
     resolver: zodResolver(patientEditUiSchema),
     defaultValues,
     // Deliberately not `mode: 'onChange'` — see PatientRegistrationForm's identical fix for
     // why: it races an overlapping validation pass against goToTab's own trigger() call.
   });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const idProofType = watch('idProofType');
   const state = watch('state');
@@ -302,7 +318,7 @@ export function PatientEditForm({ patientId, allergies, defaultValues, isSubmitt
               <Input id="lastName" {...register('lastName')} />
             </Field>
             <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
-              <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+              <Input id="dateOfBirth" type="date" {...dateOfBirthInputBounds()} {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>

@@ -24,9 +24,10 @@ function billingToIncomeRow(billing: Billing): IncomeReportRow {
   };
 }
 
-/** One row per invoice (not per line item) — a financial report reads at ledger granularity, matching Total Income against the Unified Invoice Ledger's own totals. `billings` comes from features/billing's useInvoicesForReportQuery — this stays a pure transform so the page controls loading state. */
+/** One row per invoice (not per line item) — a financial report reads at ledger granularity, matching Total Income against the Unified Invoice Ledger's own totals. `billings` comes from features/billing's useInvoicesForReportQuery — this stays a pure transform so the page controls loading state. Voided invoices are excluded: they're discarded transactions and must not count as revenue, even though the Ledger itself still lists them for audit purposes. */
 export function getIncomeRows(billings: Billing[], range: ReportDateRange): IncomeReportRow[] {
   return billings
+    .filter((billing) => !billing.isVoided)
     .map(billingToIncomeRow)
     .filter((row) => inRange(row.date, range))
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -68,6 +69,7 @@ export interface BreakdownRow {
 export function getIncomeByBillingType(billings: Billing[], range: ReportDateRange): BreakdownRow[] {
   const totals = new Map<string, number>();
   for (const billing of billings) {
+    if (billing.isVoided) continue;
     if (!inRange(dateOnly(billing.createdAt), range)) continue;
     for (const item of billing.items) {
       totals.set(item.billingType, (totals.get(item.billingType) ?? 0) + item.total);

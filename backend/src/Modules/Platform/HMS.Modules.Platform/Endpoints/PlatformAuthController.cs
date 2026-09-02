@@ -27,6 +27,7 @@ public class PlatformAuthController : ControllerBase
     private readonly IValidator<PlatformMfaVerifyRequest> _mfaVerifyValidator;
     private readonly IValidator<PlatformMfaEnableRequest> _mfaEnableValidator;
     private readonly IValidator<PlatformMfaDisableRequest> _mfaDisableValidator;
+    private readonly IValidator<PlatformChangePasswordRequest> _changePasswordValidator;
     private readonly IRevokedTokenStore _revokedTokenStore;
     private readonly ILogger<PlatformAuthController> _logger;
 
@@ -36,6 +37,7 @@ public class PlatformAuthController : ControllerBase
         IValidator<PlatformMfaVerifyRequest> mfaVerifyValidator,
         IValidator<PlatformMfaEnableRequest> mfaEnableValidator,
         IValidator<PlatformMfaDisableRequest> mfaDisableValidator,
+        IValidator<PlatformChangePasswordRequest> changePasswordValidator,
         IRevokedTokenStore revokedTokenStore,
         ILogger<PlatformAuthController> logger)
     {
@@ -44,6 +46,7 @@ public class PlatformAuthController : ControllerBase
         _mfaVerifyValidator = mfaVerifyValidator;
         _mfaEnableValidator = mfaEnableValidator;
         _mfaDisableValidator = mfaDisableValidator;
+        _changePasswordValidator = changePasswordValidator;
         _revokedTokenStore = revokedTokenStore;
         _logger = logger;
     }
@@ -174,6 +177,32 @@ public class PlatformAuthController : ControllerBase
         }
 
         _logger.LogInformation("Platform user {PlatformUserId} disabled MFA via the API", User.GetPlatformUserId());
+        return NoContent();
+    }
+
+    /// <summary>Self-service password change for the caller's own account — proves the
+    /// current password, then rotates it. Mirrors HMS.Modules.Identity's
+    /// POST /api/v1/auth/change-password.</summary>
+    /// <response code="204">The password was changed.</response>
+    /// <response code="400">The request failed validation, or the current password was wrong.</response>
+    [Authorize(Policy = "Platform")]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] PlatformChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var validation = await _changePasswordValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return BadRequest(BuildValidationError(validation));
+        }
+
+        var result = await _authenticationService.ChangePasswordAsync(User.GetPlatformUserId()!.Value, request.CurrentPassword, request.NewPassword, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return MapFailure(result.ErrorCode!, result.Error!);
+        }
+
+        _logger.LogInformation("POST /api/platform/auth/change-password succeeded for platform user {PlatformUserId}", User.GetPlatformUserId());
+
         return NoContent();
     }
 

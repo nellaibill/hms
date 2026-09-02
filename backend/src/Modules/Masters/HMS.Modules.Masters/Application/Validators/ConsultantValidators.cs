@@ -9,6 +9,8 @@ internal class CreateConsultantRequestValidator : AbstractValidator<CreateConsul
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Specialization).MaximumLength(150);
+        RuleFor(x => x.Priority).GreaterThanOrEqualTo(1).When(x => x.Priority.HasValue)
+            .WithMessage("Priority must be 1 or greater.");
     }
 }
 
@@ -18,5 +20,7 @@ internal class UpdateConsultantRequestValidator : AbstractValidator<UpdateConsul
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Specialization).MaximumLength(150);
+        RuleFor(x => x.Priority).GreaterThanOrEqualTo(1).When(x => x.Priority.HasValue)
+            .WithMessage("Priority must be 1 or greater.");
     }
 }

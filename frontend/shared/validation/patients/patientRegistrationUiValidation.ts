@@ -235,6 +235,12 @@ const demographicsUiSchema = {
   dateOfBirth: z
     .string()
     .min(1, 'Date of birth is required')
+    // A native <input type="date"> has no built-in limit on how many digits can be typed
+    // into its year segment (browsers allow up to 6) — this catches a stray extra digit
+    // (e.g. "202506-01-15") before it reaches the two range checks below, which parse via
+    // `new Date(value)` and would otherwise silently accept/misinterpret a malformed year
+    // rather than rejecting it outright.
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date with a 4-digit year.')
     .refine((value) => new Date(value) <= new Date(), 'Date of birth cannot be in the future')
     // Kept in sync with backend's CreatePatientRequestValidator.MinDateOfBirth (130 years) —
     // generous enough to never reject a real patient while catching an obvious data-entry

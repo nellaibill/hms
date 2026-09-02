@@ -50,3 +50,9 @@ export interface PlatformMfaDisableRequest {
 export interface PlatformMfaStatusResponse {
   enabled: boolean;
 }
+
+/** Mirrors HMS.Modules.Platform.Contracts.PlatformChangePasswordRequest. */
+export interface PlatformChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}

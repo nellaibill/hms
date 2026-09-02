@@ -34,7 +34,10 @@ public class PatientsDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PatientsDbContext).Assembly);
 
         // Backs the UHID business identifier with a real Postgres sequence —
-        // coordination-free and gap-tolerant, unlike a MAX(...)+1 query.
-        modelBuilder.HasSequence<long>(UhidSequenceName, SchemaName).StartsAt(1);
+        // coordination-free and gap-tolerant, unlike a MAX(...)+1 query. Starts at 40001 (not
+        // 1) per a deliberate business decision — see the RestartUhidSequenceAt40001
+        // migration, which also restarts this sequence on every already-provisioned tenant,
+        // not just ones created fresh after this change.
+        modelBuilder.HasSequence<long>(UhidSequenceName, SchemaName).StartsAt(40001);
     }
 }

@@ -221,6 +221,23 @@ internal class PlatformAuthenticationService : IPlatformAuthenticationService
         return Result.Success();
     }
 
+    public async Task<Result> ChangePasswordAsync(Guid platformUserId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await _repository.GetByIdAsync(platformUserId, cancellationToken);
+        if (user is null || !_passwordHasher.VerifyPassword(currentPassword, user.PasswordHash))
+        {
+            _logger.LogInformation("Change-password failed for platform user {PlatformUserId}: current password did not match", platformUserId);
+            return Result.Failure(PlatformErrorCodes.InvalidCurrentPassword, "Current password is incorrect.");
+        }
+
+        user.ChangePassword(_passwordHasher.HashPassword(newPassword));
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Platform user {PlatformUserId} changed their own password", platformUserId);
+
+        return Result.Success();
+    }
+
     private bool VerifyTotpCode(string encryptedSecret, string code) =>
         _totpService.VerifyCode(_mfaSecretProtector.Unprotect(encryptedSecret), code);
 

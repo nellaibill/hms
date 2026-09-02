@@ -1,12 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { listMockDocuments, type DocumentListQuery } from '../mockDocumentsStore';
+import { documentsApi } from '../../../services/apiClient';
+import { mapDocumentResponseToHmsDocument, toDocumentSearchQuery } from '../mapDocument';
+import type { DocumentFilters } from '../types';
 
-export const documentsQueryKey = (query: DocumentListQuery) => ['documents', 'list', query] as const;
+export const documentsQueryKey = (filters: DocumentFilters) => ['documents', 'list', filters] as const;
 
-export function useDocumentsQuery(query: DocumentListQuery) {
+export function useDocumentsQuery(filters: DocumentFilters) {
   return useQuery({
-    queryKey: documentsQueryKey(query),
-    queryFn: () => listMockDocuments(query),
+    queryKey: documentsQueryKey(filters),
+    queryFn: async () => {
+      const { items } = await documentsApi.getDocuments(toDocumentSearchQuery(filters));
+      return items.map(mapDocumentResponseToHmsDocument);
+    },
     placeholderData: (previous) => previous,
   });
 }

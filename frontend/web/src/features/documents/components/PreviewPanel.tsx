@@ -1,12 +1,12 @@
-import { Archive, Download, FileQuestion, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Archive, Download, FileQuestion, Loader2, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/AuthContext';
 import { cn } from '@/lib/utils';
+import { documentsApi } from '../../../services/apiClient';
 import { EntityTypeBadge } from './EntityTypeBadge';
 import { FileTypeIcon } from './FileTypeIcon';
 import { StatusBadge } from './StatusBadge';
-import { getEntityLabel } from '../mockEntities';
-import { hasLiveContent } from '../mockDocumentsStore';
 import { getFileKind } from '../utils/fileKind';
 import { formatDateTime, formatFileSize } from '../utils/format';
 import type { HmsDocument } from '../types';
@@ -25,22 +25,66 @@ function DetailRow({ label, children }: DetailRowProps) {
   );
 }
 
+/** Image/PDF content is fetched on demand from the authenticated .../content endpoint — the
+ * backend never hands out a plain URL for it (see downloadDocument's own doc comment), so
+ * there's no synchronous src to point an <img>/<iframe> at. */
+function useDocumentContentUrl(doc: HmsDocument, enabled: boolean) {
+  const [state, setState] = useState<{ url: string | null; status: 'loading' | 'ready' | 'error' }>({
+    url: null,
+    status: 'loading',
+  });
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setState({ url: null, status: 'loading' });
+
+    documentsApi
+      .getDocumentContent(doc.id)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setState({ url: objectUrl, status: 'ready' });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ url: null, status: 'error' });
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [doc.id, enabled]);
+
+  return state;
+}
+
 function PreviewArea({ doc }: { doc: HmsDocument }) {
   const kind = getFileKind(doc.mimeType);
-  const live = hasLiveContent(doc.filePath);
+  const previewable = kind === 'image' || kind === 'pdf';
+  const { url, status } = useDocumentContentUrl(doc, previewable);
 
-  if (kind === 'image' && live) {
+  if (previewable && status === 'loading') {
     return (
-      <div className="flex items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30 p-2">
-        <img src={doc.filePath} alt={doc.originalFileName} className="max-h-72 w-auto rounded object-contain" />
+      <div className="flex items-center justify-center rounded-lg border border-border bg-muted/30 py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
       </div>
     );
   }
 
-  if (kind === 'pdf' && live) {
+  if (kind === 'image' && url) {
+    return (
+      <div className="flex items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30 p-2">
+        <img src={url} alt={doc.originalFileName} className="max-h-72 w-auto rounded object-contain" />
+      </div>
+    );
+  }
+
+  if (kind === 'pdf' && url) {
     return (
       <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
-        <iframe src={doc.filePath} title={doc.originalFileName} className="h-72 w-full" />
+        <iframe src={url} title={doc.originalFileName} className="h-72 w-full" />
       </div>
     );
   }
@@ -74,10 +118,12 @@ interface PreviewPanelProps {
   onDownload: (doc: HmsDocument) => void;
   onArchive: (doc: HmsDocument) => void;
   onDelete: (doc: HmsDocument) => void;
+  getEntityLabel: (doc: HmsDocument) => string;
+  getUploaderLabel: (doc: HmsDocument) => string;
   className?: string;
 }
 
-export function PreviewPanel({ doc, onClose, onDownload, onArchive, onDelete, className }: PreviewPanelProps) {
+export function PreviewPanel({ doc, onClose, onDownload, onArchive, onDelete, getEntityLabel, getUploaderLabel, className }: PreviewPanelProps) {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('records-compliance.edit');
   const canDelete = hasPermission('records-compliance.delete');
@@ -107,8 +153,8 @@ export function PreviewPanel({ doc, onClose, onDownload, onArchive, onDelete, cl
           <DetailRow label="Entity Type">
             <EntityTypeBadge entityType={doc.entityType} />
           </DetailRow>
-          <DetailRow label="Entity Name">{getEntityLabel(doc.entityType, doc.entityId)}</DetailRow>
-          <DetailRow label="Uploaded By">{doc.uploadedBy}</DetailRow>
+          <DetailRow label="Entity Name">{getEntityLabel(doc)}</DetailRow>
+          <DetailRow label="Uploaded By">{getUploaderLabel(doc)}</DetailRow>
           <DetailRow label="Uploaded Date">{formatDateTime(doc.uploadedAt)}</DetailRow>
           <DetailRow label="Mime Type">
             <span className="font-mono text-xs">{doc.mimeType}</span>
