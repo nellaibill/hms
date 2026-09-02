@@ -5,5 +5,6 @@ export * from './calendar';
 export * from './ipd';
 export * from './billing';
 export * from './pharmacy';
+export * from './laboratory';
 export * from './notifications';
 export * from './messaging';
