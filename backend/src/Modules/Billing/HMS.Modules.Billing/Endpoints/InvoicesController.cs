@@ -134,6 +134,7 @@ public class InvoicesController : ControllerBase
             BillingErrorCodes.LineItemNotFound => StatusCodes.Status404NotFound,
             BillingErrorCodes.LineItemAlreadyPaid => StatusCodes.Status409Conflict,
             BillingErrorCodes.AlreadyVoided => StatusCodes.Status409Conflict,
+            BillingErrorCodes.InvoiceVoided => StatusCodes.Status409Conflict,
             BillingErrorCodes.HasPayments => StatusCodes.Status409Conflict,
             BillingErrorCodes.EmptyInvoice => StatusCodes.Status400BadRequest,
             BillingErrorCodes.InvalidPatient => StatusCodes.Status400BadRequest,
