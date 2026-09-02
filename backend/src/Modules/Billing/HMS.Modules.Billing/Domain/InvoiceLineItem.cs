@@ -113,10 +113,20 @@ internal class InvoiceLineItem : Entity
     }
 
     /// <summary>Caller (InvoiceService) is responsible for creating the corresponding
-    /// Payment record — this only flips the denormalized status the ledger reads.</summary>
+    /// Payment record — this only flips the denormalized status the ledger reads. Also
+    /// clears ConsultantId: once a line item is paid, it's a settled transaction record, not
+    /// an active assignment — a consultant shouldn't still read as "currently assigned" to a
+    /// patient's paid bill (docs/DecisionLog.md's Billing ADR on this fix). This is a genuine,
+    /// permanent loss of that attribution — Payment (see Domain/Payment.cs) doesn't carry a
+    /// ConsultantId either, so once cleared there's no other record of which consultant this
+    /// paid line item was originally billed under. Acceptable per the fix's own framing
+    /// ("remove this feature"), but worth knowing if a future reporting need ever wants
+    /// per-consultant paid-revenue figures — that would need a different field to survive
+    /// payment, not reuse of this one.</summary>
     public void MarkPaid(Guid? updatedBy)
     {
         PaymentStatus = PaymentStatus.Paid;
+        ConsultantId = null;
         MarkUpdated(updatedBy);
     }
 }
