@@ -24,6 +24,8 @@ const PatientRegistrationCreatePage = lazy(() => import('../pages/patients/Patie
 const PatientViewPage = lazy(() => import('../pages/patients/PatientViewPage'));
 const PatientEditPage = lazy(() => import('../pages/patients/PatientEditPage'));
 const PatientRecordVisitPage = lazy(() => import('../pages/patients/PatientRecordVisitPage'));
+const PatientBulkImportPage = lazy(() => import('../pages/patients/PatientBulkImportPage'));
+const PatientImportHistoryPage = lazy(() => import('../pages/patients/PatientImportHistoryPage'));
 const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
 const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
 const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettingsPage'));
@@ -162,6 +164,13 @@ const patientRoutes = [
   { path: 'patients/registration/:id', element: withSuspense(<PatientViewPage />) },
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
   { path: 'patients/registration/:id/visits/new', element: withSuspense(<PatientRecordVisitPage />) },
+  // Bulk Excel import (Super Admin only — gated in-page via RequirePermission, same as every
+  // other patients/* route here; entry point lives on PatientRegistrationHubPage, not the main
+  // sidebar). ':batchId' is optional in effect (two routes, one element) so a fresh upload and
+  // viewing an existing batch from Import History share the same review screen.
+  { path: 'patients/import', element: withSuspense(<PatientBulkImportPage />) },
+  { path: 'patients/import/:batchId', element: withSuspense(<PatientBulkImportPage />) },
+  { path: 'patients/import-history', element: withSuspense(<PatientImportHistoryPage />) },
 ];
 
 // Roles Management (UI-only, mock data — no backend module yet) — reachable from the

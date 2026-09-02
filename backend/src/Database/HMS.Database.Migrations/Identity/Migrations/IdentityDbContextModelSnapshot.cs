@@ -113,6 +113,18 @@ namespace HMS.Database.Migrations.Identity.Migrations
                         },
                         new
                         {
+                            Id = new Guid("f1a4c9e2-7b3d-4e8a-9c1f-2d6b8e4a0c7f"),
+                            Action = "import",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "patient-management.import",
+                            Label = "Bulk Import",
+                            Module = "patient-management"
+                        },
+                        new
+                        {
                             Id = new Guid("50adeda0-6191-4777-9430-6c4b359eff9d"),
                             Action = "edit",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),

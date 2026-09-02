@@ -23,6 +23,9 @@ namespace HMS.Database.Migrations.Patients.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("imported_uhid_seq", "patients")
+                .HasMax(40000L);
+
             modelBuilder.HasSequence("uhid_seq", "patients")
                 .StartsAt(40001L);
 
@@ -296,6 +299,177 @@ namespace HMS.Database.Migrations.Patients.Migrations
                     b.ToTable("patients", "patients");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientImportBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CommitFailedRows")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("commit_failed_rows");
+
+                    b.Property<DateTime?>("CommittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("committed_at");
+
+                    b.Property<Guid?>("CommittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("committed_by");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CreatedRows")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("created_rows");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)")
+                        .HasColumnName("file_name");
+
+                    b.Property<int>("InvalidRows")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("invalid_rows");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TotalRows")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_rows");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("ValidRows")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("valid_rows");
+
+                    b.HasKey("Id")
+                        .HasName("pk_patient_import_batches");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_patient_import_batches_created_at");
+
+                    b.ToTable("patient_import_batches", "patients");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientImportRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("CreatedPatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_patient_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("ErrorsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("errors");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("MappedRequestJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("mapped_request");
+
+                    b.Property<string>("RawDataJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_data");
+
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("row_number");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_patient_import_rows");
+
+                    b.HasIndex("BatchId", "Status")
+                        .HasDatabaseName("ix_patient_import_rows_batch_id_status");
+
+                    b.ToTable("patient_import_rows", "patients");
+                });
+
             modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientVisit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -420,6 +594,16 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_emergency_contacts_patient_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientImportRow", b =>
+                {
+                    b.HasOne("HMS.Modules.Patients.Domain.PatientImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_patient_import_rows_batch_id");
                 });
 
             modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientVisit", b =>

@@ -14,15 +14,17 @@ namespace HMS.ArchitectureTests.Modules.Patients;
 /// IPatientService is public because PatientsController — which ASP.NET Core requires to be
 /// public with a public constructor for controller discovery/DI activation — takes it as a
 /// constructor dependency (a public constructor cannot have an internal parameter type,
-/// CS0051). Same reasoning for IPatientVisitService (PatientVisitsController). PatientsDbContext
-/// is public because it's resolved by type from HMS.Api's Program.cs for the startup-time
-/// migration call.
+/// CS0051). Same reasoning for IPatientVisitService (PatientVisitsController) and
+/// IPatientImportService/ImportRowPage (PatientImportController — the latter is its
+/// GetRowsPagedAsync return type, so it's public for the same CS0051 reason one level removed).
+/// PatientsDbContext is public because it's resolved by type from HMS.Api's Program.cs for the
+/// startup-time migration call.
 /// </summary>
 public class PatientsModuleBoundaryTests
 {
     private static readonly Assembly PatientsAssembly = typeof(PatientsController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^(IPatientService|IPatientVisitService|PatientsDbContext)$";
+    private const string AllowedPublicTypeNamePattern = "^(IPatientService|IPatientVisitService|IPatientImportService|ImportRowPage|PatientsDbContext)$";
 
     [Theory]
     [InlineData("HMS.Modules.Patients.Domain")]

@@ -123,7 +123,7 @@ public class PlatformDataSeederTests
     public async Task SeedAsync_WhenLegacyTenantAlreadyExists_DoesNotCreateAnother()
     {
         _platformUserRepository.GetByEmailAsync("support@yourhms.com", Arg.Any<CancellationToken>()).Returns((PlatformUser?)null);
-        var existingTenant = Tenant.Create("Legacy Hospital", "legacy", "0000000000", "legacy-tenant@hms.local", "n/a", "n/a", "n/a", "000000", "hms_legacy", null);
+        var existingTenant = Tenant.Create("Legacy Hospital", "legacy", "0000000000", "legacy-tenant@hms.local", "n/a", "n/a", "n/a", "000000", "hms_legacy", 40000, null);
         _tenantRepository.GetByHospitalCodeAsync("legacy", Arg.Any<CancellationToken>()).Returns(existingTenant);
 
         var sut = CreateSut();

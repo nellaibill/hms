@@ -58,6 +58,30 @@ internal static class PermissionSeedData
             },
             new
             {
+                Id = Guid.Parse("f1a4c9e2-7b3d-4e8a-9c1f-2d6b8e4a0c7f"),
+                Module = "patient-management",
+                Action = "import",
+                Key = "patient-management.import",
+                Label = "Bulk Import",
+                DisplayOrder = 1,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
+            new
+            {
                 Id = Guid.Parse("50adeda0-6191-4777-9430-6c4b359eff9d"),
                 Module = "patient-management",
                 Action = "edit",

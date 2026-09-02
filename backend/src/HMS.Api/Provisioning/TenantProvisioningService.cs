@@ -48,6 +48,14 @@ public sealed class TenantProvisioningService : ITenantProvisioner
 
             await _migrationService.MigrateAsync(tenantConnectionString, request.EnabledFeatureKeys, cancellationToken);
 
+            // Patients is a Mandatory module (always migrated regardless of EnabledFeatureKeys
+            // — see TenantMigrationService), so both UHID sequences always exist by this point.
+            // Sized once, here, to the Platform Admin's chosen boundary — the migration itself
+            // always creates them at its own default (1-40000 / 40001+); this is a one-time
+            // provisioning-time adjustment, not a schema change, so it doesn't belong in the
+            // shared migration set every tenant gets identically.
+            await SizeImportedPatientSequencesAsync(tenantConnectionString, request.ImportedPatientCapacity, cancellationToken);
+
             await IdentityModule.ProvisionTenantSuperAdminAsync(
                 tenantConnectionString,
                 request.SuperAdminUsername,
@@ -70,6 +78,31 @@ public sealed class TenantProvisioningService : ITenantProvisioner
                 TenantProvisioningErrorCodes.Failed,
                 "Failed to provision the hospital database. No changes were saved.");
         }
+    }
+
+    /// <summary>
+    /// Sizes the Patients module's two UHID sequences to the requested boundary — safe to run
+    /// unconditionally right after a fresh migration, before any patient exists in this
+    /// database, so neither ALTER can ever fail against an already-consumed value.
+    /// importedUhidCapacity is a validated .NET int (CreateHospitalRequestValidator), never a
+    /// caller-supplied string, so interpolating it directly into this DDL carries no
+    /// injection risk — Postgres doesn't support bind parameters for ALTER SEQUENCE literals
+    /// at all, so this is the only way to express it.
+    /// </summary>
+    private static async Task SizeImportedPatientSequencesAsync(string tenantConnectionString, int importedPatientCapacity, CancellationToken cancellationToken)
+    {
+        await using var connection = new NpgsqlConnection(tenantConnectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using (var alterImported = new NpgsqlCommand(
+            $"ALTER SEQUENCE patients.imported_uhid_seq MAXVALUE {importedPatientCapacity}", connection))
+        {
+            await alterImported.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using var alterUhid = new NpgsqlCommand(
+            $"ALTER SEQUENCE patients.uhid_seq RESTART WITH {importedPatientCapacity + 1}", connection);
+        await alterUhid.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>

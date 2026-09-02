@@ -24,6 +24,7 @@ internal class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.State).HasColumnName("state").HasMaxLength(100).IsRequired();
         builder.Property(t => t.Pincode).HasColumnName("pincode").HasMaxLength(20).IsRequired();
         builder.Property(t => t.DatabaseName).HasColumnName("database_name").HasMaxLength(63).IsRequired();
+        builder.Property(t => t.ImportedPatientCapacity).HasColumnName("imported_patient_capacity").IsRequired().HasDefaultValue(40000);
         builder.Property(t => t.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
 
         // Stored as a comma-joined string rather than a native Postgres array — module keys

@@ -47,6 +47,11 @@ const createHospitalObjectSchema = z.object({
 
   /** Optional FeatureCatalog keys beyond the always-included mandatory set. */
   enabledFeatureKeys: z.array(z.string()).default([]),
+
+  /** UHIDs 1 through this number are reserved for this hospital's bulk-imported/legacy
+   * patients; new manual registrations start immediately after it. Set once here — not
+   * editable after the hospital is created. */
+  importedPatientCapacity: z.coerce.number().int().min(1, 'Must be at least 1').max(10_000_000).default(40000),
 });
 
 export const createHospitalSchema = createHospitalObjectSchema.refine(

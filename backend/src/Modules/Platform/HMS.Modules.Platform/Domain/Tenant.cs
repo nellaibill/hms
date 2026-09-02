@@ -21,6 +21,12 @@ internal class Tenant : Entity
     public string DatabaseName { get; private set; } = null!;
     public TenantStatus Status { get; private set; }
 
+    /// <summary>UHIDs 1 through this number are reserved for this hospital's bulk-imported/
+    /// legacy patients; new manual registrations start immediately after it. Set once at
+    /// provisioning (TenantProvisioningService sizes the Patients module's two Postgres
+    /// sequences to match) — informational/audit here, never changed afterward.</summary>
+    public int ImportedPatientCapacity { get; private set; }
+
     /// <summary>
     /// The business-domain modules (ModuleCatalog keys) this hospital's staff can use —
     /// Platform-Admin-managed, separate from any individual user's role/permissions within
@@ -53,6 +59,7 @@ internal class Tenant : Entity
         string state,
         string pincode,
         string databaseName,
+        int importedPatientCapacity,
         Guid? createdBy)
         : base(id, createdBy)
     {
@@ -65,6 +72,7 @@ internal class Tenant : Entity
         State = state;
         Pincode = pincode;
         DatabaseName = databaseName;
+        ImportedPatientCapacity = importedPatientCapacity;
         Status = TenantStatus.Active;
     }
 
@@ -78,6 +86,7 @@ internal class Tenant : Entity
         string state,
         string pincode,
         string databaseName,
+        int importedPatientCapacity,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(hospitalName, nameof(hospitalName));
@@ -89,6 +98,10 @@ internal class Tenant : Entity
         Guard.AgainstNullOrWhiteSpace(state, nameof(state));
         Guard.AgainstNullOrWhiteSpace(pincode, nameof(pincode));
         Guard.AgainstNullOrWhiteSpace(databaseName, nameof(databaseName));
+        if (importedPatientCapacity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(importedPatientCapacity), importedPatientCapacity, "must be greater than zero.");
+        }
 
         return new Tenant(
             Guid.CreateVersion7(),
@@ -101,6 +114,7 @@ internal class Tenant : Entity
             state.Trim(),
             pincode.Trim(),
             databaseName,
+            importedPatientCapacity,
             createdBy);
     }
 

@@ -21,6 +21,10 @@ public interface ITenantProvisioner
     Task<Result<TenantProvisionResult>> ProvisionAsync(TenantProvisionRequest request, CancellationToken cancellationToken);
 }
 
+/// <param name="ImportedPatientCapacity">UHIDs 1 through this number are reserved for this
+/// hospital's bulk-imported/legacy patients (Patients module's imported_uhid_seq); new manual
+/// registrations start immediately after it (uhid_seq). Set once, here, at provisioning time —
+/// the implementation sizes both Postgres sequences accordingly right after migrating.</param>
 public sealed record TenantProvisionRequest(
     string HospitalName,
     string SuperAdminUsername,
@@ -29,7 +33,8 @@ public sealed record TenantProvisionRequest(
     string SuperAdminEmail,
     string SuperAdminPhoneNumber,
     string SuperAdminPassword,
-    IReadOnlyCollection<string> EnabledFeatureKeys);
+    IReadOnlyCollection<string> EnabledFeatureKeys,
+    int ImportedPatientCapacity);
 
 public sealed record TenantProvisionResult(string DatabaseName);
 

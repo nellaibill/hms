@@ -12,7 +12,13 @@ namespace HMS.Modules.Patients.Application;
 /// </summary>
 public interface IPatientService
 {
-    Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken);
+    /// <summary>uhidOverride: normally left null so the standard sequence (40001+) assigns the
+    /// UHID, exactly as manual registration always has. Bulk import supplies a pre-generated
+    /// one instead (drawn from the reserved 1-40000 imported-patient range) — see
+    /// PatientImportCommitBackgroundService — so every other invariant this method enforces
+    /// (duplicate detection, the transaction, address/allergy/emergency-contact creation)
+    /// still applies identically regardless of where the patient came from.</summary>
+    Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken, string? uhidOverride = null);
 
     Task<Result<PatientResponse>> UpdateAsync(Guid id, UpdatePatientRequest request, Guid? actorId, CancellationToken cancellationToken);
 

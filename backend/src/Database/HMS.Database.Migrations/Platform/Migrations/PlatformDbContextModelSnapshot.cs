@@ -333,6 +333,12 @@ namespace HMS.Database.Migrations.Platform.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("hospital_name");
 
+                    b.Property<int>("ImportedPatientCapacity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(40000)
+                        .HasColumnName("imported_patient_capacity");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

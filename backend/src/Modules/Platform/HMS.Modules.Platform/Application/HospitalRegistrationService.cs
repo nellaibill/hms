@@ -108,7 +108,8 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
                 request.SuperAdminEmail,
                 request.SuperAdminPhoneNumber,
                 request.SuperAdminPassword,
-                resolvedFeatureKeys),
+                resolvedFeatureKeys,
+                request.ImportedPatientCapacity),
             cancellationToken);
 
         if (!provisionResult.IsSuccess)
@@ -130,6 +131,7 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
             request.State,
             request.Pincode,
             provisionResult.Value!.DatabaseName,
+            request.ImportedPatientCapacity,
             createdBy: actorId);
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
@@ -153,6 +155,7 @@ internal sealed class HospitalRegistrationService : IHospitalRegistrationService
             HospitalCode = tenant.HospitalCode,
             Status = tenant.Status.ToString(),
             CreatedAt = tenant.CreatedAt,
+            ImportedPatientCapacity = tenant.ImportedPatientCapacity,
         });
     }
 }

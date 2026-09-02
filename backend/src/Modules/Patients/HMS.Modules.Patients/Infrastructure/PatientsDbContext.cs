@@ -12,6 +12,11 @@ public class PatientsDbContext : DbContext
     public const string SchemaName = "patients";
     public const string UhidSequenceName = "uhid_seq";
 
+    /// <summary>Reserved exclusively for bulk-imported patients (1-40000) — see
+    /// PatientImportCommitBackgroundService and IPatientIdentifierGenerator.NextImportedUhidAsync.
+    /// Never overlaps with UhidSequenceName's 40001+ range.</summary>
+    public const string ImportedUhidSequenceName = "imported_uhid_seq";
+
     public PatientsDbContext(DbContextOptions<PatientsDbContext> options) : base(options)
     {
     }
@@ -28,6 +33,13 @@ public class PatientsDbContext : DbContext
     // PatientVisit.Consultations, same as Address/Allergy/EmergencyContact off Patient.
     internal DbSet<PatientVisit> PatientVisits => Set<PatientVisit>();
 
+    // Bulk Excel import (see Application/PatientImportService.cs). Both queried directly by
+    // id/BatchId rather than through an aggregate navigation — a batch can have tens of
+    // thousands of rows, so the review UI pages PatientImportRows on its own rather than
+    // loading them all through PatientImportBatch.
+    internal DbSet<PatientImportBatch> PatientImportBatches => Set<PatientImportBatch>();
+    internal DbSet<PatientImportRow> PatientImportRows => Set<PatientImportRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);
@@ -39,5 +51,13 @@ public class PatientsDbContext : DbContext
         // migration, which also restarts this sequence on every already-provisioned tenant,
         // not just ones created fresh after this change.
         modelBuilder.HasSequence<long>(UhidSequenceName, SchemaName).StartsAt(40001);
+
+        // Reserved exclusively for bulk-imported patients — MaxValue(40000) is the actual
+        // enforcement of the imported-patient cap: Postgres itself refuses nextval() once
+        // exhausted (SQLSTATE 2200H), not an application-level count a bug could bypass. Every
+        // tenant gets this same 1-40000 default from the migration; TenantProvisioningService
+        // resizes both this and UhidSequenceName once, at provisioning time, per the Platform
+        // Admin's chosen "Imported Patient Capacity" (see CreateHospitalRequest).
+        modelBuilder.HasSequence<long>(ImportedUhidSequenceName, SchemaName).StartsAt(1).HasMax(40000);
     }
 }

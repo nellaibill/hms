@@ -24,6 +24,9 @@
          implementations (this module's validators are internal by design), so it would be
          dead weight — validators are registered explicitly in PatientsModule instead. -->
     <PackageReference Include="FluentValidation" />
+    <!-- Bulk patient import (Application/Excel/): generates the downloadable .xlsx template
+         and parses/report-generates uploaded import files. -->
+    <PackageReference Include="ClosedXML" />
   </ItemGroup>
 
   <ItemGroup>

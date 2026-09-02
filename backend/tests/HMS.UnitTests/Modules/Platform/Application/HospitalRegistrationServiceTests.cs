@@ -80,7 +80,7 @@ public class HospitalRegistrationServiceTests
     public async Task RegisterAsync_WhenHospitalCodeAlreadyExists_ReturnsDuplicateFailureAndNeverProvisions()
     {
         _tenantRepository.GetByHospitalCodeAsync("apollo", Arg.Any<CancellationToken>())
-            .Returns(Tenant.Create("Apollo", "apollo", "9876543210", "existing@apollo.example", "1 MG Road", "Chennai", "Tamil Nadu", "600001", "hms_tenant_apollo", createdBy: null));
+            .Returns(Tenant.Create("Apollo", "apollo", "9876543210", "existing@apollo.example", "1 MG Road", "Chennai", "Tamil Nadu", "600001", "hms_tenant_apollo", 40000, createdBy: null));
 
         var result = await Register(ValidRequest(), _platformAdminId);
 
@@ -93,7 +93,7 @@ public class HospitalRegistrationServiceTests
     public async Task RegisterAsync_WhenSuperAdminEmailAlreadyExists_ReturnsDuplicateFailureAndNeverProvisions()
     {
         _tenantRepository.GetByEmailAsync("admin@apollo.example", Arg.Any<CancellationToken>())
-            .Returns(Tenant.Create("Existing", "existing", "9876543210", "existing@example.com", "1 MG Road", "Chennai", "Tamil Nadu", "600001", "hms_tenant_existing", createdBy: null));
+            .Returns(Tenant.Create("Existing", "existing", "9876543210", "existing@example.com", "1 MG Road", "Chennai", "Tamil Nadu", "600001", "hms_tenant_existing", 40000, createdBy: null));
 
         var result = await Register(ValidRequest(), _platformAdminId);
 

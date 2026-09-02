@@ -55,7 +55,7 @@ internal class PatientService : IPatientService
         return null;
     }
 
-    public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken)
+    public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken, string? uhidOverride = null)
     {
         var duplicate = await _repository.FindDuplicateAsync(request.PrimaryPhone, request.FirstName, request.LastName, request.IdProofNumber, cancellationToken);
         if (duplicate is not null)
@@ -71,7 +71,7 @@ internal class PatientService : IPatientService
             return Result<PatientResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
         }
 
-        var uhid = await _identifierGenerator.NextUhidAsync(cancellationToken);
+        var uhid = uhidOverride ?? await _identifierGenerator.NextUhidAsync(cancellationToken);
 
         var patient = Patient.Create(
             uhid,
