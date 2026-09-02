@@ -122,23 +122,21 @@ if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
     var sp = scope.ServiceProvider;
 
     // Normally true: the pre-existing legacy dev database (ConnectionStrings:Default)
-    // gets migrated and seeded alongside Platform, so a plain `dotnet run` always has a
-    // working hospital to log into. Set to false (e.g. cicd/scripts/reset-dev-databases
-    // .ps1) for a from-scratch reset where hms_platform should come up with only the
-    // Platform Admin account — every hospital, including this one, gets created through
-    // the real Register Hospital flow instead of a dev-only shortcut. Read before the
-    // Branding migration below since that also targets ConnectionStrings:Default and
-    // must be skipped the same way everything else tenant-related is.
+    // gets seeded alongside Platform, so a plain `dotnet run` always has a working
+    // hospital to log into. Set to false (e.g. cicd/scripts/reset-dev-databases.ps1) for
+    // a from-scratch reset where hms_platform should come up with only the Platform
+    // Admin account — every hospital, including this one, gets created through the real
+    // Register Hospital flow instead of a dev-only shortcut.
     var seedLegacyTenant = builder.Configuration.GetValue("Bootstrap:SeedLegacyTenant", true);
 
-    if (seedLegacyTenant)
-    {
-        // Branding is the one hospital module NOT made tenant-aware in HMS
-        // Multi-Tenancy Phase C (see BrandingModule.cs's own comment) — still migrated
-        // via its DI-registered, statically-connected DbContext, same as before this
-        // phase. Targets ConnectionStrings:Default, same as everything else gated here.
-        sp.GetRequiredService<BrandingDbContext>().Database.Migrate();
-    }
+    // Branding is the one hospital module NOT made tenant-aware in HMS Multi-Tenancy
+    // Phase C (see BrandingModule.cs's own comment): BrandingController.Get() is
+    // anonymous and themes the pre-login screen before any tenant is known, so it always
+    // targets ConnectionStrings:Default regardless of seedLegacyTenant. Migrated
+    // unconditionally — unlike everything below that's gated on seedLegacyTenant — so
+    // that database (and the pre-login screen it backs) still exists after a
+    // from-scratch "Platform DB only" reset.
+    sp.GetRequiredService<BrandingDbContext>().Database.Migrate();
 
     // Platform owns a separate physical database (hms_platform via
     // ConnectionStrings:Platform), not another schema in hms_qa — see

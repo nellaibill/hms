@@ -627,7 +627,11 @@ $newServices = @(
     @{ code = 'ANTIB2GLYIGM'; name = 'Anti-Beta 2 (β2) Glycoprotein IgM' }
 )
 foreach ($n in $newServices) {
-    if ($services | Where-Object { $_.name -eq $n.name }) { continue }
+    # Matched by code, not name: Windows PowerShell 5.1's Invoke-RestMethod sends a string
+    # -Body using the system's default codepage rather than UTF-8, so the "β" in these two
+    # names can arrive at the server mangled (observed live as a literal "?"). Code is plain
+    # ASCII and always round-trips correctly, so it's the only reliable idempotency key here.
+    if ($services | Where-Object { $_.code -eq $n.code }) { continue }
     $body = @{ code = $n.code; name = $n.name; categoryId = $endocrinology.id; serviceType = 'Laboratory'; isOutsourced = $true; providerId = $anderson.id; price = 1400; isActive = $true } | ConvertTo-Json
     $created = Invoke-WithRetry -Method Post -Uri "$ApiBaseUrl/api/v1/masters/diagnostic-services" -Body $body -Label $n.name
     $services.Add($created.data)
@@ -702,25 +706,35 @@ foreach ($def in $packageDefs) {
     }
 }
 
-Write-Host "Step: Injection Charges + Files (Procedure catalog)" -ForegroundColor Cyan
+Write-Host "Step: Injection Charges + Files" -ForegroundColor Cyan
 $legacyTests = Get-AllPaged -Entity 'diagnostic-tests'
 $procedureRows = @(
-    @{ name = 'Injections - IM / SC / ID'; category = 'Injection Charges'; price = 200 }
-    @{ name = 'Injections - Direct IV'; category = 'Injection Charges'; price = 500 }
-    @{ name = 'Injections - IV as Drip'; category = 'Injection Charges'; price = 1000 }
-    @{ name = 'Injections - Intra-articular / Specific Sites'; category = 'Injection Charges'; price = 1500 }
-    @{ name = 'Blood Transfusion'; category = 'Injection Charges'; price = 2000 }
-    @{ name = 'General Blue File'; category = 'Files'; price = 100 }
-    @{ name = 'ANC File'; category = 'Files'; price = 50 }
-    @{ name = 'Neonatal File'; category = 'Files'; price = 50 }
-    @{ name = 'Green File'; category = 'Files'; price = 20 }
+    @{ name = 'Injections - IM / SC / ID'; category = 'Injection Charges'; price = 200; serviceType = 'Injection' }
+    @{ name = 'Injections - Direct IV'; category = 'Injection Charges'; price = 500; serviceType = 'Injection' }
+    @{ name = 'Injections - IV as Drip'; category = 'Injection Charges'; price = 1000; serviceType = 'Injection' }
+    @{ name = 'Injections - Intra-articular / Specific Sites'; category = 'Injection Charges'; price = 1500; serviceType = 'Injection' }
+    @{ name = 'Blood Transfusion'; category = 'Injection Charges'; price = 2000; serviceType = 'Injection' }
+    @{ name = 'General Blue File'; category = 'Files'; price = 100; serviceType = 'File' }
+    @{ name = 'ANC File'; category = 'Files'; price = 50; serviceType = 'File' }
+    @{ name = 'Neonatal File'; category = 'Files'; price = 50; serviceType = 'File' }
+    @{ name = 'Green File'; category = 'Files'; price = 20; serviceType = 'File' }
 )
 foreach ($row in $procedureRows) {
-    $exists = $legacyTests | Where-Object { $_.name -eq $row.name -and $_.serviceType -eq 'Procedure' }
-    if ($exists) { continue }
-    $body = @{ name = $row.name; serviceType = 'Procedure'; category = $row.category; price = $row.price; isOutsourced = $false; isActive = $true } | ConvertTo-Json
-    Invoke-WithRetry -Method Post -Uri "$ApiBaseUrl/api/v1/masters/diagnostic-tests" -Body $body -Label $row.name | Out-Null
-    Write-Host "  Created '$($row.name)' [$($row.category)] - Rs.$($row.price)." -ForegroundColor Green
+    # Matched by name only (not name+serviceType) so a tenant seeded before the Injection/File
+    # ServiceType values existed — everything above was created as ServiceType=Procedure — gets
+    # retyped in place instead of gaining a duplicate row alongside the stale Procedure one.
+    $match = $legacyTests | Where-Object { $_.name -eq $row.name } | Select-Object -First 1
+    if ($match -and $match.serviceType -eq $row.serviceType) { continue }
+    if ($match) {
+        $body = @{ name = $match.name; serviceType = $row.serviceType; category = $row.category; price = $match.price; isOutsourced = $match.isOutsourced; referenceLab = $match.referenceLab; isActive = $match.isActive } | ConvertTo-Json
+        Invoke-WithRetry -Method Put -Uri "$ApiBaseUrl/api/v1/masters/diagnostic-tests/$($match.id)" -Body $body -Label "retype $($row.name)" | Out-Null
+        Write-Host "  Retyped '$($row.name)' ServiceType=$($match.serviceType) -> $($row.serviceType)." -ForegroundColor Yellow
+    }
+    else {
+        $body = @{ name = $row.name; serviceType = $row.serviceType; category = $row.category; price = $row.price; isOutsourced = $false; isActive = $true } | ConvertTo-Json
+        Invoke-WithRetry -Method Post -Uri "$ApiBaseUrl/api/v1/masters/diagnostic-tests" -Body $body -Label $row.name | Out-Null
+        Write-Host "  Created '$($row.name)' [$($row.category)] - Rs.$($row.price)." -ForegroundColor Green
+    }
     Start-Sleep -Milliseconds 350
 }
 Write-Host "Phase 5 done." -ForegroundColor Cyan
@@ -1022,7 +1036,9 @@ $expectedDiagnosticCategories = 14
 $expectedDiagnosticProviders = 5
 $expectedDiagnosticServices = 348
 $expectedDiagnosticPackages = 22
-$expectedActiveProcedureTests = 62
+$expectedActiveProcedureTests = 53
+$expectedActiveInjectionTests = 5
+$expectedActiveFileTests = 4
 
 function Get-Count {
     param([string]$Entity, [string]$Query = '')
@@ -1041,6 +1057,8 @@ $checks = @(
     @{ Label = 'Diagnostic Services'; Actual = (Get-Count -Entity 'diagnostic-services'); Expected = $expectedDiagnosticServices }
     @{ Label = 'Diagnostic Packages'; Actual = (Get-Count -Entity 'diagnostic-packages'); Expected = $expectedDiagnosticPackages }
     @{ Label = 'Active Procedure Tests'; Actual = (Get-Count -Entity 'diagnostic-tests' -Query '&serviceType=Procedure&isActive=true'); Expected = $expectedActiveProcedureTests }
+    @{ Label = 'Active Injection Tests'; Actual = (Get-Count -Entity 'diagnostic-tests' -Query '&serviceType=Injection&isActive=true'); Expected = $expectedActiveInjectionTests }
+    @{ Label = 'Active File Tests'; Actual = (Get-Count -Entity 'diagnostic-tests' -Query '&serviceType=File&isActive=true'); Expected = $expectedActiveFileTests }
 )
 
 $allPassed = $true

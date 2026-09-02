@@ -1,12 +1,14 @@
 import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
 import { resolveRecordLabel } from '@/features/masters';
-import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive } from './billingActivity';
+import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
 import type {
   BillingFormValues,
   ConsultationBillingFormValues,
   LaboratoryBillingRowFormValues,
   ServiceBillingCategory,
   ServiceBillingRowFormValues,
+  SimpleServiceBillingCategory,
+  SimpleServiceBillingRowFormValues,
 } from './billingValidation';
 import type { BillingItem, BillingType, PaymentStatus } from './types';
 
@@ -49,6 +51,18 @@ const SERVICE_BILLING_TYPES: Record<ServiceBillingCategory, BillingType> = {
   procedure: 'Procedure',
 };
 
+/** Injection/File — same idea as SERVICE_LABELS/SERVICE_BILLING_TYPES above, for the two
+ * no-consultant categories (simpleServiceBillingSchema). */
+const SIMPLE_SERVICE_LABELS: Record<SimpleServiceBillingCategory, string> = {
+  injection: 'Injection',
+  file: 'File',
+};
+
+const SIMPLE_SERVICE_BILLING_TYPES: Record<SimpleServiceBillingCategory, BillingType> = {
+  injection: 'Injection',
+  file: 'File',
+};
+
 /** Generic over any row shape carrying `charge`/`quantity`/`discount` — reused for both Consultation rows and the three Service-category row shapes, which otherwise differ (departmentId+consultationTypeId vs. serviceId). */
 function summarizeRows<T extends { charge: number; quantity: number; discount: number }>(rows: T[], isActive: (row: T) => boolean) {
   const activeRows = rows.filter(isActive);
@@ -80,6 +94,8 @@ export function summarizeBilling(values: BillingFormValues): BillingSummary {
     toSummaryLine('Radiology', SERVICE_LABELS.radiology, summarizeRows(values.radiology, isServiceEntryActive)),
     toSummaryLine('Laboratory', 'Laboratory', summarizeRows(values.laboratory, isLaboratoryEntryActive)),
     toSummaryLine('Procedure', SERVICE_LABELS.procedure, summarizeRows(values.procedure, isServiceEntryActive)),
+    toSummaryLine('Injection', SIMPLE_SERVICE_LABELS.injection, summarizeRows(values.injection, isSimpleServiceEntryActive)),
+    toSummaryLine('File', SIMPLE_SERVICE_LABELS.file, summarizeRows(values.file, isSimpleServiceEntryActive)),
   ];
 
   const activeLines = lines.filter((line) => line.active);
@@ -117,6 +133,26 @@ function serviceRowToBillingItem(
     id: `${category}-${index}`,
     billingType: SERVICE_BILLING_TYPES[category],
     consultantId: entry.consultantId,
+    serviceId: entry.serviceId,
+    quantity: entry.quantity,
+    unitPrice: entry.charge,
+    discount: entry.discount,
+    discountApproved: entry.discountApproved,
+    discountApprovedBy: entry.discountApprovedBy || undefined,
+    paymentStatus,
+    total: Math.max(entry.quantity * entry.charge - entry.discount, 0),
+  };
+}
+
+function simpleServiceRowToBillingItem(
+  category: SimpleServiceBillingCategory,
+  entry: SimpleServiceBillingRowFormValues,
+  index: number,
+  paymentStatus: PaymentStatus,
+): BillingItem {
+  return {
+    id: `${category}-${index}`,
+    billingType: SIMPLE_SERVICE_BILLING_TYPES[category],
     serviceId: entry.serviceId,
     quantity: entry.quantity,
     unitPrice: entry.charge,
@@ -182,6 +218,13 @@ export function toBillingItems(values: BillingFormValues): BillingItem[] {
     items.push(laboratoryRowToBillingItem(row, index, 'Pending'));
   });
 
+  (Object.keys(SIMPLE_SERVICE_LABELS) as SimpleServiceBillingCategory[]).forEach((category) => {
+    values[category].forEach((row, index) => {
+      if (!isSimpleServiceEntryActive(row)) return;
+      items.push(simpleServiceRowToBillingItem(category, row, index, 'Pending'));
+    });
+  });
+
   return items;
 }
 
@@ -233,7 +276,8 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     return { serviceLabel: item.serviceId ? resolveDiagnosticServiceLabel(item.serviceId) : item.billingType, consultantName };
   }
 
-  // Procedure only: serviceId is still a DiagnosticTest id, untouched by this feature.
+  // Procedure/Injection/File: serviceId is a DiagnosticTest id — Injection/File never have a
+  // consultantId (no doctor involved), so consultantName above is always '—' for these two.
   return {
     serviceLabel: item.serviceId ? resolveRecordLabel('diagnosticTest', item.serviceId) : item.billingType,
     consultantName,

@@ -11,6 +11,14 @@ public enum DiagnosticTestServiceType
     /// "diagnostic test," but reuses this entity rather than standing up a near-identical
     /// third master for one more service category.</summary>
     Procedure = 2,
+
+    /// <summary>Injections administered during a visit (IM/SC/ID, Direct IV, IV Drip, Blood
+    /// Transfusion…) — priced the same way, reuses this entity rather than a new master.</summary>
+    Injection = 3,
+
+    /// <summary>File/documentation charges (General Blue File, ANC File, Neonatal File…) —
+    /// priced the same way, reuses this entity rather than a new master.</summary>
+    File = 4,
 }
 
 public record CreateDiagnosticTestRequest

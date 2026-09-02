@@ -1,4 +1,4 @@
-export const BILLING_TYPES = ['Consultation', 'Radiology', 'Laboratory', 'Procedure'] as const;
+export const BILLING_TYPES = ['Consultation', 'Radiology', 'Laboratory', 'Procedure', 'Injection', 'File'] as const;
 export type BillingType = (typeof BILLING_TYPES)[number];
 
 export const PAYMENT_STATUSES = ['Pending', 'Paid'] as const;
