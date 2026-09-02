@@ -3,6 +3,7 @@ using System;
 using HMS.Modules.Patients.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HMS.Database.Migrations.Patients.Migrations
 {
     [DbContext(typeof(PatientsDbContext))]
-    partial class PatientsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902080141_RestartUhidSequenceAt40001")]
+    partial class RestartUhidSequenceAt40001
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
