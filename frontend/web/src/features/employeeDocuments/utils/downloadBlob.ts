@@ -1,6 +1,6 @@
-/** Triggers a browser download of an in-memory Blob — the mock features/documents module's
- * downloadDocument helper only works against its mockDocumentsStore-backed fake file paths,
- * so this feature (real /api/v1/documents content) needs its own, generic version. */
+/** Triggers a browser download of an in-memory Blob — kept as its own generic helper here
+ * rather than reusing features/documents' downloadDocument, which takes an HmsDocument and
+ * fetches its content itself; this feature already has the Blob in hand. */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

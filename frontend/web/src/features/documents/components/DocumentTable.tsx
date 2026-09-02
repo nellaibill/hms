@@ -3,7 +3,6 @@ import { EntityTypeBadge } from './EntityTypeBadge';
 import { FileTypeIcon } from './FileTypeIcon';
 import { RowActionsMenu } from './RowActionsMenu';
 import { StatusBadge } from './StatusBadge';
-import { getEntityLabel } from '../mockEntities';
 import { formatDate, formatFileSize } from '../utils/format';
 import type { HmsDocument } from '../types';
 
@@ -14,9 +13,20 @@ interface DocumentTableProps {
   onDownload: (doc: HmsDocument) => void;
   onArchive: (doc: HmsDocument) => void;
   onDelete: (doc: HmsDocument) => void;
+  getEntityLabel: (doc: HmsDocument) => string;
+  getUploaderLabel: (doc: HmsDocument) => string;
 }
 
-export function DocumentTable({ documents, selectedId, onSelectRow, onDownload, onArchive, onDelete }: DocumentTableProps) {
+export function DocumentTable({
+  documents,
+  selectedId,
+  onSelectRow,
+  onDownload,
+  onArchive,
+  onDelete,
+  getEntityLabel,
+  getUploaderLabel,
+}: DocumentTableProps) {
   return (
     <>
       {/* Desktop / tablet data grid */}
@@ -65,13 +75,13 @@ export function DocumentTable({ documents, selectedId, onSelectRow, onDownload, 
                     <EntityTypeBadge entityType={doc.entityType} />
                   </td>
                   <td className="max-w-[180px] px-3 py-3 text-muted-foreground">
-                    <span className="block truncate">{getEntityLabel(doc.entityType, doc.entityId)}</span>
+                    <span className="block truncate">{getEntityLabel(doc)}</span>
                   </td>
                   <td className="px-3 py-3 text-foreground">{doc.documentType}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-xs text-muted-foreground">
                     {formatFileSize(doc.fileSize)}
                   </td>
-                  <td className="px-3 py-3 text-muted-foreground">{doc.uploadedBy}</td>
+                  <td className="px-3 py-3 text-muted-foreground">{getUploaderLabel(doc)}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">{formatDate(doc.uploadedAt)}</td>
                   <td className="px-3 py-3">
                     <StatusBadge isArchived={doc.isArchived} />
@@ -112,12 +122,12 @@ export function DocumentTable({ documents, selectedId, onSelectRow, onDownload, 
 
               <div className="flex flex-wrap items-center gap-2">
                 <EntityTypeBadge entityType={doc.entityType} />
-                <span className="truncate text-xs text-muted-foreground">{getEntityLabel(doc.entityType, doc.entityId)}</span>
+                <span className="truncate text-xs text-muted-foreground">{getEntityLabel(doc)}</span>
               </div>
 
               <div className="flex items-center justify-between border-t border-border pt-3">
                 <span className="text-xs text-muted-foreground">
-                  {doc.uploadedBy} · {formatDate(doc.uploadedAt)}
+                  {getUploaderLabel(doc)} · {formatDate(doc.uploadedAt)}
                 </span>
                 <div onClick={(e) => e.stopPropagation()}>
                   <RowActionsMenu doc={doc} onPreview={onSelectRow} onDownload={onDownload} onArchive={onArchive} onDelete={onDelete} />

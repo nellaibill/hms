@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, UploadCloud, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -10,7 +11,7 @@ import { useToast } from '@/components/ui/toast-context';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ACCEPT_ATTRIBUTE, ACCEPTED_EXTENSIONS_LABEL, DOCUMENT_TYPE_LABELS, ENTITY_TYPE_META, MAX_FILE_SIZE_MB } from '../constants';
 import { useUploadDocumentMutation } from '../hooks/useDocumentMutations';
-import { ENTITY_OPTIONS } from '../mockEntities';
+import { buildEntityOptions, isEntityPickerSupported, usePatientDirectory, useStaffDirectory } from '../hooks/useDirectories';
 import { DOCUMENT_TYPES, ENTITY_TYPES } from '../types';
 import { validateUploadForm, isUploadFormValid } from '../validation';
 import { FileTypeIcon } from './FileTypeIcon';
@@ -44,7 +45,10 @@ export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityTy
   const valid = isUploadFormValid(errors);
   const busy = status === 'uploading';
 
-  const entityOptions = values.entityType ? ENTITY_OPTIONS[values.entityType].map((e) => ({ value: e.id, label: e.label })) : [];
+  const { data: patients = [] } = usePatientDirectory();
+  const { data: staff = [] } = useStaffDirectory();
+  const entityPickerSupported = isEntityPickerSupported(values.entityType);
+  const entityOptions = buildEntityOptions(values.entityType, patients, staff);
 
   function handleClose() {
     if (busy) return;
@@ -123,16 +127,27 @@ export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityTy
               <Label htmlFor="upload-entity">
                 Entity <span className="font-normal text-muted-foreground">(required)</span>
               </Label>
-              <SearchableSelect
-                id="upload-entity"
-                value={values.entityId}
-                onValueChange={(value) => setValues((prev) => ({ ...prev, entityId: value }))}
-                options={entityOptions}
-                placeholder={values.entityType ? 'Search & select' : 'Select entity type first'}
-                searchPlaceholder="Search entity…"
-                ariaLabel="Entity"
-                disabled={!values.entityType || busy}
-              />
+              {entityPickerSupported ? (
+                <SearchableSelect
+                  id="upload-entity"
+                  value={values.entityId}
+                  onValueChange={(value) => setValues((prev) => ({ ...prev, entityId: value }))}
+                  options={entityOptions}
+                  placeholder="Search & select"
+                  searchPlaceholder="Search entity…"
+                  ariaLabel="Entity"
+                  disabled={busy}
+                />
+              ) : (
+                <Input
+                  id="upload-entity"
+                  value={values.entityId}
+                  onChange={(e) => setValues((prev) => ({ ...prev, entityId: e.target.value }))}
+                  placeholder={values.entityType ? 'Paste an entity ID' : 'Select entity type first'}
+                  disabled={!values.entityType || busy}
+                  aria-invalid={!!errors.entity}
+                />
+              )}
               {errors.entity && (
                 <p role="alert" className="text-xs text-destructive">
                   {errors.entity}

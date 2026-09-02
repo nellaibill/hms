@@ -1,7 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
-import { archiveMockDocument, createMockDocument, deleteMockDocument, DocumentValidationError } from '../mockDocumentsStore';
-import type { DocumentUploadFormValues, HmsDocument } from '../types';
+import { documentsApi } from '../../../services/apiClient';
+import { DOCUMENT_TYPE_TO_API } from '../constants';
+import { mapDocumentResponseToHmsDocument } from '../mapDocument';
+import { validateUploadForm, isUploadFormValid } from '../validation';
+import type { DocumentUploadFormValues, EntityType, HmsDocument } from '../types';
 
 function invalidateDocuments(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ['documents'] });
@@ -10,10 +13,10 @@ function invalidateDocuments(queryClient: ReturnType<typeof useQueryClient>) {
 export type UploadStatus = 'idle' | 'uploading' | 'completed' | 'error';
 
 /**
- * Not a plain react-query mutation — the mock store's create call is synchronous, but the
- * spec calls for an animated progress bar (Uploading/Completed/Error), so progress is
- * simulated here with a timer and the resulting document is committed to the store once it
- * reaches 100%, then the shared 'documents' query cache is invalidated so the table refreshes.
+ * Wraps the real POST /api/v1/documents call. `fetch` (the shared HttpClient's transport) has
+ * no cross-browser upload-progress event, so the percentage shown while `status === 'uploading'`
+ * is a synthetic animation rather than a true byte count — the completion/error outcome itself
+ * is always the real API response.
  */
 export function useUploadDocumentMutation() {
   const queryClient = useQueryClient();
@@ -31,33 +34,42 @@ export function useUploadDocumentMutation() {
 
   const upload = useCallback(
     (values: DocumentUploadFormValues, onSuccess: (doc: HmsDocument) => void) => {
+      const errors = validateUploadForm(values);
+      if (!isUploadFormValid(errors)) {
+        setStatus('error');
+        setError(Object.values(errors)[0] ?? 'Invalid upload.');
+        return;
+      }
+
       setStatus('uploading');
       setProgress(0);
       setError(null);
 
-      // Side effects (creating the document, invalidating queries, the caller's onSuccess)
-      // must not live inside the setProgress updater above — a setState updater is expected
-      // to be a pure function of prev state, and nesting further setState calls in there
-      // triggers "Cannot update a component while rendering a different component". Track
-      // the running total in a plain local instead and only call setProgress with plain values.
-      let current = 0;
+      // Animate progress up to 90% while the real request is in flight, then jump to 100% on
+      // success — avoids a bar that either stalls at 0 for the whole request or falsely implies
+      // byte-level progress that fetch() can't report.
       timerRef.current = setInterval(() => {
-        current = Math.min(current + Math.random() * 22 + 10, 100);
-        setProgress(current);
-
-        if (current >= 100) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          try {
-            const created = createMockDocument(values);
-            setStatus('completed');
-            invalidateDocuments(queryClient);
-            onSuccess(created);
-          } catch (err) {
-            setStatus('error');
-            setError(err instanceof DocumentValidationError ? err.message : 'Upload failed. Please try again.');
-          }
-        }
+        setProgress((current) => Math.min(current + Math.random() * 12 + 4, 90));
       }, 220);
+
+      documentsApi
+        .uploadDocument(values.file as File, {
+          ownerType: values.entityType as EntityType,
+          ownerId: values.entityId,
+          documentType: DOCUMENT_TYPE_TO_API[values.documentType as Exclude<DocumentUploadFormValues['documentType'], ''>],
+        })
+        .then((response) => {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setProgress(100);
+          setStatus('completed');
+          invalidateDocuments(queryClient);
+          onSuccess(mapDocumentResponseToHmsDocument(response));
+        })
+        .catch((err: unknown) => {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setStatus('error');
+          setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+        });
     },
     [queryClient],
   );
@@ -70,13 +82,16 @@ export function useArchiveDocumentMutation() {
   const [isPending, setIsPending] = useState(false);
 
   const archive = useCallback(
-    (id: string, onSuccess: () => void) => {
+    (id: string, onSuccess: () => void, onError?: (message: string) => void) => {
       setIsPending(true);
-      Promise.resolve(archiveMockDocument(id)).then(() => {
-        setIsPending(false);
-        invalidateDocuments(queryClient);
-        onSuccess();
-      });
+      documentsApi
+        .archiveDocument(id)
+        .then(() => {
+          invalidateDocuments(queryClient);
+          onSuccess();
+        })
+        .catch((err: unknown) => onError?.(err instanceof Error ? err.message : 'Failed to archive document.'))
+        .finally(() => setIsPending(false));
     },
     [queryClient],
   );
@@ -89,13 +104,16 @@ export function useDeleteDocumentMutation() {
   const [isPending, setIsPending] = useState(false);
 
   const remove = useCallback(
-    (id: string, onSuccess: () => void) => {
+    (id: string, onSuccess: () => void, onError?: (message: string) => void) => {
       setIsPending(true);
-      Promise.resolve(deleteMockDocument(id)).then(() => {
-        setIsPending(false);
-        invalidateDocuments(queryClient);
-        onSuccess();
-      });
+      documentsApi
+        .deleteDocument(id)
+        .then(() => {
+          invalidateDocuments(queryClient);
+          onSuccess();
+        })
+        .catch((err: unknown) => onError?.(err instanceof Error ? err.message : 'Failed to delete document.'))
+        .finally(() => setIsPending(false));
     },
     [queryClient],
   );

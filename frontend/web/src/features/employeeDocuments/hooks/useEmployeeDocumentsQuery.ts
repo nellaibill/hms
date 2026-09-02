@@ -2,10 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { documentsApi } from '../../../services/apiClient';
 
 /**
- * Real-API-backed employee document list — deliberately NOT the mock features/documents
- * module (listMockDocuments/mockDocumentsStore), which has never been wired to the real
- * /api/v1/documents endpoints. Calls documentsApi.listDocuments directly with
- * ownerType: 'Staff'.
+ * Real-API-backed employee document list — calls documentsApi.listDocuments directly with
+ * ownerType: 'Staff', independently of the features/documents Document Management dashboard
+ * (which now also calls the real API, via its own paged documentsApi.getDocuments).
  */
 export function useEmployeeDocumentsQuery(employeeId: string | undefined) {
   return useQuery({

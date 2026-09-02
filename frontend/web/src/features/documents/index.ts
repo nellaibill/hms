@@ -1,14 +1,23 @@
 export * from './types';
 export * from './constants';
 export * from './validation';
-export { ENTITY_OPTIONS, getEntityLabel, entityExists } from './mockEntities';
-export { getMockDocumentSummary, getMockUploaders, hasLiveContent, type DocumentSummaryStats } from './mockDocumentsStore';
 export { downloadDocument } from './utils/download';
 export * from './utils/format';
 export * from './utils/fileKind';
 
 export { useDocumentsQuery } from './hooks/useDocumentsQuery';
+export { useDocumentSummaryQuery } from './hooks/useDocumentSummaryQuery';
 export { useUploadDocumentMutation, useArchiveDocumentMutation, useDeleteDocumentMutation } from './hooks/useDocumentMutations';
+export {
+  usePatientDirectory,
+  useStaffDirectory,
+  useUploaderDirectory,
+  isEntityPickerSupported,
+  buildEntityOptions,
+  resolveEntityLabel,
+  resolveUploaderLabel,
+  type DirectoryEntry,
+} from './hooks/useDirectories';
 
 export { SummaryCards } from './components/SummaryCards';
 export { FilterBar } from './components/FilterBar';

@@ -1,11 +1,10 @@
 /**
- * Minimal typed surface for the Documents module's generic upload endpoint
- * (HMS.Modules.Documents.Endpoints.DocumentsController — `POST /api/v1/documents`), used so
- * far only by Patients' photo/ID-proof upload (see documentsApi.uploadDocument and
- * usePatientMutations.ts). Deliberately not the full Documents contract surface (list/get/
- * archive/delete responses, DocumentListQuery, etc.) — the Documents Management page itself
- * is still a separate, unwired mock UI (frontend/web/src/features/documents), out of scope
- * here; this only covers what an upload call needs to send and receive.
+ * Typed surface for the Documents module's generic endpoints
+ * (HMS.Modules.Documents.Endpoints.DocumentsController). Used by Patients' and Staff's
+ * photo/ID-proof upload flows (documentsApi.uploadDocument/listDocuments) as well as the
+ * Document Management dashboard (frontend/web/src/features/documents), which additionally
+ * uses DocumentSearchQuery/DocumentSummaryResponse below for its paged, multi-filter search
+ * and KPI cards.
  */
 
 /** Mirrors HMS.Modules.Documents.Contracts.DocumentOwnerType. */
@@ -60,4 +59,37 @@ export interface DocumentResponse {
   expiryDate?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+}
+
+/** Mirrors HMS.Modules.Documents.Contracts.DocumentStatusFilter. */
+export type DocumentStatusFilter = 'All' | 'Active' | 'Archived';
+
+/**
+ * Query shape for GET /api/v1/documents used by the Document Management dashboard (as opposed
+ * to DocumentsApi.listDocuments' narrower "one owner" shape) — mirrors
+ * HMS.Modules.Documents.Contracts.DocumentListQuery, including the Page/PageSize/Sort/Search
+ * fields inherited there from PagedRequest.
+ */
+export interface DocumentSearchQuery {
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  search?: string;
+  ownerType?: DocumentOwnerType;
+  ownerId?: string;
+  documentType?: DocumentType;
+  uploadedByUserId?: string;
+  /** ISO date string (e.g. "2027-01-15"). */
+  dateFrom?: string;
+  /** ISO date string (e.g. "2027-01-15"). */
+  dateTo?: string;
+  status?: DocumentStatusFilter;
+}
+
+/** Mirrors HMS.Modules.Documents.Contracts.DocumentSummaryResponse. */
+export interface DocumentSummaryResponse {
+  total: number;
+  uploadedToday: number;
+  archived: number;
+  storageUsedBytes: number;
 }
