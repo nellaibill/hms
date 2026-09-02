@@ -74,14 +74,20 @@ nssm set $ServiceName AppRotateFiles 1
 
 # Kept as ASPNETCORE_ENVIRONMENT=Development deliberately, matching the working setup
 # already validated by hand earlier in this deployment: it auto-applies EF Core migrations
-# and seeds Platform Admin / the legacy tenant on every startup (Program.cs), same as
-# `dotnet run` does. This is an MVP deployment (per docs/Deployment.md - no secrets-manager
-# integration exists yet either), not a hardened production posture; see that doc for the
-# `dotnet HMS.Api.dll migrate` alternative if you want migrations decoupled from app startup.
+# on every startup (Program.cs), same as `dotnet run` does. appsettings.Development.json
+# sets Bootstrap:SeedLegacyTenant to false, so this does NOT seed a full legacy tenant - only
+# Branding's pre-login schema gets migrated against ConnectionStrings:Default (every real
+# hospital is created through the Register Hospital flow instead). Default intentionally
+# points at the same physical database as Platform (hms_platform, not a separate hms_qa) so
+# a fresh install creates exactly one database - Branding's schema is isolated from
+# Platform's own by schema name, not by a second physical database. This is an MVP
+# deployment (per docs/Deployment.md - no secrets-manager integration exists yet either), not
+# a hardened production posture; see that doc for the `dotnet HMS.Api.dll migrate`
+# alternative if you want migrations decoupled from app startup.
 $envVars = @(
     "ASPNETCORE_ENVIRONMENT=Development",
     "ASPNETCORE_URLS=http://0.0.0.0:$ApiPort",
-    "ConnectionStrings__Default=Host=localhost;Port=5432;Database=hms_qa;Username=$PgUser;Password=$PgPassword",
+    "ConnectionStrings__Default=Host=localhost;Port=5432;Database=hms_platform;Username=$PgUser;Password=$PgPassword",
     "ConnectionStrings__Platform=Host=localhost;Port=5432;Database=hms_platform;Username=$PgUser;Password=$PgPassword",
     "ConnectionStrings__PlatformAdmin=Host=localhost;Port=5432;Database=postgres;Username=$PgUser;Password=$PgPassword",
     "Jwt__SigningKey=$JwtSigningKey",
