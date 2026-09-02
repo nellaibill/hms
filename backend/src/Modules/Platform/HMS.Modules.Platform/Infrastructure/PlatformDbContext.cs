@@ -4,9 +4,13 @@ using Microsoft.EntityFrameworkCore;
 namespace HMS.Modules.Platform.Infrastructure;
 
 /// <summary>
-/// Owns the "platform" schema inside the separate hms_platform database (not hms_qa —
-/// see docs/DatabaseArchitecture.md's SaaS provisioning ADR). Only this module's own code
-/// constructs/migrates this context — no other module references it.
+/// Owns the "platform" schema inside the hms_platform database (ConnectionStrings:Platform)
+/// — see docs/DatabaseArchitecture.md's SaaS provisioning ADR. A real hospital tenant's own
+/// schemas live in a separate physical database; local dev/the Windows installer happen to
+/// point ConnectionStrings:Default at this same hms_platform database too (for Branding's
+/// pre-login schema only, when Bootstrap:SeedLegacyTenant is false — see Program.cs), but
+/// that's a connection-string choice, not something this context itself depends on. Only
+/// this module's own code constructs/migrates this context — no other module references it.
 /// </summary>
 public class PlatformDbContext : DbContext
 {

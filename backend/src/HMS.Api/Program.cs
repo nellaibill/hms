@@ -138,9 +138,14 @@ if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
     // from-scratch "Platform DB only" reset.
     sp.GetRequiredService<BrandingDbContext>().Database.Migrate();
 
-    // Platform owns a separate physical database (hms_platform via
-    // ConnectionStrings:Platform), not another schema in hms_qa — see
-    // docs/DatabaseArchitecture.md's SaaS provisioning ADR. Migrated (and seeded) before
+    // Platform's own tables live under the "platform" schema, isolated from Branding's
+    // "branding" schema and (when SeedLegacyTenant is true) the legacy tenant's own
+    // per-module schemas below — see docs/DatabaseArchitecture.md's SaaS provisioning ADR.
+    // Local dev/the Windows installer point ConnectionStrings:Default at the same physical
+    // database as ConnectionStrings:Platform (hms_platform) specifically so a fresh install
+    // doesn't spin up a second physical database just for Branding's pre-login schema; a
+    // real production deployment still keeps Default pointed at its own database when
+    // SeedLegacyTenant is true there (see docs/Deployment.md). Migrated (and seeded) before
     // anything tenant-aware below, since seeding the legacy tenant row needs it.
     sp.GetRequiredService<PlatformDbContext>().Database.Migrate();
 

@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-052: Local dev/Windows installer stop creating a separate hms_qa database
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+User report while testing a fresh install: expected only `hms_platform` to be created, but `hms_qa` also appeared, unwanted. Root cause: `ConnectionStrings:Default` (in `appsettings.Development.json` and `scripts/deploy/windows/install-api-service.ps1`) pointed at a separate physical database named `hms_qa`. `Bootstrap:SeedLegacyTenant` is already `false` in the checked-in dev config, so the *full* legacy tenant (Identity/Masters/Patients/etc.) was never actually seeded there — but `BrandingDbContext` is deliberately **not** tenant-aware (it powers the anonymous pre-login theme screen, before any tenant is known) and always migrates against `ConnectionStrings:Default` regardless of `SeedLegacyTenant`, per `Program.cs`'s own existing comment. That's what was actually creating `hms_qa`: an otherwise-empty database holding only Branding's schema.
+
+**Decision**
+Pointed `ConnectionStrings:Default` at the same physical database as `ConnectionStrings:Platform` (`hms_platform`) in both `appsettings.Development.json` and the Windows installer script, instead of a separate `hms_qa`. Safe because `BrandingDbContext` uses its own `branding` schema (`HasDefaultSchema`), fully isolated from Platform's own `platform` schema in the same physical database — confirmed no EF migrations-history or table-name collision risk. A fresh install now creates exactly one database.
+
+**Consequences**
+- **Deliberately scoped to local dev + the Windows installer only** — `.env.example`/`docker-compose.yml` (the Docker deployment path) were left untouched. That path is materially different: `Bootstrap:SeedLegacyTenant` isn't set there at all, and defaults to `true` (Production environment never loads `appsettings.Development.json`), so simply renaming `TENANT_DB_NAME` to match `PLATFORM_DB_NAME` there would jam the *full* legacy tenant's schemas into `hms_platform`, not just Branding's — a materially different, riskier change than what was asked. Flagged as a related but separate gap: `docs/Deployment.md` already recommends `Bootstrap__SeedLegacyTenant=false` for production, but neither `.env.example` nor `docker-compose.yml` expose or default that variable, so a Docker deployment following the example file today seeds the legacy tenant by default, contradicting that doc's own guidance — worth a follow-up if the Docker path is ever the one being freshly installed.
+- Lightly updated three stale/inaccurate code comments (`Program.cs`, `PlatformDbContext.cs`) that referenced `hms_qa` by name or asserted Platform/Default always use separate physical databases, which is no longer true for this path.
+
+---
+
 ### ADR-051: Masters edits now invalidate the dedicated picker components' own query caches
 **Date:** 2026-09-02
 **Status:** Accepted
