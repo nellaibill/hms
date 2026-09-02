@@ -1,5 +1,6 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  PlatformChangePasswordRequest,
   PlatformLoginRequest,
   PlatformLoginResponse,
   PlatformMfaDisableRequest,
@@ -50,6 +51,12 @@ export class PlatformAuthApi {
   /** Turns MFA back off, after proving the caller still controls the authenticator. */
   async disableMfa(request: PlatformMfaDisableRequest): Promise<void> {
     await this.client.post<void>(API_ROUTES.platformAuth.mfaDisable, request);
+  }
+
+  /** Self-service password change for the currently-authenticated Platform Admin — proves
+   * the current password, then rotates it. */
+  async changePassword(request: PlatformChangePasswordRequest): Promise<void> {
+    await this.client.post<void>(API_ROUTES.platformAuth.changePassword, request);
   }
 
   /** Revokes the current token server-side — see JwtConfiguration/PlatformAuthController's

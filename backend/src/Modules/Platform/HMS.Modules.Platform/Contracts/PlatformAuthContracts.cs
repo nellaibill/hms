@@ -67,3 +67,12 @@ public record PlatformMfaStatusResponse
 {
     public bool Enabled { get; init; }
 }
+
+/// <summary>Self-service password change for a Platform Admin's own account — mirrors
+/// HMS.Modules.Identity.Contracts.ChangePasswordRequest. There is no admin-resets-another-
+/// admin equivalent yet (see PlatformUser.ChangePassword's own doc comment).</summary>
+public record PlatformChangePasswordRequest
+{
+    public string CurrentPassword { get; init; } = string.Empty;
+    public string NewPassword { get; init; } = string.Empty;
+}

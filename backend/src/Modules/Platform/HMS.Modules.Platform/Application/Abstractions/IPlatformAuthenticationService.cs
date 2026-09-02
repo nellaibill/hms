@@ -28,4 +28,9 @@ public interface IPlatformAuthenticationService
 
     /// <summary>Turns MFA back off, after proving the caller still controls the authenticator.</summary>
     Task<Result> DisableMfaAsync(Guid platformUserId, string code, CancellationToken cancellationToken);
+
+    /// <summary>Self-service password change for the given Platform Admin's own account —
+    /// verifies the current password before rotating it. Mirrors
+    /// HMS.Modules.Identity.Application.IAuthenticationService.ChangePasswordAsync.</summary>
+    Task<Result> ChangePasswordAsync(Guid platformUserId, string currentPassword, string newPassword, CancellationToken cancellationToken);
 }

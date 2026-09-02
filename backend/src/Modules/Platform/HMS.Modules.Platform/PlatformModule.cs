@@ -77,6 +77,7 @@ public static class PlatformModule
         services.AddScoped<IValidator<PlatformMfaVerifyRequest>, PlatformMfaVerifyRequestValidator>();
         services.AddScoped<IValidator<PlatformMfaEnableRequest>, PlatformMfaEnableRequestValidator>();
         services.AddScoped<IValidator<PlatformMfaDisableRequest>, PlatformMfaDisableRequestValidator>();
+        services.AddScoped<IValidator<PlatformChangePasswordRequest>, PlatformChangePasswordRequestValidator>();
         services.AddScoped<IValidator<UpdateTenantConfigurationRequest>, UpdateTenantConfigurationRequestValidator>();
         services.AddScoped<IValidator<UpdateTenantFeaturesRequest>, UpdateTenantFeaturesRequestValidator>();
 

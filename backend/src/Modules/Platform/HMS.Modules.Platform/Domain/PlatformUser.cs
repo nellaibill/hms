@@ -115,4 +115,19 @@ internal class PlatformUser : Entity
         MfaSecret = null;
         MfaEnabled = false;
     }
+
+    /// <summary>
+    /// Self-service password change — the caller already proved they know the current
+    /// password (PlatformAuthenticationService.ChangePasswordAsync verifies it before
+    /// calling this). Mirrors HMS.Modules.Identity.Domain.User.ChangeOwnPassword, including
+    /// deliberately not calling Entity.MarkUpdated — UpdatedAt/UpdatedBy track an admin
+    /// editing someone else's record, not the subject's own self-service act. There is no
+    /// admin-resets-another-admin equivalent to HMS.Modules.Identity's SetPasswordHash here —
+    /// Platform Admin accounts are provisioned individually and don't have that concept yet.
+    /// </summary>
+    public void ChangePassword(string newPasswordHash)
+    {
+        Guard.AgainstNullOrWhiteSpace(newPasswordHash, nameof(newPasswordHash));
+        PasswordHash = newPasswordHash;
+    }
 }

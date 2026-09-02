@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.Platform.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Platform.Application.Validators;
 
@@ -49,5 +50,29 @@ internal class PlatformMfaDisableRequestValidator : AbstractValidator<PlatformMf
     public PlatformMfaDisableRequestValidator()
     {
         RuleFor(x => x.Code).MustBeAValidTotpCode();
+    }
+}
+
+/// <summary>Malformed-request checks only — "current password doesn't match" is a
+/// business-rule failure reported as a Result failure by PlatformAuthenticationService, not
+/// here. Matches HMS.Modules.Identity's ChangePasswordRequestValidator exactly, including
+/// reusing the same shared PasswordPolicy.</summary>
+internal class PlatformChangePasswordRequestValidator : AbstractValidator<PlatformChangePasswordRequest>
+{
+    public PlatformChangePasswordRequestValidator()
+    {
+        RuleFor(x => x.CurrentPassword).NotEmpty().WithMessage("Current password is required.");
+
+        RuleFor(x => x.NewPassword)
+            .NotEmpty()
+            .WithMessage("New password is required.")
+            .MinimumLength(PasswordPolicy.MinimumLength)
+            .WithMessage($"New password must be at least {PasswordPolicy.MinimumLength} characters.")
+            .Matches(PasswordPolicy.ComplexityRegex)
+            .WithMessage(PasswordPolicy.ComplexityMessage);
+
+        RuleFor(x => x.NewPassword)
+            .NotEqual(x => x.CurrentPassword)
+            .WithMessage("New password must be different from the current password.");
     }
 }
