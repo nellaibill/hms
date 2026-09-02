@@ -397,6 +397,19 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
     setValue('district', '');
   }
 
+  // admissionType/category/referral are only ever shown for IP/Emergency/DayCare/Observation
+  // (see showReferralColumn below) — same reasoning as handleDepartmentChange above: values
+  // entered under the previous encounter type are meaningless (and, for referral, can leave
+  // the tab permanently invalid — registrationDetailsUiSchema's superRefine still requires
+  // referral.category once `referral` is set, even after switching back to OP hides the field
+  // that would fix it) once the encounter type changes.
+  function handleEncounterTypeChange(newEncounterType: string, onChange: (value: string) => void) {
+    onChange(newEncounterType);
+    setValue('registration.admissionType', '');
+    setValue('registration.category', '');
+    setValue('registration.referral', undefined);
+  }
+
   // Server-side validation errors can't be mapped 1:1 to this form's field paths — the
   // submitted request is bridged/composed into the backend's narrower DTO shape by the
   // caller (see toRequest() in PatientRegistrationCreatePage), so a server field name
@@ -1106,7 +1119,7 @@ export function PatientRegistrationForm({ isSubmitting, isSavingAndProceeding, a
                 name="registration.encounterType"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={(value) => handleEncounterTypeChange(value, field.onChange)}>
                     <SelectTrigger id="encounterType" aria-label="Encounter type">
                       {/* Duration guidance shows only in the open dropdown list (see
                           encounterTypeLabel) — once selected, the trigger displays just the
