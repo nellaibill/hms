@@ -5,6 +5,8 @@ import { billingFormSchema, defaultBillingFormValues, type BillingFormValues } f
 import type { BillingType } from '../types';
 import { BillingSummaryCard } from './BillingSummaryCard';
 import { ConsultationBillingCard } from './ConsultationBillingCard';
+import { FileBillingCard } from './FileBillingCard';
+import { InjectionBillingCard } from './InjectionBillingCard';
 import { LaboratoryBillingCard } from './LaboratoryBillingCard';
 import { ProcedureBillingCard } from './ProcedureBillingCard';
 import { RadiologyBillingCard } from './RadiologyBillingCard';
@@ -36,9 +38,11 @@ const CATEGORY_FIELD = {
   Radiology: 'radiology',
   Laboratory: 'laboratory',
   Procedure: 'procedure',
+  Injection: 'injection',
+  File: 'file',
 } as const satisfies Record<BillingType, keyof BillingFormValues>;
 
-const CATEGORY_ORDER: BillingType[] = ['Consultation', 'Radiology', 'Laboratory', 'Procedure'];
+const CATEGORY_ORDER: BillingType[] = ['Consultation', 'Radiology', 'Laboratory', 'Procedure', 'Injection', 'File'];
 
 /**
  * Step 5 of the registration wizard. Owns its own useForm/zod resolver rather than being
@@ -78,6 +82,8 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
     Radiology: false,
     Laboratory: false,
     Procedure: false,
+    Injection: false,
+    File: false,
   });
   const [attempted, setAttempted] = useState<ReadonlySet<BillingType>>(new Set());
 
@@ -141,6 +147,8 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
             hasError={hasFieldError('Laboratory')}
           />
           <ProcedureBillingCard expanded={expanded.Procedure} onToggle={() => toggleCategory('Procedure')} hasError={hasFieldError('Procedure')} />
+          <InjectionBillingCard expanded={expanded.Injection} onToggle={() => toggleCategory('Injection')} hasError={hasFieldError('Injection')} />
+          <FileBillingCard expanded={expanded.File} onToggle={() => toggleCategory('File')} hasError={hasFieldError('File')} />
         </div>
         <BillingSummaryCard onSave={onSave} isSaving={isSaving} saveError={saveError} saveErrorDetails={saveErrorDetails} />
       </div>
