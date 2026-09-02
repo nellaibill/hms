@@ -17,6 +17,7 @@ internal class ConsultantConfiguration : IEntityTypeConfiguration<Consultant>
         builder.Property(c => c.DepartmentId).HasColumnName("department_id");
         builder.Property(c => c.Specialization).HasColumnName("specialization").HasMaxLength(150);
         builder.Property(c => c.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
+        builder.Property(c => c.Priority).HasColumnName("priority");
 
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(c => c.CreatedBy).HasColumnName("created_by");

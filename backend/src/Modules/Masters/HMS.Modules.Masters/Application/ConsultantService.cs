@@ -45,7 +45,7 @@ internal class ConsultantService : IConsultantService
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Department '{request.DepartmentId}' was not found.");
         }
 
-        var consultant = Consultant.Create(request.Name, request.DepartmentId, request.Specialization, request.IsActive, actorId);
+        var consultant = Consultant.Create(request.Name, request.DepartmentId, request.Specialization, request.IsActive, request.Priority, actorId);
 
         await _repository.AddAsync(consultant, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -66,7 +66,7 @@ internal class ConsultantService : IConsultantService
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Department '{request.DepartmentId}' was not found.");
         }
 
-        consultant.Update(request.Name, request.DepartmentId, request.Specialization, request.IsActive, actorId);
+        consultant.Update(request.Name, request.DepartmentId, request.Specialization, request.IsActive, request.Priority, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<ConsultantResponse>.Success(consultant.ToResponse());
