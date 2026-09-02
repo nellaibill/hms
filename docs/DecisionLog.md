@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-051: Masters edits now invalidate the dedicated picker components' own query caches
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Live-verification follow-up on ADR-049 (Consultant Priority): the user set a Consultant's Priority via Masters → Consultant → Edit, saved successfully, but the Billing/Registration consultant dropdown kept showing the old order — asked whether backend seed data was missing. It wasn't a backend issue at all: `useMasterMutations.ts`'s `useInvalidateMasters` only invalidates `['masters', entityKey]`, the Masters admin screen's own cache. Four entities — Consultant, Department, AppointmentType, ConsultationType — also have their own dedicated picker component (`ConsultantSelect`, `DepartmentSelect`, etc., built before this generic Masters engine existed) querying under a *different*, unrelated top-level cache key (e.g. `['consultants', 'select-list', departmentId]`). Saving a Masters edit never touched that second cache, so every picker elsewhere in the app kept serving its stale list until something else happened to refetch it (a full page reload, cache staleness). One Masters entity, Designation, doesn't have this problem — `DesignationSelect` already queries under `['masters', 'designation', 'select-list']`, so it was already covered.
+
+**Decision**
+`useInvalidateMasters` now also invalidates a second, entity-specific query key for the four affected entities, via an explicit `PICKER_QUERY_KEY_BY_ENTITY` map (not a computed pluralization — safer than guessing "+s" would hold for every current and future entity key). react-query's `invalidateQueries` matches by prefix, so invalidating the one-element key (e.g. `['consultants']`) covers every differently-suffixed variant a picker or name-lookup component might use (`ConsultantSelect`'s `[...,departmentId]` and `ConsultantName`'s plain 2-element key both match).
+
+**Consequences**
+- Fixes the reported symptom for all four affected entities at once, not just Consultant — Department/AppointmentType/ConsultationType edits had the identical stale-picker bug, just not yet noticed/reported.
+- If a future Masters entity gains its own dedicated picker component with a separate query key (rather than following Designation's `['masters', entityKey, ...]` convention), it needs a new entry in `PICKER_QUERY_KEY_BY_ENTITY` — flagged directly in the map's own comment.
+- No frontend automated test added — no test runner exists in this repo (see ADR-038). Not yet re-verified live by the user against this specific fix — the original report is what surfaced it.
+
+---
+
 ### ADR-050: Unsaved-changes guard extracted into a reusable hook, applied to Patient Registration/Edit/Add Visit
 **Date:** 2026-09-02
 **Status:** Accepted
