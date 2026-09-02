@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-048: Consultant cleared from a billing line item once it's paid
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Ninth item of a user-supplied 22-issue backlog ("A consultant is always assigned to a patient, even after paid — Remove this feature"). `InvoiceLineItem.MarkPaid()` set `PaymentStatus = Paid` but never touched `ConsultantId`, so a paid line item kept showing its consultant indefinitely — user confirmed (after clarification) that the consultant field should be cleared once a line item is paid.
+
+**Decision**
+`MarkPaid()` now also sets `ConsultantId = null`. Confirmed via search that no report or endpoint in the Billing module aggregates by `ConsultantId` on paid items (`Payment` itself never carried a `ConsultantId` either), so nothing downstream depends on it surviving payment. The frontend needed no change — `describeBillingItem` in `billingCalculations.ts` already renders `'—'` for a null `consultantId`.
+
+**Consequences**
+- **Genuine, permanent loss of attribution**: once a line item is paid, there is no other record anywhere of which consultant it was originally billed under (`Payment` doesn't carry one either). Acceptable per the fix's own "remove this feature" framing, but a future "per-consultant paid revenue" report would need a new field that survives payment, not a reuse of this one — flagged directly in `MarkPaid`'s own doc comment.
+- Covered by a new unit test (`RecordPaymentAsync_WithValidLineItem_ClearsTheConsultant`) plus an added assertion on the existing pay-at-creation test — both passing alongside the full 735-test suite.
+
+---
+
 ### ADR-047: State/City on hospital creation — State is a real dropdown, City is a suggested (not locked) free-text field
 **Date:** 2026-09-02
 **Status:** Accepted
