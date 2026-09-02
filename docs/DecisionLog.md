@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-039: On-call/"Others" consultation charge no longer stomped back to 0
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Third item of a user-supplied 22-issue backlog ("the amount field has 0, it should be editable" for Doctor's Consultation - Others/On-call). `ConsultationTypeSelect` already shows "Amount to be filled" for consultation types with a null master `amount` (by design — see `Masters.ConsultationType`'s own doc comment), and the charge `<Input>` in `ConsultationBillingCard.tsx` was never actually `disabled`. The real bug was a `useEffect` (lines ~103-108) that unconditionally reset `charge` to `selectedType?.amount ?? 0` — for a null-amount type that's always 0, and it re-ran on *any* new `consultationTypes` react-query object reference (a refetch on window focus, a cache invalidation from an unrelated mutation, etc.), not just on an actual type change — so any amount staff typed in kept getting wiped back to 0.
+
+**Decision**
+The effect now only overwrites `charge` when the selected type's master `amount` is non-null, and its dependency array was narrowed to `consultationTypeId` alone (dropping `consultationTypes`) — React effects still close over the latest render's values, so this doesn't need a ref; it just stops the effect from re-running on a same-selection data refetch.
+
+**Consequences**
+- Scoped narrowly to the reported symptom (the null-amount case); did not add "has the user manually edited this field" tracking for fixed-fee types, which is a broader behavior change nobody asked for here.
+- Verified via `tsc --noEmit` and `eslint` (both clean) — this repo has no frontend test runner/config anywhere, so there's no existing baseline to add an automated test to.
+
+---
+
 ### ADR-038: Voided invoices excluded from the Income & Expense Report's revenue totals
 **Date:** 2026-09-02
 **Status:** Accepted

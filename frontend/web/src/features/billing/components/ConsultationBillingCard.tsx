@@ -102,10 +102,18 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
 
   useEffect(() => {
     const selectedType = consultationTypes?.items.find((t) => t.id === consultationTypeId);
-    setValue(`${basePath}.charge`, selectedType?.amount ?? 0, { shouldValidate: true });
-    // Only the selected type (or the type list resolving) should recompute the charge.
+    // Types like "Doctor's Consultation - Others/On-call" have no fixed master amount
+    // (amount: null, "Amount to be filled" — see ConsultationTypeSelect) — leave the charge
+    // alone for those so staff can type the actual amount, instead of forcing it to 0. Also
+    // deliberately depends only on consultationTypeId, not `consultationTypes` itself: the
+    // query object gets a new reference on every refetch (focus, cache invalidation from an
+    // unrelated mutation, etc.), and re-running this on that alone used to stomp whatever the
+    // user had just typed back to the master default on every such refetch.
+    if (selectedType?.amount != null) {
+      setValue(`${basePath}.charge`, selectedType.amount, { shouldValidate: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consultationTypeId, consultationTypes, setValue]);
+  }, [consultationTypeId, setValue]);
 
   const rowErrors = errors.consultation?.[index];
 
