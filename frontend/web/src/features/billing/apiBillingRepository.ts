@@ -3,11 +3,12 @@ import type {
   InvoiceListQuery as InvoiceListQueryDto,
   InvoiceResponse as InvoiceResponseDto,
   PaginationMeta,
+  RecentPatientBill as RecentPatientBillDto,
 } from '@hms/shared';
 import { billingApi } from '@/services/apiClient';
 import type { BillingFormValues } from './billingValidation';
 import { toBillingItems } from './billingCalculations';
-import type { Billing, BillingItem, PaymentStatus } from './types';
+import type { Billing, BillingItem, PaymentStatus, RecentBill } from './types';
 
 /** Real, database-backed repository (HMS.Modules.Billing). */
 
@@ -112,6 +113,32 @@ export async function listInvoices(query: {
 }): Promise<PagedBillings> {
   const paged = await billingApi.getInvoices(toListQueryDto(query));
   return { items: paged.items.map(fromDto), meta: paged.meta };
+}
+
+function fromRecentBillDto(dto: RecentPatientBillDto): RecentBill {
+  return {
+    invoiceId: dto.invoiceId,
+    invoiceNumber: dto.invoiceNumber,
+    patientId: dto.patientId,
+    patientName: dto.patientName,
+    patientUhid: dto.patientUhid,
+    age: dto.age ?? undefined,
+    gender: dto.gender ?? undefined,
+    contactNumber: dto.contactNumber ?? undefined,
+    registrationType: dto.registrationType ?? undefined,
+    consultants: dto.consultants.map((c) => ({ departmentId: c.departmentId, consultantId: c.consultantId })),
+    appointmentDateTime: dto.appointmentDateTime,
+    netAmount: dto.netAmount,
+    paymentStatus: dto.paymentStatus,
+    isVoided: dto.isVoided,
+  };
+}
+
+/** The latest `count` bills across every patient — fetched pre-limited from the server, not
+ * paged/filtered client-side. Backs the Patient Billing page's "Recent Patient Bills" table. */
+export async function getRecentBills(count = 10): Promise<RecentBill[]> {
+  const dtos = await billingApi.getRecentBills(count);
+  return dtos.map(fromRecentBillDto);
 }
 
 export async function getInvoiceById(id: string): Promise<Billing> {

@@ -1,9 +1,57 @@
-import { Loader2, Wallet } from 'lucide-react';
+import { Clock3, Loader2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { InvoiceListToolbar, InvoiceLedgerTable, Pagination, useBillingsQuery } from '../../features/billing';
+import {
+  InvoiceListToolbar,
+  InvoiceLedgerTable,
+  Pagination,
+  RecentPatientBillsTable,
+  useBillingsQuery,
+  useRecentBillsQuery,
+} from '../../features/billing';
 import type { PaymentStatus } from '../../features/billing';
+
+const RECENT_BILLS_COUNT = 10;
+
+/** The Patient Billing page's "at a glance" strip — the latest 10 bills across every patient,
+ * fetched pre-limited from the server (not paged/filtered client-side), separate from the
+ * searchable/paginated ledger below. */
+function RecentPatientBillsSection() {
+  const { data: bills, isPending, isError } = useRecentBillsQuery(RECENT_BILLS_COUNT);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <Clock3 className="h-4 w-4 text-primary" />
+        <h2 className="text-sm font-semibold text-foreground">Recent Patient Bills</h2>
+      </div>
+
+      {isPending && (
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading recent bills…
+        </div>
+      )}
+
+      {isError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Failed to load recent bills.
+        </p>
+      )}
+
+      {!isPending && !isError && bills && bills.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+            <p className="text-sm text-muted-foreground">No bills recorded yet.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isPending && !isError && bills && bills.length > 0 && <RecentPatientBillsTable bills={bills} />}
+    </div>
+  );
+}
 
 const RESULTS_PAGE_SIZE = 20;
 
@@ -56,6 +104,8 @@ export default function InvoiceLedgerPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
+        <RecentPatientBillsSection />
+
         <InvoiceListToolbar
           search={search}
           onSearchChange={handleSearchChange}

@@ -1,4 +1,4 @@
-import type { BillingType, InvoicePaymentStatus, PaymentMethod } from '../../enums';
+import type { BillingType, Gender, InvoicePaymentStatus, PaymentMethod, VisitType } from '../../enums';
 
 /** Mirrors HMS.Modules.Billing.Contracts.CreateInvoiceLineItemRequest. */
 export interface CreateInvoiceLineItemRequest {
@@ -92,4 +92,31 @@ export interface InvoiceListQuery {
   sort?: string;
   search?: string;
   paymentStatus?: InvoicePaymentStatus;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.RecentBillConsultationResponse. */
+export interface RecentBillConsultation {
+  departmentId: string;
+  consultantId: string;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.RecentPatientBillResponse — one row of the Patient
+ * Billing page's "Recent Patient Bills" table. Age/gender/contact/registrationType/consultants
+ * come back null/empty (never an error) when the source patient or visit record can't be
+ * resolved — see the backend contract's own doc comment. */
+export interface RecentPatientBill {
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientUhid: string;
+  age?: number | null;
+  gender?: Gender | null;
+  contactNumber?: string | null;
+  registrationType?: VisitType | null;
+  consultants: RecentBillConsultation[];
+  appointmentDateTime: string;
+  netAmount: number;
+  paymentStatus: InvoicePaymentStatus;
+  isVoided: boolean;
 }

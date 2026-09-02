@@ -248,6 +248,7 @@ export const API_ROUTES = {
     invoices: {
       base: '/api/v1/billing/invoices',
       byId: (id: string) => `/api/v1/billing/invoices/${id}`,
+      recent: '/api/v1/billing/invoices/recent',
       byPatientId: (patientId: string) => `/api/v1/billing/invoices/by-patient/${patientId}`,
       recordPayment: (invoiceId: string, itemId: string) => `/api/v1/billing/invoices/${invoiceId}/items/${itemId}/payments`,
       void: (id: string) => `/api/v1/billing/invoices/${id}/void`,

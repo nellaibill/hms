@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateInvoiceRequest, InvoiceListQuery, InvoiceResponse, RecordPaymentRequest, VoidInvoiceRequest } from '../../dtos';
+import type { CreateInvoiceRequest, InvoiceListQuery, InvoiceResponse, RecentPatientBill, RecordPaymentRequest, VoidInvoiceRequest } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -35,6 +35,14 @@ export class BillingApi {
       items: response.data,
       meta: response.meta as PaginationMeta,
     };
+  }
+
+  /** The latest `count` bills across every patient, composed with age/gender/contact/
+   * registration-type/consultant(s) — backs the Patient Billing page's "Recent Patient Bills"
+   * table. */
+  async getRecentBills(count = 10): Promise<RecentPatientBill[]> {
+    const response = await this.client.get<RecentPatientBill[]>(API_ROUTES.billing.invoices.recent, { query: { count } });
+    return response.data;
   }
 
   async getInvoiceById(id: string): Promise<InvoiceResponse> {

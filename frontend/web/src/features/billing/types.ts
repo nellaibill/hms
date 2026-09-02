@@ -46,6 +46,39 @@ export interface BillingItem {
   total: number;
 }
 
+/** One department/consultant pairing on the visit behind a recent bill. */
+export interface RecentBillConsultant {
+  departmentId: string;
+  consultantId: string;
+}
+
+/**
+ * One row of the Patient Billing page's "Recent Patient Bills" table — the latest N bills
+ * across every patient, composed with the demographic/visit context (age, gender, contact,
+ * registration type, consultant(s)) the Billing API's `/invoices/recent` endpoint already
+ * joins in. Fields beyond invoice/patient identity come back undefined (never an error) when
+ * the source patient or visit record can no longer be resolved — see
+ * HMS.Modules.Billing.Contracts.RecentPatientBillResponse's own doc comment.
+ */
+export interface RecentBill {
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientUhid: string;
+  age?: number;
+  gender?: string;
+  contactNumber?: string;
+  /** OP/IP/Emergency/DayCare/Observation — the visit's own encounter type, i.e. the patient's
+   * registration type for that visit. */
+  registrationType?: string;
+  consultants: RecentBillConsultant[];
+  appointmentDateTime: string;
+  netAmount: number;
+  paymentStatus: PaymentStatus;
+  isVoided: boolean;
+}
+
 /** The bill for one visit — totals are always derived from `items`, never stored independently. */
 export interface Billing {
   id: string;

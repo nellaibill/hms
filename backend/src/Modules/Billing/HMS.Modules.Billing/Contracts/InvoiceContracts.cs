@@ -1,3 +1,5 @@
+using PatientsContracts = HMS.Modules.Patients.Contracts;
+
 namespace HMS.Modules.Billing.Contracts;
 
 /// <summary>One priced line to create — mirrors frontend/web/src/features/billing/types.ts's
@@ -136,4 +138,49 @@ public record InvoiceListQuery
     public string? Sort { get; init; }
     public string? Search { get; init; }
     public PaymentStatus? PaymentStatus { get; init; }
+}
+
+/// <summary>One department/consultant pairing on the visit behind a recent bill — mirrors
+/// Patients' VisitConsultationResponse. Duplicated here (rather than referencing that type
+/// directly) so RecentPatientBillResponse's shape stays entirely within Billing's own
+/// Contracts, the same way PatientName/PatientUhid are snapshotted rather than referenced.</summary>
+public record RecentBillConsultationResponse
+{
+    public Guid DepartmentId { get; init; }
+    public Guid ConsultantId { get; init; }
+}
+
+/// <summary>
+/// One row of the "Recent Patient Bills" table on the Patient Billing page — the latest N
+/// invoices, each composed with the demographic/visit context that lives in the Patients
+/// module (Age/Gender/ContactNumber from Patient, RegistrationType/Consultants from
+/// PatientVisit) via IPatientService/IPatientVisitService — the same in-process cross-module
+/// composition InvoiceService.CreateAsync already uses to validate PatientId. No new data is
+/// stored here; this is a read-only join over Billing + Patients' existing data.
+///
+/// Age/Gender/ContactNumber/RegistrationType/Consultants come back null/empty (never an
+/// error) when the source patient or visit record can no longer be resolved — e.g. an invoice
+/// whose VisitId falls back to PatientId itself because no real PatientVisit was ever created
+/// for it (see CreateInvoiceRequest.VisitId's own doc comment).
+/// </summary>
+public record RecentPatientBillResponse
+{
+    public Guid InvoiceId { get; init; }
+    public string InvoiceNumber { get; init; } = string.Empty;
+    public Guid PatientId { get; init; }
+    public string PatientName { get; init; } = string.Empty;
+    public string PatientUhid { get; init; } = string.Empty;
+    public int? Age { get; init; }
+    public PatientsContracts.Gender? Gender { get; init; }
+    public string? ContactNumber { get; init; }
+    public PatientsContracts.VisitType? RegistrationType { get; init; }
+    public IReadOnlyList<RecentBillConsultationResponse> Consultants { get; init; } = [];
+
+    /// <summary>The visit's own CreatedAt when a visit record was found; falls back to the
+    /// invoice's CreatedAt otherwise, so this column is always populated.</summary>
+    public DateTime AppointmentDateTime { get; init; }
+
+    public decimal NetAmount { get; init; }
+    public PaymentStatus PaymentStatus { get; init; }
+    public bool IsVoided { get; init; }
 }
