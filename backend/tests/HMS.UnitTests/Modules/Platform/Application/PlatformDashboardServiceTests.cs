@@ -26,7 +26,7 @@ public class PlatformDashboardServiceTests
     }
 
     private static Tenant NewTenant() => Tenant.Create(
-        "Apollo", "apollo", "9876543210", "admin@apollo.example", "1 MG Road", "Chennai", "Tamil Nadu", "600001", "hms_tenant_apollo", createdBy: null);
+        "Apollo", "apollo", "9876543210", "admin@apollo.example", "1 MG Road", "Chennai", "Tamil Nadu", "600001", "hms_tenant_apollo", 40000, createdBy: null);
 
     [Fact]
     public async Task UpdateStatusAsync_WithValidStatus_RecordsTheCallingPlatformAdminAsUpdatedBy()

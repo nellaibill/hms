@@ -31,6 +31,12 @@ internal interface IPatientImportRepository
 
     Task<PatientImportRow?> GetRowByIdAsync(Guid rowId, CancellationToken cancellationToken);
 
+    /// <summary>Bulk-marks every listed row CommitFailed with the same reason in one
+    /// statement, bypassing entity tracking entirely — used when the imported-patient capacity
+    /// is exhausted mid-batch, so the remaining (potentially thousands of) rows don't need one
+    /// nextval() attempt each to discover the same outcome.</summary>
+    Task MarkRowsCommitFailedAsync(IReadOnlyCollection<Guid> rowIds, string errorsJson, CancellationToken cancellationToken);
+
     /// <summary>Detaches every tracked entity — called between chunks of a large validate pass
     /// so the change tracker doesn't hold tens of thousands of rows in memory for the whole
     /// file.</summary>

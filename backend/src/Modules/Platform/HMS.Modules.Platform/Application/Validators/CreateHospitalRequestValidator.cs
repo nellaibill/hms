@@ -66,5 +66,9 @@ internal class CreateHospitalRequestValidator : AbstractValidator<CreateHospital
         RuleForEach(x => x.EnabledFeatureKeys)
             .Must(key => FeatureCatalog.All.Contains(key))
             .WithMessage("One or more feature keys are not recognized.");
+
+        RuleFor(x => x.ImportedPatientCapacity)
+            .InclusiveBetween(1, 10_000_000)
+            .WithMessage("Imported patient capacity must be between 1 and 10,000,000.");
     }
 }

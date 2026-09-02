@@ -65,6 +65,22 @@ internal class PatientImportRepository : IPatientImportRepository
     public Task<PatientImportRow?> GetRowByIdAsync(Guid rowId, CancellationToken cancellationToken)
         => _dbContext.PatientImportRows.FirstOrDefaultAsync(r => r.Id == rowId, cancellationToken);
 
+    public async Task MarkRowsCommitFailedAsync(IReadOnlyCollection<Guid> rowIds, string errorsJson, CancellationToken cancellationToken)
+    {
+        if (rowIds.Count == 0)
+        {
+            return;
+        }
+
+        await _dbContext.PatientImportRows
+            .Where(r => rowIds.Contains(r.Id))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(r => r.Status, ImportRowStatus.CommitFailed)
+                    .SetProperty(r => r.ErrorsJson, errorsJson),
+                cancellationToken);
+    }
+
     public void ClearTracking() => _dbContext.ChangeTracker.Clear();
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)

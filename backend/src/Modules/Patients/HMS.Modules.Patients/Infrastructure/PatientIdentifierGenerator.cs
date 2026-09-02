@@ -1,5 +1,6 @@
 using HMS.Modules.Patients.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HMS.Modules.Patients.Infrastructure;
 
@@ -27,5 +28,26 @@ internal class PatientIdentifierGenerator : IPatientIdentifierGenerator
             .ToListAsync(cancellationToken);
 
         return $"P-{DateTime.UtcNow:yyyy}-{results[0]:D6}";
+    }
+
+    public async Task<string?> NextImportedUhidAsync(CancellationToken cancellationToken)
+    {
+        var fullyQualifiedName = $"{PatientsDbContext.SchemaName}.{PatientsDbContext.ImportedUhidSequenceName}";
+        try
+        {
+            var results = await _dbContext.Database
+                .SqlQuery<long>($"SELECT nextval({fullyQualifiedName}::regclass)")
+                .ToListAsync(cancellationToken);
+
+            return $"P-{DateTime.UtcNow:yyyy}-{results[0]:D6}";
+        }
+        catch (PostgresException ex) when (ex.SqlState == "2200H") // sequence_generator_limit_exceeded
+        {
+            // "nextval: reached maximum value of sequence" — the sequence's own MAXVALUE
+            // (1-40000, see PatientsDbContext) refusing further calls. This is the actual
+            // enforcement of the 40,000-record imported-patient cap: the database itself
+            // says no, not an application-level count that a bug could skip.
+            return null;
+        }
     }
 }

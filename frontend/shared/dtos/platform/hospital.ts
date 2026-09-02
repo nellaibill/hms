@@ -16,6 +16,11 @@ export interface CreateHospitalRequest {
   /** Optional FeatureCatalog keys beyond the always-included mandatory set — drives which
    * schemas get provisioned. Empty provisions only the mandatory modules. */
   enabledFeatureKeys: string[];
+  /** UHIDs 1 through this number are reserved for this hospital's bulk-imported/legacy
+   * patients; new manual registrations start immediately after it. Sizes the Patients
+   * module's two UHID sequences once, at provisioning time — not editable afterward.
+   * Defaults to 40000. */
+  importedPatientCapacity: number;
 }
 
 /** Mirrors HMS.Modules.Platform.Contracts.CreateHospitalResponse. */
@@ -25,6 +30,7 @@ export interface CreateHospitalResponse {
   hospitalCode: string;
   status: string;
   createdAt: string;
+  importedPatientCapacity: number;
 }
 
 /** Mirrors HMS.Modules.Platform.Contracts.TenantListItemResponse. */
@@ -35,6 +41,7 @@ export interface TenantListItemResponse {
   status: string;
   createdAt: string;
   subscriptionTier: string;
+  importedPatientCapacity: number;
 }
 
 /** Mirrors HMS.Modules.Platform.Contracts.TenantListQuery. */

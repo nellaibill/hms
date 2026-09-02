@@ -22,6 +22,12 @@ public record CreateHospitalRequest
     /// which schemas get provisioned (see Tenant Feature/Module Management). An empty list
     /// provisions only the mandatory modules.</summary>
     public IReadOnlyList<string> EnabledFeatureKeys { get; init; } = [];
+
+    /// <summary>UHIDs 1 through this number are reserved for this hospital's bulk-imported/
+    /// legacy patients; new manual registrations start immediately after it. Sizes the
+    /// Patients module's two UHID sequences once, at provisioning time — see
+    /// TenantProvisioningService. Defaults to 40,000.</summary>
+    public int ImportedPatientCapacity { get; init; } = 40000;
 }
 
 public record CreateHospitalResponse
@@ -31,6 +37,7 @@ public record CreateHospitalResponse
     public string HospitalCode { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
+    public int ImportedPatientCapacity { get; init; }
 }
 
 public record TenantListItemResponse
@@ -41,6 +48,7 @@ public record TenantListItemResponse
     public string Status { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
     public string SubscriptionTier { get; init; } = string.Empty;
+    public int ImportedPatientCapacity { get; init; }
 }
 
 public record TenantListQuery

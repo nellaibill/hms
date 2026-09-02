@@ -23,23 +23,27 @@ interface TextFieldProps {
   label: string;
   register: UseFormRegister<CreateHospitalFormValues>;
   errors: FieldErrors<CreateHospitalFormValues>;
-  type?: 'text' | 'email' | 'password';
+  type?: 'text' | 'email' | 'password' | 'number';
+  /** Omits the red required-asterisk and swaps in this help text instead — used for fields
+   * that have a sensible default rather than needing the user to type something in. */
+  helpText?: string;
 }
 
-function TextField({ name, label, register, errors, type = 'text' }: TextFieldProps) {
+function TextField({ name, label, register, errors, type = 'text', helpText }: TextFieldProps) {
   const error = errors[name];
   const inputId = `hospital-field-${name}`;
   return (
     <div className="flex min-w-[200px] flex-1 flex-col gap-1">
       <Label htmlFor={inputId}>
         {label}
-        <span className="text-destructive"> *</span>
+        {helpText ? null : <span className="text-destructive"> *</span>}
       </Label>
       {type === 'password' ? (
         <PasswordInput id={inputId} {...register(name)} />
       ) : (
         <Input id={inputId} type={type} {...register(name)} />
       )}
+      {helpText && !error && <p className="text-sm text-muted-foreground">{helpText}</p>}
       {error && <p className="text-sm text-destructive">{String(error.message)}</p>}
     </div>
   );
@@ -146,6 +150,7 @@ export function HospitalForm({ onSubmit, isSubmitting, submitLabel, apiError }: 
       superAdminPassword: '',
       superAdminConfirmPassword: '',
       enabledFeatureKeys: [],
+      importedPatientCapacity: 40000,
     },
   });
 
@@ -231,6 +236,22 @@ export function HospitalForm({ onSubmit, isSubmitting, submitLabel, apiError }: 
             type="password"
             register={register}
             errors={errors}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Patient Numbering</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-4">
+          <TextField
+            name="importedPatientCapacity"
+            label="Imported Patient Capacity"
+            type="number"
+            register={register}
+            errors={errors}
+            helpText="UHIDs 1 through this number are reserved for bulk-imported/legacy patients; new registrations start right after it. Cannot be changed once the hospital is created."
           />
         </CardContent>
       </Card>

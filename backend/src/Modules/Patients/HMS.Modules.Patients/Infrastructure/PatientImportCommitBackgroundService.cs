@@ -65,14 +65,42 @@ internal class PatientImportCommitBackgroundService : BackgroundService
         var createdCount = 0;
         var commitFailedCount = 0;
 
-        foreach (var rowId in rowIds)
+        for (var i = 0; i < rowIds.Count; i++)
         {
+            var rowId = rowIds[i];
             using var scope = _scopeFactory.CreateScope();
             var tenantContext = scope.ServiceProvider.GetRequiredService<ITenantContext>();
             tenantContext.SetTenant(item.TenantId, item.ConnectionString);
 
             var repository = scope.ServiceProvider.GetRequiredService<IPatientImportRepository>();
             var patientService = scope.ServiceProvider.GetRequiredService<IPatientService>();
+            var identifierGenerator = scope.ServiceProvider.GetRequiredService<IPatientIdentifierGenerator>();
+
+            // The reserved imported-patient range (1-40000 by default, sized per-tenant at
+            // provisioning — see TenantProvisioningService) is exhausted: the database itself
+            // refused (Postgres MAXVALUE), not an application-level count. Every remaining row
+            // in this batch would fail identically, so mark them all in one statement instead
+            // of trying nextval() once per row, and stop.
+            var uhid = await identifierGenerator.NextImportedUhidAsync(cancellationToken);
+            if (uhid is null)
+            {
+                var remainingRowIds = rowIds.Skip(i).ToList();
+                var capacityErrorsJson = JsonSerializer.Serialize(new[]
+                {
+                    new ImportRowError
+                    {
+                        Field = string.Empty,
+                        Message = "The imported-patient capacity for this hospital has been reached. This row was not created — it can be imported later if capacity is increased, or handled through manual registration.",
+                    },
+                });
+                await repository.MarkRowsCommitFailedAsync(remainingRowIds, capacityErrorsJson, cancellationToken);
+                commitFailedCount += remainingRowIds.Count;
+
+                _logger.LogWarning(
+                    "Patient import batch {BatchId} hit the imported-patient capacity after {Created} rows; {Remaining} row(s) skipped.",
+                    item.BatchId, createdCount, remainingRowIds.Count);
+                break;
+            }
 
             var row = await repository.GetRowByIdAsync(rowId, cancellationToken);
             var request = row?.DeserializeMappedRequest();
@@ -82,7 +110,7 @@ internal class PatientImportCommitBackgroundService : BackgroundService
                 continue;
             }
 
-            var result = await patientService.CreateAsync(request, actorId: item.CommittedBy, cancellationToken);
+            var result = await patientService.CreateAsync(request, actorId: item.CommittedBy, cancellationToken, uhidOverride: uhid);
             if (result.IsSuccess)
             {
                 row.MarkCreated(result.Value!.Id);

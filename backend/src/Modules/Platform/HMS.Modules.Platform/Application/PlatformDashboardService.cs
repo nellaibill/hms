@@ -211,6 +211,7 @@ internal sealed class PlatformDashboardService : IPlatformDashboardService
         Status = tenant.Status.ToString(),
         CreatedAt = tenant.CreatedAt,
         SubscriptionTier = tenant.SubscriptionTier,
+        ImportedPatientCapacity = tenant.ImportedPatientCapacity,
     };
 
     private static DeletedTenantListItemResponse ToDeletedResponse(Tenant tenant) => new()

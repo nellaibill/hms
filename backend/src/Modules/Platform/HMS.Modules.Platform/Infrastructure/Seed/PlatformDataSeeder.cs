@@ -103,6 +103,7 @@ internal sealed class PlatformDataSeeder
             _legacyTenantOptions.State,
             _legacyTenantOptions.Pincode,
             _legacyDatabaseName,
+            importedPatientCapacity: 40000, // matches the Patients migration's own default — the legacy tenant's sequences are never resized by TenantProvisioningService (see Program.cs's seedLegacyTenant path).
             createdBy: null);
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);

@@ -84,6 +84,21 @@ public class PatientServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithUhidOverride_UsesTheSuppliedUhid_AndNeverCallsTheIdentifierGenerator()
+    {
+        // Bulk import supplies a pre-generated UHID drawn from the reserved 1-40000 range
+        // (see PatientImportCommitBackgroundService) — this must win over the standard
+        // 40001+ sequence, which must not be touched at all in that case.
+        var request = NewCreateRequest();
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None, uhidOverride: "P-2026-000123");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Uhid.Should().Be("P-2026-000123");
+        await _identifierGenerator.DidNotReceive().NextUhidAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateAsync_WithAllergiesSupplied_AddsThemToTheAggregate()
     {
         var request = NewCreateRequest() with
