@@ -180,6 +180,13 @@ function Invoke-WithRetry {
             if ($responseBody) {
                 Write-Host "  HTTP $statusCode calling '$Label': $responseBody" -ForegroundColor Red
             }
+            # A "request body is missing or could not be parsed" response body (the API's own
+            # generic message for a JSON model-binding failure) gives no clue *what* was
+            # malformed - printing exactly what was sent lets that be diagnosed from the
+            # script's own output instead of a separate repro.
+            if ($Body) {
+                Write-Host "  Request body sent: $Body" -ForegroundColor DarkGray
+            }
             throw
         }
     }
@@ -741,7 +748,12 @@ foreach ($row in $procedureRows) {
     $match = $legacyTests | Where-Object { $_.name -eq $row.name } | Select-Object -First 1
     if ($match -and $match.serviceType -eq $row.serviceType) { continue }
     if ($match) {
-        $body = @{ name = $match.name; serviceType = $row.serviceType; category = $row.category; price = $match.price; isOutsourced = $match.isOutsourced; referenceLab = $match.referenceLab; isActive = $match.isActive } | ConvertTo-Json
+        # [decimal] forces a bare JSON number regardless of how Invoke-RestMethod's own JSON
+        # parser happened to type $match.price when the GET response came back - a plausible
+        # cause of a live "request body is missing or could not be parsed" failure on this PUT
+        # (a price serialized back out as a quoted string is exactly what the API's strict
+        # System.Text.Json binder would reject that way). Cheap and harmless either way.
+        $body = @{ name = $match.name; serviceType = $row.serviceType; category = $row.category; price = [decimal]$match.price; isOutsourced = $match.isOutsourced; referenceLab = $match.referenceLab; isActive = $match.isActive } | ConvertTo-Json
         Invoke-WithRetry -Method Put -Uri "$ApiBaseUrl/api/v1/masters/diagnostic-tests/$($match.id)" -Body $body -Label "retype $($row.name)" | Out-Null
         Write-Host "  Retyped '$($row.name)' ServiceType=$($match.serviceType) -> $($row.serviceType)." -ForegroundColor Yellow
     }
