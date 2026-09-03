@@ -5,5 +5,6 @@ export { HospitalFeaturesDialog } from './components/HospitalFeaturesDialog';
 export { useCreateHospitalMutation } from './hooks/useCreateHospitalMutation';
 export { useHospitalsQuery, useHospitalStatsQuery } from './hooks/useHospitalsQuery';
 export { useUpdateHospitalStatusMutation } from './hooks/useUpdateHospitalStatusMutation';
+export { useMigrateHospitalMutation } from './hooks/useMigrateHospitalMutation';
 export { useHospitalFeaturesQuery } from './hooks/useHospitalFeaturesQuery';
 export { useUpdateHospitalFeaturesMutation } from './hooks/useUpdateHospitalFeaturesMutation';

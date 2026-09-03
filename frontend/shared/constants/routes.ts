@@ -35,6 +35,7 @@ export const API_ROUTES = {
     restore: (id: string) => `/api/platform/hospitals/${id}/restore`,
     configuration: (id: string) => `/api/platform/hospitals/${id}/configuration`,
     features: (id: string) => `/api/platform/hospitals/${id}/features`,
+    migrate: (id: string) => `/api/platform/hospitals/${id}/migrate`,
   },
   users: {
     base: '/api/v1/users',
