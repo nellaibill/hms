@@ -33,9 +33,11 @@ internal static class PatientMappingExtensions
         Address = patient.Address.ToResponse(),
         Allergies = patient.Allergies.Select(a => a.ToResponse()).ToList(),
         EmergencyContacts = patient.EmergencyContacts.Select(c => c.ToResponse()).ToList(),
+        RequiresDataVerification = patient.RequiresDataVerification,
         RowVersion = rowVersion,
         CreatedAt = patient.CreatedAt,
         UpdatedAt = patient.UpdatedAt,
+        UpdatedBy = patient.UpdatedBy,
     };
 
     public static AddressResponse ToResponse(this Address address) => new()

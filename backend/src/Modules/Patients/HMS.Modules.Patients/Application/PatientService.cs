@@ -55,7 +55,7 @@ internal class PatientService : IPatientService
         return null;
     }
 
-    public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken, string? uhidOverride = null)
+    public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken, string? uhidOverride = null, bool requiresDataVerification = false)
     {
         var duplicate = await _repository.FindDuplicateAsync(request.PrimaryPhone, request.FirstName, request.LastName, request.IdProofNumber, cancellationToken);
         if (duplicate is not null)
@@ -91,7 +91,8 @@ internal class PatientService : IPatientService
             request.ModeOfArrivalSource,
             request.ModeOfArrivalChannel,
             request.ModeOfArrivalSpecify,
-            actorId);
+            actorId,
+            requiresDataVerification);
 
         var address = Address.Create(
             patient.Id,
@@ -149,6 +150,10 @@ internal class PatientService : IPatientService
         patient.UpdateIdProof(request.IdProofType, request.IdProofNumber, actorId);
         patient.UpdateModeOfArrival(request.ModeOfArrivalSource, request.ModeOfArrivalChannel, request.ModeOfArrivalSpecify, actorId);
         patient.UpdateAddress(request.Address.AddressLine1, request.Address.AddressLine2, request.Address.AddressLine3, request.Address.StateId, request.Address.DistrictId, request.Address.Pincode, actorId);
+
+        // A full save through the Edit Patient screen counts as the receptionist having
+        // re-confirmed the patient's details with them — see Patient.ClearDataVerificationFlag.
+        patient.ClearDataVerificationFlag(actorId);
 
         await _repository.SaveChangesAsync(cancellationToken);
 

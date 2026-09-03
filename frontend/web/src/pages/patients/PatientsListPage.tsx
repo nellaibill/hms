@@ -46,6 +46,7 @@ export default function PatientsListPage() {
       age: activeFilters?.age.trim() ? Number(activeFilters.age) : undefined,
       uhid: activeFilters?.uhid.trim() || undefined,
       phone: activeFilters?.phone.trim() || undefined,
+      requiresDataVerification: activeFilters?.needsVerification || undefined,
     },
     { enabled: hasSearched },
   );
@@ -53,7 +54,7 @@ export default function PatientsListPage() {
   const deleteMutation = useDeletePatientMutation();
   const { toast } = useToast();
 
-  function handleFilterChange(field: keyof PatientSearchFilters, value: string) {
+  function handleFilterChange(field: keyof PatientSearchFilters, value: string | boolean) {
     setFilters((prev) => ({ ...prev, [field]: value }));
   }
 

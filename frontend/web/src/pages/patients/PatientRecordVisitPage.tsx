@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/toast-context';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
-import { RecordVisitForm, useCreatePatientVisitMutation, usePatientQuery } from '../../features/patients';
+import { DataVerificationBanner, RecordVisitForm, useCreatePatientVisitMutation, usePatientQuery } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
 import { toCreatePatientVisitRequest } from '../../features/patients/bridging';
 
@@ -87,6 +87,7 @@ export default function PatientRecordVisitPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
+        {patient.requiresDataVerification && <DataVerificationBanner />}
         <RequirePermission permission="patient-management.edit">
           <RecordVisitForm
             isSubmitting={mutation.isPending}

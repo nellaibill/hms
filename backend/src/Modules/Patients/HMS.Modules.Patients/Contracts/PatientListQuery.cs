@@ -14,4 +14,8 @@ public class PatientListQuery : PagedRequest
     public int? Age { get; set; }
     public string? Uhid { get; set; }
     public string? Phone { get; set; }
+
+    /// <summary>When true, narrows the list to patients still flagged with placeholder data
+    /// (e.g. from bulk import) — see Patient.RequiresDataVerification.</summary>
+    public bool? RequiresDataVerification { get; set; }
 }

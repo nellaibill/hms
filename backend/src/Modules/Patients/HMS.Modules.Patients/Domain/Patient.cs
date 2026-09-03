@@ -37,6 +37,15 @@ internal class Patient : Entity
 
     public Address Address { get; private set; } = null!;
 
+    /// <summary>True when this patient was created with placeholder/default values for
+    /// required fields (currently: bulk import — see PatientImportCommitBackgroundService),
+    /// which are technically valid but not real data (e.g. a synthetic phone number, a
+    /// sentinel date of birth). Front-end surfaces a "verify this patient's details" banner
+    /// while true, cleared automatically the next time anyone saves an edit through
+    /// UpdateAsync — matches how a receptionist naturally re-confirms details with the patient
+    /// once they're back in front of them.</summary>
+    public bool RequiresDataVerification { get; private set; }
+
     private readonly List<Allergy> _allergies = [];
     public IReadOnlyCollection<Allergy> Allergies => _allergies.AsReadOnly();
 
@@ -70,6 +79,7 @@ internal class Patient : Entity
         ModeOfArrivalSource modeOfArrivalSource,
         string? modeOfArrivalChannel,
         string? modeOfArrivalSpecify,
+        bool requiresDataVerification,
         Guid? createdBy)
         : base(id, createdBy)
     {
@@ -90,6 +100,7 @@ internal class Patient : Entity
         ModeOfArrivalSource = modeOfArrivalSource;
         ModeOfArrivalChannel = modeOfArrivalChannel;
         ModeOfArrivalSpecify = modeOfArrivalSpecify;
+        RequiresDataVerification = requiresDataVerification;
     }
 
     public static Patient Create(
@@ -110,7 +121,8 @@ internal class Patient : Entity
         ModeOfArrivalSource modeOfArrivalSource,
         string? modeOfArrivalChannel,
         string? modeOfArrivalSpecify,
-        Guid? createdBy)
+        Guid? createdBy,
+        bool requiresDataVerification = false)
     {
         Guard.AgainstNullOrWhiteSpace(uhid, nameof(uhid));
         Guard.AgainstNullOrWhiteSpace(firstName, nameof(firstName));
@@ -136,6 +148,7 @@ internal class Patient : Entity
             modeOfArrivalSource,
             modeOfArrivalChannel?.Trim(),
             modeOfArrivalSpecify?.Trim(),
+            requiresDataVerification,
             createdBy);
     }
 
@@ -177,6 +190,21 @@ internal class Patient : Entity
         ModeOfArrivalSource = source;
         ModeOfArrivalChannel = channel?.Trim();
         ModeOfArrivalSpecify = specify?.Trim();
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Called once per PatientService.UpdateAsync call, after every field update —
+    /// any full save through the Edit Patient screen counts as the receptionist having
+    /// re-confirmed the patient's details, regardless of which specific fields they touched.
+    /// A no-op (cheap) when the flag was already false.</summary>
+    public void ClearDataVerificationFlag(Guid? updatedBy)
+    {
+        if (!RequiresDataVerification)
+        {
+            return;
+        }
+
+        RequiresDataVerification = false;
         MarkUpdated(updatedBy);
     }
 

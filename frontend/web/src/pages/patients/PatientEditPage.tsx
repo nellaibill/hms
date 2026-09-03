@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
-import { PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
+import { DataVerificationBanner, PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
 import { toBackendGender, fromBackendGender } from '../../features/patients/bridging';
 
@@ -174,6 +174,7 @@ export default function PatientEditPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
+      {patient.requiresDataVerification && <DataVerificationBanner />}
       <RequirePermission permission="patient-management.edit">
         <PatientEditForm
           patientId={id as string}

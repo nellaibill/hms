@@ -17,8 +17,10 @@ public interface IPatientService
     /// one instead (drawn from the reserved 1-40000 imported-patient range) — see
     /// PatientImportCommitBackgroundService — so every other invariant this method enforces
     /// (duplicate detection, the transaction, address/allergy/emergency-contact creation)
-    /// still applies identically regardless of where the patient came from.</summary>
-    Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken, string? uhidOverride = null);
+    /// still applies identically regardless of where the patient came from.
+    /// requiresDataVerification: true only for bulk-imported rows that used placeholder values
+    /// for required fields — see Patient.RequiresDataVerification's own doc comment.</summary>
+    Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken, string? uhidOverride = null, bool requiresDataVerification = false);
 
     Task<Result<PatientResponse>> UpdateAsync(Guid id, UpdatePatientRequest request, Guid? actorId, CancellationToken cancellationToken);
 

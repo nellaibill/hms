@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { StaffName } from '@/components/StaffName';
 import { useAuth } from '../../auth/AuthContext';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { useDeletePatientMutation } from '../hooks/usePatientMutations';
@@ -126,6 +127,20 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
               Last visit{' '}
               {lastVisit ? `${new Date(lastVisit.createdAt).toLocaleDateString('en-IN')} (${lastVisit.visitType})` : '—'}
             </span>
+            {patient.updatedAt && (
+              <>
+                <span className="text-border">·</span>
+                <span>
+                  Last updated {new Date(patient.updatedAt).toLocaleDateString('en-IN')}
+                  {patient.updatedBy && (
+                    <>
+                      {' '}
+                      by <StaffName staffId={patient.updatedBy} />
+                    </>
+                  )}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

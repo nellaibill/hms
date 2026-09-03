@@ -43,6 +43,8 @@ internal class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.Property(p => p.ModeOfArrivalChannel).HasColumnName("mode_of_arrival_channel").HasMaxLength(50);
         builder.Property(p => p.ModeOfArrivalSpecify).HasColumnName("mode_of_arrival_specify").HasMaxLength(200);
 
+        builder.Property(p => p.RequiresDataVerification).HasColumnName("requires_data_verification").IsRequired().HasDefaultValue(false);
+
         // Standard audit columns.
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(p => p.CreatedBy).HasColumnName("created_by");
@@ -61,6 +63,7 @@ internal class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.HasIndex(p => new { p.FirstName, p.LastName }).HasDatabaseName("ix_patients_name");
         builder.HasIndex(p => p.PrimaryPhone).HasDatabaseName("ix_patients_primary_phone");
         builder.HasIndex(p => p.IdProofNumber).HasDatabaseName("ix_patients_id_proof_number");
+        builder.HasIndex(p => p.RequiresDataVerification).HasDatabaseName("ix_patients_requires_data_verification").HasFilter("requires_data_verification = true");
 
         // Address is a true 1:1 — PatientId is Address's own primary key (see
         // AddressConfiguration), so this is a required one-to-one, not one-to-many.

@@ -15,13 +15,17 @@ export interface PatientSearchFilters {
   age: string;
   uhid: string;
   phone: string;
+  /** Narrows results to patients still flagged with placeholder data from bulk import — the
+   * one filter here that's a checkbox, not a text box, so it can stand alone as a search
+   * ("browse everyone needing verification") without requiring a name/age/UHID/phone too. */
+  needsVerification: boolean;
 }
 
-export const emptyPatientSearchFilters: PatientSearchFilters = { name: '', age: '', uhid: '', phone: '' };
+export const emptyPatientSearchFilters: PatientSearchFilters = { name: '', age: '', uhid: '', phone: '', needsVerification: false };
 
 interface PatientListToolbarProps {
   filters: PatientSearchFilters;
-  onFilterChange: (field: keyof PatientSearchFilters, value: string) => void;
+  onFilterChange: (field: keyof PatientSearchFilters, value: string | boolean) => void;
   onSearch: () => void;
   onClear: () => void;
   /** When provided, Name/UHID/Phone show a live, type-ahead suggestions dropdown (debounced,
@@ -36,7 +40,8 @@ interface PatientListToolbarProps {
 
 type SuggestableField = 'name' | 'uhid' | 'phone';
 
-const hasAnyFilter = (filters: PatientSearchFilters) => Object.values(filters).some((value) => value.trim() !== '');
+const hasAnyFilter = (filters: PatientSearchFilters) =>
+  filters.needsVerification || [filters.name, filters.age, filters.uhid, filters.phone].some((value) => value.trim() !== '');
 
 /** Search by any one or a combination of Name / Age / UHID / Phone Number — a Search action is explicit, results aren't shown until one runs. */
 export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear, onSuggestionSelect }: PatientListToolbarProps) {
@@ -177,6 +182,16 @@ export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear,
             />,
           )}
         </div>
+
+        <label className="flex items-center gap-2 pb-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={filters.needsVerification}
+            onChange={(event) => onFilterChange('needsVerification', event.target.checked)}
+            className="h-3.5 w-3.5 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          Needs verification only
+        </label>
 
         <div className="flex gap-2">
           <Button type="submit" disabled={!canSearch} className="gap-1.5">
