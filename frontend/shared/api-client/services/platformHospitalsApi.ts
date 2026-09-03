@@ -113,4 +113,12 @@ export class PlatformHospitalsApi {
     const response = await this.client.put<TenantFeaturesResponse>(API_ROUTES.platformHospitals.features(id), request);
     return response.data;
   }
+
+  /** Applies any pending EF Core migrations to this hospital's existing database — mirrors
+   * HospitalsController.Migrate. Requires the PlatformSuperAdmin policy server-side; a
+   * SupportUser-role platform token gets a 403 (surfaced as a normal ApiError). */
+  async migrateHospital(id: string): Promise<TenantListItemResponse> {
+    const response = await this.client.post<TenantListItemResponse>(API_ROUTES.platformHospitals.migrate(id));
+    return response.data;
+  }
 }

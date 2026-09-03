@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/components/ui/toast-context';
 import { Pagination } from '@/components/Pagination';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
@@ -13,6 +14,7 @@ import {
   HospitalTable,
   useHospitalsQuery,
   useHospitalStatsQuery,
+  useMigrateHospitalMutation,
   useUpdateHospitalStatusMutation,
 } from '@/features/platformHospitals';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -36,9 +38,11 @@ export default function PlatformDashboardPage() {
   const debouncedSearch = useDebouncedValue(search);
   const [hospitalToManageFeatures, setHospitalToManageFeatures] = useState<TenantListItemResponse | null>(null);
 
+  const { toast } = useToast();
   const statsQuery = useHospitalStatsQuery();
   const hospitalsQuery = useHospitalsQuery({ page, pageSize: 20, search: debouncedSearch || undefined });
   const statusMutation = useUpdateHospitalStatusMutation();
+  const migrateMutation = useMigrateHospitalMutation();
 
   const stats = statsQuery.data;
   const tiles: StatTile[] = [
@@ -62,6 +66,23 @@ export default function PlatformDashboardPage() {
   function handleToggleStatus(hospital: TenantListItemResponse) {
     const nextStatus = hospital.status === 'Active' ? 'Inactive' : 'Active';
     statusMutation.mutate({ id: hospital.id, status: nextStatus });
+  }
+
+  function handleMigrate(hospital: TenantListItemResponse) {
+    migrateMutation.mutate(hospital.id, {
+      onSuccess: () =>
+        toast({
+          title: 'Migration applied',
+          description: `${hospital.hospitalName}'s database is now up to date.`,
+          variant: 'success',
+        }),
+      onError: (err) =>
+        toast({
+          title: 'Migration failed',
+          description: err instanceof Error ? err.message : `Could not migrate ${hospital.hospitalName}.`,
+          variant: 'error',
+        }),
+    });
   }
 
   return (
@@ -146,6 +167,8 @@ export default function PlatformDashboardPage() {
               onToggleStatus={handleToggleStatus}
               isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
               onManageFeatures={setHospitalToManageFeatures}
+              onMigrate={handleMigrate}
+              isMigratingId={migrateMutation.isPending ? migrateMutation.variables : undefined}
             />
             <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
           </div>

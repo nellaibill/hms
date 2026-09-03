@@ -1,4 +1,5 @@
 import type { TenantListItemResponse } from '@hms/shared';
+import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -7,9 +8,14 @@ interface HospitalTableProps {
   onToggleStatus: (hospital: TenantListItemResponse) => void;
   isTogglingId: string | undefined;
   onManageFeatures: (hospital: TenantListItemResponse) => void;
+  /** Applies any pending EF Core migrations to this hospital's database (HospitalsController's
+   * PlatformSuperAdmin-only migrate action) — the operator-triggered alternative to running
+   * `dotnet ef database update` by hand against the tenant's connection string. */
+  onMigrate: (hospital: TenantListItemResponse) => void;
+  isMigratingId: string | undefined;
 }
 
-export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onManageFeatures }: HospitalTableProps) {
+export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onManageFeatures, onMigrate, isMigratingId }: HospitalTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -49,6 +55,15 @@ export function HospitalTable({ hospitals, onToggleStatus, isTogglingId, onManag
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => onManageFeatures(hospital)}>
                       Manage Features
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onMigrate(hospital)}
+                      disabled={isMigratingId === hospital.id}
+                      title="Apply any pending database migrations to this hospital"
+                    >
+                      {isMigratingId === hospital.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Migrate'}
                     </Button>
                   </div>
                 </td>
