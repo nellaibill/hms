@@ -1,3 +1,4 @@
+export * from './components/DataVerificationBanner';
 export * from './components/DeletePatientDialog';
 export * from './components/DocumentUploadStaging';
 export * from './components/Pagination';

@@ -99,6 +99,31 @@ public class PatientServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithRequiresDataVerificationTrue_FlagsTheCreatedPatient()
+    {
+        // Bulk import passes this for every row it creates, since required fields routinely
+        // get filled with placeholder values that pass validation but aren't real data.
+        var request = NewCreateRequest();
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None, requiresDataVerification: true);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RequiresDataVerification.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutRequiresDataVerification_LeavesTheFlagFalse()
+    {
+        // Manual registration never passes this — the default must stay false.
+        var request = NewCreateRequest();
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RequiresDataVerification.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task CreateAsync_WithAllergiesSupplied_AddsThemToTheAggregate()
     {
         var request = NewCreateRequest() with
@@ -223,6 +248,42 @@ public class PatientServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.FirstName.Should().Be("Johnny");
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_OnAPatientFlaggedForDataVerification_ClearsTheFlag()
+    {
+        // A full save through the Edit Patient screen counts as the receptionist having
+        // re-confirmed the patient's details with them — see
+        // Patient.ClearDataVerificationFlag's own doc comment.
+        var patient = Patient.Create(
+            "P-2026-000001", Title.Mr, "John", "Doe", new DateOnly(1990, 1, 1), Gender.Male, BloodGroup.Unknown, MaritalStatus.Married,
+            "9876543210", null, null, null, null, null, ModeOfArrivalSource.DoctorReferral, null, null,
+            createdBy: null, requiresDataVerification: true);
+        patient.SetAddress(Address.Create(patient.Id, "123 Main St", null, null, StateId, DistrictId, "560001"));
+        patient.AddEmergencyContact(EmergencyContact.Create(patient.Id, Relationship.Spouse, "Jane Doe", "9876500000"), updatedBy: null);
+        _repository.GetByIdAsync(patient.Id, Arg.Any<CancellationToken>()).Returns(patient);
+        _repository.GetRowVersion(patient).Returns("42");
+
+        var request = new UpdatePatientRequest
+        {
+            Title = Title.Dr,
+            FirstName = "Johnny",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(1990, 1, 1),
+            Gender = Gender.Male,
+            BloodGroup = BloodGroup.Unknown,
+            MaritalStatus = MaritalStatus.Married,
+            PrimaryPhone = "9876543210",
+            ModeOfArrivalSource = ModeOfArrivalSource.DoctorReferral,
+            Address = NewAddressRequest(),
+            RowVersion = "42",
+        };
+
+        var result = await _sut.UpdateAsync(patient.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RequiresDataVerification.Should().BeFalse();
     }
 
     [Fact]

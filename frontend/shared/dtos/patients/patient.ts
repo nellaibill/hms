@@ -70,6 +70,11 @@ export interface Patient {
   allergies: Allergy[];
   emergencyContacts: EmergencyContact[];
 
+  /** True when this patient still has placeholder values (from bulk import) sitting in
+   * required fields — the UI shows a "please verify this patient's details" prompt while
+   * true. Cleared automatically the next time this patient is edited and saved. */
+  requiresDataVerification: boolean;
+
   /** Opaque optimistic-concurrency token (the row's Postgres xmin at read time) — echo this
    * back on UpdatePatientRequest.rowVersion so a save against stale data is rejected with a
    * clear conflict instead of silently overwriting someone else's edit. Always present on a
@@ -79,6 +84,10 @@ export interface Patient {
 
   createdAt: string;
   updatedAt?: string | null;
+  /** User id of whoever last saved an edit — resolve to a display name via StaffName (there's
+   * no dedicated Staff module yet, so this is a bare Identity user id, same as StaffName's own
+   * existing use). Null/undefined for a patient that's never been edited since creation. */
+  updatedBy?: string | null;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.CreatePatientRequest. */
@@ -157,4 +166,7 @@ export interface PatientListQuery {
   age?: number;
   uhid?: string;
   phone?: string;
+  /** Narrows the list to patients still flagged with placeholder data (e.g. from bulk
+   * import) — see Patient.requiresDataVerification. */
+  requiresDataVerification?: boolean;
 }

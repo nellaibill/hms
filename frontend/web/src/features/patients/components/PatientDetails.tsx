@@ -35,6 +35,7 @@ import { useAddPatientAllergyMutation, useRemovePatientAllergyMutation } from '.
 import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
 import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
 import type { DocumentResponse, PatientVisit, VisitConsultation } from '@hms/shared';
 
@@ -757,7 +758,9 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
 
 export function PatientDetails({ patient, activeTab, onActiveTabChange }: PatientDetailsProps) {
   return (
-    <Tabs value={activeTab} onValueChange={onActiveTabChange}>
+    <div className="flex flex-col gap-3">
+      {patient.requiresDataVerification && <DataVerificationBanner />}
+      <Tabs value={activeTab} onValueChange={onActiveTabChange}>
       <TabsList>
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="visits">Visits</TabsTrigger>
@@ -793,6 +796,7 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       <TabsContent value="timeline" className="pt-2.5">
         <EmptyState icon={ClipboardList} message="No timeline activity has been recorded for this patient yet." />
       </TabsContent>
-    </Tabs>
+      </Tabs>
+    </div>
   );
 }

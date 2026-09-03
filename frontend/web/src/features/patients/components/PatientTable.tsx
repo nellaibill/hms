@@ -1,6 +1,7 @@
 import type { Patient } from '@hms/shared';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -55,12 +56,24 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
             <tr key={patient.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{patient.uhid}</td>
               <td className="px-4 py-3">
-                <Link
-                  to={`/patients/registration/${patient.id}`}
-                  className="font-medium text-foreground hover:text-primary hover:underline"
-                >
-                  {patient.title} {patient.firstName} {patient.lastName}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/patients/registration/${patient.id}`}
+                    className="font-medium text-foreground hover:text-primary hover:underline"
+                  >
+                    {patient.title} {patient.firstName} {patient.lastName}
+                  </Link>
+                  {patient.requiresDataVerification && (
+                    <Badge
+                      variant="warning"
+                      className="gap-1 whitespace-nowrap"
+                      title="Imported from legacy records — some details are placeholders and need to be verified with the patient."
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      Verify Details
+                    </Badge>
+                  )}
+                </div>
               </td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                 {new Date(patient.createdAt).toLocaleDateString('en-IN')}

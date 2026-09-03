@@ -65,6 +65,11 @@ internal class PatientRepository : IPatientRepository
             patients = patients.Where(p => EF.Functions.ILike(p.PrimaryPhone, term) || (p.SecondaryPhone != null && EF.Functions.ILike(p.SecondaryPhone, term)));
         }
 
+        if (query.RequiresDataVerification.HasValue)
+        {
+            patients = patients.Where(p => p.RequiresDataVerification == query.RequiresDataVerification.Value);
+        }
+
         if (query.Age.HasValue && query.Age.Value >= 0)
         {
             // Age isn't a stored column (Patient.Age is always derived from DateOfBirth), so

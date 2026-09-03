@@ -34,6 +34,7 @@ export class PatientsApi {
         age: query.age,
         uhid: query.uhid,
         phone: query.phone,
+        requiresDataVerification: query.requiresDataVerification,
       },
     });
     return {

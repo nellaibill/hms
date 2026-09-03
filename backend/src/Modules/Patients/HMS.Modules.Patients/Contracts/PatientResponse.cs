@@ -30,6 +30,11 @@ public record PatientResponse
     public IReadOnlyList<AllergyResponse> Allergies { get; init; } = [];
     public IReadOnlyList<EmergencyContactResponse> EmergencyContacts { get; init; } = [];
 
+    /// <summary>True when this patient still has placeholder values (from bulk import) sitting
+    /// in required fields — the frontend shows a "please verify this patient's details" prompt
+    /// while true. Cleared automatically the next time this patient is edited and saved.</summary>
+    public bool RequiresDataVerification { get; init; }
+
     /// <summary>Opaque optimistic-concurrency token (the row's Postgres xmin at read time) —
     /// echo this back on UpdatePatientRequest.RowVersion so a save made against stale data is
     /// rejected with a clear conflict instead of silently overwriting someone else's edit.</summary>
@@ -37,6 +42,7 @@ public record PatientResponse
 
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+    public Guid? UpdatedBy { get; init; }
 }
 
 public record AddressResponse

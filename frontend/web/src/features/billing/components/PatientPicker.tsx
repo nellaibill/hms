@@ -44,6 +44,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
       page: 1,
       pageSize: RESULTS_PAGE_SIZE,
       sort: 'lastName',
+      requiresDataVerification: activeFilters?.needsVerification || undefined,
       ...(singleFreeTextValue
         ? { search: singleFreeTextValue.trim() }
         : {
@@ -56,7 +57,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
     { enabled: hasSearched },
   );
 
-  function handleFilterChange(field: keyof PatientSearchFilters, value: string) {
+  function handleFilterChange(field: keyof PatientSearchFilters, value: string | boolean) {
     setFilters((prev) => ({ ...prev, [field]: value }));
   }
 

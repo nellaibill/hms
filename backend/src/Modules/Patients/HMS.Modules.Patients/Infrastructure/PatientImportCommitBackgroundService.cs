@@ -110,7 +110,12 @@ internal class PatientImportCommitBackgroundService : BackgroundService
                 continue;
             }
 
-            var result = await patientService.CreateAsync(request, actorId: item.CommittedBy, cancellationToken, uhidOverride: uhid);
+            // Every bulk-imported patient is flagged for a receptionist to re-confirm details
+            // with them next time they're seen — this pipeline routinely fills required fields
+            // with placeholder values (synthetic phone numbers, sentinel dates of birth, etc.)
+            // that pass validation but aren't real data. Cleared automatically the next time
+            // anyone saves an edit — see Patient.ClearDataVerificationFlag.
+            var result = await patientService.CreateAsync(request, actorId: item.CommittedBy, cancellationToken, uhidOverride: uhid, requiresDataVerification: true);
             if (result.IsSuccess)
             {
                 row.MarkCreated(result.Value!.Id);
