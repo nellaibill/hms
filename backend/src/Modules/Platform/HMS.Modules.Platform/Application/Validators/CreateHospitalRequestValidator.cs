@@ -67,6 +67,20 @@ internal class CreateHospitalRequestValidator : AbstractValidator<CreateHospital
             .Must(key => FeatureCatalog.All.Contains(key))
             .WithMessage("One or more feature keys are not recognized.");
 
+        // A selected feature whose FeatureCatalog.Dependencies aren't also selected would
+        // leave the tenant's own module unconditionally querying a schema that was never
+        // provisioned (e.g. Pharmacy without Products) — see FeatureCatalog.Dependencies'
+        // own doc comment for the confirmed real failure this prevents.
+        RuleFor(x => x.EnabledFeatureKeys)
+            .Must(keys => keys.All(key => !FeatureCatalog.Dependencies.TryGetValue(key, out var deps) || deps.All(keys.Contains)))
+            .WithMessage(BuildDependencyErrorMessage());
+
+        static string BuildDependencyErrorMessage()
+        {
+            var clauses = FeatureCatalog.Dependencies.SelectMany(kv => kv.Value.Select(dep => $"'{kv.Key}' requires '{dep}'"));
+            return $"A selected module requires another module that isn't selected ({string.Join(", ", clauses)}).";
+        }
+
         RuleFor(x => x.ImportedPatientCapacity)
             .InclusiveBetween(1, 10_000_000)
             .WithMessage("Imported patient capacity must be between 1 and 10,000,000.");
