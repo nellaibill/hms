@@ -37,6 +37,21 @@ _To be documented._
 
 ## Decisions
 
+### ADR-056: Removed the redundant "Laboratory Workflow" top-level sidebar entry
+**Date:** 2026-09-03
+**Status:** Accepted
+
+**Context**
+User-reported: the sidebar showed both "Central Laboratory" and a separate "Laboratory Workflow" entry directly beneath it — but "Central Laboratory" is a hub page (`CentralLaboratoryHubPage.tsx`) whose own "Workflow" section already links to the exact same destination (`/diagnostics/lab/dashboard`) via a card. Confirmed this is a one-off inconsistency, not a systemic pattern: Pharmacy, Radiology, and Blood Bank each have exactly one top-level sidebar entry apiece, relying on their own hub page for sub-navigation, same as Central Laboratory's hub page already does.
+
+**Decision**
+Removed the standalone `'Laboratory Workflow'` leaf from `navigation.ts` (and its now-unused `Microscope` icon import). Confirmed safe: `/diagnostics/lab/dashboard`'s actual route was never derived from that nav leaf in the first place — `routeGatedLeafPaths` in `routes.tsx` already excludes it from the auto-generated nav-driven routes, since it's wired up separately via `labWorkflowRoutes` with its own real `RequireFeatureRoute`/`RequirePermissionRoute` guard. `getAllLeaves()` (the removed entry's only other consumer) has no other callers. The route, its guard, and the hub page's own card linking to it are all untouched — only the redundant sidebar entry is gone.
+
+**Consequences**
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+
+---
+
 ### ADR-055: OPD Billing Entry stops re-offering a visit's already-billed consultants
 **Date:** 2026-09-02
 **Status:** Accepted
