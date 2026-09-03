@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { generateClientId } from '@/lib/id';
 import { LAB_RESULT_FLAGS, type LabOrderItem, type LabResultFlag, type ResultParameterRequest } from '../types';
 
 const EDITABLE_STATUSES: LabOrderItem['status'][] = ['Processing', 'ResultEntryInProgress', 'CorrectionRequired'];
@@ -15,7 +16,7 @@ interface DraftRow extends ResultParameterRequest {
 
 function toDraftRows(item: LabOrderItem): DraftRow[] {
   if (item.parameters.length === 0) {
-    return [{ key: crypto.randomUUID(), parameterName: '', resultValue: '', unit: '', referenceRange: '', flag: null, remarks: '' }];
+    return [{ key: generateClientId(), parameterName: '', resultValue: '', unit: '', referenceRange: '', flag: null, remarks: '' }];
   }
   return item.parameters.map((parameter) => ({
     key: parameter.id,
@@ -52,7 +53,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
   }
 
   function addRow() {
-    setRows((prev) => [...prev, { key: crypto.randomUUID(), parameterName: '', resultValue: '', unit: '', referenceRange: '', flag: null, remarks: '' }]);
+    setRows((prev) => [...prev, { key: generateClientId(), parameterName: '', resultValue: '', unit: '', referenceRange: '', flag: null, remarks: '' }]);
   }
 
   function removeRow(key: string) {
