@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-055: OPD Billing Entry stops re-offering a visit's already-billed consultants
+**Date:** 2026-09-02
+**Status:** Accepted
+
+**Context**
+Live-verification follow-up while checking on ADR-039 (on-call consultation charge): the user's real report turned out to be a different, genuine bug — a visit's consultants (from Registration Details) kept being pre-filled into Consultation Billing at ₹0 even though that visit had already been billed. `InvoiceCreatePage.tsx` already had a guard for exactly this (`consultationAlreadyBilledToday`), but it had two real gaps: (1) scoped to "any Consultation-type invoice item created **today**" — a visit billed on an earlier day got no guard at all; (2) matched "any invoice for this **patient**," not this specific visit — a patient with more than one visit could get a false match or, as in this case, no match at all if the check's date/patient scoping didn't line up with the actual billed visit.
+
+**Decision**
+Replaced the guard with `consultationAlreadyBilledForVisit`, keyed to `Invoice.VisitId` (which does exist and, unlike a line item's `ConsultantId`, is never cleared by `MarkPaid()` — see ADR-048) matching the specific visit being prefilled, with no date restriction. Deliberately whole-visit rather than per-consultant: since ADR-048 clears `ConsultantId` on payment, a *paid* line item's specific consultant can no longer be matched individually from invoice data — but billing every consultant on a visit together in one invoice is the realistic common case anyway, so a whole-visit guard is the meaningful fix here, not an under-scoped one.
+
+**Consequences**
+- Once any non-voided Consultation-type invoice item exists for a visit, that visit's Consultation Billing card starts blank on the next OPD Billing Entry session for that patient (same fallback behavior the old guard already had) — reception can still add a fresh Consultation row manually if a genuinely new/different consultant needs billing for that visit.
+- No frontend automated test added — no test runner exists in this repo (see ADR-038).
+- **Also discovered and fixed while investigating this**: ADR-052's own decision-log entry had been accidentally deleted (header line and separator only — the body survived) during an unrelated editing mistake made while resolving ADR-053. Restored from git history (commit 7ee6d45) verbatim; the ADR numbering 001-054 is now confirmed fully sequential with no gaps.
+
+---
+
 ### ADR-054: Patient visit list shows every consultant directly, not just the first behind a hover tooltip
 **Date:** 2026-09-02
 **Status:** Accepted
@@ -66,6 +83,10 @@ Updated `docs/DatabaseArchitecture.md`: the top summary line and §1's stale "fu
 **Consequences**
 - Purely documentation — no code or test changes. The ~10 existing code comments that reference this doc by name weren't individually updated to cite the new §13 specifically (they already correctly name the file; adding a section number to each is cosmetic precision not worth a 10-file sweep for a Tier-2 documentation item).
 - No PR test plan beyond confirming the new section numbering is sequential with no gaps (verified: 1-14, no duplicates).
+
+---
+
+### ADR-052: Local dev/Windows installer stop creating a separate hms_qa database
 **Date:** 2026-09-02
 **Status:** Accepted
 

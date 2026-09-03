@@ -81,25 +81,34 @@ export default function InvoiceCreatePage() {
   // same as before this change.
   const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient?.id);
 
-  // Guards against double-billing a consultation already invoiced earlier today: without
-  // this, re-opening OPD Billing Entry for the same patient the same day (e.g. to add a
-  // Laboratory charge) would still prefill Consultation Billing with today's from-visit
-  // doctor row, inviting reception to save it again as a second, duplicate consultation
-  // charge. A voided invoice doesn't count — that consultation was never actually billed.
+  // Guards against double-billing a consultation this specific visit already had billed —
+  // without this, re-opening OPD Billing Entry for the same visit (e.g. to add a Laboratory
+  // charge, or any time after the day it was originally billed) would still prefill
+  // Consultation Billing with the visit's doctor rows, inviting reception to save them again
+  // as a second, duplicate consultation charge. Keyed to the visit's own id (Invoice.VisitId),
+  // not "any invoice for this patient today" — a patient can have more than one visit, and a
+  // consultation billed yesterday (or any earlier day) needs the same guard a same-day one
+  // does. Deliberately whole-visit, not per-consultant: InvoiceLineItem.MarkPaid() clears
+  // ConsultantId once a line item is paid (see docs/DecisionLog.md's Billing ADR on that fix),
+  // so a paid item's consultant can no longer be matched individually — but billing every
+  // consultant on a visit together in one invoice is the realistic common case anyway, so this
+  // is the meaningful guard rather than a needless simplification. A voided invoice doesn't
+  // count — that consultation was never actually billed.
   const { data: patientInvoices, isPending: invoicesPending } = usePatientInvoicesQuery(patient?.id);
-  const consultationAlreadyBilledToday = useMemo(() => {
-    const today = new Date().toDateString();
+  const consultationAlreadyBilledForVisit = useMemo(() => {
+    const latestVisit = visits?.[0];
+    if (!latestVisit) return false;
     return (patientInvoices ?? []).some(
       (invoice) =>
         !invoice.isVoided &&
-        new Date(invoice.createdAt).toDateString() === today &&
+        invoice.visitId === latestVisit.visitId &&
         invoice.items.some((item) => item.billingType === 'Consultation'),
     );
-  }, [patientInvoices]);
+  }, [patientInvoices, visits]);
 
   const billingDefaultValues = useMemo<BillingFormValues>(() => {
     const latestVisit = visits?.[0];
-    if (consultationAlreadyBilledToday || !latestVisit || latestVisit.consultations.length === 0) {
+    if (consultationAlreadyBilledForVisit || !latestVisit || latestVisit.consultations.length === 0) {
       return defaultBillingFormValues;
     }
     const consultation: ConsultationBillingFormValues[] = latestVisit.consultations.map((c) => ({
@@ -115,7 +124,7 @@ export default function InvoiceCreatePage() {
       fromVisit: true,
     }));
     return { ...defaultBillingFormValues, consultation };
-  }, [visits, consultationAlreadyBilledToday]);
+  }, [visits, consultationAlreadyBilledForVisit]);
 
   // Guards against losing an in-progress, unsaved invoice — a receptionist part-way through
   // billing several items who accidentally hits back/closes the tab previously lost
