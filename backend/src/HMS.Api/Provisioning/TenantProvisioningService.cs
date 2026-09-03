@@ -46,7 +46,21 @@ public sealed class TenantProvisioningService : ITenantProvisioner
         {
             var tenantConnectionString = BuildTenantConnectionString(databaseName);
 
-            await _migrationService.MigrateAsync(tenantConnectionString, request.EnabledFeatureKeys, cancellationToken);
+            // Every SchemaBacked schema is migrated for every tenant at creation time,
+            // regardless of which Optional features the Super Admin selected — not just
+            // request.EnabledFeatureKeys (Mandatory ∪ the selected Optional keys). This
+            // decouples "does the table exist" from "is the feature toggled on": schema
+            // existence is settled once, permanently, at provisioning time, and enabling an
+            // Optional feature later (Manage Features) only flips a platform.tenant_features
+            // visibility/RBAC flag — TenantMigrationService.MigrateAsync is idempotent
+            // (Database.MigrateAsync no-ops on an already-migrated schema), so this is safe
+            // to call with the full set every time. Without this, a tenant created with e.g.
+            // Pharmacy unchecked would have no `pharmacy` schema at all until an operator
+            // remembered to enable it later — exactly the class of gap that historically hid
+            // Billing's own missing migration (ADR-028) until a live regression test caught
+            // it, just relocated from "forgot to add a schema to the catalog" to "forgot to
+            // toggle a feature after creation."
+            await _migrationService.MigrateAsync(tenantConnectionString, FeatureCatalog.SchemaBacked, cancellationToken);
 
             // Patients is a Mandatory module (always migrated regardless of EnabledFeatureKeys
             // — see TenantMigrationService), so both UHID sequences always exist by this point.

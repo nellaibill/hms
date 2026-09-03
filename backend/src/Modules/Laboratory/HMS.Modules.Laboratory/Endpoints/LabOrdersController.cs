@@ -15,7 +15,11 @@ namespace HMS.Modules.Laboratory.Endpoints;
 /// generation/release. Gated by the existing "diagnostics.*" permissions (seeded once for
 /// Masters' diagnostics-admin screens, reused here rather than adding a new permission
 /// group) — which human role gets which permission is a tenant admin's own Roles
-/// configuration, not something this controller decides.
+/// configuration, not something this controller decides. Also gated by
+/// [RequireFeature("laboratory")] — every other optional module's controller has this
+/// (see e.g. Pharmacy's StockReceiptsController); a tenant that hasn't enabled the
+/// "laboratory" feature must not be able to reach this API even if they hold "diagnostics.*"
+/// permissions from the unrelated, always-available Masters diagnostics-admin catalog.
 ///
 /// Deliberately has no POST /orders action: ILabOrderService.CreateFromInvoiceAsync is only
 /// ever called in-process by Billing's InvoiceService right after an invoice with a
@@ -23,6 +27,7 @@ namespace HMS.Modules.Laboratory.Endpoints;
 /// request, only Reception/Billing does.
 /// </summary>
 [ApiController]
+[RequireFeature("laboratory")]
 [Route("api/v1/laboratory/orders")]
 public class LabOrdersController : ControllerBase
 {

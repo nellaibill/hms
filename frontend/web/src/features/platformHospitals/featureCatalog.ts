@@ -22,6 +22,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   ot: 'Operation Theatre (OT)',
   pharmacy: 'Pharmacy',
   'central-laboratory': 'Central Laboratory',
+  laboratory: 'Laboratory Workflow',
   radiology: 'Radiology',
   'blood-bank': 'Blood Bank',
   ambulance: 'Ambulance',
@@ -38,7 +39,15 @@ export function featureLabel(key: string): string {
 }
 
 /** Mirrors HMS.Shared.Kernel.FeatureCatalog.Optional — the only keys a platform admin can
- * choose at hospital-creation time (mandatory ones are always included server-side). */
+ * choose at hospital-creation time (mandatory ones are always included server-side).
+ *
+ * IMPORTANT — keep this in sync with FeatureCatalog.Optional by hand: this is a hardcoded
+ * local list, not fetched from the API (unlike HospitalFeaturesDialog.tsx's post-creation
+ * "Manage Features" screen, which reads live from TenantFeaturesResponse.allFeatures). It
+ * already drifted out of sync once — "laboratory" was added to the backend catalog without a
+ * matching update here, so newly-registered hospitals had no way to enable it at creation
+ * time even though the backend would have happily accepted it. Add every new
+ * FeatureCatalog.Optional key here the same day it's added on the backend. */
 export const OPTIONAL_FEATURE_KEYS = [
   'hr',
   'calendar',
@@ -48,6 +57,7 @@ export const OPTIONAL_FEATURE_KEYS = [
   'ot',
   'pharmacy',
   'central-laboratory',
+  'laboratory',
   'radiology',
   'blood-bank',
   'ambulance',

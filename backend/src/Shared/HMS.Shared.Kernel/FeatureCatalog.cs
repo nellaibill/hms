@@ -106,4 +106,26 @@ public static class FeatureCatalog
     /// <summary>Platform-admin toggleable per tenant — every catalog key that isn't mandatory,
     /// schema-backed or not.</summary>
     public static readonly IReadOnlyList<string> Optional = [.. All.Where(key => !Mandatory.Contains(key))];
+
+    /// <summary>Feature key → the other Optional feature keys it functionally requires to be
+    /// enabled at the same time, because its module's code calls straight into the
+    /// dependency's schema with no safety net. Only real, confirmed runtime dependencies
+    /// belong here — a dependency on a Mandatory key never needs an entry, since Mandatory
+    /// keys are always present for every tenant.
+    ///
+    /// Enforced by <c>CreateHospitalRequestValidator</c> (hospital creation) and
+    /// <c>UpdateTenantFeaturesRequestValidator</c> (feature toggling), so a tenant can never
+    /// be put into a state where one enabled module unconditionally queries another module's
+    /// schema that was never provisioned — confirmed live as a real gap: Pharmacy's
+    /// DispenseService/StockReceiptService/StockBalanceService call IProductService/
+    /// IProductBatchService directly and unconditionally (unlike Billing's deliberately
+    /// best-effort, try/catch-wrapped call into Laboratory — see InvoiceService.CreateAsync's
+    /// own comment), so enabling "pharmacy" without "products" previously had no guard at
+    /// all and would 500 on the first real dispense/stock operation against a
+    /// "relation products.products does not exist" error.</summary>
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> Dependencies =
+        new Dictionary<string, IReadOnlyList<string>>
+        {
+            ["pharmacy"] = ["products"],
+        };
 }
