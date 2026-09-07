@@ -60,6 +60,7 @@ export function MasterTable({ config, records, sort, onSortChange }: MasterTable
   const columnFields = config.fields
     .filter((field) => field.type !== 'textarea' && field.showInTable !== false && field.key !== config.nameField)
     .slice(0, 4);
+  const extraColumns = config.extraColumns ?? [];
   const primarySortField = config.nameField ?? config.codeField;
 
   return (
@@ -73,6 +74,11 @@ export function MasterTable({ config, records, sort, onSortChange }: MasterTable
             {columnFields.map((field) => (
               <th key={field.key} className="whitespace-nowrap px-4 py-2.5">
                 {field.label}
+              </th>
+            ))}
+            {extraColumns.map((column) => (
+              <th key={column.key} className="whitespace-nowrap px-4 py-2.5">
+                {column.label}
               </th>
             ))}
             <th className="whitespace-nowrap px-4 py-2.5">Status</th>
@@ -94,6 +100,11 @@ export function MasterTable({ config, records, sort, onSortChange }: MasterTable
               {columnFields.map((field) => (
                 <td key={field.key} className="max-w-xs truncate px-4 py-3 text-muted-foreground">
                   {renderFieldValue(field, record)}
+                </td>
+              ))}
+              {extraColumns.map((column) => (
+                <td key={column.key} className="max-w-xs truncate px-4 py-3 text-muted-foreground">
+                  {column.render(record)}
                 </td>
               ))}
               <td className="px-4 py-3">

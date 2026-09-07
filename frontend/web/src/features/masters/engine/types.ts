@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 /**
  * Masters (Reference Data, see docs/03_Masters_ERD) is a config-driven engine — every
@@ -72,6 +73,20 @@ export interface MasterEntityConfig {
   /** Cross-field rule beyond single-field validation (e.g. unit_conversion's from != to). Return an error message, or undefined if valid. */
   validateForm?: (values: Record<string, unknown>) => string | undefined;
   fields: MasterFieldDef[];
+  /**
+   * Read-only columns derived from more than one field (e.g. profit margin = price − cost)
+   * that don't correspond to a real, editable form input — shown in the list table only,
+   * appended after the regular fields and never rendered by MasterForm. Kept entirely separate
+   * from `fields` rather than a new field type so a computed value can never accidentally end
+   * up editable or included in a create/update request body.
+   */
+  extraColumns?: MasterExtraColumn[];
+}
+
+export interface MasterExtraColumn {
+  key: string;
+  label: string;
+  render: (record: MasterRecord) => ReactNode;
 }
 
 /** Every Masters record shares these columns regardless of entity — mirrors HMS.Shared.Kernel.Entity's audit/soft-delete columns, minus the actor/version columns which aren't user-editable. */

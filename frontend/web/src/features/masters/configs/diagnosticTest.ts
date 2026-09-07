@@ -37,4 +37,22 @@ export const diagnosticTestConfig: MasterEntityConfig = {
     { key: 'isOutsourced', label: 'Outsourced to Reference Lab', type: 'boolean', defaultValue: false },
     { key: 'referenceLab', label: 'Reference Lab', type: 'text', placeholder: 'e.g. Q-LAB, ANDERSON', helpText: 'Only relevant when outsourced.' },
   ],
+  extraColumns: [
+    {
+      key: 'margin',
+      label: 'Margin',
+      // costPrice of 0 means "not yet costed" (see the backend CostPrice field's own doc
+      // comment), not "free to run" — a fake 100% margin for every un-costed test would be
+      // actively misleading, so those render as "Not costed" instead of a number.
+      render: (record) => {
+        const price = Number(record.price ?? 0);
+        const costPrice = Number(record.costPrice ?? 0);
+        if (costPrice <= 0) return 'Not costed';
+        const margin = price - costPrice;
+        const marginPercent = price > 0 ? (margin / price) * 100 : 0;
+        const sign = margin < 0 ? '-' : '';
+        return `${sign}₹${Math.abs(margin).toLocaleString('en-IN')} (${marginPercent.toFixed(0)}%)`;
+      },
+    },
+  ],
 };
