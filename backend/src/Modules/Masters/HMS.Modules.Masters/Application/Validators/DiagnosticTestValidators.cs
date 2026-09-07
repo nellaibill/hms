@@ -11,6 +11,7 @@ internal class CreateDiagnosticTestRequestValidator : AbstractValidator<CreateDi
         RuleFor(x => x.ServiceType).IsInEnum();
         RuleFor(x => x.Category).MaximumLength(100);
         RuleFor(x => x.Price).GreaterThanOrEqualTo(0).WithMessage("Price cannot be negative.");
+        RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0).WithMessage("Cost price cannot be negative.");
         RuleFor(x => x.ReferenceLab).MaximumLength(100);
     }
 }
@@ -23,6 +24,7 @@ internal class UpdateDiagnosticTestRequestValidator : AbstractValidator<UpdateDi
         RuleFor(x => x.ServiceType).IsInEnum();
         RuleFor(x => x.Category).MaximumLength(100);
         RuleFor(x => x.Price).GreaterThanOrEqualTo(0).WithMessage("Price cannot be negative.");
+        RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0).WithMessage("Cost price cannot be negative.");
         RuleFor(x => x.ReferenceLab).MaximumLength(100);
     }
 }

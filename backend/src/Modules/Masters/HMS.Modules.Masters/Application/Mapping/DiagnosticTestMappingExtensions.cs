@@ -12,6 +12,7 @@ internal static class DiagnosticTestMappingExtensions
         ServiceType = diagnosticTest.ServiceType,
         Category = diagnosticTest.Category,
         Price = diagnosticTest.Price,
+        CostPrice = diagnosticTest.CostPrice,
         IsOutsourced = diagnosticTest.IsOutsourced,
         ReferenceLab = diagnosticTest.ReferenceLab,
         IsActive = diagnosticTest.IsActive,

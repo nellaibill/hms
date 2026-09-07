@@ -23,6 +23,7 @@ internal class DiagnosticServiceConfiguration : IEntityTypeConfiguration<Diagnos
         // App-level reference into DiagnosticProvider — no DB FK, same convention as CategoryId.
         builder.Property(d => d.ProviderId).HasColumnName("provider_id");
         builder.Property(d => d.Price).HasColumnName("price").HasColumnType("numeric(10,2)").IsRequired();
+        builder.Property(d => d.CostPrice).HasColumnName("cost_price").HasColumnType("numeric(10,2)").IsRequired().HasDefaultValue(0m);
         builder.Property(d => d.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
 
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").IsRequired();

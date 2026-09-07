@@ -16,6 +16,7 @@ export interface DiagnosticService {
   isOutsourced: boolean;
   providerId?: string | null;
   price: number;
+  costPrice: number;
   isActive: boolean;
   createdAt: string;
   updatedAt?: string | null;
@@ -31,6 +32,7 @@ export interface CreateDiagnosticServiceRequest {
   /** Required by the backend validator when isOutsourced is true. */
   providerId?: string | null;
   price: number;
+  costPrice: number;
   isActive: boolean;
 }
 
@@ -43,6 +45,7 @@ export interface UpdateDiagnosticServiceRequest {
   isOutsourced: boolean;
   providerId?: string | null;
   price: number;
+  costPrice: number;
   isActive: boolean;
 }
 

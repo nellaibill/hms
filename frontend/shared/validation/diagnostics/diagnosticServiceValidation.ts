@@ -15,6 +15,7 @@ const diagnosticServiceCommonSchema = {
   isOutsourced: z.boolean(),
   providerId: z.string().trim().optional().or(z.literal('')),
   price: z.coerce.number().min(0, 'Must be zero or greater'),
+  costPrice: z.coerce.number().min(0, 'Must be zero or greater'),
   isActive: z.boolean(),
 };
 

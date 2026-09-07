@@ -3,6 +3,7 @@ using System;
 using HMS.Modules.Masters.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HMS.Database.Migrations.Masters.Migrations
 {
     [DbContext(typeof(MastersDbContext))]
-    partial class MastersDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907151253_AddDiagnosticTestCostPrice")]
+    partial class AddDiagnosticTestCostPrice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1049,12 +1052,6 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("code");
-
-                    b.Property<decimal>("CostPrice")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("numeric(10,2)")
-                        .HasDefaultValue(0m)
-                        .HasColumnName("cost_price");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")

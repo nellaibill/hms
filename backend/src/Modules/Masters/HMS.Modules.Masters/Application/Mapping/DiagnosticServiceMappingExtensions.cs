@@ -15,6 +15,7 @@ internal static class DiagnosticServiceMappingExtensions
         IsOutsourced = diagnosticService.IsOutsourced,
         ProviderId = diagnosticService.ProviderId,
         Price = diagnosticService.Price,
+        CostPrice = diagnosticService.CostPrice,
         IsActive = diagnosticService.IsActive,
         CreatedAt = diagnosticService.CreatedAt,
         UpdatedAt = diagnosticService.UpdatedAt,

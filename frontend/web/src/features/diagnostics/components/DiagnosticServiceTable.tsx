@@ -27,6 +27,7 @@ export function DiagnosticServiceTable({ services, categoriesById, providersById
             <th className="px-4 py-2.5">Type</th>
             <th className="px-4 py-2.5">Outsourced</th>
             <th className="px-4 py-2.5">Price</th>
+            <th className="px-4 py-2.5">Running Cost</th>
             <th className="px-4 py-2.5">Status</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
@@ -42,6 +43,7 @@ export function DiagnosticServiceTable({ services, categoriesById, providersById
                 {service.isOutsourced ? providersById.get(service.providerId ?? '')?.name ?? 'Outsourced' : 'No'}
               </td>
               <td className="px-4 py-3 text-muted-foreground">₹{service.price.toLocaleString('en-IN')}</td>
+              <td className="px-4 py-3 text-muted-foreground">₹{service.costPrice.toLocaleString('en-IN')}</td>
               <td className="px-4 py-3">
                 <Badge variant={service.isActive ? 'success' : 'secondary'}>{service.isActive ? 'Active' : 'Inactive'}</Badge>
               </td>

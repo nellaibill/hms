@@ -18,6 +18,7 @@ export default function DiagnosticServiceCreatePage() {
         isOutsourced: values.isOutsourced,
         providerId: values.isOutsourced ? values.providerId || undefined : undefined,
         price: values.price,
+        costPrice: values.costPrice,
         isActive: values.isActive,
       },
       { onSuccess: () => navigate('/diagnostics/lab/services') },

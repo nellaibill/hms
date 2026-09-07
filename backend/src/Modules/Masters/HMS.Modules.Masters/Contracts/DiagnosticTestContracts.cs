@@ -27,6 +27,10 @@ public record CreateDiagnosticTestRequest
     public DiagnosticTestServiceType ServiceType { get; init; }
     public string? Category { get; init; }
     public decimal Price { get; init; }
+    /// <summary>What it costs the hospital to run this test once (reagents, consumables,
+    /// allocated overhead) — distinct from <see cref="Price"/>, the patient-facing charge.
+    /// Defaults to 0 (not yet costed).</summary>
+    public decimal CostPrice { get; init; }
     public bool IsOutsourced { get; init; }
     /// <summary>Reference lab the sample is routed to (e.g. "Q-LAB") — only meaningful when <see cref="IsOutsourced"/> is true.</summary>
     public string? ReferenceLab { get; init; }
@@ -39,6 +43,7 @@ public record UpdateDiagnosticTestRequest
     public DiagnosticTestServiceType ServiceType { get; init; }
     public string? Category { get; init; }
     public decimal Price { get; init; }
+    public decimal CostPrice { get; init; }
     public bool IsOutsourced { get; init; }
     public string? ReferenceLab { get; init; }
     public bool IsActive { get; init; } = true;
@@ -51,6 +56,7 @@ public record DiagnosticTestResponse
     public DiagnosticTestServiceType ServiceType { get; init; }
     public string? Category { get; init; }
     public decimal Price { get; init; }
+    public decimal CostPrice { get; init; }
     public bool IsOutsourced { get; init; }
     public string? ReferenceLab { get; init; }
     public bool IsActive { get; init; }

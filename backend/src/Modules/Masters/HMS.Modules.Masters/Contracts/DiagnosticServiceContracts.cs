@@ -14,6 +14,9 @@ public record CreateDiagnosticServiceRequest
     /// <summary>Required when <see cref="IsOutsourced"/> is true.</summary>
     public Guid? ProviderId { get; init; }
     public decimal Price { get; init; }
+    /// <summary>What it costs the hospital to run this test once — distinct from
+    /// <see cref="Price"/>, the patient-facing charge. Defaults to 0 (not yet costed).</summary>
+    public decimal CostPrice { get; init; }
     public bool IsActive { get; init; } = true;
 }
 
@@ -26,6 +29,7 @@ public record UpdateDiagnosticServiceRequest
     public bool IsOutsourced { get; init; }
     public Guid? ProviderId { get; init; }
     public decimal Price { get; init; }
+    public decimal CostPrice { get; init; }
     public bool IsActive { get; init; } = true;
 }
 
@@ -39,6 +43,7 @@ public record DiagnosticServiceResponse
     public bool IsOutsourced { get; init; }
     public Guid? ProviderId { get; init; }
     public decimal Price { get; init; }
+    public decimal CostPrice { get; init; }
     public bool IsActive { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }

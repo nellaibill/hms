@@ -19,6 +19,7 @@ internal class CreateDiagnosticServiceRequestValidator : AbstractValidator<Creat
             .WithMessage("Procedure services must be created as a DiagnosticTest, not a DiagnosticService.");
 
         RuleFor(x => x.Price).GreaterThanOrEqualTo(0).WithMessage("Price cannot be negative.");
+        RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0).WithMessage("Cost price cannot be negative.");
 
         RuleFor(x => x.ProviderId)
             .NotNull()
@@ -41,6 +42,7 @@ internal class UpdateDiagnosticServiceRequestValidator : AbstractValidator<Updat
             .WithMessage("Procedure services must be created as a DiagnosticTest, not a DiagnosticService.");
 
         RuleFor(x => x.Price).GreaterThanOrEqualTo(0).WithMessage("Price cannot be negative.");
+        RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0).WithMessage("Cost price cannot be negative.");
 
         RuleFor(x => x.ProviderId)
             .NotNull()
