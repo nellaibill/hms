@@ -5,7 +5,8 @@
     "category": "HAEMATOLOGY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 35.0
   },
   {
     "name": "Total WBC Count (TC)",
@@ -13,7 +14,8 @@
     "category": "HAEMATOLOGY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 35.0
   },
   {
     "name": "Platelet Count",
@@ -21,7 +23,8 @@
     "category": "HAEMATOLOGY",
     "price": 100.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "RBC Count",
@@ -29,7 +32,8 @@
     "category": "HAEMATOLOGY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 35.0
   },
   {
     "name": "Differential Count",
@@ -37,7 +41,8 @@
     "category": "HAEMATOLOGY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 35.0
   },
   {
     "name": "Packed Cell Volume (PCV)",
@@ -45,7 +50,8 @@
     "category": "HAEMATOLOGY",
     "price": 70.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 40.0
   },
   {
     "name": "MCV",
@@ -53,7 +59,8 @@
     "category": "HAEMATOLOGY",
     "price": 30.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 25.0
   },
   {
     "name": "ESR",
@@ -61,7 +68,8 @@
     "category": "HAEMATOLOGY",
     "price": 60.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 25.0
   },
   {
     "name": "Blood Grouping & Rh Typing",
@@ -69,7 +77,8 @@
     "category": "HAEMATOLOGY",
     "price": 100.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Mantoux Test",
@@ -77,7 +86,8 @@
     "category": "HAEMATOLOGY",
     "price": 100.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 50.0
   },
   {
     "name": "CRP",
@@ -85,7 +95,8 @@
     "category": "BIOCHEMISTRY",
     "price": 350.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 150.0
   },
   {
     "name": "Uric Acid (UA)",
@@ -93,7 +104,8 @@
     "category": "BIOCHEMISTRY",
     "price": 120.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 40.0
   },
   {
     "name": "RA Factor (RF)",
@@ -101,7 +113,8 @@
     "category": "BIOCHEMISTRY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "ASO Titre",
@@ -109,7 +122,8 @@
     "category": "BIOCHEMISTRY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "Urea",
@@ -117,7 +131,8 @@
     "category": "BIOCHEMISTRY",
     "price": 75.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 35.0
   },
   {
     "name": "Creatinine",
@@ -125,7 +140,8 @@
     "category": "BIOCHEMISTRY",
     "price": 75.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 35.0
   },
   {
     "name": "Calcium",
@@ -133,7 +149,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 50.0
   },
   {
     "name": "Lactate Dehydrogenase (LDH)",
@@ -141,7 +158,8 @@
     "category": "BIOCHEMISTRY",
     "price": 400.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "Serum Amylase",
@@ -149,7 +167,8 @@
     "category": "BIOCHEMISTRY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "Serum Lipase",
@@ -157,7 +176,8 @@
     "category": "BIOCHEMISTRY",
     "price": 400.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 200.0
   },
   {
     "name": "Bilirubin (Total+Direct)",
@@ -165,7 +185,8 @@
     "category": "BIOCHEMISTRY",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 75.0
   },
   {
     "name": "S G O T",
@@ -173,7 +194,8 @@
     "category": "BIOCHEMISTRY",
     "price": 175.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 75.0
   },
   {
     "name": "S G P T",
@@ -181,7 +203,8 @@
     "category": "BIOCHEMISTRY",
     "price": 175.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 75.0
   },
   {
     "name": "Protein",
@@ -189,7 +212,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Albumin",
@@ -197,7 +221,8 @@
     "category": "BIOCHEMISTRY",
     "price": 70.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 20.0
   },
   {
     "name": "Alk.Phosphatase",
@@ -205,7 +230,8 @@
     "category": "BIOCHEMISTRY",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 75.0
   },
   {
     "name": "A/G Ratio",
@@ -213,7 +239,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Total Cholesterol",
@@ -221,7 +248,8 @@
     "category": "BIOCHEMISTRY",
     "price": 100.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 30.0
   },
   {
     "name": "Triglycerides",
@@ -229,7 +257,8 @@
     "category": "BIOCHEMISTRY",
     "price": 120.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 50.0
   },
   {
     "name": "HDL",
@@ -237,7 +266,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Prothrombin Time (PT)",
@@ -245,7 +275,8 @@
     "category": "BIOCHEMISTRY",
     "price": 250.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "APTT",
@@ -253,7 +284,8 @@
     "category": "BIOCHEMISTRY",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 50.0
   },
   {
     "name": "INR",
@@ -261,7 +293,8 @@
     "category": "BIOCHEMISTRY",
     "price": 100.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 30.0
   },
   {
     "name": "Bleeding Time (BT)",
@@ -269,7 +302,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 15.0
   },
   {
     "name": "Clotting Time (CT)",
@@ -277,7 +311,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 15.0
   },
   {
     "name": "Capillary Blood Glucose (CBG) - Strip test",
@@ -285,7 +320,8 @@
     "category": "BIOCHEMISTRY",
     "price": 30.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 15.0
   },
   {
     "name": "Random Blood Sugar (RBS)",
@@ -293,7 +329,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 20.0
   },
   {
     "name": "Fasting Blood Sugar (FBS)",
@@ -301,7 +338,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 20.0
   },
   {
     "name": "Post Prandial Blood Sugar (PPBS)",
@@ -309,7 +347,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 20.0
   },
   {
     "name": "HbA1C",
@@ -317,7 +356,8 @@
     "category": "BIOCHEMISTRY",
     "price": 450.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 150.0
   },
   {
     "name": "Glucose Challenge Test (GCT)",
@@ -325,7 +365,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 75.0
   },
   {
     "name": "Glucose Tolerance Test (GTT)",
@@ -333,7 +374,8 @@
     "category": "BIOCHEMISTRY",
     "price": 450.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 200.0
   },
   {
     "name": "Serum Iron",
@@ -341,7 +383,8 @@
     "category": "BIOCHEMISTRY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 150.0
   },
   {
     "name": "Transferrin Saturation",
@@ -349,7 +392,8 @@
     "category": "BIOCHEMISTRY",
     "price": 800.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 550.0
   },
   {
     "name": "Total Iron Binding Capacity (TIBC)",
@@ -357,7 +401,8 @@
     "category": "BIOCHEMISTRY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 150.0
   },
   {
     "name": "Sodium",
@@ -365,7 +410,8 @@
     "category": "ELECTROLYTES",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Potassium",
@@ -373,7 +419,8 @@
     "category": "ELECTROLYTES",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Chloride",
@@ -381,7 +428,8 @@
     "category": "ELECTROLYTES",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Bicarbonate",
@@ -389,7 +437,8 @@
     "category": "ELECTROLYTES",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 70.0
   },
   {
     "name": "Anti-CCP",
@@ -397,7 +446,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 700.0
   },
   {
     "name": "25-OH-Vitamin D2",
@@ -405,7 +455,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1350.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 800.0
   },
   {
     "name": "D-Dimer",
@@ -413,7 +464,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 550.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 380.0
   },
   {
     "name": "Ferritin",
@@ -421,7 +473,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 700.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 450.0
   },
   {
     "name": "Vitamin B12",
@@ -429,7 +482,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 600.0
   },
   {
     "name": "T3",
@@ -437,7 +491,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 80.0
   },
   {
     "name": "T4",
@@ -445,7 +500,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 80.0
   },
   {
     "name": "TSH",
@@ -453,7 +509,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 80.0
   },
   {
     "name": "FT3",
@@ -461,7 +518,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "FT4",
@@ -469,7 +527,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "Anti TPO",
@@ -477,7 +536,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 600.0
   },
   {
     "name": "Beta HCG",
@@ -485,7 +545,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 500.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 300.0
   },
   {
     "name": "LH",
@@ -493,7 +554,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 250.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 160.0
   },
   {
     "name": "FSH",
@@ -501,7 +563,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 250.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 160.0
   },
   {
     "name": "E2",
@@ -509,7 +572,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 280.0
   },
   {
     "name": "FE3",
@@ -517,7 +581,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 500.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 290.0
   },
   {
     "name": "Progesterone",
@@ -525,7 +590,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 285.0
   },
   {
     "name": "17-OH-Progesterone",
@@ -533,7 +599,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 700.0
   },
   {
     "name": "Total Testosterone",
@@ -541,7 +608,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 650.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 320.0
   },
   {
     "name": "DHEAS",
@@ -549,7 +617,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2800.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 1800.0
   },
   {
     "name": "AMH",
@@ -557,7 +626,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1800.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 1000.0
   },
   {
     "name": "Prolactin",
@@ -565,7 +635,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 230.0
   },
   {
     "name": "HIV",
@@ -573,7 +644,8 @@
     "category": "IMMUNOLOGY",
     "price": 250.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "HBsAg",
@@ -581,7 +653,8 @@
     "category": "IMMUNOLOGY",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 45.0
   },
   {
     "name": "HCV",
@@ -589,7 +662,8 @@
     "category": "IMMUNOLOGY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 120.0
   },
   {
     "name": "VDRL",
@@ -597,7 +671,8 @@
     "category": "IMMUNOLOGY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 40.0
   },
   {
     "name": "Dengue NS1 Ag + IgG-M Ab",
@@ -605,7 +680,8 @@
     "category": "IMMUNOLOGY",
     "price": 600.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 300.0
   },
   {
     "name": "Urine Pregnancy Test (UPT)",
@@ -613,7 +689,8 @@
     "category": "PREGNANCY TEST",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 50.0
   },
   {
     "name": "Urine Sugar",
@@ -621,7 +698,8 @@
     "category": "BIOCHEMISTRY",
     "price": 25.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 10.0
   },
   {
     "name": "Urine Albumin",
@@ -629,7 +707,8 @@
     "category": "BIOCHEMISTRY",
     "price": 25.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 10.0
   },
   {
     "name": "Urine Deposits",
@@ -637,7 +716,8 @@
     "category": "BIOCHEMISTRY",
     "price": 30.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 15.0
   },
   {
     "name": "Urine Acetone",
@@ -645,7 +725,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 15.0
   },
   {
     "name": "Urine Bile Salts-Bile Pigments (BS/BP)",
@@ -653,7 +734,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 15.0
   },
   {
     "name": "Urobilinogen",
@@ -661,7 +743,8 @@
     "category": "BIOCHEMISTRY",
     "price": 25.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 10.0
   },
   {
     "name": "Stool for Occult Blood",
@@ -669,7 +752,8 @@
     "category": "MICROBIOLOGY",
     "price": 100.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 50.0
   },
   {
     "name": "Stool for Ova / Cyst",
@@ -677,7 +761,8 @@
     "category": "MICROBIOLOGY",
     "price": 50.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 20.0
   },
   {
     "name": "Semen Analysis",
@@ -685,7 +770,8 @@
     "category": "SEMEN",
     "price": 200.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "Absolute Eosinophil Count",
@@ -693,7 +779,8 @@
     "category": "HAEMATOLOGY",
     "price": 200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 100.0
   },
   {
     "name": "Reticulocyte Count",
@@ -701,7 +788,8 @@
     "category": "HAEMATOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 180.0
   },
   {
     "name": "Peripheral Smear (Path)",
@@ -709,7 +797,8 @@
     "category": "HAEMATOLOGY",
     "price": 300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "Hb Electrophoresis",
@@ -717,7 +806,8 @@
     "category": "HAEMATOLOGY",
     "price": 1300.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 550.0
   },
   {
     "name": "Serum Electrophoresis",
@@ -725,7 +815,8 @@
     "category": "HAEMATOLOGY",
     "price": 1300.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 550.0
   },
   {
     "name": "hs CRP",
@@ -733,7 +824,8 @@
     "category": "BIOCHEMISTRY",
     "price": 300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "Serum Lactate",
@@ -741,7 +833,8 @@
     "category": "BIOCHEMISTRY",
     "price": 500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "Ammonia",
@@ -749,7 +842,8 @@
     "category": "BIOCHEMISTRY",
     "price": 550.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 400.0
   },
   {
     "name": "Serum Homocysteine",
@@ -757,7 +851,8 @@
     "category": "BIOCHEMISTRY",
     "price": 1200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 750.0
   },
   {
     "name": "Gamma Glutamyl Transferase (GGT)",
@@ -765,7 +860,8 @@
     "category": "BIOCHEMISTRY",
     "price": 200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Acid Phosphatase",
@@ -773,7 +869,8 @@
     "category": "BIOCHEMISTRY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Serum Bile Acid",
@@ -781,7 +878,8 @@
     "category": "BIOCHEMISTRY",
     "price": 1750.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1250.0
   },
   {
     "name": "Cholinesterase",
@@ -789,7 +887,8 @@
     "category": "BIOCHEMISTRY",
     "price": 500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 380.0
   },
   {
     "name": "Magnesium",
@@ -797,7 +896,8 @@
     "category": "BIOCHEMISTRY",
     "price": 200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Phosphorus",
@@ -805,7 +905,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 50.0
   },
   {
     "name": "Lithium",
@@ -813,7 +914,8 @@
     "category": "BIOCHEMISTRY",
     "price": 700.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Zinc",
@@ -821,7 +923,8 @@
     "category": "BIOCHEMISTRY",
     "price": 700.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Serum Copper",
@@ -829,7 +932,8 @@
     "category": "BIOCHEMISTRY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 500.0
   },
   {
     "name": "Serum Cerruloplasmin",
@@ -837,7 +941,8 @@
     "category": "BIOCHEMISTRY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 480.0
   },
   {
     "name": "Heavy Metal Screening",
@@ -845,7 +950,8 @@
     "category": "BIOCHEMISTRY",
     "price": 4500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 3500.0
   },
   {
     "name": "Direct Coombs Test",
@@ -853,7 +959,8 @@
     "category": "IMMUNOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 160.0
   },
   {
     "name": "Indirect Coombs Test",
@@ -861,7 +968,8 @@
     "category": "IMMUNOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 160.0
   },
   {
     "name": "Influenza Screening",
@@ -869,7 +977,8 @@
     "category": "IMMUNOLOGY",
     "price": 5000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 3500.0
   },
   {
     "name": "Widal",
@@ -877,7 +986,8 @@
     "category": "IMMUNOLOGY",
     "price": 200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Malarial Optimal Card",
@@ -885,7 +995,8 @@
     "category": "IMMUNOLOGY",
     "price": 150.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 100.0
   },
   {
     "name": "Smear for MP",
@@ -893,7 +1004,8 @@
     "category": "MICROBIOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 180.0
   },
   {
     "name": "Smear for MF",
@@ -901,7 +1013,8 @@
     "category": "MICROBIOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 180.0
   },
   {
     "name": "Smear for Gram Stain",
@@ -909,7 +1022,8 @@
     "category": "MICROBIOLOGY",
     "price": 150.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 100.0
   },
   {
     "name": "Smear for AFB",
@@ -917,7 +1031,8 @@
     "category": "MICROBIOLOGY",
     "price": 175.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 100.0
   },
   {
     "name": "Smear for Fungal Stain",
@@ -925,7 +1040,8 @@
     "category": "MICROBIOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Blood Culture and Sensitivity",
@@ -933,7 +1049,8 @@
     "category": "MICROBIOLOGY",
     "price": 750.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 550.0
   },
   {
     "name": "Mycobacterium TB Culture",
@@ -941,7 +1058,8 @@
     "category": "MICROBIOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Anti-HAV IgM Antibody",
@@ -949,7 +1067,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "HIV - ELISA",
@@ -957,7 +1076,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "HIV - Western Blot",
@@ -965,7 +1085,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1000.0
   },
   {
     "name": "HBV - ELISA",
@@ -973,7 +1094,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "HBeAg",
@@ -981,7 +1103,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 750.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "HBV-DNA PCR Quantitative",
@@ -989,7 +1112,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 2800.0
   },
   {
     "name": "HCV - ELISA",
@@ -997,7 +1121,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "HCV RNA PCR (Qualitative)",
@@ -1005,7 +1130,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1900.0
   },
   {
     "name": "HCV RNA PCR (Quantitative)",
@@ -1013,7 +1139,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 2700.0
   },
   {
     "name": "Anti-HEV IgM Antibody",
@@ -1021,7 +1148,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "Anti-HEV IgG Antibody",
@@ -1029,7 +1157,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "HSV I & II IgM & IgG",
@@ -1037,7 +1166,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 2800.0
   },
   {
     "name": "Serological Test for Syphilis (STS)",
@@ -1045,7 +1175,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "TPHA for Syphilis",
@@ -1053,7 +1184,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "TB PCR",
@@ -1061,7 +1193,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1800.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1400.0
   },
   {
     "name": "TB Gold Assay",
@@ -1069,7 +1202,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1450.0
   },
   {
     "name": "Anti TB IgM",
@@ -1077,7 +1211,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "Anti TB IgA",
@@ -1085,7 +1220,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "Anti TB IgG",
@@ -1093,7 +1229,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "Leptospiral Antibody IgM / IgG (ICT)",
@@ -1101,7 +1238,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Scrub Typhus",
@@ -1109,7 +1247,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 300.0
   },
   {
     "name": "Scrub Typhus ELISA IgM / IgG",
@@ -1117,7 +1256,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 750.0
   },
   {
     "name": "Chikungunya IgM",
@@ -1125,7 +1265,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 400.0
   },
   {
     "name": "TORCH Panel IgM",
@@ -1133,7 +1274,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 800.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 600.0
   },
   {
     "name": "TORCH Panel IgM + IgG",
@@ -1141,7 +1283,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 1200.0
   },
   {
     "name": "IgA Antibody",
@@ -1149,7 +1292,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 270.0
   },
   {
     "name": "IgE Antibody",
@@ -1157,7 +1301,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 280.0
   },
   {
     "name": "IgG Antibody",
@@ -1165,7 +1310,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 270.0
   },
   {
     "name": "IgM Antibody",
@@ -1173,7 +1319,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 270.0
   },
   {
     "name": "cf DNA",
@@ -1181,7 +1328,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 15000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 12000.0
   },
   {
     "name": "DS DNA - ELISA",
@@ -1189,7 +1337,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 800.0
   },
   {
     "name": "ANA - ELISA",
@@ -1197,7 +1346,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 400.0
   },
   {
     "name": "ANA - IF",
@@ -1205,7 +1355,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1200.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 600.0
   },
   {
     "name": "ANA BLOT",
@@ -1213,7 +1364,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1500.0
   },
   {
     "name": "ANCA (C+P)",
@@ -1221,7 +1373,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3500.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 2200.0
   },
   {
     "name": "Myoglobin",
@@ -1229,7 +1382,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 400.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "Smooth Muscular Antibody (SMA)",
@@ -1237,7 +1391,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 2800.0
   },
   {
     "name": "Anti-Cardiolipin Antibody IgM / IgA / IgG",
@@ -1245,7 +1400,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 800.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 280.0
   },
   {
     "name": "Lipoprotein (a)",
@@ -1253,7 +1409,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 950.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 600.0
   },
   {
     "name": "Anti GBM Antibody",
@@ -1261,7 +1418,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2500.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 1800.0
   },
   {
     "name": "Anti Thyroglobulin Antibody",
@@ -1269,7 +1427,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 750.0
   },
   {
     "name": "Thyroglobulin",
@@ -1277,7 +1436,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 700.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 550.0
   },
   {
     "name": "TSH Receptor Antibody",
@@ -1285,7 +1445,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 4300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 3300.0
   },
   {
     "name": "APLA IgM",
@@ -1293,7 +1454,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "APLA IgG",
@@ -1301,7 +1463,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Anti Mitochondrial Antibody (AMA)",
@@ -1309,7 +1472,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1000.0
   },
   {
     "name": "Anti LKM",
@@ -1317,7 +1481,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 800.0
   },
   {
     "name": "ASMA",
@@ -1325,7 +1490,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 800.0
   },
   {
     "name": "Lupus Anticoagulant",
@@ -1333,7 +1499,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 600.0
   },
   {
     "name": "Double Marker",
@@ -1341,7 +1508,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 750.0
   },
   {
     "name": "Quadruple Marker",
@@ -1349,7 +1517,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 950.0
   },
   {
     "name": "Triple Marker",
@@ -1357,7 +1526,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2500.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 900.0
   },
   {
     "name": "NIPT (Non Invasive Pregnancy Test)",
@@ -1365,7 +1535,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 15000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 7000.0
   },
   {
     "name": "Free Testosterone",
@@ -1373,7 +1544,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 900.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Androgen",
@@ -1381,7 +1553,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1500.0
   },
   {
     "name": "Alpha Feto Protein (AFP)",
@@ -1389,7 +1562,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 850.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 300.0
   },
   {
     "name": "Growth Hormone (GH)",
@@ -1397,7 +1571,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 780.0
   },
   {
     "name": "EGFR",
@@ -1405,7 +1580,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 100.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 80.0
   },
   {
     "name": "Adreno Cortico Trophic Hormone (ACTH)",
@@ -1413,7 +1589,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1500.0
   },
   {
     "name": "Cortisol",
@@ -1421,7 +1598,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 650.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 300.0
   },
   {
     "name": "Serum Insulin",
@@ -1429,7 +1607,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Folic Acid",
@@ -1437,7 +1616,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 900.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 370.0
   },
   {
     "name": "C Antibody",
@@ -1445,7 +1625,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 750.0
   },
   {
     "name": "C3 Complement",
@@ -1453,7 +1634,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "C4 Complement",
@@ -1461,7 +1643,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 350.0
   },
   {
     "name": "NT Pro BNP",
@@ -1469,7 +1652,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1750.0
   },
   {
     "name": "Interleukin (IL) - 6",
@@ -1477,7 +1661,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1800.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1300.0
   },
   {
     "name": "Procalcitonin",
@@ -1485,7 +1670,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 700.0
   },
   {
     "name": "Vitamin D3 - 1,25 OH",
@@ -1493,7 +1679,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Intact PTH (Para Thyroid Hormone)",
@@ -1501,7 +1688,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 900.0
   },
   {
     "name": "HLA B27",
@@ -1509,7 +1697,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 900.0
   },
   {
     "name": "C-Peptide",
@@ -1517,7 +1706,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Serum Protein Electrophoresis",
@@ -1525,7 +1715,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Protein C",
@@ -1533,7 +1724,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 1500.0
   },
   {
     "name": "Protein S",
@@ -1541,7 +1733,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 1500.0
   },
   {
     "name": "Anti Thrombin III",
@@ -1549,7 +1742,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2100.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1500.0
   },
   {
     "name": "Factor VIII Inhibitor",
@@ -1557,7 +1751,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 2600.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 2000.0
   },
   {
     "name": "CA-15.3",
@@ -1565,7 +1760,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1000.0
   },
   {
     "name": "CA-19.9",
@@ -1573,7 +1769,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 900.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "CA-125",
@@ -1581,7 +1778,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 550.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 400.0
   },
   {
     "name": "CEA (Carcino Embryonic Antigen)",
@@ -1589,7 +1787,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 750.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Plasma Fibrinogen",
@@ -1597,7 +1796,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 280.0
   },
   {
     "name": "FDP (Fibrin Degradation Products)",
@@ -1605,7 +1805,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 500.0
   },
   {
     "name": "Digoxin",
@@ -1613,7 +1814,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1200.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 750.0
   },
   {
     "name": "Prostate Specific Antigen (PSA) - Total",
@@ -1621,7 +1823,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 450.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 280.0
   },
   {
     "name": "Prostate Specific Antigen (PSA) - Free",
@@ -1629,7 +1832,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 780.0
   },
   {
     "name": "Troponin T",
@@ -1637,7 +1841,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 900.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Troponin I",
@@ -1645,7 +1850,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 750.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 500.0
   },
   {
     "name": "CPK Total",
@@ -1653,7 +1859,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "CPK MB",
@@ -1661,7 +1868,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 110.0
   },
   {
     "name": "Rh Antibody Titre",
@@ -1669,7 +1877,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 750.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 500.0
   },
   {
     "name": "POC (Products Of Conception) for TORCH",
@@ -1677,7 +1886,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 10000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 7000.0
   },
   {
     "name": "POC for QF PCR",
@@ -1685,7 +1895,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 12000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 8500.0
   },
   {
     "name": "Fetal POC Test - 5 Chr",
@@ -1693,7 +1904,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 9000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 4950.0
   },
   {
     "name": "Chromosome Analysis / Karyotyping",
@@ -1701,7 +1913,8 @@
     "category": "ENDOCRINOLOGY",
     "price": 3000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 1250.0
   },
   {
     "name": "Arterial Blood Gas Analysis (ABG)",
@@ -1709,7 +1922,8 @@
     "category": "BLOOD GAS",
     "price": 1200.0,
     "isOutsourced": true,
-    "referenceLab": "LIBERTY (Chendur)"
+    "referenceLab": "LIBERTY (Chendur)",
+    "costPrice": 1000.0
   },
   {
     "name": "Serum Osmolarity",
@@ -1717,7 +1931,8 @@
     "category": "BLOOD GAS",
     "price": 900.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 650.0
   },
   {
     "name": "Blood pH - Gel",
@@ -1725,7 +1940,8 @@
     "category": "BLOOD GAS",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 150.0
   },
   {
     "name": "Urine For Micro-albumin",
@@ -1733,7 +1949,8 @@
     "category": "BIOCHEMISTRY",
     "price": 300.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 200.0
   },
   {
     "name": "24 Hrs Urinary Creatinine",
@@ -1741,7 +1958,8 @@
     "category": "BIOCHEMISTRY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 180.0
   },
   {
     "name": "24 Hrs Urinary Protein",
@@ -1749,7 +1967,8 @@
     "category": "BIOCHEMISTRY",
     "price": 100.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 75.0
   },
   {
     "name": "Urine Spot Sodium",
@@ -1757,7 +1976,8 @@
     "category": "BIOCHEMISTRY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 180.0
   },
   {
     "name": "24 Hrs Urinary Sodium",
@@ -1765,7 +1985,8 @@
     "category": "BIOCHEMISTRY",
     "price": 200.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 100.0
   },
   {
     "name": "24 Hrs Urinary Potasium",
@@ -1773,7 +1994,8 @@
     "category": "BIOCHEMISTRY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 120.0
   },
   {
     "name": "24 Hrs Urinary Copper",
@@ -1781,7 +2003,8 @@
     "category": "BIOCHEMISTRY",
     "price": 1400.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1000.0
   },
   {
     "name": "Bence - Jones Protein",
@@ -1789,7 +2012,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 75.0
   },
   {
     "name": "Urine Osmolarity",
@@ -1797,7 +2021,8 @@
     "category": "BIOCHEMISTRY",
     "price": 700.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 450.0
   },
   {
     "name": "Urine PCR",
@@ -1805,7 +2030,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 55.0
   },
   {
     "name": "Urine VMA Spot",
@@ -1813,7 +2039,8 @@
     "category": "BIOCHEMISTRY",
     "price": 1500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1000.0
   },
   {
     "name": "Urine VMA 24 Hours",
@@ -1821,7 +2048,8 @@
     "category": "BIOCHEMISTRY",
     "price": 3500.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 2800.0
   },
   {
     "name": "Stone Analysis",
@@ -1829,7 +2057,8 @@
     "category": "BIOCHEMISTRY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 800.0
   },
   {
     "name": "Urine Culture and Sensitivity",
@@ -1837,7 +2066,8 @@
     "category": "MICROBIOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 125.0
   },
   {
     "name": "Stool Culture & Sensitivity",
@@ -1845,7 +2075,8 @@
     "category": "MICROBIOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Stool for Rotavirus",
@@ -1853,7 +2084,8 @@
     "category": "MICROBIOLOGY",
     "price": 950.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Stool Reducing Substances",
@@ -1861,7 +2093,8 @@
     "category": "BIOCHEMISTRY",
     "price": 50.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 10.0
   },
   {
     "name": "Sputum / Aspirate / Swab / Tip - Pus C/S",
@@ -1869,7 +2102,8 @@
     "category": "MICROBIOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Sputum / Aspirate / Swab for Mycobacterium TB Culture",
@@ -1877,7 +2111,8 @@
     "category": "MICROBIOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Sputum / Aspirate / Swab for Gram Stain",
@@ -1885,7 +2120,8 @@
     "category": "MICROBIOLOGY",
     "price": 150.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 100.0
   },
   {
     "name": "Sputum / Aspirate / Swab for AFB",
@@ -1893,7 +2129,8 @@
     "category": "MICROBIOLOGY",
     "price": 175.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 100.0
   },
   {
     "name": "Sputum / Aspirate / Swab for Fungal Stain",
@@ -1901,7 +2138,8 @@
     "category": "MICROBIOLOGY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Cervical-Vaginal Swab / PAP for Human Papilloma Virus (HPV)",
@@ -1909,7 +2147,8 @@
     "category": "MICROBIOLOGY",
     "price": 2000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 1200.0
   },
   {
     "name": "Fungal C/S",
@@ -1917,7 +2156,8 @@
     "category": "MICROBIOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 250.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - C/S",
@@ -1925,7 +2165,8 @@
     "category": "MICROBIOLOGY",
     "price": 350.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 150.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Mycobacterium TB Culture",
@@ -1933,7 +2174,8 @@
     "category": "MICROBIOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "Q - LAB"
+    "referenceLab": "Q - LAB",
+    "costPrice": 600.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Cell Count",
@@ -1941,7 +2183,8 @@
     "category": "BIOCHEMISTRY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 190.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Protein",
@@ -1949,7 +2192,8 @@
     "category": "BIOCHEMISTRY",
     "price": 150.0,
     "isOutsourced": true,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 110.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Sugar / Glucose",
@@ -1957,7 +2201,8 @@
     "category": "BIOCHEMISTRY",
     "price": 100.0,
     "isOutsourced": true,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 40.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Adenosine Deaminase (ADA) for MTB",
@@ -1965,7 +2210,8 @@
     "category": "BIOCHEMISTRY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 400.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Lactate Dehydrogenase (LDH)",
@@ -1973,7 +2219,8 @@
     "category": "BIOCHEMISTRY",
     "price": 550.0,
     "isOutsourced": true,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 400.0
   },
   {
     "name": "Body Fluid (Pleural-Ascitic-Synovial fluid/ CSF) - Malignant Cells",
@@ -1981,7 +2228,8 @@
     "category": "BIOCHEMISTRY",
     "price": 250.0,
     "isOutsourced": true,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 190.0
   },
   {
     "name": "Biopsy Small (Appendix/Tubes/Scopy specimens/Colon/ Synovium/Curettage/Nodes/Small Bone Tumors/ Trucut/Swellings/Skin/Small Wide local excisions)",
@@ -1989,7 +2237,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 700.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 400.0
   },
   {
     "name": "Biopsy Medium (Uterus + Cx + Ovaries/Huge Myomas/ Thyroid/Testes/Medium Bone Tumors/Fingers and Toes)",
@@ -1997,7 +2246,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 1000.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 580.0
   },
   {
     "name": "Biopsy Large (MRM with Nodes/Large Uterine-Ovarian Tumors/Large Bone Tumors/Large Body parts)",
@@ -2005,7 +2255,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 1800.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 1000.0
   },
   {
     "name": "Emergency Biopsies - Trucut / Frozen section",
@@ -2013,7 +2264,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 1800.0,
     "isOutsourced": true,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 1200.0
   },
   {
     "name": "PAP Smear",
@@ -2021,7 +2273,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 750.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 450.0
   },
   {
     "name": "Swabs / Aspirates / Other Samples HPE",
@@ -2029,7 +2282,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 600.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 350.0
   },
   {
     "name": "D&C Sample - Endometrial Curetage",
@@ -2037,7 +2291,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 800.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 500.0
   },
   {
     "name": "FNAC - 4 slides",
@@ -2045,7 +2300,8 @@
     "category": "HISTOPATHOLOGY",
     "price": 800.0,
     "isOutsourced": true,
-    "referenceLab": "ANDERSON"
+    "referenceLab": "ANDERSON",
+    "costPrice": 500.0
   },
   {
     "name": "Digital X-ray",
@@ -2053,7 +2309,8 @@
     "category": "DIGITAL X-RAY",
     "price": 300.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 100.0
   },
   {
     "name": "Digital X-ray Large films for Femur/Tibia/Humerus",
@@ -2061,7 +2318,8 @@
     "category": "DIGITAL X-RAY",
     "price": 350.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 150.0
   },
   {
     "name": "Digital X-ray Long Leg View Scannogram",
@@ -2069,7 +2327,8 @@
     "category": "DIGITAL X-RAY",
     "price": 400.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 200.0
   },
   {
     "name": "ECG",
@@ -2077,7 +2336,8 @@
     "category": "CARDIOLOGY",
     "price": 150.0,
     "isOutsourced": false,
-    "referenceLab": null
+    "referenceLab": null,
+    "costPrice": 50.0
   },
   {
     "name": "2D ECHO",

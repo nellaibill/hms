@@ -20,8 +20,9 @@
          DiagnosticCategory/DiagnosticProvider for each, skipping any whose Code or Name
          already exists (checked via GET first, so this script is safe to re-run).
       3. POSTs a DiagnosticService per migrated DiagnosticTest row, wiring up the right
-         CategoryId/ProviderId. Skips a row if a matching DiagnosticService (same Name,
-         ServiceType, IsOutsourced) already exists.
+         CategoryId/ProviderId and carrying over CostPrice if the source row has one set.
+         Skips a row if a matching DiagnosticService (same Name, ServiceType, IsOutsourced)
+         already exists.
       4. PUTs each migrated DiagnosticTest row back with IsActive=false (deactivate, never
          delete - the historical billing rows that reference it must keep resolving).
       5. Prints a created/skipped/deactivated summary.
@@ -186,9 +187,14 @@ $existingCategories = Get-AllPaged -Entity 'diagnostic-categories'
 $existingProviders = Get-AllPaged -Entity 'diagnostic-providers'
 $existingServices = Get-AllPaged -Entity 'diagnostic-services'
 
-$usedCategoryCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]($existingCategories | ForEach-Object { $_.code }))
-$usedProviderCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]($existingProviders | ForEach-Object { $_.code }))
-$usedServiceCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]($existingServices | ForEach-Object { $_.code }))
+# @(...) around the pipeline (not just the [string[]] cast) is required so a *fresh* tenant -
+# where existingCategories/Providers/Services all start empty - passes an empty array rather
+# than $null into HashSet[string]::new(...); a bare [string[]]$null is ambiguous between the
+# IEnumerable<string> and IEqualityComparer<string> constructor overloads ("Multiple ambiguous
+# overloads found for 'new'"), which only surfaces on a truly empty source collection.
+$usedCategoryCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]@($existingCategories | ForEach-Object { $_.code }))
+$usedProviderCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]@($existingProviders | ForEach-Object { $_.code }))
+$usedServiceCodes = [System.Collections.Generic.HashSet[string]]::new([string[]]@($existingServices | ForEach-Object { $_.code }))
 
 $categoriesCreated = 0
 $providersCreated = 0
@@ -309,6 +315,12 @@ foreach ($testRow in $migratableTests) {
     }
     if ($providerId) {
         $bodyHash.providerId = $providerId
+    }
+    # Carry the source row's CostPrice across - otherwise a test costed via
+    # seed-diagnostic-tests.ps1/update-diagnostic-cost-prices.ps1 before migration would
+    # silently lose that data the moment it's migrated into DiagnosticService.
+    if ($null -ne $testRow.costPrice) {
+        $bodyHash.costPrice = $testRow.costPrice
     }
     $body = $bodyHash | ConvertTo-Json
 
