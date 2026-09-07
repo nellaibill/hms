@@ -55,7 +55,11 @@ $appointmentTypes = @(
 )
 
 # Amount is $null for "Others / On-call" - decided per visit instead of a fixed rate (the
-# backend's CreateConsultationTypeRequest.Amount is nullable for exactly this case).
+# backend's CreateConsultationTypeRequest.Amount is nullable for exactly this case). CostPrice
+# is deliberately left unset here (defaults to 0/"not yet costed" server-side) rather than
+# guessed - the tariff spreadsheet's real Consultation Charges are split per attending doctor
+# with their own Doctor's Charges figure, which doesn't map cleanly onto these 5 generic
+# categories; fill in real per-tenant running-cost numbers by hand via the Masters UI once known.
 $consultationTypes = @(
     @{ Name = "Doctor's Consultation (In-house) - Regular"; Amount = 200 },
     @{ Name = "Doctor's Consultation (In-house) - Priority"; Amount = 300 },
@@ -124,6 +128,9 @@ foreach ($entry in $consultationTypes) {
     $bodyHash = @{ name = $entry.Name; isActive = $true }
     if ($null -ne $entry.Amount) {
         $bodyHash.amount = $entry.Amount
+    }
+    if ($null -ne $entry.CostPrice) {
+        $bodyHash.costPrice = $entry.CostPrice
     }
     $body = $bodyHash | ConvertTo-Json
     $created = Invoke-RestMethod -Method Post -Uri "$ApiBaseUrl/api/v1/masters/consultation-types" -Headers $authHeaders -Body $body

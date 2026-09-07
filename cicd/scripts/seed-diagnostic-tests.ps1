@@ -30,8 +30,11 @@
     That hospital's Super Admin password.
 
 .PARAMETER SeedFile
-    Path to the JSON array of { name, serviceType, category, price, isOutsourced, referenceLab }
-    rows to seed. Defaults to lab-tests-seed.json next to this script.
+    Path to the JSON array of { name, serviceType, category, price, isOutsourced, referenceLab,
+    costPrice } rows to seed. costPrice is optional per row - absent for the ~32 package-summary
+    rows (e.g. "LIPID PROFILE"), which were later decomposed into real DiagnosticPackage entities
+    and don't have a single per-test running cost of their own; the backend defaults CostPrice to
+    0 ("not yet costed") when omitted. Defaults to lab-tests-seed.json next to this script.
 
 .PARAMETER ApiBaseUrl
     Defaults to the local dev API.
@@ -140,6 +143,9 @@ foreach ($row in $seedRows) {
     }
     if ($row.referenceLab) {
         $bodyHash.referenceLab = $row.referenceLab
+    }
+    if ($null -ne $row.costPrice) {
+        $bodyHash.costPrice = $row.costPrice
     }
     $body = $bodyHash | ConvertTo-Json
 
