@@ -18,6 +18,15 @@ internal class DiagnosticTest : Entity
     public DiagnosticTestServiceType ServiceType { get; private set; }
     public string? Category { get; private set; }
     public decimal Price { get; private set; }
+
+    /// <summary>What it actually costs the hospital to run this test once (reagents,
+    /// consumables, an allocated share of equipment/staff time) — as distinct from
+    /// <see cref="Price"/>, what the patient is billed. Defaults to 0 (unknown/not yet costed)
+    /// rather than being required, since this is being added after hundreds of tests were
+    /// already seeded without it; a margin report should treat 0 as "no cost data," not "free
+    /// to run."</summary>
+    public decimal CostPrice { get; private set; }
+
     public bool IsOutsourced { get; private set; }
     public string? ReferenceLab { get; private set; }
     public bool IsActive { get; private set; } = true;
@@ -33,6 +42,7 @@ internal class DiagnosticTest : Entity
         DiagnosticTestServiceType serviceType,
         string? category,
         decimal price,
+        decimal costPrice,
         bool isOutsourced,
         string? referenceLab,
         bool isActive,
@@ -43,6 +53,7 @@ internal class DiagnosticTest : Entity
         ServiceType = serviceType;
         Category = category;
         Price = price;
+        CostPrice = costPrice;
         IsOutsourced = isOutsourced;
         ReferenceLab = referenceLab;
         IsActive = isActive;
@@ -53,6 +64,7 @@ internal class DiagnosticTest : Entity
         DiagnosticTestServiceType serviceType,
         string? category,
         decimal price,
+        decimal costPrice,
         bool isOutsourced,
         string? referenceLab,
         bool isActive,
@@ -63,6 +75,10 @@ internal class DiagnosticTest : Entity
         {
             throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
         }
+        if (costPrice < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(costPrice), "Cost price cannot be negative.");
+        }
 
         return new DiagnosticTest(
             Guid.CreateVersion7(),
@@ -70,6 +86,7 @@ internal class DiagnosticTest : Entity
             serviceType,
             category?.Trim(),
             price,
+            costPrice,
             isOutsourced,
             referenceLab?.Trim(),
             isActive,
@@ -81,6 +98,7 @@ internal class DiagnosticTest : Entity
         DiagnosticTestServiceType serviceType,
         string? category,
         decimal price,
+        decimal costPrice,
         bool isOutsourced,
         string? referenceLab,
         bool isActive,
@@ -91,11 +109,16 @@ internal class DiagnosticTest : Entity
         {
             throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
         }
+        if (costPrice < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(costPrice), "Cost price cannot be negative.");
+        }
 
         Name = name.Trim();
         ServiceType = serviceType;
         Category = category?.Trim();
         Price = price;
+        CostPrice = costPrice;
         IsOutsourced = isOutsourced;
         ReferenceLab = referenceLab?.Trim();
         IsActive = isActive;
