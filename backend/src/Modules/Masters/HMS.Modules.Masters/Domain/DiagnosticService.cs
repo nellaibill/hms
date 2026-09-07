@@ -23,6 +23,13 @@ internal class DiagnosticService : Entity
     public bool IsOutsourced { get; private set; }
     public Guid? ProviderId { get; private set; }
     public decimal Price { get; private set; }
+
+    /// <summary>What it actually costs the hospital to run this test once (reagents,
+    /// consumables, an allocated share of equipment/staff time) — as distinct from
+    /// <see cref="Price"/>, what the patient is billed. Defaults to 0 (unknown/not yet costed)
+    /// rather than being required, matching DiagnosticTest.CostPrice's reasoning.</summary>
+    public decimal CostPrice { get; private set; }
+
     public bool IsActive { get; private set; } = true;
 
     // Required by EF Core materialization.
@@ -39,6 +46,7 @@ internal class DiagnosticService : Entity
         bool isOutsourced,
         Guid? providerId,
         decimal price,
+        decimal costPrice,
         bool isActive,
         Guid? createdBy)
         : base(id, createdBy)
@@ -50,6 +58,7 @@ internal class DiagnosticService : Entity
         IsOutsourced = isOutsourced;
         ProviderId = providerId;
         Price = price;
+        CostPrice = costPrice;
         IsActive = isActive;
     }
 
@@ -61,6 +70,7 @@ internal class DiagnosticService : Entity
         bool isOutsourced,
         Guid? providerId,
         decimal price,
+        decimal costPrice,
         bool isActive,
         Guid? createdBy)
     {
@@ -69,6 +79,10 @@ internal class DiagnosticService : Entity
         if (price < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
+        }
+        if (costPrice < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(costPrice), "Cost price cannot be negative.");
         }
 
         return new DiagnosticService(
@@ -80,6 +94,7 @@ internal class DiagnosticService : Entity
             isOutsourced,
             providerId,
             price,
+            costPrice,
             isActive,
             createdBy);
     }
@@ -92,6 +107,7 @@ internal class DiagnosticService : Entity
         bool isOutsourced,
         Guid? providerId,
         decimal price,
+        decimal costPrice,
         bool isActive,
         Guid? updatedBy)
     {
@@ -101,6 +117,10 @@ internal class DiagnosticService : Entity
         {
             throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
         }
+        if (costPrice < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(costPrice), "Cost price cannot be negative.");
+        }
 
         Code = code.Trim();
         Name = name.Trim();
@@ -109,6 +129,7 @@ internal class DiagnosticService : Entity
         IsOutsourced = isOutsourced;
         ProviderId = providerId;
         Price = price;
+        CostPrice = costPrice;
         IsActive = isActive;
         MarkUpdated(updatedBy);
     }

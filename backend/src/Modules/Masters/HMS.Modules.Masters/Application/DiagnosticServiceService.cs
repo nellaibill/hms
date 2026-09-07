@@ -62,6 +62,7 @@ internal class DiagnosticServiceService : IDiagnosticServiceService
             request.IsOutsourced,
             request.ProviderId,
             request.Price,
+            request.CostPrice,
             request.IsActive,
             actorId);
 
@@ -98,6 +99,7 @@ internal class DiagnosticServiceService : IDiagnosticServiceService
             request.IsOutsourced,
             request.ProviderId,
             request.Price,
+            request.CostPrice,
             request.IsActive,
             actorId);
         await _repository.SaveChangesAsync(cancellationToken);

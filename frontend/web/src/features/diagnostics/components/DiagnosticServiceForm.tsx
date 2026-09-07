@@ -45,6 +45,7 @@ export function DiagnosticServiceForm({ defaultValues, mode, onSubmit, isSubmitt
       isOutsourced: false,
       providerId: '',
       price: 0,
+      costPrice: 0,
       isActive: true,
       ...defaultValues,
     },
@@ -128,6 +129,13 @@ export function DiagnosticServiceForm({ defaultValues, mode, onSubmit, isSubmitt
             <Label htmlFor="ds-price">Price (₹)</Label>
             <Input id="ds-price" type="number" min={0} step="any" {...register('price')} />
             {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
+          </div>
+
+          <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+            <Label htmlFor="ds-costPrice">Running Cost (₹)</Label>
+            <Input id="ds-costPrice" type="number" min={0} step="any" {...register('costPrice')} />
+            <p className="text-xs text-muted-foreground">What it costs the hospital to run this test once (reagents, consumables, allocated overhead) — used to calculate profit margin. Leave 0 if not yet costed.</p>
+            {errors.costPrice && <p className="text-sm text-destructive">{errors.costPrice.message}</p>}
           </div>
         </CardContent>
       </Card>

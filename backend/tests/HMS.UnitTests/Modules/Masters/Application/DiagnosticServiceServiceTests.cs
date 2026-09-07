@@ -134,7 +134,7 @@ public class DiagnosticServiceServiceTests
     [Fact]
     public async Task DeleteAsync_WhenServiceExists_SoftDeletesAndReturnsSuccess()
     {
-        var diagnosticService = DiagnosticService.Create("CBC", "Complete Blood Count", CategoryId, DiagnosticTestServiceType.Laboratory, false, null, 250m, true, null);
+        var diagnosticService = DiagnosticService.Create("CBC", "Complete Blood Count", CategoryId, DiagnosticTestServiceType.Laboratory, false, null, 250m, 0m, true, null);
         _repository.GetByIdAsync(diagnosticService.Id, Arg.Any<CancellationToken>()).Returns(diagnosticService);
 
         var result = await _sut.DeleteAsync(diagnosticService.Id, actorId: null, CancellationToken.None);
