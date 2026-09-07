@@ -1,5 +1,5 @@
-import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
-import { resolveRecordLabel } from '@/features/masters';
+import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceCostPrice, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
+import { resolveRecordCostPrice, resolveRecordLabel } from '@/features/masters';
 import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
 import type {
   BillingFormValues,
@@ -282,4 +282,34 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     serviceLabel: item.serviceId ? resolveRecordLabel('diagnosticTest', item.serviceId) : item.billingType,
     consultantName,
   };
+}
+
+/**
+ * Resolves a BillingItem's per-unit CostPrice for profit reporting (features/reports/
+ * profitReport.ts) — same billingType branching as describeBillingItem above, reading the
+ * same reference caches, but returning the numeric CostPrice instead of a display label.
+ * Returns null (never 0) whenever cost genuinely can't be attributed to this line, so a
+ * report can distinguish "no cost data" from "confirmed zero cost" rather than silently
+ * understating cost or overstating margin:
+ *   - Pharmacy: no cost concept in this system yet (a dispense's cost lives in Products/
+ *     batch data, a different domain) — always null.
+ *   - Laboratory package lines (packageId set): DiagnosticPackage has no CostPrice of its
+ *     own (it's a bundle of DiagnosticService items, each separately costed) — null.
+ *   - Everything else: null if serviceId is unset, the referenced record hasn't resolved
+ *     into the cache yet, or its CostPrice is 0 ("not yet costed").
+ */
+export function resolveItemCostPrice(item: BillingItem): number | null {
+  if (item.billingType === 'Pharmacy') return null;
+
+  if (item.billingType === 'Consultation') {
+    return item.serviceId ? resolveRecordCostPrice('consultationType', item.serviceId) : null;
+  }
+
+  if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {
+    if (item.billingType === 'Laboratory' && item.packageId) return null;
+    return item.serviceId ? resolveDiagnosticServiceCostPrice(item.serviceId) : null;
+  }
+
+  // Procedure/Injection/File: serviceId is a DiagnosticTest id.
+  return item.serviceId ? resolveRecordCostPrice('diagnosticTest', item.serviceId) : null;
 }

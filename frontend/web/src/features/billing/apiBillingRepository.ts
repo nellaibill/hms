@@ -174,12 +174,20 @@ export async function getInvoicesByPatientId(patientId: string): Promise<Billing
   return invoices.map(fromDto);
 }
 
-/** Unpaginated, unfiltered — for report aggregation (features/reports). Fetched at the
- * server's maximum page size (PagedRequest.MaxPageSize = 100); a hospital issuing more than
- * 100 invoices in a report's date range will only see the first page's worth here until this
- * gets a dedicated report endpoint — a known limitation, not silently wrong data (the ledger
- * itself is properly paginated). */
+/** Unpaginated, unfiltered — for report aggregation (features/reports). Walks every page at
+ * the server's maximum page size (PagedRequest.MaxPageSize = 100) rather than fetching just
+ * the first one, so a hospital with more than 100 invoices in a report's date range still
+ * sees all of them — same "MaxPageSize silently truncates a single big-page request" fix
+ * already applied elsewhere (masterStoreFactory.ts's getAll()). */
 export async function getAllInvoicesForReport(): Promise<Billing[]> {
-  const paged = await billingApi.getInvoices({ page: 1, pageSize: 100 });
-  return paged.items.map(fromDto);
+  const all: Billing[] = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    const paged = await billingApi.getInvoices({ page, pageSize: 100 });
+    all.push(...paged.items.map(fromDto));
+    totalPages = paged.meta.totalPages;
+    page++;
+  } while (page <= totalPages);
+  return all;
 }

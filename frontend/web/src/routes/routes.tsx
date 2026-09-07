@@ -40,6 +40,7 @@ const InvoiceLedgerPage = lazy(() => import('../pages/finance/InvoiceLedgerPage'
 const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'));
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
+const ProfitReportPage = lazy(() => import('../pages/finance/ProfitReportPage'));
 const HrHubPage = lazy(() => import('../pages/hr/HrHubPage'));
 const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
 const ShiftCreatePage = lazy(() => import('../pages/hr/ShiftCreatePage'));
@@ -251,6 +252,7 @@ const financeRoutes = [
       { path: 'finance/accounts', element: withSuspense(<InvoiceLedgerPage />) },
       { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
       { path: 'finance/accounts/reports', element: withSuspense(<IncomeExpenseReportPage />) },
+      { path: 'finance/accounts/reports/profit', element: withSuspense(<ProfitReportPage />) },
       { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
     ],
   },
