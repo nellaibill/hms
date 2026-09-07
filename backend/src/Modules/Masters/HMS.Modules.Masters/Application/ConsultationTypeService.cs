@@ -40,7 +40,7 @@ internal class ConsultationTypeService : IConsultationTypeService
             return Result<ConsultationTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Consultation type name '{request.Name}' is already in use.");
         }
 
-        var consultationType = ConsultationType.Create(request.Name, request.Amount, request.IsActive, actorId);
+        var consultationType = ConsultationType.Create(request.Name, request.Amount, request.CostPrice, request.IsActive, actorId);
 
         await _repository.AddAsync(consultationType, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -63,7 +63,7 @@ internal class ConsultationTypeService : IConsultationTypeService
             return Result<ConsultationTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Consultation type name '{request.Name}' is already in use.");
         }
 
-        consultationType.Update(request.Name, request.Amount, request.IsActive, actorId);
+        consultationType.Update(request.Name, request.Amount, request.CostPrice, request.IsActive, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<ConsultationTypeResponse>.Success(consultationType.ToResponse());

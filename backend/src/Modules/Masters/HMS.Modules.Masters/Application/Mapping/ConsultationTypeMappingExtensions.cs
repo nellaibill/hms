@@ -10,6 +10,7 @@ internal static class ConsultationTypeMappingExtensions
         Id = consultationType.Id,
         Name = consultationType.Name,
         Amount = consultationType.Amount,
+        CostPrice = consultationType.CostPrice,
         IsActive = consultationType.IsActive,
         CreatedAt = consultationType.CreatedAt,
         UpdatedAt = consultationType.UpdatedAt,
