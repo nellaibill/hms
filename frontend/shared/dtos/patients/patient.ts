@@ -169,4 +169,6 @@ export interface PatientListQuery {
   /** Narrows the list to patients still flagged with placeholder data (e.g. from bulk
    * import) — see Patient.requiresDataVerification. */
   requiresDataVerification?: boolean;
+  /** Narrows the list to patients created or last updated today (UTC). */
+  registeredToday?: boolean;
 }
