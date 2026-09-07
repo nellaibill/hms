@@ -105,3 +105,19 @@ export function resolveRecordLabel(entityKey: string, id: string | undefined | n
   if (!config || !record) return String(id);
   return getDisplayLabel(config, record);
 }
+
+/**
+ * Resolves a reference field's id to its CostPrice, for margin/profit calculations (see
+ * features/billing/billingCalculations.ts's resolveItemCostPrice) — reads from the same
+ * synchronous reference cache resolveRecordLabel uses. Returns null (not 0) both when the
+ * record hasn't been resolved yet AND when its CostPrice is genuinely 0 ("not yet costed",
+ * per DiagnosticTest/ConsultationType.CostPrice's own doc comments) — a caller must treat
+ * either case as "cost unknown," never as "free," so collapsing them to the same null return
+ * keeps that distinction from being lost at the call site.
+ */
+export function resolveRecordCostPrice(entityKey: string, id: string | undefined | null): number | null {
+  if (!id) return null;
+  const record = referenceCache.get(entityKey)?.get(id);
+  const cost = record?.costPrice;
+  return typeof cost === 'number' && cost > 0 ? cost : null;
+}

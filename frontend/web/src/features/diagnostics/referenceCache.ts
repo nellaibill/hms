@@ -25,6 +25,16 @@ export function resolveDiagnosticServiceLabel(id: string | undefined | null): st
   return serviceCache.get(id)?.name ?? id;
 }
 
+/** Resolves a DiagnosticService id to its CostPrice, mirroring features/masters/engine/
+ * registry.ts's resolveRecordCostPrice — returns null (not 0) both when the record hasn't
+ * resolved yet and when CostPrice is genuinely 0 ("not yet costed"), so a caller never
+ * mistakes either case for "free." */
+export function resolveDiagnosticServiceCostPrice(id: string | undefined | null): number | null {
+  if (!id) return null;
+  const cost = serviceCache.get(id)?.costPrice;
+  return typeof cost === 'number' && cost > 0 ? cost : null;
+}
+
 export function resolveDiagnosticPackageLabel(id: string | undefined | null): string {
   if (!id) return '—';
   const pkg = packageCache.get(id);
