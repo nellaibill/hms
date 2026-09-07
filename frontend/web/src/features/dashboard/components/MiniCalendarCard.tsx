@@ -1,9 +1,13 @@
 import { CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { calendarEvents } from '../mockData';
+import { isoDateRangesOverlap, parseIsoDate, useCalendarEventsQuery } from '@/features/calendarEvents';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+function toIsoDate(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 
 export function MiniCalendarCard() {
   const today = new Date();
@@ -13,7 +17,26 @@ export function MiniCalendarCard() {
 
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const eventDates = new Set(calendarEvents.map((event) => event.date));
+
+  const eventsQuery = useCalendarEventsQuery();
+  const allEvents = eventsQuery.data ?? [];
+
+  const monthStartIso = toIsoDate(year, month, 1);
+  const monthEndIso = toIsoDate(year, month, daysInMonth);
+  const monthEvents = allEvents.filter((event) => isoDateRangesOverlap(event.startDate, event.endDate, monthStartIso, monthEndIso));
+
+  const eventDates = new Set<number>();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayIso = toIsoDate(year, month, day);
+    if (monthEvents.some((event) => isoDateRangesOverlap(event.startDate, event.endDate, dayIso, dayIso))) {
+      eventDates.add(day);
+    }
+  }
+
+  const upcomingEvents = [...monthEvents]
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+    .slice(0, 4)
+    .map((event) => ({ date: parseIsoDate(event.startDate).getUTCDate(), label: event.title }));
 
   const cells: (number | null)[] = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
@@ -57,14 +80,20 @@ export function MiniCalendarCard() {
         </div>
 
         <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3">
-          {calendarEvents.map((event) => (
-            <div key={event.date} className="flex items-center gap-2 text-xs">
-              <span className="flex h-5 w-8 shrink-0 items-center justify-center rounded bg-accent font-medium tabular-nums text-accent-foreground">
-                {event.date}
-              </span>
-              <span className="truncate text-muted-foreground">{event.label}</span>
-            </div>
-          ))}
+          {eventsQuery.isPending ? (
+            <p className="text-xs text-muted-foreground">Loading events…</p>
+          ) : upcomingEvents.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No events this month.</p>
+          ) : (
+            upcomingEvents.map((event, index) => (
+              <div key={`${event.date}-${index}`} className="flex items-center gap-2 text-xs">
+                <span className="flex h-5 w-8 shrink-0 items-center justify-center rounded bg-accent font-medium tabular-nums text-accent-foreground">
+                  {event.date}
+                </span>
+                <span className="truncate text-muted-foreground">{event.label}</span>
+              </div>
+            ))
+          )}
         </div>
       </CardContent>
     </Card>
