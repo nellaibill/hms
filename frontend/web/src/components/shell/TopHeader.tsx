@@ -44,7 +44,9 @@ export function TopHeader() {
   const { hasPermission, hasFeature } = useAuth();
 
   return (
-    <header className="sticky top-0 z-[1000] flex h-16 items-center gap-6 border-b border-header-foreground/15 bg-header px-6 text-header-foreground shadow-soft-md">
+    // No left padding: the wider logo box (see HospitalLogo below) reads better sitting flush
+    // against the header's left edge than with the same 1.5rem gap the right side keeps.
+    <header className="sticky top-0 z-[1000] flex h-16 items-center gap-6 border-b border-header-foreground/15 bg-header pr-6 text-header-foreground shadow-soft-md">
       {/* Mobile nav trigger — sidebar collapses to a drawer below md, per docs/LayoutFramework.md §14 */}
       <Button variant="ghost" size="icon" className="shrink-0 md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation">
         <Menu className="h-5 w-5" />
@@ -65,7 +67,11 @@ export function TopHeader() {
       </Sheet>
 
       <div className="flex shrink-0 items-center gap-3">
-        <HospitalLogo invert showName={false} />
+        {/* Bigger than HospitalLogo's own default box (h-10 max-w-32) — a wordmark-style logo
+            (wide, short — the bundled default is 699x138px) barely reads at that size. Sized to
+            reach the header's own height for a typical wordmark logo; object-contain still
+            protects a differently-shaped upload from ever being stretched or cropped. */}
+        <HospitalLogo invert showName={false} imageClassName="h-16 max-w-80" />
         <span className="hidden truncate text-base font-bold leading-tight tracking-tight text-header-foreground sm:inline lg:text-lg">
           {appTitle}
         </span>
