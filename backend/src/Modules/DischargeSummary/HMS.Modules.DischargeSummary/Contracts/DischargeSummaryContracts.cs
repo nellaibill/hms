@@ -1,6 +1,69 @@
 namespace HMS.Modules.DischargeSummary.Contracts;
 
 /// <summary>
+/// Full-record update — every clinical/examination/vitals/course/surgical/advice field,
+/// submitted together on every PUT (matches the approved plan's MVP scope: no per-field
+/// PATCH). Only allowed while Status is Draft; rejected once Finalized
+/// (DischargeSummaryErrorCodes.NotDraft).
+/// </summary>
+public record UpdateDischargeSummaryRequest
+{
+    /// <summary>Independently editable from its Create-time prefill (Admission.
+    /// FinalDiagnosis) — see docs/DecisionLog.md.</summary>
+    public string? FinalDiagnosis { get; init; }
+
+    // Clinical.
+    public string? ChiefComplaints { get; init; }
+    public string? HistoryOfPresentingIllness { get; init; }
+    public string? PastMedicalHistory { get; init; }
+    public string? PastSurgicalHistory { get; init; }
+    public string? FamilyHistory { get; init; }
+    public string? PersonalHistory { get; init; }
+
+    // Examination.
+    public string? GeneralExamination { get; init; }
+    public string? CvsFindings { get; init; }
+    public string? RsFindings { get; init; }
+    public string? PaFindings { get; init; }
+    public string? CnsFindings { get; init; }
+    public string? LocalExamination { get; init; }
+    public string? Gait { get; init; }
+
+    // Vitals — a single snapshot, not a repeating observations table.
+    public decimal? HeightCm { get; init; }
+    public decimal? WeightKg { get; init; }
+    public int? PulseRate { get; init; }
+    public int? RespiratoryRate { get; init; }
+    public decimal? TemperatureF { get; init; }
+    public int? SpO2Percent { get; init; }
+
+    /// <summary>Free-text, e.g. "130/80".</summary>
+    public string? BloodPressure { get; init; }
+
+    public string? CourseInHospital { get; init; }
+
+    // Surgical Details — plain manual fields (no OT module yet).
+    public string? ProcedureName { get; init; }
+    public DateTime? ProcedureDateTime { get; init; }
+    public string? PrimarySurgeon { get; init; }
+    public string? AssistantSurgeons { get; init; }
+    public string? Anaesthetist { get; init; }
+    public string? Anaesthesia { get; init; }
+    public string? SurgicalPosition { get; init; }
+    public string? IntraOperativeFindings { get; init; }
+    public string? OperativeNotes { get; init; }
+
+    // Discharge Advice.
+    public string? Diet { get; init; }
+    public string? WoundCare { get; init; }
+    public string? Activity { get; init; }
+    public string? Physiotherapy { get; init; }
+    public string? ReviewInstructions { get; init; }
+    public string? EmergencyInstructions { get; init; }
+    public string? ConditionAtDischarge { get; init; }
+}
+
+/// <summary>
 /// Sign-off captured once, at Finalize — not a multi-step approval workflow (see
 /// docs/DecisionLog.md). All three fields are optional: a hospital that only ever fills in
 /// "Prepared By" still gets a valid, finalized summary.
@@ -29,6 +92,54 @@ public record DischargeSummaryResponse
     /// <summary>Pre-filled from Admission.FinalDiagnosis at Create time, independently
     /// editable from that point — see docs/DecisionLog.md.</summary>
     public string? FinalDiagnosis { get; init; }
+
+    // Clinical.
+    public string? ChiefComplaints { get; init; }
+    public string? HistoryOfPresentingIllness { get; init; }
+    public string? PastMedicalHistory { get; init; }
+    public string? PastSurgicalHistory { get; init; }
+    public string? FamilyHistory { get; init; }
+    public string? PersonalHistory { get; init; }
+
+    // Examination.
+    public string? GeneralExamination { get; init; }
+    public string? CvsFindings { get; init; }
+    public string? RsFindings { get; init; }
+    public string? PaFindings { get; init; }
+    public string? CnsFindings { get; init; }
+    public string? LocalExamination { get; init; }
+    public string? Gait { get; init; }
+
+    // Vitals.
+    public decimal? HeightCm { get; init; }
+    public decimal? WeightKg { get; init; }
+    public int? PulseRate { get; init; }
+    public int? RespiratoryRate { get; init; }
+    public decimal? TemperatureF { get; init; }
+    public int? SpO2Percent { get; init; }
+    public string? BloodPressure { get; init; }
+
+    public string? CourseInHospital { get; init; }
+
+    // Surgical Details.
+    public string? ProcedureName { get; init; }
+    public DateTime? ProcedureDateTime { get; init; }
+    public string? PrimarySurgeon { get; init; }
+    public string? AssistantSurgeons { get; init; }
+    public string? Anaesthetist { get; init; }
+    public string? Anaesthesia { get; init; }
+    public string? SurgicalPosition { get; init; }
+    public string? IntraOperativeFindings { get; init; }
+    public string? OperativeNotes { get; init; }
+
+    // Discharge Advice.
+    public string? Diet { get; init; }
+    public string? WoundCare { get; init; }
+    public string? Activity { get; init; }
+    public string? Physiotherapy { get; init; }
+    public string? ReviewInstructions { get; init; }
+    public string? EmergencyInstructions { get; init; }
+    public string? ConditionAtDischarge { get; init; }
 
     public Guid? PreparedByUserId { get; init; }
     public Guid? CheckedByUserId { get; init; }

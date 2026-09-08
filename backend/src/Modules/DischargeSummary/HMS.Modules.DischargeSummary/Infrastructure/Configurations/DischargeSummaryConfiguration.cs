@@ -35,6 +35,54 @@ internal class DischargeSummaryConfiguration : IEntityTypeConfiguration<Domain.D
 
         builder.Property(x => x.FinalDiagnosis).HasColumnName("final_diagnosis").HasMaxLength(2000);
 
+        // Clinical.
+        builder.Property(x => x.ChiefComplaints).HasColumnName("chief_complaints").HasMaxLength(2000);
+        builder.Property(x => x.HistoryOfPresentingIllness).HasColumnName("history_of_presenting_illness").HasMaxLength(8000);
+        builder.Property(x => x.PastMedicalHistory).HasColumnName("past_medical_history").HasMaxLength(2000);
+        builder.Property(x => x.PastSurgicalHistory).HasColumnName("past_surgical_history").HasMaxLength(2000);
+        builder.Property(x => x.FamilyHistory).HasColumnName("family_history").HasMaxLength(2000);
+        builder.Property(x => x.PersonalHistory).HasColumnName("personal_history").HasMaxLength(2000);
+
+        // Examination.
+        builder.Property(x => x.GeneralExamination).HasColumnName("general_examination").HasMaxLength(2000);
+        builder.Property(x => x.CvsFindings).HasColumnName("cvs_findings").HasMaxLength(1000);
+        builder.Property(x => x.RsFindings).HasColumnName("rs_findings").HasMaxLength(1000);
+        builder.Property(x => x.PaFindings).HasColumnName("pa_findings").HasMaxLength(1000);
+        builder.Property(x => x.CnsFindings).HasColumnName("cns_findings").HasMaxLength(1000);
+        builder.Property(x => x.LocalExamination).HasColumnName("local_examination").HasMaxLength(2000);
+        builder.Property(x => x.Gait).HasColumnName("gait").HasMaxLength(500);
+
+        // Vitals — a single snapshot, not a repeating observations table.
+        builder.Property(x => x.HeightCm).HasColumnName("height_cm").HasColumnType("numeric(5,2)");
+        builder.Property(x => x.WeightKg).HasColumnName("weight_kg").HasColumnType("numeric(5,2)");
+        builder.Property(x => x.PulseRate).HasColumnName("pulse_rate");
+        builder.Property(x => x.RespiratoryRate).HasColumnName("respiratory_rate");
+        builder.Property(x => x.TemperatureF).HasColumnName("temperature_f").HasColumnType("numeric(5,2)");
+        builder.Property(x => x.SpO2Percent).HasColumnName("spo2_percent");
+        builder.Property(x => x.BloodPressure).HasColumnName("blood_pressure").HasMaxLength(20);
+
+        builder.Property(x => x.CourseInHospital).HasColumnName("course_in_hospital").HasMaxLength(8000);
+
+        // Surgical Details — plain manual fields (no OT module yet).
+        builder.Property(x => x.ProcedureName).HasColumnName("procedure_name").HasMaxLength(500);
+        builder.Property(x => x.ProcedureDateTime).HasColumnName("procedure_date_time");
+        builder.Property(x => x.PrimarySurgeon).HasColumnName("primary_surgeon").HasMaxLength(500);
+        builder.Property(x => x.AssistantSurgeons).HasColumnName("assistant_surgeons").HasMaxLength(1000);
+        builder.Property(x => x.Anaesthetist).HasColumnName("anaesthetist").HasMaxLength(500);
+        builder.Property(x => x.Anaesthesia).HasColumnName("anaesthesia").HasMaxLength(500);
+        builder.Property(x => x.SurgicalPosition).HasColumnName("surgical_position").HasMaxLength(500);
+        builder.Property(x => x.IntraOperativeFindings).HasColumnName("intra_operative_findings").HasMaxLength(8000);
+        builder.Property(x => x.OperativeNotes).HasColumnName("operative_notes").HasMaxLength(8000);
+
+        // Discharge Advice.
+        builder.Property(x => x.Diet).HasColumnName("diet").HasMaxLength(2000);
+        builder.Property(x => x.WoundCare).HasColumnName("wound_care").HasMaxLength(2000);
+        builder.Property(x => x.Activity).HasColumnName("activity").HasMaxLength(2000);
+        builder.Property(x => x.Physiotherapy).HasColumnName("physiotherapy").HasMaxLength(2000);
+        builder.Property(x => x.ReviewInstructions).HasColumnName("review_instructions").HasMaxLength(2000);
+        builder.Property(x => x.EmergencyInstructions).HasColumnName("emergency_instructions").HasMaxLength(2000);
+        builder.Property(x => x.ConditionAtDischarge).HasColumnName("condition_at_discharge").HasMaxLength(2000);
+
         // Sign-off — opaque Guids into identity.users, same cross-schema-no-FK convention as
         // AdmissionId/PatientId above.
         builder.Property(x => x.PreparedByUserId).HasColumnName("prepared_by_user_id");

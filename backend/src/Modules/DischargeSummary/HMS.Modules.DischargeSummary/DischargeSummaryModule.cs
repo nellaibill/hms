@@ -45,6 +45,7 @@ public static class DischargeSummaryModule
         // Registered explicitly, not AddValidatorsFromAssemblyContaining — that scanner only
         // finds *public* IValidator<T> implementations, and this module's validators are
         // internal by design (docs/DeveloperHandbook.md §8/§20).
+        services.AddScoped<IValidator<UpdateDischargeSummaryRequest>, UpdateDischargeSummaryRequestValidator>();
         services.AddScoped<IValidator<FinalizeDischargeSummaryRequest>, FinalizeDischargeSummaryRequestValidator>();
 
         return services;

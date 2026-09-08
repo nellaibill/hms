@@ -23,6 +23,10 @@ public interface IDischargeSummaryService
 
     Task<Result<DischargeSummaryResponse>> GetByAdmissionIdAsync(Guid admissionId, CancellationToken cancellationToken);
 
+    /// <summary>Full-record update of every clinical/examination/vitals/course/surgical/
+    /// advice field. Fails with DischargeSummaryErrorCodes.NotDraft once Finalized.</summary>
+    Task<Result<DischargeSummaryResponse>> UpdateAsync(Guid id, UpdateDischargeSummaryRequest request, Guid? actorId, CancellationToken cancellationToken);
+
     /// <summary>Transitions Draft → Finalized, stamping FinalizedAt/FinalizedByUserId. Fails
     /// with DischargeSummaryErrorCodes.AlreadyFinalized if already Finalized.</summary>
     Task<Result<DischargeSummaryResponse>> FinalizeAsync(Guid id, FinalizeDischargeSummaryRequest request, Guid? actorId, CancellationToken cancellationToken);

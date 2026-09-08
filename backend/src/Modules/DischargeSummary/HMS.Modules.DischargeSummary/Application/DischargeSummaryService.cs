@@ -93,6 +93,69 @@ internal class DischargeSummaryService : IDischargeSummaryService
             : Result<DischargeSummaryResponse>.Success(summary.ToResponse());
     }
 
+    public async Task<Result<DischargeSummaryResponse>> UpdateAsync(Guid id, UpdateDischargeSummaryRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var summary = await _repository.GetByIdAsync(id, cancellationToken);
+        if (summary is null)
+        {
+            return Result<DischargeSummaryResponse>.Failure(DischargeSummaryErrorCodes.NotFound, $"Discharge summary '{id}' was not found.");
+        }
+
+        if (summary.Status != DischargeSummaryStatus.Draft)
+        {
+            return Result<DischargeSummaryResponse>.Failure(
+                DischargeSummaryErrorCodes.NotDraft,
+                $"Discharge summary '{id}' can no longer be edited once finalized.");
+        }
+
+        summary.UpdateClinicalDetails(
+            request.FinalDiagnosis,
+            request.ChiefComplaints,
+            request.HistoryOfPresentingIllness,
+            request.PastMedicalHistory,
+            request.PastSurgicalHistory,
+            request.FamilyHistory,
+            request.PersonalHistory,
+            request.GeneralExamination,
+            request.CvsFindings,
+            request.RsFindings,
+            request.PaFindings,
+            request.CnsFindings,
+            request.LocalExamination,
+            request.Gait,
+            request.HeightCm,
+            request.WeightKg,
+            request.PulseRate,
+            request.RespiratoryRate,
+            request.TemperatureF,
+            request.SpO2Percent,
+            request.BloodPressure,
+            request.CourseInHospital,
+            request.ProcedureName,
+            request.ProcedureDateTime,
+            request.PrimarySurgeon,
+            request.AssistantSurgeons,
+            request.Anaesthetist,
+            request.Anaesthesia,
+            request.SurgicalPosition,
+            request.IntraOperativeFindings,
+            request.OperativeNotes,
+            request.Diet,
+            request.WoundCare,
+            request.Activity,
+            request.Physiotherapy,
+            request.ReviewInstructions,
+            request.EmergencyInstructions,
+            request.ConditionAtDischarge,
+            actorId);
+
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Updated discharge summary {DischargeSummaryId}", summary.Id);
+
+        return Result<DischargeSummaryResponse>.Success(summary.ToResponse());
+    }
+
     public async Task<Result<DischargeSummaryResponse>> FinalizeAsync(Guid id, FinalizeDischargeSummaryRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var summary = await _repository.GetByIdAsync(id, cancellationToken);

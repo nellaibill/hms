@@ -22,13 +22,16 @@ namespace HMS.Modules.DischargeSummary.Endpoints;
 public class DischargeSummariesController : ControllerBase
 {
     private readonly IDischargeSummaryService _service;
+    private readonly IValidator<UpdateDischargeSummaryRequest> _updateValidator;
     private readonly IValidator<FinalizeDischargeSummaryRequest> _finalizeValidator;
 
     public DischargeSummariesController(
         IDischargeSummaryService service,
+        IValidator<UpdateDischargeSummaryRequest> updateValidator,
         IValidator<FinalizeDischargeSummaryRequest> finalizeValidator)
     {
         _service = service;
+        _updateValidator = updateValidator;
         _finalizeValidator = finalizeValidator;
     }
 
@@ -58,6 +61,20 @@ public class DischargeSummariesController : ControllerBase
     public async Task<IActionResult> GetByAdmissionId(Guid admissionId, CancellationToken cancellationToken)
     {
         var result = await _service.GetByAdmissionIdAsync(admissionId, cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    [Authorize]
+    [RequirePermission("discharge-summary.edit")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDischargeSummaryRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -97,6 +114,14 @@ public class DischargeSummariesController : ControllerBase
         ErrorCode = "VALIDATION.FAILED",
         Message = "One or more validation errors occurred.",
         ValidationErrors = validation.Errors.Select(e => new ValidationErrorItem { Field = e.PropertyName, Message = e.ErrorMessage }).ToList(),
+        CorrelationId = HttpContext.GetCorrelationId(),
+        Timestamp = DateTime.UtcNow,
+    };
+
+    private ApiErrorResponse BuildRequestRequiredError() => new()
+    {
+        ErrorCode = "VALIDATION.FAILED",
+        Message = "The request body is missing or could not be parsed.",
         CorrelationId = HttpContext.GetCorrelationId(),
         Timestamp = DateTime.UtcNow,
     };

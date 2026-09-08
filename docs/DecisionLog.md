@@ -37,6 +37,27 @@ _To be documented._
 
 ## Decisions
 
+### ADR-058: Discharge Summary module Phase 2 — clinical/examination/vitals/surgical/advice fields, Update
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-057. Phase 2 fills in the actual document content the plan's data model specified: chief complaints/history, section-by-section examination findings, a one-time vitals snapshot, a single hospital-course narrative, manual Surgical Details (no OT module to integrate with yet), and Discharge Advice — plus the `PUT` endpoint that lets a Draft actually be edited.
+
+**Decision**
+1. **One `UpdateClinicalDetails` domain method, one `PUT`, no per-section endpoints** — the approved plan scoped this as a full-record update (every field submitted together), not per-field `PATCH`; matches `UpdateDischargeSummaryRequest` carrying all ~36 fields at once. `DischargeSummaryService.UpdateAsync` is the only place that checks `Status == Draft` (`DischargeSummaryErrorCodes.NotDraft` otherwise, mapped to 403 per the plan's own "403 once Finalized" wording) — the domain method itself doesn't re-check its own state, same convention as `Finalize`/`Admission.TransferBed`.
+2. **Every free-text field is trimmed and blank-normalized to `null`** in the domain method (`Normalize`), so "the doctor cleared this field" and "never filled in" are indistinguishable in storage — deliberately simple, no separate "explicitly cleared" tombstone.
+3. **Vitals are a single snapshot** (`HeightCm`/`WeightKg`/`PulseRate`/`RespiratoryRate`/`TemperatureF`/`SpO2Percent`/`BloodPressure`), not a repeating observations table — matches the plan's explicit scope call (a full vitals-history feature is a materially bigger feature than this increment). `UpdateDischargeSummaryRequestValidator` bounds each numeric vital to a generous physiological range (e.g. `SpO2Percent` 0–100, `TemperatureF` 70–115) purely as basic sanity-checking, not clinical validation.
+4. **Column max-lengths mirror the validator's `MaximumLength` rules exactly** (`DischargeSummaryConfiguration`), split into three rough tiers — short fields (surgeon names, `Gait`, `BloodPressure`) at 500/20, most narrative sections at 1000–2000, and four genuinely long free-text fields (`HistoryOfPresentingIllness`, `CourseInHospital`, `IntraOperativeFindings`, `OperativeNotes`) at 8000 — following this codebase's existing convention (`Admission.FinalDiagnosis`/`DischargeNotes` etc. also use `HasMaxLength`, never unbounded `text`) rather than introducing an unbounded column type for this module alone.
+5. **One more `dotnet ef migrations add`-generated migration**, `AddDischargeSummaryClinicalFields` (context `DischargeSummaryDbContext`) — purely additive columns, no data migration needed since Phase 1 shipped with zero real rows in any tenant yet.
+
+**Consequences**
+- 5 new tests (`DischargeSummaryTests.UpdateClinicalDetails_*`, `DischargeSummaryServiceTests.UpdateAsync_*`) covering the full-field-set update, blank-normalization, the Draft-only gate, and not-found — full `HMS.UnitTests`/`HMS.ArchitectureTests` suites stay green.
+- No live browser verification — still backend-only, no frontend yet, same reasoning as ADR-057.
+- `DischargeMedication` (the discharge medications table and the Update endpoint's list-sync behavior) is Phase 3, its own ADR entry.
+
+---
+
 ### ADR-057: Discharge Summary module Phase 1 — scaffold, Draft/Finalize, permissions, feature wiring
 **Date:** 2026-09-08
 **Status:** Accepted

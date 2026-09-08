@@ -127,6 +127,57 @@ public class DischargeSummaryServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_WhenDraft_AppliesClinicalDetails()
+    {
+        var summary = HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(_admissionId, _patientId, "Initial", null);
+        _repository.GetByIdAsync(summary.Id, Arg.Any<CancellationToken>()).Returns(summary);
+
+        var result = await _sut.UpdateAsync(
+            summary.Id,
+            new UpdateDischargeSummaryRequest
+            {
+                FinalDiagnosis = "Updated diagnosis",
+                ChiefComplaints = "Fever",
+                BloodPressure = "118/76",
+                ConditionAtDischarge = "Stable",
+            },
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.FinalDiagnosis.Should().Be("Updated diagnosis");
+        result.Value.ChiefComplaints.Should().Be("Fever");
+        result.Value.BloodPressure.Should().Be("118/76");
+        result.Value.ConditionAtDischarge.Should().Be("Stable");
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenAlreadyFinalized_ReturnsNotDraftFailure()
+    {
+        var summary = HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(_admissionId, _patientId, "Diagnosis", null);
+        summary.Finalize(null, null, null, DateTime.UtcNow, null);
+        _repository.GetByIdAsync(summary.Id, Arg.Any<CancellationToken>()).Returns(summary);
+
+        var result = await _sut.UpdateAsync(summary.Id, new UpdateDischargeSummaryRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(DischargeSummaryErrorCodes.NotDraft);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenNotFound_ReturnsNotFoundFailure()
+    {
+        _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((HMS.Modules.DischargeSummary.Domain.DischargeSummary?)null);
+
+        var result = await _sut.UpdateAsync(Guid.NewGuid(), new UpdateDischargeSummaryRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(DischargeSummaryErrorCodes.NotFound);
+    }
+
+    [Fact]
     public async Task FinalizeAsync_WhenDraft_TransitionsToFinalizedAndStampsFields()
     {
         var summary = HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(_admissionId, _patientId, "Diagnosis", null);
