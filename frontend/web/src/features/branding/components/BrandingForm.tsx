@@ -231,10 +231,11 @@ export function BrandingForm() {
               <div className="flex flex-col gap-1.5">
                 <Label>Hospital logo</Label>
                 <div className="flex items-center gap-3">
-                  {/* Same fixed-box containment as the real header (HospitalLogo.tsx) — the
-                      preview here should honestly reflect how any shape will actually render
-                      once saved, not a generously-sized preview that hides a bad upload. */}
-                  <span className="flex h-10 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+                  {/* Same fixed-box containment as the real header (HospitalLogo.tsx, sized via
+                      TopHeader's imageClassName="h-16 max-w-80") — the preview here should
+                      honestly reflect how any shape will actually render once saved, not a
+                      generously-sized preview that hides a bad upload. */}
+                  <span className="flex h-16 w-80 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
                     {previewLogoUrl ? (
                       <img src={previewLogoUrl} alt="Current logo" className="max-h-full max-w-full object-contain" />
                     ) : (
