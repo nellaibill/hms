@@ -1,11 +1,13 @@
 import type { DiagnosticProvider } from '@hms/shared';
-import { Building2, Loader2, Plus } from 'lucide-react';
+import { Building2, Loader2, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth/AuthContext';
 import {
   DiagnosticProviderFormDialog,
@@ -16,12 +18,24 @@ import {
 
 export default function ExternalLabsListPage() {
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [formDialog, setFormDialog] = useState<{ mode: 'create' | 'edit'; provider?: DiagnosticProvider } | null>(null);
   const [providerPendingDelete, setProviderPendingDelete] = useState<DiagnosticProvider | null>(null);
 
   const { hasPermission } = useAuth();
-  const { data, isPending, isError, error } = useDiagnosticProvidersQuery({ page, pageSize: 20, sort: 'name' });
+  const debouncedSearch = useDebouncedValue(search);
+  const { data, isPending, isError, error } = useDiagnosticProvidersQuery({
+    page,
+    pageSize: 20,
+    sort: 'name',
+    search: debouncedSearch || undefined,
+  });
   const deleteMutation = useDeleteDiagnosticProviderMutation();
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
 
   function handleConfirmDelete() {
     if (!providerPendingDelete) return;
@@ -31,8 +45,8 @@ export default function ExternalLabsListPage() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
-        <Link to="/diagnostics/lab" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to Central Laboratory
+        <Link to="/admin/masters" className="text-sm text-muted-foreground hover:text-foreground">
+          &larr; Back to Hospital Reference Data
         </Link>
       </div>
 
@@ -47,9 +61,21 @@ export default function ExternalLabsListPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search external labs…"
+              value={search}
+              onChange={(event) => handleSearchChange(event.target.value)}
+              aria-label="Search external labs"
+              className="pl-9"
+            />
+          </div>
+
           {hasPermission('diagnostics.create') && (
-            <Button className="gap-1.5" onClick={() => setFormDialog({ mode: 'create' })}>
+            <Button className="ml-auto gap-1.5" onClick={() => setFormDialog({ mode: 'create' })}>
               <Plus className="h-4 w-4" />
               Add External Lab
             </Button>
@@ -73,7 +99,9 @@ export default function ExternalLabsListPage() {
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
               <p className="text-sm font-medium text-foreground">No external labs found</p>
-              <p className="text-sm text-muted-foreground">Add the first external lab to get started.</p>
+              <p className="text-sm text-muted-foreground">
+                {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Add the first external lab to get started.'}
+              </p>
             </CardContent>
           </Card>
         )}
