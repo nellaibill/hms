@@ -276,6 +276,12 @@ moment the terminal/session closes or the VM reboots, with no automatic restart.
 7. **PostgreSQL stays private:** from a *different* machine,
    `Test-NetConnection 162.35.105.234 -Port 5432` should report `TcpTestSucceeded: False`.
    If it succeeds, a firewall rule for 5432 exists somewhere and needs to be removed.
+8. **Static assets are actually gzipped** — Chocolatey's stock nginx ships with gzip off,
+   which otherwise turns the frontend's ~200 KB gzip build into a ~677 KB raw transfer on
+   every load. `curl -sI -H "Accept-Encoding: gzip" http://162.35.105.234/assets/<any .js file
+   from dist/assets>` should include `Content-Encoding: gzip`; without it, re-check the
+   `gzip on;` block in `nginx-hms-reverse-proxy.conf` was actually picked up (`nginx -s reload`
+   after editing, or `nginx -t` to check for a config error first).
 
 If step 5 fails with a CORS error specifically (not a network/connection error), it means
 `Cors__AllowedOrigins__0` on the running service doesn't exactly match the origin the

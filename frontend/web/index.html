@@ -24,9 +24,64 @@
         }
       })(window.location);
     </script>
+    <script type="text/javascript">
+      // Mirrors lib/theme-provider.tsx's getInitialTheme() exactly (same storage key, same
+      // prefers-color-scheme fallback) so the splash screen below picks the right background
+      // before React (and index.css) have loaded — without this, a dark-mode user would see a
+      // white flash for the entire first-load window this splash exists to smooth over.
+      (function () {
+        var stored = localStorage.getItem('hms-theme');
+        var isDark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) document.documentElement.classList.add('dark');
+      })();
+    </script>
+    <style>
+      /* Self-contained (no Tailwind/index.css dependency) so it paints immediately from raw
+         HTML, before the JS bundle has downloaded/parsed/executed — that gap, not the
+         already-covered per-route Suspense fallback, is what a slow first load actually spends
+         most of its time in. Colors are hardcoded to match --background/--foreground/--primary
+         in index.css exactly, so there's no visible swap once React mounts and replaces this. */
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: hsl(0 0% 100%);
+        color: hsl(215 16% 47%);
+        font-family: Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+        font-size: 14px;
+      }
+      html.dark #app-splash {
+        background: hsl(222 47% 7%);
+        color: hsl(215 18% 68%);
+      }
+      #app-splash-spinner {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 3px solid hsl(210 82% 45% / 0.25);
+        border-top-color: hsl(210 82% 45%);
+        animation: app-splash-spin 0.8s linear infinite;
+      }
+      @keyframes app-splash-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Replaced the instant createRoot(...).render() commits in main.tsx — plain markup,
+           not a React tree, so it needs no cleanup of its own. -->
+      <div id="app-splash" aria-hidden="true">
+        <div id="app-splash-spinner"></div>
+        <p>Loading HMS…</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
