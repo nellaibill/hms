@@ -41,3 +41,4 @@ export * from './services/attendanceApi';
 export * from './services/leaveTypesApi';
 export * from './services/leaveRequestsApi';
 export * from './services/hrDashboardApi';
+export * from './services/dischargeSummaryApi';
