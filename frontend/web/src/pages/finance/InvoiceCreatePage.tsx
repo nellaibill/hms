@@ -80,6 +80,7 @@ export default function InvoiceCreatePage() {
   // Details, or was created before the visit feature existed) falls back to one blank row,
   // same as before this change.
   const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient?.id);
+  const latestVisit = visits?.[0];
 
   // Guards against double-billing a consultation this specific visit already had billed —
   // without this, re-opening OPD Billing Entry for the same visit (e.g. to add a Laboratory
@@ -96,7 +97,6 @@ export default function InvoiceCreatePage() {
   // count — that consultation was never actually billed.
   const { data: patientInvoices, isPending: invoicesPending } = usePatientInvoicesQuery(patient?.id);
   const consultationAlreadyBilledForVisit = useMemo(() => {
-    const latestVisit = visits?.[0];
     if (!latestVisit) return false;
     return (patientInvoices ?? []).some(
       (invoice) =>
@@ -104,10 +104,9 @@ export default function InvoiceCreatePage() {
         invoice.visitId === latestVisit.visitId &&
         invoice.items.some((item) => item.billingType === 'Consultation'),
     );
-  }, [patientInvoices, visits]);
+  }, [patientInvoices, latestVisit]);
 
   const billingDefaultValues = useMemo<BillingFormValues>(() => {
-    const latestVisit = visits?.[0];
     if (consultationAlreadyBilledForVisit || !latestVisit || latestVisit.consultations.length === 0) {
       return defaultBillingFormValues;
     }
@@ -124,7 +123,7 @@ export default function InvoiceCreatePage() {
       fromVisit: true,
     }));
     return { ...defaultBillingFormValues, consultation };
-  }, [visits, consultationAlreadyBilledForVisit]);
+  }, [latestVisit, consultationAlreadyBilledForVisit]);
 
   // Guards against losing an in-progress, unsaved invoice — a receptionist part-way through
   // billing several items who accidentally hits back/closes the tab previously lost
@@ -197,11 +196,14 @@ export default function InvoiceCreatePage() {
 
     const values = billingRef.current.getValues();
     try {
-      // No visit/encounter concept exists on Patient at all anymore (Registration Details is
-      // UI-only pending a future backend module) — key the invoice off the patient directly.
+      // Use the patient's actual visit (populates Registration Type/Department/Consultant(s)
+      // on the Recent Patient Bills ledger via the Billing↔Patients join in
+      // InvoiceService.GetRecentAsync) when Registration Details captured one; a returning
+      // patient billed with no registration on record has no visit to attach, so this falls
+      // back to the patient id itself — mirrors CreateInvoiceRequest.VisitId's own doc comment.
       const billing = await createInvoiceMutation.mutateAsync({
         patientId: patient.id,
-        visitId: patient.id,
+        visitId: latestVisit?.visitId ?? patient.id,
         values,
         patient: { name: `${patient.firstName} ${patient.lastName}`, uhid: patient.uhid },
       });

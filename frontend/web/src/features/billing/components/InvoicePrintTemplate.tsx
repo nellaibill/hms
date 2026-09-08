@@ -1,4 +1,3 @@
-import defaultLogoUrl from '@/assets/logo.png';
 import { branding } from '@/config/branding';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -26,13 +25,11 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
   const { user } = useAuth();
   const hospitalName = brandingConfig?.hospitalName ?? branding.hospitalName;
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
-  const logoUrl = brandingConfig?.logoUrl ?? defaultLogoUrl;
 
   // Same reference-cache priming InvoiceDetailCard does — kept here too so this template
   // resolves real names even if it's ever rendered without that card mounted alongside it.
   useMasterOptionsQuery('diagnosticTest');
   useMasterOptionsQuery('department');
-  useMasterOptionsQuery('consultant');
   useMasterOptionsQuery('consultationType');
   useDiagnosticServices('Radiology');
   useDiagnosticServices('Laboratory');
@@ -50,7 +47,6 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
       style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
       <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-4 text-center">
-        <img src={logoUrl} alt={hospitalName} className="h-20 w-auto object-contain" />
         <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
         <span className="text-xs text-gray-600">{appTitle}</span>
       </div>
@@ -88,20 +84,18 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
           <tr className="border-y-2 border-black">
             <th className="py-2 pr-2 text-left font-semibold">#</th>
             <th className="py-2 pr-2 text-left font-semibold">Description</th>
-            <th className="py-2 pr-2 text-left font-semibold">Consultant Doctor</th>
             <th className="py-2 text-right font-semibold">Amount</th>
           </tr>
         </thead>
         <tbody>
           {billing.items.map((item, index) => {
-            const { serviceLabel, consultantName } = describeBillingItem(item);
+            const { serviceLabel } = describeBillingItem(item);
             return (
               <tr key={item.id} className="border-b border-gray-300">
                 <td className="py-2 pr-2 align-top text-gray-600">{index + 1}</td>
                 <td className="py-2 pr-2 align-top">
                   {item.billingType} — {serviceLabel}
                 </td>
-                <td className="py-2 pr-2 align-top text-gray-600">{consultantName}</td>
                 <td className="py-2 text-right align-top font-medium">
                   {formatCurrency(item.total)}
                 </td>
