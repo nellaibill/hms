@@ -198,7 +198,24 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
                 min={0}
                 inputMode="decimal"
                 value={field.value}
-                onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                // The field starts at (or gets cleared back to) 0 — e.g. "Doctor's Consultation
+                // - Others/On-call" has no master fee (see the effect above), so staff type the
+                // real amount in, and clearing the field to retype resets it to 0 too. Selecting
+                // on focus covers typing right after landing on a pre-filled "0". That alone
+                // isn't enough for clear-then-retype though: clearing re-renders the field back
+                // to "0" without reselecting it (focus doesn't refire), so the next keystroke
+                // would insert after that "0" — hence also stripping any leading zero directly
+                // off what was just typed, and writing the corrected text back into the input
+                // right away rather than waiting on the next render to fix the display.
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  let raw = e.target.value;
+                  if (/^0+(?=\d)/.test(raw)) {
+                    raw = raw.replace(/^0+/, '');
+                    e.target.value = raw;
+                  }
+                  field.onChange(raw === '' ? 0 : Number(raw));
+                }}
               />
             )}
           />
