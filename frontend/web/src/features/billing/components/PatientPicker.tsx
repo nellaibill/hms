@@ -57,8 +57,10 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
     { enabled: hasSearched },
   );
 
-  // Before any search is entered, default to today's registrations — the receptionist's most
-  // common billing task right after registration — instead of a blank "search first" prompt.
+  // Before any search is entered, default to patients with a visit recorded/updated today —
+  // the receptionist's most common billing task — instead of a blank "search first" prompt.
+  // Driven by patients.patient_visits (not the patient record's own timestamps), so a
+  // returning patient billed for today's visit shows up here too, not just new registrations.
   const {
     data: todaysData,
     isPending: isTodaysPending,
@@ -93,7 +95,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
 
       {!hasSearched && (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-foreground">Registered today</p>
+          <p className="text-sm font-medium text-foreground">Today&apos;s visits</p>
 
           {isTodaysPending && (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -112,7 +114,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
                 <Search className="h-6 w-6 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">No patients registered today yet.</p>
+                <p className="text-sm font-medium text-foreground">No patient visits recorded today yet.</p>
                 <p className="text-sm text-muted-foreground">Enter a name, age, UHID, or phone number above, then click Search.</p>
               </CardContent>
             </Card>
