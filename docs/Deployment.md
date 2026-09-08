@@ -57,6 +57,25 @@ This is the same migrate+seed logic `ASPNETCORE_ENVIRONMENT=Development` already
 automatically on a plain `dotnet run`, for local convenience — `migrate` is the explicit
 counterpart meant for a deploy pipeline or container entrypoint, usable in Production too.
 
+**Additional hospital tenants are not covered by `migrate`.** Any hospital provisioned
+through the Register Hospital flow (i.e. every tenant other than the legacy one above) has
+its own physical database, and `dotnet HMS.Api.dll migrate` never touches it. After
+restarting the API on a new version that adds migrations, go to **Platform admin →
+Hospitals** and click **Migrate** on each such hospital — this calls `HospitalsController`'s
+PlatformSuperAdmin-only migrate action (`platformHospitalsApi.migrateHospital(id)`,
+[HospitalTable.tsx](../frontend/web/src/features/platformHospitals/components/HospitalTable.tsx)),
+which applies that tenant's pending EF Core migrations on demand — the operator-triggered
+alternative to running `dotnet ef database update` by hand against its connection string.
+Do this for every registered hospital, not just one, since each has an independent migration
+history.
+
+**Symptom of forgetting this step:** a `Npgsql.PostgresException (0x80004005): 42703: column
+"..." does not exist` in the API logs (SqlState `42703`) on a request that touches the new
+column/table — not a startup failure, since the app itself starts fine and the *other*
+tenants (Platform, legacy) are already migrated. If you see `42703` right after a deploy that
+added a migration, this is the first thing to check: migrate the hospital tenant that request
+was actually resolved against, via the Migrate button above.
+
 ## Rollback Strategy
 _To be documented._
 
@@ -154,6 +173,10 @@ Get-Service HmsApi                      # should show Running
 curl http://localhost:58158/health      # from the VPS itself
 ```
 
+If this deploy adds new migrations and this VPS has hospital tenants beyond the legacy one,
+also run the migrate step from [Database Migration Deployment](#database-migration-deployment)
+above, then use the Platform admin **Hospitals → Migrate** button per hospital.
+
 ### 3. Frontend — build for production against the public origin
 
 ```powershell
@@ -190,6 +213,50 @@ Already handled by `install-api-service.ps1` setting `Cors__AllowedOrigins__0` t
 browser sends when the React app (served from that same origin via nginx) calls the API.
 Do **not** set this to `*`/`AllowAnyOrigin` — `CorsConfiguration.cs` doesn't support that
 mode at all by design (fails closed on an empty list instead).
+
+### 6. If the API is actually running via `dotnet run`, not the published Windows Service
+
+The steps above assume `install-api-service.ps1` (publish + NSSM) is how the API runs. In
+practice a VPS can end up running the API a different way instead — e.g. someone ran
+`dotnet run` directly in a terminal to get something working quickly, and it just... kept
+running that way. Recognize this by `Get-Service HmsApi` returning "Cannot find any service"
+while `Get-Process` shows a `dotnet.exe` (the `dotnet run` host) plus a child `HMS.Api.exe`
+(the actual app, from `bin\Debug\net10.0\`, not `bin\Release`) — check with:
+```powershell
+Get-Process | Where-Object { $_.ProcessName -match "dotnet|HMS.Api" } | Select-Object Id, ProcessName, Path, StartTime
+```
+This mode works for a quick fix, but has three sharp edges the published/NSSM path doesn't:
+
+- **`ASPNETCORE_URLS` gets silently overridden.** `dotnet run` loads
+  [launchSettings.json](../backend/src/HMS.Api/Properties/launchSettings.json)'s launch
+  profile (you'll see `Using launch settings from ...` in the output), and the profile's own
+  `applicationUrl` wins over an ambient `$env:ASPNETCORE_URLS` you set in the same shell —
+  Kestrel still binds `localhost` only, so the app works from `curl http://localhost:...` on
+  the VM itself but times out (`ERR_CONNECTION_TIMED_OUT`) from anywhere external, even with
+  the firewall port open. Fix: pass `--urls` on the command line instead, which *does* take
+  precedence — `dotnet run --urls "http://+:58158"` — and confirm the startup log now shows
+  `http://[::]:58158` or `http://+:58158`, not `http://localhost:58158`.
+- **Port 58158 (or whatever port) needs its own firewall rule**, same as the
+  `-ExposeApiPortDirectly` case in step 4 above — `open-deployment-firewall-ports.ps1` was
+  written for the NSSM/nginx path and won't have been run for an ad hoc `dotnet run` session.
+  Check with `Get-NetFirewallRule -DisplayName "*<port>*"`; add one with
+  `New-NetFirewallRule -DisplayName "HMS API <port>" -Direction Inbound -Protocol TCP -LocalPort <port> -Action Allow`
+  if it's missing.
+- **`ASPNETCORE_ENVIRONMENT` also comes from the launch profile**, not the ambient shell — so
+  `$env:ASPNETCORE_ENVIRONMENT` printing empty doesn't mean the app is running as `Production`;
+  check the `Hosting environment:` line the app itself prints at startup instead of trusting
+  the shell variable.
+
+To pick up a new commit while running this way: stop the process (`Ctrl+C` in its terminal, or
+`Stop-Process -Id <dotnet.exe PID> -Force`), `git pull`/`checkout` the target commit, then
+`dotnet run --urls "http://+:<port>"` again from `backend/src/HMS.Api` — this recompiles
+against the current source and, if `ASPNETCORE_ENVIRONMENT=Development` (the launch profile's
+default), auto-runs the Platform + legacy-tenant migration on startup per
+[Database Migration Deployment](#database-migration-deployment) above. It will **not** migrate
+any real hospital tenant — that still needs the Migrate button, same as the published path.
+Treat this mode as an interim/testing state, not a real deployment: migrate to
+`install-api-service.ps1` (step 2 above) when convenient, since a `dotnet run` session dies the
+moment the terminal/session closes or the VM reboots, with no automatic restart.
 
 ## Testing
 
