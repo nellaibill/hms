@@ -16,6 +16,7 @@ import {
   useDischargeMutation,
   useTransferBedMutation,
 } from '../../features/ipd/admissions';
+import { DischargeSummaryEntryCard } from '../../features/dischargeSummary';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -180,6 +181,11 @@ export default function AdmissionViewPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Discharge Summary is only reachable once the admission itself has been closed out
+            (Admission.Status === 'Discharged') — matches the backend's own creation gate
+            (DischargeSummaryService.CreateDraftAsync rejects a non-Discharged admission). */}
+        {!isAdmitted && <DischargeSummaryEntryCard admissionId={admission.id} />}
 
         {isTransferOpen && (
           <TransferBedDialog
