@@ -120,5 +120,19 @@ internal class DischargeSummaryConfiguration : IEntityTypeConfiguration<Domain.D
             .HasFilter("is_deleted = false");
 
         builder.HasIndex(x => x.PatientId).HasDatabaseName("ix_discharge_summaries_patient_id");
+
+        // Real, same-schema FK — unlike AdmissionId/PatientId above, this is an
+        // intra-module relationship (docs/DecisionLog.md ADR-029's identical distinction for
+        // Messaging). Cascade: a discharge summary is soft-deleted as a whole, never leaving
+        // orphaned medication lines behind. UsePropertyAccessMode(Field) is required because
+        // DischargeSummary.Medications is a read-only computed property backed by a private
+        // field, not a settable auto-property — mirrors PatientConfiguration's identical
+        // treatment of Patient.Allergies/EmergencyContacts.
+        builder.HasMany(x => x.Medications)
+            .WithOne()
+            .HasForeignKey(m => m.DischargeSummaryId)
+            .HasConstraintName("fk_discharge_medications_discharge_summary_id")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Medications).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

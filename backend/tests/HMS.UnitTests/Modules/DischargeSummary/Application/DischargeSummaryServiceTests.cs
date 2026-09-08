@@ -153,6 +153,74 @@ public class DischargeSummaryServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_ReplacesTheFullMedicationList()
+    {
+        var summary = HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(_admissionId, _patientId, "Initial", null);
+        var existingLine = HMS.Modules.DischargeSummary.Domain.DischargeMedication.Create(
+            summary.Id, 1, "OldDrug", "10mg", "Oral", 1, 1, 1, 1, 3, FoodInstruction.BeforeFood, null);
+        summary.ReplaceMedications([existingLine], updatedBy: null);
+        _repository.GetByIdAsync(summary.Id, Arg.Any<CancellationToken>()).Returns(summary);
+
+        var result = await _sut.UpdateAsync(
+            summary.Id,
+            new UpdateDischargeSummaryRequest
+            {
+                Medications =
+                [
+                    new DischargeMedicationRequest
+                    {
+                        SortOrder = 1,
+                        DrugName = "Paracetamol",
+                        Dose = "500mg",
+                        Route = "Oral",
+                        MorningQty = 1,
+                        NoonQty = 0,
+                        EveningQty = 1,
+                        NightQty = 1,
+                        DurationDays = 5,
+                        FoodInstruction = FoodInstruction.AfterFood,
+                    },
+                    new DischargeMedicationRequest
+                    {
+                        SortOrder = 2,
+                        DrugName = "Amoxicillin",
+                        Dose = "250mg",
+                        Route = "Oral",
+                        MorningQty = 1,
+                        NoonQty = 1,
+                        EveningQty = 1,
+                        NightQty = 0,
+                        DurationDays = 7,
+                        FoodInstruction = FoodInstruction.BeforeFood,
+                    },
+                ],
+            },
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Medications.Should().HaveCount(2);
+        result.Value.Medications.Should().NotContain(m => m.DrugName == "OldDrug");
+        result.Value.Medications.Should().Contain(m => m.DrugName == "Paracetamol" && m.FoodInstruction == FoodInstruction.AfterFood);
+        result.Value.Medications.Should().Contain(m => m.DrugName == "Amoxicillin" && m.DurationDays == 7);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithEmptyMedicationsList_ClearsExistingMedications()
+    {
+        var summary = HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(_admissionId, _patientId, "Initial", null);
+        var existingLine = HMS.Modules.DischargeSummary.Domain.DischargeMedication.Create(
+            summary.Id, 1, "OldDrug", "10mg", "Oral", 1, 1, 1, 1, 3, FoodInstruction.BeforeFood, null);
+        summary.ReplaceMedications([existingLine], updatedBy: null);
+        _repository.GetByIdAsync(summary.Id, Arg.Any<CancellationToken>()).Returns(summary);
+
+        var result = await _sut.UpdateAsync(summary.Id, new UpdateDischargeSummaryRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Medications.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task UpdateAsync_WhenAlreadyFinalized_ReturnsNotDraftFailure()
     {
         var summary = HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(_admissionId, _patientId, "Diagnosis", null);

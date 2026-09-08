@@ -22,6 +22,8 @@ public class DischargeSummaryDbContext : DbContext
     // module's repositories.
     internal DbSet<Domain.DischargeSummary> DischargeSummaries => Set<Domain.DischargeSummary>();
 
+    internal DbSet<Domain.DischargeMedication> DischargeMedications => Set<Domain.DischargeMedication>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);

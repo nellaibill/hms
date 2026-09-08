@@ -83,6 +83,14 @@ internal class DischargeSummary : Entity
     public DateTime? FinalizedAt { get; private set; }
     public Guid? FinalizedByUserId { get; private set; }
 
+    /// <summary>1:many child, real DB FK (unlike AdmissionId/PatientId above) — see
+    /// DischargeMedication's own doc comment. Only ever loaded/replaced through this
+    /// aggregate (DischargeSummaryRepository.GetByIdAsync/GetByAdmissionIdAsync both
+    /// Include this navigation), same pattern as Patient.Allergies/EmergencyContacts.
+    /// </summary>
+    private readonly List<DischargeMedication> _medications = [];
+    public IReadOnlyCollection<DischargeMedication> Medications => _medications.AsReadOnly();
+
     // Required by EF Core materialization.
     private DischargeSummary()
     {
@@ -197,6 +205,19 @@ internal class DischargeSummary : Entity
         EmergencyInstructions = Normalize(emergencyInstructions);
         ConditionAtDischarge = Normalize(conditionAtDischarge);
 
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Fully replaces the medication list — delete-then-reinsert list-sync, no
+    /// separate per-line CRUD endpoints (matches the approved plan's MVP scope). Caller
+    /// (DischargeSummaryService) constructs each new DischargeMedication via
+    /// DischargeMedication.Create beforehand, already carrying this aggregate's Id and the
+    /// intended SortOrder. Caller is responsible for rejecting this call while Status isn't
+    /// Draft, same convention as UpdateClinicalDetails.</summary>
+    public void ReplaceMedications(IEnumerable<DischargeMedication> medications, Guid? updatedBy)
+    {
+        _medications.Clear();
+        _medications.AddRange(medications);
         MarkUpdated(updatedBy);
     }
 

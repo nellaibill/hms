@@ -10,3 +10,10 @@ public enum DischargeSummaryStatus
     Draft,
     Finalized,
 }
+
+/// <summary>Whether a discharge medication line is taken before or after food.</summary>
+public enum FoodInstruction
+{
+    BeforeFood,
+    AfterFood,
+}

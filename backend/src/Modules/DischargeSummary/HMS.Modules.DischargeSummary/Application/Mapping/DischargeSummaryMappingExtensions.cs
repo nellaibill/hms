@@ -52,6 +52,23 @@ internal static class DischargeSummaryMappingExtensions
         ReviewInstructions = summary.ReviewInstructions,
         EmergencyInstructions = summary.EmergencyInstructions,
         ConditionAtDischarge = summary.ConditionAtDischarge,
+        Medications = summary.Medications
+            .OrderBy(m => m.SortOrder)
+            .Select(m => new DischargeMedicationResponse
+            {
+                Id = m.Id,
+                SortOrder = m.SortOrder,
+                DrugName = m.DrugName,
+                Dose = m.Dose,
+                Route = m.Route,
+                MorningQty = m.MorningQty,
+                NoonQty = m.NoonQty,
+                EveningQty = m.EveningQty,
+                NightQty = m.NightQty,
+                DurationDays = m.DurationDays,
+                FoodInstruction = m.FoodInstruction,
+            })
+            .ToList(),
         PreparedByUserId = summary.PreparedByUserId,
         CheckedByUserId = summary.CheckedByUserId,
         ConsultantApprovedByUserId = summary.ConsultantApprovedByUserId,

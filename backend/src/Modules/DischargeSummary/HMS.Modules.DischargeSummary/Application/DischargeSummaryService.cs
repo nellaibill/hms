@@ -149,6 +149,23 @@ internal class DischargeSummaryService : IDischargeSummaryService
             request.ConditionAtDischarge,
             actorId);
 
+        var medications = request.Medications
+            .Select(line => Domain.DischargeMedication.Create(
+                summary.Id,
+                line.SortOrder,
+                line.DrugName,
+                line.Dose,
+                line.Route,
+                line.MorningQty,
+                line.NoonQty,
+                line.EveningQty,
+                line.NightQty,
+                line.DurationDays,
+                line.FoodInstruction,
+                actorId))
+            .ToList();
+        summary.ReplaceMedications(medications, actorId);
+
         await _repository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated discharge summary {DischargeSummaryId}", summary.Id);

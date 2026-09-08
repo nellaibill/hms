@@ -1,12 +1,54 @@
 using FluentAssertions;
 using HMS.Modules.DischargeSummary.Contracts;
 using Xunit;
+using DischargeMedicationEntity = HMS.Modules.DischargeSummary.Domain.DischargeMedication;
 using DischargeSummaryEntity = HMS.Modules.DischargeSummary.Domain.DischargeSummary;
 
 namespace HMS.UnitTests.Modules.DischargeSummary.Domain;
 
 public class DischargeSummaryTests
 {
+    [Fact]
+    public void ReplaceMedications_WithNewLines_SetsMedicationsCollection()
+    {
+        var summary = DischargeSummaryEntity.Create(Guid.NewGuid(), Guid.NewGuid(), "Diagnosis", createdBy: null);
+        var line1 = DischargeMedicationEntity.Create(summary.Id, 1, "Paracetamol", "500mg", "Oral", 1, 0, 1, 1, 5, FoodInstruction.AfterFood, null);
+        var line2 = DischargeMedicationEntity.Create(summary.Id, 2, "Amoxicillin", "250mg", "Oral", 1, 1, 1, 0, 7, FoodInstruction.BeforeFood, null);
+
+        summary.ReplaceMedications([line1, line2], updatedBy: null);
+
+        summary.Medications.Should().HaveCount(2);
+        summary.Medications.Should().Contain(m => m.DrugName == "Paracetamol");
+        summary.Medications.Should().Contain(m => m.DrugName == "Amoxicillin");
+        summary.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ReplaceMedications_CalledTwice_DiscardsThePreviousList()
+    {
+        var summary = DischargeSummaryEntity.Create(Guid.NewGuid(), Guid.NewGuid(), "Diagnosis", createdBy: null);
+        var first = DischargeMedicationEntity.Create(summary.Id, 1, "Paracetamol", "500mg", "Oral", 1, 0, 1, 1, 5, FoodInstruction.AfterFood, null);
+        summary.ReplaceMedications([first], updatedBy: null);
+
+        var second = DischargeMedicationEntity.Create(summary.Id, 1, "Ibuprofen", "400mg", "Oral", 1, 0, 0, 1, 3, FoodInstruction.AfterFood, null);
+        summary.ReplaceMedications([second], updatedBy: null);
+
+        summary.Medications.Should().ContainSingle();
+        summary.Medications.Single().DrugName.Should().Be("Ibuprofen");
+    }
+
+    [Fact]
+    public void ReplaceMedications_WithEmptyList_ClearsMedications()
+    {
+        var summary = DischargeSummaryEntity.Create(Guid.NewGuid(), Guid.NewGuid(), "Diagnosis", createdBy: null);
+        var line = DischargeMedicationEntity.Create(summary.Id, 1, "Paracetamol", "500mg", "Oral", 1, 0, 1, 1, 5, FoodInstruction.AfterFood, null);
+        summary.ReplaceMedications([line], updatedBy: null);
+
+        summary.ReplaceMedications([], updatedBy: null);
+
+        summary.Medications.Should().BeEmpty();
+    }
+
     [Fact]
     public void Create_WithValidArguments_ReturnsDraftWithPrefilledFinalDiagnosis()
     {

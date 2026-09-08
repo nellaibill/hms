@@ -1,6 +1,41 @@
 namespace HMS.Modules.DischargeSummary.Contracts;
 
 /// <summary>
+/// One discharge medication line, as submitted on Update. The full list is replaced
+/// wholesale each time (list-sync, no separate per-line CRUD) — see
+/// DischargeSummary.ReplaceMedications.
+/// </summary>
+public record DischargeMedicationRequest
+{
+    public int SortOrder { get; init; }
+    public string DrugName { get; init; } = string.Empty;
+    public string Dose { get; init; } = string.Empty;
+    public string Route { get; init; } = string.Empty;
+    public decimal MorningQty { get; init; }
+    public decimal NoonQty { get; init; }
+    public decimal EveningQty { get; init; }
+    public decimal NightQty { get; init; }
+    public int DurationDays { get; init; }
+    public FoodInstruction FoodInstruction { get; init; }
+}
+
+/// <summary>One discharge medication line, as returned on Get/Update/Finalize.</summary>
+public record DischargeMedicationResponse
+{
+    public Guid Id { get; init; }
+    public int SortOrder { get; init; }
+    public string DrugName { get; init; } = string.Empty;
+    public string Dose { get; init; } = string.Empty;
+    public string Route { get; init; } = string.Empty;
+    public decimal MorningQty { get; init; }
+    public decimal NoonQty { get; init; }
+    public decimal EveningQty { get; init; }
+    public decimal NightQty { get; init; }
+    public int DurationDays { get; init; }
+    public FoodInstruction FoodInstruction { get; init; }
+}
+
+/// <summary>
 /// Full-record update — every clinical/examination/vitals/course/surgical/advice field,
 /// submitted together on every PUT (matches the approved plan's MVP scope: no per-field
 /// PATCH). Only allowed while Status is Draft; rejected once Finalized
@@ -61,6 +96,11 @@ public record UpdateDischargeSummaryRequest
     public string? ReviewInstructions { get; init; }
     public string? EmergencyInstructions { get; init; }
     public string? ConditionAtDischarge { get; init; }
+
+    /// <summary>The full medication list — replaces whatever was there before in one call
+    /// (list-sync, no separate per-line CRUD). An empty list clears every medication line.
+    /// </summary>
+    public IReadOnlyList<DischargeMedicationRequest> Medications { get; init; } = [];
 }
 
 /// <summary>
@@ -140,6 +180,8 @@ public record DischargeSummaryResponse
     public string? ReviewInstructions { get; init; }
     public string? EmergencyInstructions { get; init; }
     public string? ConditionAtDischarge { get; init; }
+
+    public IReadOnlyList<DischargeMedicationResponse> Medications { get; init; } = [];
 
     public Guid? PreparedByUserId { get; init; }
     public Guid? CheckedByUserId { get; init; }

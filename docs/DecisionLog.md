@@ -37,6 +37,27 @@ _To be documented._
 
 ## Decisions
 
+### ADR-059: Discharge Summary module Phase 3 — discharge medications, list-sync Update
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-057/058. Phase 3 is the last of the three approved phases: a `DischargeMedication` child entity for the printed discharge medication list, and wiring it into the existing `PUT` endpoint's full-record update.
+
+**Decision**
+1. **`DischargeMedication` is a real, same-schema DB foreign key to `DischargeSummary`** — unlike `AdmissionId`/`PatientId` on the parent (cross-module app-level Guids, no FK), this is an intra-module relationship, the same distinction ADR-029 drew for Messaging's `ConversationParticipant`→`Conversation`. `DrugName` is free text, not a Products/Masters catalog reference: Pharmacy has no structured `Prescription` entity with dose/route/frequency fields to source this from (confirmed at plan time — Pharmacy is direct-dispense only), so this mirrors what's actually printed on a discharge summary.
+2. **The aggregate owns a private `List<DischargeMedication>` backing field** (`DischargeSummary.Medications`, `UsePropertyAccessMode(Field)` in `DischargeSummaryConfiguration`) — the exact same shape `Patient.Allergies`/`Patient.EmergencyContacts` already use in this codebase for a 1:many owned child collection, rather than inventing a new pattern. `ReplaceMedications(IEnumerable<DischargeMedication>, Guid? updatedBy)` clears and repopulates the in-memory collection; EF Core's change tracker diffs that against what `DischargeSummaryRepository.GetByIdAsync` loaded (now `.Include(x => x.Medications)`) and issues the DELETEs/INSERTs on `SaveChangesAsync` — no explicit `RemoveRange`/`AddRangeAsync` calls in the repository, unlike a plain delete-then-reinsert would need, because the aggregate's own tracked navigation does the diffing. `OnDelete(DeleteBehavior.Cascade)` (not `Restrict`, unlike `ConversationParticipant`'s FK) since a discharge summary's medications have no independent lifecycle — soft-deleting or (in principle) hard-deleting the parent should never leave orphaned lines.
+3. **List-sync, no per-line CRUD**: `UpdateDischargeSummaryRequest.Medications` is the full list on every `PUT` — `DischargeSummaryService.UpdateAsync` builds fresh `DischargeMedication.Create(...)` entities from the request (each carrying the parent's already-known `Id`) and calls `ReplaceMedications` once. An empty `Medications` array is a legitimate request that clears every line — matches the approved plan's "simple list-sync, no separate per-line CRUD endpoints" scope exactly.
+4. **Quantity/duration fields are bounded to non-negative, not required** (`DischargeMedicationRequestValidator`) — only `DrugName`/`Dose`/`Route` are `NotEmpty`. A line with all-zero quantities is a legitimate (if unusual) "stop this drug" entry, so `GreaterThanOrEqualTo(0)` was chosen over `GreaterThan(0)`.
+5. **Final migration**: `AddDischargeMedications` (context `DischargeSummaryDbContext`), `dotnet ef migrations add`-generated — confirmed the generated SQL includes the real `fk_discharge_medications_discharge_summary_id` foreign-key constraint with `ON DELETE CASCADE`, not just an index, before treating this as done.
+
+**Consequences**
+- 9 new tests (`DischargeMedicationTests` — Create's guard clauses and trimming; `DischargeSummaryTests.ReplaceMedications_*` — set/replace/clear; `DischargeSummaryServiceTests.UpdateAsync_*` — full list-sync round-trip and the empty-list-clears-everything case). Full `HMS.UnitTests` (810) and `HMS.ArchitectureTests` (98) suites green.
+- This closes out the three approved phases (foundation, clinical content, medications) as one shippable increment, per the plan's own framing — a PDF export and the deferred Phase 4-6 items (OT integration, IPD daily-event timeline, specialty templates, the richer Prepared/Checked/Approved workflow) remain explicitly out of scope, to be sequenced later against the rest of the module-rollout backlog.
+- No live browser verification for any of the three backend phases — no frontend exists yet for this module; the eventual frontend build is expected to do its own end-to-end pass once it exists, consistent with [[feedback_no_live_verification_per_fix]].
+
+---
+
 ### ADR-058: Discharge Summary module Phase 2 — clinical/examination/vitals/surgical/advice fields, Update
 **Date:** 2026-09-08
 **Status:** Accepted
