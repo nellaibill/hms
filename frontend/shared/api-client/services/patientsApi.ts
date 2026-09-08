@@ -35,6 +35,7 @@ export class PatientsApi {
         uhid: query.uhid,
         phone: query.phone,
         requiresDataVerification: query.requiresDataVerification,
+        registeredToday: query.registeredToday,
       },
     });
     return {

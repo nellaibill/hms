@@ -70,6 +70,13 @@ internal class PatientRepository : IPatientRepository
             patients = patients.Where(p => p.RequiresDataVerification == query.RequiresDataVerification.Value);
         }
 
+        if (query.RegisteredToday == true)
+        {
+            var today = DateTime.UtcNow.Date;
+            patients = patients.Where(p => p.CreatedAt.Date == today
+                || (p.UpdatedAt.HasValue && p.UpdatedAt.Value.Date == today));
+        }
+
         if (query.Age.HasValue && query.Age.Value >= 0)
         {
             // Age isn't a stored column (Patient.Age is always derived from DateOfBirth), so

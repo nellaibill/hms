@@ -57,6 +57,17 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
     { enabled: hasSearched },
   );
 
+  // Before any search is entered, default to today's registrations — the receptionist's most
+  // common billing task right after registration — instead of a blank "search first" prompt.
+  const {
+    data: todaysData,
+    isPending: isTodaysPending,
+    isError: isTodaysError,
+  } = usePatientsQuery(
+    { page: 1, pageSize: RESULTS_PAGE_SIZE, sort: '-createdAt', registeredToday: true },
+    { enabled: !hasSearched },
+  );
+
   function handleFilterChange(field: keyof PatientSearchFilters, value: string | boolean) {
     setFilters((prev) => ({ ...prev, [field]: value }));
   }
@@ -81,13 +92,52 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
       />
 
       {!hasSearched && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-            <Search className="h-6 w-6 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">Search for the patient to bill</p>
-            <p className="text-sm text-muted-foreground">Enter a name, age, UHID, or phone number above, then click Search.</p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-foreground">Registered today</p>
+
+          {isTodaysPending && (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading…
+            </div>
+          )}
+
+          {!isTodaysPending && isTodaysError && (
+            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Failed to load today&apos;s patients.
+            </p>
+          )}
+
+          {!isTodaysPending && !isTodaysError && todaysData && todaysData.items.length === 0 && (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+                <Search className="h-6 w-6 text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">No patients registered today yet.</p>
+                <p className="text-sm text-muted-foreground">Enter a name, age, UHID, or phone number above, then click Search.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {!isTodaysPending && !isTodaysError && todaysData && todaysData.items.length > 0 && (
+            <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+              {todaysData.items.map((patient) => (
+                <div key={patient.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/30">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">
+                      {patient.title} {patient.firstName} {patient.lastName}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {patient.uhid} · {patient.primaryPhone}
+                    </span>
+                  </div>
+                  <Button size="sm" onClick={() => onSelect(patient)}>
+                    Select
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {hasSearched && isPending && (
