@@ -57,6 +57,11 @@ public static class FeatureCatalog
         // (/engagement/messages), same as how Mandatory below already groups multiple
         // schemas under one always-on umbrella. See docs/DecisionLog.md ADR-035.
         "messages-and-notifications",
+
+        // HMS.Modules.DischargeSummary, schema "discharge_summary" — a doctor-authored
+        // discharge document (clinical summary, medications, advice) for an already-
+        // Discharged IPD admission. See docs/DecisionLog.md.
+        "discharge-summary",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate
