@@ -79,10 +79,10 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(({ cla
       aria-selected={isActive}
       onClick={() => setValue(value)}
       className={cn(
-        'relative inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+        'relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
         isActive
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground hover:text-foreground',
+          ? 'border-primary bg-accent text-accent-foreground'
+          : 'border-transparent text-muted-foreground hover:bg-accent/50 hover:text-foreground',
         className,
       )}
       {...props}
