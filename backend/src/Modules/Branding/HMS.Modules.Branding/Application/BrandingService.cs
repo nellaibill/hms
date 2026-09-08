@@ -6,6 +6,8 @@ using HMS.Modules.Branding.Domain;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Processing;
 
 namespace HMS.Modules.Branding.Application;
 
@@ -28,6 +30,11 @@ internal class BrandingService : IBrandingService
     // byte-size cap above doesn't catch on its own.
     private const int MinLogoDimensionPx = 16;
     private const int MaxLogoDimensionPx = 2000;
+    // What gets stored, once validation passes — comfortable headroom above the header's
+    // actual display box (today ~128×40px) so the logo still looks sharp on a hi-DPI screen
+    // or if that box ever grows, while still cutting a typical full-size upload well below the
+    // 500KB cap above. Only ever downscales: an upload already at or under this is stored as-is.
+    private const int StoredLogoDimensionPx = 512;
 
     private readonly IBrandingRepository _repository;
     private readonly IBrandingLogoStorage _logoStorage;
@@ -107,7 +114,15 @@ internal class BrandingService : IBrandingService
         }
 
         buffer.Position = 0;
-        var logoPath = await _logoStorage.SaveAsync(fileName, buffer, cancellationToken);
+        // SVG is already resolution-independent (see ValidateSvg's own comment) — only raster
+        // formats ever need downscaling. ResizeIfOversized returns null when the upload is
+        // already small enough, so a typical already-small logo is stored byte-for-byte as
+        // uploaded rather than needlessly re-encoded.
+        using var resized = extension == ".svg" ? null : ResizeIfOversized(buffer);
+        var toStore = resized ?? buffer;
+        toStore.Position = 0;
+
+        var logoPath = await _logoStorage.SaveAsync(fileName, toStore, cancellationToken);
 
         var settings = await GetOrCreateAsync(cancellationToken);
         settings.UpdateLogo(logoPath, actorId);
@@ -156,6 +171,33 @@ internal class BrandingService : IBrandingService
         }
 
         return null;
+    }
+
+    /// <summary>Downscales a raster logo whose longer edge exceeds StoredLogoDimensionPx,
+    /// preserving aspect ratio and the original format (so a transparent PNG stays PNG, etc.).
+    /// Returns null when the upload is already small enough — nothing to do, caller stores the
+    /// original bytes. Assumes ValidateRasterImage has already confirmed this decodes cleanly.
+    /// Leaves <paramref name="buffer"/> rewound to 0 either way.</summary>
+    private static MemoryStream? ResizeIfOversized(MemoryStream buffer)
+    {
+        using var image = Image.Load(buffer);
+        buffer.Position = 0;
+        var format = image.Metadata.DecodedImageFormat ?? throw new InvalidOperationException("Image format could not be determined after decoding.");
+
+        if (image.Width <= StoredLogoDimensionPx && image.Height <= StoredLogoDimensionPx)
+        {
+            return null;
+        }
+
+        image.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Mode = ResizeMode.Max,
+            Size = new Size(StoredLogoDimensionPx, StoredLogoDimensionPx),
+        }));
+
+        var resized = new MemoryStream();
+        image.Save(resized, format);
+        return resized;
     }
 
     /// <summary>SVG is vector, not decodable by an image library — this is a lightweight

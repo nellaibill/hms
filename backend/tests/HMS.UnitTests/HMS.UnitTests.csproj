@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\Modules\Platform\HMS.Modules.Platform\HMS.Modules.Platform.csproj" />
     <ProjectReference Include="..\..\src\Modules\Pharmacy\HMS.Modules.Pharmacy\HMS.Modules.Pharmacy.csproj" />
     <ProjectReference Include="..\..\src\Modules\Messaging\HMS.Modules.Messaging\HMS.Modules.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Branding\HMS.Modules.Branding\HMS.Modules.Branding.csproj" />
   </ItemGroup>
 
 </Project>
