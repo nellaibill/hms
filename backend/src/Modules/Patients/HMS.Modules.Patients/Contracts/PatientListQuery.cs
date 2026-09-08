@@ -18,4 +18,9 @@ public class PatientListQuery : PagedRequest
     /// <summary>When true, narrows the list to patients still flagged with placeholder data
     /// (e.g. from bulk import) — see Patient.RequiresDataVerification.</summary>
     public bool? RequiresDataVerification { get; set; }
+
+    /// <summary>When true, narrows the list to patients with at least one PatientVisit
+    /// (patients.patient_visits) created or last updated today (UTC) — used by OPD Billing's
+    /// "pick a patient" screen to surface today's visits before any search is entered.</summary>
+    public bool? RegisteredToday { get; set; }
 }
