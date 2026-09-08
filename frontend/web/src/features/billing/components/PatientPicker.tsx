@@ -129,7 +129,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
                       {patient.title} {patient.firstName} {patient.lastName}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {patient.uhid} · {patient.primaryPhone}
+                      {patient.uhid} · {patient.age} Yrs · {patient.gender} · {patient.primaryPhone}
                     </span>
                   </div>
                   <Button size="sm" onClick={() => onSelect(patient)}>
@@ -173,7 +173,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
                   {patient.title} {patient.firstName} {patient.lastName}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {patient.uhid} · {patient.primaryPhone}
+                  {patient.uhid} · {patient.age} Yrs · {patient.gender} · {patient.primaryPhone}
                 </span>
               </div>
               <Button size="sm" onClick={() => onSelect(patient)}>
