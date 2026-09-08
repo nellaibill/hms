@@ -2,6 +2,7 @@ import type { DiagnosticService } from '@hms/shared';
 import { FlaskConical, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,12 +22,16 @@ const emptyFilters: DiagnosticServiceFilters = { categoryId: undefined, serviceT
 export default function DiagnosticServicesListPage() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<DiagnosticServiceFilters>(emptyFilters);
+  const [search, setSearch] = useState('');
   const [servicePendingDelete, setServicePendingDelete] = useState<DiagnosticService | null>(null);
+
+  const debouncedSearch = useDebouncedValue(search);
 
   const { data, isPending, isError, error } = useDiagnosticServicesQuery({
     page,
     pageSize: 20,
     sort: 'name',
+    search: debouncedSearch || undefined,
     categoryId: filters.categoryId,
     serviceType: filters.serviceType,
     isActive: filters.isActive,
@@ -46,6 +51,11 @@ export default function DiagnosticServicesListPage() {
     setPage(1);
   }
 
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
   function handleConfirmDelete() {
     if (!servicePendingDelete) return;
     deleteMutation.mutate(servicePendingDelete.id, { onSuccess: () => setServicePendingDelete(null) });
@@ -54,8 +64,8 @@ export default function DiagnosticServicesListPage() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
-        <Link to="/diagnostics/lab" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to Central Laboratory
+        <Link to="/admin/masters" className="text-sm text-muted-foreground hover:text-foreground">
+          &larr; Back to Hospital Reference Data
         </Link>
       </div>
 
@@ -70,7 +80,13 @@ export default function DiagnosticServicesListPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-        <DiagnosticServiceListToolbar filters={filters} onChange={handleFiltersChange} categories={categoriesQuery.data?.items ?? []} />
+        <DiagnosticServiceListToolbar
+          filters={filters}
+          onChange={handleFiltersChange}
+          categories={categoriesQuery.data?.items ?? []}
+          search={search}
+          onSearchChange={handleSearchChange}
+        />
 
         {isPending && (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">

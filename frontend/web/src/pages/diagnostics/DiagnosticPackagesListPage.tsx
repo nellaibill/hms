@@ -1,21 +1,35 @@
 import type { DiagnosticPackage } from '@hms/shared';
-import { Loader2, PackageSearch, Plus } from 'lucide-react';
+import { Loader2, PackageSearch, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth/AuthContext';
 import { DiagnosticPackageTable, useDeleteDiagnosticPackageMutation, useDiagnosticPackagesQuery } from '@/features/diagnostics';
 
 export default function DiagnosticPackagesListPage() {
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [packagePendingDelete, setPackagePendingDelete] = useState<DiagnosticPackage | null>(null);
 
   const { hasPermission } = useAuth();
-  const { data, isPending, isError, error } = useDiagnosticPackagesQuery({ page, pageSize: 20, sort: 'name' });
+  const debouncedSearch = useDebouncedValue(search);
+  const { data, isPending, isError, error } = useDiagnosticPackagesQuery({
+    page,
+    pageSize: 20,
+    sort: 'name',
+    search: debouncedSearch || undefined,
+  });
   const deleteMutation = useDeleteDiagnosticPackageMutation();
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
 
   function handleConfirmDelete() {
     if (!packagePendingDelete) return;
@@ -25,8 +39,8 @@ export default function DiagnosticPackagesListPage() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="px-6 pt-4 lg:px-8">
-        <Link to="/diagnostics/lab" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to Central Laboratory
+        <Link to="/admin/masters" className="text-sm text-muted-foreground hover:text-foreground">
+          &larr; Back to Hospital Reference Data
         </Link>
       </div>
 
@@ -41,9 +55,21 @@ export default function DiagnosticPackagesListPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search packages…"
+              value={search}
+              onChange={(event) => handleSearchChange(event.target.value)}
+              aria-label="Search packages"
+              className="pl-9"
+            />
+          </div>
+
           {hasPermission('diagnostics.create') && (
-            <Button asChild className="gap-1.5">
+            <Button asChild className="ml-auto gap-1.5">
               <Link to="/diagnostics/lab/packages/new">
                 <Plus className="h-4 w-4" />
                 Add Package
@@ -69,7 +95,9 @@ export default function DiagnosticPackagesListPage() {
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
               <p className="text-sm font-medium text-foreground">No packages found</p>
-              <p className="text-sm text-muted-foreground">Add the first package to get started.</p>
+              <p className="text-sm text-muted-foreground">
+                {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Add the first package to get started.'}
+              </p>
             </CardContent>
           </Card>
         )}

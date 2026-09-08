@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, FlaskConical, ListTree, Microscope, PackageSearch } from 'lucide-react';
+import { ArrowRight, Database, FlaskConical, Microscope } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -10,13 +10,6 @@ interface HubCard {
   icon: typeof FlaskConical;
   path: string;
 }
-
-const catalogCards: HubCard[] = [
-  { key: 'categories', label: 'Categories', description: 'Test categories used to organize the service catalog.', icon: ListTree, path: '/diagnostics/lab/categories' },
-  { key: 'services', label: 'Services', description: 'The Laboratory/Radiology test catalog — pricing, category, and outsourcing.', icon: FlaskConical, path: '/diagnostics/lab/services' },
-  { key: 'packages', label: 'Packages', description: 'Bundled test packages (e.g. Lipid Profile) at a fixed price.', icon: PackageSearch, path: '/diagnostics/lab/packages' },
-  { key: 'external-labs', label: 'External Labs', description: 'Providers tests are outsourced to.', icon: Building2, path: '/diagnostics/lab/external-labs' },
-];
 
 // The real backend workflow module (HMS.Modules.Laboratory) — sample collection through
 // result entry, verification, and report release. Gated by its own 'laboratory' tenant
@@ -33,9 +26,11 @@ const workflowCard: HubCard = {
 };
 
 /**
- * Central Laboratory's landing page ('/diagnostics/lab') — a card grid linking into
- * Categories/Services/Packages/External Labs, no persistent sub-nav/tab strip. Mirrors
- * PharmacyHubPage's exact skeleton.
+ * Central Laboratory's landing page ('/diagnostics/lab') — the Laboratory workflow card
+ * (order queue/worklist/result entry). The Categories/Services/Packages/External Labs
+ * catalog previously browsable from here moved to Settings → Hospital Reference Data,
+ * since that catalog serves Radiology billing too, not just Central Laboratory (see
+ * MastersHubPage.tsx's own diagnosticCatalogCards).
  */
 function HubCardGrid({ cards }: { cards: HubCard[] }) {
   return (
@@ -76,22 +71,28 @@ export default function CentralLaboratoryHubPage() {
           <h1 className="text-xl font-semibold tracking-tight">Central Laboratory</h1>
         </div>
         <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Test category, service, and package reference data for Laboratory billing.
+          Sample collection through result entry, verification, and report release.
         </p>
       </div>
 
       <div className="flex flex-1 flex-col gap-8 p-6 lg:p-8">
-        {hasFeature('laboratory') && (
+        {hasFeature('laboratory') ? (
           <section className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Workflow</h2>
             <HubCardGrid cards={[workflowCard]} />
           </section>
+        ) : (
+          <p className="text-sm text-muted-foreground">Laboratory Workflow isn't enabled for this hospital.</p>
         )}
 
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Browse</h2>
-          <HubCardGrid cards={catalogCards} />
-        </section>
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Database className="h-4 w-4" />
+          Test categories, services, packages, and external labs now live under{' '}
+          <Link to="/admin/masters" className="font-medium text-primary hover:underline">
+            Settings → Hospital Reference Data
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

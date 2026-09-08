@@ -1,7 +1,8 @@
 import type { DiagnosticCategory, DiagnosticServiceType } from '@hms/shared';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/features/auth/AuthContext';
 
@@ -15,14 +16,28 @@ interface DiagnosticServiceListToolbarProps {
   filters: DiagnosticServiceFilters;
   onChange: (filters: DiagnosticServiceFilters) => void;
   categories: DiagnosticCategory[];
+  search: string;
+  onSearchChange: (value: string) => void;
 }
 
 /** Mirrors the mockup's "All Categories" / "All Types" / "All Status" filter row. */
-export function DiagnosticServiceListToolbar({ filters, onChange, categories }: DiagnosticServiceListToolbarProps) {
+export function DiagnosticServiceListToolbar({ filters, onChange, categories, search, onSearchChange }: DiagnosticServiceListToolbarProps) {
   const { hasPermission } = useAuth();
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      <div className="relative w-64">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Search services…"
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          aria-label="Search services"
+          className="pl-9"
+        />
+      </div>
+
       <Select
         value={filters.categoryId ?? 'all'}
         onValueChange={(value) => onChange({ ...filters, categoryId: value === 'all' ? undefined : value })}
