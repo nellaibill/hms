@@ -1,6 +1,7 @@
 using HMS.Modules.Billing.Infrastructure;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.Calendar.Infrastructure;
+using HMS.Modules.DischargeSummary.Infrastructure;
 using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.HR.Infrastructure;
 using HMS.Modules.Identity.Infrastructure;
@@ -132,6 +133,16 @@ public sealed class TenantMigrationService : ITenantMigrationService
 
             await using var messagingDb = new MessagingDbContext(BuildOptions<MessagingDbContext>(tenantConnectionString, MessagingDbContext.SchemaName));
             await messagingDb.Database.MigrateAsync(cancellationToken);
+        }
+
+        // DischargeSummary depends on an already-Discharged IPD Admission existing (validated
+        // via IAdmissionService at create time, not a DB FK — see docs/DecisionLog.md), so
+        // migrating it after "ipd" here keeps the ordering readable/consistent with that
+        // dependency, same reasoning as Laboratory's placement after "billing" above.
+        if (resolved.Contains("discharge-summary"))
+        {
+            await using var db = new DischargeSummaryDbContext(BuildOptions<DischargeSummaryDbContext>(tenantConnectionString, DischargeSummaryDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
         }
     }
 
