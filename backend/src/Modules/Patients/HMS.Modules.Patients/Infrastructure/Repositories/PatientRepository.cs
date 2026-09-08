@@ -72,9 +72,12 @@ internal class PatientRepository : IPatientRepository
 
         if (query.RegisteredToday == true)
         {
+            // Driven by patient_visits, not the patient record's own timestamps — OPD Billing
+            // wants "who has a visit to bill today", which for a returning patient (registered
+            // long ago) is about today's visit, not their original registration date.
             var today = DateTime.UtcNow.Date;
-            patients = patients.Where(p => p.CreatedAt.Date == today
-                || (p.UpdatedAt.HasValue && p.UpdatedAt.Value.Date == today));
+            patients = patients.Where(p => _dbContext.PatientVisits.Any(v => v.PatientId == p.Id
+                && (v.CreatedAt.Date == today || (v.UpdatedAt.HasValue && v.UpdatedAt.Value.Date == today))));
         }
 
         if (query.Age.HasValue && query.Age.Value >= 0)
