@@ -37,6 +37,46 @@ _To be documented._
 
 ## Decisions
 
+### ADR-057: IPD Vitals and Progress Notes as append-only child records of Admission
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+First slice of a larger "complete IPD module" initiative. No entity anywhere in the codebase
+captured recorded vital signs or doctor progress notes — Discharge Summary's own Vitals/
+Examination fields had to be one-off free text for exactly this reason (see its own ADRs).
+`HMS.Modules.IPD` already has two features shaped almost identically to what's needed —
+`AdmissionCharge` and `BedTransferHistory` — simple, timestamped, append-only child records
+of an `Admission`, queried by `AdmissionId` rather than loaded as a navigation collection.
+
+**Decision**
+Added `VitalsReading` (temperature, pulse, respiratory rate, blood pressure systolic/
+diastolic, SpO2, weight, height, pain score, blood glucose, recorded-by, notes) and
+`ProgressNote` (clinical condition, progress, diagnosis, assessment, plan, instructions,
+author) as new entities inside the existing `HMS.Modules.IPD` project — not a new module,
+since both are pure IPD-internal clinical documentation with no cross-module composition,
+unlike Discharge Summary. Mirrored `AdmissionCharge`'s exact shape: real FK to
+`admissions.id` with `OnDelete(Restrict)` (Admission soft-deletes, never hard-deletes), no
+navigation collection on `Admission`, append-only (`POST` to add, `GET` to list — no
+Update/Delete, since a clinical correction should be a new entry, not an edit to history).
+Both ride on the already-enabled `ipd` feature and `clinical-care.create`/`.view`
+permissions — no new `FeatureCatalog`/`ModuleCatalog`/permission-catalog entries, avoiding
+the exact per-tenant enablement gap that blocked Discharge Summary's live verification on an
+existing tenant.
+
+**Consequences**
+- Vitals stores structured systolic/diastolic and numeric fields (not a single free-text
+  blood-pressure string, unlike Discharge Summary's snapshot) so a future graphing/
+  abnormal-value-threshold feature can build on it directly.
+- Editing or deleting a past reading/note is out of scope — append-only, matching
+  `AdmissionCharge`'s own precedent.
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended to allow
+  `IVitalsReadingService`/`IProgressNoteService` alongside the module's other per-entity
+  service interfaces (each is public only because its controller's public constructor can't
+  take an internal parameter type, CS0051).
+
+---
+
 ### ADR-056: Removed the redundant "Laboratory Workflow" top-level sidebar entry
 **Date:** 2026-09-03
 **Status:** Accepted
