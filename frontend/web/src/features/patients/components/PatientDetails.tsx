@@ -81,7 +81,11 @@ function SectionCard({
   );
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-3">
+    // border-foreground/15, not the usual border-border: these 4 cards sit directly against
+    // each other in a tight grid with no card-header/background to set them apart, so
+    // border-border's very pale default (see index.css) reads as barely-there — this needs to
+    // be visibly darker without going all the way to a heavy/loud line.
+    <div className="flex flex-col gap-1.5 rounded-lg border border-foreground/15 bg-card p-3">
       {centerTitle ? (
         <div className="flex flex-col items-center gap-1.5">
           {heading}

@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { AppLayout } from '../layouts/AppLayout';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequireRole } from '../features/auth/RequireRole';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
@@ -9,7 +8,11 @@ import { PlatformProtectedRoute } from '../features/platformAuth/PlatformProtect
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { getAllLeaves } from '../config/navigation';
 
-// Route-level code splitting (docs/FrontendArchitecture.md §4).
+// Route-level code splitting (docs/FrontendArchitecture.md §4). AppLayout (sidebar/top
+// header/breadcrumbs) is included here too, even though it's a layout rather than a page —
+// it used to be a static import, which put its whole subtree in the eager main bundle that
+// /login pays for despite never rendering it.
+const AppLayout = lazy(() => import('../layouts/AppLayout').then((m) => ({ default: m.AppLayout })));
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
 const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage'));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'));
@@ -459,7 +462,7 @@ export const router = createBrowserRouter(
         { path: '/change-password', element: withSuspense(<ChangePasswordPage />) },
         {
           path: '/',
-          element: <AppLayout />,
+          element: withSuspense(<AppLayout />),
           children: [
             { index: true, element: <Navigate to="/dashboard" replace /> },
             ...moduleRoutes,

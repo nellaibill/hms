@@ -153,7 +153,7 @@ Sticky header row, right-aligned numeric/monetary columns (using `type-data` mon
 
 ## 12. Tabs
 
-Horizontal tab list, underline indicator on active tab (2px, brand-50), full ARIA `tablist`/`tab`/`tabpanel` pattern with roving `tabindex` and arrow-key navigation (Home/End jump to first/last). Overflow (e.g., many OPD sub-views) scrolls horizontally with a fade-edge affordance rather than wrapping. Disabled tabs remain visible (not hidden) with reduced-opacity styling and `aria-disabled`.
+Horizontal tab list, active tab gets both an underline indicator (2px, brand-50) and a filled background chip (rounded top corners) using the Primary Nav Rail's own active-item tokens (`sidebar-active-bg`/`sidebar-active-fg`, admin-configurable via Theme & Branding) — so the active tab reads unambiguously at a glance, and matches the nav rail's active color exactly rather than a similar-but-different brand-derived shade. Full ARIA `tablist`/`tab`/`tabpanel` pattern with roving `tabindex` and arrow-key navigation (Home/End jump to first/last). Overflow (e.g., many OPD sub-views) scrolls horizontally with a fade-edge affordance rather than wrapping. Disabled tabs remain visible (not hidden) with reduced-opacity styling and `aria-disabled`.
 
 ## 13. Steppers
 

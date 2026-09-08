@@ -79,10 +79,14 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(({ cla
       aria-selected={isActive}
       onClick={() => setValue(value)}
       className={cn(
-        'relative inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+        'relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
         isActive
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground hover:text-foreground',
+          // Same tokens SidebarNav.tsx's active nav item uses (both admin-configurable via
+          // Theme & Branding) — not the generic `accent` pair, which is derived from the brand
+          // primary at slightly different lightness and can visibly drift from the sidebar's
+          // active color once a hospital sets a custom brand color.
+          ? 'border-primary bg-sidebar-active text-sidebar-active-foreground'
+          : 'border-transparent text-muted-foreground hover:bg-accent/50 hover:text-foreground',
         className,
       )}
       {...props}
