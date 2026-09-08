@@ -103,6 +103,8 @@ const LabPackageDetailPage = lazy(() => import('../pages/diagnostics/LabPackageD
 const LabDashboardPage = lazy(() => import('../pages/diagnostics/LabDashboardPage'));
 const LabWorklistPage = lazy(() => import('../pages/diagnostics/LabWorklistPage'));
 const LabOrderDetailPage = lazy(() => import('../pages/diagnostics/LabOrderDetailPage'));
+const DischargeSummaryEditPage = lazy(() => import('../pages/dischargeSummary/DischargeSummaryEditPage'));
+const DischargeSummaryViewPage = lazy(() => import('../pages/dischargeSummary/DischargeSummaryViewPage'));
 
 // Platform Portal — entirely separate from the hospital app above (own login, own
 // session, own protected-route gate). Not nested under AppLayout: it has no hospital
@@ -412,6 +414,27 @@ const labWorkflowRoutes = [
   },
 ];
 
+// Discharge Summary (HMS.Modules.DischargeSummary) — reached from the Admission page's
+// "Discharge Summary" action once Admission.Status is Discharged (AdmissionViewPage.tsx), not
+// from a top-level nav item (no nav leaf exists for this MVP — see config/navigation.ts).
+// Route-gated via RequirePermissionRoute using this module's own '.view' permission, nested
+// inside RequireFeatureRoute (Tenant Feature/Module Management) using its own feature key
+// ('discharge-summary') — mirrors ipdRoutes'/pharmacyRoutes' reasoning below.
+const dischargeSummaryRoutes = [
+  {
+    element: <RequireFeatureRoute feature="discharge-summary" />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="discharge-summary.view" />,
+        children: [
+          { path: 'clinical/ipd/admissions/:admissionId/discharge-summary', element: withSuspense(<DischargeSummaryViewPage />) },
+          { path: 'clinical/ipd/admissions/:admissionId/discharge-summary/edit', element: withSuspense(<DischargeSummaryEditPage />) },
+        ],
+      },
+    ],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -452,6 +475,7 @@ export const router = createBrowserRouter(
             ...pharmacyRoutes,
             ...diagnosticsRoutes,
             ...labWorkflowRoutes,
+            ...dischargeSummaryRoutes,
           ],
         },
       ],

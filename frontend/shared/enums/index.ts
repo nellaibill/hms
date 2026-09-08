@@ -8,3 +8,4 @@ export * from './pharmacy';
 export * from './laboratory';
 export * from './notifications';
 export * from './messaging';
+export * from './dischargeSummary';
