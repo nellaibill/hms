@@ -37,6 +37,70 @@ _To be documented._
 
 ## Decisions
 
+### ADR-064: IPD Laboratory Integration — a second LabOrder creation path, no invoice required
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Seventh slice of the IPD expansion — closes the gap ADR-062 explicitly left open when
+`DoctorOrder.OrderType` excluded Laboratory: `HMS.Modules.Laboratory` already has a complete,
+live `LabOrder`/`LabOrderItem` workflow (sample collection → processing → result entry →
+verification → report release), but it is only ever created from Billing when an OPD invoice
+contains a Laboratory line item (`InvoiceService.CreateAsync` → `ILabOrderService.
+CreateFromInvoiceAsync`, the only production call site). A ward doctor had no way to order a
+lab test for an admitted patient without that patient first going through an OPD-style
+invoice, which doesn't fit an inpatient stay.
+
+**Decision**
+1. **A second creation path, not a replacement.** `LabOrder.CreateForAdmission` /
+   `ILabOrderService.CreateFromAdmissionAsync` sit alongside the existing `Create`/
+   `CreateFromInvoiceAsync` — `InvoiceId`, `VisitId`, and `LabOrderItem.InvoiceLineItemId`
+   become nullable, and `LabOrder` gains a nullable `AdmissionId` (app-level reference to IPD,
+   no DB FK, same convention as every cross-module reference in this codebase). Exactly one of
+   `InvoiceId`/`AdmissionId` is set on any given order, never both. The relaxation is purely
+   additive — `CreateFromInvoiceAsync`'s signature and behavior are unchanged, and the unique
+   index on `InvoiceId` is refiltered to `WHERE invoice_id IS NOT NULL` so it no longer
+   collides across multiple admission-originated orders (which all have a null `InvoiceId`).
+2. **Not routed through `DoctorOrder`.** Adding `Laboratory` to `DoctorOrderType` was
+   considered and rejected again — it would still be a disconnected duplicate of the real
+   `LabOrder` state machine, the exact outcome ADR-062 warned against. Instead, a new IPD-side
+   orchestration service (`IIPDLabOrderService`) calls straight into Laboratory's own service
+   interface, and everything downstream (collection/processing/result entry/verification/
+   report release, and the existing `/diagnostics/lab/orders/:id` UI) is reused as-is — this
+   slice only adds a new front door, no new state machine.
+3. **An unresolvable service/package fails the call immediately**, unlike
+   `CreateFromInvoiceAsync`'s skip-and-log behavior for the same case. Invoice-originated lines
+   are trusted (Billing already validated them) and must never fail the invoice; here a doctor
+   is placing the order directly through IPD's UI, so surfacing a bad selection immediately is
+   better UX than silently dropping a test from the order.
+4. **One `AdmissionCharge` (new `ChargeType.LabCharge`) is auto-posted per line** when an order
+   is placed, using the same Masters price fields (`DiagnosticService.Price`/
+   `DiagnosticPackage.TotalPrice`) Billing itself reads — so the cost is visible on the
+   admission's Charges tab even though real IPD billing/invoicing doesn't exist yet. Best-
+   effort, not transactional with the lab order (a charge-posting failure is logged, not
+   fatal) — mirrors `InvoiceService`'s own "downstream posting must never fail the primary
+   action" precedent. `AdmissionCharge` has no FK back to the `LabOrder`/`LabOrderItem` that
+   generated it (that entity was never designed for traceability, only a free-text ledger line
+   — see its own doc comment); `Remarks` carries the test/package name instead. Real IPD
+   billing integration remains an explicit open gap, same category of deferral as ADR-062/063.
+5. Same win as every IPD-expansion slice: rides on the already-enabled `ipd` feature and
+   existing `clinical-care.*` permissions — no new `FeatureCatalog`/`ModuleCatalog`/permission-
+   catalog entries.
+
+**Consequences**
+- New tests across both modules (`LabOrderTests`, extended `LabOrderServiceTests` for the
+  admission path, `IPDLabOrderServiceTests` for the orchestration/charge-posting logic). Full
+  `HMS.UnitTests`/`HMS.ArchitectureTests` suites green.
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended for `IIPDLabOrderService` in
+  the same commit, per the standard checklist.
+- IPD's `.csproj` gains a new `ProjectReference` to `HMS.Modules.Laboratory` — the first slice
+  where IPD depends on a module beyond Masters/Patients.
+- The frontend's new Laboratory tab (`LabOrdersPanel`) deliberately does not rebuild any of
+  Laboratory's own sample-collection/result-entry/verification/report UI — it only places
+  orders and links out to the existing `/diagnostics/lab/orders/:id` page for everything else.
+
+---
+
 ### ADR-063: IPD Medication Orders + MAR — free-text drug names, no auto-generated dosing schedule
 **Date:** 2026-09-09
 **Status:** Accepted
