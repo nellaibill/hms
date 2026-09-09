@@ -12,6 +12,7 @@ import {
   ChargesPanel,
   DischargeForm,
   DoctorOrdersPanel,
+  FinalBillCard,
   LabOrdersPanel,
   MedicationAdministrationPanel,
   MedicationOrdersPanel,
@@ -281,6 +282,19 @@ export default function AdmissionViewPage() {
               </CardHeader>
               <CardContent>
                 <ChargesPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Final Bill</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isAdmitted ? (
+                  <p className="text-sm text-muted-foreground">Available once the patient is discharged.</p>
+                ) : (
+                  <FinalBillCard admissionId={admission.id} finalInvoiceId={admission.finalInvoiceId} />
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -410,6 +410,7 @@ internal class AdmissionService : IAdmissionService
             FinalDiagnosis = admission.FinalDiagnosis,
             DischargeNotes = admission.DischargeNotes,
             FollowUpAdvice = admission.FollowUpAdvice,
+            FinalInvoiceId = admission.FinalInvoiceId,
             CreatedAt = admission.CreatedAt,
             UpdatedAt = admission.UpdatedAt,
         };

@@ -75,6 +75,8 @@ public static class IPDModule
 
         services.AddScoped<IIPDLabOrderService, IPDLabOrderService>();
 
+        services.AddScoped<IIPDBillingService, IPDBillingService>();
+
         services.AddScoped<IValidator<CreateWardRequest>, CreateWardRequestValidator>();
         services.AddScoped<IValidator<UpdateWardRequest>, UpdateWardRequestValidator>();
 

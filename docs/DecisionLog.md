@@ -37,6 +37,65 @@ _To be documented._
 
 ## Decisions
 
+### ADR-066: IPD Final Billing — a new generic BillingType, VisitId falls back to PatientId
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+IPD has never had a real payment-collection point — `AdmissionCharge` (Bed/Nursing/Lab/priced-
+Doctor-Order charges, built across ADR-060/064/065) is only ever an internal ledger; nothing
+converts it into an actual `HMS.Modules.Billing` Invoice. This slice closes that gap: at
+discharge, a discharged admission's accumulated charges can be converted into a real Invoice
+and paid through the existing Billing UI.
+
+**Decision**
+1. **`Invoice.VisitId` is required and non-nullable, with no schema change needed** — IPD's
+   `Admission` has no `VisitId` at all, but `CreateInvoiceRequest.VisitId`'s own doc comment
+   already documents a fallback convention for exactly this situation: pass `PatientId` as
+   `VisitId`. This slice adopts that existing convention rather than relaxing Billing's schema
+   the way the Laboratory integration slice had to (ADR-064) — a materially lower-risk change to
+   an already-shipped module.
+2. **New `BillingType.InpatientCharge`, not a reuse of `Laboratory`/`Radiology`/`Procedure`/
+   `Consultation`.** `InvoiceService.CreateAsync` has a post-creation hook that creates a new
+   `LabOrder` whenever any line is `BillingType.Laboratory` — reusing that type for an
+   already-existing `LabOrder`'s charge would create a *second*, duplicate `LabOrder`. A
+   dedicated generic type sidesteps every such hook entirely. `InvoiceLineItem.ServiceId` has
+   no dedicated free-text description field, so (mirroring `BillingType.Pharmacy`'s exact
+   precedent) `ServiceId` carries an already-human-readable "{ChargeType}: {Remarks}" string
+   instead of a catalog id — `describeBillingItem`/`resolveItemCostPrice` treat it exactly like
+   Pharmacy (pre-formatted text, no cost-price concept). String-backed enum column, so no
+   Billing-side migration was needed for the new value itself.
+3. **Discharge-only, explicit "Generate Final Bill" button — not automatic at discharge.**
+   Gives billing staff a deliberate review point before a financial document is created,
+   mirroring how real hospital billing workflows work; `AdmissionService.DischargeAsync` itself
+   is untouched. A new `Admission.FinalInvoiceId` (nullable, app-level reference) tracks
+   whether one has already been generated, preventing duplicates and telling the frontend
+   which state (Generate vs. View) to show.
+4. **Gated by `finance-billing.create`, not `clinical-care.*`.** This creates a real financial
+   document, so it sits behind Billing's own permission — same as `InvoicesController.Create` —
+   rather than IPD's clinical permissions (least-privilege: a nurse with clinical-care access
+   shouldn't implicitly be able to generate a legal financial invoice).
+5. **No new payment UI.** `IPDBillingService.GenerateFinalBillAsync` creates the Invoice
+   `Pending` (no `Payments` supplied at creation) and the frontend routes straight to the
+   existing `/finance/accounts/:id` (`InvoiceDetailPage`) — already creator-agnostic (it already
+   has a conditional Lab Details tab) — to actually collect payment, same reuse strategy as
+   linking to the Lab Order detail page in ADR-064.
+
+**Consequences**
+- New `IPDBillingServiceTests` covering: successful generation with correct
+  `VisitId`/`BillingType`/`ServiceId` mapping, `NotFound`, not-yet-discharged, no-charges,
+  already-generated, and invoice-creation-failure paths. Full `HMS.UnitTests`/
+  `HMS.ArchitectureTests` suites green; `IPDModuleBoundaryTests` allowlist extended for
+  `IIPDBillingService`.
+- `admissions` gains a nullable `final_invoice_id` column — additive migration.
+- `IPD.csproj` gains a new `ProjectReference` to `HMS.Modules.Billing` (IPD → Laboratory →
+  Billing is now the module's third cross-module dependency beyond Masters/Patients).
+- Diet/Nursing(manual-only)/Blood/Referral/Medication charges remain whatever gaps prior ADRs
+  already disclosed (ADR-065/063) — this slice doesn't change what gets charged, only that
+  whatever *is* charged can now actually be billed and paid.
+
+---
+
 ### ADR-065: IPD Doctor Order charge-posting — Radiology/Procedure/Consultation only, Medication excluded
 **Date:** 2026-09-09
 **Status:** Accepted

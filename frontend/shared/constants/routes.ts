@@ -253,6 +253,7 @@ export const API_ROUTES = {
       medicationAdministrations: (admissionId: string, orderId: string) =>
         `/api/v1/ipd/admissions/${admissionId}/medication-orders/${orderId}/administrations`,
       labOrders: (id: string) => `/api/v1/ipd/admissions/${id}/lab-orders`,
+      finalBill: (id: string) => `/api/v1/ipd/admissions/${id}/final-bill`,
     },
     dashboard: '/api/v1/ipd/dashboard',
   },
