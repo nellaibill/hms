@@ -76,6 +76,11 @@ public record AdmissionResponse
     public string? DischargeNotes { get; init; }
     public string? FollowUpAdvice { get; init; }
 
+    /// <summary>Set once IPDBillingService.GenerateFinalBillAsync has generated a real
+    /// HMS.Modules.Billing Invoice for this admission — the frontend uses this to decide
+    /// whether to show "Generate Final Bill" or "View Final Bill". See ADR-066.</summary>
+    public Guid? FinalInvoiceId { get; init; }
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

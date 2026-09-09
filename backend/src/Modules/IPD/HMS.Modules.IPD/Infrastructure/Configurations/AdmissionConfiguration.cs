@@ -29,6 +29,7 @@ internal class AdmissionConfiguration : IEntityTypeConfiguration<Admission>
         builder.Property(a => a.FinalDiagnosis).HasColumnName("final_diagnosis").HasMaxLength(1000);
         builder.Property(a => a.DischargeNotes).HasColumnName("discharge_notes").HasMaxLength(2000);
         builder.Property(a => a.FollowUpAdvice).HasColumnName("follow_up_advice").HasMaxLength(2000);
+        builder.Property(a => a.FinalInvoiceId).HasColumnName("final_invoice_id");
 
         builder.Property(a => a.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(a => a.CreatedBy).HasColumnName("created_by");
