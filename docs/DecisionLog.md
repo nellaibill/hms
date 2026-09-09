@@ -37,6 +37,46 @@ _To be documented._
 
 ## Decisions
 
+### ADR-068: Consultation double-billing — save-time warning, not a hard block
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+User-reported concern during a broader Accounts & Finance reports review: whether consultants
+were being "charged twice." Investigation confirmed a real gap, not a misunderstanding.
+`InvoiceCreatePage.tsx`'s `consultationAlreadyBilledForVisit` guard only stops OPD Billing
+Entry from *prefilling* a duplicate Consultation row when the visit already has one billed —
+but `ConsultationBillingCard`'s "Add another Consultation" button lets reception add and save a
+second Consultation-type line for the same visit with no check anywhere, client or server
+(`InvoiceService.CreateAsync` has no dedupe logic at all).
+
+**Decision**
+Add a save-time confirm dialog: if the visit already has a non-voided Consultation-type line
+item billed and the form is about to submit one or more active Consultation rows,
+`InvoiceCreatePage.handleSave` now stops and shows a "Consultation already billed for this
+visit" dialog before calling the create mutation, instead of saving immediately. This is a
+**warning, not a hard block** — the existing prefill guard was deliberately whole-visit, not
+per-consultant, because billing more than one genuine consultant on the same visit together is
+the realistic common case; a hard block would break that legitimate path. The dialog just makes
+the accidental case (re-adding a row out of habit after the prefill correctly left it blank)
+require an explicit extra click ("Continue and Save") instead of silently saving. No backend
+change — this was always a client-side UX guard by design, not a server-side invariant, so a
+matching client-side confirm is the proportionate fix.
+
+**Consequences**
+- `handleSave` is split into the validate/check step and a new `saveInvoice(values)` that does
+  the actual mutation — reused by both the direct-save and confirm-then-save paths.
+- `isConsultationEntryActive` (`features/billing/billingActivity.ts`) is now exported from the
+  `features/billing` barrel so this page can reuse it, rather than duplicating the "is this row
+  actually filled in" check.
+- The billed-and-paid case (already the common real-world path) is unaffected in a different
+  way: `MarkPaid()` clears `ConsultantId` (ADR-048), so this guard can only ever detect *a*
+  Consultation-type line exists for the visit, not which consultant — acceptable, since the
+  goal is catching an accidental second consultation charge on the visit at all, not attributing
+  it precisely.
+
+---
+
 ### ADR-067: IPD Advance/Deposit — tracked as its own ledger, not reconciled into the Invoice
 **Date:** 2026-09-09
 **Status:** Accepted
