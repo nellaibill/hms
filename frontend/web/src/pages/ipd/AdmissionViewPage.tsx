@@ -10,6 +10,8 @@ import {
   BedStayHistoryPanel,
   ChargesPanel,
   DischargeForm,
+  NursingAssessmentPanel,
+  NursingNotesPanel,
   ProgressNotesPanel,
   TransferBedDialog,
   TransferHistoryPanel,
@@ -184,6 +186,24 @@ export default function AdmissionViewPage() {
           </CardHeader>
           <CardContent>
             <ProgressNotesPanel admissionId={admission.id} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Nursing Assessment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <NursingAssessmentPanel admissionId={admission.id} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Nursing Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <NursingNotesPanel admissionId={admission.id} />
           </CardContent>
         </Card>
 

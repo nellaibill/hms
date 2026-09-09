@@ -243,6 +243,8 @@ export const API_ROUTES = {
       charges: (id: string) => `/api/v1/ipd/admissions/${id}/charges`,
       vitals: (id: string) => `/api/v1/ipd/admissions/${id}/vitals`,
       progressNotes: (id: string) => `/api/v1/ipd/admissions/${id}/progress-notes`,
+      nursingAssessments: (id: string) => `/api/v1/ipd/admissions/${id}/nursing-assessments`,
+      nursingNotes: (id: string) => `/api/v1/ipd/admissions/${id}/nursing-notes`,
     },
     dashboard: '/api/v1/ipd/dashboard',
   },

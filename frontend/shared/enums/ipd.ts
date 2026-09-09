@@ -22,3 +22,7 @@ export type DischargeType = (typeof DISCHARGE_TYPES)[number];
 
 export const CHARGE_TYPES = ['AdmissionCharge', 'BedCharge', 'NursingCharge'] as const;
 export type ChargeType = (typeof CHARGE_TYPES)[number];
+
+// Named NursingShift (not Shift) to avoid confusion with HR's unrelated Shift/ShiftAssignment.
+export const NURSING_SHIFTS = ['Morning', 'Evening', 'Night'] as const;
+export type NursingShift = (typeof NURSING_SHIFTS)[number];

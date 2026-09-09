@@ -7,9 +7,13 @@ import type {
   BedTransferHistory,
   CreateAdmissionChargeRequest,
   CreateAdmissionRequest,
+  CreateNursingAssessmentRequest,
+  CreateNursingNoteRequest,
   CreateProgressNoteRequest,
   CreateVitalsReadingRequest,
   DischargeAdmissionRequest,
+  NursingAssessment,
+  NursingNote,
   ProgressNote,
   TransferBedRequest,
   UpdateAdmissionRequest,
@@ -109,6 +113,26 @@ export class AdmissionsApi {
 
   async postProgressNote(admissionId: string, request: CreateProgressNoteRequest): Promise<ProgressNote> {
     const response = await this.client.post<ProgressNote>(API_ROUTES.ipd.admissions.progressNotes(admissionId), request);
+    return response.data;
+  }
+
+  async getNursingAssessments(admissionId: string): Promise<NursingAssessment[]> {
+    const response = await this.client.get<NursingAssessment[]>(API_ROUTES.ipd.admissions.nursingAssessments(admissionId));
+    return response.data;
+  }
+
+  async postNursingAssessment(admissionId: string, request: CreateNursingAssessmentRequest): Promise<NursingAssessment> {
+    const response = await this.client.post<NursingAssessment>(API_ROUTES.ipd.admissions.nursingAssessments(admissionId), request);
+    return response.data;
+  }
+
+  async getNursingNotes(admissionId: string): Promise<NursingNote[]> {
+    const response = await this.client.get<NursingNote[]>(API_ROUTES.ipd.admissions.nursingNotes(admissionId));
+    return response.data;
+  }
+
+  async postNursingNote(admissionId: string, request: CreateNursingNoteRequest): Promise<NursingNote> {
+    const response = await this.client.post<NursingNote>(API_ROUTES.ipd.admissions.nursingNotes(admissionId), request);
     return response.data;
   }
 }
