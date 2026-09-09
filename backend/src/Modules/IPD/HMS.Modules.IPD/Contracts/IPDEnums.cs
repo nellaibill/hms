@@ -59,3 +59,33 @@ public enum NursingShift
     Evening,
     Night,
 }
+
+/// <summary>
+/// Deliberately excludes Laboratory (HMS.Modules.Laboratory already has a full LabOrder
+/// workflow — a generic entry here would be a disconnected duplicate) and Medication (belongs
+/// to the not-yet-built MAR slice, which needs a real structured prescription entity, not a
+/// free-text order description here that MAR would immediately have to replace). See
+/// docs/DecisionLog.md.
+/// </summary>
+public enum DoctorOrderType
+{
+    Radiology,
+    Procedure,
+    Diet,
+    Nursing,
+    Blood,
+    Consultation,
+    Referral,
+}
+
+/// <summary>Fixed linear sequence Ordered -> Accepted -> InProgress -> Completed, with
+/// Cancelled reachable from any non-terminal state. See Domain/DoctorOrder.cs's
+/// Advance/Cancel methods for the exact legal transitions.</summary>
+public enum DoctorOrderStatus
+{
+    Ordered,
+    Accepted,
+    InProgress,
+    Completed,
+    Cancelled,
+}
