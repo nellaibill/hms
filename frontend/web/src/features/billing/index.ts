@@ -10,6 +10,7 @@ export * from './components/PaymentStatusBadge';
 export * from './components/RecentPatientBillsTable';
 export * from './components/RecordPaymentDialog';
 export * from './components/VoidInvoiceDialog';
+export * from './billingActivity';
 export * from './billingCalculations';
 export * from './billingValidation';
 export * from './hooks/useBillingQuery';
