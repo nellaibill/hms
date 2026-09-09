@@ -5,6 +5,9 @@ export interface CreateDoctorOrderRequest {
   orderType: DoctorOrderType;
   description: string;
   instructions?: string | null;
+  /** Optional reference to a priced Masters catalog item (Radiology/Procedure/Consultation
+   * only) — when set, DoctorOrderService auto-posts an AdmissionCharge. See ADR-065. */
+  catalogItemId?: string | null;
   orderedAt: string;
 }
 
@@ -20,6 +23,7 @@ export interface DoctorOrder {
   orderType: DoctorOrderType;
   description: string;
   instructions?: string | null;
+  catalogItemId?: string | null;
   orderedAt: string;
   orderedByUserId?: string | null;
   status: DoctorOrderStatus;
