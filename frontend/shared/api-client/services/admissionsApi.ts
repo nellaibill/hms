@@ -19,6 +19,7 @@ import type {
   DischargeAdmissionRequest,
   DiscontinueMedicationOrderRequest,
   DoctorOrder,
+  GenerateFinalBillResponse,
   LabOrderResponse,
   MedicationAdministration,
   MedicationOrder,
@@ -198,6 +199,11 @@ export class AdmissionsApi {
 
   async postLabOrder(admissionId: string, request: CreatePlaceLabOrderRequest): Promise<LabOrderResponse> {
     const response = await this.client.post<LabOrderResponse>(API_ROUTES.ipd.admissions.labOrders(admissionId), request);
+    return response.data;
+  }
+
+  async postFinalBill(admissionId: string): Promise<GenerateFinalBillResponse> {
+    const response = await this.client.post<GenerateFinalBillResponse>(API_ROUTES.ipd.admissions.finalBill(admissionId), {});
     return response.data;
   }
 }
