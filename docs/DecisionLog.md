@@ -37,6 +37,66 @@ _To be documented._
 
 ## Decisions
 
+### ADR-065: IPD Doctor Order charge-posting — Radiology/Procedure/Consultation only, Medication excluded
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+The user wants to build IPD Final Billing next, but today only Bed/Nursing(manual)/Lab charges
+land on the `AdmissionCharge` ledger — Doctor Orders and Medication Orders never got charge-
+posting wired up, so a Final Bill built now would silently miss most of an inpatient stay's
+real cost. This slice is the agreed prerequisite. Investigation found the two order-generating
+entities are not symmetric: `DoctorOrder.OrderType` has three values with a real priced Masters
+catalog (Radiology → `DiagnosticService`, Procedure → the legacy `DiagnosticTest`, Consultation
+→ `ConsultationType`) and four with none at all (Diet, Nursing, Blood, Referral — no module or
+catalog exists for any of them). `MedicationOrder` has zero priced catalog path: Pharmacy's
+only pricing route (`DispenseService.BillAsync`) requires picking a specific stock batch
+(expiry-checked, stock-decrementing), which is exactly the "no structured prescription" gap
+ADR-063 deliberately left open when it kept `MedicationOrder.DrugName` free text.
+
+**Decision**
+1. **`DoctorOrder` gains an optional `CatalogItemId` (`Guid?`, app-level reference, no DB FK)**
+   — set only when the doctor picks a real catalog item for a Radiology/Procedure/Consultation
+   order. Every existing free-text-only order flow (all four unpriced types, and any priced-type
+   order placed without picking a catalog item) is completely unaffected — `CatalogItemId`
+   simply stays null, exactly like before this slice.
+2. **`DoctorOrderService.CreateAsync` resolves the price in place** (no new orchestration
+   service, unlike Laboratory's `IPDLabOrderService`) — `DoctorOrder` doesn't need to create
+   anything in another module, only look up a price and post a charge, both already Masters/IPD
+   concerns `DoctorOrderService` can absorb directly via new constructor dependencies
+   (`IDiagnosticServiceService`, `IDiagnosticTestService`, `IConsultationTypeService`,
+   `IAdmissionChargeService`) — no new `ProjectReference` needed, IPD already depends on
+   Masters. Same best-effort try/catch shape as `IPDLabOrderService.PostChargeAsync` — a
+   charge-posting failure is logged, never fails order placement.
+3. **One generic `ChargeType.DoctorOrderCharge`**, not three separate enum values per
+   OrderType — `Remarks` distinguishes which (e.g. `"Radiology: Chest X-ray"`), same
+   traceability-via-free-text tradeoff `LabCharge` already established.
+4. **Consultation's `Amount` can be null** (e.g. "Others / On-call") — treated as a legitimate
+   "no fixed fee" state, not an error: no charge posted, order still places normally, mirroring
+   `ConsultationBillingCard.tsx`'s existing client-side null-handling for the same field.
+5. **Medication Orders are explicitly out of scope.** Auto-charging them would mean either
+   reversing ADR-063's deliberate free-text design (adding a real Product/batch link) or a
+   manual estimated-cost field with no catalog backing — both bigger, separate decisions. The
+   Charges tab already supports manually adding a charge today; real Pharmacy-linked pricing
+   waits for a future slice.
+6. **Diet/Nursing/Blood/Referral orders post no charge, silently** — same category of
+   disclosed, open gap as every other deferral in this codebase (Pharmacy integration, Blood
+   Bank module, etc.), not a blocker for Final Billing to still be useful for the charges it
+   *does* capture accurately.
+
+**Consequences**
+- New tests in `DoctorOrderServiceTests` covering all three priced types' successful charge
+  posting, the null-Consultation-Amount skip, the no-`CatalogItemId` skip, and the
+  unresolvable-catalog-item skip (order still succeeds). Full `HMS.UnitTests`/
+  `HMS.ArchitectureTests` suites green — no `IPDModuleBoundaryTests` allowlist change needed
+  this time (`IDoctorOrderService`'s public shape is unchanged).
+- `doctor_orders` gains a nullable `catalog_item_id` column — purely additive migration.
+- IPD Final Billing (the actual next slice) can now build on a Charges ledger that reflects
+  Bed/Lab/priced-Doctor-Order costs, with Diet/Nursing/Blood/Referral/Medication remaining
+  explicit, disclosed gaps rather than silent omissions a bill-reviewer would never notice.
+
+---
+
 ### ADR-064: IPD Laboratory Integration — a second LabOrder creation path, no invoice required
 **Date:** 2026-09-09
 **Status:** Accepted
