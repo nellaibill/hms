@@ -23,6 +23,7 @@ public class IPDDbContext : DbContext
     internal DbSet<ProgressNote> ProgressNotes => Set<ProgressNote>();
     internal DbSet<NursingAssessment> NursingAssessments => Set<NursingAssessment>();
     internal DbSet<NursingNote> NursingNotes => Set<NursingNote>();
+    internal DbSet<DoctorOrder> DoctorOrders => Set<DoctorOrder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

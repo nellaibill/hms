@@ -23,7 +23,7 @@ public class IPDModuleBoundaryTests
     private static readonly Assembly IPDAssembly = typeof(WardsController).Assembly;
 
     private const string AllowedPublicTypeNamePattern =
-        "^(IPDDbContext|IWardService|IBedService|IAdmissionService|IIPDDashboardService|IAdmissionChargeService|IVitalsReadingService|IProgressNoteService|INursingAssessmentService|INursingNoteService)$";
+        "^(IPDDbContext|IWardService|IBedService|IAdmissionService|IIPDDashboardService|IAdmissionChargeService|IVitalsReadingService|IProgressNoteService|INursingAssessmentService|INursingNoteService|IDoctorOrderService)$";
 
     [Theory]
     [InlineData("HMS.Modules.IPD.Domain")]

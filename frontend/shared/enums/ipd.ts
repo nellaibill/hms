@@ -26,3 +26,13 @@ export type ChargeType = (typeof CHARGE_TYPES)[number];
 // Named NursingShift (not Shift) to avoid confusion with HR's unrelated Shift/ShiftAssignment.
 export const NURSING_SHIFTS = ['Morning', 'Evening', 'Night'] as const;
 export type NursingShift = (typeof NURSING_SHIFTS)[number];
+
+// Deliberately excludes Laboratory (HMS.Modules.Laboratory already has a full LabOrder
+// workflow) and Medication (belongs to the not-yet-built MAR slice) — see docs/DecisionLog.md.
+export const DOCTOR_ORDER_TYPES = ['Radiology', 'Procedure', 'Diet', 'Nursing', 'Blood', 'Consultation', 'Referral'] as const;
+export type DoctorOrderType = (typeof DOCTOR_ORDER_TYPES)[number];
+
+// Fixed linear sequence Ordered -> Accepted -> InProgress -> Completed, Cancelled reachable
+// from any non-terminal state.
+export const DOCTOR_ORDER_STATUSES = ['Ordered', 'Accepted', 'InProgress', 'Completed', 'Cancelled'] as const;
+export type DoctorOrderStatus = (typeof DOCTOR_ORDER_STATUSES)[number];

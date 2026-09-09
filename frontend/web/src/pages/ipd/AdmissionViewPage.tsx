@@ -11,6 +11,7 @@ import {
   BedStayHistoryPanel,
   ChargesPanel,
   DischargeForm,
+  DoctorOrdersPanel,
   NursingAssessmentPanel,
   NursingNotesPanel,
   ProgressNotesPanel,
@@ -128,6 +129,7 @@ export default function AdmissionViewPage() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="clinical">Clinical</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="vitals">Vitals</TabsTrigger>
             <TabsTrigger value="nursing">Nursing</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -190,6 +192,17 @@ export default function AdmissionViewPage() {
               </CardHeader>
               <CardContent>
                 <ProgressNotesPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="orders" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Doctor Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DoctorOrdersPanel admissionId={admission.id} />
               </CardContent>
             </Card>
           </TabsContent>

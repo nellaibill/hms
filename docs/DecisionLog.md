@@ -37,6 +37,55 @@ _To be documented._
 
 ## Decisions
 
+### ADR-062: IPD Doctor Orders — a mutable state machine, deliberately excluding Laboratory and Medication
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Fourth slice of the IPD expansion. Doctor Orders (proposal item 8) is the first genuinely
+mutable IPD entity — every prior slice (Vitals, Progress Notes, Nursing) was an append-only
+log. Investigating the proposal's full order-type list (Medication/Laboratory/Radiology/
+Procedure/Diet/Nursing/Blood/Consultation/Referral) surfaced a real architectural fact:
+`HMS.Modules.Laboratory` already has a complete `LabOrder`/`LabOrderItem` workflow (sample
+collection → processing → result entry → verification → report generation/release, with its
+own 10-state per-item state machine), created from Billing when an invoice contains a
+Laboratory line item — not from any doctor-order concept. No Radiology or Blood Bank backend
+module exists, and Pharmacy remains direct-dispense only (no prescription entity).
+
+**Decision**
+1. **`DoctorOrder.OrderType` covers Radiology, Procedure, Diet, Nursing, Blood, Consultation,
+   Referral only — Laboratory and Medication are deliberately excluded.** A generic
+   `DoctorOrder` row for "Laboratory" would be a disconnected duplicate of the real `LabOrder`
+   system; real integration (a ward doctor's order actually creating/feeding a `LabOrder`
+   without requiring an Invoice first) is a genuine gap, left open rather than papered over.
+   Medication is left for the not-yet-built MAR slice, which needs a real structured
+   prescription (drug/dose/route/frequency) from the start, not a free-text order description
+   here that MAR would immediately replace.
+2. **First mutable IPD child entity — modeled after `LabOrder`'s own domain-method style**
+   (`Advance`/`Cancel` methods with precondition guards mirroring `LabOrder.GenerateReport`/
+   `ReleaseReport`), not the append-only pattern every prior slice used. Fixed linear sequence
+   `Ordered → Accepted → InProgress → Completed`; `Cancelled` reachable from any non-terminal
+   state. `DoctorOrderService` pre-checks the same precondition to return a proper
+   `Result.Failure` (409-mapped `InvalidOrderStatusTransition`); the domain method re-checks it
+   as a genuine invariant, same pre-check/domain-guard split as `LabOrder`.
+3. **`OrderedByUserId` is set from the authenticated actor, never accepted in the request
+   body** — an order can't be attributed to a doctor who didn't place it.
+4. Same win as every prior slice: rides on the already-enabled `ipd` feature and existing
+   `clinical-care.create/.view/.edit` permissions, no new `FeatureCatalog`/`ModuleCatalog`/
+   permission-catalog entries.
+
+**Consequences**
+- 17 new tests (`DoctorOrderTests` — the state-machine transitions and illegal-transition
+  rejections; `DoctorOrderServiceTests` — admission-gate, order-not-found, cross-admission
+  order-id rejection, and the same illegal-transition rejection surfaced as a `Result.Failure`).
+  Full `HMS.UnitTests`/`HMS.ArchitectureTests` suites green (843/98).
+- Real integration between a ward Doctor Order and Laboratory's `LabOrder` (so a doctor can
+  order labs without going through Billing first) remains an open gap, not solved here.
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended for `IDoctorOrderService` in
+  the same commit as the service itself, per the now-standard checklist from ADR-061.
+
+---
+
 ### ADR-061: IPD Nursing Assessments and Notes as append-only child records; Nursing Tasks deferred
 **Date:** 2026-09-09
 **Status:** Accepted
