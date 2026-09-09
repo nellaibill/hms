@@ -8,14 +8,23 @@ interface CategoryBreakdownCardProps {
   /** Bar color token — 'success' for income (matches ReportSummaryCards' Total Income icon),
    * 'destructive' for expenses (matches its Total Expenses icon). */
   tone: 'success' | 'destructive';
+  /** Caps how many rows render before falling back to a "+N more" line — without this, a list
+   * with many more entries than its sibling card in the same grid row (e.g. Profit Report's
+   * "Profit by Service" next to "Profit by Billing Type") both dominates the page and, since
+   * a CSS grid row stretches every cell to the tallest one, leaves the shorter card with a big
+   * empty gap. Rows are expected pre-sorted by amount descending (every caller already sorts
+   * this way), so capping never hides the most significant contributors. */
+  maxRows?: number;
 }
 
 /** A quick per-category breakdown (income by billing type, expenses by category) — each row's
  * bar width is proportional to the largest row in the same list, so the biggest contributor is
  * obvious at a glance without needing a full chart library for one bar per category. */
-export function CategoryBreakdownCard({ title, rows, tone }: CategoryBreakdownCardProps) {
+export function CategoryBreakdownCard({ title, rows, tone, maxRows }: CategoryBreakdownCardProps) {
   const max = Math.max(...rows.map((row) => row.amount), 1);
   const barClass = tone === 'success' ? 'bg-success' : 'bg-destructive';
+  const visibleRows = maxRows ? rows.slice(0, maxRows) : rows;
+  const hiddenCount = rows.length - visibleRows.length;
 
   return (
     <Card>
@@ -26,17 +35,20 @@ export function CategoryBreakdownCard({ title, rows, tone }: CategoryBreakdownCa
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No data in this period.</p>
         ) : (
-          rows.map((row) => (
-            <div key={row.label} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-foreground">{row.label}</span>
-                <span className="font-medium text-foreground">{formatCurrency(row.amount)}</span>
+          <>
+            {visibleRows.map((row) => (
+              <div key={row.label} className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-foreground">{row.label}</span>
+                  <span className="font-medium text-foreground">{formatCurrency(row.amount)}</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full rounded-full ${barClass}`} style={{ width: `${(row.amount / max) * 100}%` }} />
+                </div>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div className={`h-full rounded-full ${barClass}`} style={{ width: `${(row.amount / max) * 100}%` }} />
-              </div>
-            </div>
-          ))
+            ))}
+            {hiddenCount > 0 && <p className="text-xs text-muted-foreground">+{hiddenCount} more</p>}
+          </>
         )}
       </CardContent>
     </Card>
