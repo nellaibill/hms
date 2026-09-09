@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BillingStep,
   InvoiceDetailCard,
+  isConsultationEntryActive,
   LabDetailsCard,
   PatientPicker,
   RecordPaymentDialog,
@@ -186,6 +187,17 @@ export default function InvoiceCreatePage() {
     setConfirmChangePatient(false);
   }
 
+  // Save-time counterpart to the prefill guard above — that guard only stops a duplicate row
+  // from being auto-filled; it does nothing once reception clicks "Add another Consultation"
+  // and fills it in by hand, which would otherwise save a genuine second consultation charge
+  // for a visit that's already billed one with no check anywhere, client or server. This is a
+  // warning, not a hard block: billing more than one real consultant on the same visit together
+  // is the realistic common case (same reasoning the prefill guard's own comment gives), so
+  // outright refusing to save would break that legitimate path — this just makes the accidental
+  // case (re-adding a row out of habit after the prefill left it blank) take an explicit extra
+  // click instead of silently saving.
+  const [duplicateConsultationValues, setDuplicateConsultationValues] = useState<BillingFormValues | null>(null);
+
   async function handleSave() {
     if (!patient || !billingRef.current) return;
     setSaveError(null);
@@ -195,6 +207,17 @@ export default function InvoiceCreatePage() {
     if (!valid) return;
 
     const values = billingRef.current.getValues();
+    const addsAnotherConsultationCharge = consultationAlreadyBilledForVisit && (values.consultation ?? []).some(isConsultationEntryActive);
+    if (addsAnotherConsultationCharge) {
+      setDuplicateConsultationValues(values);
+      return;
+    }
+
+    await saveInvoice(values);
+  }
+
+  async function saveInvoice(values: BillingFormValues) {
+    if (!patient) return;
     try {
       // Use the patient's actual visit (populates Registration Type/Department/Consultant(s)
       // on the Recent Patient Bills ledger via the Billing↔Patients join in
@@ -221,6 +244,16 @@ export default function InvoiceCreatePage() {
       setSaveError(describeSaveError(error));
       setSaveErrorDetails(error instanceof ApiError ? (error.validationErrors?.map((issue) => issue.message) ?? []) : []);
     }
+  }
+
+  function handleConfirmDuplicateConsultation() {
+    const values = duplicateConsultationValues;
+    setDuplicateConsultationValues(null);
+    if (values) void saveInvoice(values);
+  }
+
+  function handleCancelDuplicateConsultation() {
+    setDuplicateConsultationValues(null);
   }
 
   function handleConfirmPayment(method: PaymentMethod) {
@@ -375,6 +408,26 @@ export default function InvoiceCreatePage() {
             </Button>
             <Button variant="destructive" onClick={handleConfirmDiscard}>
               Discard and leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={duplicateConsultationValues !== null} onOpenChange={(open) => !open && handleCancelDuplicateConsultation()}>
+        <DialogContent aria-labelledby="duplicate-consultation-title">
+          <DialogHeader>
+            <DialogTitle id="duplicate-consultation-title">Consultation already billed for this visit</DialogTitle>
+            <DialogDescription>
+              This visit already has a consultation charge on a saved invoice. Saving now will add another consultation
+              charge on top of it — only continue if a different or additional consultation genuinely needs billing.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDuplicateConsultation}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmDuplicateConsultation} disabled={createInvoiceMutation.isPending}>
+              {createInvoiceMutation.isPending ? 'Saving…' : 'Continue and Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
