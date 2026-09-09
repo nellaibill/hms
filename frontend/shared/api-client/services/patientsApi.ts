@@ -6,6 +6,7 @@ import type {
   Patient,
   PatientListQuery,
   PatientVisit,
+  PatientVisitListQuery,
   UpdatePatientRequest,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
@@ -13,6 +14,11 @@ import type { HttpClient } from '../httpClient';
 
 export interface PagedPatients {
   items: Patient[];
+  meta: PaginationMeta;
+}
+
+export interface PagedPatientVisits {
+  items: PatientVisit[];
   meta: PaginationMeta;
 }
 
@@ -87,5 +93,18 @@ export class PatientsApi {
   async getVisits(id: string): Promise<PatientVisit[]> {
     const response = await this.client.get<PatientVisit[]>(API_ROUTES.patients.visits(id));
     return response.data;
+  }
+
+  /** Lists visits across every patient, paged, optionally date-range-filtered — mirrors
+   * PatientVisitsController's cross-patient GET /api/v1/patient-visits. Backs Patient Reports,
+   * unlike getVisits above which is scoped to one patient. */
+  async getAllVisits(query: PatientVisitListQuery = {}): Promise<PagedPatientVisits> {
+    const response = await this.client.get<PatientVisit[]>(API_ROUTES.patientVisits.all, {
+      query: { page: query.page, pageSize: query.pageSize, from: query.from, to: query.to },
+    });
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
   }
 }

@@ -20,4 +20,7 @@ public interface IPatientVisitService
 
     /// <summary>Every visit for the patient, newest first.</summary>
     Task<Result<IReadOnlyList<PatientVisitResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
+
+    /// <summary>Cross-patient, paged, optionally date-range-filtered — backs Patient Reports.</summary>
+    Task<PagedResult<PatientVisitResponse>> GetAllAsync(PatientVisitListQuery query, CancellationToken cancellationToken);
 }

@@ -112,4 +112,11 @@ internal class PatientVisitService : IPatientVisitService
         var visits = await _repository.GetByPatientIdAsync(patientId, cancellationToken);
         return Result<IReadOnlyList<PatientVisitResponse>>.Success(visits.Select(v => v.ToResponse()).ToList());
     }
+
+    public async Task<PagedResult<PatientVisitResponse>> GetAllAsync(PatientVisitListQuery query, CancellationToken cancellationToken)
+    {
+        var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
+        var mapped = items.Select(v => v.ToResponse()).ToList();
+        return new PagedResult<PatientVisitResponse>(mapped, query.Page, query.PageSize, totalCount);
+    }
 }

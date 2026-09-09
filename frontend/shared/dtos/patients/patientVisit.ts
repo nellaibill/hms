@@ -24,3 +24,13 @@ export interface CreatePatientVisitRequest {
   appointmentTypeId?: string | null;
   consultations: VisitConsultation[];
 }
+
+/** Mirrors HMS.Modules.Patients.Contracts.PatientVisitListQuery — the cross-patient,
+ * reporting-only query (unlike CreatePatientVisitRequest/getVisits, which are scoped to one
+ * patient). `from`/`to` are ISO date strings, inclusive, filtering on the visit's CreatedAt. */
+export interface PatientVisitListQuery {
+  page?: number;
+  pageSize?: number;
+  from?: string;
+  to?: string;
+}

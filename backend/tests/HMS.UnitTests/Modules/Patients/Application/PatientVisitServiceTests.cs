@@ -163,4 +163,19 @@ public class PatientVisitServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.AppointmentTypeId.Should().BeNull();
     }
+
+    [Fact]
+    public async Task GetAllAsync_ReturnsPagedResultMappedFromRepository()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.OP, AppointmentTypeId, createdBy: null);
+        visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, DepartmentId, ConsultantId, ConsultationTypeId), updatedBy: null);
+        var query = new PatientVisitListQuery { Page = 1, PageSize = 20 };
+        _repository.GetPagedAsync(query, Arg.Any<CancellationToken>())
+            .Returns((new List<PatientVisit> { visit }, 1));
+
+        var result = await _sut.GetAllAsync(query, CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle(v => v.PatientId == PatientId && v.Consultations.Count == 1);
+    }
 }

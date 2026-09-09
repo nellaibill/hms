@@ -1,3 +1,4 @@
+using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
 
 namespace HMS.Modules.Patients.Application.Abstractions;
@@ -15,6 +16,11 @@ internal interface IPatientVisitRepository
 
     /// <summary>Every visit for a patient, newest first, each with its Consultations included.</summary>
     Task<IReadOnlyList<PatientVisit>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
+
+    /// <summary>Cross-patient, paged, optionally date-range-filtered on CreatedAt — backs the
+    /// Patient Reports "visits" breakdown, unlike GetByPatientIdAsync above which is scoped to
+    /// one patient.</summary>
+    Task<(IReadOnlyList<PatientVisit> Items, int TotalCount)> GetPagedAsync(PatientVisitListQuery query, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

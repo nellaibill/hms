@@ -23,6 +23,7 @@ const UserViewPage = lazy(() => import('../pages/users/UserViewPage'));
 const UserEditPage = lazy(() => import('../pages/users/UserEditPage'));
 const PatientRegistrationHubPage = lazy(() => import('../pages/patients/PatientRegistrationHubPage'));
 const PatientsListPage = lazy(() => import('../pages/patients/PatientsListPage'));
+const PatientReportsPage = lazy(() => import('../pages/reports/PatientReportsPage'));
 const PatientRegistrationCreatePage = lazy(() => import('../pages/patients/PatientRegistrationCreatePage'));
 const PatientViewPage = lazy(() => import('../pages/patients/PatientViewPage'));
 const PatientEditPage = lazy(() => import('../pages/patients/PatientEditPage'));
@@ -144,6 +145,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
   '/pharmacy': withSuspense(<PharmacyHubPage />),
   '/diagnostics/lab': withSuspense(<CentralLaboratoryHubPage />),
+  '/reports': withSuspense(<PatientReportsPage />),
 };
 
 // '/finance/accounts' is deliberately excluded from specialPages above and handled by

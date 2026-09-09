@@ -1,4 +1,5 @@
 using HMS.Modules.Patients.Application.Abstractions;
+using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +28,30 @@ internal class PatientVisitRepository : IPatientVisitRepository
             .Where(v => v.PatientId == patientId)
             .OrderByDescending(v => v.CreatedAt)
             .ToListAsync(cancellationToken);
+
+    public async Task<(IReadOnlyList<PatientVisit> Items, int TotalCount)> GetPagedAsync(PatientVisitListQuery query, CancellationToken cancellationToken)
+    {
+        var visits = _dbContext.PatientVisits.Include(v => v.Consultations).AsQueryable();
+
+        if (query.From.HasValue)
+        {
+            visits = visits.Where(v => v.CreatedAt >= query.From.Value);
+        }
+
+        if (query.To.HasValue)
+        {
+            visits = visits.Where(v => v.CreatedAt <= query.To.Value);
+        }
+
+        var totalCount = await visits.CountAsync(cancellationToken);
+        var items = await visits
+            .OrderByDescending(v => v.CreatedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
