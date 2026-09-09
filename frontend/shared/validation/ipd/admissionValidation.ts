@@ -165,3 +165,55 @@ export const createDoctorOrderSchema = z.object({
 });
 
 export type DoctorOrderFormValues = z.infer<typeof createDoctorOrderSchema>;
+
+/** Mirrors HMS.Modules.IPD.Application.Validators.CreateMedicationOrderRequestValidator. */
+export const createMedicationOrderSchema = z
+  .object({
+    drugName: z.string().trim().min(1, 'Drug name is required').max(200),
+    dose: z.string().trim().min(1, 'Dose is required').max(100),
+    route: z.string().trim().min(1, 'Route is required').max(100),
+    frequency: z.string().trim().min(1, 'Frequency is required').max(100),
+    startDate: z
+      .string()
+      .trim()
+      .min(1, 'Start date is required')
+      .refine(isValidDateTimeLocal, { message: 'Enter a valid date and time' }),
+    endDate: z
+      .string()
+      .trim()
+      .optional()
+      .or(z.literal(''))
+      .refine((val) => !val || isValidDateTimeLocal(val), { message: 'Enter a valid date and time' }),
+    instructions: z.string().trim().max(2000).optional().or(z.literal('')),
+    orderedAt: z
+      .string()
+      .trim()
+      .min(1, 'Ordered date/time is required')
+      .refine(isValidDateTimeLocal, { message: 'Enter a valid date and time' }),
+  })
+  .refine((data) => !data.endDate || new Date(data.endDate) >= new Date(data.startDate), {
+    message: 'End date must be on or after the start date',
+    path: ['endDate'],
+  });
+
+export type MedicationOrderFormValues = z.infer<typeof createMedicationOrderSchema>;
+
+/** Mirrors HMS.Modules.IPD.Application.Validators.CreateMedicationAdministrationRequestValidator. */
+export const createMedicationAdministrationSchema = z.object({
+  scheduledTime: z
+    .string()
+    .trim()
+    .min(1, 'Scheduled time is required')
+    .refine(isValidDateTimeLocal, { message: 'Enter a valid date and time' }),
+  wasGiven: z.enum(['given', 'not-given'], { message: 'Select whether the dose was given' }),
+  administeredAt: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(''))
+    .refine((val) => !val || isValidDateTimeLocal(val), { message: 'Enter a valid date and time' }),
+  reason: z.string().trim().max(500).optional().or(z.literal('')),
+  remarks: z.string().trim().max(1000).optional().or(z.literal('')),
+});
+
+export type MedicationAdministrationFormValues = z.infer<typeof createMedicationAdministrationSchema>;

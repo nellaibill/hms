@@ -17,4 +17,6 @@ internal static class IPDErrorCodes
     public const string InvalidDischargeDate = "IPD.INVALID_DISCHARGE_DATE";
     public const string DoctorOrderNotFound = "IPD.DOCTOR_ORDER_NOT_FOUND";
     public const string InvalidOrderStatusTransition = "IPD.INVALID_ORDER_STATUS_TRANSITION";
+    public const string MedicationOrderNotFound = "IPD.MEDICATION_ORDER_NOT_FOUND";
+    public const string MedicationOrderAlreadyDiscontinued = "IPD.MEDICATION_ORDER_ALREADY_DISCONTINUED";
 }

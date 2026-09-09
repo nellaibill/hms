@@ -37,6 +37,61 @@ _To be documented._
 
 ## Decisions
 
+### ADR-063: IPD Medication Orders + MAR — free-text drug names, no auto-generated dosing schedule
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Sixth slice of the IPD expansion — the slice ADR-062 explicitly left open (Medication was
+excluded from `DoctorOrderType` because it needs a real structured prescription entity, not a
+free-text order description). The proposal splits this into a doctor's Medication Order
+(drug/dose/route/frequency/duration/start-end/instructions) and the Medication Administration
+Record (MAR) — the nurse's log of each scheduled dose actually given, or withheld with a
+reason. Reconfirmed no `MedicationOrder`/`Prescription`/`MedicationAdministration` entity
+exists anywhere in the codebase.
+
+**Decision**
+1. **`DrugName`/`Dose`/`Route`/`Frequency` stay free text**, not a reference into Pharmacy's
+   Product catalog — same reasoning `HMS.Modules.DischargeSummary.Domain.DischargeMedication`
+   already established: Pharmacy is direct-dispense only with no structured Prescription
+   concept to hang a catalog reference off. Real Pharmacy integration (catalog-driven drug
+   selection, stock deduction on administration) remains an explicit open gap, not solved here
+   — same category of deferral as Doctor Orders' Laboratory-integration gap (ADR-062).
+2. **No auto-generated dosing schedule.** The proposal's own example table implies deriving
+   fixed clock times (8 AM/2 PM/8 PM) from a frequency code (BD/TDS/QID) — building that
+   mapping is real complexity that varies by hospital convention and would need per-tenant
+   configuration to do properly. Instead, `Frequency` stays a free-text display/reference
+   field, and **the nurse manually records each administration event with its own scheduled
+   time** — still delivers the real MAR value (who/when/given-or-not/why) without a scheduling
+   engine.
+3. **`MedicationOrder` has the simplest lifecycle of any mutable IPD entity so far**: just
+   `Active` → `Discontinued`, one-way, via a single `Discontinue` method mirroring
+   `DoctorOrder.Cancel`'s precondition-guard style. "Past its end date" is a **displayed**, not
+   stored, fact — the frontend derives it by comparing `EndDate` to now — avoiding a
+   background job to auto-transition status the way `DoctorOrder`'s forward progression or
+   `LabOrder`'s computed `OverallStatus` might suggest.
+4. **`MedicationAdministration` is a real, same-module FK to `MedicationOrder`** (not
+   `Admission` directly) — mirrors `DischargeMedication`'s FK to its parent `DischargeSummary`,
+   the established distinction between cross-module references (bare Guid, no FK) and
+   intra-module ones (real FK). Append-only, same convention as every log-shaped IPD entity so
+   far.
+5. Same win as every IPD-expansion slice: rides on the already-enabled `ipd` feature and
+   existing `clinical-care.*` permissions, no new `FeatureCatalog`/`ModuleCatalog`/permission-
+   catalog entries.
+
+**Consequences**
+- 13 new tests (`MedicationOrderTests`, `MedicationOrderServiceTests`,
+  `MedicationAdministrationServiceTests`) covering the create-guard, Discontinue's one-way
+  transition and already-discontinued rejection, and cross-admission order-id rejection for
+  administrations. Full `HMS.UnitTests`/`HMS.ArchitectureTests` suites green (863/98).
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended for
+  `IMedicationOrderService`/`IMedicationAdministrationService` in the same commit, per the
+  standard checklist.
+- Real Pharmacy integration and frequency-driven schedule generation both remain open gaps for
+  a future slice, not silently dropped.
+
+---
+
 ### ADR-062: IPD Doctor Orders — a mutable state machine, deliberately excluding Laboratory and Medication
 **Date:** 2026-09-09
 **Status:** Accepted

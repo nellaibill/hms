@@ -89,3 +89,13 @@ public enum DoctorOrderStatus
     Completed,
     Cancelled,
 }
+
+/// <summary>Only two states — a one-way Active -> Discontinued transition. "Past its end
+/// date" is a displayed, not stored, fact the frontend derives by comparing EndDate to now;
+/// there's no auto-transition to a "Completed" status, avoiding a background job. See
+/// Domain/MedicationOrder.cs's Discontinue method.</summary>
+public enum MedicationOrderStatus
+{
+    Active,
+    Discontinued,
+}

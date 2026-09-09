@@ -36,3 +36,8 @@ export type DoctorOrderType = (typeof DOCTOR_ORDER_TYPES)[number];
 // from any non-terminal state.
 export const DOCTOR_ORDER_STATUSES = ['Ordered', 'Accepted', 'InProgress', 'Completed', 'Cancelled'] as const;
 export type DoctorOrderStatus = (typeof DOCTOR_ORDER_STATUSES)[number];
+
+// One-way Active -> Discontinued only. "Past its end date" is a displayed, not stored, fact
+// derived by comparing EndDate to now — see MedicationOrder's own doc comment.
+export const MEDICATION_ORDER_STATUSES = ['Active', 'Discontinued'] as const;
+export type MedicationOrderStatus = (typeof MEDICATION_ORDER_STATUSES)[number];
