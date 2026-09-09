@@ -7,6 +7,7 @@ import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/s
 import { formatCurrency } from '@/features/billing/billingCalculations';
 import { useDiagnosticPackagesQuery, useDiagnosticServices } from '@/features/diagnostics';
 import { LabStatusBadge } from '@/features/laboratory';
+import { generateClientId } from '@/lib/id';
 import { useLabOrdersQuery, usePostLabOrderMutation } from '../hooks/useLabOrders';
 
 interface LabOrdersPanelProps {
@@ -34,7 +35,7 @@ function parseOptionValue(value: string): { itemType: ItemType; itemId: string }
 }
 
 function emptyLine(): DraftLine {
-  return { key: crypto.randomUUID(), itemType: 'service', itemId: '' };
+  return { key: generateClientId(), itemType: 'service', itemId: '' };
 }
 
 /**
