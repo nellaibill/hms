@@ -248,6 +248,10 @@ export const API_ROUTES = {
       doctorOrders: (id: string) => `/api/v1/ipd/admissions/${id}/doctor-orders`,
       doctorOrderAdvance: (admissionId: string, orderId: string) => `/api/v1/ipd/admissions/${admissionId}/doctor-orders/${orderId}/advance`,
       doctorOrderCancel: (admissionId: string, orderId: string) => `/api/v1/ipd/admissions/${admissionId}/doctor-orders/${orderId}/cancel`,
+      medicationOrders: (id: string) => `/api/v1/ipd/admissions/${id}/medication-orders`,
+      medicationOrderDiscontinue: (admissionId: string, orderId: string) => `/api/v1/ipd/admissions/${admissionId}/medication-orders/${orderId}/discontinue`,
+      medicationAdministrations: (admissionId: string, orderId: string) =>
+        `/api/v1/ipd/admissions/${admissionId}/medication-orders/${orderId}/administrations`,
     },
     dashboard: '/api/v1/ipd/dashboard',
   },

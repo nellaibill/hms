@@ -12,6 +12,8 @@ import {
   ChargesPanel,
   DischargeForm,
   DoctorOrdersPanel,
+  MedicationAdministrationPanel,
+  MedicationOrdersPanel,
   NursingAssessmentPanel,
   NursingNotesPanel,
   ProgressNotesPanel,
@@ -130,6 +132,7 @@ export default function AdmissionViewPage() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="clinical">Clinical</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="medication">Medication</TabsTrigger>
             <TabsTrigger value="vitals">Vitals</TabsTrigger>
             <TabsTrigger value="nursing">Nursing</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -203,6 +206,26 @@ export default function AdmissionViewPage() {
               </CardHeader>
               <CardContent>
                 <DoctorOrdersPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="medication" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Medication Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MedicationOrdersPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Medication Administration Record (MAR)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MedicationAdministrationPanel admissionId={admission.id} />
               </CardContent>
             </Card>
           </TabsContent>

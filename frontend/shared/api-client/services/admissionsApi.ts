@@ -13,8 +13,13 @@ import type {
   CreateNursingNoteRequest,
   CreateProgressNoteRequest,
   CreateVitalsReadingRequest,
+  CreateMedicationAdministrationRequest,
+  CreateMedicationOrderRequest,
   DischargeAdmissionRequest,
+  DiscontinueMedicationOrderRequest,
   DoctorOrder,
+  MedicationAdministration,
+  MedicationOrder,
   NursingAssessment,
   NursingNote,
   ProgressNote,
@@ -156,6 +161,31 @@ export class AdmissionsApi {
 
   async cancelDoctorOrder(admissionId: string, orderId: string, request: CancelDoctorOrderRequest = {}): Promise<DoctorOrder> {
     const response = await this.client.post<DoctorOrder>(API_ROUTES.ipd.admissions.doctorOrderCancel(admissionId, orderId), request);
+    return response.data;
+  }
+
+  async getMedicationOrders(admissionId: string): Promise<MedicationOrder[]> {
+    const response = await this.client.get<MedicationOrder[]>(API_ROUTES.ipd.admissions.medicationOrders(admissionId));
+    return response.data;
+  }
+
+  async postMedicationOrder(admissionId: string, request: CreateMedicationOrderRequest): Promise<MedicationOrder> {
+    const response = await this.client.post<MedicationOrder>(API_ROUTES.ipd.admissions.medicationOrders(admissionId), request);
+    return response.data;
+  }
+
+  async discontinueMedicationOrder(admissionId: string, orderId: string, request: DiscontinueMedicationOrderRequest = {}): Promise<MedicationOrder> {
+    const response = await this.client.post<MedicationOrder>(API_ROUTES.ipd.admissions.medicationOrderDiscontinue(admissionId, orderId), request);
+    return response.data;
+  }
+
+  async getMedicationAdministrations(admissionId: string, orderId: string): Promise<MedicationAdministration[]> {
+    const response = await this.client.get<MedicationAdministration[]>(API_ROUTES.ipd.admissions.medicationAdministrations(admissionId, orderId));
+    return response.data;
+  }
+
+  async postMedicationAdministration(admissionId: string, orderId: string, request: CreateMedicationAdministrationRequest): Promise<MedicationAdministration> {
+    const response = await this.client.post<MedicationAdministration>(API_ROUTES.ipd.admissions.medicationAdministrations(admissionId, orderId), request);
     return response.data;
   }
 }
