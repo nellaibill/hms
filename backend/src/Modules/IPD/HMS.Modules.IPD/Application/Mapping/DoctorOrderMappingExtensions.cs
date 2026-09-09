@@ -12,6 +12,7 @@ internal static class DoctorOrderMappingExtensions
         OrderType = order.OrderType,
         Description = order.Description,
         Instructions = order.Instructions,
+        CatalogItemId = order.CatalogItemId,
         OrderedAt = order.OrderedAt,
         OrderedByUserId = order.OrderedByUserId,
         Status = order.Status,

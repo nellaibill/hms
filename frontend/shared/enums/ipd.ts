@@ -20,9 +20,10 @@ export type AdmissionStatus = (typeof ADMISSION_STATUSES)[number];
 export const DISCHARGE_TYPES = ['Normal', 'AgainstMedicalAdvice', 'Referred'] as const;
 export type DischargeType = (typeof DISCHARGE_TYPES)[number];
 
-// LabCharge is auto-posted by IPDLabOrderService when a lab order is placed — never picked
-// manually in the Charges tab's own add-charge form.
-export const CHARGE_TYPES = ['AdmissionCharge', 'BedCharge', 'NursingCharge', 'LabCharge'] as const;
+// LabCharge/DoctorOrderCharge are auto-posted (by IPDLabOrderService / DoctorOrderService)
+// when an order with a resolvable price is placed — never picked manually in the Charges tab's
+// own add-charge form.
+export const CHARGE_TYPES = ['AdmissionCharge', 'BedCharge', 'NursingCharge', 'LabCharge', 'DoctorOrderCharge'] as const;
 export type ChargeType = (typeof CHARGE_TYPES)[number];
 
 // Named NursingShift (not Shift) to avoid confusion with HR's unrelated Shift/ShiftAssignment.

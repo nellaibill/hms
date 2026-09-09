@@ -1,12 +1,18 @@
 import { ApiError, createDoctorOrderSchema, DOCTOR_ORDER_TYPES, type DoctorOrderFormValues, type DoctorOrderStatus } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Loader2, Plus, X } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatCurrency } from '@/features/billing/billingCalculations';
+import { useDiagnosticTestServices } from '@/features/billing/hooks/useDiagnosticTestServices';
+import { useDiagnosticServices } from '@/features/diagnostics';
+import { consultationTypesApi } from '@/services/apiClient';
 import {
   useAdvanceDoctorOrderMutation,
   useCancelDoctorOrderMutation,
@@ -22,8 +28,13 @@ const defaultValues: DoctorOrderFormValues = {
   orderType: 'Radiology',
   description: '',
   instructions: '',
+  catalogItemId: '',
   orderedAt: '',
 };
+
+/** Only these three DoctorOrderTypes have a real priced Masters catalog today — see
+ * ADR-065. Diet/Nursing/Blood/Referral get no catalog picker, exactly as before this slice. */
+const PRICED_ORDER_TYPES = new Set(['Radiology', 'Procedure', 'Consultation']);
 
 const statusBadgeVariant: Record<DoctorOrderStatus, BadgeProps['variant']> = {
   Ordered: 'secondary',
@@ -51,11 +62,64 @@ export function DoctorOrdersPanel({ admissionId }: DoctorOrdersPanelProps) {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<DoctorOrderFormValues>({
     resolver: zodResolver(createDoctorOrderSchema),
     defaultValues,
   });
+
+  const orderType = watch('orderType');
+  const isPricedType = PRICED_ORDER_TYPES.has(orderType);
+
+  const { services: radiologyServices, isLoading: isLoadingRadiology } = useDiagnosticServices('Radiology');
+  const { services: procedureServices, isLoading: isLoadingProcedure } = useDiagnosticTestServices('Procedure');
+  const consultationTypesQuery = useQuery({
+    queryKey: ['consultationTypes', 'select-list'],
+    queryFn: () => consultationTypesApi.getConsultationTypes({ pageSize: 100, isActive: true }),
+    enabled: orderType === 'Consultation',
+  });
+
+  const catalogOptions: SearchableSelectOption[] =
+    orderType === 'Radiology'
+      ? radiologyServices.map((s) => ({ value: s.id, label: `${s.name} — ${formatCurrency(s.price)}`, keywords: s.name }))
+      : orderType === 'Procedure'
+        ? procedureServices.map((s) => ({ value: s.id, label: `${s.name} — ${formatCurrency(s.price)}`, keywords: s.name }))
+        : orderType === 'Consultation'
+          ? (consultationTypesQuery.data?.items ?? []).map((t) => ({
+              value: t.id,
+              label: t.amount != null ? `${t.name} — ${formatCurrency(t.amount)}` : `${t.name} — no fixed fee`,
+              keywords: t.name,
+            }))
+          : [];
+
+  function findCatalogItemName(itemId: string): string | undefined {
+    if (orderType === 'Radiology') return radiologyServices.find((s) => s.id === itemId)?.name;
+    if (orderType === 'Procedure') return procedureServices.find((s) => s.id === itemId)?.name;
+    if (orderType === 'Consultation') return consultationTypesQuery.data?.items.find((t) => t.id === itemId)?.name;
+    return undefined;
+  }
+
+  const isLoadingCatalog =
+    orderType === 'Radiology' ? isLoadingRadiology : orderType === 'Procedure' ? isLoadingProcedure : consultationTypesQuery.isPending;
+
+  function handleOrderTypeChange(nextOrderType: string) {
+    setValue('orderType', nextOrderType as DoctorOrderFormValues['orderType']);
+    // A catalog item picked for the previous type has no meaning under a different type (or
+    // none at all, for an unpriced type) — clear it rather than silently carrying it over.
+    setValue('catalogItemId', '');
+  }
+
+  function handleCatalogItemChange(itemId: string) {
+    setValue('catalogItemId', itemId);
+    const name = findCatalogItemName(itemId);
+    if (name) {
+      // Convenience default, matching ConsultationBillingCard's own "default then let them
+      // override" pattern — Description stays freely editable afterward.
+      setValue('description', name);
+    }
+  }
 
   function onSubmit(values: DoctorOrderFormValues) {
     createMutation.mutate(
@@ -63,6 +127,7 @@ export function DoctorOrdersPanel({ admissionId }: DoctorOrdersPanelProps) {
         orderType: values.orderType,
         description: values.description,
         instructions: values.instructions || null,
+        catalogItemId: values.catalogItemId || null,
         orderedAt: new Date(values.orderedAt).toISOString(),
       },
       { onSuccess: () => reset(defaultValues) },
@@ -179,7 +244,7 @@ export function DoctorOrdersPanel({ admissionId }: DoctorOrdersPanelProps) {
               control={control}
               name="orderType"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value} onValueChange={handleOrderTypeChange}>
                   <SelectTrigger id="orderType" className="w-40" aria-label="Order type">
                     <SelectValue />
                   </SelectTrigger>
@@ -201,6 +266,28 @@ export function DoctorOrdersPanel({ admissionId }: DoctorOrdersPanelProps) {
             {errors.orderedAt && <p className="text-xs text-destructive">{errors.orderedAt.message}</p>}
           </div>
         </div>
+
+        {isPricedType && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="catalogItem">Catalog item (optional — auto-posts a charge)</Label>
+            <Controller
+              control={control}
+              name="catalogItemId"
+              render={({ field }) => (
+                <SearchableSelect
+                  id="catalogItem"
+                  ariaLabel="Catalog item"
+                  value={field.value || ''}
+                  onValueChange={handleCatalogItemChange}
+                  options={catalogOptions}
+                  placeholder={isLoadingCatalog ? 'Loading items…' : 'Select a catalog item (optional)'}
+                  searchPlaceholder="Search…"
+                  disabled={isLoadingCatalog}
+                />
+              )}
+            />
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="description">Description</Label>

@@ -2,7 +2,9 @@ using HMS.Modules.IPD.Application.Abstractions;
 using HMS.Modules.IPD.Application.Mapping;
 using HMS.Modules.IPD.Contracts;
 using HMS.Modules.IPD.Domain;
+using HMS.Modules.Masters.Application;
 using HMS.Shared.Kernel;
+using Microsoft.Extensions.Logging;
 
 namespace HMS.Modules.IPD.Application;
 
@@ -27,11 +29,28 @@ internal class DoctorOrderService : IDoctorOrderService
 {
     private readonly IDoctorOrderRepository _repository;
     private readonly IAdmissionRepository _admissionRepository;
+    private readonly IDiagnosticServiceService _diagnosticServiceService;
+    private readonly IDiagnosticTestService _diagnosticTestService;
+    private readonly IConsultationTypeService _consultationTypeService;
+    private readonly IAdmissionChargeService _admissionChargeService;
+    private readonly ILogger<DoctorOrderService> _logger;
 
-    public DoctorOrderService(IDoctorOrderRepository repository, IAdmissionRepository admissionRepository)
+    public DoctorOrderService(
+        IDoctorOrderRepository repository,
+        IAdmissionRepository admissionRepository,
+        IDiagnosticServiceService diagnosticServiceService,
+        IDiagnosticTestService diagnosticTestService,
+        IConsultationTypeService consultationTypeService,
+        IAdmissionChargeService admissionChargeService,
+        ILogger<DoctorOrderService> logger)
     {
         _repository = repository;
         _admissionRepository = admissionRepository;
+        _diagnosticServiceService = diagnosticServiceService;
+        _diagnosticTestService = diagnosticTestService;
+        _consultationTypeService = consultationTypeService;
+        _admissionChargeService = admissionChargeService;
+        _logger = logger;
     }
 
     public async Task<Result<DoctorOrderResponse>> CreateAsync(Guid admissionId, CreateDoctorOrderRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -41,10 +60,19 @@ internal class DoctorOrderService : IDoctorOrderService
             return Result<DoctorOrderResponse>.Failure(IPDErrorCodes.NotFound, $"Admission '{admissionId}' was not found.");
         }
 
-        var order = DoctorOrder.Create(admissionId, request.OrderType, request.Description, request.Instructions, request.OrderedAt, actorId, actorId);
+        var order = DoctorOrder.Create(
+            admissionId, request.OrderType, request.Description, request.Instructions, request.OrderedAt, actorId, actorId, request.CatalogItemId);
 
         await _repository.AddAsync(order, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
+
+        // Best-effort, not transactional with the order itself — a charge-posting failure must
+        // never undo/fail an already-placed order. Mirrors IPDLabOrderService.PostChargeAsync's
+        // exact shape (see ADR-064/065).
+        if (order.CatalogItemId is { } catalogItemId)
+        {
+            await PostChargeAsync(admissionId, order.OrderType, catalogItemId, actorId, cancellationToken);
+        }
 
         return Result<DoctorOrderResponse>.Success(order.ToResponse());
     }
@@ -100,5 +128,92 @@ internal class DoctorOrderService : IDoctorOrderService
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<DoctorOrderResponse>.Success(order.ToResponse());
+    }
+
+    /// <summary>Resolves a price by OrderType from the matching Masters catalog and posts one
+    /// AdmissionCharge (ChargeType.DoctorOrderCharge). Only Radiology/Procedure/Consultation
+    /// have a priced catalog to resolve against — this is only ever called when
+    /// order.CatalogItemId is set, which itself is only possible for those three types (the
+    /// frontend only shows a catalog picker for them). Diet/Nursing/Blood/Referral orders never
+    /// reach here. See ADR-065.</summary>
+    private async Task PostChargeAsync(Guid admissionId, DoctorOrderType orderType, Guid catalogItemId, Guid? actorId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            decimal amount;
+            string remarks;
+
+            switch (orderType)
+            {
+                case DoctorOrderType.Radiology:
+                    var serviceResult = await _diagnosticServiceService.GetByIdAsync(catalogItemId, cancellationToken);
+                    if (!serviceResult.IsSuccess)
+                    {
+                        _logger.LogWarning(
+                            "IPD: could not resolve diagnostic service '{CatalogItemId}' to post a DoctorOrderCharge for admission '{AdmissionId}' — skipping charge.",
+                            catalogItemId, admissionId);
+                        return;
+                    }
+
+                    amount = serviceResult.Value!.Price;
+                    remarks = $"Radiology: {serviceResult.Value.Name}";
+                    break;
+
+                case DoctorOrderType.Procedure:
+                    var testResult = await _diagnosticTestService.GetByIdAsync(catalogItemId, cancellationToken);
+                    if (!testResult.IsSuccess)
+                    {
+                        _logger.LogWarning(
+                            "IPD: could not resolve diagnostic test '{CatalogItemId}' to post a DoctorOrderCharge for admission '{AdmissionId}' — skipping charge.",
+                            catalogItemId, admissionId);
+                        return;
+                    }
+
+                    amount = testResult.Value!.Price;
+                    remarks = $"Procedure: {testResult.Value.Name}";
+                    break;
+
+                case DoctorOrderType.Consultation:
+                    var consultationResult = await _consultationTypeService.GetByIdAsync(catalogItemId, cancellationToken);
+                    if (!consultationResult.IsSuccess)
+                    {
+                        _logger.LogWarning(
+                            "IPD: could not resolve consultation type '{CatalogItemId}' to post a DoctorOrderCharge for admission '{AdmissionId}' — skipping charge.",
+                            catalogItemId, admissionId);
+                        return;
+                    }
+
+                    if (consultationResult.Value!.Amount is not { } consultationAmount)
+                    {
+                        // A legitimate "no fixed fee" state (e.g. "Others / On-call"), not an
+                        // error — mirrors ConsultationBillingCard.tsx's own null-handling.
+                        return;
+                    }
+
+                    amount = consultationAmount;
+                    remarks = $"Consultation: {consultationResult.Value.Name}";
+                    break;
+
+                default:
+                    // Diet/Nursing/Blood/Referral have no priced catalog — CatalogItemId should
+                    // never be set for these, but degrade gracefully rather than throw.
+                    return;
+            }
+
+            var chargeResult = await _admissionChargeService.CreateAsync(
+                admissionId,
+                new CreateAdmissionChargeRequest { ChargeType = ChargeType.DoctorOrderCharge, Amount = amount, Remarks = remarks },
+                actorId,
+                cancellationToken);
+
+            if (!chargeResult.IsSuccess)
+            {
+                _logger.LogWarning("IPD: failed to post a DoctorOrderCharge for admission '{AdmissionId}': {Error}", admissionId, chargeResult.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "IPD: unexpected error posting a DoctorOrderCharge for admission '{AdmissionId}'.", admissionId);
+        }
     }
 }

@@ -13,12 +13,13 @@ const chargeTypeLabels: Record<(typeof CHARGE_TYPES)[number], string> = {
   BedCharge: 'Bed Charge',
   NursingCharge: 'Nursing Charge',
   LabCharge: 'Lab Charge',
+  DoctorOrderCharge: 'Doctor Order Charge',
 };
 
-// Charge types IPDLabOrderService/bed-transfer flows post automatically — shown with the same
-// "Auto" badge treatment either way, even though (like BedCharge) they can still be posted
-// manually from this form too.
-const AUTO_POSTED_CHARGE_TYPES: ReadonlySet<(typeof CHARGE_TYPES)[number]> = new Set(['BedCharge', 'LabCharge']);
+// Charge types IPDLabOrderService/DoctorOrderService/bed-transfer flows post automatically —
+// shown with the same "Auto" badge treatment either way, even though (like BedCharge) they can
+// still be posted manually from this form too.
+const AUTO_POSTED_CHARGE_TYPES: ReadonlySet<(typeof CHARGE_TYPES)[number]> = new Set(['BedCharge', 'LabCharge', 'DoctorOrderCharge']);
 
 interface ChargesPanelProps {
   admissionId: string;

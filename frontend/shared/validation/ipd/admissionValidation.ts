@@ -157,6 +157,10 @@ export const createDoctorOrderSchema = z.object({
   orderType: z.enum(DOCTOR_ORDER_TYPES, { message: 'Order type is required' }),
   description: z.string().trim().min(1, 'Description is required').max(1000),
   instructions: z.string().trim().max(2000).optional().or(z.literal('')),
+  // Optional reference to a priced Masters catalog item (Radiology/Procedure/Consultation
+  // only) — set when the doctor picks a catalog item, so a charge can be auto-posted. See
+  // ADR-065.
+  catalogItemId: z.string().optional().or(z.literal('')),
   orderedAt: z
     .string()
     .trim()
