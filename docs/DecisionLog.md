@@ -37,6 +37,59 @@ _To be documented._
 
 ## Decisions
 
+### ADR-070: Patient Reports — first real content on the standalone Reports nav item
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+The "Reports" sidebar item (`/reports`, distinct from `/finance/accounts/reports*`) rendered a
+bare `PlaceholderPage` — no report existed there at all. User asked for it to be built out,
+starting with Patient-related reports: demographics, marital status, referral/arrival source,
+allergy details, and visit activity by type/department/consultant, filterable and chart-based.
+
+Research before implementing found:
+- Patient-level fields are real: `Gender`, `MaritalStatus`, `BloodGroup`,
+  `ModeOfArrivalSource`/`Channel`/`Specify` (the closest thing to a "referral source" — a
+  coarse category, `DoctorReferral`/`PatientOrRelativeReferral`/etc., **not** a link to a
+  specific referring doctor/consultant record; no such field exists anywhere in this codebase),
+  and `Allergies` (`{allergyType, specify, severity}[]`).
+- **No cross-patient visits query existed at all.** The only endpoint,
+  `GET /api/v1/patients/{patientId}/visits`, is scoped to one patient — a "visits by
+  department/consultant" or "visits over time" report needs a new backend query, not just new
+  frontend plumbing.
+- Recharts (`^3.10.0`) is already a project dependency with working examples on the main
+  dashboard (`MonthlyCensusChart`, `DepartmentFinanceChart`) — introducing real charts here is
+  not new territory, just reusing an existing, unused-for-reports library.
+
+**Decision**
+1. Added `GET /api/v1/patient-visits` (`PatientVisitsController`, absolute route override on
+   an action inside the existing per-patient-scoped controller rather than a new controller) —
+   paged, optional `from`/`to` filter on `CreatedAt`. `IPatientVisitRepository.GetPagedAsync`
+   mirrors `PatientRepository.GetPagedAsync`'s existing shape exactly.
+2. Patient-level demographic/allergy breakdowns need no backend change — they reuse the
+   existing bulk `GET /api/v1/patients` list, walked page-by-page client-side
+   (`getAllPatientsForReport`), same "MaxPageSize silently truncates a single big-page request"
+   fix already applied to Finance's `getAllInvoicesForReport` and Masters'
+   `masterStoreFactory.getAll()`.
+3. `frontend/web/src/features/patients/patientReport.ts` — client-side groupBy/count
+   computation, same shape as Finance's `profitReport.ts` (a pattern proven twice now across
+   two unrelated domains).
+4. Scoped to Patients only for this pass — Laboratory/Radiology volume, HR, and other domains'
+   reports are separate future slices under the same `/reports` nav item, same one-slice-at-a-
+   time discipline as the rest of this initiative.
+
+**Consequences**
+- The Patients module's public surface grows by one cross-patient read (`GetAllAsync` on
+  `IPatientVisitService`) — read-only, `patient-management.view`-gated, no write-path change.
+- Visits fetched for this report push `from`/`to` server-side; patients are always fetched in
+  full and filtered by registration date client-side, since no such filter exists on the
+  patients endpoint — an intentional asymmetry, not an oversight (see patientReportData.ts's
+  own comments).
+- Live browser verification pending a fresh login (session expired mid-build, a recurring gap
+  across several slices this session) — disclosed in the PR rather than silently skipped.
+
+---
+
 ### ADR-069: Accounts & Finance reports overhaul — layout fix + Laboratory/Radiology/Consultant reports
 **Date:** 2026-09-09
 **Status:** Accepted
