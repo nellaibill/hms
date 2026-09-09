@@ -263,6 +263,12 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     return { serviceLabel: item.serviceId ?? 'Pharmacy', consultantName: '—' };
   }
 
+  if (item.billingType === 'InpatientCharge') {
+    // Generated server-side only (IPDBillingService.GenerateFinalBillAsync, at discharge) —
+    // same "serviceId is already the description" shape as Pharmacy above, no consultant.
+    return { serviceLabel: item.serviceId ?? 'Inpatient Charge', consultantName: '—' };
+  }
+
   const consultantName = item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : '—';
 
   if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {
@@ -299,7 +305,7 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
  *     into the cache yet, or its CostPrice is 0 ("not yet costed").
  */
 export function resolveItemCostPrice(item: BillingItem): number | null {
-  if (item.billingType === 'Pharmacy') return null;
+  if (item.billingType === 'Pharmacy' || item.billingType === 'InpatientCharge') return null;
 
   if (item.billingType === 'Consultation') {
     return item.serviceId ? resolveRecordCostPrice('consultationType', item.serviceId) : null;
