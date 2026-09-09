@@ -11,7 +11,8 @@ namespace HMS.ArchitectureTests.Modules.IPD;
 /// mirrors HMS.ArchitectureTests.Modules.HR.HRModuleBoundaryTests. Everything outside
 /// Contracts is internal, and Contracts is the module's only public surface, with a
 /// deliberate, narrow exception per entity (see <see cref="AllowedPublicTypeNamePattern"/>):
-/// each entity's I{Entity}Service is public because its {Entity}sController — which ASP.NET
+/// each entity's I{Entity}Service (including IVitalsReadingService/IProgressNoteService) is
+/// public because its {Entity}sController — which ASP.NET
 /// Core requires to be public with a public constructor for controller discovery/DI
 /// activation — takes it as a constructor dependency (a public constructor cannot have an
 /// internal parameter type, CS0051). IPDDbContext is public because it's resolved by type
@@ -22,7 +23,7 @@ public class IPDModuleBoundaryTests
     private static readonly Assembly IPDAssembly = typeof(WardsController).Assembly;
 
     private const string AllowedPublicTypeNamePattern =
-        "^(IPDDbContext|IWardService|IBedService|IAdmissionService|IIPDDashboardService|IAdmissionChargeService)$";
+        "^(IPDDbContext|IWardService|IBedService|IAdmissionService|IIPDDashboardService|IAdmissionChargeService|IVitalsReadingService|IProgressNoteService|INursingAssessmentService|INursingNoteService|IDoctorOrderService|IMedicationOrderService|IMedicationAdministrationService|IIPDLabOrderService|IIPDBillingService)$";
 
     [Theory]
     [InlineData("HMS.Modules.IPD.Domain")]

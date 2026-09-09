@@ -31,6 +31,10 @@ namespace HMS.Database.Migrations.Laboratory.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AdmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -47,7 +51,7 @@ namespace HMS.Database.Migrations.Laboratory.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
-                    b.Property<Guid>("InvoiceId")
+                    b.Property<Guid?>("InvoiceId")
                         .HasColumnType("uuid")
                         .HasColumnName("invoice_id");
 
@@ -114,7 +118,7 @@ namespace HMS.Database.Migrations.Laboratory.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
-                    b.Property<Guid>("VisitId")
+                    b.Property<Guid?>("VisitId")
                         .HasColumnType("uuid")
                         .HasColumnName("visit_id");
 
@@ -127,13 +131,16 @@ namespace HMS.Database.Migrations.Laboratory.Migrations
                     b.HasKey("Id")
                         .HasName("pk_lab_orders");
 
+                    b.HasIndex("AdmissionId")
+                        .HasDatabaseName("ix_lab_orders_admission_id");
+
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_lab_orders_created_at");
 
                     b.HasIndex("InvoiceId")
                         .IsUnique()
                         .HasDatabaseName("ux_lab_orders_invoice_id")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("invoice_id IS NOT NULL AND is_deleted = false");
 
                     b.HasIndex("LabOrderNumber")
                         .IsUnique()
@@ -207,7 +214,7 @@ namespace HMS.Database.Migrations.Laboratory.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("department_id");
 
-                    b.Property<Guid>("InvoiceLineItemId")
+                    b.Property<Guid?>("InvoiceLineItemId")
                         .HasColumnType("uuid")
                         .HasColumnName("invoice_line_item_id");
 

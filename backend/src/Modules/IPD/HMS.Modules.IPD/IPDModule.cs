@@ -52,6 +52,31 @@ public static class IPDModule
         services.AddScoped<IAdmissionChargeRepository, AdmissionChargeRepository>();
         services.AddScoped<IAdmissionChargeService, AdmissionChargeService>();
 
+        services.AddScoped<IVitalsReadingRepository, VitalsReadingRepository>();
+        services.AddScoped<IVitalsReadingService, VitalsReadingService>();
+
+        services.AddScoped<IProgressNoteRepository, ProgressNoteRepository>();
+        services.AddScoped<IProgressNoteService, ProgressNoteService>();
+
+        services.AddScoped<INursingAssessmentRepository, NursingAssessmentRepository>();
+        services.AddScoped<INursingAssessmentService, NursingAssessmentService>();
+
+        services.AddScoped<INursingNoteRepository, NursingNoteRepository>();
+        services.AddScoped<INursingNoteService, NursingNoteService>();
+
+        services.AddScoped<IDoctorOrderRepository, DoctorOrderRepository>();
+        services.AddScoped<IDoctorOrderService, DoctorOrderService>();
+
+        services.AddScoped<IMedicationOrderRepository, MedicationOrderRepository>();
+        services.AddScoped<IMedicationOrderService, MedicationOrderService>();
+
+        services.AddScoped<IMedicationAdministrationRepository, MedicationAdministrationRepository>();
+        services.AddScoped<IMedicationAdministrationService, MedicationAdministrationService>();
+
+        services.AddScoped<IIPDLabOrderService, IPDLabOrderService>();
+
+        services.AddScoped<IIPDBillingService, IPDBillingService>();
+
         services.AddScoped<IValidator<CreateWardRequest>, CreateWardRequestValidator>();
         services.AddScoped<IValidator<UpdateWardRequest>, UpdateWardRequestValidator>();
 
@@ -64,6 +89,21 @@ public static class IPDModule
         services.AddScoped<IValidator<DischargeAdmissionRequest>, DischargeAdmissionRequestValidator>();
 
         services.AddScoped<IValidator<CreateAdmissionChargeRequest>, CreateAdmissionChargeRequestValidator>();
+
+        services.AddScoped<IValidator<CreateVitalsReadingRequest>, CreateVitalsReadingRequestValidator>();
+        services.AddScoped<IValidator<CreateProgressNoteRequest>, CreateProgressNoteRequestValidator>();
+
+        services.AddScoped<IValidator<CreateNursingAssessmentRequest>, CreateNursingAssessmentRequestValidator>();
+        services.AddScoped<IValidator<CreateNursingNoteRequest>, CreateNursingNoteRequestValidator>();
+
+        services.AddScoped<IValidator<CreateDoctorOrderRequest>, CreateDoctorOrderRequestValidator>();
+        services.AddScoped<IValidator<CancelDoctorOrderRequest>, CancelDoctorOrderRequestValidator>();
+
+        services.AddScoped<IValidator<CreateMedicationOrderRequest>, CreateMedicationOrderRequestValidator>();
+        services.AddScoped<IValidator<DiscontinueMedicationOrderRequest>, DiscontinueMedicationOrderRequestValidator>();
+        services.AddScoped<IValidator<CreateMedicationAdministrationRequest>, CreateMedicationAdministrationRequestValidator>();
+
+        services.AddScoped<IValidator<CreatePlaceLabOrderRequest>, CreatePlaceLabOrderRequestValidator>();
 
         return services;
     }

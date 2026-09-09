@@ -37,6 +37,446 @@ _To be documented._
 
 ## Decisions
 
+### ADR-066: IPD Final Billing — a new generic BillingType, VisitId falls back to PatientId
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+IPD has never had a real payment-collection point — `AdmissionCharge` (Bed/Nursing/Lab/priced-
+Doctor-Order charges, built across ADR-060/064/065) is only ever an internal ledger; nothing
+converts it into an actual `HMS.Modules.Billing` Invoice. This slice closes that gap: at
+discharge, a discharged admission's accumulated charges can be converted into a real Invoice
+and paid through the existing Billing UI.
+
+**Decision**
+1. **`Invoice.VisitId` is required and non-nullable, with no schema change needed** — IPD's
+   `Admission` has no `VisitId` at all, but `CreateInvoiceRequest.VisitId`'s own doc comment
+   already documents a fallback convention for exactly this situation: pass `PatientId` as
+   `VisitId`. This slice adopts that existing convention rather than relaxing Billing's schema
+   the way the Laboratory integration slice had to (ADR-064) — a materially lower-risk change to
+   an already-shipped module.
+2. **New `BillingType.InpatientCharge`, not a reuse of `Laboratory`/`Radiology`/`Procedure`/
+   `Consultation`.** `InvoiceService.CreateAsync` has a post-creation hook that creates a new
+   `LabOrder` whenever any line is `BillingType.Laboratory` — reusing that type for an
+   already-existing `LabOrder`'s charge would create a *second*, duplicate `LabOrder`. A
+   dedicated generic type sidesteps every such hook entirely. `InvoiceLineItem.ServiceId` has
+   no dedicated free-text description field, so (mirroring `BillingType.Pharmacy`'s exact
+   precedent) `ServiceId` carries an already-human-readable "{ChargeType}: {Remarks}" string
+   instead of a catalog id — `describeBillingItem`/`resolveItemCostPrice` treat it exactly like
+   Pharmacy (pre-formatted text, no cost-price concept). String-backed enum column, so no
+   Billing-side migration was needed for the new value itself.
+3. **Discharge-only, explicit "Generate Final Bill" button — not automatic at discharge.**
+   Gives billing staff a deliberate review point before a financial document is created,
+   mirroring how real hospital billing workflows work; `AdmissionService.DischargeAsync` itself
+   is untouched. A new `Admission.FinalInvoiceId` (nullable, app-level reference) tracks
+   whether one has already been generated, preventing duplicates and telling the frontend
+   which state (Generate vs. View) to show.
+4. **Gated by `finance-billing.create`, not `clinical-care.*`.** This creates a real financial
+   document, so it sits behind Billing's own permission — same as `InvoicesController.Create` —
+   rather than IPD's clinical permissions (least-privilege: a nurse with clinical-care access
+   shouldn't implicitly be able to generate a legal financial invoice).
+5. **No new payment UI.** `IPDBillingService.GenerateFinalBillAsync` creates the Invoice
+   `Pending` (no `Payments` supplied at creation) and the frontend routes straight to the
+   existing `/finance/accounts/:id` (`InvoiceDetailPage`) — already creator-agnostic (it already
+   has a conditional Lab Details tab) — to actually collect payment, same reuse strategy as
+   linking to the Lab Order detail page in ADR-064.
+
+**Consequences**
+- New `IPDBillingServiceTests` covering: successful generation with correct
+  `VisitId`/`BillingType`/`ServiceId` mapping, `NotFound`, not-yet-discharged, no-charges,
+  already-generated, and invoice-creation-failure paths. Full `HMS.UnitTests`/
+  `HMS.ArchitectureTests` suites green; `IPDModuleBoundaryTests` allowlist extended for
+  `IIPDBillingService`.
+- `admissions` gains a nullable `final_invoice_id` column — additive migration.
+- `IPD.csproj` gains a new `ProjectReference` to `HMS.Modules.Billing` (IPD → Laboratory →
+  Billing is now the module's third cross-module dependency beyond Masters/Patients).
+- Diet/Nursing(manual-only)/Blood/Referral/Medication charges remain whatever gaps prior ADRs
+  already disclosed (ADR-065/063) — this slice doesn't change what gets charged, only that
+  whatever *is* charged can now actually be billed and paid.
+
+---
+
+### ADR-065: IPD Doctor Order charge-posting — Radiology/Procedure/Consultation only, Medication excluded
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+The user wants to build IPD Final Billing next, but today only Bed/Nursing(manual)/Lab charges
+land on the `AdmissionCharge` ledger — Doctor Orders and Medication Orders never got charge-
+posting wired up, so a Final Bill built now would silently miss most of an inpatient stay's
+real cost. This slice is the agreed prerequisite. Investigation found the two order-generating
+entities are not symmetric: `DoctorOrder.OrderType` has three values with a real priced Masters
+catalog (Radiology → `DiagnosticService`, Procedure → the legacy `DiagnosticTest`, Consultation
+→ `ConsultationType`) and four with none at all (Diet, Nursing, Blood, Referral — no module or
+catalog exists for any of them). `MedicationOrder` has zero priced catalog path: Pharmacy's
+only pricing route (`DispenseService.BillAsync`) requires picking a specific stock batch
+(expiry-checked, stock-decrementing), which is exactly the "no structured prescription" gap
+ADR-063 deliberately left open when it kept `MedicationOrder.DrugName` free text.
+
+**Decision**
+1. **`DoctorOrder` gains an optional `CatalogItemId` (`Guid?`, app-level reference, no DB FK)**
+   — set only when the doctor picks a real catalog item for a Radiology/Procedure/Consultation
+   order. Every existing free-text-only order flow (all four unpriced types, and any priced-type
+   order placed without picking a catalog item) is completely unaffected — `CatalogItemId`
+   simply stays null, exactly like before this slice.
+2. **`DoctorOrderService.CreateAsync` resolves the price in place** (no new orchestration
+   service, unlike Laboratory's `IPDLabOrderService`) — `DoctorOrder` doesn't need to create
+   anything in another module, only look up a price and post a charge, both already Masters/IPD
+   concerns `DoctorOrderService` can absorb directly via new constructor dependencies
+   (`IDiagnosticServiceService`, `IDiagnosticTestService`, `IConsultationTypeService`,
+   `IAdmissionChargeService`) — no new `ProjectReference` needed, IPD already depends on
+   Masters. Same best-effort try/catch shape as `IPDLabOrderService.PostChargeAsync` — a
+   charge-posting failure is logged, never fails order placement.
+3. **One generic `ChargeType.DoctorOrderCharge`**, not three separate enum values per
+   OrderType — `Remarks` distinguishes which (e.g. `"Radiology: Chest X-ray"`), same
+   traceability-via-free-text tradeoff `LabCharge` already established.
+4. **Consultation's `Amount` can be null** (e.g. "Others / On-call") — treated as a legitimate
+   "no fixed fee" state, not an error: no charge posted, order still places normally, mirroring
+   `ConsultationBillingCard.tsx`'s existing client-side null-handling for the same field.
+5. **Medication Orders are explicitly out of scope.** Auto-charging them would mean either
+   reversing ADR-063's deliberate free-text design (adding a real Product/batch link) or a
+   manual estimated-cost field with no catalog backing — both bigger, separate decisions. The
+   Charges tab already supports manually adding a charge today; real Pharmacy-linked pricing
+   waits for a future slice.
+6. **Diet/Nursing/Blood/Referral orders post no charge, silently** — same category of
+   disclosed, open gap as every other deferral in this codebase (Pharmacy integration, Blood
+   Bank module, etc.), not a blocker for Final Billing to still be useful for the charges it
+   *does* capture accurately.
+
+**Consequences**
+- New tests in `DoctorOrderServiceTests` covering all three priced types' successful charge
+  posting, the null-Consultation-Amount skip, the no-`CatalogItemId` skip, and the
+  unresolvable-catalog-item skip (order still succeeds). Full `HMS.UnitTests`/
+  `HMS.ArchitectureTests` suites green — no `IPDModuleBoundaryTests` allowlist change needed
+  this time (`IDoctorOrderService`'s public shape is unchanged).
+- `doctor_orders` gains a nullable `catalog_item_id` column — purely additive migration.
+- IPD Final Billing (the actual next slice) can now build on a Charges ledger that reflects
+  Bed/Lab/priced-Doctor-Order costs, with Diet/Nursing/Blood/Referral/Medication remaining
+  explicit, disclosed gaps rather than silent omissions a bill-reviewer would never notice.
+
+---
+
+### ADR-064: IPD Laboratory Integration — a second LabOrder creation path, no invoice required
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Seventh slice of the IPD expansion — closes the gap ADR-062 explicitly left open when
+`DoctorOrder.OrderType` excluded Laboratory: `HMS.Modules.Laboratory` already has a complete,
+live `LabOrder`/`LabOrderItem` workflow (sample collection → processing → result entry →
+verification → report release), but it is only ever created from Billing when an OPD invoice
+contains a Laboratory line item (`InvoiceService.CreateAsync` → `ILabOrderService.
+CreateFromInvoiceAsync`, the only production call site). A ward doctor had no way to order a
+lab test for an admitted patient without that patient first going through an OPD-style
+invoice, which doesn't fit an inpatient stay.
+
+**Decision**
+1. **A second creation path, not a replacement.** `LabOrder.CreateForAdmission` /
+   `ILabOrderService.CreateFromAdmissionAsync` sit alongside the existing `Create`/
+   `CreateFromInvoiceAsync` — `InvoiceId`, `VisitId`, and `LabOrderItem.InvoiceLineItemId`
+   become nullable, and `LabOrder` gains a nullable `AdmissionId` (app-level reference to IPD,
+   no DB FK, same convention as every cross-module reference in this codebase). Exactly one of
+   `InvoiceId`/`AdmissionId` is set on any given order, never both. The relaxation is purely
+   additive — `CreateFromInvoiceAsync`'s signature and behavior are unchanged, and the unique
+   index on `InvoiceId` is refiltered to `WHERE invoice_id IS NOT NULL` so it no longer
+   collides across multiple admission-originated orders (which all have a null `InvoiceId`).
+2. **Not routed through `DoctorOrder`.** Adding `Laboratory` to `DoctorOrderType` was
+   considered and rejected again — it would still be a disconnected duplicate of the real
+   `LabOrder` state machine, the exact outcome ADR-062 warned against. Instead, a new IPD-side
+   orchestration service (`IIPDLabOrderService`) calls straight into Laboratory's own service
+   interface, and everything downstream (collection/processing/result entry/verification/
+   report release, and the existing `/diagnostics/lab/orders/:id` UI) is reused as-is — this
+   slice only adds a new front door, no new state machine.
+3. **An unresolvable service/package fails the call immediately**, unlike
+   `CreateFromInvoiceAsync`'s skip-and-log behavior for the same case. Invoice-originated lines
+   are trusted (Billing already validated them) and must never fail the invoice; here a doctor
+   is placing the order directly through IPD's UI, so surfacing a bad selection immediately is
+   better UX than silently dropping a test from the order.
+4. **One `AdmissionCharge` (new `ChargeType.LabCharge`) is auto-posted per line** when an order
+   is placed, using the same Masters price fields (`DiagnosticService.Price`/
+   `DiagnosticPackage.TotalPrice`) Billing itself reads — so the cost is visible on the
+   admission's Charges tab even though real IPD billing/invoicing doesn't exist yet. Best-
+   effort, not transactional with the lab order (a charge-posting failure is logged, not
+   fatal) — mirrors `InvoiceService`'s own "downstream posting must never fail the primary
+   action" precedent. `AdmissionCharge` has no FK back to the `LabOrder`/`LabOrderItem` that
+   generated it (that entity was never designed for traceability, only a free-text ledger line
+   — see its own doc comment); `Remarks` carries the test/package name instead. Real IPD
+   billing integration remains an explicit open gap, same category of deferral as ADR-062/063.
+5. Same win as every IPD-expansion slice: rides on the already-enabled `ipd` feature and
+   existing `clinical-care.*` permissions — no new `FeatureCatalog`/`ModuleCatalog`/permission-
+   catalog entries.
+
+**Consequences**
+- New tests across both modules (`LabOrderTests`, extended `LabOrderServiceTests` for the
+  admission path, `IPDLabOrderServiceTests` for the orchestration/charge-posting logic). Full
+  `HMS.UnitTests`/`HMS.ArchitectureTests` suites green.
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended for `IIPDLabOrderService` in
+  the same commit, per the standard checklist.
+- IPD's `.csproj` gains a new `ProjectReference` to `HMS.Modules.Laboratory` — the first slice
+  where IPD depends on a module beyond Masters/Patients.
+- The frontend's new Laboratory tab (`LabOrdersPanel`) deliberately does not rebuild any of
+  Laboratory's own sample-collection/result-entry/verification/report UI — it only places
+  orders and links out to the existing `/diagnostics/lab/orders/:id` page for everything else.
+
+---
+
+### ADR-063: IPD Medication Orders + MAR — free-text drug names, no auto-generated dosing schedule
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Sixth slice of the IPD expansion — the slice ADR-062 explicitly left open (Medication was
+excluded from `DoctorOrderType` because it needs a real structured prescription entity, not a
+free-text order description). The proposal splits this into a doctor's Medication Order
+(drug/dose/route/frequency/duration/start-end/instructions) and the Medication Administration
+Record (MAR) — the nurse's log of each scheduled dose actually given, or withheld with a
+reason. Reconfirmed no `MedicationOrder`/`Prescription`/`MedicationAdministration` entity
+exists anywhere in the codebase.
+
+**Decision**
+1. **`DrugName`/`Dose`/`Route`/`Frequency` stay free text**, not a reference into Pharmacy's
+   Product catalog — same reasoning `HMS.Modules.DischargeSummary.Domain.DischargeMedication`
+   already established: Pharmacy is direct-dispense only with no structured Prescription
+   concept to hang a catalog reference off. Real Pharmacy integration (catalog-driven drug
+   selection, stock deduction on administration) remains an explicit open gap, not solved here
+   — same category of deferral as Doctor Orders' Laboratory-integration gap (ADR-062).
+2. **No auto-generated dosing schedule.** The proposal's own example table implies deriving
+   fixed clock times (8 AM/2 PM/8 PM) from a frequency code (BD/TDS/QID) — building that
+   mapping is real complexity that varies by hospital convention and would need per-tenant
+   configuration to do properly. Instead, `Frequency` stays a free-text display/reference
+   field, and **the nurse manually records each administration event with its own scheduled
+   time** — still delivers the real MAR value (who/when/given-or-not/why) without a scheduling
+   engine.
+3. **`MedicationOrder` has the simplest lifecycle of any mutable IPD entity so far**: just
+   `Active` → `Discontinued`, one-way, via a single `Discontinue` method mirroring
+   `DoctorOrder.Cancel`'s precondition-guard style. "Past its end date" is a **displayed**, not
+   stored, fact — the frontend derives it by comparing `EndDate` to now — avoiding a
+   background job to auto-transition status the way `DoctorOrder`'s forward progression or
+   `LabOrder`'s computed `OverallStatus` might suggest.
+4. **`MedicationAdministration` is a real, same-module FK to `MedicationOrder`** (not
+   `Admission` directly) — mirrors `DischargeMedication`'s FK to its parent `DischargeSummary`,
+   the established distinction between cross-module references (bare Guid, no FK) and
+   intra-module ones (real FK). Append-only, same convention as every log-shaped IPD entity so
+   far.
+5. Same win as every IPD-expansion slice: rides on the already-enabled `ipd` feature and
+   existing `clinical-care.*` permissions, no new `FeatureCatalog`/`ModuleCatalog`/permission-
+   catalog entries.
+
+**Consequences**
+- 13 new tests (`MedicationOrderTests`, `MedicationOrderServiceTests`,
+  `MedicationAdministrationServiceTests`) covering the create-guard, Discontinue's one-way
+  transition and already-discontinued rejection, and cross-admission order-id rejection for
+  administrations. Full `HMS.UnitTests`/`HMS.ArchitectureTests` suites green (863/98).
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended for
+  `IMedicationOrderService`/`IMedicationAdministrationService` in the same commit, per the
+  standard checklist.
+- Real Pharmacy integration and frequency-driven schedule generation both remain open gaps for
+  a future slice, not silently dropped.
+
+---
+
+### ADR-062: IPD Doctor Orders — a mutable state machine, deliberately excluding Laboratory and Medication
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Fourth slice of the IPD expansion. Doctor Orders (proposal item 8) is the first genuinely
+mutable IPD entity — every prior slice (Vitals, Progress Notes, Nursing) was an append-only
+log. Investigating the proposal's full order-type list (Medication/Laboratory/Radiology/
+Procedure/Diet/Nursing/Blood/Consultation/Referral) surfaced a real architectural fact:
+`HMS.Modules.Laboratory` already has a complete `LabOrder`/`LabOrderItem` workflow (sample
+collection → processing → result entry → verification → report generation/release, with its
+own 10-state per-item state machine), created from Billing when an invoice contains a
+Laboratory line item — not from any doctor-order concept. No Radiology or Blood Bank backend
+module exists, and Pharmacy remains direct-dispense only (no prescription entity).
+
+**Decision**
+1. **`DoctorOrder.OrderType` covers Radiology, Procedure, Diet, Nursing, Blood, Consultation,
+   Referral only — Laboratory and Medication are deliberately excluded.** A generic
+   `DoctorOrder` row for "Laboratory" would be a disconnected duplicate of the real `LabOrder`
+   system; real integration (a ward doctor's order actually creating/feeding a `LabOrder`
+   without requiring an Invoice first) is a genuine gap, left open rather than papered over.
+   Medication is left for the not-yet-built MAR slice, which needs a real structured
+   prescription (drug/dose/route/frequency) from the start, not a free-text order description
+   here that MAR would immediately replace.
+2. **First mutable IPD child entity — modeled after `LabOrder`'s own domain-method style**
+   (`Advance`/`Cancel` methods with precondition guards mirroring `LabOrder.GenerateReport`/
+   `ReleaseReport`), not the append-only pattern every prior slice used. Fixed linear sequence
+   `Ordered → Accepted → InProgress → Completed`; `Cancelled` reachable from any non-terminal
+   state. `DoctorOrderService` pre-checks the same precondition to return a proper
+   `Result.Failure` (409-mapped `InvalidOrderStatusTransition`); the domain method re-checks it
+   as a genuine invariant, same pre-check/domain-guard split as `LabOrder`.
+3. **`OrderedByUserId` is set from the authenticated actor, never accepted in the request
+   body** — an order can't be attributed to a doctor who didn't place it.
+4. Same win as every prior slice: rides on the already-enabled `ipd` feature and existing
+   `clinical-care.create/.view/.edit` permissions, no new `FeatureCatalog`/`ModuleCatalog`/
+   permission-catalog entries.
+
+**Consequences**
+- 17 new tests (`DoctorOrderTests` — the state-machine transitions and illegal-transition
+  rejections; `DoctorOrderServiceTests` — admission-gate, order-not-found, cross-admission
+  order-id rejection, and the same illegal-transition rejection surfaced as a `Result.Failure`).
+  Full `HMS.UnitTests`/`HMS.ArchitectureTests` suites green (843/98).
+- Real integration between a ward Doctor Order and Laboratory's `LabOrder` (so a doctor can
+  order labs without going through Billing first) remains an open gap, not solved here.
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended for `IDoctorOrderService` in
+  the same commit as the service itself, per the now-standard checklist from ADR-061.
+
+---
+
+### ADR-061: IPD Nursing Assessments and Notes as append-only child records; Nursing Tasks deferred
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Second slice of the IPD expansion initiative (ADR-060 was the first: Vitals + Progress
+Notes). The source proposal's "Nursing" item bundles three sub-concepts of very different
+shape: Nursing Assessment and Nursing Notes are timestamped clinical records (the same shape
+already proven twice); Nursing Tasks (medication administration, vitals, IV/fluid monitoring,
+catheter/wound care, oxygen monitoring, intake/output) is a checklist with its own lifecycle
+that the proposal's own Doctor Orders item (`Ordered → Accepted → In Progress → Completed →
+Cancelled`) and MAR item will also need.
+
+**Decision**
+1. **Only Nursing Assessment and Nursing Notes are in scope for this slice.** Nursing Tasks is
+   deliberately deferred until Doctor Orders is designed, so a single generic order/task
+   workflow can be built once and Nursing Tasks can consume it, rather than building an
+   ad-hoc Nursing-only task system that Doctor Orders would later have to duplicate or awkwardly
+   integrate with — the same reasoning already applied to deferring Discharge Summary's OT
+   integration until a real OT module exists.
+2. **Both entities mirror `AdmissionCharge`/`VitalsReading`/`ProgressNote` exactly**: real FK
+   to `admissions.id` with `OnDelete(Restrict)`, no navigation collection on `Admission`,
+   append-only (`POST` to add, `GET` to list, no Update/Delete — a clinical correction is a
+   new entry). Both ride on the already-enabled `ipd` feature and `clinical-care.create`/
+   `.view` permissions, again avoiding any new `FeatureCatalog`/`ModuleCatalog`/permission-
+   catalog entry and the per-tenant enablement gap that cost real time on Discharge Summary.
+3. **Nursing Assessment's risk/condition fields stay free text** (`FallRisk`,
+   `PressureSoreRisk`, `ConsciousnessLevel`, etc.) — no clinical scoring scale (e.g. Morse
+   Fall Scale) is specified anywhere in the source proposal or this codebase, so inventing one
+   would be unfounded. `PainScore` reuses `VitalsReading.PainScore`'s exact 0-10 bound.
+4. **`NursingNote.Shift` is a real enum** (`NursingShift`: Morning/Evening/Night, in
+   `IPDEnums.cs`) — unlike the free-text fields above, shift is a genuinely closed,
+   enumerable concept, same treatment as `ChargeType`/`DischargeType`. Named `NursingShift`
+   rather than `Shift` to avoid any confusion with HR's unrelated `Shift`/`ShiftAssignment`
+   entities.
+5. **`IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended proactively** for
+   `INursingAssessmentService`/`INursingNoteService` in the same commit as the services
+   themselves, rather than discovering the failure afterward (as happened with
+   `IVitalsReadingService`/`IProgressNoteService` in ADR-060).
+
+**Consequences**
+- 8 new tests (`NursingAssessmentServiceTests`, `NursingNoteServiceTests`), full
+  `HMS.UnitTests`/`HMS.ArchitectureTests` suites green (826/98).
+- Nursing Tasks remains an open item, to be picked up once Doctor Orders exists.
+
+---
+
+### ADR-060: IPD Vitals and Progress Notes as append-only child records of Admission
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+First slice of a larger "complete IPD module" initiative. No entity anywhere in the codebase
+captured recorded vital signs or doctor progress notes — Discharge Summary's own Vitals/
+Examination fields had to be one-off free text for exactly this reason (see its own ADRs).
+`HMS.Modules.IPD` already has two features shaped almost identically to what's needed —
+`AdmissionCharge` and `BedTransferHistory` — simple, timestamped, append-only child records
+of an `Admission`, queried by `AdmissionId` rather than loaded as a navigation collection.
+
+**Decision**
+Added `VitalsReading` (temperature, pulse, respiratory rate, blood pressure systolic/
+diastolic, SpO2, weight, height, pain score, blood glucose, recorded-by, notes) and
+`ProgressNote` (clinical condition, progress, diagnosis, assessment, plan, instructions,
+author) as new entities inside the existing `HMS.Modules.IPD` project — not a new module,
+since both are pure IPD-internal clinical documentation with no cross-module composition,
+unlike Discharge Summary. Mirrored `AdmissionCharge`'s exact shape: real FK to
+`admissions.id` with `OnDelete(Restrict)` (Admission soft-deletes, never hard-deletes), no
+navigation collection on `Admission`, append-only (`POST` to add, `GET` to list — no
+Update/Delete, since a clinical correction should be a new entry, not an edit to history).
+Both ride on the already-enabled `ipd` feature and `clinical-care.create`/`.view`
+permissions — no new `FeatureCatalog`/`ModuleCatalog`/permission-catalog entries, avoiding
+the exact per-tenant enablement gap that blocked Discharge Summary's live verification on an
+existing tenant.
+
+**Consequences**
+- Vitals stores structured systolic/diastolic and numeric fields (not a single free-text
+  blood-pressure string, unlike Discharge Summary's snapshot) so a future graphing/
+  abnormal-value-threshold feature can build on it directly.
+- Editing or deleting a past reading/note is out of scope — append-only, matching
+  `AdmissionCharge`'s own precedent.
+- `IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended to allow
+  `IVitalsReadingService`/`IProgressNoteService` alongside the module's other per-entity
+  service interfaces (each is public only because its controller's public constructor can't
+  take an internal parameter type, CS0051).
+
+---
+
+### ADR-059: Discharge Summary module Phase 3 — discharge medications, list-sync Update
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-057/058. Phase 3 is the last of the three approved phases: a `DischargeMedication` child entity for the printed discharge medication list, and wiring it into the existing `PUT` endpoint's full-record update.
+
+**Decision**
+1. **`DischargeMedication` is a real, same-schema DB foreign key to `DischargeSummary`** — unlike `AdmissionId`/`PatientId` on the parent (cross-module app-level Guids, no FK), this is an intra-module relationship, the same distinction ADR-029 drew for Messaging's `ConversationParticipant`→`Conversation`. `DrugName` is free text, not a Products/Masters catalog reference: Pharmacy has no structured `Prescription` entity with dose/route/frequency fields to source this from (confirmed at plan time — Pharmacy is direct-dispense only), so this mirrors what's actually printed on a discharge summary.
+2. **The aggregate owns a private `List<DischargeMedication>` backing field** (`DischargeSummary.Medications`, `UsePropertyAccessMode(Field)` in `DischargeSummaryConfiguration`) — the exact same shape `Patient.Allergies`/`Patient.EmergencyContacts` already use in this codebase for a 1:many owned child collection, rather than inventing a new pattern. `ReplaceMedications(IEnumerable<DischargeMedication>, Guid? updatedBy)` clears and repopulates the in-memory collection; EF Core's change tracker diffs that against what `DischargeSummaryRepository.GetByIdAsync` loaded (now `.Include(x => x.Medications)`) and issues the DELETEs/INSERTs on `SaveChangesAsync` — no explicit `RemoveRange`/`AddRangeAsync` calls in the repository, unlike a plain delete-then-reinsert would need, because the aggregate's own tracked navigation does the diffing. `OnDelete(DeleteBehavior.Cascade)` (not `Restrict`, unlike `ConversationParticipant`'s FK) since a discharge summary's medications have no independent lifecycle — soft-deleting or (in principle) hard-deleting the parent should never leave orphaned lines.
+3. **List-sync, no per-line CRUD**: `UpdateDischargeSummaryRequest.Medications` is the full list on every `PUT` — `DischargeSummaryService.UpdateAsync` builds fresh `DischargeMedication.Create(...)` entities from the request (each carrying the parent's already-known `Id`) and calls `ReplaceMedications` once. An empty `Medications` array is a legitimate request that clears every line — matches the approved plan's "simple list-sync, no separate per-line CRUD endpoints" scope exactly.
+4. **Quantity/duration fields are bounded to non-negative, not required** (`DischargeMedicationRequestValidator`) — only `DrugName`/`Dose`/`Route` are `NotEmpty`. A line with all-zero quantities is a legitimate (if unusual) "stop this drug" entry, so `GreaterThanOrEqualTo(0)` was chosen over `GreaterThan(0)`.
+5. **Final migration**: `AddDischargeMedications` (context `DischargeSummaryDbContext`), `dotnet ef migrations add`-generated — confirmed the generated SQL includes the real `fk_discharge_medications_discharge_summary_id` foreign-key constraint with `ON DELETE CASCADE`, not just an index, before treating this as done.
+
+**Consequences**
+- 9 new tests (`DischargeMedicationTests` — Create's guard clauses and trimming; `DischargeSummaryTests.ReplaceMedications_*` — set/replace/clear; `DischargeSummaryServiceTests.UpdateAsync_*` — full list-sync round-trip and the empty-list-clears-everything case). Full `HMS.UnitTests` (810) and `HMS.ArchitectureTests` (98) suites green.
+- This closes out the three approved phases (foundation, clinical content, medications) as one shippable increment, per the plan's own framing — a PDF export and the deferred Phase 4-6 items (OT integration, IPD daily-event timeline, specialty templates, the richer Prepared/Checked/Approved workflow) remain explicitly out of scope, to be sequenced later against the rest of the module-rollout backlog.
+- No live browser verification for any of the three backend phases — no frontend exists yet for this module; the eventual frontend build is expected to do its own end-to-end pass once it exists, consistent with [[feedback_no_live_verification_per_fix]].
+
+---
+
+### ADR-058: Discharge Summary module Phase 2 — clinical/examination/vitals/surgical/advice fields, Update
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-057. Phase 2 fills in the actual document content the plan's data model specified: chief complaints/history, section-by-section examination findings, a one-time vitals snapshot, a single hospital-course narrative, manual Surgical Details (no OT module to integrate with yet), and Discharge Advice — plus the `PUT` endpoint that lets a Draft actually be edited.
+
+**Decision**
+1. **One `UpdateClinicalDetails` domain method, one `PUT`, no per-section endpoints** — the approved plan scoped this as a full-record update (every field submitted together), not per-field `PATCH`; matches `UpdateDischargeSummaryRequest` carrying all ~36 fields at once. `DischargeSummaryService.UpdateAsync` is the only place that checks `Status == Draft` (`DischargeSummaryErrorCodes.NotDraft` otherwise, mapped to 403 per the plan's own "403 once Finalized" wording) — the domain method itself doesn't re-check its own state, same convention as `Finalize`/`Admission.TransferBed`.
+2. **Every free-text field is trimmed and blank-normalized to `null`** in the domain method (`Normalize`), so "the doctor cleared this field" and "never filled in" are indistinguishable in storage — deliberately simple, no separate "explicitly cleared" tombstone.
+3. **Vitals are a single snapshot** (`HeightCm`/`WeightKg`/`PulseRate`/`RespiratoryRate`/`TemperatureF`/`SpO2Percent`/`BloodPressure`), not a repeating observations table — matches the plan's explicit scope call (a full vitals-history feature is a materially bigger feature than this increment). `UpdateDischargeSummaryRequestValidator` bounds each numeric vital to a generous physiological range (e.g. `SpO2Percent` 0–100, `TemperatureF` 70–115) purely as basic sanity-checking, not clinical validation.
+4. **Column max-lengths mirror the validator's `MaximumLength` rules exactly** (`DischargeSummaryConfiguration`), split into three rough tiers — short fields (surgeon names, `Gait`, `BloodPressure`) at 500/20, most narrative sections at 1000–2000, and four genuinely long free-text fields (`HistoryOfPresentingIllness`, `CourseInHospital`, `IntraOperativeFindings`, `OperativeNotes`) at 8000 — following this codebase's existing convention (`Admission.FinalDiagnosis`/`DischargeNotes` etc. also use `HasMaxLength`, never unbounded `text`) rather than introducing an unbounded column type for this module alone.
+5. **One more `dotnet ef migrations add`-generated migration**, `AddDischargeSummaryClinicalFields` (context `DischargeSummaryDbContext`) — purely additive columns, no data migration needed since Phase 1 shipped with zero real rows in any tenant yet.
+
+**Consequences**
+- 5 new tests (`DischargeSummaryTests.UpdateClinicalDetails_*`, `DischargeSummaryServiceTests.UpdateAsync_*`) covering the full-field-set update, blank-normalization, the Draft-only gate, and not-found — full `HMS.UnitTests`/`HMS.ArchitectureTests` suites stay green.
+- No live browser verification — still backend-only, no frontend yet, same reasoning as ADR-057.
+- `DischargeMedication` (the discharge medications table and the Update endpoint's list-sync behavior) is Phase 3, its own ADR entry.
+
+---
+
+### ADR-057: Discharge Summary module Phase 1 — scaffold, Draft/Finalize, permissions, feature wiring
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+User shared a real hospital discharge-summary PDF and a detailed breakdown of a proper Discharge Summary feature, proposed a 6-phase rollout, and — sequenced against the module-rollout backlog with no Operation Theater module existing yet (`Modules/OT` has zero files) — approved building Phases 1-3 (foundation, clinical content, medications) as one shippable increment. This entry covers Phase 1: the module scaffold, the `DischargeSummary` aggregate's base fields, Create/Get/Finalize endpoints, and every piece of shared infrastructure a brand-new module needs (permissions, `FeatureCatalog`, `TenantMigrationService`, DI, migrations).
+
+**Decision**
+1. **New module, not folded into IPD**: `HMS.Modules.DischargeSummary`, schema `discharge_summary`, scaffolded from `HMS.Modules.Identity` per `docs/DeveloperHandbook.md` §19 — internal Domain/Application/Infrastructure, public Contracts, `Guid.CreateVersion7()` ids, `xmin` concurrency, `HasQueryFilter` soft delete, validators registered explicitly in `DischargeSummaryModule.cs` (not `AddValidatorsFromAssemblyContaining`, which only finds public `IValidator<T>`s — the documented gotcha).
+2. **`AdmissionId`/`PatientId` are bare Guids, no DB FK** — validated at the Application layer through IPD's public `IAdmissionService` and Patients' public `IPatientService`, mirroring `PharmacyStockTransaction`'s identical treatment and `TenantMigrationService`'s own comment on why cross-schema FKs are never used in this codebase.
+3. **Creation gate + uniqueness**: `CreateDraftAsync` fails with `AdmissionNotDischarged` unless `Admission.Status == Discharged`, and with `AlreadyExists` if a summary already exists for that `AdmissionId` (check-then-create in the service, backed by a unique index on `admission_id` as a database-level backstop — the same reasoning `PharmacyStockTransaction`/`Admission` already require this pattern for cross-module Guid references). `Admission.FinalDiagnosis` is copied once, at create time, into `DischargeSummary.FinalDiagnosis` as its initial value — independently editable from that point, never re-read from Admission afterward.
+4. **Two states only**: Draft → Finalized. The richer Prepared/Checked/Approved sign-off pipeline from the user's own point #9 is deliberately NOT a multi-step workflow — `PreparedByUserId`/`CheckedByUserId`/`ConsultantApprovedByUserId` are three optional Guids captured once, together, at `Finalize`. All three are stored as **opaque Guids with no cross-module validation against Identity**, even though `IUserService.GetByIdAsync` exists and could validate them — deliberately, to avoid giving this module a real dependency on `HMS.Modules.Identity.Application` (which would need its own carve-out in `HMS.ArchitectureTests.Modules.Identity.CrossModuleDependencyTests`, mirroring Notifications/ADR-032). The frontend already has `GET /api/v1/users/directory` (built for Messaging) to populate these pickers with real users; a bad Guid here has no cascading effect, so the extra dependency wasn't judged worth it. `DischargeSummary` stays on the existing blanket "no dependency on Identity" list in `CrossModuleDependencyTests` instead.
+5. **New `discharge-summary` RBAC permission category**, not folded into IPD's existing `clinical-care` — a deliberate, narrow departure from ADR-022's "reuse an existing category" default. `Finalize` is a genuinely new action outside the view/create/edit/delete set every other category uses, and the approved plan named these four permission strings explicitly (`discharge-summary.view/create/edit/finalize`) as the contract the frontend would be built against. Because `Permission.Module` is filtered against a tenant's `EnabledModules` at login (ADR-026 — `AuthenticationService.LoginAsync` strips any permission whose `Module` isn't in that list), a permission `Module` value that ADR-022 never turned into a real category would be silently and permanently stripped from every tenant's JWT, locking everyone out of the new endpoints. So `HMS.Shared.Kernel.ModuleCatalog.All` gained a 12th entry, `"discharge-summary"` (new tenants' `Tenant.EnabledModules` defaults to the full `ModuleCatalog.All`, per `Tenant.Create`) — this is the one piece of plumbing the plan didn't anticipate, found by tracing how a new permission module actually reaches a JWT, not by assumption.
+6. **New `FeatureCatalog.SchemaBacked` key `"discharge-summary"`**, wired into `TenantMigrationService` (migrates `DischargeSummaryDbContext` when resolved), placed after `"ipd"` in migration order for readability (matches the Admission dependency), same as Laboratory's placement after Billing.
+7. **API routes deliberately split across two path prefixes** per the approved plan: `POST /api/v1/admissions/{admissionId}/discharge-summary` (create) and `GET /api/v1/admissions/{admissionId}/discharge-summary` (fetch-by-admission) use ASP.NET Core's absolute-route override (`[HttpPost("/api/v1/admissions/...")]`) inside a controller otherwise rooted at `api/v1/discharge-summaries` — a discharge summary is always reached starting from a specific admission for those two actions, everything else (`GET/PUT/finalize {id}`) addresses the summary directly.
+8. **Two new EF Core migrations**, both `dotnet ef migrations add`-generated (never hand-written, per §20/ADR-005's lesson): `InitialCreateDischargeSummary` (context `DischargeSummaryDbContext`) and `AddDischargeSummaryPermissions` (context `IdentityDbContext`, inserting the 4 new seeded `Permission` rows via `PermissionSeedData.cs`'s existing `HasData` mechanism — the same reason every prior new-permission change, e.g. `AddPatientManagementImportPermission`, needed its own Identity migration).
+
+**Consequences**
+- 14 new `DischargeSummaryTests`/`DischargeSummaryServiceTests` (Domain Create/Finalize invariants; Application service's admission-gate, duplicate-prevention, patient-validation, and already-finalized-rejection logic, mocked repository/cross-module service interfaces, mirrors `AdmissionServiceTests`' pattern) plus a new `DischargeSummaryModuleBoundaryTests` (mirrors `MessagingModuleBoundaryTests`) — all green, alongside the full existing `HMS.UnitTests`/`HMS.ArchitectureTests` suites (796/98 passing).
+- No live browser verification for this phase — backend-only, no frontend yet, consistent with [[feedback_no_live_verification_per_fix]]'s reasoning and every prior backend-only phase in this codebase (e.g. ADR-030).
+- Update/Finalize's full clinical content, examination, vitals, surgical, and discharge-advice fields, plus the medications child entity, are Phase 2/3 — deferred to their own ADR entries, not because they're architecturally uncertain but because they're a large, mechanical field addition better reviewed as separate, focused commits.
+
+---
+
 ### ADR-056: Removed the redundant "Laboratory Workflow" top-level sidebar entry
 **Date:** 2026-09-03
 **Status:** Accepted

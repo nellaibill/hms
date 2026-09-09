@@ -15,4 +15,11 @@ internal static class IPDErrorCodes
     public const string PatientAlreadyAdmitted = "IPD.PATIENT_ALREADY_ADMITTED";
     public const string AdmissionAlreadyDischarged = "IPD.ADMISSION_ALREADY_DISCHARGED";
     public const string InvalidDischargeDate = "IPD.INVALID_DISCHARGE_DATE";
+    public const string DoctorOrderNotFound = "IPD.DOCTOR_ORDER_NOT_FOUND";
+    public const string InvalidOrderStatusTransition = "IPD.INVALID_ORDER_STATUS_TRANSITION";
+    public const string MedicationOrderNotFound = "IPD.MEDICATION_ORDER_NOT_FOUND";
+    public const string MedicationOrderAlreadyDiscontinued = "IPD.MEDICATION_ORDER_ALREADY_DISCONTINUED";
+    public const string AdmissionNotDischarged = "IPD.ADMISSION_NOT_DISCHARGED";
+    public const string NoChargesToBill = "IPD.NO_CHARGES_TO_BILL";
+    public const string FinalBillAlreadyGenerated = "IPD.FINAL_BILL_ALREADY_GENERATED";
 }

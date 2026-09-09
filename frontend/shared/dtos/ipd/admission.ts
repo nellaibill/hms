@@ -70,6 +70,11 @@ export interface Admission {
   dischargeNotes?: string | null;
   followUpAdvice?: string | null;
 
+  /** Set once IPDBillingService.GenerateFinalBillAsync has generated a real Invoice for this
+   * admission — decides whether the Billing tab shows "Generate Final Bill" or "View Final
+   * Bill". See ADR-066. */
+  finalInvoiceId?: string | null;
+
   createdAt: string;
   updatedAt?: string | null;
 }

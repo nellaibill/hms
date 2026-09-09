@@ -626,6 +626,54 @@ namespace HMS.Database.Migrations.Identity.Migrations
                             Key = "identity-administration.delete",
                             Label = "Delete",
                             Module = "identity-administration"
+                        },
+                        new
+                        {
+                            Id = new Guid("1d6e9f3a-2b4c-4a1d-8e5f-6c9b2a4d7f10"),
+                            Action = "view",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 12,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "discharge-summary.view",
+                            Label = "View",
+                            Module = "discharge-summary"
+                        },
+                        new
+                        {
+                            Id = new Guid("2e7fa04b-3c5d-4b2e-9f60-7dac3b5e8021"),
+                            Action = "create",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 12,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "discharge-summary.create",
+                            Label = "Create",
+                            Module = "discharge-summary"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f80b15c-4d6e-4c3f-a071-8ebd4c6f9132"),
+                            Action = "edit",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 12,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "discharge-summary.edit",
+                            Label = "Edit",
+                            Module = "discharge-summary"
+                        },
+                        new
+                        {
+                            Id = new Guid("4091c26d-5e7f-4d40-b182-9fce5d70a243"),
+                            Action = "finalize",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayOrder = 12,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "discharge-summary.finalize",
+                            Label = "Finalize",
+                            Module = "discharge-summary"
                         });
                 });
 

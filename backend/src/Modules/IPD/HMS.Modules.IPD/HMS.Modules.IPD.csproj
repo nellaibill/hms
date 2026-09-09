@@ -29,6 +29,12 @@
     <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
     <!-- PatientId validation and patient summary lookups for the admission list/dashboard. -->
     <ProjectReference Include="..\..\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
+    <!-- IPDLabOrderService places real LabOrders directly from an admission (no invoice
+         required) via ILabOrderService.CreateFromAdmissionAsync — see ADR-062/ADR-064. -->
+    <ProjectReference Include="..\..\Laboratory\HMS.Modules.Laboratory\HMS.Modules.Laboratory.csproj" />
+    <!-- IPDBillingService converts a discharged admission's AdmissionCharge ledger into a real
+         Invoice via IInvoiceService.CreateAsync — see ADR-066. -->
+    <ProjectReference Include="..\..\Billing\HMS.Modules.Billing\HMS.Modules.Billing.csproj" />
   </ItemGroup>
 
 </Project>

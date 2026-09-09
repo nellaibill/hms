@@ -20,5 +20,27 @@ export type AdmissionStatus = (typeof ADMISSION_STATUSES)[number];
 export const DISCHARGE_TYPES = ['Normal', 'AgainstMedicalAdvice', 'Referred'] as const;
 export type DischargeType = (typeof DISCHARGE_TYPES)[number];
 
-export const CHARGE_TYPES = ['AdmissionCharge', 'BedCharge', 'NursingCharge'] as const;
+// LabCharge/DoctorOrderCharge are auto-posted (by IPDLabOrderService / DoctorOrderService)
+// when an order with a resolvable price is placed — never picked manually in the Charges tab's
+// own add-charge form.
+export const CHARGE_TYPES = ['AdmissionCharge', 'BedCharge', 'NursingCharge', 'LabCharge', 'DoctorOrderCharge'] as const;
 export type ChargeType = (typeof CHARGE_TYPES)[number];
+
+// Named NursingShift (not Shift) to avoid confusion with HR's unrelated Shift/ShiftAssignment.
+export const NURSING_SHIFTS = ['Morning', 'Evening', 'Night'] as const;
+export type NursingShift = (typeof NURSING_SHIFTS)[number];
+
+// Deliberately excludes Laboratory (HMS.Modules.Laboratory already has a full LabOrder
+// workflow) and Medication (belongs to the not-yet-built MAR slice) — see docs/DecisionLog.md.
+export const DOCTOR_ORDER_TYPES = ['Radiology', 'Procedure', 'Diet', 'Nursing', 'Blood', 'Consultation', 'Referral'] as const;
+export type DoctorOrderType = (typeof DOCTOR_ORDER_TYPES)[number];
+
+// Fixed linear sequence Ordered -> Accepted -> InProgress -> Completed, Cancelled reachable
+// from any non-terminal state.
+export const DOCTOR_ORDER_STATUSES = ['Ordered', 'Accepted', 'InProgress', 'Completed', 'Cancelled'] as const;
+export type DoctorOrderStatus = (typeof DOCTOR_ORDER_STATUSES)[number];
+
+// One-way Active -> Discontinued only. "Past its end date" is a displayed, not stored, fact
+// derived by comparing EndDate to now — see MedicationOrder's own doc comment.
+export const MEDICATION_ORDER_STATUSES = ['Active', 'Discontinued'] as const;
+export type MedicationOrderStatus = (typeof MEDICATION_ORDER_STATUSES)[number];

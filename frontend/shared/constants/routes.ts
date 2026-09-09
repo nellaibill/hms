@@ -241,6 +241,19 @@ export const API_ROUTES = {
       bedHistory: (id: string) => `/api/v1/ipd/admissions/${id}/bed-history`,
       discharge: (id: string) => `/api/v1/ipd/admissions/${id}/discharge`,
       charges: (id: string) => `/api/v1/ipd/admissions/${id}/charges`,
+      vitals: (id: string) => `/api/v1/ipd/admissions/${id}/vitals`,
+      progressNotes: (id: string) => `/api/v1/ipd/admissions/${id}/progress-notes`,
+      nursingAssessments: (id: string) => `/api/v1/ipd/admissions/${id}/nursing-assessments`,
+      nursingNotes: (id: string) => `/api/v1/ipd/admissions/${id}/nursing-notes`,
+      doctorOrders: (id: string) => `/api/v1/ipd/admissions/${id}/doctor-orders`,
+      doctorOrderAdvance: (admissionId: string, orderId: string) => `/api/v1/ipd/admissions/${admissionId}/doctor-orders/${orderId}/advance`,
+      doctorOrderCancel: (admissionId: string, orderId: string) => `/api/v1/ipd/admissions/${admissionId}/doctor-orders/${orderId}/cancel`,
+      medicationOrders: (id: string) => `/api/v1/ipd/admissions/${id}/medication-orders`,
+      medicationOrderDiscontinue: (admissionId: string, orderId: string) => `/api/v1/ipd/admissions/${admissionId}/medication-orders/${orderId}/discontinue`,
+      medicationAdministrations: (admissionId: string, orderId: string) =>
+        `/api/v1/ipd/admissions/${admissionId}/medication-orders/${orderId}/administrations`,
+      labOrders: (id: string) => `/api/v1/ipd/admissions/${id}/lab-orders`,
+      finalBill: (id: string) => `/api/v1/ipd/admissions/${id}/final-bill`,
     },
     dashboard: '/api/v1/ipd/dashboard',
   },
@@ -311,5 +324,17 @@ export const API_ROUTES = {
     base: '/api/v1/conversations',
     messages: (id: string) => `/api/v1/conversations/${id}/messages`,
     read: (id: string) => `/api/v1/conversations/${id}/read`,
+  },
+  /**
+   * Mirrors HMS.Modules.DischargeSummary.Endpoints.DischargeSummariesController. Create and
+   * GetByAdmissionId deliberately share `byAdmissionId` (POST vs. GET on the same absolute
+   * route override) — a discharge summary is always reached starting from a specific
+   * admission for those two actions; every other action addresses the summary directly by
+   * its own id.
+   */
+  dischargeSummaries: {
+    byId: (id: string) => `/api/v1/discharge-summaries/${id}`,
+    finalize: (id: string) => `/api/v1/discharge-summaries/${id}/finalize`,
+    byAdmissionId: (admissionId: string) => `/api/v1/admissions/${admissionId}/discharge-summary`,
   },
 } as const;

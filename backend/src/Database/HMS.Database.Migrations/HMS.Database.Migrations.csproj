@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\Modules\Platform\HMS.Modules.Platform\HMS.Modules.Platform.csproj" />
     <ProjectReference Include="..\..\Modules\Pharmacy\HMS.Modules.Pharmacy\HMS.Modules.Pharmacy.csproj" />
     <ProjectReference Include="..\..\Modules\Messaging\HMS.Modules.Messaging\HMS.Modules.Messaging.csproj" />
+    <ProjectReference Include="..\..\Modules\DischargeSummary\HMS.Modules.DischargeSummary\HMS.Modules.DischargeSummary.csproj" />
   </ItemGroup>
 
 </Project>

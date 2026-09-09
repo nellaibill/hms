@@ -28,6 +28,16 @@ public enum BillingType
     /// enum's own doc comment on the unified line-item shape) and a dispense's real quantity
     /// is decimal (e.g. 150.5ml of a syrup) — see docs/DecisionLog.md ADR-028.</summary>
     Pharmacy,
+
+    /// <summary>One IPD AdmissionCharge ledger row (HMS.Modules.IPD.Application.
+    /// IPDBillingService.GenerateFinalBillAsync, called at discharge) — like Pharmacy, ServiceId
+    /// is already a full human-readable description ("BedCharge: Bed charge - 2026-09-09
+    /// (Highest room tariff)"), not a catalog id to resolve. Deliberately its own type rather
+    /// than reusing Laboratory/Radiology/Procedure/Consultation: this method's own
+    /// CreateAsync-time hook (below) treats BillingType.Laboratory as "create a new LabOrder"
+    /// — reusing it here would try to create a second, duplicate LabOrder for a charge whose
+    /// LabOrder already exists. See ADR-066.</summary>
+    InpatientCharge,
 }
 
 /// <summary>Per-line-item status — an invoice's own overall status is derived (every item

@@ -24,10 +24,11 @@ export interface BillingItem {
   id: string;
   /** Wider than this file's own BillingType/BILLING_TYPES (which drives which manual-entry
    * cards the registration/OPD Billing Entry wizard renders — Consultation/Radiology/
-   * Laboratory/Procedure only): a real invoice's line item can also be 'Pharmacy', generated
-   * server-side only by DispenseService's best-effort billing step (ADR-028) — there's no
-   * wizard card for it, so it's deliberately excluded from BILLING_TYPES above. */
-  billingType: BillingType | 'Pharmacy';
+   * Laboratory/Procedure only): a real invoice's line item can also be 'Pharmacy' (DispenseService's
+   * best-effort billing step, ADR-028) or 'InpatientCharge' (IPDBillingService.
+   * GenerateFinalBillAsync at discharge, ADR-066), both generated server-side only — neither
+   * has a wizard card, so both are deliberately excluded from BILLING_TYPES above. */
+  billingType: BillingType | 'Pharmacy' | 'InpatientCharge';
   departmentId?: string;
   consultantId?: string;
   serviceId?: string;

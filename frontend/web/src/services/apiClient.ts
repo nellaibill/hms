@@ -14,6 +14,7 @@ import {
   DiagnosticPackagesApi,
   DiagnosticProvidersApi,
   DiagnosticServicesApi,
+  DischargeSummaryApi,
   DocumentsApi,
   EmployeesApi,
   EventsApi,
@@ -104,6 +105,7 @@ export const wardsApi = new WardsApi(httpClient);
 export const bedsApi = new BedsApi(httpClient);
 export const admissionsApi = new AdmissionsApi(httpClient);
 export const ipdDashboardApi = new IpdDashboardApi(httpClient);
+export const dischargeSummaryApi = new DischargeSummaryApi(httpClient);
 export const billingApi = new BillingApi(httpClient);
 export const laboratoryApi = new LaboratoryApi(httpClient);
 export const pharmacyApi = new PharmacyApi(httpClient);

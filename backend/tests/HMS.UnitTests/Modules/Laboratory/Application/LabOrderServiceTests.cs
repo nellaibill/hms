@@ -319,4 +319,134 @@ public class LabOrderServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(LaboratoryErrorCodes.ItemNotFound);
     }
+
+    [Fact]
+    public async Task CreateFromAdmissionAsync_WithStandaloneServiceLine_CreatesOrderWithNoInvoiceOrVisit_TaggedWithAdmissionId()
+    {
+        var admissionId = Guid.NewGuid();
+        var serviceId = Guid.NewGuid();
+        _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = serviceId, Name = "CBC", ServiceType = DiagnosticTestServiceType.Laboratory }));
+
+        var request = new CreateLabOrderFromAdmissionRequest
+        {
+            AdmissionId = admissionId,
+            PatientId = Guid.NewGuid(),
+            PatientName = "Aravind Nadar",
+            PatientUhid = "NH20260001",
+            Lines = [new CreateLabOrderLineFromAdmissionRequest { ServiceId = serviceId }],
+        };
+
+        var result = await _sut.CreateFromAdmissionAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.AdmissionId.Should().Be(admissionId);
+        result.Value.InvoiceId.Should().BeNull();
+        result.Value.VisitId.Should().BeNull();
+        result.Value.Source.Should().Be("IPD");
+        result.Value.Items.Should().HaveCount(1);
+        result.Value.Items.Single().ServiceId.Should().Be(serviceId);
+        await _repository.Received(1).AddAsync(Arg.Any<LabOrder>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateFromAdmissionAsync_WithPackageLine_ExpandsIntoItemsSharingPackageId()
+    {
+        var admissionId = Guid.NewGuid();
+        var packageId = Guid.NewGuid();
+        var service1 = Guid.NewGuid();
+        var service2 = Guid.NewGuid();
+
+        _diagnosticPackageService.GetByIdAsync(packageId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticPackageResponse>.Success(new DiagnosticPackageResponse
+            {
+                Id = packageId,
+                Name = "Fever Panel",
+                Items =
+                [
+                    new DiagnosticPackageItemResponse { ServiceId = service1 },
+                    new DiagnosticPackageItemResponse { ServiceId = service2 },
+                ],
+            }));
+        _diagnosticServiceService.GetByIdAsync(service1, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = service1, Name = "CBC", ServiceType = DiagnosticTestServiceType.Laboratory }));
+        _diagnosticServiceService.GetByIdAsync(service2, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = service2, Name = "Widal Test", ServiceType = DiagnosticTestServiceType.Laboratory }));
+
+        var request = new CreateLabOrderFromAdmissionRequest
+        {
+            AdmissionId = admissionId,
+            PatientId = Guid.NewGuid(),
+            PatientName = "Aravind Nadar",
+            PatientUhid = "NH20260001",
+            Lines = [new CreateLabOrderLineFromAdmissionRequest { PackageId = packageId }],
+        };
+
+        var result = await _sut.CreateFromAdmissionAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Should().HaveCount(2);
+        result.Value.Items.Should().OnlyContain(i => i.PackageId == packageId);
+        result.Value.Items.Select(i => i.ServiceId).Should().BeEquivalentTo([service1, service2]);
+    }
+
+    [Fact]
+    public async Task CreateFromAdmissionAsync_WhenServiceCannotBeResolved_FailsImmediatelyRatherThanSkipping()
+    {
+        var admissionId = Guid.NewGuid();
+        var serviceId = Guid.NewGuid();
+        _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Failure("MASTERS.NOT_FOUND", "not found"));
+
+        var request = new CreateLabOrderFromAdmissionRequest
+        {
+            AdmissionId = admissionId,
+            PatientId = Guid.NewGuid(),
+            PatientName = "Aravind Nadar",
+            PatientUhid = "NH20260001",
+            Lines = [new CreateLabOrderLineFromAdmissionRequest { ServiceId = serviceId }],
+        };
+
+        var result = await _sut.CreateFromAdmissionAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(LaboratoryErrorCodes.InvalidServiceOrPackage);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<LabOrder>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateFromAdmissionAsync_WhenPackageCannotBeResolved_FailsImmediatelyRatherThanSkipping()
+    {
+        var admissionId = Guid.NewGuid();
+        var packageId = Guid.NewGuid();
+        _diagnosticPackageService.GetByIdAsync(packageId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticPackageResponse>.Failure("MASTERS.NOT_FOUND", "not found"));
+
+        var request = new CreateLabOrderFromAdmissionRequest
+        {
+            AdmissionId = admissionId,
+            PatientId = Guid.NewGuid(),
+            PatientName = "Aravind Nadar",
+            PatientUhid = "NH20260001",
+            Lines = [new CreateLabOrderLineFromAdmissionRequest { PackageId = packageId }],
+        };
+
+        var result = await _sut.CreateFromAdmissionAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(LaboratoryErrorCodes.InvalidServiceOrPackage);
+    }
+
+    [Fact]
+    public async Task GetByAdmissionIdAsync_ReturnsOrdersFromRepository()
+    {
+        var admissionId = Guid.NewGuid();
+        var order = BuildOrder(out _);
+        _repository.GetByAdmissionIdAsync(admissionId, Arg.Any<CancellationToken>()).Returns([order]);
+
+        var result = await _sut.GetByAdmissionIdAsync(admissionId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle(o => o.Id == order.Id);
+    }
 }

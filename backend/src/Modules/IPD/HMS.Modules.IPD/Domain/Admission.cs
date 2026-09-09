@@ -29,6 +29,11 @@ internal class Admission : Entity
     public string? DischargeNotes { get; private set; }
     public string? FollowUpAdvice { get; private set; }
 
+    /// <summary>App-level reference to HMS.Modules.Billing.Invoice, no DB FK — set once
+    /// IPDBillingService.GenerateFinalBillAsync succeeds. Null means no final bill has been
+    /// generated yet (only possible once Discharged) — see ADR-066.</summary>
+    public Guid? FinalInvoiceId { get; private set; }
+
     // Required by EF Core materialization.
     private Admission()
     {
@@ -130,6 +135,15 @@ internal class Admission : Entity
         FinalDiagnosis = finalDiagnosis;
         DischargeNotes = dischargeNotes;
         FollowUpAdvice = followUpAdvice;
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Caller (IPDBillingService) is responsible for rejecting this call with a
+    /// proper Result.Failure when not Discharged or when FinalInvoiceId is already set — see
+    /// GenerateFinalBillAsync.</summary>
+    public void SetFinalInvoiceId(Guid invoiceId, Guid? updatedBy)
+    {
+        FinalInvoiceId = invoiceId;
         MarkUpdated(updatedBy);
     }
 }

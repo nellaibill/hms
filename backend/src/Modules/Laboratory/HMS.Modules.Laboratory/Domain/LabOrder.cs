@@ -15,30 +15,40 @@ internal sealed record LabOrderItemSpec(
     Guid ServiceId,
     Guid? PackageId,
     string TestName,
-    Guid InvoiceLineItemId,
+    Guid? InvoiceLineItemId,
     Guid? DepartmentId,
     Guid? ConsultantId,
     LabSampleType? SampleType);
 
 /// <summary>
-/// The lab request for one Invoice — created once, in-process, when Billing's
-/// InvoiceService.CreateAsync successfully persists an invoice containing at least one
-/// BillingType.Laboratory line item (see LabOrderService.CreateFromInvoiceAsync's
-/// idempotency check: a retried call for the same InvoiceId returns the existing order rather
-/// than duplicating). PatientName/PatientUhid/Source are snapshotted at creation rather than a
-/// live join, same rationale as Billing's own Invoice.PatientName/PatientUhid (an order should
-/// keep showing who/what it was raised for even if the patient record or visit is edited
-/// later). OverallStatus is computed, not stored — see its own doc comment for the precedence
-/// ladder.
+/// The lab request for one Invoice OR one IPD Admission — two creation paths funnel into the
+/// same aggregate/state machine (see Create vs CreateForAdmission). Invoice-originated orders
+/// are created once, in-process, when Billing's InvoiceService.CreateAsync successfully
+/// persists an invoice containing at least one BillingType.Laboratory line item (see
+/// LabOrderService.CreateFromInvoiceAsync's idempotency check: a retried call for the same
+/// InvoiceId returns the existing order rather than duplicating). Admission-originated orders
+/// are created directly by a ward doctor via IPD's IPDLabOrderService — no invoice required —
+/// closing the gap ADR-062 flagged when IPD's DoctorOrder deliberately excluded Laboratory.
+/// InvoiceId/VisitId are therefore nullable: exactly one of InvoiceId/AdmissionId is set,
+/// never both, never neither. PatientName/PatientUhid/Source are snapshotted at creation
+/// rather than a live join, same rationale as Billing's own Invoice.PatientName/PatientUhid
+/// (an order should keep showing who/what it was raised for even if the patient record or
+/// visit is edited later). OverallStatus is computed, not stored — see its own doc comment for
+/// the precedence ladder.
 /// </summary>
 internal class LabOrder : Entity
 {
     public string LabOrderNumber { get; private set; } = null!;
-    public Guid InvoiceId { get; private set; }
+    public Guid? InvoiceId { get; private set; }
     public Guid PatientId { get; private set; }
     public string PatientName { get; private set; } = null!;
     public string PatientUhid { get; private set; } = null!;
-    public Guid VisitId { get; private set; }
+    public Guid? VisitId { get; private set; }
+
+    /// <summary>App-level reference to HMS.Modules.IPD.Admission, no DB FK — same convention
+    /// as every other cross-module reference in this codebase. Set only for orders created via
+    /// CreateForAdmission; null for invoice-originated orders.</summary>
+    public Guid? AdmissionId { get; private set; }
 
     /// <summary>Plain-string snapshot of whatever VisitType Billing resolved at order-creation
     /// time (e.g. "OP"/"IP") — not a separate Source enum; null when the visit lookup failed.</summary>
@@ -134,11 +144,12 @@ internal class LabOrder : Entity
     private LabOrder(
         Guid id,
         string labOrderNumber,
-        Guid invoiceId,
+        Guid? invoiceId,
         Guid patientId,
         string patientName,
         string patientUhid,
-        Guid visitId,
+        Guid? visitId,
+        Guid? admissionId,
         string? source,
         Guid? createdBy)
         : base(id, createdBy)
@@ -149,6 +160,7 @@ internal class LabOrder : Entity
         PatientName = patientName;
         PatientUhid = patientUhid;
         VisitId = visitId;
+        AdmissionId = admissionId;
         Source = source;
     }
 
@@ -183,7 +195,49 @@ internal class LabOrder : Entity
             patientName.Trim(),
             patientUhid.Trim(),
             visitId,
+            null,
             string.IsNullOrWhiteSpace(source) ? null : source.Trim(),
+            createdBy);
+
+        foreach (var spec in items)
+        {
+            order._items.Add(LabOrderItem.Create(order.Id, spec, createdBy));
+        }
+
+        return order;
+    }
+
+    /// <summary>The IPD counterpart to Create — no InvoiceId/VisitId (a ward doctor's order
+    /// doesn't go through Billing first), Source is always the fixed literal "IPD" rather than
+    /// a resolved VisitType snapshot. See this class's own doc comment for why both paths
+    /// funnel into the same aggregate.</summary>
+    public static LabOrder CreateForAdmission(
+        string labOrderNumber,
+        Guid admissionId,
+        Guid patientId,
+        string patientName,
+        string patientUhid,
+        IReadOnlyList<LabOrderItemSpec> items,
+        Guid? createdBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(labOrderNumber, nameof(labOrderNumber));
+        Guard.AgainstNullOrWhiteSpace(patientName, nameof(patientName));
+        Guard.AgainstNullOrWhiteSpace(patientUhid, nameof(patientUhid));
+        if (items.Count == 0)
+        {
+            throw new ArgumentException("A lab order must have at least one item.", nameof(items));
+        }
+
+        var order = new LabOrder(
+            Guid.CreateVersion7(),
+            labOrderNumber.Trim(),
+            null,
+            patientId,
+            patientName.Trim(),
+            patientUhid.Trim(),
+            null,
+            admissionId,
+            "IPD",
             createdBy);
 
         foreach (var spec in items)
