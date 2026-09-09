@@ -21,6 +21,8 @@ public class IPDDbContext : DbContext
     internal DbSet<AdmissionBedStay> AdmissionBedStays => Set<AdmissionBedStay>();
     internal DbSet<VitalsReading> VitalsReadings => Set<VitalsReading>();
     internal DbSet<ProgressNote> ProgressNotes => Set<ProgressNote>();
+    internal DbSet<NursingAssessment> NursingAssessments => Set<NursingAssessment>();
+    internal DbSet<NursingNote> NursingNotes => Set<NursingNote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

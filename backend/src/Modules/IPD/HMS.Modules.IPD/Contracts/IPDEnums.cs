@@ -50,3 +50,12 @@ public enum ChargeType
     BedCharge,
     NursingCharge,
 }
+
+/// <summary>Named `NursingShift` (not `Shift`) to avoid any confusion with HR's unrelated
+/// `Shift`/`ShiftAssignment` entities — different module, different concept.</summary>
+public enum NursingShift
+{
+    Morning,
+    Evening,
+    Night,
+}
