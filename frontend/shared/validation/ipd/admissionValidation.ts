@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHARGE_TYPES, DISCHARGE_TYPES, IPD_ADMISSION_TYPES, NURSING_SHIFTS } from '../../enums/ipd';
+import { CHARGE_TYPES, DISCHARGE_TYPES, DOCTOR_ORDER_TYPES, IPD_ADMISSION_TYPES, NURSING_SHIFTS } from '../../enums/ipd';
 
 // datetime-local inputs let a user type an out-of-range year (e.g. "222222") that the
 // browser still reports as a non-empty value — guard against that reaching new Date(...).toISOString().
@@ -151,3 +151,17 @@ export const createNursingNoteSchema = z.object({
 });
 
 export type NursingNoteFormValues = z.infer<typeof createNursingNoteSchema>;
+
+/** Mirrors HMS.Modules.IPD.Application.Validators.CreateDoctorOrderRequestValidator. */
+export const createDoctorOrderSchema = z.object({
+  orderType: z.enum(DOCTOR_ORDER_TYPES, { message: 'Order type is required' }),
+  description: z.string().trim().min(1, 'Description is required').max(1000),
+  instructions: z.string().trim().max(2000).optional().or(z.literal('')),
+  orderedAt: z
+    .string()
+    .trim()
+    .min(1, 'Ordered date/time is required')
+    .refine(isValidDateTimeLocal, { message: 'Enter a valid date and time' }),
+});
+
+export type DoctorOrderFormValues = z.infer<typeof createDoctorOrderSchema>;

@@ -38,6 +38,7 @@ export * from './ipd/vitals';
 export * from './ipd/progressNote';
 export * from './ipd/nursingAssessment';
 export * from './ipd/nursingNote';
+export * from './ipd/doctorOrder';
 export * from './ipd/dashboard';
 export * from './billing/invoice';
 export * from './laboratory/labOrder';

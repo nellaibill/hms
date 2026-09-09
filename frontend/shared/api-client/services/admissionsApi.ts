@@ -6,12 +6,15 @@ import type {
   AdmissionListQuery,
   BedTransferHistory,
   CreateAdmissionChargeRequest,
+  CancelDoctorOrderRequest,
   CreateAdmissionRequest,
+  CreateDoctorOrderRequest,
   CreateNursingAssessmentRequest,
   CreateNursingNoteRequest,
   CreateProgressNoteRequest,
   CreateVitalsReadingRequest,
   DischargeAdmissionRequest,
+  DoctorOrder,
   NursingAssessment,
   NursingNote,
   ProgressNote,
@@ -133,6 +136,26 @@ export class AdmissionsApi {
 
   async postNursingNote(admissionId: string, request: CreateNursingNoteRequest): Promise<NursingNote> {
     const response = await this.client.post<NursingNote>(API_ROUTES.ipd.admissions.nursingNotes(admissionId), request);
+    return response.data;
+  }
+
+  async getDoctorOrders(admissionId: string): Promise<DoctorOrder[]> {
+    const response = await this.client.get<DoctorOrder[]>(API_ROUTES.ipd.admissions.doctorOrders(admissionId));
+    return response.data;
+  }
+
+  async postDoctorOrder(admissionId: string, request: CreateDoctorOrderRequest): Promise<DoctorOrder> {
+    const response = await this.client.post<DoctorOrder>(API_ROUTES.ipd.admissions.doctorOrders(admissionId), request);
+    return response.data;
+  }
+
+  async advanceDoctorOrder(admissionId: string, orderId: string): Promise<DoctorOrder> {
+    const response = await this.client.post<DoctorOrder>(API_ROUTES.ipd.admissions.doctorOrderAdvance(admissionId, orderId), {});
+    return response.data;
+  }
+
+  async cancelDoctorOrder(admissionId: string, orderId: string, request: CancelDoctorOrderRequest = {}): Promise<DoctorOrder> {
+    const response = await this.client.post<DoctorOrder>(API_ROUTES.ipd.admissions.doctorOrderCancel(admissionId, orderId), request);
     return response.data;
   }
 }
