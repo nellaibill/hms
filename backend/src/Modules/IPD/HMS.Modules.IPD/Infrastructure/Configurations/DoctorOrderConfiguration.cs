@@ -17,6 +17,7 @@ internal class DoctorOrderConfiguration : IEntityTypeConfiguration<DoctorOrder>
         builder.Property(o => o.OrderType).HasColumnName("order_type").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(o => o.Description).HasColumnName("description").HasMaxLength(1000).IsRequired();
         builder.Property(o => o.Instructions).HasColumnName("instructions").HasMaxLength(2000);
+        builder.Property(o => o.CatalogItemId).HasColumnName("catalog_item_id");
         builder.Property(o => o.OrderedAt).HasColumnName("ordered_at").IsRequired();
         builder.Property(o => o.OrderedByUserId).HasColumnName("ordered_by_user_id");
         builder.Property(o => o.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();

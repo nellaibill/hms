@@ -19,6 +19,15 @@ internal class DoctorOrder : Entity
     public DoctorOrderType OrderType { get; private set; }
     public string Description { get; private set; } = null!;
     public string? Instructions { get; private set; }
+
+    /// <summary>App-level reference to a priced Masters catalog item, no DB FK — set only when
+    /// the order was placed against a real catalog entry (DiagnosticService for Radiology,
+    /// DiagnosticTest for Procedure, ConsultationType for Consultation; always null for
+    /// Diet/Nursing/Blood/Referral, which have no priced catalog). Null means "no charge to
+    /// auto-post," not an error — DoctorOrderService.CreateAsync only attempts a charge when
+    /// this is set. See ADR-065.</summary>
+    public Guid? CatalogItemId { get; private set; }
+
     public DateTime OrderedAt { get; private set; }
     public Guid? OrderedByUserId { get; private set; }
     public DoctorOrderStatus Status { get; private set; }
@@ -37,6 +46,7 @@ internal class DoctorOrder : Entity
         DoctorOrderType orderType,
         string description,
         string? instructions,
+        Guid? catalogItemId,
         DateTime orderedAt,
         Guid? orderedByUserId,
         Guid? createdBy)
@@ -46,6 +56,7 @@ internal class DoctorOrder : Entity
         OrderType = orderType;
         Description = description;
         Instructions = string.IsNullOrWhiteSpace(instructions) ? null : instructions.Trim();
+        CatalogItemId = catalogItemId;
         OrderedAt = orderedAt;
         OrderedByUserId = orderedByUserId;
         Status = DoctorOrderStatus.Ordered;
@@ -58,7 +69,8 @@ internal class DoctorOrder : Entity
         string? instructions,
         DateTime orderedAt,
         Guid? orderedByUserId,
-        Guid? createdBy)
+        Guid? createdBy,
+        Guid? catalogItemId = null)
     {
         Guard.AgainstNullOrWhiteSpace(description, nameof(description));
 
@@ -68,6 +80,7 @@ internal class DoctorOrder : Entity
             orderType,
             description.Trim(),
             instructions,
+            catalogItemId,
             orderedAt,
             orderedByUserId,
             createdBy);

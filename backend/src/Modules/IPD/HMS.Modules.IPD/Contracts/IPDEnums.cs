@@ -55,6 +55,13 @@ public enum ChargeType
     /// resolved from Masters at order-placement time; Remarks carries the test/package name
     /// since AdmissionCharge has no FK back to the LabOrder/LabOrderItem that generated it.</summary>
     LabCharge,
+
+    /// <summary>Auto-posted by DoctorOrderService.CreateAsync when a DoctorOrder is placed
+    /// against a priced Masters catalog item (Radiology/Procedure/Consultation only — see
+    /// DoctorOrder.CatalogItemId) — one generic type covers all three rather than one enum
+    /// value per OrderType, Remarks distinguishes which (e.g. "Radiology: Chest X-ray").
+    /// See ADR-065.</summary>
+    DoctorOrderCharge,
 }
 
 /// <summary>Named `NursingShift` (not `Shift`) to avoid any confusion with HR's unrelated
