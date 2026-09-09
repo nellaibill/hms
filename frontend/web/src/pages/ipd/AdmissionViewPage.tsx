@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast-context';
 import {
   BedStayHistoryPanel,
@@ -35,6 +36,7 @@ export default function AdmissionViewPage() {
   const { id } = useParams<{ id: string }>();
   const { data: admission, isPending, isError } = useAdmissionQuery(id);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const transferMutation = useTransferBedMutation();
   const dischargeMutation = useDischargeMutation();
   const { toast } = useToast();
@@ -118,114 +120,145 @@ export default function AdmissionViewPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Admission Summary</CardTitle>
+        {/* Each tab mirrors one section of the IPD Patient Dashboard vision from the
+            module-expansion proposal — every future IPD slice (Doctor Orders, Medication,
+            Investigations, Procedures, Surgery, Diet, Blood Bank, Documents) adds one more
+            TabsTrigger/TabsContent pair here instead of another stacked Card on this page. */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="clinical">Clinical</TabsTrigger>
+            <TabsTrigger value="vitals">Vitals</TabsTrigger>
+            <TabsTrigger value="nursing">Nursing</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
+            <TabsTrigger value="discharge">Discharge</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="pt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base">Admission Summary</CardTitle>
+                {isAdmitted && (
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsTransferOpen(true)}>
+                    <Repeat className="h-4 w-4" />
+                    Transfer Bed
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Field label="Admission type" value={admission.admissionType} />
+                <Field label="Admission date/time" value={new Date(admission.admissionDateTime).toLocaleString('en-IN')} />
+                <Field label="Reason for admission" value={admission.reasonForAdmission} />
+                {!isAdmitted && (
+                  <>
+                    <Field
+                      label="Discharge date/time"
+                      value={admission.dischargeDateTime ? new Date(admission.dischargeDateTime).toLocaleString('en-IN') : '—'}
+                    />
+                    <Field label="Discharge type" value={admission.dischargeType ?? '—'} />
+                    <Field label="Final diagnosis" value={admission.finalDiagnosis || '—'} />
+                    <Field label="Discharge notes" value={admission.dischargeNotes || '—'} />
+                    <Field label="Follow-up advice" value={admission.followUpAdvice || '—'} />
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Transfer History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TransferHistoryPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Bed Stay History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BedStayHistoryPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="clinical" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Progress Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProgressNotesPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="vitals" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Vitals</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VitalsPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="nursing" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Nursing Assessment</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <NursingAssessmentPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Nursing Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <NursingNotesPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="billing" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Charges</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChargesPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="discharge" className="pt-4">
             {isAdmitted && (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsTransferOpen(true)}>
-                <Repeat className="h-4 w-4" />
-                Transfer Bed
-              </Button>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Discharge</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DischargeForm
+                    isSubmitting={dischargeMutation.isPending}
+                    apiError={dischargeMutation.error instanceof ApiError ? dischargeMutation.error : null}
+                    onSubmit={handleDischarge}
+                  />
+                </CardContent>
+              </Card>
             )}
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Admission type" value={admission.admissionType} />
-            <Field label="Admission date/time" value={new Date(admission.admissionDateTime).toLocaleString('en-IN')} />
-            <Field label="Reason for admission" value={admission.reasonForAdmission} />
-            {!isAdmitted && (
-              <>
-                <Field label="Discharge date/time" value={admission.dischargeDateTime ? new Date(admission.dischargeDateTime).toLocaleString('en-IN') : '—'} />
-                <Field label="Discharge type" value={admission.dischargeType ?? '—'} />
-                <Field label="Final diagnosis" value={admission.finalDiagnosis || '—'} />
-                <Field label="Discharge notes" value={admission.dischargeNotes || '—'} />
-                <Field label="Follow-up advice" value={admission.followUpAdvice || '—'} />
-              </>
-            )}
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Transfer History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TransferHistoryPanel admissionId={admission.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Bed Stay History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BedStayHistoryPanel admissionId={admission.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Charges</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChargesPanel admissionId={admission.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Vitals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <VitalsPanel admissionId={admission.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Progress Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ProgressNotesPanel admissionId={admission.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Nursing Assessment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NursingAssessmentPanel admissionId={admission.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Nursing Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NursingNotesPanel admissionId={admission.id} />
-          </CardContent>
-        </Card>
-
-        {isAdmitted && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Discharge</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DischargeForm
-                isSubmitting={dischargeMutation.isPending}
-                apiError={dischargeMutation.error instanceof ApiError ? dischargeMutation.error : null}
-                onSubmit={handleDischarge}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Discharge Summary is only reachable once the admission itself has been closed out
-            (Admission.Status === 'Discharged') — matches the backend's own creation gate
-            (DischargeSummaryService.CreateDraftAsync rejects a non-Discharged admission). */}
-        {!isAdmitted && <DischargeSummaryEntryCard admissionId={admission.id} />}
+            {/* Discharge Summary is only reachable once the admission itself has been closed
+                out (Admission.Status === 'Discharged') — matches the backend's own creation
+                gate (DischargeSummaryService.CreateDraftAsync rejects a non-Discharged
+                admission). */}
+            {!isAdmitted && <DischargeSummaryEntryCard admissionId={admission.id} />}
+          </TabsContent>
+        </Tabs>
 
         {isTransferOpen && (
           <TransferBedDialog
