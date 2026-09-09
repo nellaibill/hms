@@ -41,6 +41,7 @@ export * from './ipd/nursingNote';
 export * from './ipd/doctorOrder';
 export * from './ipd/medicationOrder';
 export * from './ipd/medicationAdministration';
+export * from './ipd/labOrder';
 export * from './ipd/dashboard';
 export * from './billing/invoice';
 export * from './laboratory/labOrder';

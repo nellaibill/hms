@@ -12,6 +12,7 @@ import {
   ChargesPanel,
   DischargeForm,
   DoctorOrdersPanel,
+  LabOrdersPanel,
   MedicationAdministrationPanel,
   MedicationOrdersPanel,
   NursingAssessmentPanel,
@@ -133,6 +134,7 @@ export default function AdmissionViewPage() {
             <TabsTrigger value="clinical">Clinical</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="medication">Medication</TabsTrigger>
+            <TabsTrigger value="laboratory">Laboratory</TabsTrigger>
             <TabsTrigger value="vitals">Vitals</TabsTrigger>
             <TabsTrigger value="nursing">Nursing</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -226,6 +228,17 @@ export default function AdmissionViewPage() {
               </CardHeader>
               <CardContent>
                 <MedicationAdministrationPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="laboratory" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Lab Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LabOrdersPanel admissionId={admission.id} />
               </CardContent>
             </Card>
           </TabsContent>

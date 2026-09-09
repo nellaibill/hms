@@ -20,14 +20,16 @@ internal sealed record LabResultParameterSpec(
 /// ServiceId/DepartmentId/ConsultantId are app-level references into Masters/Patients, no DB
 /// FK, same convention as every other cross-module reference in this codebase. TestName is
 /// snapshotted from DiagnosticService.Name at creation so this row keeps reading correctly
-/// even if the master catalog entry is renamed later.
+/// even if the master catalog entry is renamed later. InvoiceLineItemId is null for items on
+/// an admission-originated order (LabOrder.CreateForAdmission) — there is no invoice line to
+/// trace back to.
 /// </summary>
 internal class LabOrderItem : Entity
 {
     public Guid LabOrderId { get; private set; }
     public Guid ServiceId { get; private set; }
     public Guid? PackageId { get; private set; }
-    public Guid InvoiceLineItemId { get; private set; }
+    public Guid? InvoiceLineItemId { get; private set; }
     public string TestName { get; private set; } = null!;
     public Guid? DepartmentId { get; private set; }
     public Guid? ConsultantId { get; private set; }
@@ -70,7 +72,7 @@ internal class LabOrderItem : Entity
         Guid labOrderId,
         Guid serviceId,
         Guid? packageId,
-        Guid invoiceLineItemId,
+        Guid? invoiceLineItemId,
         string testName,
         Guid? departmentId,
         Guid? consultantId,

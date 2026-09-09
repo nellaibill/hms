@@ -108,15 +108,18 @@ export interface LabOrderItemResponse {
   events: LabOrderItemEventResponse[];
 }
 
-/** Mirrors HMS.Modules.Laboratory.Contracts.LabOrderResponse. */
+/** Mirrors HMS.Modules.Laboratory.Contracts.LabOrderResponse. invoiceId/visitId are null for
+ * an order placed directly from an IPD admission (admissionId set instead) — see
+ * HMS.Modules.Laboratory.Domain.LabOrder.CreateForAdmission. */
 export interface LabOrderResponse {
   id: string;
   labOrderNumber: string;
-  invoiceId: string;
+  invoiceId?: string | null;
   patientId: string;
   patientName: string;
   patientUhid: string;
-  visitId: string;
+  visitId?: string | null;
+  admissionId?: string | null;
   source?: string | null;
   priority: LabOrderPriority;
   overallStatus: LabOrderStatus;

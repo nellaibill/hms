@@ -12,7 +12,13 @@ const chargeTypeLabels: Record<(typeof CHARGE_TYPES)[number], string> = {
   AdmissionCharge: 'Admission Charge',
   BedCharge: 'Bed Charge',
   NursingCharge: 'Nursing Charge',
+  LabCharge: 'Lab Charge',
 };
+
+// Charge types IPDLabOrderService/bed-transfer flows post automatically — shown with the same
+// "Auto" badge treatment either way, even though (like BedCharge) they can still be posted
+// manually from this form too.
+const AUTO_POSTED_CHARGE_TYPES: ReadonlySet<(typeof CHARGE_TYPES)[number]> = new Set(['BedCharge', 'LabCharge']);
 
 interface ChargesPanelProps {
   admissionId: string;
@@ -75,12 +81,12 @@ export function ChargesPanel({ admissionId }: ChargesPanelProps) {
                 </tr>
               )}
               {charges?.map((charge) => (
-                <tr key={charge.id} className={charge.chargeType === 'BedCharge' ? 'bg-primary/5' : undefined}>
+                <tr key={charge.id} className={AUTO_POSTED_CHARGE_TYPES.has(charge.chargeType) ? 'bg-primary/5' : undefined}>
                   <td className="px-4 py-3 text-sm text-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       {charge.chargeType === 'BedCharge' && <BedSingle className="h-3.5 w-3.5 text-muted-foreground" />}
                       {chargeTypeLabels[charge.chargeType]}
-                      {charge.chargeType === 'BedCharge' && (
+                      {AUTO_POSTED_CHARGE_TYPES.has(charge.chargeType) && (
                         <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
                           Auto
                         </span>

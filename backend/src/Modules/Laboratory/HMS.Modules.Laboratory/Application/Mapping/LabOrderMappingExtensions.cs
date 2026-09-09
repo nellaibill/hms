@@ -62,6 +62,7 @@ internal static class LabOrderMappingExtensions
         PatientName = order.PatientName,
         PatientUhid = order.PatientUhid,
         VisitId = order.VisitId,
+        AdmissionId = order.AdmissionId,
         Source = order.Source,
         Priority = order.Priority,
         OverallStatus = order.OverallStatus,

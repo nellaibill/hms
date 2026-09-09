@@ -77,6 +77,12 @@ internal class LabOrderRepository : ILabOrderRepository
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<LabOrder>> GetByAdmissionIdAsync(Guid admissionId, CancellationToken cancellationToken)
+        => await FullGraph()
+            .Where(o => o.AdmissionId == admissionId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync(cancellationToken);
+
     public async Task<LabDashboardSummaryResponse> GetDashboardCountsAsync(CancellationToken cancellationToken)
     {
         var today = DateTime.UtcNow.Date;

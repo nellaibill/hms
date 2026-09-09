@@ -35,6 +35,30 @@ public record CreateLabOrderFromInvoiceRequest
     public IReadOnlyList<CreateLabOrderLineRequest> Lines { get; init; } = [];
 }
 
+/// <summary>One line IPD's IPDLabOrderService supplies per test/package a ward doctor placed
+/// on an admission — no InvoiceLineItemId, since there is no invoice. Exactly one of
+/// ServiceId/PackageId is set, never both/neither, resolved the same way as
+/// CreateLabOrderLineRequest (see LabOrderService.CreateFromAdmissionAsync).</summary>
+public record CreateLabOrderLineFromAdmissionRequest
+{
+    public Guid? ServiceId { get; init; }
+    public Guid? PackageId { get; init; }
+    public Guid? DepartmentId { get; init; }
+    public Guid? ConsultantId { get; init; }
+}
+
+/// <summary>The IPD counterpart to CreateLabOrderFromInvoiceRequest — called by
+/// IPD.Application.IPDLabOrderService when a ward doctor places a lab order directly on an
+/// admission, no invoice required. See Domain/LabOrder.cs's CreateForAdmission.</summary>
+public record CreateLabOrderFromAdmissionRequest
+{
+    public Guid AdmissionId { get; init; }
+    public Guid PatientId { get; init; }
+    public string PatientName { get; init; } = string.Empty;
+    public string PatientUhid { get; init; } = string.Empty;
+    public IReadOnlyList<CreateLabOrderLineFromAdmissionRequest> Lines { get; init; } = [];
+}
+
 public record CollectSampleRequest
 {
     public LabSampleType SampleType { get; init; }
@@ -142,11 +166,15 @@ public record LabOrderResponse
 {
     public Guid Id { get; init; }
     public string LabOrderNumber { get; init; } = string.Empty;
-    public Guid InvoiceId { get; init; }
+    public Guid? InvoiceId { get; init; }
     public Guid PatientId { get; init; }
     public string PatientName { get; init; } = string.Empty;
     public string PatientUhid { get; init; } = string.Empty;
-    public Guid VisitId { get; init; }
+    public Guid? VisitId { get; init; }
+
+    /// <summary>Set only for orders placed directly from an IPD admission (see
+    /// LabOrder.CreateForAdmission) — app-level reference, no DB FK.</summary>
+    public Guid? AdmissionId { get; init; }
     public string? Source { get; init; }
     public LabOrderPriority Priority { get; init; }
     public LabOrderStatus OverallStatus { get; init; }
