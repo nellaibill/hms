@@ -7,7 +7,7 @@ import {
   ConsultantProfitTable,
   ProfitSummaryCards,
   ReportDateRangeFilter,
-  ReportNavTabs,
+  AccountsNavTabs,
   getProfitByConsultant,
   getProfitRows,
   getProfitTotals,
@@ -76,7 +76,7 @@ export default function ConsultantReportPage() {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <ReportNavTabs />
+        <AccountsNavTabs />
 
         <div className="flex w-full flex-col gap-4">
           <ReportDateRangeFilter range={range} onChange={handleRangeChange} />

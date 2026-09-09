@@ -13,7 +13,7 @@ import { ProfitSummaryCards } from './ProfitSummaryCards';
 import { ProfitTable } from './ProfitTable';
 import { CategoryBreakdownCard } from './CategoryBreakdownCard';
 import { ReportDateRangeFilter } from './ReportDateRangeFilter';
-import { ReportNavTabs } from './ReportNavTabs';
+import { AccountsNavTabs } from './AccountsNavTabs';
 import type { ReportDateRange } from '../types';
 
 const ROWS_PER_PAGE = 10;
@@ -96,7 +96,7 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <ReportNavTabs />
+        <AccountsNavTabs />
 
         <div className="flex w-full flex-col gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">

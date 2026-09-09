@@ -9,7 +9,7 @@ export * from './components/ProfitExportButtons';
 export * from './components/ProfitSummaryCards';
 export * from './components/ProfitTable';
 export * from './components/ReportDateRangeFilter';
-export * from './components/ReportNavTabs';
+export * from './components/AccountsNavTabs';
 export * from './components/ReportSummaryCards';
 export * from './exportUtils';
 export * from './incomeExpenseReport';

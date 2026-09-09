@@ -36,6 +36,7 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <tr>
+            <th className="px-4 py-2.5">Invoice #</th>
             <th className="px-4 py-2.5">Patient Name</th>
             <th className="px-4 py-2.5">Age / Gender</th>
             <th className="px-4 py-2.5">Contact Number</th>
@@ -52,6 +53,11 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
             const primaryDepartmentId = bill.consultants[0]?.departmentId;
             return (
               <tr key={bill.invoiceId} className="hover:bg-muted/30">
+                <td className="whitespace-nowrap px-4 py-3">
+                  <Link to={`/finance/accounts/${bill.invoiceId}`} className="font-mono text-xs text-primary hover:underline">
+                    {bill.invoiceNumber}
+                  </Link>
+                </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <Link to={`/finance/accounts/${bill.invoiceId}`} className="font-medium text-foreground hover:text-primary hover:underline">
                     {bill.patientName}

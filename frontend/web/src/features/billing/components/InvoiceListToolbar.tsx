@@ -1,9 +1,6 @@
-import { FileBarChart2, Plus, Search } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/features/auth/AuthContext';
 import type { PaymentStatus } from '../types';
 
 interface InvoiceListToolbarProps {
@@ -13,8 +10,10 @@ interface InvoiceListToolbarProps {
   onPaymentStatusChange: (value: PaymentStatus | undefined) => void;
 }
 
+/** Search/filter only — Reports and New Invoice moved up to InvoiceLedgerPage's persistent
+ * header (see that file's own comment) so they're always visible without scrolling past
+ * whichever tab's table is currently showing. */
 export function InvoiceListToolbar({ search, onSearchChange, paymentStatus, onPaymentStatusChange }: InvoiceListToolbarProps) {
-  const { hasPermission } = useAuth();
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative w-72">
@@ -42,22 +41,6 @@ export function InvoiceListToolbar({ search, onSearchChange, paymentStatus, onPa
           <SelectItem value="Pending">Pending only</SelectItem>
         </SelectContent>
       </Select>
-
-      <Button asChild variant="outline" className="ml-auto gap-1.5">
-        <Link to="/finance/accounts/reports">
-          <FileBarChart2 className="h-4 w-4" />
-          Reports
-        </Link>
-      </Button>
-
-      {hasPermission('finance-billing.create') && (
-        <Button asChild className="gap-1.5">
-          <Link to="/finance/accounts/new">
-            <Plus className="h-4 w-4" />
-            New Invoice
-          </Link>
-        </Button>
-      )}
     </div>
   );
 }
