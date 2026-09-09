@@ -67,6 +67,12 @@ public static class IPDModule
         services.AddScoped<IDoctorOrderRepository, DoctorOrderRepository>();
         services.AddScoped<IDoctorOrderService, DoctorOrderService>();
 
+        services.AddScoped<IMedicationOrderRepository, MedicationOrderRepository>();
+        services.AddScoped<IMedicationOrderService, MedicationOrderService>();
+
+        services.AddScoped<IMedicationAdministrationRepository, MedicationAdministrationRepository>();
+        services.AddScoped<IMedicationAdministrationService, MedicationAdministrationService>();
+
         services.AddScoped<IValidator<CreateWardRequest>, CreateWardRequestValidator>();
         services.AddScoped<IValidator<UpdateWardRequest>, UpdateWardRequestValidator>();
 
@@ -88,6 +94,10 @@ public static class IPDModule
 
         services.AddScoped<IValidator<CreateDoctorOrderRequest>, CreateDoctorOrderRequestValidator>();
         services.AddScoped<IValidator<CancelDoctorOrderRequest>, CancelDoctorOrderRequestValidator>();
+
+        services.AddScoped<IValidator<CreateMedicationOrderRequest>, CreateMedicationOrderRequestValidator>();
+        services.AddScoped<IValidator<DiscontinueMedicationOrderRequest>, DiscontinueMedicationOrderRequestValidator>();
+        services.AddScoped<IValidator<CreateMedicationAdministrationRequest>, CreateMedicationAdministrationRequestValidator>();
 
         return services;
     }
