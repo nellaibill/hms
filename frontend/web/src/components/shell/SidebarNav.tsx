@@ -46,8 +46,12 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
               className={({ isActive }) => linkClasses(isActive)}
               title={collapsed ? node.label : undefined}
             >
-              <Icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span className="truncate">{node.label}</span>}
+              {({ isActive }) => (
+                <>
+                  <Icon className={cn('h-5 w-5 shrink-0', !isActive && node.iconColor)} />
+                  {!collapsed && <span className="truncate">{node.label}</span>}
+                </>
+              )}
             </NavLink>
           </div>
         );
