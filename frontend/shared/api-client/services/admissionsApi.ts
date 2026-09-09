@@ -15,9 +15,11 @@ import type {
   CreateVitalsReadingRequest,
   CreateMedicationAdministrationRequest,
   CreateMedicationOrderRequest,
+  CreatePlaceLabOrderRequest,
   DischargeAdmissionRequest,
   DiscontinueMedicationOrderRequest,
   DoctorOrder,
+  LabOrderResponse,
   MedicationAdministration,
   MedicationOrder,
   NursingAssessment,
@@ -186,6 +188,16 @@ export class AdmissionsApi {
 
   async postMedicationAdministration(admissionId: string, orderId: string, request: CreateMedicationAdministrationRequest): Promise<MedicationAdministration> {
     const response = await this.client.post<MedicationAdministration>(API_ROUTES.ipd.admissions.medicationAdministrations(admissionId, orderId), request);
+    return response.data;
+  }
+
+  async getLabOrders(admissionId: string): Promise<LabOrderResponse[]> {
+    const response = await this.client.get<LabOrderResponse[]>(API_ROUTES.ipd.admissions.labOrders(admissionId));
+    return response.data;
+  }
+
+  async postLabOrder(admissionId: string, request: CreatePlaceLabOrderRequest): Promise<LabOrderResponse> {
+    const response = await this.client.post<LabOrderResponse>(API_ROUTES.ipd.admissions.labOrders(admissionId), request);
     return response.data;
   }
 }
