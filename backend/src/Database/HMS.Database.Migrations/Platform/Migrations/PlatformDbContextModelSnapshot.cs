@@ -318,7 +318,7 @@ namespace HMS.Database.Migrations.Platform.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasDefaultValue("patient-management,clinical-care,diagnostics,pharmacy,support-services,finance-billing,records-compliance,workforce-admin,engagement,reports-analytics,identity-administration")
+                        .HasDefaultValue("patient-management,clinical-care,diagnostics,pharmacy,support-services,finance-billing,records-compliance,workforce-admin,engagement,reports-analytics,identity-administration,discharge-summary")
                         .HasColumnName("enabled_modules");
 
                     b.Property<string>("HospitalCode")

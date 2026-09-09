@@ -314,4 +314,16 @@ export const API_ROUTES = {
     messages: (id: string) => `/api/v1/conversations/${id}/messages`,
     read: (id: string) => `/api/v1/conversations/${id}/read`,
   },
+  /**
+   * Mirrors HMS.Modules.DischargeSummary.Endpoints.DischargeSummariesController. Create and
+   * GetByAdmissionId deliberately share `byAdmissionId` (POST vs. GET on the same absolute
+   * route override) — a discharge summary is always reached starting from a specific
+   * admission for those two actions; every other action addresses the summary directly by
+   * its own id.
+   */
+  dischargeSummaries: {
+    byId: (id: string) => `/api/v1/discharge-summaries/${id}`,
+    finalize: (id: string) => `/api/v1/discharge-summaries/${id}/finalize`,
+    byAdmissionId: (admissionId: string) => `/api/v1/admissions/${admissionId}/discharge-summary`,
+  },
 } as const;

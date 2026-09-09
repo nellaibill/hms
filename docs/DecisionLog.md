@@ -37,7 +37,7 @@ _To be documented._
 
 ## Decisions
 
-### ADR-057: IPD Vitals and Progress Notes as append-only child records of Admission
+### ADR-060: IPD Vitals and Progress Notes as append-only child records of Admission
 **Date:** 2026-09-08
 **Status:** Accepted
 
@@ -74,6 +74,72 @@ existing tenant.
   `IVitalsReadingService`/`IProgressNoteService` alongside the module's other per-entity
   service interfaces (each is public only because its controller's public constructor can't
   take an internal parameter type, CS0051).
+
+---
+
+### ADR-059: Discharge Summary module Phase 3 — discharge medications, list-sync Update
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-057/058. Phase 3 is the last of the three approved phases: a `DischargeMedication` child entity for the printed discharge medication list, and wiring it into the existing `PUT` endpoint's full-record update.
+
+**Decision**
+1. **`DischargeMedication` is a real, same-schema DB foreign key to `DischargeSummary`** — unlike `AdmissionId`/`PatientId` on the parent (cross-module app-level Guids, no FK), this is an intra-module relationship, the same distinction ADR-029 drew for Messaging's `ConversationParticipant`→`Conversation`. `DrugName` is free text, not a Products/Masters catalog reference: Pharmacy has no structured `Prescription` entity with dose/route/frequency fields to source this from (confirmed at plan time — Pharmacy is direct-dispense only), so this mirrors what's actually printed on a discharge summary.
+2. **The aggregate owns a private `List<DischargeMedication>` backing field** (`DischargeSummary.Medications`, `UsePropertyAccessMode(Field)` in `DischargeSummaryConfiguration`) — the exact same shape `Patient.Allergies`/`Patient.EmergencyContacts` already use in this codebase for a 1:many owned child collection, rather than inventing a new pattern. `ReplaceMedications(IEnumerable<DischargeMedication>, Guid? updatedBy)` clears and repopulates the in-memory collection; EF Core's change tracker diffs that against what `DischargeSummaryRepository.GetByIdAsync` loaded (now `.Include(x => x.Medications)`) and issues the DELETEs/INSERTs on `SaveChangesAsync` — no explicit `RemoveRange`/`AddRangeAsync` calls in the repository, unlike a plain delete-then-reinsert would need, because the aggregate's own tracked navigation does the diffing. `OnDelete(DeleteBehavior.Cascade)` (not `Restrict`, unlike `ConversationParticipant`'s FK) since a discharge summary's medications have no independent lifecycle — soft-deleting or (in principle) hard-deleting the parent should never leave orphaned lines.
+3. **List-sync, no per-line CRUD**: `UpdateDischargeSummaryRequest.Medications` is the full list on every `PUT` — `DischargeSummaryService.UpdateAsync` builds fresh `DischargeMedication.Create(...)` entities from the request (each carrying the parent's already-known `Id`) and calls `ReplaceMedications` once. An empty `Medications` array is a legitimate request that clears every line — matches the approved plan's "simple list-sync, no separate per-line CRUD endpoints" scope exactly.
+4. **Quantity/duration fields are bounded to non-negative, not required** (`DischargeMedicationRequestValidator`) — only `DrugName`/`Dose`/`Route` are `NotEmpty`. A line with all-zero quantities is a legitimate (if unusual) "stop this drug" entry, so `GreaterThanOrEqualTo(0)` was chosen over `GreaterThan(0)`.
+5. **Final migration**: `AddDischargeMedications` (context `DischargeSummaryDbContext`), `dotnet ef migrations add`-generated — confirmed the generated SQL includes the real `fk_discharge_medications_discharge_summary_id` foreign-key constraint with `ON DELETE CASCADE`, not just an index, before treating this as done.
+
+**Consequences**
+- 9 new tests (`DischargeMedicationTests` — Create's guard clauses and trimming; `DischargeSummaryTests.ReplaceMedications_*` — set/replace/clear; `DischargeSummaryServiceTests.UpdateAsync_*` — full list-sync round-trip and the empty-list-clears-everything case). Full `HMS.UnitTests` (810) and `HMS.ArchitectureTests` (98) suites green.
+- This closes out the three approved phases (foundation, clinical content, medications) as one shippable increment, per the plan's own framing — a PDF export and the deferred Phase 4-6 items (OT integration, IPD daily-event timeline, specialty templates, the richer Prepared/Checked/Approved workflow) remain explicitly out of scope, to be sequenced later against the rest of the module-rollout backlog.
+- No live browser verification for any of the three backend phases — no frontend exists yet for this module; the eventual frontend build is expected to do its own end-to-end pass once it exists, consistent with [[feedback_no_live_verification_per_fix]].
+
+---
+
+### ADR-058: Discharge Summary module Phase 2 — clinical/examination/vitals/surgical/advice fields, Update
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+Continuation of ADR-057. Phase 2 fills in the actual document content the plan's data model specified: chief complaints/history, section-by-section examination findings, a one-time vitals snapshot, a single hospital-course narrative, manual Surgical Details (no OT module to integrate with yet), and Discharge Advice — plus the `PUT` endpoint that lets a Draft actually be edited.
+
+**Decision**
+1. **One `UpdateClinicalDetails` domain method, one `PUT`, no per-section endpoints** — the approved plan scoped this as a full-record update (every field submitted together), not per-field `PATCH`; matches `UpdateDischargeSummaryRequest` carrying all ~36 fields at once. `DischargeSummaryService.UpdateAsync` is the only place that checks `Status == Draft` (`DischargeSummaryErrorCodes.NotDraft` otherwise, mapped to 403 per the plan's own "403 once Finalized" wording) — the domain method itself doesn't re-check its own state, same convention as `Finalize`/`Admission.TransferBed`.
+2. **Every free-text field is trimmed and blank-normalized to `null`** in the domain method (`Normalize`), so "the doctor cleared this field" and "never filled in" are indistinguishable in storage — deliberately simple, no separate "explicitly cleared" tombstone.
+3. **Vitals are a single snapshot** (`HeightCm`/`WeightKg`/`PulseRate`/`RespiratoryRate`/`TemperatureF`/`SpO2Percent`/`BloodPressure`), not a repeating observations table — matches the plan's explicit scope call (a full vitals-history feature is a materially bigger feature than this increment). `UpdateDischargeSummaryRequestValidator` bounds each numeric vital to a generous physiological range (e.g. `SpO2Percent` 0–100, `TemperatureF` 70–115) purely as basic sanity-checking, not clinical validation.
+4. **Column max-lengths mirror the validator's `MaximumLength` rules exactly** (`DischargeSummaryConfiguration`), split into three rough tiers — short fields (surgeon names, `Gait`, `BloodPressure`) at 500/20, most narrative sections at 1000–2000, and four genuinely long free-text fields (`HistoryOfPresentingIllness`, `CourseInHospital`, `IntraOperativeFindings`, `OperativeNotes`) at 8000 — following this codebase's existing convention (`Admission.FinalDiagnosis`/`DischargeNotes` etc. also use `HasMaxLength`, never unbounded `text`) rather than introducing an unbounded column type for this module alone.
+5. **One more `dotnet ef migrations add`-generated migration**, `AddDischargeSummaryClinicalFields` (context `DischargeSummaryDbContext`) — purely additive columns, no data migration needed since Phase 1 shipped with zero real rows in any tenant yet.
+
+**Consequences**
+- 5 new tests (`DischargeSummaryTests.UpdateClinicalDetails_*`, `DischargeSummaryServiceTests.UpdateAsync_*`) covering the full-field-set update, blank-normalization, the Draft-only gate, and not-found — full `HMS.UnitTests`/`HMS.ArchitectureTests` suites stay green.
+- No live browser verification — still backend-only, no frontend yet, same reasoning as ADR-057.
+- `DischargeMedication` (the discharge medications table and the Update endpoint's list-sync behavior) is Phase 3, its own ADR entry.
+
+---
+
+### ADR-057: Discharge Summary module Phase 1 — scaffold, Draft/Finalize, permissions, feature wiring
+**Date:** 2026-09-08
+**Status:** Accepted
+
+**Context**
+User shared a real hospital discharge-summary PDF and a detailed breakdown of a proper Discharge Summary feature, proposed a 6-phase rollout, and — sequenced against the module-rollout backlog with no Operation Theater module existing yet (`Modules/OT` has zero files) — approved building Phases 1-3 (foundation, clinical content, medications) as one shippable increment. This entry covers Phase 1: the module scaffold, the `DischargeSummary` aggregate's base fields, Create/Get/Finalize endpoints, and every piece of shared infrastructure a brand-new module needs (permissions, `FeatureCatalog`, `TenantMigrationService`, DI, migrations).
+
+**Decision**
+1. **New module, not folded into IPD**: `HMS.Modules.DischargeSummary`, schema `discharge_summary`, scaffolded from `HMS.Modules.Identity` per `docs/DeveloperHandbook.md` §19 — internal Domain/Application/Infrastructure, public Contracts, `Guid.CreateVersion7()` ids, `xmin` concurrency, `HasQueryFilter` soft delete, validators registered explicitly in `DischargeSummaryModule.cs` (not `AddValidatorsFromAssemblyContaining`, which only finds public `IValidator<T>`s — the documented gotcha).
+2. **`AdmissionId`/`PatientId` are bare Guids, no DB FK** — validated at the Application layer through IPD's public `IAdmissionService` and Patients' public `IPatientService`, mirroring `PharmacyStockTransaction`'s identical treatment and `TenantMigrationService`'s own comment on why cross-schema FKs are never used in this codebase.
+3. **Creation gate + uniqueness**: `CreateDraftAsync` fails with `AdmissionNotDischarged` unless `Admission.Status == Discharged`, and with `AlreadyExists` if a summary already exists for that `AdmissionId` (check-then-create in the service, backed by a unique index on `admission_id` as a database-level backstop — the same reasoning `PharmacyStockTransaction`/`Admission` already require this pattern for cross-module Guid references). `Admission.FinalDiagnosis` is copied once, at create time, into `DischargeSummary.FinalDiagnosis` as its initial value — independently editable from that point, never re-read from Admission afterward.
+4. **Two states only**: Draft → Finalized. The richer Prepared/Checked/Approved sign-off pipeline from the user's own point #9 is deliberately NOT a multi-step workflow — `PreparedByUserId`/`CheckedByUserId`/`ConsultantApprovedByUserId` are three optional Guids captured once, together, at `Finalize`. All three are stored as **opaque Guids with no cross-module validation against Identity**, even though `IUserService.GetByIdAsync` exists and could validate them — deliberately, to avoid giving this module a real dependency on `HMS.Modules.Identity.Application` (which would need its own carve-out in `HMS.ArchitectureTests.Modules.Identity.CrossModuleDependencyTests`, mirroring Notifications/ADR-032). The frontend already has `GET /api/v1/users/directory` (built for Messaging) to populate these pickers with real users; a bad Guid here has no cascading effect, so the extra dependency wasn't judged worth it. `DischargeSummary` stays on the existing blanket "no dependency on Identity" list in `CrossModuleDependencyTests` instead.
+5. **New `discharge-summary` RBAC permission category**, not folded into IPD's existing `clinical-care` — a deliberate, narrow departure from ADR-022's "reuse an existing category" default. `Finalize` is a genuinely new action outside the view/create/edit/delete set every other category uses, and the approved plan named these four permission strings explicitly (`discharge-summary.view/create/edit/finalize`) as the contract the frontend would be built against. Because `Permission.Module` is filtered against a tenant's `EnabledModules` at login (ADR-026 — `AuthenticationService.LoginAsync` strips any permission whose `Module` isn't in that list), a permission `Module` value that ADR-022 never turned into a real category would be silently and permanently stripped from every tenant's JWT, locking everyone out of the new endpoints. So `HMS.Shared.Kernel.ModuleCatalog.All` gained a 12th entry, `"discharge-summary"` (new tenants' `Tenant.EnabledModules` defaults to the full `ModuleCatalog.All`, per `Tenant.Create`) — this is the one piece of plumbing the plan didn't anticipate, found by tracing how a new permission module actually reaches a JWT, not by assumption.
+6. **New `FeatureCatalog.SchemaBacked` key `"discharge-summary"`**, wired into `TenantMigrationService` (migrates `DischargeSummaryDbContext` when resolved), placed after `"ipd"` in migration order for readability (matches the Admission dependency), same as Laboratory's placement after Billing.
+7. **API routes deliberately split across two path prefixes** per the approved plan: `POST /api/v1/admissions/{admissionId}/discharge-summary` (create) and `GET /api/v1/admissions/{admissionId}/discharge-summary` (fetch-by-admission) use ASP.NET Core's absolute-route override (`[HttpPost("/api/v1/admissions/...")]`) inside a controller otherwise rooted at `api/v1/discharge-summaries` — a discharge summary is always reached starting from a specific admission for those two actions, everything else (`GET/PUT/finalize {id}`) addresses the summary directly.
+8. **Two new EF Core migrations**, both `dotnet ef migrations add`-generated (never hand-written, per §20/ADR-005's lesson): `InitialCreateDischargeSummary` (context `DischargeSummaryDbContext`) and `AddDischargeSummaryPermissions` (context `IdentityDbContext`, inserting the 4 new seeded `Permission` rows via `PermissionSeedData.cs`'s existing `HasData` mechanism — the same reason every prior new-permission change, e.g. `AddPatientManagementImportPermission`, needed its own Identity migration).
+
+**Consequences**
+- 14 new `DischargeSummaryTests`/`DischargeSummaryServiceTests` (Domain Create/Finalize invariants; Application service's admission-gate, duplicate-prevention, patient-validation, and already-finalized-rejection logic, mocked repository/cross-module service interfaces, mirrors `AdmissionServiceTests`' pattern) plus a new `DischargeSummaryModuleBoundaryTests` (mirrors `MessagingModuleBoundaryTests`) — all green, alongside the full existing `HMS.UnitTests`/`HMS.ArchitectureTests` suites (796/98 passing).
+- No live browser verification for this phase — backend-only, no frontend yet, consistent with [[feedback_no_live_verification_per_fix]]'s reasoning and every prior backend-only phase in this codebase (e.g. ADR-030).
+- Update/Finalize's full clinical content, examination, vitals, surgical, and discharge-advice fields, plus the medications child entity, are Phase 2/3 — deferred to their own ADR entries, not because they're architecturally uncertain but because they're a large, mechanical field addition better reviewed as separate, focused commits.
 
 ---
 

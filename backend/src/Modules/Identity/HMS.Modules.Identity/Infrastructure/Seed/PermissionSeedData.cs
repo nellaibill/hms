@@ -1087,6 +1087,102 @@ internal static class PermissionSeedData
                 IsDeleted = false,
                 DeletedAt = (DateTime?)null,
                 DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("1d6e9f3a-2b4c-4a1d-8e5f-6c9b2a4d7f10"),
+                Module = "discharge-summary",
+                Action = "view",
+                Key = "discharge-summary.view",
+                Label = "View",
+                DisplayOrder = 12,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("2e7fa04b-3c5d-4b2e-9f60-7dac3b5e8021"),
+                Module = "discharge-summary",
+                Action = "create",
+                Key = "discharge-summary.create",
+                Label = "Create",
+                DisplayOrder = 12,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("3f80b15c-4d6e-4c3f-a071-8ebd4c6f9132"),
+                Module = "discharge-summary",
+                Action = "edit",
+                Key = "discharge-summary.edit",
+                Label = "Edit",
+                DisplayOrder = 12,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
+            new
+            {
+                Id = Guid.Parse("4091c26d-5e7f-4d40-b182-9fce5d70a243"),
+                Module = "discharge-summary",
+                Action = "finalize",
+                Key = "discharge-summary.finalize",
+                Label = "Finalize",
+                DisplayOrder = 12,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
             }
         };
     }

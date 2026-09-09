@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- DischargeSummariesController lives in this module (not HMS.Api), so its <summary>
+         comments must be generated here for Swashbuckle to include them in Swagger UI. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment on a public member) is not useful here: this module is
+         internal-by-default (see docs/Architecture.md), so its few public members are a
+         deliberate narrow seam, not a fully-documented public API. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needed for ControllerBase/[ApiController]/IActionResult in Endpoints/, since this
+         module is a plain class library, not an ASP.NET Core Web SDK project. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!-- FluentValidation.DependencyInjectionExtensions is deliberately NOT referenced: its
+         AddValidatorsFromAssembly* scanners only find *public* IValidator<T>
+         implementations, and this module's validators are internal by design — see
+         docs/DeveloperHandbook.md §8/§20. -->
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- AdmissionId is validated via IPD's public IAdmissionService (Application namespace,
+         same CS0051-driven public seam as every other module's IXService) — no DB FK across
+         schemas, per docs/DatabaseArchitecture.md §7. -->
+    <ProjectReference Include="..\..\IPD\HMS.Modules.IPD\HMS.Modules.IPD.csproj" />
+    <!-- PatientId is validated via Patients' public IPatientService, same reasoning. -->
+    <ProjectReference Include="..\..\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
+  </ItemGroup>
+
+</Project>
