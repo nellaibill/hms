@@ -5,6 +5,7 @@ export * from './components/BedStayHistoryPanel';
 export * from './components/ChargesPanel';
 export * from './components/DischargeForm';
 export * from './components/DoctorOrdersPanel';
+export * from './components/DownloadDischargeSummaryButton';
 export * from './components/FinalBillCard';
 export * from './components/LabOrdersPanel';
 export * from './components/MedicationAdministrationPanel';
