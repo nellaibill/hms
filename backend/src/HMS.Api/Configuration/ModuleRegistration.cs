@@ -2,6 +2,7 @@ using HMS.Api.Provisioning;
 using HMS.Modules.Billing;
 using HMS.Modules.Branding;
 using HMS.Modules.Calendar;
+using HMS.Modules.DischargeSummary;
 using HMS.Modules.Documents;
 using HMS.Modules.HR;
 using HMS.Modules.Identity;
@@ -77,6 +78,12 @@ public static class ModuleRegistration
         // billing — ADR-028) public service seams, so it must register after all three —
         // same reasoning as IPD above.
         services.AddPharmacyModule(configuration);
+
+        // DischargeSummary depends on IPD's IAdmissionService (Admission.Status/
+        // FinalDiagnosis) and Patients' IPatientService public service seams for
+        // cross-module reference validation, so it must register after both — same reasoning
+        // as IPD above (both are already satisfied by this point).
+        services.AddDischargeSummaryModule(configuration);
 
         // Notifications depends on Identity's IUserService public service seam (resolving a
         // recipient's email/phone number for the background Email/Sms delivery pipeline —

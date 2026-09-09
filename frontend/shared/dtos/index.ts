@@ -47,3 +47,4 @@ export * from './notifications/notificationTemplate';
 export * from './notifications/notificationPreference';
 export * from './messaging/conversation';
 export * from './messaging/message';
+export * from './dischargeSummary/dischargeSummary';

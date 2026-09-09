@@ -25,5 +25,13 @@ public static class ModuleCatalog
         "engagement",
         "reports-analytics",
         "identity-administration",
+
+        // HMS.Modules.DischargeSummary's own RBAC category (discharge-summary.view/create/
+        // edit/finalize — see PermissionSeedData). A 12th category, not folded into
+        // "clinical-care" (which already owns IPD/Admissions), because Finalize is a
+        // genuinely new action outside the view/create/edit/delete set every other category
+        // uses — see docs/DecisionLog.md for why this deliberately departs from ADR-022's
+        // "reuse an existing category" default.
+        "discharge-summary",
     ];
 }
