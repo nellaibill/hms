@@ -37,6 +37,53 @@ _To be documented._
 
 ## Decisions
 
+### ADR-061: IPD Nursing Assessments and Notes as append-only child records; Nursing Tasks deferred
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Second slice of the IPD expansion initiative (ADR-060 was the first: Vitals + Progress
+Notes). The source proposal's "Nursing" item bundles three sub-concepts of very different
+shape: Nursing Assessment and Nursing Notes are timestamped clinical records (the same shape
+already proven twice); Nursing Tasks (medication administration, vitals, IV/fluid monitoring,
+catheter/wound care, oxygen monitoring, intake/output) is a checklist with its own lifecycle
+that the proposal's own Doctor Orders item (`Ordered → Accepted → In Progress → Completed →
+Cancelled`) and MAR item will also need.
+
+**Decision**
+1. **Only Nursing Assessment and Nursing Notes are in scope for this slice.** Nursing Tasks is
+   deliberately deferred until Doctor Orders is designed, so a single generic order/task
+   workflow can be built once and Nursing Tasks can consume it, rather than building an
+   ad-hoc Nursing-only task system that Doctor Orders would later have to duplicate or awkwardly
+   integrate with — the same reasoning already applied to deferring Discharge Summary's OT
+   integration until a real OT module exists.
+2. **Both entities mirror `AdmissionCharge`/`VitalsReading`/`ProgressNote` exactly**: real FK
+   to `admissions.id` with `OnDelete(Restrict)`, no navigation collection on `Admission`,
+   append-only (`POST` to add, `GET` to list, no Update/Delete — a clinical correction is a
+   new entry). Both ride on the already-enabled `ipd` feature and `clinical-care.create`/
+   `.view` permissions, again avoiding any new `FeatureCatalog`/`ModuleCatalog`/permission-
+   catalog entry and the per-tenant enablement gap that cost real time on Discharge Summary.
+3. **Nursing Assessment's risk/condition fields stay free text** (`FallRisk`,
+   `PressureSoreRisk`, `ConsciousnessLevel`, etc.) — no clinical scoring scale (e.g. Morse
+   Fall Scale) is specified anywhere in the source proposal or this codebase, so inventing one
+   would be unfounded. `PainScore` reuses `VitalsReading.PainScore`'s exact 0-10 bound.
+4. **`NursingNote.Shift` is a real enum** (`NursingShift`: Morning/Evening/Night, in
+   `IPDEnums.cs`) — unlike the free-text fields above, shift is a genuinely closed,
+   enumerable concept, same treatment as `ChargeType`/`DischargeType`. Named `NursingShift`
+   rather than `Shift` to avoid any confusion with HR's unrelated `Shift`/`ShiftAssignment`
+   entities.
+5. **`IPDModuleBoundaryTests.AllowedPublicTypeNamePattern` extended proactively** for
+   `INursingAssessmentService`/`INursingNoteService` in the same commit as the services
+   themselves, rather than discovering the failure afterward (as happened with
+   `IVitalsReadingService`/`IProgressNoteService` in ADR-060).
+
+**Consequences**
+- 8 new tests (`NursingAssessmentServiceTests`, `NursingNoteServiceTests`), full
+  `HMS.UnitTests`/`HMS.ArchitectureTests` suites green (826/98).
+- Nursing Tasks remains an open item, to be picked up once Doctor Orders exists.
+
+---
+
 ### ADR-060: IPD Vitals and Progress Notes as append-only child records of Admission
 **Date:** 2026-09-08
 **Status:** Accepted

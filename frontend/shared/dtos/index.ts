@@ -36,6 +36,8 @@ export * from './ipd/admission';
 export * from './ipd/charge';
 export * from './ipd/vitals';
 export * from './ipd/progressNote';
+export * from './ipd/nursingAssessment';
+export * from './ipd/nursingNote';
 export * from './ipd/dashboard';
 export * from './billing/invoice';
 export * from './laboratory/labOrder';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHARGE_TYPES, DISCHARGE_TYPES, IPD_ADMISSION_TYPES } from '../../enums/ipd';
+import { CHARGE_TYPES, DISCHARGE_TYPES, IPD_ADMISSION_TYPES, NURSING_SHIFTS } from '../../enums/ipd';
 
 // datetime-local inputs let a user type an out-of-range year (e.g. "222222") that the
 // browser still reports as a non-empty value — guard against that reaching new Date(...).toISOString().
@@ -115,3 +115,39 @@ export const createProgressNoteSchema = z.object({
 });
 
 export type ProgressNoteFormValues = z.infer<typeof createProgressNoteSchema>;
+
+/** Mirrors HMS.Modules.IPD.Application.Validators.CreateNursingAssessmentRequestValidator. */
+export const createNursingAssessmentSchema = z.object({
+  assessedAt: z
+    .string()
+    .trim()
+    .min(1, 'Assessed date/time is required')
+    .refine(isValidDateTimeLocal, { message: 'Enter a valid date and time' }),
+  generalCondition: z.string().trim().max(500).optional().or(z.literal('')),
+  consciousnessLevel: z.string().trim().max(200).optional().or(z.literal('')),
+  mobility: z.string().trim().max(500).optional().or(z.literal('')),
+  nutritionStatus: z.string().trim().max(500).optional().or(z.literal('')),
+  fallRisk: z.string().trim().max(200).optional().or(z.literal('')),
+  pressureSoreRisk: z.string().trim().max(200).optional().or(z.literal('')),
+  skinCondition: z.string().trim().max(500).optional().or(z.literal('')),
+  painScore: optionalNumber(0, 10, 'Pain score must be between 0 and 10'),
+  notes: z.string().trim().max(1000).optional().or(z.literal('')),
+});
+
+export type NursingAssessmentFormValues = z.infer<typeof createNursingAssessmentSchema>;
+
+/** Mirrors HMS.Modules.IPD.Application.Validators.CreateNursingNoteRequestValidator. */
+export const createNursingNoteSchema = z.object({
+  noteDateTime: z
+    .string()
+    .trim()
+    .min(1, 'Note date/time is required')
+    .refine(isValidDateTimeLocal, { message: 'Enter a valid date and time' }),
+  shift: z.enum(NURSING_SHIFTS, { message: 'Shift is required' }),
+  observation: z.string().trim().max(2000).optional().or(z.literal('')),
+  intervention: z.string().trim().max(2000).optional().or(z.literal('')),
+  patientResponse: z.string().trim().max(2000).optional().or(z.literal('')),
+  remarks: z.string().trim().max(2000).optional().or(z.literal('')),
+});
+
+export type NursingNoteFormValues = z.infer<typeof createNursingNoteSchema>;
