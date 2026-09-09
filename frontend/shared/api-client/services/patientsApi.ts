@@ -5,6 +5,8 @@ import type {
   CreatePatientVisitRequest,
   Patient,
   PatientListQuery,
+  PatientReportRow,
+  PatientReportSummary,
   PatientVisit,
   PatientVisitListQuery,
   UpdatePatientRequest,
@@ -20,6 +22,27 @@ export interface PagedPatients {
 export interface PagedPatientVisits {
   items: PatientVisit[];
   meta: PaginationMeta;
+}
+
+export interface PagedPatientReportRows {
+  items: PatientReportRow[];
+  meta: PaginationMeta;
+}
+
+/** Shared by getPatientsReport/getPatientsReportSummary/exportPatientsReport — the query
+ * shape is identical for all three (same filters, applied server-side). */
+function toReportQueryParams(query: PatientListQuery) {
+  return {
+    page: query.page,
+    pageSize: query.pageSize,
+    sort: query.sort,
+    search: query.search,
+    from: query.from,
+    to: query.to,
+    gender: query.gender,
+    bloodGroup: query.bloodGroup,
+    departmentId: query.departmentId,
+  };
 }
 
 /**
@@ -108,5 +131,26 @@ export class PatientsApi {
       items: response.data,
       meta: response.meta as PaginationMeta,
     };
+  }
+
+  /** Patient Reports' table — mirrors PatientsController's GET .../report. */
+  async getPatientsReport(query: PatientListQuery = {}): Promise<PagedPatientReportRows> {
+    const response = await this.client.get<PatientReportRow[]>(API_ROUTES.patients.report, { query: toReportQueryParams(query) });
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
+  }
+
+  /** Patient Reports' summary cards — mirrors PatientsController's GET .../report/summary. */
+  async getPatientsReportSummary(query: PatientListQuery = {}): Promise<PatientReportSummary> {
+    const response = await this.client.get<PatientReportSummary>(API_ROUTES.patients.reportSummary, { query: toReportQueryParams(query) });
+    return response.data;
+  }
+
+  /** Excel export of every row matching the current filters — mirrors PatientsController's
+   * GET .../report/export. Server-generated, respects the same filters as the table. */
+  async exportPatientsReport(query: PatientListQuery = {}): Promise<Blob> {
+    return this.client.getBlob(API_ROUTES.patients.reportExport, { query: toReportQueryParams(query) });
   }
 }

@@ -171,8 +171,28 @@ export interface PatientListQuery {
   requiresDataVerification?: boolean;
   /** Narrows the list to patients created or last updated today (UTC). */
   registeredToday?: boolean;
-  /** Filters to patients registered (createdAt) within this inclusive range — ISO date
-   * strings. Added for Patient Reports. */
+  /** Filters to patients who were either registered, or had at least one visit, within this
+   * inclusive range (ISO date strings) — an "activity" scope, not pure registration date. See
+   * HMS.Modules.Patients.Contracts.PatientListQuery.From's own doc comment. */
   from?: string;
   to?: string;
+  gender?: Gender;
+  bloodGroup?: BloodGroup;
+  /** Narrows to patients with at least one visit in this department. */
+  departmentId?: string;
+}
+
+/** Mirrors HMS.Modules.Patients.Contracts.PatientReportRowResponse. */
+export interface PatientReportRow {
+  patient: Patient;
+  lastVisitAt?: string | null;
+  lastVisitDepartmentId?: string | null;
+}
+
+/** Mirrors HMS.Modules.Patients.Contracts.PatientReportSummaryResponse. */
+export interface PatientReportSummary {
+  totalPatients: number;
+  newPatients: number;
+  returningPatients: number;
+  totalVisits: number;
 }

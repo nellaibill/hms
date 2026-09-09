@@ -59,6 +59,9 @@ export const API_ROUTES = {
     allergyById: (id: string, allergyId: string) => `/api/v1/patients/${id}/allergies/${allergyId}`,
     visits: (id: string) => `/api/v1/patients/${id}/visits`,
     visitById: (id: string, visitId: string) => `/api/v1/patients/${id}/visits/${visitId}`,
+    report: '/api/v1/patients/report',
+    reportSummary: '/api/v1/patients/report/summary',
+    reportExport: '/api/v1/patients/report/export',
   },
   /** Cross-patient visits list, for Patient Reports — mirrors PatientVisitsController's
    * absolute-route GetAll action (deliberately not nested under a patientId). */

@@ -1,6 +1,8 @@
 using FluentValidation;
 using FluentValidation.Results;
+using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application;
+using HMS.Modules.Patients.Application.Excel;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
@@ -24,6 +26,7 @@ namespace HMS.Modules.Patients.Endpoints;
 public class PatientsController : ControllerBase
 {
     private readonly IPatientService _patientService;
+    private readonly IDepartmentService _departmentService;
     private readonly IValidator<CreatePatientRequest> _createValidator;
     private readonly IValidator<UpdatePatientRequest> _updateValidator;
     private readonly IValidator<AddAllergyRequest> _addAllergyValidator;
@@ -32,6 +35,7 @@ public class PatientsController : ControllerBase
 
     public PatientsController(
         IPatientService patientService,
+        IDepartmentService departmentService,
         IValidator<CreatePatientRequest> createValidator,
         IValidator<UpdatePatientRequest> updateValidator,
         IValidator<AddAllergyRequest> addAllergyValidator,
@@ -39,6 +43,7 @@ public class PatientsController : ControllerBase
         ILogger<PatientsController> logger)
     {
         _patientService = patientService;
+        _departmentService = departmentService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _addAllergyValidator = addAllergyValidator;
@@ -131,6 +136,64 @@ public class PatientsController : ControllerBase
         };
 
         return Ok(new ApiResponse<IReadOnlyList<PatientResponse>> { Data = paged.Items, Meta = meta });
+    }
+
+    /// <summary>Patient Reports' table — same filters/pagination/sort as the plain list above,
+    /// enriched with each row's last visit and department.</summary>
+    /// <response code="200">A page of report rows.</response>
+    [RequirePermission("patient-management.view")]
+    [HttpGet("report")]
+    public async Task<IActionResult> GetReportPaged([FromQuery] PatientListQuery query, CancellationToken cancellationToken)
+    {
+        var paged = await _patientService.GetReportPagedAsync(query, cancellationToken);
+
+        var meta = new PaginationMeta
+        {
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount,
+            TotalPages = paged.TotalPages,
+        };
+
+        return Ok(new ApiResponse<IReadOnlyList<PatientReportRowResponse>> { Data = paged.Items, Meta = meta });
+    }
+
+    /// <summary>Patient Reports' four summary-card numbers for the same filters.</summary>
+    /// <response code="200">The summary.</response>
+    [RequirePermission("patient-management.view")]
+    [HttpGet("report/summary")]
+    public async Task<IActionResult> GetReportSummary([FromQuery] PatientListQuery query, CancellationToken cancellationToken)
+    {
+        var summary = await _patientService.GetReportSummaryAsync(query, cancellationToken);
+        return Ok(new ApiResponse<PatientReportSummaryResponse> { Data = summary });
+    }
+
+    private const string XlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    /// <summary>Excel export of every row matching the current filters (capped at 5,000 rows,
+    /// same rate-limit/connection concerns as the frontend's own report page — see
+    /// docs/DecisionLog.md's Patient Reports ADR), generated server-side rather than assembled
+    /// from whatever the browser already has paginated in memory.</summary>
+    /// <response code="200">The .xlsx file.</response>
+    [RequirePermission("patient-management.view")]
+    [HttpGet("report/export")]
+    public async Task<IActionResult> ExportReport([FromQuery] PatientListQuery query, CancellationToken cancellationToken)
+    {
+        const int maxRows = 5000;
+        var rows = await _patientService.GetReportExportRowsAsync(query, maxRows, cancellationToken);
+
+        var departmentIds = rows.Select(r => r.LastVisitDepartmentId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+        var departmentNames = new Dictionary<Guid, string>();
+        foreach (var departmentId in departmentIds)
+        {
+            var department = await _departmentService.GetByIdAsync(departmentId, cancellationToken);
+            if (department.IsSuccess) departmentNames[departmentId] = department.Value!.Name;
+        }
+
+        var bytes = PatientReportExportGenerator.Generate(rows, departmentNames);
+        _logger.LogInformation("Exported {RowCount} patient report rows to Excel", rows.Count);
+
+        return File(bytes, XlsxContentType, $"patient-report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx");
     }
 
     /// <summary>Adds one allergy row ("Add another Allergy").</summary>

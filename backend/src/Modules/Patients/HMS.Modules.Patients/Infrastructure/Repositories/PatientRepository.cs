@@ -29,11 +29,87 @@ internal class PatientRepository : IPatientRepository
 
     public async Task<(IReadOnlyList<Patient> Items, int TotalCount)> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken)
     {
-        var patients = _dbContext.Patients
+        var patients = BuildFilteredQuery(query)
             .Include(p => p.Address)
             .Include(p => p.Allergies)
             .Include(p => p.EmergencyContacts)
             .AsQueryable();
+
+        patients = ApplySort(patients, query.Sort);
+
+        var totalCount = await patients.CountAsync(cancellationToken);
+
+        var items = await patients
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    /// <summary>Total/new/returning/visit counts for Patient Reports' summary cards — reuses
+    /// the exact same filters GetPagedAsync applies (via BuildFilteredQuery), so the numbers
+    /// always agree with what the table below them actually shows. "New" is the subset of the
+    /// activity-scoped population (see PatientListQuery.From's own doc comment) whose
+    /// registration itself falls in range; "Returning" is simply Total minus New.</summary>
+    public async Task<(int TotalPatients, int NewPatients, int TotalVisits)> GetReportSummaryAsync(PatientListQuery query, CancellationToken cancellationToken)
+    {
+        var patients = BuildFilteredQuery(query);
+        var totalPatients = await patients.CountAsync(cancellationToken);
+
+        var newPatients = 0;
+        var totalVisits = 0;
+        if (query.From.HasValue && query.To.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            newPatients = await patients.CountAsync(p => p.CreatedAt >= from && p.CreatedAt <= to, cancellationToken);
+
+            // Visits by patients matching every other filter, within range — reuses the same
+            // patient-level filtered set (minus its own From/To clause, which is patient-level
+            // activity, not a visit-level date filter) as the scope for "whose visits count".
+            var patientIds = patients.Select(p => p.Id);
+            totalVisits = await _dbContext.PatientVisits
+                .Where(v => patientIds.Contains(v.PatientId) && v.CreatedAt >= from && v.CreatedAt <= to)
+                .CountAsync(cancellationToken);
+        }
+
+        return (totalPatients, newPatients, totalVisits);
+    }
+
+    /// <summary>The most recent visit (with its Consultations, for the report table's
+    /// Department column) for each of the given patients — deliberately fetched as a second,
+    /// bounded query against just this page's ids (≤ PagedRequest.MaxPageSize) rather than a
+    /// correlated subquery per row in GetPagedAsync's main query, so that query stays a plain
+    /// indexable filter/sort/page. In-memory grouping (not EF GroupBy+Include, which doesn't
+    /// compose cleanly) — bounded by how many visits this small id set can have, not by the
+    /// tenant's total visit count.</summary>
+    public async Task<IReadOnlyDictionary<Guid, PatientVisit>> GetLastVisitsAsync(IReadOnlyCollection<Guid> patientIds, CancellationToken cancellationToken)
+    {
+        if (patientIds.Count == 0) return new Dictionary<Guid, PatientVisit>();
+
+        var visits = await _dbContext.PatientVisits
+            .Include(v => v.Consultations)
+            .Where(v => patientIds.Contains(v.PatientId))
+            .OrderByDescending(v => v.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return visits
+            .GroupBy(v => v.PatientId)
+            .ToDictionary(g => g.Key, g => g.First());
+    }
+
+    public async Task<IReadOnlyList<Patient>> GetExportRowsAsync(PatientListQuery query, int maxRows, CancellationToken cancellationToken)
+    {
+        var patients = ApplySort(
+            BuildFilteredQuery(query).Include(p => p.Address).Include(p => p.Allergies).Include(p => p.EmergencyContacts).AsQueryable(),
+            query.Sort);
+        return await patients.Take(maxRows).ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<Patient> BuildFilteredQuery(PatientListQuery query)
+    {
+        var patients = _dbContext.Patients.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -90,32 +166,41 @@ internal class PatientRepository : IPatientRepository
             patients = patients.Where(p => p.DateOfBirth <= maxDateOfBirth && p.DateOfBirth > minDateOfBirthExclusive);
         }
 
+        if (query.Gender.HasValue)
+        {
+            patients = patients.Where(p => p.Gender == query.Gender.Value);
+        }
+
+        if (query.BloodGroup.HasValue)
+        {
+            patients = patients.Where(p => p.BloodGroup == query.BloodGroup.Value);
+        }
+
+        if (query.DepartmentId.HasValue)
+        {
+            // Department lives on PatientVisitConsultation, not Patient — same EXISTS-via-
+            // visits shape RegisteredToday above already uses.
+            var departmentId = query.DepartmentId.Value;
+            patients = patients.Where(p => _dbContext.PatientVisits.Any(v => v.PatientId == p.Id
+                && v.Consultations.Any(c => c.DepartmentId == departmentId)));
+        }
+
         // Model binding produces DateTime.Kind = Unspecified for a plain query-string date —
         // Npgsql rejects that against a `timestamp with time zone` column ("only UTC is
         // supported"), so it must be normalized before use (same fix as
-        // PatientVisitRepository.GetPagedAsync).
-        if (query.From.HasValue)
+        // PatientVisitRepository.GetPagedAsync). From/To are an "activity" scope — registered
+        // OR visited in range, not registration-date alone — see PatientListQuery.From's own
+        // doc comment for why.
+        if (query.From.HasValue && query.To.HasValue)
         {
             var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
-            patients = patients.Where(p => p.CreatedAt >= from);
-        }
-
-        if (query.To.HasValue)
-        {
             var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
-            patients = patients.Where(p => p.CreatedAt <= to);
+            patients = patients.Where(p =>
+                (p.CreatedAt >= from && p.CreatedAt <= to) ||
+                _dbContext.PatientVisits.Any(v => v.PatientId == p.Id && v.CreatedAt >= from && v.CreatedAt <= to));
         }
 
-        patients = ApplySort(patients, query.Sort);
-
-        var totalCount = await patients.CountAsync(cancellationToken);
-
-        var items = await patients
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .ToListAsync(cancellationToken);
-
-        return (items, totalCount);
+        return patients;
     }
 
     public Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, string? idProofNumber, CancellationToken cancellationToken)

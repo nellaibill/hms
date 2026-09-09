@@ -194,6 +194,52 @@ internal class PatientService : IPatientService
         return new PagedResult<PatientResponse>(mapped, query.Page, query.PageSize, totalCount);
     }
 
+    /// <summary>Patient Reports' table — same paging/filtering as GetPagedAsync, enriched with
+    /// each row's last visit/department (see PatientRepository.GetLastVisitsAsync).</summary>
+    public async Task<PagedResult<PatientReportRowResponse>> GetReportPagedAsync(PatientListQuery query, CancellationToken cancellationToken)
+    {
+        var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
+        var mapped = await MapReportRowsAsync(items, cancellationToken);
+        return new PagedResult<PatientReportRowResponse>(mapped, query.Page, query.PageSize, totalCount);
+    }
+
+    /// <summary>Every matching row (up to a safety cap), for the Excel export — see
+    /// PatientRepository.GetExportRowsAsync's own doc comment for why this isn't paginated.</summary>
+    public async Task<IReadOnlyList<PatientReportRowResponse>> GetReportExportRowsAsync(PatientListQuery query, int maxRows, CancellationToken cancellationToken)
+    {
+        var items = await _repository.GetExportRowsAsync(query, maxRows, cancellationToken);
+        return await MapReportRowsAsync(items, cancellationToken);
+    }
+
+    private async Task<List<PatientReportRowResponse>> MapReportRowsAsync(IReadOnlyList<Patient> items, CancellationToken cancellationToken)
+    {
+        var lastVisits = await _repository.GetLastVisitsAsync(items.Select(p => p.Id).ToList(), cancellationToken);
+
+        return items.Select(p =>
+        {
+            var hasLastVisit = lastVisits.TryGetValue(p.Id, out var lastVisit);
+            return new PatientReportRowResponse
+            {
+                Patient = p.ToResponse(_repository.GetRowVersion(p)),
+                LastVisitAt = hasLastVisit ? lastVisit!.CreatedAt : null,
+                LastVisitDepartmentId = hasLastVisit ? lastVisit!.Consultations.FirstOrDefault()?.DepartmentId : null,
+            };
+        }).ToList();
+    }
+
+    /// <summary>Patient Reports' summary cards.</summary>
+    public async Task<PatientReportSummaryResponse> GetReportSummaryAsync(PatientListQuery query, CancellationToken cancellationToken)
+    {
+        var (totalPatients, newPatients, totalVisits) = await _repository.GetReportSummaryAsync(query, cancellationToken);
+        return new PatientReportSummaryResponse
+        {
+            TotalPatients = totalPatients,
+            NewPatients = newPatients,
+            ReturningPatients = totalPatients - newPatients,
+            TotalVisits = totalVisits,
+        };
+    }
+
     public async Task<Result<PatientResponse>> AddAllergyAsync(Guid patientId, AddAllergyRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var patient = await _repository.GetByIdAsync(patientId, cancellationToken);

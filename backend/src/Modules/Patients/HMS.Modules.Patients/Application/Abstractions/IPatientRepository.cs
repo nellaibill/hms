@@ -20,6 +20,19 @@ internal interface IPatientRepository
 
     Task<(IReadOnlyList<Patient> Items, int TotalCount)> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Total/new/visit counts for Patient Reports' summary cards — see the
+    /// implementation's own doc comment for exactly what each number means.</summary>
+    Task<(int TotalPatients, int NewPatients, int TotalVisits)> GetReportSummaryAsync(PatientListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>The most recent visit (with Consultations) for each given patient id — backs
+    /// Patient Reports' table Last Visit/Department columns.</summary>
+    Task<IReadOnlyDictionary<Guid, PatientVisit>> GetLastVisitsAsync(IReadOnlyCollection<Guid> patientIds, CancellationToken cancellationToken);
+
+    /// <summary>Same filters as GetPagedAsync, sorted, but capped at maxRows with no further
+    /// pagination — backs the Excel export, which needs every matching row (up to the cap),
+    /// not one page.</summary>
+    Task<IReadOnlyList<Patient>> GetExportRowsAsync(PatientListQuery query, int maxRows, CancellationToken cancellationToken);
+
     /// <summary>Finds an existing, non-deleted patient matching on primary phone + name
     /// (case-insensitive) always, and additionally on IdProofNumber when one is supplied —
     /// used by PatientService.CreateAsync to catch the same person being registered twice.</summary>

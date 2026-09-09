@@ -450,4 +450,80 @@ public class PatientServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PatientErrorCodes.EmergencyContactNotFound);
     }
+
+    [Fact]
+    public async Task GetReportPagedAsync_EnrichesRowsWithLastVisitAndDepartment()
+    {
+        var patient = NewPersistedPatient();
+        var departmentId = Guid.NewGuid();
+        var visit = PatientVisit.Create(patient.Id, VisitType.OP, appointmentTypeId: null, createdBy: null);
+        visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, departmentId, Guid.NewGuid(), consultationTypeId: null), updatedBy: null);
+
+        var query = new PatientListQuery();
+        _repository.GetPagedAsync(query, Arg.Any<CancellationToken>()).Returns((new List<Patient> { patient }, 1));
+        _repository.GetLastVisitsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(patient.Id)), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, PatientVisit> { [patient.Id] = visit });
+
+        var result = await _sut.GetReportPagedAsync(query, CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle(r => r.Patient.Id == patient.Id && r.LastVisitAt == visit.CreatedAt && r.LastVisitDepartmentId == departmentId);
+    }
+
+    [Fact]
+    public async Task GetReportPagedAsync_WhenPatientHasNoVisits_LeavesLastVisitFieldsNull()
+    {
+        var patient = NewPersistedPatient();
+        var query = new PatientListQuery();
+        _repository.GetPagedAsync(query, Arg.Any<CancellationToken>()).Returns((new List<Patient> { patient }, 1));
+        _repository.GetLastVisitsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, PatientVisit>());
+
+        var result = await _sut.GetReportPagedAsync(query, CancellationToken.None);
+
+        result.Items.Should().ContainSingle(r => r.LastVisitAt == null && r.LastVisitDepartmentId == null);
+    }
+
+    [Fact]
+    public async Task GetReportSummaryAsync_ComputesReturningAsTotalMinusNew()
+    {
+        var query = new PatientListQuery { From = new DateTime(2026, 1, 1), To = new DateTime(2026, 1, 31) };
+        _repository.GetReportSummaryAsync(query, Arg.Any<CancellationToken>()).Returns((TotalPatients: 100, NewPatients: 30, TotalVisits: 140));
+
+        var result = await _sut.GetReportSummaryAsync(query, CancellationToken.None);
+
+        result.TotalPatients.Should().Be(100);
+        result.NewPatients.Should().Be(30);
+        result.ReturningPatients.Should().Be(70);
+        result.TotalVisits.Should().Be(140);
+    }
+
+    [Fact]
+    public async Task GetReportSummaryAsync_WithNoRegisteredPatients_ReturnsAllZeros()
+    {
+        var query = new PatientListQuery { From = new DateTime(2026, 1, 1), To = new DateTime(2026, 1, 31) };
+        _repository.GetReportSummaryAsync(query, Arg.Any<CancellationToken>()).Returns((TotalPatients: 0, NewPatients: 0, TotalVisits: 0));
+
+        var result = await _sut.GetReportSummaryAsync(query, CancellationToken.None);
+
+        result.TotalPatients.Should().Be(0);
+        result.NewPatients.Should().Be(0);
+        result.ReturningPatients.Should().Be(0);
+        result.TotalVisits.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetReportExportRowsAsync_PassesMaxRowsThroughAndMapsEveryRow()
+    {
+        var first = NewPersistedPatient();
+        var query = new PatientListQuery();
+        _repository.GetExportRowsAsync(query, 5000, Arg.Any<CancellationToken>()).Returns(new List<Patient> { first });
+        _repository.GetLastVisitsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, PatientVisit>());
+
+        var result = await _sut.GetReportExportRowsAsync(query, 5000, CancellationToken.None);
+
+        result.Should().ContainSingle(r => r.Patient.Id == first.Id);
+        await _repository.Received(1).GetExportRowsAsync(query, 5000, Arg.Any<CancellationToken>());
+    }
 }
