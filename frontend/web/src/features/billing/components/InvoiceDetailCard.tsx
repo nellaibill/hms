@@ -96,7 +96,7 @@ export function InvoiceDetailCard({
                     <span className="text-sm font-medium text-foreground">
                       {item.billingType} — {serviceLabel}
                     </span>
-                    <span className="text-xs text-muted-foreground">{consultantName}</span>
+                    {consultantName !== '—' && <span className="text-xs text-muted-foreground">{consultantName}</span>}
                     {item.discount > 0 && (
                       <span className="text-xs text-muted-foreground">
                         {formatCurrency(item.unitPrice)} − {formatCurrency(item.discount)} discount

@@ -185,7 +185,6 @@ function LaboratoryBillingRow({
   }, [itemType, itemId, services, packages, setValue]);
 
   const rowErrors = errors.laboratory?.[index];
-  const selectedPackage = itemType === 'package' ? packages.find((p) => p.id === itemId) : undefined;
   const amount = Math.max(quantity * charge - discount, 0);
 
   return (
@@ -242,9 +241,6 @@ function LaboratoryBillingRow({
               />
             )}
           />
-          <span className="text-xs text-muted-foreground">
-            {selectedPackage ? `${selectedPackage.items.length} test${selectedPackage.items.length === 1 ? '' : 's'} included` : '—'}
-          </span>
         </Field>
 
         <Field
