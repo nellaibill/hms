@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast-context';
 import {
+  AdvancePanel,
   BedStayHistoryPanel,
   ChargesPanel,
   DischargeForm,
@@ -282,6 +283,15 @@ export default function AdmissionViewPage() {
               </CardHeader>
               <CardContent>
                 <ChargesPanel admissionId={admission.id} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Advance / Deposit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AdvancePanel admissionId={admission.id} />
               </CardContent>
             </Card>
 
