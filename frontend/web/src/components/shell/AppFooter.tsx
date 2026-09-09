@@ -10,7 +10,7 @@ export function AppFooter() {
       <span>
         © {new Date().getFullYear()} {hospitalName}. All rights reserved.
       </span>
-      <span>HMS v0.1.0 · Application Shell (mock data)</span>
+      <span>HMS v0.1.0 </span>
     </footer>
   );
 }
