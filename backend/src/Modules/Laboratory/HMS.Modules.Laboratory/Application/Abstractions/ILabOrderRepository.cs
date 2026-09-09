@@ -29,6 +29,10 @@ internal interface ILabOrderRepository
 
     Task<IReadOnlyList<LabOrder>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 
+    /// <summary>For IPD's Laboratory tab — every order placed directly from a given admission
+    /// (LabOrder.CreateForAdmission), newest first, mirroring GetByPatientIdAsync.</summary>
+    Task<IReadOnlyList<LabOrder>> GetByAdmissionIdAsync(Guid admissionId, CancellationToken cancellationToken);
+
     /// <summary>Aggregated worklist dashboard counts for the current tenant — see
     /// Contracts/LabOrderContracts.cs's LabDashboardSummaryResponse for what each tile means.</summary>
     Task<LabDashboardSummaryResponse> GetDashboardCountsAsync(CancellationToken cancellationToken);

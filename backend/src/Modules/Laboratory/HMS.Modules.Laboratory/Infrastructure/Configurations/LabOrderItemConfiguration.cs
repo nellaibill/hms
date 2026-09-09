@@ -16,7 +16,9 @@ internal class LabOrderItemConfiguration : IEntityTypeConfiguration<LabOrderItem
         builder.Property(i => i.LabOrderId).HasColumnName("lab_order_id").IsRequired();
         builder.Property(i => i.ServiceId).HasColumnName("service_id").IsRequired();
         builder.Property(i => i.PackageId).HasColumnName("package_id");
-        builder.Property(i => i.InvoiceLineItemId).HasColumnName("invoice_line_item_id").IsRequired();
+        // Nullable: null for items on an admission-originated order (no invoice line to trace
+        // back to) — see LabOrderItem's own doc comment.
+        builder.Property(i => i.InvoiceLineItemId).HasColumnName("invoice_line_item_id");
         builder.Property(i => i.TestName).HasColumnName("test_name").HasMaxLength(200).IsRequired();
         builder.Property(i => i.DepartmentId).HasColumnName("department_id");
         builder.Property(i => i.ConsultantId).HasColumnName("consultant_id");

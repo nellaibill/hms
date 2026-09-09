@@ -14,11 +14,14 @@ internal class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
         builder.Property(o => o.Id).HasColumnName("id").ValueGeneratedNever();
 
         builder.Property(o => o.LabOrderNumber).HasColumnName("lab_order_number").HasMaxLength(30).IsRequired();
-        builder.Property(o => o.InvoiceId).HasColumnName("invoice_id").IsRequired();
+        // Nullable: an admission-originated order (CreateForAdmission) has no invoice/visit —
+        // exactly one of InvoiceId/AdmissionId is set, never both/neither.
+        builder.Property(o => o.InvoiceId).HasColumnName("invoice_id");
         builder.Property(o => o.PatientId).HasColumnName("patient_id").IsRequired();
         builder.Property(o => o.PatientName).HasColumnName("patient_name").HasMaxLength(200).IsRequired();
         builder.Property(o => o.PatientUhid).HasColumnName("patient_uhid").HasMaxLength(30).IsRequired();
-        builder.Property(o => o.VisitId).HasColumnName("visit_id").IsRequired();
+        builder.Property(o => o.VisitId).HasColumnName("visit_id");
+        builder.Property(o => o.AdmissionId).HasColumnName("admission_id");
         builder.Property(o => o.Source).HasColumnName("source").HasMaxLength(30);
         builder.Property(o => o.Priority).HasColumnName("priority").HasConversion<string>().HasMaxLength(20).IsRequired();
 
@@ -48,9 +51,13 @@ internal class LabOrderConfiguration : IEntityTypeConfiguration<LabOrder>
         // One LabOrder per Invoice, enforced at the database level — see
         // LabOrderService.CreateFromInvoiceAsync's own idempotency check, which this
         // backstops against a concurrent retry racing past the application-level check.
-        builder.HasIndex(o => o.InvoiceId).IsUnique().HasDatabaseName("ux_lab_orders_invoice_id").HasFilter("is_deleted = false");
+        // Filtered on InvoiceId IS NOT NULL too (not just is_deleted) so multiple
+        // admission-originated orders (InvoiceId always null) don't collide against this
+        // uniqueness constraint.
+        builder.HasIndex(o => o.InvoiceId).IsUnique().HasDatabaseName("ux_lab_orders_invoice_id").HasFilter("invoice_id IS NOT NULL AND is_deleted = false");
 
         builder.HasIndex(o => o.PatientId).HasDatabaseName("ix_lab_orders_patient_id");
+        builder.HasIndex(o => o.AdmissionId).HasDatabaseName("ix_lab_orders_admission_id");
         builder.HasIndex(o => o.CreatedAt).HasDatabaseName("ix_lab_orders_created_at");
 
         // LabOrder owns its items via the private _items backing field (see Domain/LabOrder.cs's
