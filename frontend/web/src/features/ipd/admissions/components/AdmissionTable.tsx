@@ -1,6 +1,7 @@
 import type { Admission } from '@hms/shared';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { DownloadDischargeSummaryButton } from './DownloadDischargeSummaryButton';
 
 interface AdmissionTableProps {
   admissions: Admission[];
@@ -20,6 +21,7 @@ export function AdmissionTable({ admissions }: AdmissionTableProps) {
             <th className="px-4 py-2.5">Consultant</th>
             <th className="px-4 py-2.5">Admission Date</th>
             <th className="px-4 py-2.5">Status</th>
+            <th className="px-4 py-2.5">Discharge Report</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -45,6 +47,9 @@ export function AdmissionTable({ admissions }: AdmissionTableProps) {
               <td className="px-4 py-3 text-sm text-foreground">{new Date(admission.admissionDateTime).toLocaleString('en-IN')}</td>
               <td className="px-4 py-3">
                 <Badge variant={admission.status === 'Admitted' ? 'success' : 'secondary'}>{admission.status}</Badge>
+              </td>
+              <td className="px-4 py-3">
+                {admission.status === 'Discharged' && <DownloadDischargeSummaryButton admission={admission} />}
               </td>
             </tr>
           ))}
