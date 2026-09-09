@@ -1,10 +1,12 @@
 import { API_ROUTES } from '../../constants';
 import type {
   Admission,
+  AdmissionAdvance,
   AdmissionBedStay,
   AdmissionCharge,
   AdmissionListQuery,
   BedTransferHistory,
+  CreateAdmissionAdvanceRequest,
   CreateAdmissionChargeRequest,
   CancelDoctorOrderRequest,
   CreateAdmissionRequest,
@@ -104,6 +106,16 @@ export class AdmissionsApi {
 
   async postCharge(admissionId: string, request: CreateAdmissionChargeRequest): Promise<AdmissionCharge> {
     const response = await this.client.post<AdmissionCharge>(API_ROUTES.ipd.admissions.charges(admissionId), request);
+    return response.data;
+  }
+
+  async getAdvances(admissionId: string): Promise<AdmissionAdvance[]> {
+    const response = await this.client.get<AdmissionAdvance[]>(API_ROUTES.ipd.admissions.advances(admissionId));
+    return response.data;
+  }
+
+  async postAdvance(admissionId: string, request: CreateAdmissionAdvanceRequest): Promise<AdmissionAdvance> {
+    const response = await this.client.post<AdmissionAdvance>(API_ROUTES.ipd.admissions.advances(admissionId), request);
     return response.data;
   }
 

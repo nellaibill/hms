@@ -1,5 +1,6 @@
 export * from './components/AdmissionForm';
 export * from './components/AdmissionTable';
+export * from './components/AdvancePanel';
 export * from './components/BedStayHistoryPanel';
 export * from './components/ChargesPanel';
 export * from './components/DischargeForm';
@@ -14,6 +15,7 @@ export * from './components/ProgressNotesPanel';
 export * from './components/TransferBedDialog';
 export * from './components/TransferHistoryPanel';
 export * from './components/VitalsPanel';
+export * from './hooks/useAdmissionAdvances';
 export * from './hooks/useAdmissionCharges';
 export * from './hooks/useAdmissionMutations';
 export * from './hooks/useAdmissionQuery';

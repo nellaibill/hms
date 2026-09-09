@@ -112,3 +112,15 @@ public enum MedicationOrderStatus
     Active,
     Discontinued,
 }
+
+/// <summary>How an AdmissionAdvance was collected — a small local mirror of
+/// HMS.Modules.Billing.Contracts.PaymentMethod's four values (kept as IPD's own type rather
+/// than a cross-module reference in IPD's public contracts, same as every other small fixed
+/// vocabulary in this module), not admin-editable reference data. See ADR-067.</summary>
+public enum PaymentMethod
+{
+    Cash,
+    Card,
+    Upi,
+    BankTransfer,
+}

@@ -37,6 +37,57 @@ _To be documented._
 
 ## Decisions
 
+### ADR-067: IPD Advance/Deposit — tracked as its own ledger, not reconciled into the Invoice
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Item 22 of the original 30-item IPD expansion proposal: record money the patient's family
+deposits during the stay (typically at admission, sometimes topped up later), and show staff
+how it offsets the eventual Final Bill (ADR-066). Before designing this, read
+`InvoiceService.CreateAsync`'s actual payment-application code (not just its contracts) to
+check whether an advance could be applied as a partial payment against the Invoice
+`IPDBillingService.GenerateFinalBillAsync` creates at discharge.
+
+**Decision**
+1. **Confirmed a hard constraint in `HMS.Modules.Billing`'s payment model: it is genuinely
+   all-or-nothing per invoice, with no partial-payment or credit/refund concept anywhere.**
+   `CreateAsync`'s `Payments` field requires `sum(Payments) >= NetAmount` or the whole call
+   fails (`BillingErrorCodes.PaymentAmountMismatch`) — there is no code path that marks some
+   line items Paid and leaves others Pending from a partial payment pool. `Payment.
+   InvoiceLineItemId` is mandatory (non-nullable), so a payment can't even be recorded against
+   an invoice that doesn't exist yet. `Invoice.Void`'s own doc comment independently confirms
+   overpayment/refund is a genuine, unbuilt gap ("reversing real collected money needs a
+   refund process, and no refund feature exists yet").
+2. **Therefore: `AdmissionAdvance` is tracked as its own append-only IPD ledger
+   (mirroring `AdmissionCharge`'s exact shape/pattern), with no attempt to auto-apply it as a
+   Billing payment.** `IPDBillingService.GenerateFinalBillAsync` and `HMS.Modules.Billing` are
+   completely untouched by this slice. The frontend instead computes a display-only "Balance
+   due" (`chargesTotal - advanceTotal`, shown as "Refund due (not processed by this system
+   yet)" when negative) on `FinalBillCard`, so staff know what to actually collect without the
+   system pretending to reconcile money it structurally can't.
+3. **Gated by `finance-billing.create`/`.view`, not `clinical-care.*`** — same reasoning as
+   `IPDBillingController` (ADR-066): this records real money received, so it sits behind
+   Billing's own permission rather than IPD's clinical ones.
+4. **`Method` is a small local `IPD.Contracts.PaymentMethod` enum** (Cash/Card/Upi/
+   BankTransfer) mirroring `HMS.Modules.Billing.Contracts.PaymentMethod`'s values, rather than
+   a cross-module type reference in IPD's own public contracts — consistent with how every
+   other small fixed vocabulary in this module (ChargeType, DoctorOrderType, etc.) is IPD's
+   own self-contained type even when conceptually similar to something in another module.
+
+**Consequences**
+- Real partial-payment/credit support in `HMS.Modules.Billing` remains an explicit, disclosed
+  gap — until it exists (or a hand-rolled workaround is built later), reconciling an advance
+  against a Final Bill is a manual, outside-the-system step for accounts staff, informed by
+  the displayed Balance-due figure.
+- New `AdmissionAdvanceServiceTests`/`AdmissionAdvanceTests` (domain guard on non-positive
+  amounts). Full `HMS.UnitTests`/`HMS.ArchitectureTests` suites green;
+  `IPDModuleBoundaryTests` allowlist extended for `IAdmissionAdvanceService`.
+- `admissions` schema gains a new `admission_advances` table — additive, no changes to any
+  existing table.
+
+---
+
 ### ADR-066: IPD Final Billing — a new generic BillingType, VisitId falls back to PatientId
 **Date:** 2026-09-09
 **Status:** Accepted

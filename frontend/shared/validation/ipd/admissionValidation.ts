@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PAYMENT_METHODS } from '../../enums/billing';
 import { CHARGE_TYPES, DISCHARGE_TYPES, DOCTOR_ORDER_TYPES, IPD_ADMISSION_TYPES, NURSING_SHIFTS } from '../../enums/ipd';
 
 // datetime-local inputs let a user type an out-of-range year (e.g. "222222") that the
@@ -63,6 +64,16 @@ export const createAdmissionChargeSchema = z.object({
 });
 
 export type AdmissionChargeFormValues = z.infer<typeof createAdmissionChargeSchema>;
+
+/** Mirrors HMS.Modules.IPD.Application.Validators.CreateAdmissionAdvanceRequestValidator. */
+export const createAdmissionAdvanceSchema = z.object({
+  amount: z.coerce.number().positive('Amount must be greater than 0'),
+  method: z.enum(PAYMENT_METHODS, { message: 'Payment method is required' }),
+  referenceNumber: z.string().trim().max(100).optional().or(z.literal('')),
+  remarks: z.string().trim().max(500).optional().or(z.literal('')),
+});
+
+export type AdmissionAdvanceFormValues = z.infer<typeof createAdmissionAdvanceSchema>;
 
 // Helper for an optional numeric input: an empty string (unfilled field) becomes undefined
 // rather than being coerced to 0 — z.coerce.number() turns "" into 0 via JS's Number(""),
