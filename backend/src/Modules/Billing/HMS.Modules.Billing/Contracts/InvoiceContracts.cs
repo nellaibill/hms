@@ -95,6 +95,12 @@ public record InvoiceLineItemResponse
     public BillingType BillingType { get; init; }
     public string? DepartmentId { get; init; }
     public string? ConsultantId { get; init; }
+
+    /// <summary>Same value as <see cref="ConsultantId"/> at creation, but survives payment
+    /// (unlike <see cref="ConsultantId"/>, which clears once paid — ADR-048) — for
+    /// per-consultant revenue reporting.</summary>
+    public string? BilledConsultantId { get; init; }
+
     public string? ServiceId { get; init; }
     public Guid? PackageId { get; init; }
     public int Quantity { get; init; }

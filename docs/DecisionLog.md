@@ -37,6 +37,60 @@ _To be documented._
 
 ## Decisions
 
+### ADR-069: Accounts & Finance reports overhaul — layout fix + Laboratory/Radiology/Consultant reports
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+User asked for a thorough pass over Accounts & Finance reporting: the Profit Report's layout
+looked broken, and they wanted more statistical reports (Laboratory, Radiology, a "Hospital
+Profit" report, a "Consultant Profit" report), "as much statistical data as possible."
+
+Research before implementing found:
+- The "not aligned" complaint was `ProfitReportPage.tsx`'s "Profit by Service" (uncapped, can
+  be dozens of rows) sitting in a 2-column grid next to "Profit by Billing Type" (~5 rows) —
+  CSS grid stretches both to equal height, so the shorter card got a large empty gap, and the
+  uncapped list dominated the page.
+- Only two reports existed (`Income & Expense`, `Profit`), both entirely frontend-computed from
+  `useInvoicesForReportQuery()` — no backend reports module. Cost data only exists for
+  `BillingType`s with a real Masters catalog price (Consultation/Radiology/Laboratory non-
+  package/Procedure); `Pharmacy`/`InpatientCharge` (all IPD-originated revenue) show `—`.
+- A "Consultant Profit" report needs consultant attribution to survive payment — it doesn't
+  today. `InvoiceLineItem.MarkPaid()` deliberately clears `ConsultantId` (ADR-048), whose own
+  doc comment already flagged this exact future need.
+- No OT/Surgery module or data exists anywhere — a "Surgical report" has nothing to report on.
+
+**Decision**
+1. `CategoryBreakdownCard` gets an optional `maxRows` prop (rows are already sorted by amount
+   descending everywhere it's used) — capped both breakdown cards on the Profit Report at 8
+   rows, fixing the page-domination and height-imbalance complaints in one change, no new
+   scroll UI needed.
+2. Added `InvoiceLineItem.BilledConsultantId` — same value as `ConsultantId` at creation, never
+   cleared by `MarkPaid()` — a second, reporting-only field, so ADR-048's "no longer currently
+   assigned" behavior for `ConsultantId` itself is completely unchanged.
+3. Added three new reports: **Laboratory** and **Radiology** (`CategoryProfitReportPage`, one
+   shared component parameterized by `BillingType`, reusing the exact Hospital-Profit-Report
+   pipeline filtered to one type — OPD-billed data only, disclosed in the subtitle, since IPD-
+   originated lab/radiology charges have no resolvable catalog reference to cost yet, ADR-066)
+   and **Consultant** (`ConsultantReportPage`, grouping Consultation-type lines by
+   `billedConsultantId` — the only `BillingType` carrying consultant attribution at all, also
+   disclosed in the subtitle).
+4. Renamed "Profit Report" to "Hospital Profit Report" to match the terminology used when
+   asking for these reports — same page/route, label only.
+5. **Surgical report dropped from this round entirely** — no data exists to report on; revisit
+   once/if an OT/Surgery module is built as its own initiative.
+
+**Consequences**
+- `ReportNavTabs` now lists five reports instead of two, and wraps instead of clipping.
+- A Consultation-type line item billed before this change has no `billedConsultantId` and is
+  simply excluded from the Consultant Profit Report rather than grouped under a misleading
+  "Unknown" bucket.
+- Ships alongside, but on a separate branch/PR from, a companion fix for a consultation
+  double-billing gap found during this same review — the user asked for that one to ship
+  first, independently, on its own branch.
+
+---
+
 ### ADR-068: Consultation double-billing — save-time warning, not a hard block
 **Date:** 2026-09-09
 **Status:** Accepted

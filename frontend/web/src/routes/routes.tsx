@@ -44,6 +44,9 @@ const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
 const ProfitReportPage = lazy(() => import('../pages/finance/ProfitReportPage'));
+const LaboratoryReportPage = lazy(() => import('../pages/finance/LaboratoryReportPage'));
+const RadiologyReportPage = lazy(() => import('../pages/finance/RadiologyReportPage'));
+const ConsultantReportPage = lazy(() => import('../pages/finance/ConsultantReportPage'));
 const HrHubPage = lazy(() => import('../pages/hr/HrHubPage'));
 const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
 const ShiftCreatePage = lazy(() => import('../pages/hr/ShiftCreatePage'));
@@ -243,13 +246,13 @@ const productRoutes = [
   },
 ];
 
-// Finance & Billing (UI-only, mock data — no backend module yet, mirrors Roles Management).
-// Route-gated via RequirePermissionRoute (mirrors hrRoutes/ipdRoutes' reasoning below), using
-// the nav leaf's own permission ('finance-billing', config/navigation.ts). Includes the
-// landing ledger ('finance/accounts') itself, unlike hrRoutes/ipdRoutes — that path used to be
-// wired through specialPages/moduleRoutes with no guard at all, so it's defined here instead
-// (see routeGatedLeafPaths above) rather than left exposed the way HR's/IPD's own hub pages
-// still are.
+// Finance & Billing — backed by the real HMS.Modules.Billing module (mock-data era is over;
+// this comment used to say otherwise). Route-gated via RequirePermissionRoute (mirrors
+// hrRoutes/ipdRoutes' reasoning below), using the nav leaf's own permission ('finance-billing',
+// config/navigation.ts). Includes the landing ledger ('finance/accounts') itself, unlike
+// hrRoutes/ipdRoutes — that path used to be wired through specialPages/moduleRoutes with no
+// guard at all, so it's defined here instead (see routeGatedLeafPaths above) rather than left
+// exposed the way HR's/IPD's own hub pages still are.
 const financeRoutes = [
   {
     element: <RequirePermissionRoute permission="finance-billing.view" />,
@@ -258,6 +261,9 @@ const financeRoutes = [
       { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
       { path: 'finance/accounts/reports', element: withSuspense(<IncomeExpenseReportPage />) },
       { path: 'finance/accounts/reports/profit', element: withSuspense(<ProfitReportPage />) },
+      { path: 'finance/accounts/reports/laboratory', element: withSuspense(<LaboratoryReportPage />) },
+      { path: 'finance/accounts/reports/radiology', element: withSuspense(<RadiologyReportPage />) },
+      { path: 'finance/accounts/reports/consultant', element: withSuspense(<ConsultantReportPage />) },
       { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
     ],
   },

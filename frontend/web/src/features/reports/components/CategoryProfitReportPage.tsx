@@ -1,24 +1,20 @@
-import { ArrowLeft, Loader2, TrendingUp } from 'lucide-react';
+import type { ComponentType } from 'react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useInvoicesForReportQuery } from '@/features/billing';
+import { useInvoicesForReportQuery, type BillingType } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
-import {
-  CategoryBreakdownCard,
-  getProfitByBillingType,
-  getProfitByTest,
-  getProfitRows,
-  getProfitTotals,
-  Pagination,
-  paginate,
-  ProfitExportButtons,
-  ProfitSummaryCards,
-  ProfitTable,
-  ReportDateRangeFilter,
-  ReportNavTabs,
-} from '@/features/reports';
-import type { ReportDateRange } from '@/features/reports';
+import { getProfitByTest, getProfitRows, getProfitTotals } from '../profitReport';
+import { Pagination } from './Pagination';
+import { paginate } from '../pagination';
+import { ProfitExportButtons } from './ProfitExportButtons';
+import { ProfitSummaryCards } from './ProfitSummaryCards';
+import { ProfitTable } from './ProfitTable';
+import { CategoryBreakdownCard } from './CategoryBreakdownCard';
+import { ReportDateRangeFilter } from './ReportDateRangeFilter';
+import { ReportNavTabs } from './ReportNavTabs';
+import type { ReportDateRange } from '../types';
 
 const ROWS_PER_PAGE = 10;
 
@@ -33,26 +29,31 @@ function defaultRange(): ReportDateRange {
   return { from: toDateInputValue(from), to: toDateInputValue(today) };
 }
 
-/** Finance & Billing's Profit Report — margin per billed service line, computed live from
- * each service's current CostPrice against what was actually billed (see
- * features/reports/profitReport.ts's own doc comments for why this is a live lookup rather
- * than a historical snapshot, and why Pharmacy/uncosted services show "—" instead of a
- * fabricated figure). Primes every reference cache describeBillingItem/resolveItemCostPrice
- * read from, the same set InvoiceDetailCard primes for an equivalent reason: this page can be
- * opened directly, without ever visiting a live billing form first. */
-export default function ProfitReportPage() {
+interface CategoryProfitReportPageProps {
+  billingType: BillingType;
+  title: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+}
+
+/**
+ * Shared page for a single-`BillingType` profit breakdown (Laboratory, Radiology) — everything
+ * here is the exact same data pipeline `ProfitReportPage` (Hospital Profit Report) uses, just
+ * pre-filtered to one billing type, so the two near-identical reports don't duplicate the whole
+ * page. Deliberately OPD-billed only, same scope Hospital Profit Report has: IPD-originated
+ * lab/radiology charges are folded into generic `InpatientCharge` lines (ADR-066) with no
+ * catalog reference to resolve a cost from — extending this would mean reworking IPD's already-
+ * shipped Final Billing charge-posting, out of scope for this pass (their revenue still counts
+ * correctly in Hospital Profit Report's totals, just not broken out per test here).
+ */
+export function CategoryProfitReportPage({ billingType, title, description, icon: Icon }: CategoryProfitReportPageProps) {
   const [range, setRange] = useState<ReportDateRange>(defaultRange);
   const [page, setPage] = useState(1);
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
 
-  // Each hook below primes a synchronous, module-level reference cache (Masters' registry.ts /
-  // diagnostics' referenceCache.ts) that resolveItemCostPrice/describeBillingItem read
-  // directly — mutating that cache doesn't itself trigger a re-render. Capturing each hook's
-  // `data` and listing it in the rows useMemo's dependency array below is what makes `rows`
-  // actually recompute once priming resolves; without it, this page would keep showing its
-  // first (cache-still-empty) render's service labels/costs forever, since `billings` and
-  // `range` — the memo's only other inputs — never themselves change when priming finishes.
+  // Same reference-cache priming ProfitReportPage does — see that file's own comment for why
+  // this is required even though the hooks' `data` looks unused at a glance.
   const { data: diagnosticTestOptions } = useMasterOptionsQuery('diagnosticTest');
   const { data: departmentOptions } = useMasterOptionsQuery('department');
   const { data: consultantOptions } = useMasterOptionsQuery('consultant');
@@ -61,13 +62,12 @@ export default function ProfitReportPage() {
   const { services: laboratoryServices } = useDiagnosticServices('Laboratory');
   usePrimeDiagnosticPackageCache();
 
-  const rows = useMemo(
-    () => getProfitRows(billings ?? [], range),
-    [billings, range, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices],
-  );
+  const rows = useMemo(() => {
+    const allRows = getProfitRows(billings ?? [], range);
+    return allRows.filter((row) => row.billingType === billingType);
+  }, [billings, range, billingType, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices]);
   const totals = useMemo(() => getProfitTotals(rows), [rows]);
   const byTest = useMemo(() => getProfitByTest(rows), [rows]);
-  const byBillingType = useMemo(() => getProfitByBillingType(rows), [rows]);
 
   const pagedRows = paginate(rows, page, ROWS_PER_PAGE);
 
@@ -88,13 +88,11 @@ export default function ProfitReportPage() {
       <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <TrendingUp className="h-5 w-5" />
+            <Icon className="h-5 w-5" />
           </span>
-          <h1 className="text-xl font-semibold tracking-tight">Hospital Profit Report</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Margin per billed service — revenue against each service's running cost for the selected period.
-        </p>
+        <p className="max-w-2xl text-sm text-page-banner-foreground/85">{description} OPD-billed data only.</p>
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
@@ -108,10 +106,7 @@ export default function ProfitReportPage() {
 
           <ProfitSummaryCards totals={totals} />
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CategoryBreakdownCard title="Profit by Service" rows={byTest} tone="success" maxRows={8} />
-            <CategoryBreakdownCard title="Profit by Billing Type" rows={byBillingType} tone="success" maxRows={8} />
-          </div>
+          <CategoryBreakdownCard title={`Profit by ${billingType} Test`} rows={byTest} tone="success" maxRows={10} />
 
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-foreground">

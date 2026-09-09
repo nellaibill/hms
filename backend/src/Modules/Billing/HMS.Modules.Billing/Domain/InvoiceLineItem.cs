@@ -22,6 +22,13 @@ internal class InvoiceLineItem : Entity
     /// unified with it in this iteration — see docs/DecisionLog.md's Billing ADR.</summary>
     public string? DepartmentId { get; private set; }
     public string? ConsultantId { get; private set; }
+
+    /// <summary>Same value as <see cref="ConsultantId"/> at creation, but never cleared by
+    /// <see cref="MarkPaid"/> — a separate, reporting-only field so a Consultant Profit report
+    /// can still attribute revenue after payment, without reversing ADR-048's deliberate "no
+    /// longer currently assigned" behavior for <see cref="ConsultantId"/> itself.</summary>
+    public string? BilledConsultantId { get; private set; }
+
     public string? ServiceId { get; private set; }
 
     /// <summary>App-level reference into Masters' DiagnosticPackage — set for a package line,
@@ -71,6 +78,7 @@ internal class InvoiceLineItem : Entity
         BillingType = billingType;
         DepartmentId = string.IsNullOrWhiteSpace(departmentId) ? null : departmentId.Trim();
         ConsultantId = string.IsNullOrWhiteSpace(consultantId) ? null : consultantId.Trim();
+        BilledConsultantId = ConsultantId;
         ServiceId = serviceId;
         PackageId = packageId;
         Quantity = quantity;
@@ -116,13 +124,9 @@ internal class InvoiceLineItem : Entity
     /// Payment record — this only flips the denormalized status the ledger reads. Also
     /// clears ConsultantId: once a line item is paid, it's a settled transaction record, not
     /// an active assignment — a consultant shouldn't still read as "currently assigned" to a
-    /// patient's paid bill (docs/DecisionLog.md's Billing ADR on this fix). This is a genuine,
-    /// permanent loss of that attribution — Payment (see Domain/Payment.cs) doesn't carry a
-    /// ConsultantId either, so once cleared there's no other record of which consultant this
-    /// paid line item was originally billed under. Acceptable per the fix's own framing
-    /// ("remove this feature"), but worth knowing if a future reporting need ever wants
-    /// per-consultant paid-revenue figures — that would need a different field to survive
-    /// payment, not reuse of this one.</summary>
+    /// patient's paid bill (ADR-048 in docs/DecisionLog.md). BilledConsultantId deliberately
+    /// does NOT get cleared here — see its own doc comment — so per-consultant reporting
+    /// still works after payment even though the "currently assigned" field no longer does.</summary>
     public void MarkPaid(Guid? updatedBy)
     {
         PaymentStatus = PaymentStatus.Paid;

@@ -36,6 +36,7 @@ function fromItemDto(item: InvoiceResponseDto['items'][number]): BillingItem {
     billingType: item.billingType,
     departmentId: item.departmentId ?? undefined,
     consultantId: item.consultantId ?? undefined,
+    billedConsultantId: item.billedConsultantId ?? undefined,
     serviceId: item.serviceId ?? undefined,
     packageId: item.packageId ?? undefined,
     quantity: item.quantity,

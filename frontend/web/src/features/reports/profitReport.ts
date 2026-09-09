@@ -21,6 +21,11 @@ export interface ProfitReportRow {
   patientName: string;
   billingType: BillingType;
   serviceLabel: string;
+  /** Only ever set on Consultation-type rows — the only BillingType carrying consultant
+   * attribution at all. Sourced from `billedConsultantId`, not `consultantId` (see
+   * InvoiceLineItemResponse.billedConsultantId's own doc comment), so this stays populated
+   * even after the line item is paid. */
+  billedConsultantId?: string;
   quantity: number;
   /** Already net of discount — same figure the invoice itself bills. */
   revenue: number;
@@ -61,6 +66,7 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
         patientName: billing.patientName,
         billingType: item.billingType as BillingType,
         serviceLabel,
+        billedConsultantId: item.billedConsultantId,
         quantity: item.quantity,
         revenue: item.total,
         costPerUnit,
@@ -121,4 +127,45 @@ export function getProfitByBillingType(rows: ProfitReportRow[]): BreakdownRow[] 
     totals.set(row.billingType, (totals.get(row.billingType) ?? 0) + row.profit);
   }
   return Array.from(totals, ([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
+}
+
+export interface ConsultantProfitRow {
+  consultantId: string;
+  revenue: number;
+  itemCount: number;
+  /** null when none of this consultant's rows have a known cost yet (see ProfitReportRow.cost) —
+   * kept alongside revenue rather than collapsed into it, same "unknown isn't zero" reasoning as
+   * ProfitTotals. */
+  cost: number | null;
+  profit: number | null;
+  marginPercent: number | null;
+}
+
+/** Revenue/cost/profit per consultant — Consultation-type rows only, the only BillingType
+ * carrying consultant attribution at all. Grouped by `billedConsultantId`, not `consultantId`,
+ * so a paid consultation still counts (see ProfitReportRow.billedConsultantId's own doc
+ * comment). A Consultation row billed before this field existed has no billedConsultantId and
+ * is simply excluded rather than grouped under a misleading "Unknown" bucket. */
+export function getProfitByConsultant(rows: ProfitReportRow[]): ConsultantProfitRow[] {
+  const totals = new Map<string, { revenue: number; cost: number; hasCost: boolean; profit: number; itemCount: number }>();
+  for (const row of rows) {
+    if (row.billingType !== 'Consultation' || !row.billedConsultantId) continue;
+    const entry = totals.get(row.billedConsultantId) ?? { revenue: 0, cost: 0, hasCost: false, profit: 0, itemCount: 0 };
+    entry.revenue += row.revenue;
+    entry.itemCount += 1;
+    if (row.cost !== null) {
+      entry.cost += row.cost;
+      entry.profit += row.profit ?? 0;
+      entry.hasCost = true;
+    }
+    totals.set(row.billedConsultantId, entry);
+  }
+  return Array.from(totals, ([consultantId, t]) => ({
+    consultantId,
+    revenue: t.revenue,
+    itemCount: t.itemCount,
+    cost: t.hasCost ? t.cost : null,
+    profit: t.hasCost ? t.profit : null,
+    marginPercent: t.hasCost && t.revenue > 0 ? Math.round((t.profit / t.revenue) * 100) : null,
+  })).sort((a, b) => b.revenue - a.revenue);
 }

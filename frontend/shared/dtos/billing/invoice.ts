@@ -55,6 +55,9 @@ export interface InvoiceLineItemResponse {
   billingType: BillingType;
   departmentId?: string | null;
   consultantId?: string | null;
+  /** Same value as `consultantId` at creation, but survives payment (unlike `consultantId`,
+   * which the backend clears once paid) — for per-consultant revenue reporting. */
+  billedConsultantId?: string | null;
   serviceId?: string | null;
   packageId?: string | null;
   quantity: number;

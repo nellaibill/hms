@@ -31,6 +31,9 @@ export interface BillingItem {
   billingType: BillingType | 'Pharmacy' | 'InpatientCharge';
   departmentId?: string;
   consultantId?: string;
+  /** Same value as `consultantId` at creation, but survives payment — see
+   * InvoiceLineItemResponse.billedConsultantId's own doc comment. */
+  billedConsultantId?: string;
   serviceId?: string;
   /** Set for a Laboratory line that represents a DiagnosticPackage rather than a single
    * DiagnosticService — mutually exclusive with serviceId (never both set on one row). See

@@ -17,6 +17,7 @@ internal class InvoiceLineItemConfiguration : IEntityTypeConfiguration<InvoiceLi
         builder.Property(li => li.BillingType).HasColumnName("billing_type").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(li => li.DepartmentId).HasColumnName("department_id").HasMaxLength(100);
         builder.Property(li => li.ConsultantId).HasColumnName("consultant_id").HasMaxLength(100);
+        builder.Property(li => li.BilledConsultantId).HasColumnName("billed_consultant_id").HasMaxLength(100);
         builder.Property(li => li.ServiceId).HasColumnName("service_id").HasMaxLength(100);
         builder.Property(li => li.PackageId).HasColumnName("package_id");
         builder.Property(li => li.Quantity).HasColumnName("quantity").IsRequired();
