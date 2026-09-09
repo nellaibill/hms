@@ -65,13 +65,16 @@ export const createAdmissionChargeSchema = z.object({
 export type AdmissionChargeFormValues = z.infer<typeof createAdmissionChargeSchema>;
 
 // Helper for an optional numeric input: an empty string (unfilled field) becomes undefined
-// rather than NaN, since every vitals field is optional.
+// rather than being coerced to 0 — z.coerce.number() turns "" into 0 via JS's Number(""),
+// so a plain `.optional().or(z.literal(''))` union only falls through to undefined when 0
+// itself fails the range check (e.g. Temperature), silently keeping 0 for every field whose
+// range includes 0 (Pulse, SpO2, Weight, Pain, Glucose, etc.) — preprocessing "" to undefined
+// *before* coercion avoids that entirely, for every field regardless of its range.
 function optionalNumber(min: number, max: number, message: string) {
-  return z.coerce
-    .number()
-    .refine((val) => val >= min && val <= max, message)
-    .optional()
-    .or(z.literal('').transform(() => undefined));
+  return z.preprocess(
+    (val) => (val === '' || val === undefined || val === null ? undefined : val),
+    z.coerce.number().refine((val) => val >= min && val <= max, message).optional(),
+  );
 }
 
 /** Mirrors HMS.Modules.IPD.Application.Validators.CreateVitalsReadingRequestValidator. */
