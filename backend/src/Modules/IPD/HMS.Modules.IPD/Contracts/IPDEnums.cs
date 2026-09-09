@@ -49,6 +49,12 @@ public enum ChargeType
     AdmissionCharge,
     BedCharge,
     NursingCharge,
+
+    /// <summary>Auto-posted by IPDLabOrderService when a ward doctor places a lab order
+    /// directly on an admission (see Application/IPDLabOrderService.cs) — the price is
+    /// resolved from Masters at order-placement time; Remarks carries the test/package name
+    /// since AdmissionCharge has no FK back to the LabOrder/LabOrderItem that generated it.</summary>
+    LabCharge,
 }
 
 /// <summary>Named `NursingShift` (not `Shift`) to avoid any confusion with HR's unrelated
