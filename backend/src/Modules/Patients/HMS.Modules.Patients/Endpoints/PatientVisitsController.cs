@@ -87,6 +87,29 @@ public class PatientVisitsController : ControllerBase
             : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Lists visits across every patient, paged and optionally date-range-filtered on
+    /// CreatedAt — for Patient Reports. A separate, absolute route (not nested under a
+    /// patientId) since this is deliberately cross-patient, unlike every other action on this
+    /// controller.</summary>
+    /// <response code="200">A page of visits.</response>
+    [RequirePermission("patient-management.view")]
+    [HttpGet]
+    [Route("/api/v1/patient-visits")]
+    public async Task<IActionResult> GetAll([FromQuery] PatientVisitListQuery query, CancellationToken cancellationToken)
+    {
+        var paged = await _visitService.GetAllAsync(query, cancellationToken);
+
+        var meta = new PaginationMeta
+        {
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount,
+            TotalPages = paged.TotalPages,
+        };
+
+        return Ok(new ApiResponse<IReadOnlyList<PatientVisitResponse>> { Data = paged.Items, Meta = meta });
+    }
+
     private static ApiResponse<PatientVisitResponse> Envelope(PatientVisitResponse? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)

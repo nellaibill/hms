@@ -23,4 +23,20 @@ public class PatientListQuery : PagedRequest
     /// (patients.patient_visits) created or last updated today (UTC) — used by OPD Billing's
     /// "pick a patient" screen to surface today's visits before any search is entered.</summary>
     public bool? RegisteredToday { get; set; }
+
+    /// <summary>Filters to patients who were either registered, or had at least one visit,
+    /// within this inclusive range — an "activity" scope, not pure registration date, so
+    /// Patient Reports' New-vs-Returning split is meaningful (see PatientReportSummaryResponse's
+    /// own doc comment). Added for Patient Reports; the plain Patients list/Enquiry page never
+    /// sends these, so existing callers are unaffected.</summary>
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+
+    public Gender? Gender { get; set; }
+    public BloodGroup? BloodGroup { get; set; }
+
+    /// <summary>Narrows to patients with at least one visit whose consultation lines name this
+    /// department — Department lives on PatientVisitConsultation, not Patient itself, so this
+    /// is an EXISTS filter, not a direct column match.</summary>
+    public Guid? DepartmentId { get; set; }
 }

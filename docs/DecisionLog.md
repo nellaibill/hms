@@ -37,6 +37,116 @@ _To be documented._
 
 ## Decisions
 
+### ADR-071: Patient Reports rebuilt as a filterable table MVP, replacing the chart page at `/reports`
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+Immediately after ADR-070's chart-based Patient Reports page shipped, the user sent a detailed,
+prescriptive MVP spec for a completely different design: a search/filter/table page (UHID,
+name, age, gender, phone, registration date, department, last visit, status, quick-view) with
+4 summary cards, server-side pagination/sorting, Excel export, and a print view — explicitly
+stating the chart-heavy version just built should **not** be the MVP, with charts deferred to "a
+future phase." The spec assumed an Angular frontend and a `pageNumber`-shaped pagination
+response; this codebase is React (Vite) + ASP.NET Core with an established `PagedResult`
+(`page`/`pageSize`/`totalCount`/`totalPages`) shape, so both were corrected to match existing
+conventions per the spec's own instruction to prefer conventions over its literal example.
+
+Whether the table MVP should replace the chart page or live alongside it (e.g. as a second tab)
+was genuinely ambiguous — the user confirmed: **replace**.
+
+**Decision**
+1. `PatientAnalyticsChartsPage.tsx` (the ADR-070 page) is renamed from `PatientReportsPage.tsx`
+   and left unrouted — dead code kept intentionally, not deleted, since charts are an explicit
+   future phase rather than a rejected direction.
+2. `PatientListQuery` gains `Gender`, `BloodGroup`, `DepartmentId` filters (department resolved
+   via an EXISTS-over-visits query, the same shape `RegisteredToday` already used) alongside
+   the `From`/`To` pair, whose meaning is generalized from "registered in range" to an
+   "activity" scope — registered **or** visited in range — specifically so a New-vs-Returning
+   patient split is meaningful. Existing callers (the plain Patient Enquiry list) never send
+   `From`/`To`, so this is additive, not a behavior change for them.
+3. Three new read-only, `patient-management.view`-gated endpoints on the existing
+   `PatientsController` — `GET .../report` (the table, reusing `GetPagedAsync`'s filter/sort/
+   page pipeline), `GET .../report/summary` (Total/New/Returning/Visits, computed server-side
+   in SQL, not walked client-side), `GET .../report/export` (server-generated `.xlsx` via
+   ClosedXML, capped at 5,000 rows, respecting the same filters as the table) — rather than
+   reusing the ADR-070 approach of paging through the full patient list client-side.
+4. `IPatientRepository.BuildFilteredQuery` is extracted once and shared by `GetPagedAsync`,
+   `GetReportSummaryAsync`, and `GetExportRowsAsync`, so the table, the summary cards, and the
+   export always agree on which patients match the current filters.
+
+**Consequences**
+- Supersedes ADR-070's "patients are always fetched in full and filtered by registration date
+  client-side" consequence — that asymmetry is gone; `From`/`To`/Gender/BloodGroup/DepartmentId
+  are now real SQL-side filters on `GET /api/v1/patients*`, which also benefits the plain
+  Enquiry list and removes the earlier session's rate-limiter/unbounded-fetch failure mode at
+  its root for this new table too.
+- `GetExportRowsAsync` initially omitted the `.Include(Address/Allergies/EmergencyContacts)`
+  calls `GetPagedAsync` has, so `PatientMappingExtensions.ToResponse` threw a
+  `NullReferenceException` on export — caught live in browser verification (500 on Export
+  Excel), fixed by adding the same three `Include`s before sort/take.
+- `.AsNoTracking()` was not added to these new read-only queries despite the spec calling it
+  out under "Database Performance" — a disclosed gap, not an oversight, left for a follow-up
+  since `BuildFilteredQuery` is shared with `GetPagedAsync`'s existing (also-untracked) query
+  and changing tracking behavior for all three at once deserves its own verification pass.
+- "Status" reuses the existing `requiresDataVerification` flag (Verified/Needs Verification
+  badges) rather than introducing a new status concept — no such field exists elsewhere in the
+  Patient aggregate.
+
+### ADR-070: Patient Reports — first real content on the standalone Reports nav item
+**Date:** 2026-09-09
+**Status:** Superseded by ADR-071 — the chart-based page this ADR describes is no longer routed
+at `/reports` (kept in the repo, unrouted, as a future-phase candidate).
+
+**Context**
+The "Reports" sidebar item (`/reports`, distinct from `/finance/accounts/reports*`) rendered a
+bare `PlaceholderPage` — no report existed there at all. User asked for it to be built out,
+starting with Patient-related reports: demographics, marital status, referral/arrival source,
+allergy details, and visit activity by type/department/consultant, filterable and chart-based.
+
+Research before implementing found:
+- Patient-level fields are real: `Gender`, `MaritalStatus`, `BloodGroup`,
+  `ModeOfArrivalSource`/`Channel`/`Specify` (the closest thing to a "referral source" — a
+  coarse category, `DoctorReferral`/`PatientOrRelativeReferral`/etc., **not** a link to a
+  specific referring doctor/consultant record; no such field exists anywhere in this codebase),
+  and `Allergies` (`{allergyType, specify, severity}[]`).
+- **No cross-patient visits query existed at all.** The only endpoint,
+  `GET /api/v1/patients/{patientId}/visits`, is scoped to one patient — a "visits by
+  department/consultant" or "visits over time" report needs a new backend query, not just new
+  frontend plumbing.
+- Recharts (`^3.10.0`) is already a project dependency with working examples on the main
+  dashboard (`MonthlyCensusChart`, `DepartmentFinanceChart`) — introducing real charts here is
+  not new territory, just reusing an existing, unused-for-reports library.
+
+**Decision**
+1. Added `GET /api/v1/patient-visits` (`PatientVisitsController`, absolute route override on
+   an action inside the existing per-patient-scoped controller rather than a new controller) —
+   paged, optional `from`/`to` filter on `CreatedAt`. `IPatientVisitRepository.GetPagedAsync`
+   mirrors `PatientRepository.GetPagedAsync`'s existing shape exactly.
+2. Patient-level demographic/allergy breakdowns need no backend change — they reuse the
+   existing bulk `GET /api/v1/patients` list, walked page-by-page client-side
+   (`getAllPatientsForReport`), same "MaxPageSize silently truncates a single big-page request"
+   fix already applied to Finance's `getAllInvoicesForReport` and Masters'
+   `masterStoreFactory.getAll()`.
+3. `frontend/web/src/features/patients/patientReport.ts` — client-side groupBy/count
+   computation, same shape as Finance's `profitReport.ts` (a pattern proven twice now across
+   two unrelated domains).
+4. Scoped to Patients only for this pass — Laboratory/Radiology volume, HR, and other domains'
+   reports are separate future slices under the same `/reports` nav item, same one-slice-at-a-
+   time discipline as the rest of this initiative.
+
+**Consequences**
+- The Patients module's public surface grows by one cross-patient read (`GetAllAsync` on
+  `IPatientVisitService`) — read-only, `patient-management.view`-gated, no write-path change.
+- Visits fetched for this report push `from`/`to` server-side; patients are always fetched in
+  full and filtered by registration date client-side, since no such filter exists on the
+  patients endpoint — an intentional asymmetry, not an oversight (see patientReportData.ts's
+  own comments).
+- Live browser verification pending a fresh login (session expired mid-build, a recurring gap
+  across several slices this session) — disclosed in the PR rather than silently skipped.
+
+---
+
 ### ADR-069: Accounts & Finance reports overhaul — layout fix + Laboratory/Radiology/Consultant reports
 **Date:** 2026-09-09
 **Status:** Accepted

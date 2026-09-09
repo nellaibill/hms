@@ -1,4 +1,5 @@
 using HMS.Modules.Patients.Application.Abstractions;
+using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +28,35 @@ internal class PatientVisitRepository : IPatientVisitRepository
             .Where(v => v.PatientId == patientId)
             .OrderByDescending(v => v.CreatedAt)
             .ToListAsync(cancellationToken);
+
+    public async Task<(IReadOnlyList<PatientVisit> Items, int TotalCount)> GetPagedAsync(PatientVisitListQuery query, CancellationToken cancellationToken)
+    {
+        var visits = _dbContext.PatientVisits.Include(v => v.Consultations).AsQueryable();
+
+        // Model binding produces DateTime.Kind = Unspecified for a plain query-string date —
+        // Npgsql rejects that against a `timestamp with time zone` column ("only UTC is
+        // supported"), so it must be normalized before use, not passed through as-is.
+        if (query.From.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            visits = visits.Where(v => v.CreatedAt >= from);
+        }
+
+        if (query.To.HasValue)
+        {
+            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            visits = visits.Where(v => v.CreatedAt <= to);
+        }
+
+        var totalCount = await visits.CountAsync(cancellationToken);
+        var items = await visits
+            .OrderByDescending(v => v.CreatedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);

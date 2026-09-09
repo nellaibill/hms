@@ -30,6 +30,16 @@ public interface IPatientService
 
     Task<PagedResult<PatientResponse>> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Patient Reports' table — same filters as GetPagedAsync, enriched with last
+    /// visit/department per row.</summary>
+    Task<PagedResult<PatientReportRowResponse>> GetReportPagedAsync(PatientListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Patient Reports' summary cards (Total/New/Returning Patients, Total Visits).</summary>
+    Task<PatientReportSummaryResponse> GetReportSummaryAsync(PatientListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Every row matching the report's filters (up to maxRows), for the Excel export.</summary>
+    Task<IReadOnlyList<PatientReportRowResponse>> GetReportExportRowsAsync(PatientListQuery query, int maxRows, CancellationToken cancellationToken);
+
     /// <summary>Adds one allergy row ("Add another Allergy") and returns the updated patient.</summary>
     Task<Result<PatientResponse>> AddAllergyAsync(Guid patientId, AddAllergyRequest request, Guid? actorId, CancellationToken cancellationToken);
 
