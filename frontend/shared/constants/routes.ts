@@ -241,6 +241,8 @@ export const API_ROUTES = {
       bedHistory: (id: string) => `/api/v1/ipd/admissions/${id}/bed-history`,
       discharge: (id: string) => `/api/v1/ipd/admissions/${id}/discharge`,
       charges: (id: string) => `/api/v1/ipd/admissions/${id}/charges`,
+      vitals: (id: string) => `/api/v1/ipd/admissions/${id}/vitals`,
+      progressNotes: (id: string) => `/api/v1/ipd/admissions/${id}/progress-notes`,
     },
     dashboard: '/api/v1/ipd/dashboard',
   },

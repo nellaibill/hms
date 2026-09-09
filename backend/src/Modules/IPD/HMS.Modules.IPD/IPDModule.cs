@@ -52,6 +52,12 @@ public static class IPDModule
         services.AddScoped<IAdmissionChargeRepository, AdmissionChargeRepository>();
         services.AddScoped<IAdmissionChargeService, AdmissionChargeService>();
 
+        services.AddScoped<IVitalsReadingRepository, VitalsReadingRepository>();
+        services.AddScoped<IVitalsReadingService, VitalsReadingService>();
+
+        services.AddScoped<IProgressNoteRepository, ProgressNoteRepository>();
+        services.AddScoped<IProgressNoteService, ProgressNoteService>();
+
         services.AddScoped<IValidator<CreateWardRequest>, CreateWardRequestValidator>();
         services.AddScoped<IValidator<UpdateWardRequest>, UpdateWardRequestValidator>();
 
@@ -64,6 +70,9 @@ public static class IPDModule
         services.AddScoped<IValidator<DischargeAdmissionRequest>, DischargeAdmissionRequestValidator>();
 
         services.AddScoped<IValidator<CreateAdmissionChargeRequest>, CreateAdmissionChargeRequestValidator>();
+
+        services.AddScoped<IValidator<CreateVitalsReadingRequest>, CreateVitalsReadingRequestValidator>();
+        services.AddScoped<IValidator<CreateProgressNoteRequest>, CreateProgressNoteRequestValidator>();
 
         return services;
     }

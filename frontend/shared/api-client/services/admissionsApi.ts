@@ -7,9 +7,13 @@ import type {
   BedTransferHistory,
   CreateAdmissionChargeRequest,
   CreateAdmissionRequest,
+  CreateProgressNoteRequest,
+  CreateVitalsReadingRequest,
   DischargeAdmissionRequest,
+  ProgressNote,
   TransferBedRequest,
   UpdateAdmissionRequest,
+  VitalsReading,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
@@ -85,6 +89,26 @@ export class AdmissionsApi {
 
   async postCharge(admissionId: string, request: CreateAdmissionChargeRequest): Promise<AdmissionCharge> {
     const response = await this.client.post<AdmissionCharge>(API_ROUTES.ipd.admissions.charges(admissionId), request);
+    return response.data;
+  }
+
+  async getVitals(admissionId: string): Promise<VitalsReading[]> {
+    const response = await this.client.get<VitalsReading[]>(API_ROUTES.ipd.admissions.vitals(admissionId));
+    return response.data;
+  }
+
+  async postVitals(admissionId: string, request: CreateVitalsReadingRequest): Promise<VitalsReading> {
+    const response = await this.client.post<VitalsReading>(API_ROUTES.ipd.admissions.vitals(admissionId), request);
+    return response.data;
+  }
+
+  async getProgressNotes(admissionId: string): Promise<ProgressNote[]> {
+    const response = await this.client.get<ProgressNote[]>(API_ROUTES.ipd.admissions.progressNotes(admissionId));
+    return response.data;
+  }
+
+  async postProgressNote(admissionId: string, request: CreateProgressNoteRequest): Promise<ProgressNote> {
+    const response = await this.client.post<ProgressNote>(API_ROUTES.ipd.admissions.progressNotes(admissionId), request);
     return response.data;
   }
 }
