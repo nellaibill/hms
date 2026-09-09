@@ -33,6 +33,16 @@ export interface NavLeaf {
   label: string;
   path: string;
   icon: LucideIcon;
+  /** Tailwind text-color class for this leaf's sidebar icon when not the active route — a
+   * distinct accent per module so the sidebar is visually scannable at a glance, rather than
+   * every icon inheriting the same muted-foreground token. Deliberately NOT applied to the
+   * active route's icon (SidebarNav.tsx keeps that on the existing theme-driven
+   * `text-sidebar-active-foreground` token instead) — this app's Theme & Branding system lets
+   * a hospital set a custom brand color, and the active highlight's own background is derived
+   * from that brand color, so a hardcoded per-module hue could end up low-contrast or clashing
+   * against a color no one chose it against. Restricting the fixed palette to the inactive
+   * state (white/light sidebar background in every theme so far) keeps it safe. */
+  iconColor: string;
   description: string;
   /** Backend permission-catalog module (e.g. "patient-management") whose
    * `.view` key gates this leaf's visibility — see docs behind
@@ -58,6 +68,7 @@ export const navigationTree: NavNode[] = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: LayoutDashboard,
+    iconColor: 'text-blue-500',
     description: 'Executive overview — census, income & expense, HR presence, and plans/projects status.',
   },
   {
@@ -65,6 +76,7 @@ export const navigationTree: NavNode[] = [
     label: 'Patient Enquiry',
     path: '/patients/enquiry',
     icon: UserSearch,
+    iconColor: 'text-sky-500',
     description: 'Find an existing patient by name, UHID, or phone to view or update their registration.',
     permission: 'patient-management',
     feature: 'patients',
@@ -75,6 +87,7 @@ export const navigationTree: NavNode[] = [
     label: 'Reception and Registration',
     path: '/patients/registration',
     icon: ClipboardList,
+    iconColor: 'text-indigo-500',
     description: 'Register a new patient or find an existing one to update their registration.',
     permission: 'patient-management',
     feature: 'patients',
@@ -85,6 +98,7 @@ export const navigationTree: NavNode[] = [
     label: 'Out Patient Department (OPD)',
     path: '/clinical/opd',
     icon: Stethoscope,
+    iconColor: 'text-teal-500',
     description: 'Outpatient consultant queues, consultations, prescriptions, and investigation orders.',
     permission: 'clinical-care',
     feature: 'opd',
@@ -95,6 +109,7 @@ export const navigationTree: NavNode[] = [
     label: 'In Patient Department (IPD)',
     path: '/clinical/ipd',
     icon: BedDouble,
+    iconColor: 'text-violet-500',
     description: 'Inpatient bed/ward management, admissions, nursing charting, and discharge workflows.',
     permission: 'clinical-care',
     feature: 'ipd',
@@ -105,6 +120,7 @@ export const navigationTree: NavNode[] = [
     label: 'Operation Theatre (OT)',
     path: '/clinical/ot',
     icon: Scissors,
+    iconColor: 'text-rose-500',
     description: 'OT scheduling, consent management, surgical team assignment, and operative notes.',
     permission: 'clinical-care',
     feature: 'ot',
@@ -115,6 +131,7 @@ export const navigationTree: NavNode[] = [
     label: 'Pharmacy',
     path: '/pharmacy',
     icon: Pill,
+    iconColor: 'text-emerald-500',
     description: 'Prescription fulfillment queue, drug master, and stock/batch/expiry tracking.',
     permission: 'pharmacy',
     feature: 'pharmacy',
@@ -125,6 +142,7 @@ export const navigationTree: NavNode[] = [
     label: 'Central Laboratory',
     path: '/diagnostics/lab',
     icon: FlaskConical,
+    iconColor: 'text-cyan-500',
     description: 'Test order queue, sample tracking, and result entry with critical value flagging.',
     permission: 'diagnostics',
     feature: 'central-laboratory',
@@ -135,6 +153,7 @@ export const navigationTree: NavNode[] = [
     label: 'Radiology',
     path: '/diagnostics/radiology',
     icon: ScanLine,
+    iconColor: 'text-fuchsia-500',
     description: 'Modality worklist, study review, and radiology report entry and release.',
     permission: 'diagnostics',
     feature: 'radiology',
@@ -145,6 +164,7 @@ export const navigationTree: NavNode[] = [
     label: 'Blood Bank',
     path: '/diagnostics/blood-bank',
     icon: Droplet,
+    iconColor: 'text-red-500',
     description: 'Donor management, blood unit inventory, and issue/crossmatch tracking.',
     permission: 'diagnostics',
     feature: 'blood-bank',
@@ -155,6 +175,7 @@ export const navigationTree: NavNode[] = [
     label: 'Ambulance',
     path: '/support/ambulance',
     icon: Truck,
+    iconColor: 'text-orange-500',
     description: 'Dispatch requests, trip logs, and ambulance billing.',
     permission: 'support-services',
     feature: 'ambulance',
@@ -165,6 +186,7 @@ export const navigationTree: NavNode[] = [
     label: 'Accounts and Finance',
     path: '/finance/accounts',
     icon: Wallet,
+    iconColor: 'text-amber-500',
     description: 'Unified invoice ledger, payments & refunds, insurance/TPA claims, and financial reports.',
     permission: 'finance-billing',
     feature: 'finance',
@@ -175,6 +197,7 @@ export const navigationTree: NavNode[] = [
     label: 'Records and Certificates',
     path: '/records/certificates',
     icon: FileBadge,
+    iconColor: 'text-lime-500',
     description: 'Certificate issuance and medical records department (MRD) retrieval.',
     permission: 'records-compliance',
     feature: 'records-and-certificates',
@@ -185,6 +208,7 @@ export const navigationTree: NavNode[] = [
     label: 'Document Management',
     path: '/documents',
     icon: Files,
+    iconColor: 'text-purple-500',
     description: 'Centralized document repository — upload, preview, download, and archive files for any HMS record.',
     permission: 'records-compliance',
     feature: 'documents',
@@ -195,6 +219,7 @@ export const navigationTree: NavNode[] = [
     label: 'Human Resource Management (HR)',
     path: '/admin/hr',
     icon: UsersRound,
+    iconColor: 'text-pink-500',
     description: 'Staff directory, roster/shift assignment, leave management, and credentialing.',
     permission: 'workforce-admin',
     feature: 'hr',
@@ -205,6 +230,7 @@ export const navigationTree: NavNode[] = [
     label: 'Activity Log',
     path: '/admin/activity-log',
     icon: History,
+    iconColor: 'text-slate-500',
     description: 'System-wide, read-only audit trail of every module\'s write transactions.',
     permission: 'workforce-admin',
     feature: 'activity-log',
@@ -215,6 +241,7 @@ export const navigationTree: NavNode[] = [
     label: 'Hospital Inventory Management',
     path: '/support/inventory',
     icon: Boxes,
+    iconColor: 'text-yellow-500',
     description: 'Item master, stock ledger, reorder alerts, and vendor purchase orders.',
     permission: 'support-services',
     feature: 'products',
@@ -225,6 +252,7 @@ export const navigationTree: NavNode[] = [
     label: 'Programmes and Calendar',
     path: '/engagement/programmes',
     icon: CalendarDays,
+    iconColor: 'text-green-500',
     description: 'Hospital events, health camps, and programme scheduling.',
     permission: 'engagement',
     feature: 'calendar',
@@ -235,6 +263,7 @@ export const navigationTree: NavNode[] = [
     label: 'Messages and Notifications',
     path: '/engagement/messages',
     icon: MessageSquare,
+    iconColor: 'text-zinc-500',
     description: 'Notification center covering clinical, operational, administrative, and financial alerts.',
     permission: 'engagement',
     feature: 'messages-and-notifications',
@@ -245,6 +274,7 @@ export const navigationTree: NavNode[] = [
     label: 'Reports',
     path: '/reports',
     icon: BarChart3,
+    iconColor: 'text-neutral-500',
     description: 'Operational, clinical, financial, and statutory/regulatory reports.',
     permission: 'reports-analytics',
     feature: 'reports',
@@ -255,6 +285,7 @@ export const navigationTree: NavNode[] = [
     label: 'E-MRD',
     path: '/records/emrd',
     icon: FolderOpen,
+    iconColor: 'text-stone-500',
     description: 'Digital document repository for scanned and archived patient records.',
     permission: 'records-compliance',
     feature: 'e-mrd',
@@ -265,6 +296,7 @@ export const navigationTree: NavNode[] = [
     label: 'Settings',
     path: '/admin/settings',
     icon: Settings,
+    iconColor: 'text-gray-500',
     description: 'Roles & permissions, master data, and system configuration.',
     permission: 'identity-administration',
     feature: 'identity',
