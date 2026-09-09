@@ -10,20 +10,6 @@ export interface CountBreakdownRow {
   count: number;
 }
 
-function dateOnly(iso: string): string {
-  return iso.slice(0, 10);
-}
-
-function inRange(date: string, range: ReportDateRange): boolean {
-  return date >= range.from && date <= range.to;
-}
-
-/** Registration-date filter — Patient has no bulk date-range query endpoint (unlike visits),
- * so this always operates on an already-fetched full list (see usePatientsForReportQuery). */
-export function filterPatientsByRange(patients: Patient[], range: ReportDateRange): Patient[] {
-  return patients.filter((patient) => inRange(dateOnly(patient.createdAt), range));
-}
-
 function countBy<T>(items: T[], keyFn: (item: T) => string | null | undefined): CountBreakdownRow[] {
   const counts = new Map<string, number>();
   for (const item of items) {

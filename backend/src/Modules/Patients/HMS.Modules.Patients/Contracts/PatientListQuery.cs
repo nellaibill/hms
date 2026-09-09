@@ -23,4 +23,10 @@ public class PatientListQuery : PagedRequest
     /// (patients.patient_visits) created or last updated today (UTC) — used by OPD Billing's
     /// "pick a patient" screen to surface today's visits before any search is entered.</summary>
     public bool? RegisteredToday { get; set; }
+
+    /// <summary>Filters to patients registered (CreatedAt) within this inclusive range — added
+    /// for Patient Reports, so a bounded date range doesn't have to walk every page of every
+    /// patient ever registered just to filter client-side afterward.</summary>
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
 }

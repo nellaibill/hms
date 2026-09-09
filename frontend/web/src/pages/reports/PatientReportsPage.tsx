@@ -8,7 +8,6 @@ import { usePatientsForReportQuery } from '@/features/patients/hooks/usePatients
 import { usePatientVisitsForReportQuery } from '@/features/patients/hooks/usePatientVisitsForReportQuery';
 import { maritalStatusLabel } from '@/features/patients/maritalStatusLabel';
 import {
-  filterPatientsByRange,
   getAllergyPrevalence,
   getPatientsByArrivalSource,
   getPatientsByBloodGroup,
@@ -42,18 +41,20 @@ function defaultRange(): ReportDateRange {
  * Scoped to Patients for this pass; other domains (Lab/Radiology volume, HR, etc.) are a
  * separate future slice, same one-slice-at-a-time discipline as the rest of this initiative.
  *
- * Two independently-fetched data sets, both filtered to the same date range but by different
- * mechanisms: patients have no bulk date-range endpoint, so `usePatientsForReportQuery` always
- * fetches everyone and `filterPatientsByRange` narrows client-side (see that function's own
- * comment); visits push `from`/`to` server-side (a new PatientVisitsController.GetAll endpoint
- * added for this feature — there was previously no cross-patient visits query at all, only
- * one-patient-at-a-time).
+ * Two independently-fetched data sets, both scoped to the same date range server-side: patients
+ * push `from`/`to` into the existing patients list endpoint (added for this feature — confirmed
+ * live, against a tenant with 7,000+ patients, that fetching *everyone* on every report load
+ * was the actual rate-limit/connection failure, not just a lack of request concurrency — see
+ * patientReportData.ts's own comment), and visits push `from`/`to` into a new
+ * PatientVisitsController.GetAll endpoint (there was previously no cross-patient visits query
+ * at all, only one-patient-at-a-time).
  */
 export default function PatientReportsPage() {
   const [range, setRange] = useState<ReportDateRange>(defaultRange);
 
-  const { data: allPatients, isPending: isPatientsPending } = usePatientsForReportQuery();
+  const { data: patientData, isPending: isPatientsPending } = usePatientsForReportQuery(range.from, range.to);
   const { data: visits, isPending: isVisitsPending } = usePatientVisitsForReportQuery(range.from, range.to);
+  const patients = patientData?.patients;
 
   // Primes the department/consultant reference cache so the Department/Consultant charts'
   // resolveRecordLabel calls resolve real names on first render — same reasoning
@@ -61,14 +62,12 @@ export default function PatientReportsPage() {
   const { data: departmentOptions } = useMasterOptionsQuery('department');
   const { data: consultantOptions } = useMasterOptionsQuery('consultant');
 
-  const patients = useMemo(() => filterPatientsByRange(allPatients ?? [], range), [allPatients, range]);
-
-  const registrationsOverTime = useMemo(() => getRegistrationsOverTime(patients), [patients]);
-  const byGender = useMemo(() => getPatientsByGender(patients), [patients]);
-  const byMaritalStatus = useMemo(() => getPatientsByMaritalStatus(patients), [patients]);
-  const byBloodGroup = useMemo(() => getPatientsByBloodGroup(patients), [patients]);
-  const byArrivalSource = useMemo(() => getPatientsByArrivalSource(patients), [patients]);
-  const allergyPrevalence = useMemo(() => getAllergyPrevalence(patients), [patients]);
+  const registrationsOverTime = useMemo(() => getRegistrationsOverTime(patients ?? []), [patients]);
+  const byGender = useMemo(() => getPatientsByGender(patients ?? []), [patients]);
+  const byMaritalStatus = useMemo(() => getPatientsByMaritalStatus(patients ?? []), [patients]);
+  const byBloodGroup = useMemo(() => getPatientsByBloodGroup(patients ?? []), [patients]);
+  const byArrivalSource = useMemo(() => getPatientsByArrivalSource(patients ?? []), [patients]);
+  const allergyPrevalence = useMemo(() => getAllergyPrevalence(patients ?? []), [patients]);
   const byVisitType = useMemo(() => getVisitsByType(visits ?? []), [visits]);
   const byDepartment = useMemo(() => getVisitsByDepartment(visits ?? []), [visits, departmentOptions]);
   const byConsultant = useMemo(() => getVisitsByConsultant(visits ?? []), [visits, consultantOptions]);
@@ -92,6 +91,13 @@ export default function PatientReportsPage() {
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
         <ReportDateRangeFilter range={range} onChange={setRange} />
 
+        {patientData?.truncated && (
+          <p className="rounded-md bg-warning/10 px-3 py-2 text-sm text-warning">
+            More patients were registered in this period than this report scans at once — the patient charts below are based on a
+            sample of the {patientData.patients.length} most recent, not a full count. Narrow the date range for exact figures.
+          </p>
+        )}
+
         {isPending && (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -105,7 +111,7 @@ export default function PatientReportsPage() {
               <Card>
                 <CardContent className="flex flex-col gap-1 py-4">
                   <span className="text-xs text-muted-foreground">Patients Registered</span>
-                  <span className="text-lg font-semibold text-foreground">{patients.length}</span>
+                  <span className="text-lg font-semibold text-foreground">{patients?.length ?? 0}</span>
                 </CardContent>
               </Card>
               <Card>
@@ -117,7 +123,7 @@ export default function PatientReportsPage() {
               <Card>
                 <CardContent className="flex flex-col gap-1 py-4">
                   <span className="text-xs text-muted-foreground">Patients With a Recorded Allergy</span>
-                  <span className="text-lg font-semibold text-foreground">{patients.filter((p) => p.allergies.length > 0).length}</span>
+                  <span className="text-lg font-semibold text-foreground">{(patients ?? []).filter((p) => p.allergies.length > 0).length}</span>
                 </CardContent>
               </Card>
             </div>

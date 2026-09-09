@@ -171,4 +171,8 @@ export interface PatientListQuery {
   requiresDataVerification?: boolean;
   /** Narrows the list to patients created or last updated today (UTC). */
   registeredToday?: boolean;
+  /** Filters to patients registered (createdAt) within this inclusive range — ISO date
+   * strings. Added for Patient Reports. */
+  from?: string;
+  to?: string;
 }

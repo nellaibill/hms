@@ -90,6 +90,22 @@ internal class PatientRepository : IPatientRepository
             patients = patients.Where(p => p.DateOfBirth <= maxDateOfBirth && p.DateOfBirth > minDateOfBirthExclusive);
         }
 
+        // Model binding produces DateTime.Kind = Unspecified for a plain query-string date —
+        // Npgsql rejects that against a `timestamp with time zone` column ("only UTC is
+        // supported"), so it must be normalized before use (same fix as
+        // PatientVisitRepository.GetPagedAsync).
+        if (query.From.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            patients = patients.Where(p => p.CreatedAt >= from);
+        }
+
+        if (query.To.HasValue)
+        {
+            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            patients = patients.Where(p => p.CreatedAt <= to);
+        }
+
         patients = ApplySort(patients, query.Sort);
 
         var totalCount = await patients.CountAsync(cancellationToken);

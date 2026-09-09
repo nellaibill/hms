@@ -33,14 +33,19 @@ internal class PatientVisitRepository : IPatientVisitRepository
     {
         var visits = _dbContext.PatientVisits.Include(v => v.Consultations).AsQueryable();
 
+        // Model binding produces DateTime.Kind = Unspecified for a plain query-string date —
+        // Npgsql rejects that against a `timestamp with time zone` column ("only UTC is
+        // supported"), so it must be normalized before use, not passed through as-is.
         if (query.From.HasValue)
         {
-            visits = visits.Where(v => v.CreatedAt >= query.From.Value);
+            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            visits = visits.Where(v => v.CreatedAt >= from);
         }
 
         if (query.To.HasValue)
         {
-            visits = visits.Where(v => v.CreatedAt <= query.To.Value);
+            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            visits = visits.Where(v => v.CreatedAt <= to);
         }
 
         var totalCount = await visits.CountAsync(cancellationToken);
