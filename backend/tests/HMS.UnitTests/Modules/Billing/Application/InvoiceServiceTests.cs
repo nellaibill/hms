@@ -328,6 +328,7 @@ public class InvoiceServiceTests
             createdBy: null);
         var itemId = invoice.Items.Single().Id;
         invoice.Items.Single().ConsultantId.Should().Be("dr-revathi");
+        invoice.Items.Single().BilledConsultantId.Should().Be("dr-revathi");
         _repository.GetByIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
 
         var result = await _sut.RecordPaymentAsync(invoice.Id, itemId, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
@@ -335,6 +336,10 @@ public class InvoiceServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Single().ConsultantId.Should().BeNull();
         invoice.Items.Single().ConsultantId.Should().BeNull();
+        // BilledConsultantId is a separate, reporting-only field that must survive payment —
+        // unlike ConsultantId (ADR-048), it's never cleared by MarkPaid.
+        result.Value!.Items.Single().BilledConsultantId.Should().Be("dr-revathi");
+        invoice.Items.Single().BilledConsultantId.Should().Be("dr-revathi");
     }
 
     [Fact]
