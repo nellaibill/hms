@@ -4,6 +4,7 @@ using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HMS.Modules.Branding.Endpoints;
 
@@ -62,6 +63,7 @@ public class BrandingController : ControllerBase
     [HttpPost("logo")]
     [Consumes("multipart/form-data")]
     [RequirePermission("identity-administration.edit")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     public async Task<IActionResult> UploadLogo(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)

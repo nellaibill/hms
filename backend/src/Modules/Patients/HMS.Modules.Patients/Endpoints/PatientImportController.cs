@@ -5,6 +5,7 @@ using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HMS.Modules.Patients.Endpoints;
 
@@ -45,6 +46,7 @@ public class PatientImportController : ControllerBase
     /// <response code="202">The file was accepted and queued for validation.</response>
     /// <response code="400">The file is missing, empty, not an .xlsx, or too large.</response>
     [RequirePermission("patient-management.import")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     [HttpPost]
     [RequestSizeLimit(30_000_000)]
     public async Task<IActionResult> Upload(IFormFile? file, CancellationToken cancellationToken)

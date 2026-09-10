@@ -7,6 +7,7 @@ using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HMS.Modules.Notifications.Endpoints;
 
@@ -93,6 +94,7 @@ public class NotificationsController : ControllerBase
     /// <response code="400">The request failed validation.</response>
     [Authorize]
     [RequirePermission("engagement.create")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     [HttpPost]
     public async Task<IActionResult> Notify([FromBody] NotifyRequest request, CancellationToken cancellationToken)
     {

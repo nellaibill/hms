@@ -8,6 +8,7 @@ using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Platform.Infrastructure;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -58,6 +59,23 @@ builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("postgres");
 builder.Services.AddDataProtection();
 
 var app = builder.Build();
+
+// Must be the very first middleware: everything downstream (rate limiting's ClientKey,
+// request logging, audit columns) reads HttpContext.Connection.RemoteIpAddress, and this is
+// what rewrites it from X-Forwarded-For when the request actually came through a trusted
+// local reverse proxy (ADR-076). KnownNetworks/KnownProxies are deliberately left at their
+// framework default (loopback only, never widened here) — only a request whose *immediate*
+// connection is 127.0.0.1/::1 (i.e., already relayed by nginx running on this same host) gets
+// its header trusted; a request claiming to be from a trusted proxy over the network can't
+// spoof this. Before this, the Windows/nginx reverse-proxy deployment path collapsed every
+// real client's IP into nginx's own loopback address at this property, silently defeating
+// per-client rate-limit partitioning (RateLimitingConfiguration.ClientKey) — see ADR-076 for
+// the full before/after analysis. No effect on the Docker Compose deployment (browser talks
+// directly to the API container, no proxy hop, so no X-Forwarded-For header is ever present).
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+});
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
