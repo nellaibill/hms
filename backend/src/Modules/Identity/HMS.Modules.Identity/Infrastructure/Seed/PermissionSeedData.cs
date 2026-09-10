@@ -344,6 +344,39 @@ internal static class PermissionSeedData
                 DeletedAt = (DateTime?)null,
                 DeletedBy = (Guid?)null
             },
+            // A fifth action outside the view/create/edit/delete set every other pharmacy
+            // permission uses — same precedent as discharge-summary.finalize (ADR-022):
+            // pharmacy.view already grants list/detail access to every product for day-to-day
+            // dispensing staff, but Product.CostPrice (procurement cost) is commercially
+            // sensitive margin data that shouldn't ride along with plain stock visibility. Not
+            // yet exposed in the frontend's generic 4-column Roles matrix (PERMISSION_ACTIONS,
+            // frontend/web/src/features/roles/types.ts) for the same reason .finalize isn't —
+            // granting it to a custom role is a backend/seed-data action today, not
+            // self-service via the Roles admin UI (ADR-077).
+            new
+            {
+                Id = Guid.Parse("a3c1d8f2-5e6b-47a0-9d3c-8f1b2e4a6c9d"),
+                Module = "pharmacy",
+                Action = "view-cost",
+                Key = "pharmacy.view-cost",
+                Label = "View Cost Price",
+                DisplayOrder = 4,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
             new
             {
                 Id = Guid.Parse("1cfc6580-0e9c-4055-b7de-3e9efcfdc306"),

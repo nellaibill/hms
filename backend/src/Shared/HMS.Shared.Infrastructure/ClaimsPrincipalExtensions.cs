@@ -22,4 +22,15 @@ public static class ClaimsPrincipalExtensions
     /// </summary>
     public static Guid? GetPlatformUserId(this ClaimsPrincipal user)
         => Guid.TryParse(user.FindFirst("PlatformUserId")?.Value, out var platformUserId) ? platformUserId : null;
+
+    /// <summary>
+    /// Programmatic permission check for value-level redaction within an otherwise-permitted
+    /// action (e.g. hiding one sensitive field from a response the caller can still fetch) —
+    /// [RequirePermission] only gates whether an entire action runs, not what a run action
+    /// returns. Reads the same "Permission" claim shape PermissionAuthorizationHandler checks
+    /// (HMS.Shared.Infrastructure.PermissionAuthorization.cs), so the two stay consistent by
+    /// construction.
+    /// </summary>
+    public static bool HasPermission(this ClaimsPrincipal user, string permissionKey)
+        => user.Claims.Any(c => c.Type == "Permission" && c.Value == permissionKey);
 }
