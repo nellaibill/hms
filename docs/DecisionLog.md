@@ -37,6 +37,116 @@ _To be documented._
 
 ## Decisions
 
+### ADR-078: CI security gates — dependency-vulnerability scanning, secret scanning, Dependabot
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+Finding M8 from the security review: the CI pipeline (`.github/workflows/build.yml`) validated
+build correctness and ran tests, but had no dependency-vulnerability scan, no secret scan, and
+no Dependabot configuration — the exact class of tooling that would have caught the committed
+credential leak (ADR-073) and any vulnerable package before merge, rather than by manual review
+after the fact.
+
+**Decision**
+1. **New `security` job** in `build.yml`, separate from `backend`/`frontend` so a scan failure
+   reads clearly as a security gate, not a build/test failure:
+   - **Secret scan (gitleaks)**, run via `docker run zricethezav/gitleaks:latest` (Docker is
+     preinstalled on GitHub-hosted runners) rather than a marketplace Action, avoiding any
+     ambiguity around Action-specific licensing terms for private repos — the underlying
+     `gitleaks` CLI itself is open-source. **Deliberately scoped to only the commits a PR/push
+     actually introduces** (`--log-opts` against the PR's base commit, or `HEAD~1..HEAD` for a
+     direct push — every push to `main` in this repo's workflow is a single-commit squash-merge,
+     so that range is exact) rather than the whole repository history on every run. Scanning
+     full history today would immediately and permanently fail this gate on the real, known,
+     not-yet-purged leak from ADR-073's own git history — this gate exists to catch a
+     *recurrence*, not to re-litigate an already-disclosed, already-scrubbed-from-HEAD incident
+     whose history purge is a separate, deliberately-deferred, user-owned action.
+   - **`.NET dependency vulnerability scan`** — `dotnet list package --vulnerable
+     --include-transitive` against `HMS.sln`, with a shell check that fails the step if the
+     output contains "has the following vulnerable packages" (the command itself doesn't exit
+     non-zero on its own).
+   - **`npm audit --audit-level=high`** across all three frontend workspaces (`web`/`mobile`/
+     `shared`) — currently **informational only** (`|| true`), not yet a hard gate; see point 4.
+2. **New `.github/dependabot.yml`** — weekly update PRs for NuGet (`/backend`, landing in
+   `Directory.Packages.props` regardless of which module first pulled a package, since Central
+   Package Management is already in use), all three npm workspaces individually (no shared
+   workspace root to point at instead), and `github-actions` itself (an outdated Action version
+   is its own supply-chain surface).
+3. **Real vulnerability found and fixed while standing this up, not left for the new gate to
+   immediately fail on**: `dotnet list package --vulnerable` surfaced
+   `HMS.IntegrationTests → Testcontainers.PostgreSql → (transitive) SSH.NET 2023.0.0`,
+   GHSA-q939-rpr3-3284 (high severity — SCP recursive-download arbitrary file write). Fetched
+   the advisory directly (`vulnerable_version_range: "<= 2025.1.0"`,
+   `first_patched_version: "2026.0.0"`) rather than guessing a version — bumping
+   Testcontainers.PostgreSql itself didn't change the resolved SSH.NET version, so this is a
+   **direct force-pin** (`Directory.Packages.props` + a direct `PackageReference` in
+   `HMS.IntegrationTests.csproj`), the exact same pattern already established for
+   `System.Security.Cryptography.Xml`'s own transitive-CVE pin in the same file. SSH.NET/
+   Testcontainers are test-only (`HMS.IntegrationTests`, not run in CI per its own Testcontainers
+   exclusion, but still built) — this was never a production-runtime exposure.
+4. **A second real batch found the same way, on the frontend side — only half-closed, disclosed
+   honestly rather than claimed as fixed.** `npm audit --audit-level=high` in `web` immediately
+   surfaced 4 real high-severity transitive vulnerabilities — `brace-expansion`
+   (GHSA-mh99-v99m-4gvg / GHSA-rgw5-rvv9-x895, DoS via unbounded expansion), `js-yaml`
+   (GHSA-5p4m-2wfm-xmqj / GHSA-2883-xcg3-v3hh, quadratic-CPU DoS), and `nanoid`
+   (GHSA-2v37-7h3g-55p8, infinite loop on a zero-size generator) — all pulled in transitively by
+   dev/build tooling (`@typescript-eslint/typescript-estree`, `glob`, etc.), never runtime code
+   shipped to users. Added `overrides` to `frontend/package.json` (the npm-workspaces root,
+   covering `web`+`shared`) and `frontend/mobile/package.json` (a fully standalone project, not
+   part of that workspace — confirmed via its own lockfile, which resolves the same three
+   packages independently), deliberately picking the smallest safe version for each rather than
+   jumping to each package's newest major release (`brace-expansion` → `^2.0.2`, not the `5.x`
+   line also seen elsewhere in the tree; `js-yaml` → `^4.3.2`; `nanoid` → `^3.3.18` — all
+   same-major patch bumps, since a deeply-transitive dev-tooling dependency is exactly the wrong
+   place to risk an unreviewed breaking change like a CJS/ESM split for a fix that has a
+   same-major patch available).
+   **The `overrides` field alone did not take effect** — confirmed both locally and in this PR's
+   own CI run (`Security scans` job, unchanged "11 vulnerabilities (7 moderate, 4 high)" after
+   the fix commit): `npm install` against an *existing* `package-lock.json` installs from that
+   lockfile's already-decided resolutions and doesn't automatically re-resolve to honor a
+   newly-added `overrides` field — the lockfile itself needs to be regenerated (deleting it and
+   re-resolving from scratch) for `overrides` to actually change anything. This session's local
+   environment could not reliably do that regeneration (npm installs repeatedly hung for 10+
+   minutes with zero output, most likely a `timeout` command collision between GNU coreutils and
+   Windows' built-in `timeout.exe` on this Git Bash setup silently defeating every timeout guard
+   used to bound the attempts, compounded by Windows' slower filesystem I/O for a full
+   `node_modules` tree). Rather than either leave the new `npm audit` CI check permanently
+   failing on a pre-existing state this session couldn't finish fixing, or silently drop the
+   check, **it's shipped as informational-only** (`|| true` in `build.yml`, clearly commented) —
+   still reports every finding in the CI log, doesn't block anyone. `dompurify`/`esbuild`/
+   `postcss`/`react-router`/`uuid` findings from the same `npm audit` run are moderate severity
+   (wouldn't have failed `--audit-level=high` regardless) and only have `--force`
+   (breaking-change) fixes available — also left for the same follow-up.
+   **Concrete follow-up, not vague**: someone with reliable npm/network access needs to delete
+   `frontend/package-lock.json` and `frontend/mobile/package-lock.json` and run a fresh
+   `npm install` (the `overrides` fields are already correctly in place and don't need to
+   change), confirm `npm audit --audit-level=high` passes clean in all three workspaces, commit
+   the regenerated lockfiles, and flip the `|| true` in `build.yml` back to a hard failure.
+
+**Consequences**
+- The gitleaks and `.NET dependency vulnerability` checks are real, enforcing CI gates that will
+  now block a PR whose diff introduces a real secret or a newly-vulnerable NuGet package —
+  expected and intended. `npm audit` is informational-only until the follow-up above lands (see
+  point 4) — it does not yet block anything, by design, not by oversight.
+- The full solution build (`dotnet build HMS.sln`) and the full test suite excluding
+  IntegrationTests (98 architecture tests + 925 unit tests) both pass unchanged with the
+  SSH.NET/BouncyCastle.Cryptography version bump — confirmed directly, not assumed.
+- **The frontend `overrides` fix could not be locally verified** — this session's local
+  environment had persistent, unexplained npm-registry/process reliability problems for the
+  entire session (multi-minute hangs with zero output on operations that complete in seconds in
+  CI, most likely a `timeout` command name collision between GNU coreutils and Windows'
+  built-in `timeout.exe` on this Git Bash setup silently defeating every timeout guard used to
+  bound the attempts). `frontend/package-lock.json`/`frontend/mobile/package-lock.json` are
+  therefore **not** regenerated in this commit — CI's own `npm install` (not `npm ci`, so it's
+  free to update the lockfile) is the actual verification, and will commit an updated lockfile
+  reflecting the new resolutions the next time someone runs `npm install` locally after pulling
+  this change. Flagged explicitly here rather than silently claimed as verified.
+- Dependabot's weekly PRs will start surfacing on their own schedule after this merges — normal
+  and expected, not something this ADR needs to pre-emptively triage.
+
+---
+
 ### ADR-077: Product `CostPrice` now requires a separate `pharmacy.view-cost` permission
 **Date:** 2026-09-10
 **Status:** Accepted

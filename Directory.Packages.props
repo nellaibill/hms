@@ -59,6 +59,15 @@
          which has several published high-severity CVEs (NU1903). Pinned up to the first
          patched 10.x release so the vulnerable transitive version is never resolved. -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.10" />
+    <!-- Transitive-only pin: Testcontainers.PostgreSql (via Docker.DotNet's SSH-based Docker
+         host support) drags in a vulnerable SSH.NET even at Testcontainers' own current
+         version (GHSA-q939-rpr3-3284, "ScpClient Recursive Download Allows Arbitrary File
+         Write via Server-Controlled SCP Filenames", high severity, NU1903). Found while adding
+         CI's dependency-vulnerability gate (ADR-078). Per the advisory's own data
+         (vulnerable_version_range "<= 2025.1.0", first_patched_version "2026.0.0" — confirmed
+         directly against the GHSA API, not guessed), 2026.0.0 is the first version that
+         resolves the NU1903 warning; earlier 2024.x/2025.x releases are still in range. -->
+    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
   </ItemGroup>
 
 </Project>

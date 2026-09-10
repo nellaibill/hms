@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+  # HMS.sln and every module's .csproj — Directory.Packages.props centralizes actual version
+  # numbers, so Dependabot's PRs land there regardless of which module first pulled a package.
+  - package-ecosystem: "nuget"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+
+  # Three independent npm workspaces (frontend/web, frontend/mobile, frontend/shared) — each
+  # has its own package.json/package-lock.json, so each needs its own entry; there is no
+  # top-level frontend/package.json workspace root to point at instead.
+  - package-ecosystem: "npm"
+    directory: "/frontend/web"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/frontend/mobile"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/frontend/shared"
+    schedule:
+      interval: "weekly"
+
+  # Keeps actions/checkout, actions/setup-dotnet, etc. (.github/workflows/*.yml) current too —
+  # an outdated Action can itself be a supply-chain risk, not just application dependencies.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
