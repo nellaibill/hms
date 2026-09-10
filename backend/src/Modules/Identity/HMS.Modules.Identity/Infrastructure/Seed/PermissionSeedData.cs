@@ -641,6 +641,36 @@ internal static class PermissionSeedData
                 DeletedAt = (DateTime?)null,
                 DeletedBy = (Guid?)null
             },
+            // A fifth action outside the view/create/edit/delete set every other finance-billing
+            // permission uses — same precedent as discharge-summary.finalize and
+            // pharmacy.view-cost. Setting InvoiceLineItem.DiscountApproved=true previously had no
+            // server-side check at all beyond finance-billing.create (ADR-080) — this closes that
+            // gap by requiring a distinct, narrower permission before a discount can actually be
+            // recorded as approved.
+            new
+            {
+                Id = Guid.Parse("b6e4a1d3-7c9f-4f2a-8e5d-1a3c6f9b2d4e"),
+                Module = "finance-billing",
+                Action = "discount-approve",
+                Key = "finance-billing.discount-approve",
+                Label = "Approve Discounts",
+                DisplayOrder = 6,
+                IsActive = true,
+                CreatedAt = new DateTime(
+                    2026,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc),
+                CreatedBy = (Guid?)null,
+                UpdatedAt = (DateTime?)null,
+                UpdatedBy = (Guid?)null,
+                IsDeleted = false,
+                DeletedAt = (DateTime?)null,
+                DeletedBy = (Guid?)null
+            },
             new
             {
                 Id = Guid.Parse("844e1456-87a8-4dca-8469-bb19117c7cb4"),
