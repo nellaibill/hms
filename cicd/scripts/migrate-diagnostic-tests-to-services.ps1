@@ -52,7 +52,7 @@
     Defaults to the local dev API.
 
 .EXAMPLE
-    ./migrate-diagnostic-tests-to-services.ps1 -HospitalCode lhs -Username lhsadmin -Password 'Lakshmi@123'
+    ./migrate-diagnostic-tests-to-services.ps1 -HospitalCode lhs -Username lhsadmin -Password '<super-admin-password>'
 #>
 [CmdletBinding()]
 param(

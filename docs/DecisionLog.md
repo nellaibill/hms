@@ -37,7 +37,7 @@ _To be documented._
 
 ## Decisions
 
-### ADR-073: Branding write endpoints now require `identity-administration.edit`; Documents and Patient Reports routes gained real permission guards
+### ADR-074: Branding write endpoints now require `identity-administration.edit`; Documents and Patient Reports routes gained real permission guards
 **Date:** 2026-09-10
 **Status:** Accepted
 
@@ -114,6 +114,51 @@ the exact class of gap ADR-022 closed for Documents/Users/HR/IPD/Products/Calend
   but lower severity (no PII export) and explicitly noted as needing a check on whether their
   underlying GET endpoints independently enforce RBAC before deciding whether route-level gating
   is even the missing piece — left for a follow-up pass rather than bundled in here.
+
+---
+
+### ADR-073: Scrubbed a real tenant's admin password from committed `.EXAMPLE` doc-comments
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+A full-application security review (six parallel domain audits — auth/authz, multi-tenancy/data,
+API/backend, frontend, config/infra/CI, and shared/less-reviewed modules) found the live Lakshmi
+Hospitals tenant's Super Admin password (`Lakshmi@123`) committed in plaintext, repeated across
+the `.EXAMPLE` doc-comment of six `cicd/scripts/*.ps1` files (`seed-lakshmi-hospitals.ps1`,
+`import-radiology-procedures-v3.ps1`, `migrate-diagnostic-tests-to-services.ps1`,
+`refresh-lab-tariffs-v3.ps1`, `seed-appointment-and-consultation-types.ps1`,
+`seed-diagnostic-tests.ps1`). A seventh sibling script
+(`update-diagnostic-cost-prices.ps1`) was already using a redacted `'...'` placeholder — proof
+the placeholder convention was known, just not applied consistently. The password's specificity
+and consistency (following a trivially-guessable `CompanyName@123` pattern, tied to the real
+hospital code) distinguished it from the clearly-synthetic examples used for other tenants in
+sibling scripts (e.g. `'Xxx123!'` for the generic `legacy` tenant).
+
+**Decision**
+1. Replaced the real password in all six `.EXAMPLE` blocks with an unambiguous placeholder,
+   `'<super-admin-password>'`, matching the bracket-token convention already used elsewhere in
+   this codebase for "fill in your own value" documentation (rather than another redacted-looking
+   string like `'...'`, which reads as "value omitted" rather than "value required").
+2. **Rotating the live credential is out of scope for this code change** — it requires acting on
+   the real, currently-provisioned Lakshmi Hospitals tenant, which only the product owner can do
+   (this session does not touch live tenant credentials, per standing practice). Flagged to the
+   user directly as an action item separate from this PR.
+3. **Purging the string from git history is a separate, deliberately-deferred decision.** A
+   history rewrite (`git filter-repo`/BFG) followed by a force-push to `main` is a destructive,
+   hard-to-reverse operation affecting every existing clone/fork of this repository — it needs
+   its own explicit go-ahead from the user rather than being bundled into a routine content fix,
+   even though the underlying motivation (the leak) is the same.
+
+**Consequences**
+- No functional/behavioral change — these are `.EXAMPLE` doc-comments read by a human running the
+  script by hand, never parsed or executed as part of any pipeline.
+- The string remains recoverable from git history until a separate, explicitly-approved
+  history-purge action is taken; the live credential must be treated as compromised regardless of
+  whether that purge happens, since anyone who already cloned the repo before this fix retains it.
+- Recommends (not yet actioned): add automated secret-scanning to CI (gitleaks/trufflehog) so a
+  recurrence is caught before merge rather than by manual review — tracked as its own backlog item
+  in the security review report, not built as part of this fix.
 
 ---
 

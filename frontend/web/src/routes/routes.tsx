@@ -153,7 +153,7 @@ const specialPages: Record<string, React.ReactNode> = {
 // unlike the pre-existing hub pages (e.g. '/diagnostics/lab', '/pharmacy'), which rely on
 // nav-level filtering alone with no route-level guard, every Laboratory Workflow page
 // (dashboard included) gets a real guard since this is a brand-new module surface.
-// '/documents' and '/reports' joined this set in ADR-073's security-review follow-up — both
+// '/documents' and '/reports' joined this set in ADR-074's security-review follow-up — both
 // previously relied on nav-level filtering alone, and '/reports' specifically exposed a full
 // patient PII export (Excel/PDF) with zero permission gate at all. See documentsRoutes/
 // patientReportsRoutes below.
@@ -236,7 +236,7 @@ const roleRoutes = [
 // permission — mirrors mastersRoutes' exact reasoning/permission choice below (both are
 // Settings-page items reusing 'identity-administration', config/navigation.ts's "Roles,
 // Users & Settings" category). The backend's PUT/logo-upload actions independently require
-// 'identity-administration.edit' (BrandingController.cs, ADR-073) — this route guard is the
+// 'identity-administration.edit' (BrandingController.cs, ADR-074) — this route guard is the
 // same view-grain hint mastersRoutes uses, not the real enforcement boundary.
 const brandingRoutes = [
   {

@@ -21,7 +21,7 @@ namespace HMS.Modules.Branding.Endpoints;
 /// existing "Roles, Users &amp; Settings" category — see ModuleCatalog/ROLE_MODULES rather than
 /// adding a new one, matching Masters' own reuse of this module for its Settings-adjacent
 /// pages) so a non-admin authenticated user can no longer rewrite tenant-wide branding by
-/// calling the API directly — see docs/DecisionLog.md ADR-073.
+/// calling the API directly — see docs/DecisionLog.md ADR-074.
 /// </summary>
 [ApiController]
 [Route("api/v1/branding")]
