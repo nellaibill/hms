@@ -62,16 +62,20 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>Gets a single product by id.</summary>
+    /// <remarks><c>costPrice</c> is redacted to 0 unless the caller also holds
+    /// <c>pharmacy.view-cost</c> — see <see cref="RedactCostPrice"/>.</remarks>
     [Authorize]
     [RequirePermission("pharmacy.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _service.GetByIdAsync(id, cancellationToken);
-        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+        return result.IsSuccess ? Ok(Envelope(result.Value is null ? null : RedactCostPrice(result.Value))) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>Lists products with paging, search, and category/brand/active-status filtering.</summary>
+    /// <remarks><c>costPrice</c> is redacted to 0 unless the caller also holds
+    /// <c>pharmacy.view-cost</c> — see <see cref="RedactCostPrice"/>.</remarks>
     [Authorize]
     [RequirePermission("pharmacy.view")]
     [HttpGet]
@@ -79,9 +83,22 @@ public class ProductsController : ControllerBase
     {
         var paged = await _service.GetPagedAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
+        var items = paged.Items.Select(RedactCostPrice).ToList();
 
-        return Ok(new ApiResponse<IReadOnlyList<ProductResponse>> { Data = paged.Items, Meta = meta });
+        return Ok(new ApiResponse<IReadOnlyList<ProductResponse>> { Data = items, Meta = meta });
     }
+
+    /// <summary><c>pharmacy.view</c> alone (the gate on both actions above) grants list/detail
+    /// visibility to every day-to-day dispensing user — <c>CostPrice</c> (procurement cost) is
+    /// commercially sensitive margin data on top of that, so it's zeroed out here unless the
+    /// caller separately holds <c>pharmacy.view-cost</c> (ADR-077). A plain 0 rather than a
+    /// nullable field: <c>ProductResponse.CostPrice</c> is a non-nullable <c>decimal</c> used
+    /// identically by both create/edit forms (which always have the real value) and this
+    /// read path, and changing its nullability would be a wider contract change than this fix
+    /// warrants — 0 is already how an uncosted product reads elsewhere in this codebase (see
+    /// <c>update-diagnostic-cost-prices.ps1</c>'s identical "not yet costed" convention).</summary>
+    private ProductResponse RedactCostPrice(ProductResponse response) =>
+        User.HasPermission("pharmacy.view-cost") ? response : response with { CostPrice = 0 };
 
     private static ApiResponse<ProductResponse> Envelope(ProductResponse? data) => new() { Data = data };
 

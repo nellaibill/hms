@@ -37,6 +37,60 @@ _To be documented._
 
 ## Decisions
 
+### ADR-077: Product `CostPrice` now requires a separate `pharmacy.view-cost` permission
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+Finding M17 from the security review: `Product.CostPrice` (procurement cost) is commercially
+sensitive margin data, but was returned verbatim in `ProductResponse` to anyone holding plain
+`pharmacy.view` — the same permission every day-to-day dispensing/stock-handling user needs just
+to see the product list. No finer-grained permission existed to separate "can see stock/pricing"
+from "can see what the hospital pays for it."
+
+**Decision**
+1. **New `pharmacy.view-cost` permission**, a fifth action outside the view/create/edit/delete
+   set every other `pharmacy` permission uses — same precedent as `discharge-summary.finalize`
+   (ADR-022). Added to `PermissionSeedData.cs`; the existing Super Admin role auto-sync
+   (`IdentityDataSeeder.EnsureSuperAdminRoleAsync`, re-syncs to every currently-seeded permission
+   on every startup) means Super Admin gets it automatically, no manual step needed.
+2. **Redaction happens in `ProductsController`, not `ProductService`** — `GetById`/`GetPaged`
+   now zero out `CostPrice` on the response unless `User.HasPermission("pharmacy.view-cost")`
+   (a new `ClaimsPrincipalExtensions.HasPermission` helper, reading the same `"Permission"` JWT
+   claim `PermissionAuthorizationHandler` already checks). Kept at the Controller layer
+   specifically because that's the only place with access to the caller's `ClaimsPrincipal` —
+   `[RequirePermission]` only gates whether an *entire action* runs, not what a permitted action
+   *returns*, so this is a different mechanism for a different job, not a replacement for it.
+3. **Zeroed to `0`, not made nullable.** `ProductResponse.CostPrice` is a non-nullable `decimal`
+   used identically by the create/edit request DTOs (which always carry the real value) and this
+   read path — changing its nullability would be a wider contract change than this fix warrants,
+   and `0` is already this codebase's existing "not yet costed" convention (see
+   `update-diagnostic-cost-prices.ps1`'s identical reasoning for diagnostic services).
+4. **Not yet exposed in the frontend's generic Roles matrix.** `PERMISSION_ACTIONS`
+   (`frontend/web/src/features/roles/types.ts`) is hardcoded to exactly `view`/`create`/`edit`/
+   `delete` — the same limitation `discharge-summary.finalize` already has, confirmed by grep
+   (zero references to either key anywhere under `features/roles/`). Granting
+   `pharmacy.view-cost` to a custom (non-Super-Admin) role is a backend/seed-data action today,
+   not self-service via the Roles admin UI — an accepted, pre-existing pattern in this codebase,
+   not a new gap introduced here.
+5. **`ProductPricesController` needed no change** — confirmed its response contracts
+   (`ProductPriceContracts.cs`) never reference `CostPrice` at all; only `ProductsController`'s
+   two GET actions return it.
+
+**Consequences**
+- First controller-level test in this suite (`ProductsControllerTests.cs`, 3 tests) — deliberate,
+  since the redaction logic lives in the Controller and needs a `ClaimsPrincipal`, which no
+  Service-level test could exercise. `HMS.Modules.Products` still has no `InternalsVisibleTo`
+  wiring and therefore no way to test its internal Service/Repository layer directly — not
+  needed for this fix, since `ProductsController`/`IProductService`/`ProductResponse` are all
+  public, but a real gap if a future Products fix needs to reach internal types.
+- A role holding `pharmacy.create`/`pharmacy.edit` but not `pharmacy.view-cost` can still submit
+  a real `CostPrice` on create/update (those request DTOs are unaffected) even though they'd see
+  it redacted on their own subsequent read — an accepted asymmetry for this pass, matching the
+  review's own framing of the fix as closing the *view* exposure specifically.
+
+---
+
 ### ADR-076: Trust forwarded client IPs only from loopback; rate-limit message/notification/upload endpoints
 **Date:** 2026-09-10
 **Status:** Accepted
