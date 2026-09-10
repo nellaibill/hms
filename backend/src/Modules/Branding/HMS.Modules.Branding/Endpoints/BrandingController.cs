@@ -15,6 +15,13 @@ namespace HMS.Modules.Branding.Endpoints;
 /// The pre-login screen no longer calls this endpoint at all; it themes itself with the
 /// static frontend defaults instead (no tenant is known yet at that point). "Actor"
 /// (updated-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId.
+/// <c>Get</c> is deliberately left at bare <c>[Authorize]</c> — every authenticated user of
+/// any role needs it to theme the app after login, not just Settings admins. <c>Update</c>/
+/// <c>UploadLogo</c> additionally require <c>identity-administration.edit</c> (reusing the
+/// existing "Roles, Users &amp; Settings" category — see ModuleCatalog/ROLE_MODULES rather than
+/// adding a new one, matching Masters' own reuse of this module for its Settings-adjacent
+/// pages) so a non-admin authenticated user can no longer rewrite tenant-wide branding by
+/// calling the API directly — see docs/DecisionLog.md ADR-073.
 /// </summary>
 [ApiController]
 [Route("api/v1/branding")]
@@ -39,7 +46,9 @@ public class BrandingController : ControllerBase
     /// <summary>Updates the theme/branding configuration (colors, fonts, hospital identity).</summary>
     /// <response code="200">The branding configuration was updated.</response>
     /// <response code="400">The request failed validation.</response>
+    /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
     [HttpPut]
+    [RequirePermission("identity-administration.edit")]
     public async Task<IActionResult> Update([FromBody] UpdateBrandingRequest request, CancellationToken cancellationToken)
     {
         var result = await _brandingService.UpdateAsync(request, actorId: User.GetUserId(), cancellationToken);
@@ -49,8 +58,10 @@ public class BrandingController : ControllerBase
     /// <summary>Uploads/replaces the hospital logo (PNG/JPG/WEBP/SVG, max 500KB, 16-2000px per side for raster formats — content is decoded/sanity-checked, not just trusted by extension).</summary>
     /// <response code="200">The logo was uploaded and set.</response>
     /// <response code="400">The file is missing or failed validation.</response>
+    /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
     [HttpPost("logo")]
     [Consumes("multipart/form-data")]
+    [RequirePermission("identity-administration.edit")]
     public async Task<IActionResult> UploadLogo(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)

@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
-import { RequireRole } from '../features/auth/RequireRole';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { RequireFeatureRoute } from '../features/auth/RequireFeatureRoute';
 import { PlatformProtectedRoute } from '../features/platformAuth/PlatformProtectedRoute';
@@ -141,11 +140,9 @@ const specialPages: Record<string, React.ReactNode> = {
   '/admin/hr': withSuspense(<HrHubPage />),
   '/engagement/programmes': withSuspense(<CalendarEventsPage />),
   '/engagement/messages': withSuspense(<MessagesAndNotificationsPage />),
-  '/documents': withSuspense(<DocumentManagementPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
   '/pharmacy': withSuspense(<PharmacyHubPage />),
   '/diagnostics/lab': withSuspense(<CentralLaboratoryHubPage />),
-  '/reports': withSuspense(<PatientReportsPage />),
 };
 
 // '/finance/accounts' is deliberately excluded from specialPages above and handled by
@@ -156,7 +153,39 @@ const specialPages: Record<string, React.ReactNode> = {
 // unlike the pre-existing hub pages (e.g. '/diagnostics/lab', '/pharmacy'), which rely on
 // nav-level filtering alone with no route-level guard, every Laboratory Workflow page
 // (dashboard included) gets a real guard since this is a brand-new module surface.
-const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard']);
+// '/documents' and '/reports' joined this set in ADR-073's security-review follow-up — both
+// previously relied on nav-level filtering alone, and '/reports' specifically exposed a full
+// patient PII export (Excel/PDF) with zero permission gate at all. See documentsRoutes/
+// patientReportsRoutes below.
+const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/documents', '/reports']);
+
+// Document Management, reachable from the '/documents' nav leaf. Route-gated via
+// RequirePermissionRoute using the nav leaf's own permission ('records-compliance',
+// config/navigation.ts), matching DocumentsController's actual server-side check
+// ('records-compliance.view') — previously relied on nav-level filtering alone.
+const documentsRoutes = [
+  {
+    element: <RequirePermissionRoute permission="records-compliance.view" />,
+    children: [{ path: 'documents', element: withSuspense(<DocumentManagementPage />) }],
+  },
+];
+
+// Patient Reports, reachable from the '/reports' nav leaf — a filterable table over full
+// patient PII with an Excel/PDF export, previously reachable by direct URL with no permission
+// gate at all (nav-level filtering only). Gated at 'patient-management.view', matching
+// PatientsController's actual server-side check on the report/summary/export endpoints
+// (ADR-071) — deliberately NOT the nav leaf's own labelled permission ('reports-analytics',
+// config/navigation.ts), since that module was never actually wired to these endpoints; using
+// it here would gate the route on a permission the backend doesn't check, letting a
+// reports-analytics-only role reach a page every API call on it then 403s, while a
+// patient-management-only role (the one that actually works) couldn't reach it via nav-driven
+// gating. Worth reconciling the nav label itself in a future pass.
+const patientReportsRoutes = [
+  {
+    element: <RequirePermissionRoute permission="patient-management.view" />,
+    children: [{ path: 'reports', element: withSuspense(<PatientReportsPage />) }],
+  },
+];
 
 const moduleRoutes = getAllLeaves()
   .filter((leaf) => !routeGatedLeafPaths.has(leaf.path))
@@ -202,12 +231,16 @@ const roleRoutes = [
   { path: 'admin/roles/:id/edit', element: withSuspense(<RoleFormPage mode="edit" />) },
 ];
 
-// Theme & Branding — reachable from the Settings page ("System Configuration"),
-// route-gated to admin/superAdmin via RequireRole since ProtectedRoute alone
-// only checks authentication, not role.
+// Theme & Branding — reachable from the Settings page ("System Configuration"). Route-gated
+// via RequirePermissionRoute since ProtectedRoute alone only checks authentication, not
+// permission — mirrors mastersRoutes' exact reasoning/permission choice below (both are
+// Settings-page items reusing 'identity-administration', config/navigation.ts's "Roles,
+// Users & Settings" category). The backend's PUT/logo-upload actions independently require
+// 'identity-administration.edit' (BrandingController.cs, ADR-073) — this route guard is the
+// same view-grain hint mastersRoutes uses, not the real enforcement boundary.
 const brandingRoutes = [
   {
-    element: <RequireRole roles={['admin', 'superAdmin']} />,
+    element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [{ path: 'admin/settings/branding', element: withSuspense(<BrandingSettingsPage />) }],
   },
 ];
@@ -489,6 +522,8 @@ export const router = createBrowserRouter(
             ...diagnosticsRoutes,
             ...labWorkflowRoutes,
             ...dischargeSummaryRoutes,
+            ...documentsRoutes,
+            ...patientReportsRoutes,
           ],
         },
       ],

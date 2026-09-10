@@ -37,6 +37,86 @@ _To be documented._
 
 ## Decisions
 
+### ADR-073: Branding write endpoints now require `identity-administration.edit`; Documents and Patient Reports routes gained real permission guards
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+A full-application security review (six parallel domain audits) found, independently in three of
+them, that `BrandingController`'s `Update`/`UploadLogo` actions carried only the default
+`[Authorize]` (the "Hospital" FallbackPolicy — any authenticated user of any role, any tenant)
+with no `[RequirePermission(...)]`. The frontend's only gate was `RequireRole(['admin',
+'superAdmin'])`, whose own doc comment admitted this was "frontend-only, matching the app's
+current mock-auth posture (no backend authorization exists anywhere yet)" — stale everywhere
+else in the app (real backend RBAC exists per ADR-022), but accurate for this one controller.
+Net effect: any authenticated hospital user — reception, nursing, any role — could call
+`PUT /api/v1/branding` or `POST /api/v1/branding/logo` directly and rewrite the tenant's theme,
+hospital identity fields, and logo, which is then rendered to every other user's session. This is
+the exact class of gap ADR-022 closed for Documents/Users/HR/IPD/Products/Calendar in August
+2026 — Branding was simply missed at the time.
+
+**Decision**
+1. `Update` and `UploadLogo` now additionally require `[RequirePermission
+   ("identity-administration.edit")]`. **Reused the existing `identity-administration` category
+   rather than adding a new `branding` one** — that category is already labelled "Roles, Users &
+   Settings" (`frontend/web/src/features/roles/modules.ts`) and is the exact permission
+   `mastersRoutes` already reuses for its own Settings-page items (`routes.tsx`,
+   `identity-administration.view`) — Branding is one more Settings-page item, not a distinct
+   business domain, so this follows ADR-022's stated default of reusing an existing category
+   over minting a new one (the one prior exception, `discharge-summary`, was justified by a
+   genuinely new action verb, `finalize`, which Branding has no equivalent of). No new
+   permission-catalog rows were needed.
+2. `Get` is deliberately left at bare `[Authorize]`, unchanged — every authenticated user needs
+   it to theme the app after login, not just the admins who reach the Settings page, so gating it
+   behind `identity-administration.view` would have broken theming for every non-admin role.
+3. Frontend: `brandingRoutes` in `routes.tsx` now wraps `/admin/settings/branding` in
+   `RequirePermissionRoute permission="identity-administration.view"`, mirroring
+   `mastersRoutes`' exact pattern (coarse route-level hint at `.view`; the backend's `.edit`
+   check on the actual mutating actions is the real enforcement boundary — same relationship
+   Masters already has between its list/view pages and its underlying create/edit endpoints).
+   `RequireRole.tsx` is deleted — this was its only remaining caller anywhere in the frontend.
+4. **Same review pass found `/documents` and `/reports` reachable by direct URL with zero
+   route-level permission gate** — both previously relied on nav-level sidebar filtering alone
+   (`config/navigation.ts`'s `permission` field only controls whether the link is *shown*, not
+   whether the route is reachable), the same gap `financeRoutes`/`labWorkflowRoutes` already
+   fixed for their own paths. `/reports` was the more serious of the two: a filterable table
+   over full patient PII with an Excel/PDF export, reachable and fully functional for any
+   authenticated user regardless of role. Added `documentsRoutes` (gated at
+   `records-compliance.view`, matching `DocumentsController`'s actual check and the nav leaf's
+   labelled permission) and `patientReportsRoutes` (gated at `patient-management.view`,
+   deliberately **not** the nav leaf's labelled `reports-analytics` — `PatientsController`'s
+   `report`/`report/summary`/`report/export` endpoints were built under ADR-071 checking
+   `patient-management.view`, and the nav config's `reports-analytics` label was never actually
+   wired to them; gating the route on the label rather than the real backend check would have
+   reintroduced a version of the same mismatch this fix is closing). `/documents` and `/reports`
+   were moved from the unguarded `specialPages`/`moduleRoutes` map into `routeGatedLeafPaths`,
+   mirroring `financeRoutes`'/`labWorkflowRoutes`' existing pattern exactly.
+
+**Consequences**
+- No new RBAC category, no new permission-catalog seed rows, no frontend `ROLE_MODULES` change —
+  the fix reuses infrastructure that already exists and is already assigned to the correct
+  admin-tier population via each tenant's own role configuration.
+- A role holding `identity-administration.view` but not `.edit` can now reach the Branding
+  settings page (matching Masters' UX) but will get a 403 from the backend on Save/Upload — no
+  new frontend-side disabled-state handling was added for that case in this pass (matches
+  Masters' own current UX, which has the same gap); worth a follow-up if it proves confusing in
+  practice.
+- Removes the last caller of `RequireRole.tsx`, which is deleted rather than left as dead code.
+- The nav-label/actual-permission mismatch on `/reports` (`reports-analytics` in
+  `config/navigation.ts` vs. `patient-management.view` actually enforced) is left as-is rather
+  than "fixed" by relabeling the nav config — Patient Reports genuinely is Patient-module data
+  gated by the Patient-module permission today; whether it *should* eventually move under a real
+  `reports-analytics` permission is a product question for whenever Reports grows beyond Patients
+  (ADR-070/071 already scoped it that way deliberately), not something to silently change here.
+- **Out of scope for this fix**: the security review also flagged several other hub pages
+  (Products/Inventory, IPD Dashboard, Central Laboratory, Messages & Notifications, Pharmacy)
+  as reachable by direct URL with nav-filtering-only gating, same shape as `/documents`/`/reports`
+  but lower severity (no PII export) and explicitly noted as needing a check on whether their
+  underlying GET endpoints independently enforce RBAC before deciding whether route-level gating
+  is even the missing piece — left for a follow-up pass rather than bundled in here.
+
+---
+
 ### ADR-072: Branding made genuinely tenant-aware, reversing the Phase C decision to keep it on a single shared database
 **Date:** 2026-09-09
 **Status:** Accepted
