@@ -86,5 +86,8 @@ internal sealed class TenantRepository : ITenantRepository
         return (total, active, total - active);
     }
 
+    public async Task<IReadOnlyList<Tenant>> GetAllActiveAsync(CancellationToken cancellationToken)
+        => await _dbContext.Tenants.Where(t => t.Status == TenantStatus.Active).OrderBy(t => t.HospitalCode).ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
 }

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Controllers live in this module (not HMS.Api), so their <summary> comments
+         must be generated here for Swashbuckle to include them in Swagger UI. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment on a public member) is not useful here: this module is
+         internal-by-default (see docs/DeveloperHandbook.md §4), so its few public members
+         are a deliberate narrow seam, not a fully-documented public API. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needed for ControllerBase/[ApiController]/IActionResult/IOptions in Endpoints/ and
+         Configuration/, since this module is a plain class library, not an ASP.NET Core
+         Web SDK project. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- No EF Core here — this module has no DbContext of its own (a backup is a pg_dump
+         file on disk, not a database row). Referenced only for NpgsqlConnectionStringBuilder,
+         used to decompose a tenant/masters connection string into pg_dump's -h/-p/-U/-d args
+         and PGPASSWORD, the same technique TenantDirectory/TenantProvisioningService already
+         use for the opposite direction (building a connection string, not decomposing one). -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- ITenantDirectory.GetAllActiveTenantsAsync — the daily backup job's list of what to dump. -->
+    <ProjectReference Include="..\..\Platform\HMS.Modules.Platform\HMS.Modules.Platform.csproj" />
+  </ItemGroup>
+
+</Project>

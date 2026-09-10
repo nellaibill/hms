@@ -1,5 +1,5 @@
 import type { TenantListItemResponse } from '@hms/shared';
-import { AlertTriangle, Building2, CheckCircle2, Loader2, LogOut, ShieldCheck, XCircle } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, DatabaseBackup, Loader2, LogOut, ShieldCheck, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -94,6 +94,10 @@ export default function PlatformDashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Button variant="outline" size="sm" onClick={() => navigate('/platform/backups')}>
+            <DatabaseBackup className="mr-2 size-4" />
+            Backups
+          </Button>
           <Button variant="outline" size="sm" onClick={() => navigate('/platform/security')}>
             <ShieldCheck className="mr-2 size-4" />
             Security

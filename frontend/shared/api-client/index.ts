@@ -8,6 +8,8 @@ export * from './services/patientsApi';
 export * from './services/patientImportApi';
 export * from './services/documentsApi';
 export * from './services/brandingApi';
+export * from './services/backupsApi';
+export * from './services/platformBackupsApi';
 export * from './services/mastersApi';
 export * from './services/productsApi';
 export * from './services/shiftsApi';

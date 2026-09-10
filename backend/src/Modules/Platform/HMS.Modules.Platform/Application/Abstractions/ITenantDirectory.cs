@@ -17,6 +17,12 @@ public interface ITenantDirectory
     /// <summary>Used by AuthenticationService.LoginAsync — the one place a tenant must be
     /// resolved *before* any JWT (and therefore before any TenantId claim) exists.</summary>
     Task<TenantInfo?> FindByHospitalCodeAsync(string hospitalCode, CancellationToken cancellationToken);
+
+    /// <summary>Every active tenant, ready-to-use connection strings included — used by the
+    /// daily backup job (HMS.Modules.Backups) to dump every hospital's database in turn. The
+    /// only bulk method on this interface; every other caller resolves one already-known
+    /// tenant at a time.</summary>
+    Task<IReadOnlyList<TenantInfo>> GetAllActiveTenantsAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>

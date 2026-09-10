@@ -1,4 +1,13 @@
-import { ArrowRight, Database, Palette, Settings as SettingsIcon, ShieldCheck, Users as UsersIcon, type LucideIcon } from 'lucide-react';
+import {
+  ArrowRight,
+  Database,
+  DatabaseBackup,
+  Palette,
+  Settings as SettingsIcon,
+  ShieldCheck,
+  Users as UsersIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +55,14 @@ const sections: SettingsSection[] = [
     icon: Palette,
     path: '/admin/settings/branding',
     status: 'available',
+  },
+  {
+    title: 'Database Backup',
+    description: 'Download this hospital’s latest automated daily backup.',
+    icon: DatabaseBackup,
+    path: '/admin/settings/backup',
+    status: 'available',
+    permission: 'identity-administration.view',
   },
 ];
 

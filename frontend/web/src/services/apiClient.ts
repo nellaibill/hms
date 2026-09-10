@@ -3,6 +3,7 @@ import {
   AppointmentTypesApi,
   AttendanceApi,
   AuthApi,
+  BackupsApi,
   BedsApi,
   BillingApi,
   BrandingApi,
@@ -32,6 +33,7 @@ import {
   PatientsApi,
   PharmacyApi,
   PlatformAuthApi,
+  PlatformBackupsApi,
   PlatformHospitalsApi,
   ProductsApi,
   RolesApi,
@@ -76,6 +78,7 @@ export const platformHttpClient = new HttpClient({
 
 export const platformAuthApi = new PlatformAuthApi(platformHttpClient);
 export const platformHospitalsApi = new PlatformHospitalsApi(platformHttpClient);
+export const platformBackupsApi = new PlatformBackupsApi(platformHttpClient);
 
 export const authApi = new AuthApi(httpClient);
 export const usersApi = new UsersApi(httpClient);
@@ -84,6 +87,7 @@ export const patientsApi = new PatientsApi(httpClient);
 export const patientImportApi = new PatientImportApi(httpClient);
 export const documentsApi = new DocumentsApi(httpClient);
 export const brandingApi = new BrandingApi(httpClient);
+export const backupsApi = new BackupsApi(httpClient);
 export const mastersApi = new MastersApi(httpClient);
 export const productsApi = new ProductsApi(httpClient);
 export const shiftsApi = new ShiftsApi(httpClient);

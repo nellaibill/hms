@@ -8,6 +8,7 @@ export * from './patients/patientVisit';
 export * from './patients/patientImport';
 export * from './documents/document';
 export * from './branding/branding';
+export * from './backups/backup';
 export * from './products/product';
 export * from './products/productBatch';
 export * from './hr/shift';
