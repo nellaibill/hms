@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { LoginResponse } from '@hms/shared';
+import { brandingQueryKey } from '../branding/hooks/useBrandingQuery';
 import { authApi, setAuthToken } from '../../services/apiClient';
 import type { AuthUser, Role } from './types';
 
@@ -68,6 +70,7 @@ setAuthToken(initialSession?.token ?? null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(initialSession?.user ?? null);
+  const queryClient = useQueryClient();
 
   const login = async (hospitalCode: string, role: Role, username: string, password: string) => {
     const response = await authApi.login(hospitalCode, { loginType: role, username, password });
@@ -79,12 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     setAuthToken(session.token);
     setUser(session.user);
+    // Branding is now tenant-scoped server-side (see ADR referenced in BrandingModule.cs) —
+    // any cached response from a *different* hospital's session in this same browser tab
+    // (or the anonymous pre-login fallback) must be thrown away so ThemeProvider re-fetches
+    // this hospital's own branding, not whatever was cached under the shared queryKey.
+    void queryClient.invalidateQueries({ queryKey: brandingQueryKey });
   };
 
   const logout = () => {
     sessionStorage.removeItem(STORAGE_KEY);
     setAuthToken(null);
     setUser(null);
+    void queryClient.invalidateQueries({ queryKey: brandingQueryKey });
   };
 
   const hasPermission = (key: string) => user?.permissionKeys.includes(key) ?? false;

@@ -2,7 +2,6 @@ using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
 using HMS.Api.HealthChecks;
 using HMS.Api.Middleware;
-using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.Identity;
 using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
@@ -129,24 +128,14 @@ if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
     // Register Hospital flow instead of a dev-only shortcut.
     var seedLegacyTenant = builder.Configuration.GetValue("Bootstrap:SeedLegacyTenant", true);
 
-    // Branding is the one hospital module NOT made tenant-aware in HMS Multi-Tenancy
-    // Phase C (see BrandingModule.cs's own comment): BrandingController.Get() is
-    // anonymous and themes the pre-login screen before any tenant is known, so it always
-    // targets ConnectionStrings:Default regardless of seedLegacyTenant. Migrated
-    // unconditionally — unlike everything below that's gated on seedLegacyTenant — so
-    // that database (and the pre-login screen it backs) still exists after a
-    // from-scratch "Platform DB only" reset.
-    sp.GetRequiredService<BrandingDbContext>().Database.Migrate();
-
-    // Platform's own tables live under the "platform" schema, isolated from Branding's
-    // "branding" schema and (when SeedLegacyTenant is true) the legacy tenant's own
-    // per-module schemas below — see docs/DatabaseArchitecture.md's SaaS provisioning ADR.
-    // Local dev/the Windows installer point ConnectionStrings:Default at the same physical
-    // database as ConnectionStrings:Platform (hms_platform) specifically so a fresh install
-    // doesn't spin up a second physical database just for Branding's pre-login schema; a
-    // real production deployment still keeps Default pointed at its own database when
-    // SeedLegacyTenant is true there (see docs/Deployment.md). Migrated (and seeded) before
-    // anything tenant-aware below, since seeding the legacy tenant row needs it.
+    // Platform's own tables live under the "platform" schema, isolated from (when
+    // SeedLegacyTenant is true) the legacy tenant's own per-module schemas below — see
+    // docs/DatabaseArchitecture.md's SaaS provisioning ADR. Local dev/the Windows installer
+    // point ConnectionStrings:Default at the same physical database as
+    // ConnectionStrings:Platform (hms_platform); a real production deployment still keeps
+    // Default pointed at its own database when SeedLegacyTenant is true there (see
+    // docs/Deployment.md). Migrated (and seeded) before anything tenant-aware below, since
+    // seeding the legacy tenant row needs it.
     sp.GetRequiredService<PlatformDbContext>().Database.Migrate();
 
     // Idempotent: seeds the one default Platform Admin account, and — only when

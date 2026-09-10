@@ -2,7 +2,6 @@ using HMS.Modules.Branding.Application;
 using HMS.Modules.Branding.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +9,12 @@ namespace HMS.Modules.Branding.Endpoints;
 
 /// <summary>
 /// The Branding module's HTTP surface — get/update the current theme configuration and
-/// upload a hospital logo, per the Theme &amp; Branding settings feature. GET has no
-/// authentication so the pre-login screen can theme itself too; PUT/POST match that same
-/// (currently app-wide) posture — see docs/DecisionLog.md. "Actor" (updated-by) is read
-/// from the caller's JWT via ClaimsPrincipalExtensions.GetUserId when one is present.
+/// upload a hospital logo, per the Theme &amp; Branding settings feature. Every action
+/// requires a Hospital JWT (the default FallbackPolicy) so the tenant-aware BrandingDbContext
+/// can resolve which hospital's own branding row to read/write — see docs/DecisionLog.md.
+/// The pre-login screen no longer calls this endpoint at all; it themes itself with the
+/// static frontend defaults instead (no tenant is known yet at that point). "Actor"
+/// (updated-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId.
 /// </summary>
 [ApiController]
 [Route("api/v1/branding")]
@@ -26,9 +27,8 @@ public class BrandingController : ControllerBase
         _brandingService = brandingService;
     }
 
-    /// <summary>Gets the current theme/branding configuration. Public — no auth — so the pre-login screen can theme itself.</summary>
+    /// <summary>Gets the current tenant's theme/branding configuration.</summary>
     /// <response code="200">The current branding configuration.</response>
-    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
