@@ -7,6 +7,7 @@ using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HMS.Modules.Messaging.Endpoints;
 
@@ -101,6 +102,7 @@ public class ConversationsController : ControllerBase
     /// <response code="400">The request failed validation.</response>
     /// <response code="403">The caller isn't a participant of this conversation.</response>
     [Authorize]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     [HttpPost("{id:guid}/messages")]
     public async Task<IActionResult> SendMessage(Guid id, [FromBody] SendMessageRequest request, CancellationToken cancellationToken)
     {

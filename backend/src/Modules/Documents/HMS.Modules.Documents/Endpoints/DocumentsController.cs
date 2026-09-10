@@ -7,6 +7,7 @@ using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 
 namespace HMS.Modules.Documents.Endpoints;
@@ -45,6 +46,7 @@ public class DocumentsController : ControllerBase
     /// <response code="403">The caller may not upload documents for this owner type.</response>
     /// <response code="404">No record of the given owner type/id was found.</response>
     [RequirePermission("records-compliance.create")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     [HttpPost]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload(IFormFile file, [FromForm] UploadDocumentRequest request, CancellationToken cancellationToken)

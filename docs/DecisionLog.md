@@ -37,6 +37,73 @@ _To be documented._
 
 ## Decisions
 
+### ADR-076: Trust forwarded client IPs only from loopback; rate-limit message/notification/upload endpoints
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+Two related, but distinct, rate-limiting gaps from the security review (findings H6 and M16):
+
+1. **H6 — the per-IP rate limiter was silently neutralized behind the documented Windows/nginx
+   reverse-proxy deployment path.** `RateLimitingConfiguration.ClientKey` partitions on
+   `HttpContext.Connection.RemoteIpAddress`, and deliberately never read `X-Forwarded-For`
+   (ADR-018's own reasoning: this host wasn't yet known to sit behind a trusted proxy, and
+   trusting an attacker-controlled header would let the limiter be trivially bypassed). But
+   `scripts/deploy/windows/nginx-hms-reverse-proxy.conf` proxies every request through nginx on
+   the same host — so in that deployment, `RemoteIpAddress` is `127.0.0.1` for **every** request
+   regardless of the real client, collapsing the per-client 200/min (global) and 10/min (login)
+   limits into one shared bucket for all users combined. That both defeats brute-force
+   protection against a real attacker (their requests never stand out from aggregate legitimate
+   traffic) and creates a self-inflicted denial-of-service (one busy client exhausts the shared
+   bucket for everyone). ADR-018 and the reverse-proxy deployment guide shipped in separate
+   sessions and were never reconciled against each other.
+2. **M16 — rate limiting covered only the Login endpoint app-wide.** Every other authenticated
+   write endpoint — message-send, notification broadcast, file uploads — had no request-rate
+   ceiling beyond the generous 200/min global limit, which is sized for normal UI polling, not
+   as abuse protection for any specific expensive action.
+
+**Decision**
+1. **`app.UseForwardedHeaders(...)` added as the very first middleware in `Program.cs`**, using
+   `ForwardedHeadersOptions`' own framework defaults for `KnownNetworks`/`KnownProxies`
+   (loopback only) — deliberately **not** widened or overridden. This means `RemoteIpAddress` is
+   only ever rewritten from `X-Forwarded-For` when the *immediate* TCP connection is
+   127.0.0.1/::1 (i.e., already relayed by nginx running on the same host) — a client cannot
+   spoof this by simply sending the header over the network, since the immediate-connection
+   check happens first. `nginx-hms-reverse-proxy.conf` already correctly sets
+   `X-Forwarded-For`/`X-Forwarded-Proto` (via `$proxy_add_x_forwarded_for`, which appends rather
+   than overwrites) — the gap was entirely on the ASP.NET Core side never reading it. No effect
+   on the Docker Compose deployment path, which has no proxy hop at all.
+2. **New `RateLimitingPolicyNames.Write` policy (60 req/min per client)**, applied via
+   `[EnableRateLimiting(RateLimitingPolicyNames.Write)]` to `ConversationsController.
+   SendMessage`, `NotificationsController.Notify`, `BrandingController.UploadLogo`,
+   `DocumentsController.Upload`, `ProductImagesController.Upload`, and
+   `PatientImportController.Upload` — the exact set the review flagged.
+3. **Partitioned by IP, not by authenticated user, despite the review's suggestion of "a
+   token-bucket per user."** Rejected after checking the actual pipeline order: rate limiting
+   (`UseHmsRateLimiting()`) deliberately runs *before* `UseAuthentication()` (ADR-018 — an
+   unauthenticated flood shouldn't spend JWT-validation work first), so no verified user
+   identity exists yet at the point a rate-limit partition key is chosen. Decoding an
+   unvalidated bearer token just to read its `sub` claim for partitioning would let an attacker
+   trivially bypass the limiter by attaching a different (even unsigned/garbage) token per
+   request — worse than the per-IP status quo, not better. Per-IP partitioning, consistent with
+   every existing policy, was kept.
+
+**Consequences**
+- Every deployment path with a reverse proxy in front of the API must ensure that proxy is the
+  literal loopback interface (as `nginx-hms-reverse-proxy.conf` already is) — a future deployment
+  topology with the proxy on a *different* host would need an explicit `KnownProxies`/
+  `KnownNetworks` entry for that proxy's real IP, which this change deliberately does not add
+  pre-emptively (no such topology exists in this codebase today).
+- The `Write` policy's 60/min ceiling is a judgment call, not derived from any specific measured
+  usage pattern — generous enough for normal single-user interactive use (composing several
+  messages, uploading a few files in a row) while still bounding a scripted abuse loop; revisit
+  if real usage ever legitimately needs a higher burst rate.
+- `HMS.UnitTests` full suite (922 tests) and the three newly-built module projects all pass
+  unchanged — this is additive middleware/attribute wiring, not a change to any existing
+  business logic.
+
+---
+
 ### ADR-075: File-upload and Excel-export hardening sweep (Phase 1 of the security review)
 **Date:** 2026-09-10
 **Status:** Accepted

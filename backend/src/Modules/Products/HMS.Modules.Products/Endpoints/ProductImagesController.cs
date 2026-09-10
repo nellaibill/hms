@@ -7,6 +7,7 @@ using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HMS.Modules.Products.Endpoints;
 
@@ -30,6 +31,7 @@ public class ProductImagesController : ControllerBase
     /// <response code="400">The file is missing, failed validation, or the type/order slot is already taken.</response>
     [Authorize]
     [RequirePermission("pharmacy.create")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload(
