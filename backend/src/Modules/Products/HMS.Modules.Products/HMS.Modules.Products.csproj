@@ -20,6 +20,10 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="FluentValidation" />
+    <!-- Content-sniffing product image uploads (Image.Identify) rather than trusting the
+         client-declared extension alone — matches BrandingService/UserService's existing
+         pattern for every other image upload path in this codebase. -->
+    <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 
   <ItemGroup>

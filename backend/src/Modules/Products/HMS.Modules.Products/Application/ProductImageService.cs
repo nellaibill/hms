@@ -3,6 +3,7 @@ using HMS.Modules.Products.Application.Mapping;
 using HMS.Modules.Products.Contracts;
 using HMS.Modules.Products.Domain;
 using HMS.Shared.Kernel;
+using SixLabors.ImageSharp;
 
 namespace HMS.Modules.Products.Application;
 
@@ -59,7 +60,34 @@ internal class ProductImageService : IProductImageService
             return Result<ProductImageResponse>.Failure(ProductsErrorCodes.DuplicateCode, "An image with this type and display order already exists for this product.");
         }
 
-        var imageUrl = await _storage.SaveAsync(productId, fileName, content, cancellationToken);
+        // Buffered once so the actual bytes can be content-sniffed as a real image — never
+        // trusting the client-declared extension alone — matching BrandingService/
+        // UserService's existing pattern for every other image upload path in this codebase.
+        // Storage then reads from this same buffered copy.
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, cancellationToken);
+        buffer.Position = 0;
+
+        ImageInfo? info;
+        try
+        {
+            info = Image.Identify(buffer);
+        }
+        catch
+        {
+            info = null;
+        }
+        finally
+        {
+            buffer.Position = 0;
+        }
+
+        if (info is null)
+        {
+            return Result<ProductImageResponse>.Failure(ProductsErrorCodes.InvalidReference, "The uploaded file is not a valid image.");
+        }
+
+        var imageUrl = await _storage.SaveAsync(productId, fileName, buffer, cancellationToken);
 
         var image = ProductImage.Create(productId, imageUrl, imageType, isPrimary, displayOrder, isActive, actorId);
 

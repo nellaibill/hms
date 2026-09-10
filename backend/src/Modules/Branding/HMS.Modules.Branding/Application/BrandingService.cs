@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Xml;
+using System.Xml.Linq;
 using HMS.Modules.Branding.Application.Abstractions;
 using HMS.Modules.Branding.Application.Mapping;
 using HMS.Modules.Branding.Contracts;
@@ -200,11 +202,20 @@ internal class BrandingService : IBrandingService
         return resized;
     }
 
-    /// <summary>SVG is vector, not decodable by an image library — this is a lightweight
-    /// content sanity check instead (real markup, no embedded script), not a full sanitizer.
-    /// Dimension bounds don't apply: the frontend's fixed logo box already clamps a vector
-    /// image's rendered size regardless of whatever intrinsic width/height it declares.
-    /// Leaves <paramref name="buffer"/> rewound to 0.</summary>
+    /// <summary>SVG is vector, not decodable by an image library — this validates it as real
+    /// markup instead, walking the parsed element/attribute tree rather than string-matching a
+    /// single literal ("&lt;script"), which a payload using an event-handler attribute
+    /// (onload=, onerror=, ...) or a javascript:/data: URI never contained in the first place.
+    /// Parsed with DTD processing and external-entity resolution explicitly disabled (SVG has
+    /// no legitimate need for either, and allowing them would open an XXE hole on top of the
+    /// script-injection risk this method exists to close) — a DOCTYPE or malformed markup fails
+    /// closed as "not valid SVG" rather than being silently skipped. Dimension bounds don't
+    /// apply: the frontend's fixed logo box already clamps a vector image's rendered size
+    /// regardless of whatever intrinsic width/height it declares. Leaves
+    /// <paramref name="buffer"/> rewound to 0. Uploaded SVGs are still only ever rendered via
+    /// an &lt;img src&gt; (browsers don't execute embedded script for that element), so this is
+    /// defense-in-depth against the file being opened by direct navigation, not the only thing
+    /// standing between an uploaded SVG and script execution.</summary>
     private static string? ValidateSvg(MemoryStream buffer)
     {
         using var reader = new StreamReader(buffer, leaveOpen: true);
@@ -216,9 +227,48 @@ internal class BrandingService : IBrandingService
             return "The uploaded file is not a valid SVG image.";
         }
 
-        if (text.Contains("<script", StringComparison.OrdinalIgnoreCase))
+        XDocument document;
+        try
         {
-            return "SVG logos containing scripts are not allowed.";
+            var readerSettings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+            };
+            using var stringReader = new StringReader(text);
+            using var xmlReader = XmlReader.Create(stringReader, readerSettings);
+            document = XDocument.Load(xmlReader, LoadOptions.None);
+        }
+        catch (XmlException)
+        {
+            return "The uploaded file is not valid SVG markup.";
+        }
+
+        if (document.Root is null)
+        {
+            return "The uploaded file is not a valid SVG image.";
+        }
+
+        foreach (var element in document.Root.DescendantsAndSelf())
+        {
+            if (element.Name.LocalName.Equals("script", StringComparison.OrdinalIgnoreCase) ||
+                element.Name.LocalName.Equals("foreignObject", StringComparison.OrdinalIgnoreCase))
+            {
+                return "SVG logos containing scripts or embedded HTML are not allowed.";
+            }
+
+            foreach (var attribute in element.Attributes())
+            {
+                if (attribute.Name.LocalName.StartsWith("on", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "SVG logos containing event-handler attributes are not allowed.";
+                }
+
+                if (attribute.Value.TrimStart().StartsWith("javascript:", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "SVG logos containing script URIs are not allowed.";
+                }
+            }
         }
 
         return null;

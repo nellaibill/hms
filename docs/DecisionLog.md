@@ -37,6 +37,77 @@ _To be documented._
 
 ## Decisions
 
+### ADR-075: File-upload and Excel-export hardening sweep (Phase 1 of the security review)
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+Phase 1 of the full-application security review's remediation roadmap bundles four small,
+independent hardening items found across the file-upload and report-export surfaces (findings
+M12–M15). None of these had an active, confirmed exploit — they're consistency/defense-in-depth
+gaps against patterns already proven correct elsewhere in this codebase — but each is cheap to
+close and the review flagged them for the same "hardening sweep" pass.
+
+**Decision**
+1. **Product image upload now content-sniffs, matching every other image upload path
+   (M12).** `ProductImageService.UploadAsync` was the one upload path in the codebase trusting
+   the client-declared file extension alone — `BrandingService.UploadLogoAsync` and
+   `UserService.UploadProfilePhotoAsync` both already decode the actual bytes via
+   `Image.Identify`. Added the identical check (buffer once, `Image.Identify`, reject if it
+   doesn't decode as a real image) and a `SixLabors.ImageSharp` package reference to
+   `HMS.Modules.Products.csproj` (previously unused there). Pixel-dimension bounds were
+   deliberately **not** added — unlike Branding's fixed header logo box, product images have no
+   equivalent fixed display constraint to size against, so only content-type validity is
+   checked here, not dimensions.
+2. **Branding's SVG sanitizer now parses and walks the element/attribute tree instead of
+   string-matching one literal (M13).** The previous check only rejected a payload containing
+   the literal substring `<script` — an `onload=`/`onerror=` event-handler attribute or a
+   `javascript:` URI in `href`/`xlink:href` never contained that substring and sailed through
+   untouched. `ValidateSvg` now parses the upload as real XML (`XmlReaderSettings` with
+   `DtdProcessing.Prohibit` and `XmlResolver = null` — explicitly closing an XXE hole this new
+   parsing step would otherwise open, since SVG has no legitimate need for a DOCTYPE/external
+   entity) and rejects any `<script>`/`<foreignObject>` element, any `on*`-prefixed attribute,
+   or any attribute value starting with `javascript:`. Malformed/non-well-formed markup now
+   fails closed ("not valid SVG markup") rather than being silently accepted. Seven new tests
+   in `BrandingServiceTests` cover a clean SVG, each rejection case, and the DOCTYPE case.
+   SVG logos are still only ever rendered via `<img src>` in the frontend (browsers don't
+   execute embedded script for that element) — this sanitizer is defense-in-depth against the
+   file being opened by direct top-level navigation, not the only thing standing between an
+   uploaded SVG and script execution.
+3. **Excel exports now neutralize formula-injection payloads (M14).** A new
+   `ExcelCellSafety.Sanitize` helper (`HMS.Modules.Patients.Application.Excel`) prefixes any
+   cell string beginning with `=`, `+`, `-`, `@`, tab, or CR with a leading apostrophe — the
+   standard OWASP mitigation — before it's written into a ClosedXML cell. Applied at both call
+   sites the review flagged: `PatientImportReportGenerator` (echoes raw uploaded cell content
+   back into a downloadable report — the most exposed case, since that content is directly
+   attacker/user-typed) and `PatientReportExportGenerator` (patient UHID/name/phone/department,
+   all user-entered at registration). Kept module-local to Patients rather than promoted to a
+   shared project, since Patients is currently the only module with ClosedXML exports — worth
+   promoting to `HMS.Shared` if/when a second module adds one, not before.
+4. **Baseline security headers added host-wide (M15).** New
+   `SecurityHeadersConfiguration.UseHmsSecurityHeaders()`, registered in `Program.cs` before
+   `UseStaticFiles()` so the headers also land on Branding logos/product images/patient photos
+   served from `wwwroot/uploads`, not just JSON API responses. Sets `X-Content-Type-Options:
+   nosniff` and `X-Frame-Options: DENY` unconditionally, plus a restrictive
+   `Content-Security-Policy` (`default-src 'self'; script-src 'none'; object-src 'none';
+   frame-ancestors 'none'; base-uri 'none'`) on every response except `/swagger/*` (Swagger UI's
+   own inline scripts/styles would break under it, and it's Development-only per
+   `SwaggerConfiguration.cs`).
+
+**Consequences**
+- No behavior change for any legitimate upload or export — every new check rejects content that
+  was already invalid/malicious by the feature's own stated intent (a real image, real SVG
+  markup with no embedded script, a data export that displays as data not a formula).
+- `HMS.Modules.Products` gains its first-ever image-library dependency and, separately, still has
+  no unit-test coverage at all (confirmed during this change — no `InternalsVisibleTo` wiring
+  exists for it yet) — this fix is verified by a clean build and direct parity with
+  `BrandingService`'s already-tested pattern, not new Products test infrastructure; standing up
+  that infrastructure is a separate, larger undertaking than this hardening sweep.
+- The CSP is scoped to this API host only — it has no effect on the separately-deployed React
+  frontend's own headers, which are unrelated to this change.
+
+---
+
 ### ADR-074: Branding write endpoints now require `identity-administration.edit`; Documents and Patient Reports routes gained real permission guards
 **Date:** 2026-09-10
 **Status:** Accepted

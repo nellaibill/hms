@@ -36,11 +36,11 @@ internal static class PatientImportReportGenerator
             for (var i = 0; i < columns.Count; i++)
             {
                 reportRow.RawData.TryGetValue(columns[i].Header, out var value);
-                sheet.Cell(excelRow, i + 2).Value = value ?? string.Empty;
+                sheet.Cell(excelRow, i + 2).Value = ExcelCellSafety.Sanitize(value);
             }
 
-            sheet.Cell(excelRow, columns.Count + 2).Value =
-                string.Join("; ", reportRow.Errors.Select(e => $"{e.Field}: {e.Message}"));
+            sheet.Cell(excelRow, columns.Count + 2).Value = ExcelCellSafety.Sanitize(
+                string.Join("; ", reportRow.Errors.Select(e => $"{e.Field}: {e.Message}")));
         }
 
         sheet.SheetView.FreezeRows(1);

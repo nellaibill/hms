@@ -76,6 +76,11 @@ app.UseHmsRateLimiting();
 
 app.UseHmsSwagger();
 
+// Before UseStaticFiles() so the raster/SVG uploads served from wwwroot (Branding logos,
+// product images, patient photos) also get nosniff/X-Frame-Options/CSP, not just the JSON API
+// responses below.
+app.UseHmsSecurityHeaders();
+
 // Serves patient photos/ID proofs saved by PatientFileStorage under wwwroot/uploads —
 // the app's first static-file surface (see docs/DecisionLog.md's file-upload ADR).
 app.UseStaticFiles();
