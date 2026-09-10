@@ -37,6 +37,65 @@ _To be documented._
 
 ## Decisions
 
+### ADR-080: Invoice discount approval requires a real server-side permission; the unbuilt phone-override UI removed
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+Finding H3 from the security review: `InvoiceLineItem.DiscountApproved`/`DiscountApprovedBy`
+had no server-side enforcement at all — any caller holding plain `finance-billing.create` could
+set a line item's discount to any amount and mark it approved, self-populating
+`DiscountApprovedBy` with an arbitrary free-text name. Investigating before fixing it turned up
+two things the finding itself didn't know about:
+
+1. **A frontend control already existed for exactly this** —
+   `frontend/web/src/features/billing/components/DiscountApprovalControl.tsx` — implementing a
+   two-tier UX: Admin/Accounts Officer/Super Admin self-approve; every other role types in a
+   supervisor's name (a verbal, phone-authorized override, a real hospital workflow). But this
+   component was **never actually imported anywhere** — confirmed by grep across the whole
+   frontend tree. Dead code, not a live gap in an active screen.
+2. **No live UI reaches `discountApproved`/`discountApprovedBy` at all today.** Every real
+   billing card (`ServiceBillingCard`, `LaboratoryBillingCard`, etc.) only *reads* `row.discount`
+   for its total calculation — none of them render an input for the discount amount or an
+   approval control. The fields exist in the Zod schema (defaulted `false`/`''`) and the API
+   contract, but are currently unreachable through the product. The real, live exposure is
+   purely at the API layer — a direct call to `POST /api/v1/billing/invoices`.
+
+Asked the user how to handle the (currently-unbuilt) phone-override path specifically, since a
+purely-technical fix collapsing it down to "permission holders only" would remove a workflow the
+business may still want. **User's decision: require the real permission server-side, drop the
+phone-override path entirely** — a supervisor who wants to authorize a discount now needs to be
+the one whose session actually creates the invoice (or a future UI would need to build a real,
+verifiable second-actor flow — not in scope here).
+
+**Decision**
+1. **New `finance-billing.discount-approve` permission** — a fifth action outside the
+   view/create/edit/delete set every other `finance-billing` permission uses, same precedent as
+   `discharge-summary.finalize`/`pharmacy.view-cost` (ADR-022/ADR-077).
+2. **`InvoicesController.Create` now rejects (403, `BILLING.DISCOUNT_APPROVAL_FORBIDDEN`) any
+   request where at least one line item has `DiscountApproved: true` and the caller lacks that
+   permission** — checked before the service layer runs, using the same `ClaimsPrincipal.
+   HasPermission` helper added in ADR-077. `DiscountApprovedBy` itself is left as a free-text
+   label, unchanged — the fix that actually matters is that `DiscountApproved` can no longer be
+   *persisted as true* by anyone who doesn't hold the permission; the label is now only ever
+   written by someone real audit trails (JWT identity, `CreatedBy`) can already corroborate.
+3. **Deleted `DiscountApprovalControl.tsx`** — confirmed dead code (zero importers), and it
+   specifically implemented the phone-override flow this decision explicitly rejects. Nothing
+   else in the frontend referenced it; `discountApproved`/`discountApprovedBy`'s other read/
+   display sites (`InvoiceDetailCard.tsx`, `billingCalculations.ts`, `billingValidation.ts`,
+   `apiBillingRepository.ts`) are untouched.
+
+**Consequences**
+- No frontend UX to fix or retest beyond the deletion above — there was no live discount-entry
+  screen to update, since none exists yet. Whoever builds one in the future must design it
+  around the new permission from the start (self-approve only, gated by
+  `finance-billing.discount-approve`) rather than reintroducing the override pattern.
+- A role holding `finance-billing.create` but not `finance-billing.discount-approve` can still
+  create invoices normally; only setting `DiscountApproved: true` specifically now requires the
+  extra permission.
+
+---
+
 ### ADR-079: Windows deployment runs as Production, migrations decoupled from app startup
 **Date:** 2026-09-10
 **Status:** Accepted

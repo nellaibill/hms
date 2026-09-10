@@ -45,6 +45,11 @@ public class InvoicesController : ControllerBase
         var validation = await _createValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
 
+        if (request.Items.Any(i => i.DiscountApproved) && !User.HasPermission("finance-billing.discount-approve"))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, BuildDiscountApprovalForbiddenError());
+        }
+
         var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
@@ -181,6 +186,14 @@ public class InvoicesController : ControllerBase
     {
         ErrorCode = "VALIDATION.FAILED",
         Message = "The request body is missing or could not be parsed.",
+        CorrelationId = HttpContext.GetCorrelationId(),
+        Timestamp = DateTime.UtcNow,
+    };
+
+    private ApiErrorResponse BuildDiscountApprovalForbiddenError() => new()
+    {
+        ErrorCode = "BILLING.DISCOUNT_APPROVAL_FORBIDDEN",
+        Message = "You don't have permission to approve a discount. Ask an Accounts Officer, Hospital Administrator, or Super Admin to create this invoice.",
         CorrelationId = HttpContext.GetCorrelationId(),
         Timestamp = DateTime.UtcNow,
     };
