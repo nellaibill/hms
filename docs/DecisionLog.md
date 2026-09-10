@@ -37,7 +37,59 @@ _To be documented._
 
 ## Decisions
 
-### ADR-078: CI security gates — dependency-vulnerability scanning, secret scanning, Dependabot
+### ADR-079: Windows deployment runs as Production, migrations decoupled from app startup
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+Finding H4 from the security review: `install-api-service.ps1` ran the deployed Windows
+Service with `ASPNETCORE_ENVIRONMENT=Development` — deliberately, per its own prior comment,
+purely so EF Core migrations would auto-apply on startup the same way `dotnet run` does
+locally. The side effect: Swagger UI (`SwaggerConfiguration.UseHmsSwagger`, gated on
+`IsDevelopment()`) became reachable on a real public deployment, and
+`docs/Deployment.md`'s own "What was already true before any of this" section had an
+actively wrong claim baked in as a result — "Swagger — registered unconditionally... not
+gated behind `IsDevelopment()`" — which was true of the *deployed behavior* only because of
+this environment choice, not true of the code, and the doc's own Testing checklist told an
+operator to confirm Swagger loads externally as a *pass* condition.
+
+**Decision**
+1. `install-api-service.ps1` now runs `dotnet HMS.Api.dll migrate` (`Program.cs`'s
+   already-built one-shot migration path, exits before `Kestrel` starts — see
+   `docs/Deployment.md`'s Database Migration Deployment section) **once, explicitly, before**
+   installing/starting the NSSM service — with the exact same connection-string/secret env
+   vars the service itself will use, set for that one process only via `[Environment]::
+   SetEnvironmentVariable(..., 'Process')`, never persisted to the machine or the service's
+   own environment block.
+2. The service itself now runs with `ASPNETCORE_ENVIRONMENT=Production`. Migrations are
+   fully decoupled from which environment the long-running process reports as — matching
+   `docs/DatabaseArchitecture.md`'s stated Migration Strategy ("pending migrations are
+   applied as an explicit, logged step... not automatically on every startup") for the first
+   time on this deployment path, not just the Docker one.
+3. `docs/Deployment.md` corrected in three places: the stale Swagger claim in "What was
+   already true," the firewall step's comment about `-ExposeApiPortDirectly` (clarified that
+   Swagger still won't load there either — it's gated on environment, not on which
+   port/proxy path reaches it), and the Testing checklist's Swagger step, which now instructs
+   confirming Swagger **404s** externally as the pass condition, with a concrete next step
+   (`nssm get HmsApi AppEnvironmentExtra`) if it doesn't.
+4. `scripts/deploy/windows/nginx-hms-reverse-proxy.conf`'s existing `/swagger/*` proxy rule
+   is left as-is, deliberately — it's now inert (proxies to a 404 rather than to a live
+   Swagger UI), and removing it isn't necessary now that the actual enforcement point is the
+   application-layer environment gate, not the reverse-proxy routing.
+
+**Consequences**
+- A fresh deployment following `docs/Deployment.md`'s Manual Deployment Steps end to end no
+  longer exposes Swagger UI, closing the gap this finding described — verified by reasoning
+  through the code path (`SwaggerConfiguration.cs`'s existing `IsDevelopment()` gate,
+  confirmed correct by an earlier review pass) and the corrected script/docs together, not by
+  an actual VPS deployment (this session has no such environment to deploy to).
+- `install-api-service.ps1` now fails loudly (`throw`, non-zero exit) if the migration step
+  fails, rather than silently proceeding to install a service pointed at an unmigrated
+  database — a stricter failure mode than before, and the correct one for a step that used to
+  be implicit.
+- `-PgPassword` still defaults to the weak, predictable `"hms"` (M11 from the same review) —
+  intentionally **not** fixed here; that's a distinct finding about a different script
+  parameter's default, out of scope for this environment/migration-sequencing fix.
 **Date:** 2026-09-10
 **Status:** Accepted
 

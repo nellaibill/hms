@@ -56,6 +56,11 @@ flow, not the legacy dev/QA seed path.
 This is the same migrate+seed logic `ASPNETCORE_ENVIRONMENT=Development` already runs
 automatically on a plain `dotnet run`, for local convenience — `migrate` is the explicit
 counterpart meant for a deploy pipeline or container entrypoint, usable in Production too.
+`install-api-service.ps1` (Manual Deployment Steps, below) runs this automatically before
+installing/starting the service, with the service itself running as
+`ASPNETCORE_ENVIRONMENT=Production` — migrations are no longer coupled to running the whole
+app as Development, which also unintentionally left Swagger UI reachable (Swagger is gated
+on `IsDevelopment()`).
 
 **Additional hospital tenants are not covered by `migrate`.** Any hospital provisioned
 through the Register Hospital flow (i.e. every tenant other than the legacy one above) has
@@ -99,8 +104,13 @@ API's port — substitute your own.
   reads `Cors:AllowedOrigins` from configuration and fails closed (empty list = allow
   nothing, never `AllowAnyOrigin`). Already override-able via the `Cors__AllowedOrigins__0`
   env var, same convention `docker-compose.yml` already uses. **No code change needed.**
-- **Swagger** — registered unconditionally in `Program.cs` (`AddHmsSwagger`/`UseHmsSwagger`),
-  not gated behind `IsDevelopment()`. It's reachable in any environment already.
+- **Swagger** — `SwaggerConfiguration.UseHmsSwagger` gates it behind `app.Environment.
+  IsDevelopment()`. It is **not** reachable when `ASPNETCORE_ENVIRONMENT=Production` (the
+  value `install-api-service.ps1` sets — see step 2 below). It was previously reachable on a
+  real deployment only because the service ran with `ASPNETCORE_ENVIRONMENT=Development` for
+  an unrelated reason (migration convenience); that's fixed now, so this bullet's earlier
+  claim ("registered unconditionally... not gated") no longer describes either the code or
+  the deployed behavior.
 - **Secrets** (`Jwt:SigningKey`, `SuperAdminSeed:Password`, `PlatformAdminSeed:Password`) —
   ship as empty strings in `appsettings.json` and throw at startup if unset (see
   [Configuration.md](Configuration.md)). A Windows Service can't use `dotnet user-secrets`
@@ -198,8 +208,10 @@ baked in, not read at runtime.
 ```powershell
 cd C:\hms\scripts\deploy\windows
 .\open-deployment-firewall-ports.ps1
-# add -ExposeApiPortDirectly only if you also want to curl/Swagger port 58158 directly,
-# bypassing the reverse proxy, for testing
+# add -ExposeApiPortDirectly only if you also want to curl the API on port 58158 directly,
+# bypassing the reverse proxy, for testing — Swagger UI itself will still 404 there too,
+# since it's gated on ASPNETCORE_ENVIRONMENT=Production (see step 2 above), not just on
+# which port/proxy path reaches it
 ```
 This opens **port 80 only** by default. It never touches port 5432 — PostgreSQL stays
 unreachable from outside this machine. If this VPS is hosted on a cloud provider
@@ -266,8 +278,11 @@ moment the terminal/session closes or the VM reboots, with no automatic restart.
 3. **API via the reverse proxy, public IP:** from another machine,
    `curl http://162.35.105.234/api/v1/...` (any anonymous endpoint) or
    `curl http://162.35.105.234/health`.
-4. **Swagger externally:** open `http://162.35.105.234/swagger` in a browser on another
-   machine.
+4. **Swagger is NOT reachable externally:** open `http://162.35.105.234/swagger` in a browser
+   on another machine and confirm it 404s — `ASPNETCORE_ENVIRONMENT=Production` (step 2
+   above) gates Swagger off entirely. If it loads instead, the service isn't actually running
+   as Production; check `Get-Service HmsApi`'s environment (`nssm get HmsApi
+   AppEnvironmentExtra`) rather than assuming the deploy script ran successfully.
 5. **React from another machine:** open `http://162.35.105.234/` in a browser, open
    DevTools → Network before logging in, confirm login requests go to
    `http://162.35.105.234/api/v1/auth/login` (same-origin, no CORS error) and return `200`.
