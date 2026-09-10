@@ -37,6 +37,73 @@ _To be documented._
 
 ## Decisions
 
+### ADR-072: Branding made genuinely tenant-aware, reversing the Phase C decision to keep it on a single shared database
+**Date:** 2026-09-09
+**Status:** Accepted
+
+**Context**
+User reported that a brand-new hospital, created via the Platform Portal, showed the "existing
+color from other tenants" — a different hospital's saved logo/theme. Investigation confirmed
+this was not a caching artifact but the real, disclosed design of `HMS.Modules.Branding`:
+`BrandingModule.cs` was deliberately never made tenant-aware in HMS Multi-Tenancy Phase C,
+because `BrandingController.Get()` is anonymous (it themes the pre-login screen before any
+hospital is known, and Phase C's tenant-resolution middleware only ever resolves a tenant for
+an authenticated Hospital JWT or the login POST itself, neither of which apply to that call).
+Every tenant's Branding DbContext connected to the single `ConnectionStrings:Default` database
+regardless — confirmed live: `hms_platform.branding.branding_settings` held exactly one row
+("Lakshmi Hospitals" branding), shared and overwritable by every hospital in the system,
+while every real tenant's own `branding` schema (already migrated per-tenant, since `"branding"`
+is a `FeatureCatalog.Mandatory` key) sat empty and unused. ADR-026's own Context line asserting
+"hospital-side settings (Branding, etc.) are already per-tenant by construction" was incorrect
+for Branding specifically when written — this ADR corrects that.
+
+Asked the user how the anonymous pre-login screen should behave once branding becomes
+per-tenant, since by definition no tenant is known at that point: user chose the simpler of two
+options — a generic default look pre-login (not a per-hospital-code lookup as the user types),
+matching every other unauthenticated surface in the app.
+
+**Decision**
+1. `BrandingModule.cs`'s `BrandingDbContext` registration now resolves `ITenantContext
+   .ConnectionString` per-request, exactly like every other hospital module (`PatientsModule`'s
+   registration is the copied template) — no schema/migration change needed, since
+   `TenantMigrationService.MigrateAsync` already provisions each tenant's own `branding` schema
+   unconditionally; only the runtime connection-resolution was wrong.
+2. `BrandingController.Get()` loses `[AllowAnonymous]` — GET/PUT/POST all now require the same
+   Hospital JWT the FallbackPolicy already required for PUT/POST, so `ITenantContext` is always
+   resolved by the time `BrandingDbContext` is constructed.
+3. The one-time bootstrap-time `BrandingDbContext.Database.Migrate()` call against
+   `ConnectionStrings:Default` in `Program.cs` (which existed only to keep the anonymous
+   pre-login screen's database provisioned) is removed — it would now throw (no tenant context
+   exists at startup) and is no longer needed, since the pre-login screen no longer calls this
+   endpoint at all.
+4. Frontend: `LoginPage.tsx`/`ThemeProvider` keep calling `useBrandingQuery()` unconditionally,
+   but pre-login that request now 401s and `apiBrandingRepository.getBranding()`'s existing
+   catch already falls back to the static local defaults (`mockBrandingStore`) — exactly the
+   "generic default look" the user chose, with no new frontend gating code needed for that part.
+5. `AuthContext.tsx`'s `login()`/`logout()` now call `queryClient.invalidateQueries` on
+   `brandingQueryKey` — a secondary, previously-latent bug: the query's fixed key and
+   `staleTime: Infinity` meant that without this, a session switching tenants (or moving from
+   the pre-login fallback to a real logged-in session) in the same browser tab would keep
+   showing whatever branding was cached first, never refetching the newly-authenticated
+   tenant's own data.
+
+**Consequences**
+- Every tenant's Branding settings page, header/logo/footer, and print templates (invoices,
+  lab reports, Patient Reports) now correctly show that tenant's own saved branding instead of
+  whichever hospital last saved the shared row.
+- Any hospital that previously "customized" branding was actually only ever overwriting the one
+  shared row — there is no way to know retroactively which tenant a shared customization was
+  "for," so every tenant (including `lhs`, the one that made the most recent edits) starts fresh
+  from the backend's built-in defaults after this ships, and needs to re-save its own look if it
+  differs from the default. Disclosed here rather than attempting a guessed data migration.
+- The pre-login screen is now a fixed, non-customizable generic look for every hospital — this
+  was an explicit, confirmed trade-off, not a gap. A future phase could add a public
+  hospital-code-driven lookup if a customized pre-login screen is ever wanted; out of scope here.
+- ADR-052 (below) documented `hms_qa`'s removal partly in terms of Branding's old
+  not-tenant-aware behavior; that behavior no longer exists — see the note added there.
+
+---
+
 ### ADR-071: Patient Reports rebuilt as a filterable table MVP, replacing the chart page at `/reports`
 **Date:** 2026-09-09
 **Status:** Accepted
@@ -809,6 +876,11 @@ Pointed `ConnectionStrings:Default` at the same physical database as `Connection
 **Consequences**
 - **Deliberately scoped to local dev + the Windows installer only** — `.env.example`/`docker-compose.yml` (the Docker deployment path) were left untouched. That path is materially different: `Bootstrap:SeedLegacyTenant` isn't set there at all, and defaults to `true` (Production environment never loads `appsettings.Development.json`), so simply renaming `TENANT_DB_NAME` to match `PLATFORM_DB_NAME` there would jam the *full* legacy tenant's schemas into `hms_platform`, not just Branding's — a materially different, riskier change than what was asked. Flagged as a related but separate gap: `docs/Deployment.md` already recommends `Bootstrap__SeedLegacyTenant=false` for production, but neither `.env.example` nor `docker-compose.yml` expose or default that variable, so a Docker deployment following the example file today seeds the legacy tenant by default, contradicting that doc's own guidance — worth a follow-up if the Docker path is ever the one being freshly installed.
 - Lightly updated three stale/inaccurate code comments (`Program.cs`, `PlatformDbContext.cs`) that referenced `hms_qa` by name or asserted Platform/Default always use separate physical databases, which is no longer true for this path.
+
+**Note (2026-09-09):** This Context's premise that `BrandingDbContext` is "deliberately not
+tenant-aware" no longer holds — see ADR-072, which makes Branding tenant-aware like every other
+module. This ADR's actual Decision (merging `ConnectionStrings:Default` with `hms_platform`
+locally) is unaffected and still stands on its own for the legacy-tenant reason alone.
 
 ---
 
