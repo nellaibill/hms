@@ -2,6 +2,7 @@ import { ApiError, type DischargeSummaryFormValues } from '@hms/shared';
 import { useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
 import { useAdmissionQuery } from '@/features/ipd/admissions';
@@ -125,17 +126,12 @@ export default function DischargeSummaryEditPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to={`/clinical/ipd/admissions/${admission.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to admission
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <h1 className="text-xl font-semibold tracking-tight">Discharge Summary — {patient.firstName} {patient.lastName}</h1>
-        <p className="font-mono text-sm text-page-banner-foreground/85">{admission.admissionNumber} · Draft</p>
-      </div>
+      <PageBanner
+        title={`Discharge Summary — ${patient.firstName} ${patient.lastName}`}
+        subtitle={<span className="font-mono">{admission.admissionNumber} · Draft</span>}
+        backTo={`/clinical/ipd/admissions/${admission.id}`}
+        backLabel="Back to admission"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <AdmissionHeaderCard patient={patient} admission={admission} />

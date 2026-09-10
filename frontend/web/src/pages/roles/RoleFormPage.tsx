@@ -1,5 +1,6 @@
-import { ArrowLeft, Loader2, Pencil, ShieldCheck } from 'lucide-react';
+import { Loader2, Pencil, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../features/auth/AuthContext';
 import { RequirePermission } from '../../features/auth/RequirePermission';
@@ -80,36 +81,28 @@ export default function RoleFormPage({ mode }: RoleFormPageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to={backTo} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to roles
-        </Link>
-      </div>
-
-      {/* Centered, brand-colored banner — matches the Page banner style used
-          across module pages (Theme & Branding → Section headers). */}
-      <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        {mode === 'view' && hasPermission('identity-administration.edit') && (
-          <Button
-            asChild
-            variant="outline"
-            className="absolute right-6 top-1/2 -translate-y-1/2 gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-          >
-            <Link to={`/admin/roles/${id}/edit`}>
-              <Pencil className="h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
-        )}
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">{heading}</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">{subtitle}</p>
-      </div>
+      <PageBanner
+        icon={ShieldCheck}
+        title={heading}
+        subtitle={subtitle}
+        backTo={backTo}
+        backLabel="Back to roles"
+        rightActions={
+          mode === 'view' &&
+          hasPermission('identity-administration.edit') && (
+            <Button
+              asChild
+              variant="outline"
+              className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+            >
+              <Link to={`/admin/roles/${id}/edit`}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+          )
+        }
+      />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       {mode === 'view' ? (

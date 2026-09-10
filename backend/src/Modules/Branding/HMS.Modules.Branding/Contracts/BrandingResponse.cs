@@ -10,6 +10,7 @@ public record BrandingResponse
 
     public string FontFamily { get; init; } = string.Empty;
     public string FontSizeScale { get; init; } = string.Empty;
+    public string IconSizeScale { get; init; } = string.Empty;
 
     public IReadOnlyDictionary<string, string> TokensLight { get; init; } = new Dictionary<string, string>();
     public IReadOnlyDictionary<string, string> TokensDark { get; init; } = new Dictionary<string, string>();

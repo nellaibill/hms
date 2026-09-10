@@ -2,6 +2,7 @@ import { useQueries } from '@tanstack/react-query';
 import { ArrowRight, Building2, Database, FlaskConical, ListTree, PackageSearch, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAllMasterConfigs, getMasterStore, MASTER_SECTIONS } from '@/features/masters';
@@ -91,18 +92,11 @@ export default function MastersHubPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Centered, brand-colored banner — matches the Page banner style used across module pages (Theme & Branding → Section headers). */}
-      <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Database className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Hospital Reference Data</h1>  {/*Masters (Reference Data)*/}
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Reference data grouped by the module that owns it — Hospital, HR, Pharmacy &amp; Inventory, and Finance.
-        </p>
-      </div>
+      <PageBanner
+        icon={Database}
+        title="Hospital Reference Data"
+        subtitle="Reference data grouped by the module that owns it — Hospital, HR, Pharmacy & Inventory, and Finance."
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         {/* Tabs are the primary nav here, not an add-on filter — selecting one shows only that

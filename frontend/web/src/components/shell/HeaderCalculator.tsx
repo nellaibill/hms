@@ -113,7 +113,7 @@ export function HeaderCalculator() {
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Calculator">
-              <CalculatorIcon className="h-5 w-5" />
+              <CalculatorIcon className="h-[var(--header-icon-size)] w-[var(--header-icon-size)]" />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>

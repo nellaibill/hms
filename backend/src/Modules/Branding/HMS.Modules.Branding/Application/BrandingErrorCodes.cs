@@ -8,5 +8,6 @@ internal static class BrandingErrorCodes
 {
     public const string InvalidFontFamily = "BRANDING.INVALID_FONT_FAMILY";
     public const string InvalidFontSizeScale = "BRANDING.INVALID_FONT_SIZE_SCALE";
+    public const string InvalidIconSizeScale = "BRANDING.INVALID_ICON_SIZE_SCALE";
     public const string InvalidFile = "BRANDING.INVALID_FILE";
 }

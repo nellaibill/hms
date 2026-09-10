@@ -1,11 +1,12 @@
 import { ApiError } from '@hms/shared';
-import { ArrowLeft, CalendarRange, Copy, Loader2, Pencil, Send } from 'lucide-react';
+import { CalendarRange, Copy, Loader2, Pencil, Send } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DepartmentName } from '@/components/DepartmentName';
+import { PageBanner } from '@/components/PageBanner';
 import { useShiftsQuery } from '../../features/shifts';
 import { useShiftAssignmentsQuery } from '../../features/shiftAssignments';
 import {
@@ -82,54 +83,47 @@ export default function WeeklyRosterViewPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/admin/hr/weekly-rosters" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to weekly rosters
-        </Link>
-      </div>
-
-      <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="absolute right-6 top-1/2 flex -translate-y-1/2 items-center gap-2">
-          {!roster.published && (
+      <PageBanner
+        icon={CalendarRange}
+        title={`Week of ${roster.weekStartDate}`}
+        titleExtra={<Badge variant={roster.published ? 'success' : 'secondary'}>{roster.published ? 'Published' : 'Draft'}</Badge>}
+        subtitle={<WeeklyRosterWeekNav roster={roster} allRosters={departmentRostersQuery.data?.items ?? []} />}
+        backTo="/admin/hr/weekly-rosters"
+        backLabel="Back to weekly rosters"
+        rightActions={
+          <>
+            {!roster.published && (
+              <Button
+                variant="outline"
+                className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+                onClick={handlePublish}
+                disabled={publishMutation.isPending}
+              >
+                <Send className="h-4 w-4" />
+                {publishMutation.isPending ? 'Publishing…' : 'Publish'}
+              </Button>
+            )}
             <Button
               variant="outline"
               className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-              onClick={handlePublish}
-              disabled={publishMutation.isPending}
+              onClick={() => setIsCopying(true)}
             >
-              <Send className="h-4 w-4" />
-              {publishMutation.isPending ? 'Publishing…' : 'Publish'}
+              <Copy className="h-4 w-4" />
+              Copy
             </Button>
-          )}
-          <Button
-            variant="outline"
-            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-            onClick={() => setIsCopying(true)}
-          >
-            <Copy className="h-4 w-4" />
-            Copy
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-          >
-            <Link to={`/admin/hr/weekly-rosters/${roster.id}/edit`}>
-              <Pencil className="h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <CalendarRange className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Week of {roster.weekStartDate}</h1>
-          <Badge variant={roster.published ? 'success' : 'secondary'}>{roster.published ? 'Published' : 'Draft'}</Badge>
-        </div>
-        <WeeklyRosterWeekNav roster={roster} allRosters={departmentRostersQuery.data?.items ?? []} />
-      </div>
+            <Button
+              asChild
+              variant="outline"
+              className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+            >
+              <Link to={`/admin/hr/weekly-rosters/${roster.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         {publishMutation.isError && (

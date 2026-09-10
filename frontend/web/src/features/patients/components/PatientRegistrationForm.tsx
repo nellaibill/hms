@@ -43,6 +43,7 @@ import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
 import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLabel';
 import { tabErrorMessages } from '../formErrorSummary';
+import { offlineAdChannelLabel, onlineAdChannelLabel } from '../arrivalChannelLabel';
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
 import { titleLabel } from '../titleLabel';
@@ -1038,7 +1039,7 @@ export function PatientRegistrationForm({
                         <SelectContent>
                           {ONLINE_AD_CHANNELS.map((c) => (
                             <SelectItem key={c} value={c}>
-                              {humanize(c)}
+                              {onlineAdChannelLabel(c)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1076,7 +1077,7 @@ export function PatientRegistrationForm({
                         <SelectContent>
                           {OFFLINE_AD_CHANNELS.map((c) => (
                             <SelectItem key={c} value={c}>
-                              {humanize(c)}
+                              {offlineAdChannelLabel(c)}
                             </SelectItem>
                           ))}
                         </SelectContent>

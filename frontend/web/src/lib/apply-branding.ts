@@ -1,6 +1,6 @@
 import { branding } from '@/config/branding';
 import { adjustLightness, contrastForeground, setLightness } from '@/lib/color';
-import { FONT_FAMILY_STACKS, FONT_SIZE_SCALE_PX, type BrandingConfig } from '@/features/branding/types';
+import { FONT_FAMILY_STACKS, FONT_SIZE_SCALE_PX, ICON_SIZE_SCALE_PX, type BrandingConfig } from '@/features/branding/types';
 
 type Theme = 'light' | 'dark';
 
@@ -48,6 +48,7 @@ function applyStaticBrandingDefaults(theme: Theme) {
   root.setProperty('--page-banner-foreground', '0 0% 100%');
   root.setProperty('--font-sans', FONT_FAMILY_STACKS.Inter);
   root.setProperty('--font-size-base', FONT_SIZE_SCALE_PX.md);
+  root.setProperty('--header-icon-size', ICON_SIZE_SCALE_PX.md);
 }
 
 /**
@@ -75,4 +76,5 @@ export function applyBrandingTokens(theme: Theme, config?: BrandingConfig | null
 
   root.setProperty('--font-sans', FONT_FAMILY_STACKS[config.fontFamily]);
   root.setProperty('--font-size-base', FONT_SIZE_SCALE_PX[config.fontSizeScale]);
+  root.setProperty('--header-icon-size', ICON_SIZE_SCALE_PX[config.iconSizeScale]);
 }

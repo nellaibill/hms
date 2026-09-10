@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/feature
 import { useMasterOptionsQuery } from '@/features/masters';
 import { documentsApi } from '../../../services/apiClient';
 import { useAuth } from '../../auth/AuthContext';
+import { modeOfArrivalChannelLabel } from '../arrivalChannelLabel';
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
 import { maskIdNumber } from '../maskIdNumber';
@@ -45,11 +47,15 @@ interface PatientDetailsProps {
   onActiveTabChange: (value: string) => void;
 }
 
+/** Label-left/value-right row, consistent across every section: an uppercase label in the
+ * app's accent color on the left, its value right-aligned on the same line, separated from
+ * the next row by a hairline — one alignment convention instead of each card improvising its
+ * own (some previously stacked label-over-value, others didn't align at all). */
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 py-0.5">
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="text-sm text-foreground">{value}</dd>
+    <div className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0">
+      <dt className="shrink-0 text-xs font-semibold uppercase tracking-wide text-primary">{label}</dt>
+      <dd className="min-w-0 truncate text-right text-sm text-foreground">{value}</dd>
     </div>
   );
 }
@@ -60,6 +66,7 @@ function SectionCard({
   icon: Icon,
   action,
   centerTitle,
+  alert,
   children,
 }: {
   title: string;
@@ -71,11 +78,15 @@ function SectionCard({
    * Allergy Details' "+ Add Allergy") can't sit inline beside a truly centered title without
    * overlapping it — it's stacked on its own centered row underneath instead. */
   centerTitle?: boolean;
+  /** Marks this as a medical-alert section — its header uses the destructive/red token instead
+   * of the same sidebar-accent background every other section header gets, so it reads as
+   * something needing attention rather than routine reference data (Allergy Details only). */
+  alert?: boolean;
   children: ReactNode;
 }) {
   const heading = (
-    <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-      <Icon className="h-4 w-4 text-primary" />
+    <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+      <Icon className="h-4 w-4 shrink-0" />
       {title}
     </h2>
   );
@@ -85,19 +96,24 @@ function SectionCard({
     // each other in a tight grid with no card-header/background to set them apart, so
     // border-border's very pale default (see index.css) reads as barely-there — this needs to
     // be visibly darker without going all the way to a heavy/loud line.
-    <div className="flex flex-col gap-1.5 rounded-lg border border-foreground/15 bg-card p-3">
-      {centerTitle ? (
-        <div className="flex flex-col items-center gap-1.5">
-          {heading}
-          {action}
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-2">
-          {heading}
-          {action}
-        </div>
-      )}
-      {children}
+    <div className="flex flex-col overflow-hidden rounded-lg border border-foreground/15 bg-card">
+      <div
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-2',
+          alert ? 'bg-destructive text-destructive-foreground' : 'bg-sidebar-accent text-sidebar-foreground',
+          centerTitle ? 'justify-center' : 'justify-between',
+        )}
+      >
+        {heading}
+        {/* A centered title has no room beside it for an action without overlapping — that
+            action renders below, in the (uncolored) content area, instead. A left-aligned
+            title has the room, so its action stays inline in the colored header band. */}
+        {!centerTitle && action}
+      </div>
+      <div className="flex flex-col gap-1.5 p-3">
+        {centerTitle && action && <div className="flex justify-center">{action}</div>}
+        {children}
+      </div>
     </div>
   );
 }
@@ -134,7 +150,7 @@ function documentStatusBadgeVariant(status: DocumentResponse['status']): BadgePr
 function PersonalContactCard({ patient }: { patient: Patient }) {
   return (
     <SectionCard title="Personal & Contact" icon={User} centerTitle>
-      <dl className="grid grid-cols-2 gap-x-3">
+      <dl className="flex flex-col">
         <Field label="Title" value={patient.title} />
         <Field label="First name" value={patient.firstName} />
         <Field label="Last name" value={patient.lastName} />
@@ -155,28 +171,34 @@ function AddressEmergencyCard({ patient }: { patient: Patient }) {
 
   return (
     <SectionCard title="Address & Emergency" icon={MapPin} centerTitle>
-      <div className="text-sm text-foreground">
-        <p>{[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}</p>
-        <p className="text-muted-foreground">
-          <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />, <StateName stateId={patient.address.stateId} /> —{' '}
-          {patient.address.pincode}
-        </p>
+      <div className="flex flex-col gap-0.5 border-b border-border/60 pb-1.5">
+        <span className="text-xs font-semibold uppercase tracking-wide text-primary">Address</span>
+        <div className="text-sm text-foreground">
+          <p>{[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}</p>
+          <p className="text-muted-foreground">
+            <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />, <StateName stateId={patient.address.stateId} /> —{' '}
+            {patient.address.pincode}
+          </p>
+        </div>
       </div>
 
-      <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Emergency contacts</span>
+      <div className="mt-1 flex flex-col gap-1.5">
+        <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+          Emergency contact{patient.emergencyContacts.length === 1 ? '' : 's'}
+        </span>
         {patient.emergencyContacts.length === 0 ? (
           <span className="text-sm text-muted-foreground">—</span>
         ) : (
           <>
-            {visibleContacts.map((contact) => (
-              <div key={contact.id} className="flex items-center justify-between text-sm">
-                <span className="text-foreground">{contact.name}</span>
-                <span className="text-muted-foreground">
-                  {humanize(contact.relationship)} · {contact.phone}
-                </span>
-              </div>
-            ))}
+            <div className="flex flex-col gap-2">
+              {visibleContacts.map((contact) => (
+                <dl key={contact.id} className="flex flex-col rounded-md border border-border/60 px-2">
+                  <Field label="Name" value={contact.name} />
+                  <Field label="Relationship" value={humanize(contact.relationship)} />
+                  <Field label="Contact number" value={contact.phone} />
+                </dl>
+              ))}
+            </div>
             {patient.emergencyContacts.length > 2 && (
               <button
                 type="button"
@@ -198,9 +220,9 @@ function AddressEmergencyCard({ patient }: { patient: Patient }) {
 function RegistrationDetailsCard({ patient }: { patient: Patient }) {
   return (
     <SectionCard title="Registration Details" icon={ClipboardList} centerTitle>
-      <dl className="grid grid-cols-2 gap-x-3">
+      <dl className="flex flex-col">
         <Field label="Registration source" value={humanize(patient.modeOfArrivalSource)} />
-        {patient.modeOfArrivalChannel && <Field label="Arrival channel" value={humanize(patient.modeOfArrivalChannel)} />}
+        {patient.modeOfArrivalChannel && <Field label="Arrival channel" value={modeOfArrivalChannelLabel(patient.modeOfArrivalChannel)} />}
         {patient.modeOfArrivalSpecify && <Field label="Arrival details" value={patient.modeOfArrivalSpecify} />}
         <Field label="ID proof type" value={patient.idProofType ?? '—'} />
         <Field label="ID proof number" value={patient.idProofNumber ? maskIdNumber(patient.idProofNumber) : '—'} />
@@ -321,6 +343,7 @@ function AllergyDetailsCard({ patient }: { patient: Patient }) {
       title="Allergy Details"
       icon={HeartPulse}
       centerTitle
+      alert
       action={
         canEdit &&
         !showAddForm && (

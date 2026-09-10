@@ -1,5 +1,5 @@
-import { CalendarClock, CalendarX2, FileWarning, Link as LinkIcon, Loader2, UserCheck, Users, UserX } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { CalendarClock, CalendarX2, FileWarning, Loader2, UserCheck, Users, UserX } from 'lucide-react';
+import { PageBanner } from '@/components/PageBanner';
 import { Card, CardContent } from '@/components/ui/card';
 import { useHrDashboardQuery } from '../../features/hr/dashboard';
 
@@ -36,24 +36,13 @@ export default function HrDashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/admin/hr" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <LinkIcon className="h-3.5 w-3.5" />
-          Back to HR
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Users className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">HR Dashboard</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Headcount, today's attendance, pending leave, and expiring staff documents at a glance.
-        </p>
-      </div>
+      <PageBanner
+        icon={Users}
+        title="HR Dashboard"
+        subtitle="Headcount, today's attendance, pending leave, and expiring staff documents at a glance."
+        backTo="/admin/hr"
+        backLabel="Back to HR"
+      />
 
       <div className="flex flex-1 flex-col gap-8 p-6 lg:p-8">
         <section className="flex flex-col gap-3">

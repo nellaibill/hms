@@ -1,6 +1,7 @@
 import { ApiError, type StockReceiptFormValues } from '@hms/shared';
-import { ArrowLeft, PackagePlus } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { PackagePlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { useToast } from '@/components/ui/toast-context';
 import { RequirePermission } from '@/features/auth/RequirePermission';
 import { StockReceiptForm, useCreateStockReceiptMutation } from '@/features/pharmacy/stock-receipts';
@@ -34,22 +35,13 @@ export default function StockReceiptCreatePage() {
   return (
     <RequirePermission permission="pharmacy.create">
       <div className="flex flex-1 flex-col">
-        <div className="px-6 pt-4 lg:px-8">
-          <Link to="/pharmacy/stock-receipts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-            Back to stock receipts
-          </Link>
-        </div>
-
-        <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-              <PackagePlus className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl font-semibold tracking-tight">Receive Stock</h1>
-          </div>
-          <p className="max-w-2xl text-sm text-page-banner-foreground/85">Record newly received stock against a product/batch.</p>
-        </div>
+        <PageBanner
+          icon={PackagePlus}
+          title="Receive Stock"
+          subtitle="Record newly received stock against a product/batch."
+          backTo="/pharmacy/stock-receipts"
+          backLabel="Back to stock receipts"
+        />
 
         <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
           <StockReceiptForm

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
+import { PageBanner } from '@/components/PageBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationsList, PreferencesPanel } from '@/features/notifications';
 import { ConversationList, MessageThread, NewConversationDialog } from '@/features/messaging';
@@ -11,18 +12,11 @@ export default function MessagesAndNotificationsPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <MessageSquare className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Messages and Notifications</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Notification center covering clinical, operational, administrative, and financial alerts, plus internal
-          staff messaging.
-        </p>
-      </div>
+      <PageBanner
+        icon={MessageSquare}
+        title="Messages and Notifications"
+        subtitle="Notification center covering clinical, operational, administrative, and financial alerts, plus internal staff messaging."
+      />
 
       <div className="flex min-h-0 flex-1 flex-col p-4 lg:p-6">
         <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">

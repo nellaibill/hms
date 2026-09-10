@@ -1,8 +1,8 @@
 import type { DiagnosticProvider } from '@hms/shared';
 import { Building2, Loader2, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { PageBanner } from '@/components/PageBanner';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,21 +44,13 @@ export default function ExternalLabsListPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/admin/masters" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to Hospital Reference Data
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Building2 className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">External Labs</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">Providers tests are outsourced to.</p>
-      </div>
+      <PageBanner
+        icon={Building2}
+        title="External Labs"
+        subtitle="Providers tests are outsourced to."
+        backTo="/admin/masters"
+        backLabel="Back to Hospital Reference Data"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <div className="flex flex-wrap items-center gap-3">

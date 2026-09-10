@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Stethoscope, X } from 'lucide-react';
+import { FileText, PlusCircle, Stethoscope, Trash2, X, XCircle } from 'lucide-react';
 import { useEffect } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,14 @@ import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { ConsultationTypeSelect } from '@/components/ConsultationTypeSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Field } from '@/features/patients/components/FormSection';
 import { consultationTypesApi } from '@/services/apiClient';
 import { isConsultationEntryActive } from '../billingActivity';
+import { getServicePrice, type BillingService } from '../billingCatalog';
 import { formatCurrency } from '../billingCalculations';
-import { emptyConsultation, type BillingFormValues } from '../billingValidation';
+import { emptyConsultation, emptySimpleServiceRow, type BillingFormValues } from '../billingValidation';
+import { useDiagnosticTestServices } from '../hooks/useDiagnosticTestServices';
 import { CollapsibleCard } from './CollapsibleCard';
 
 interface ConsultationBillingCardProps {
@@ -35,6 +38,7 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
   const { control } = useFormContext<BillingFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: 'consultation' });
   const rows = useWatch({ control, name: 'consultation' });
+  const fileFields = useFieldArray({ control, name: 'file' });
 
   const activeRows = (rows ?? []).filter(isConsultationEntryActive);
   const isActive = activeRows.length > 0;
@@ -69,7 +73,158 @@ export function ConsultationBillingCard({ expanded, onToggle, hasError }: Consul
           isLast={index === fields.length - 1}
         />
       ))}
+
+      <ConsultationFileCharges fileFields={fileFields} />
     </CollapsibleCard>
+  );
+}
+
+/**
+ * File Charges used to be its own top-level billing category (a fifth CollapsibleCard sitting
+ * below Radiology/Laboratory/Procedure/Injection) — the customer's actual workflow only ever
+ * needs it alongside a Consultation, so it now lives nested inside this card instead, hidden
+ * behind an explicit "Add File Billing" action rather than showing an empty row by default.
+ * Still backed by the same top-level `file` field array/schema as before (billingValidation.ts,
+ * describeBillingItem's 'File' branch, the invoice's File line items) — only where this array
+ * is edited moved, not what it saves as.
+ */
+function ConsultationFileCharges({ fileFields }: { fileFields: ReturnType<typeof useFieldArray<BillingFormValues, 'file'>> }) {
+  const { fields, append, remove, replace } = fileFields;
+  const { services, isLoading } = useDiagnosticTestServices('File');
+
+  if (fields.length === 0) {
+    return (
+      <div className="flex flex-col gap-2 border-t border-dashed border-border pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-fit gap-1.5 text-primary"
+          onClick={() => append({ ...emptySimpleServiceRow })}
+        >
+          <PlusCircle className="h-4 w-4" />
+          Add File Billing
+        </Button>
+        <p className="flex items-start gap-2 rounded-md bg-accent/60 px-3 py-2 text-sm text-accent-foreground">
+          Click &quot;Add File Billing&quot; if you want to add file/document charges to this consultation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-accent/30 p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-foreground">
+              File Charges <span className="font-normal text-primary">(Optional)</span>
+            </span>
+            <span className="text-xs text-muted-foreground">Add file charges for documents (case sheet, ANC file, medical record file, etc.)</span>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+          onClick={() => replace([])}
+        >
+          <XCircle className="h-4 w-4" />
+          Remove File Billing
+        </Button>
+      </div>
+
+      <div className="overflow-hidden rounded-md border border-border">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/60 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2">#</th>
+                <th className="px-3 py-2">File Type</th>
+                <th className="px-3 py-2">Charge (₹)</th>
+                <th className="px-3 py-2 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-card">
+              {fields.map((field, index) => (
+                <FileChargeRow key={field.id} index={index} services={services} isLoadingServices={isLoading} onRemove={() => remove(index)} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={() => append({ ...emptySimpleServiceRow })}>
+        <PlusCircle className="h-4 w-4" />
+        Add Another File
+      </Button>
+    </div>
+  );
+}
+
+interface FileChargeRowProps {
+  index: number;
+  services: BillingService[];
+  isLoadingServices: boolean;
+  onRemove: () => void;
+}
+
+function FileChargeRow({ index, services, isLoadingServices, onRemove }: FileChargeRowProps) {
+  const {
+    control,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useFormContext<BillingFormValues>();
+  const basePath = `file.${index}` as const;
+
+  const serviceId = watch(`${basePath}.serviceId`);
+  const charge = watch(`${basePath}.charge`);
+
+  useEffect(() => {
+    setValue(`${basePath}.charge`, getServicePrice(services, serviceId), { shouldValidate: true });
+    // `services`/`basePath` are stable per row instance — only the selected service should recompute the price.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId, services, setValue]);
+
+  const serviceOptions = services.map((s) => ({ value: s.id, label: `${s.name} — ${formatCurrency(s.price)}`, keywords: s.name }));
+  const rowError = errors.file?.[index]?.serviceId?.message;
+
+  return (
+    <tr>
+      <td className="px-3 py-2 align-top text-muted-foreground">{index + 1}</td>
+      <td className="px-3 py-2 align-top">
+        <Controller
+          name={`${basePath}.serviceId`}
+          control={control}
+          render={({ field }) => (
+            <SearchableSelect
+              id={`${basePath}-service`}
+              ariaLabel="File type"
+              value={field.value}
+              onValueChange={field.onChange}
+              options={serviceOptions}
+              placeholder={isLoadingServices ? 'Loading…' : 'Select file type'}
+              searchPlaceholder="Search file types…"
+              disabled={isLoadingServices}
+            />
+          )}
+        />
+        {rowError && <p className="mt-1 text-xs text-destructive">{rowError}</p>}
+      </td>
+      <td className="px-3 py-2 align-top">
+        <div className="flex h-10 w-32 items-center rounded-md border border-dashed border-input bg-muted px-3 text-sm font-semibold text-foreground">
+          {formatCurrency(charge)}
+        </div>
+      </td>
+      <td className="px-3 py-2 text-right align-top">
+        <Button type="button" variant="ghost" size="icon" aria-label="Remove this file charge" onClick={onRemove}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </td>
+    </tr>
   );
 }
 

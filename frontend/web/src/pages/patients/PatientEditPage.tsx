@@ -1,29 +1,30 @@
 import type { Patient, PatientEditUiFormValues, UpdatePatientRequest } from '@hms/shared';
-import { ArrowLeft, Loader2, UserCog } from 'lucide-react';
+import { Loader2, UserCog } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { DataVerificationBanner, PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
-import { toBackendGender, fromBackendGender } from '../../features/patients/bridging';
+import { toBackendGender, fromBackendGender, fromModeOfArrivalFields, toModeOfArrivalRequest } from '../../features/patients/bridging';
 
 /**
  * See PatientRegistrationCreatePage.tsx's toRequest() comment for the same structural
  * mapping, applied here to an edit instead of a create. rowVersion is threaded in separately
  * (not part of the editable form state) — it's the optimistic-concurrency token from the
  * Patient this edit was loaded from, echoed back so the server can detect and reject a save
- * made against data someone else has since changed. `original` supplies modeOfArrival*
- * unchanged — this edit form still has no arrival-source fields, so it's carried forward from
- * the loaded record rather than overwritten with empty values on every save. idProofType/
- * idProofNumber, by contrast, now come from the edited `values` (they're real fields on
- * PatientEditUiFormValues — see patientEditUiSchema). Allergies/EmergencyContacts aren't part
+ * made against data someone else has since changed. modeOfArrival* and idProofType/
+ * idProofNumber now both come from the edited `values` (real fields on
+ * PatientEditUiFormValues — see patientEditUiSchema and ADR's reversal allowing Mode of
+ * Arrival to be edited here, matching Registration). Allergies/EmergencyContacts aren't part
  * of UpdatePatientRequest (they have their own add/remove endpoints) — Allergies are wired
  * separately via useAddPatientAllergyMutation/useRemovePatientAllergyMutation in
  * PatientEditForm, fired immediately rather than batched into this request.
  */
-function toRequest(values: PatientEditUiFormValues, rowVersion: string, original: Patient): UpdatePatientRequest {
+function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdatePatientRequest {
+  const modeOfArrival = toModeOfArrivalRequest(values.arrivalSource);
   return {
     title: values.title,
     firstName: values.firstName,
@@ -41,9 +42,9 @@ function toRequest(values: PatientEditUiFormValues, rowVersion: string, original
     idProofType: values.idProofType,
     idProofNumber: values.idProofNumber.trim(),
 
-    modeOfArrivalSource: original.modeOfArrivalSource,
-    modeOfArrivalChannel: original.modeOfArrivalChannel,
-    modeOfArrivalSpecify: original.modeOfArrivalSpecify,
+    modeOfArrivalSource: modeOfArrival.modeOfArrivalSource,
+    modeOfArrivalChannel: modeOfArrival.modeOfArrivalChannel,
+    modeOfArrivalSpecify: modeOfArrival.modeOfArrivalSpecify,
 
     address: {
       addressLine1: values.addressLine1,
@@ -89,6 +90,8 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     idProofType: patient.idProofType ?? 'Aadhaar',
     idProofNumber: patient.idProofNumber ?? '',
 
+    arrivalSource: fromModeOfArrivalFields(patient),
+
     emergencyContactRelationship: primaryContact?.relationship ?? 'Father',
     emergencyContactName: primaryContact?.name ?? '',
     emergencyContactPhone: primaryContact?.phone ?? '',
@@ -133,11 +136,10 @@ export default function PatientEditPage() {
   // `patient` from the isError/!patient guard above — which doesn't extend into a nested
   // function's closure — still applies.
   const rowVersion = patient.rowVersion;
-  const loadedPatient = patient;
 
   function handleSubmit(values: PatientEditUiFormValues) {
     mutation.mutate(
-      { id: id as string, request: toRequest(values, rowVersion, loadedPatient) },
+      { id: id as string, request: toRequest(values, rowVersion) },
       {
         onSuccess: () => {
           markSaved();
@@ -149,29 +151,13 @@ export default function PatientEditPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link
-          to={`/patients/registration/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to patient
-        </Link>
-      </div>
-
-      {/* Centered, brand-colored banner — matches the Page banner style used
-          across module pages (Theme & Branding → Section headers). */}
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <UserCog className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Edit {patient.firstName} {patient.lastName}
-          </h1>
-        </div>
-        <p className="text-sm text-page-banner-foreground/85">Update this patient's demographic details.</p>
-      </div>
+      <PageBanner
+        icon={UserCog}
+        title={`Edit ${patient.firstName} ${patient.lastName}`}
+        subtitle="Update this patient's demographic details."
+        backTo={`/patients/registration/${id}`}
+        backLabel="Back to patient"
+      />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       {patient.requiresDataVerification && <DataVerificationBanner />}

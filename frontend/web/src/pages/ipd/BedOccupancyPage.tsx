@@ -3,6 +3,7 @@ import { Grid3x3, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageBanner } from '@/components/PageBanner';
 import { cn } from '@/lib/utils';
 import { useAdmissionsQuery } from '../../features/ipd/admissions';
 import { useBedsQuery } from '../../features/ipd/beds';
@@ -41,21 +42,13 @@ export default function BedOccupancyPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/clinical/ipd" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to IPD
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Grid3x3 className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Bed Occupancy</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">Ward-by-ward view of every bed's current status.</p>
-      </div>
+      <PageBanner
+        icon={Grid3x3}
+        title="Bed Occupancy"
+        subtitle="Ward-by-ward view of every bed's current status."
+        backTo="/clinical/ipd"
+        backLabel="Back to IPD"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">

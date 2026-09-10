@@ -1,6 +1,6 @@
-import { ArrowLeft, Loader2, TrendingUp } from 'lucide-react';
+import { Loader2, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { useInvoicesForReportQuery } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
@@ -78,24 +78,13 @@ export default function ProfitReportPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/finance/accounts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Accounts and Finance
-        </Link>
-      </div>
-
-      <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <TrendingUp className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Hospital Profit Report</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Margin per billed service — revenue against each service's running cost for the selected period.
-        </p>
-      </div>
+      <PageBanner
+        icon={TrendingUp}
+        title="Hospital Profit Report"
+        subtitle="Margin per billed service — revenue against each service's running cost for the selected period."
+        backTo="/finance/accounts"
+        backLabel="Back to Accounts and Finance"
+      />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
         <AccountsNavTabs />

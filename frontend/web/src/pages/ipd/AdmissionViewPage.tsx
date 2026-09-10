@@ -1,10 +1,11 @@
 import { ApiError, type DischargeAdmissionFormValues, type TransferBedFormValues } from '@hms/shared';
-import { ArrowLeft, ClipboardList, Loader2, Repeat } from 'lucide-react';
+import { ClipboardList, Loader2, Repeat } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageBanner } from '@/components/PageBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast-context';
 import {
@@ -95,23 +96,14 @@ export default function AdmissionViewPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/clinical/ipd/admissions" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to admissions
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <ClipboardList className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">{admission.patientName}</h1>
-          <Badge variant={isAdmitted ? 'success' : 'secondary'}>{admission.status}</Badge>
-        </div>
-        <p className="font-mono text-sm text-page-banner-foreground/85">{admission.admissionNumber}</p>
-      </div>
+      <PageBanner
+        icon={ClipboardList}
+        title={admission.patientName}
+        titleExtra={<Badge variant={isAdmitted ? 'success' : 'secondary'}>{admission.status}</Badge>}
+        subtitle={<span className="font-mono">{admission.admissionNumber}</span>}
+        backTo="/clinical/ipd/admissions"
+        backLabel="Back to admissions"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <Card>

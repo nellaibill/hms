@@ -25,6 +25,10 @@ interface ServiceBillingCardProps {
   hasError: boolean;
   /** True while `services` is still loading from its source (e.g. an API-backed catalog) — disables the Service dropdown so it doesn't briefly render empty. */
   isLoadingServices?: boolean;
+  /** Overrides the row's item-picker label (and its placeholder/search text) — defaults to
+   * "Service", but e.g. Procedure Billing calls it "Procedure Name" since that's what a
+   * receptionist is actually picking from that category's catalog. */
+  serviceFieldLabel?: string;
 }
 
 /**
@@ -45,6 +49,7 @@ export function ServiceBillingCard({
   onToggle,
   hasError,
   isLoadingServices = false,
+  serviceFieldLabel = 'Service',
 }: ServiceBillingCardProps) {
   const { control } = useFormContext<BillingFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: category });
@@ -85,6 +90,7 @@ export function ServiceBillingCard({
           onRemove={() => remove(index)}
           isLast={index === fields.length - 1}
           isLoadingServices={isLoadingServices}
+          serviceFieldLabel={serviceFieldLabel}
         />
       ))}
     </CollapsibleCard>
@@ -100,9 +106,20 @@ interface ServiceBillingRowProps {
   onRemove: () => void;
   isLast: boolean;
   isLoadingServices: boolean;
+  serviceFieldLabel: string;
 }
 
-function ServiceBillingRow({ category, index, services, consultants, showRemove, onRemove, isLast, isLoadingServices }: ServiceBillingRowProps) {
+function ServiceBillingRow({
+  category,
+  index,
+  services,
+  consultants,
+  showRemove,
+  onRemove,
+  isLast,
+  isLoadingServices,
+  serviceFieldLabel,
+}: ServiceBillingRowProps) {
   const {
     control,
     setValue,
@@ -127,7 +144,7 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
     <div className={showRemove || !isLast ? 'flex flex-col gap-4 border-b border-dashed border-border pb-4' : 'flex flex-col gap-4'}>
       <div className="flex flex-wrap items-start gap-3">
         <Field
-          label="Service"
+          label={serviceFieldLabel}
           htmlFor={`${basePath}-service`}
           error={rowErrors?.serviceId?.message}
           className="flex min-w-[220px] flex-1 flex-col gap-1"
@@ -138,12 +155,12 @@ function ServiceBillingRow({ category, index, services, consultants, showRemove,
             render={({ field }) => (
               <SearchableSelect
                 id={`${basePath}-service`}
-                ariaLabel="Service"
+                ariaLabel={serviceFieldLabel}
                 value={field.value}
                 onValueChange={field.onChange}
                 options={serviceOptions}
-                placeholder={isLoadingServices ? 'Loading services…' : 'Select service'}
-                searchPlaceholder="Search services…"
+                placeholder={isLoadingServices ? 'Loading…' : `Select ${serviceFieldLabel.toLowerCase()}`}
+                searchPlaceholder={`Search ${serviceFieldLabel.toLowerCase()}…`}
                 disabled={isLoadingServices}
               />
             )}

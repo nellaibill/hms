@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Card, CardContent } from '@/components/ui/card';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { getMasterConfig, MasterListToolbar, MasterTable, Pagination, useMastersQuery } from '@/features/masters';
@@ -56,22 +57,13 @@ export default function MasterListPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/admin/masters" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          Back to Masters
-        </Link>
-      </div>
-
-      {/* Centered, brand-colored banner — matches the Page banner style used across module pages. */}
-      <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Icon className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">{config.labelPlural}</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">{config.description}</p>
-      </div>
+      <PageBanner
+        icon={Icon}
+        title={config.labelPlural}
+        subtitle={config.description}
+        backTo="/admin/masters"
+        backLabel="Back to Masters"
+      />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
         <MasterListToolbar

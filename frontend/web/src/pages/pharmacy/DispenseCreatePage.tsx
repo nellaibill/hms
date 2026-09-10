@@ -1,7 +1,8 @@
 import { ApiError, type DispenseCartFormValues, type Patient } from '@hms/shared';
-import { ArrowLeft, Pill } from 'lucide-react';
+import { Pill } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { useToast } from '@/components/ui/toast-context';
 import { PatientPicker } from '@/features/billing';
 import { RequirePermission } from '@/features/auth/RequirePermission';
@@ -57,22 +58,13 @@ export default function DispenseCreatePage() {
   return (
     <RequirePermission permission="pharmacy.create">
       <div className="flex flex-1 flex-col">
-        <div className="px-6 pt-4 lg:px-8">
-          <Link to="/pharmacy/dispenses" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-            Back to dispenses
-          </Link>
-        </div>
-
-        <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-              <Pill className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl font-semibold tracking-tight">Dispense Stock</h1>
-          </div>
-          <p className="max-w-2xl text-sm text-page-banner-foreground/85">Issue stock directly to a patient.</p>
-        </div>
+        <PageBanner
+          icon={Pill}
+          title="Dispense Stock"
+          subtitle="Issue stock directly to a patient."
+          backTo="/pharmacy/dispenses"
+          backLabel="Back to dispenses"
+        />
 
         <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
           {!patient && (

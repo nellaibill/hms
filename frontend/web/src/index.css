@@ -78,6 +78,10 @@
     --font-sans: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
     --font-size-base: 16px;
 
+    /* Top bar action-icon size (Language/Notifications/Calendar/Calculator/Tasks/Expenses/
+       Profile) — admin-editable via Theme & Branding settings, Typography tab. */
+    --header-icon-size: 20px;
+
     --sidebar: 210 33% 99%;
     --sidebar-foreground: 222 40% 18%;
     --sidebar-border: 214 28% 91%;

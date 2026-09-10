@@ -532,6 +532,7 @@ const editDemographicsUiSchema = omit(demographicsUiSchema, [
 export const patientEditUiSchema = z
   .object({
     ...editDemographicsUiSchema,
+    arrivalSource: arrivalSourceSchema,
     idProofType: z.enum(ID_PROOF_TYPES),
     idProofNumber: z.string().max(30),
   })

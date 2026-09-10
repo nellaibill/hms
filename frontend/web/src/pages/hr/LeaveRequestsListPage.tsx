@@ -3,9 +3,9 @@ import { LEAVE_REQUEST_STATUSES } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarRange, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { EmployeeSelect } from '@/components/EmployeeSelect';
 import { Pagination } from '@/components/Pagination';
+import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -70,21 +70,13 @@ export default function LeaveRequestsListPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/admin/hr" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to HR
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <CalendarRange className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Leave Requests</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">Submit, approve, reject, and track employee leave requests.</p>
-      </div>
+      <PageBanner
+        icon={CalendarRange}
+        title="Leave Requests"
+        subtitle="Submit, approve, reject, and track employee leave requests."
+        backTo="/admin/hr"
+        backLabel="Back to HR"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <div className="flex flex-wrap items-end gap-3">

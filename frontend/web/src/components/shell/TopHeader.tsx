@@ -28,7 +28,7 @@ function HeaderLinkIcon({ to, label, icon: Icon }: HeaderLinkIconProps) {
       <TooltipTrigger asChild>
         <Button asChild variant="ghost" size="icon" aria-label={label}>
           <Link to={to}>
-            <Icon className="h-5 w-5" />
+            <Icon className="h-[var(--header-icon-size)] w-[var(--header-icon-size)]" />
           </Link>
         </Button>
       </TooltipTrigger>

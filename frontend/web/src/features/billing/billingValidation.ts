@@ -358,6 +358,9 @@ export const defaultBillingFormValues: BillingFormValues = {
   laboratory: [{ ...emptyLaboratoryRow }],
   procedure: [{ ...emptyServiceRow }],
   injection: [{ ...emptySimpleServiceRow }],
-  file: [{ ...emptySimpleServiceRow }],
+  // Starts empty, unlike every other category — File Charges is nested inside Consultation
+  // Billing now (ConsultationFileCharges in ConsultationBillingCard.tsx) and only appears once
+  // the user explicitly clicks "Add File Billing", not as a pre-populated blank row.
+  file: [],
   payments: [{ ...emptyPaymentSplit }],
 };

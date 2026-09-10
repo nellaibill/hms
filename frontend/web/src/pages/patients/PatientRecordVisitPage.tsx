@@ -1,8 +1,9 @@
 import type { RecordVisitUiFormValues } from '@hms/shared';
-import { ArrowLeft, ClipboardList, Loader2 } from 'lucide-react';
+import { ClipboardList, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
+import { PageBanner } from '@/components/PageBanner';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
@@ -63,28 +64,16 @@ export default function PatientRecordVisitPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to={`/patients/registration/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to patient
-        </Link>
-      </div>
-
-      {/* Centered, brand-colored banner — matches the Page banner style used across module
-          pages (Theme & Branding → Section headers). The UHID is shown here, not buried in
-          the form, since confirming which patient this visit is for is the whole point of
-          reaching this page from the search list rather than New Patient Registration. */}
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <ClipboardList className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Add Visit — {patient.title} {patient.firstName} {patient.lastName}
-          </h1>
-        </div>
-        <p className="text-sm text-page-banner-foreground/85">UHID: {patient.uhid}</p>
-      </div>
+      {/* The UHID is shown here, not buried in the form, since confirming which patient this
+          visit is for is the whole point of reaching this page from the search list rather
+          than New Patient Registration. */}
+      <PageBanner
+        icon={ClipboardList}
+        title={`Add Visit — ${patient.title} ${patient.firstName} ${patient.lastName}`}
+        subtitle={`UHID: ${patient.uhid}`}
+        backTo={`/patients/registration/${id}`}
+        backLabel="Back to patient"
+      />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
         {patient.requiresDataVerification && <DataVerificationBanner />}

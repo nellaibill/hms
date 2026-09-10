@@ -1,4 +1,5 @@
 import { Construction, type LucideIcon } from 'lucide-react';
+import { PageBanner } from '@/components/PageBanner';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface PlaceholderPageProps {
@@ -12,20 +13,7 @@ interface PlaceholderPageProps {
 export function PlaceholderPage({ title, description, icon: Icon }: PlaceholderPageProps) {
   return (
     <div className="flex flex-1 flex-col">
-      {/* Centered, brand-colored banner — matches Reception & Registration's
-          page header (uses the same admin-editable Page banner token from
-          Theme & Branding), applied uniformly across every module page. */}
-      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-              <Icon className="h-5 w-5" />
-            </span>
-          )}
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">{description}</p>
-      </div>
+      <PageBanner icon={Icon} title={title} subtitle={description} />
 
       <div className="flex flex-1 flex-col p-6 lg:p-8">
         <Card className="border-dashed">
