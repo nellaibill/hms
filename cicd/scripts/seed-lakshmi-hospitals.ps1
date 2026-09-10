@@ -42,7 +42,7 @@
     Defaults to the local dev API.
 
 .EXAMPLE
-    ./seed-lakshmi-hospitals.ps1 -HospitalCode lhs -Username lhsadmin -Password 'Lakshmi@123'
+    ./seed-lakshmi-hospitals.ps1 -HospitalCode lhs -Username lhsadmin -Password '<super-admin-password>'
 
 .NOTES
     Scope, confirmed with the product owner before writing this: only categories that

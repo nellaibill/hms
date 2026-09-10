@@ -20,7 +20,7 @@
     Defaults to the local dev API.
 
 .EXAMPLE
-    ./refresh-lab-tariffs-v3.ps1 -HospitalCode lhs -Username lhsadmin -Password 'Lakshmi@123'
+    ./refresh-lab-tariffs-v3.ps1 -HospitalCode lhs -Username lhsadmin -Password '<super-admin-password>'
 #>
 [CmdletBinding()]
 param(

@@ -29,7 +29,7 @@
     Defaults to the local dev API.
 
 .EXAMPLE
-    ./seed-appointment-and-consultation-types.ps1 -HospitalCode lhs -Username lhsadmin -Password 'Lakshmi@123'
+    ./seed-appointment-and-consultation-types.ps1 -HospitalCode lhs -Username lhsadmin -Password '<super-admin-password>'
 #>
 [CmdletBinding()]
 param(
