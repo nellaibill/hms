@@ -22,6 +22,7 @@ export function ProcedureBillingCard(props: ProcedureBillingCardProps) {
       services={services}
       consultants={consultants}
       isLoadingServices={isLoading}
+      serviceFieldLabel="Procedure Name"
       {...props}
     />
   );

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileChooserButton } from '@/components/ui/file-chooser-button';
+import { PageBanner } from '@/components/PageBanner';
 import { useToast } from '@/components/ui/toast-context';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { Pagination } from '../../features/patients';
@@ -109,18 +110,11 @@ export default function PatientBulkImportPage() {
     <RequirePermission permission={IMPORT_PERMISSION}>
       <>
         <div className="flex flex-1 flex-col">
-          <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-                <CloudUpload className="h-5 w-5" />
-              </span>
-              <h1 className="text-xl font-semibold tracking-tight">Bulk Patient Import</h1>
-            </div>
-            <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-              Upload a filled-in Excel template to register many patients at once. Every row is checked first — nothing
-              is saved until you review and confirm.
-            </p>
-          </div>
+          <PageBanner
+            icon={CloudUpload}
+            title="Bulk Patient Import"
+            subtitle="Upload a filled-in Excel template to register many patients at once. Every row is checked first — nothing is saved until you review and confirm."
+          />
 
           <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">

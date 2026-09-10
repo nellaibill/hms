@@ -1,6 +1,7 @@
 import { ArrowRight, Loader2, PackagePlus, Pill, Receipt } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useProductsQuery } from '@/features/pharmacy/product-lookup';
 import { StockBalanceTable, useStockBalancesQuery } from '@/features/pharmacy/stock-balances';
@@ -40,17 +41,11 @@ export default function PharmacyHubPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Pill className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Pharmacy</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Stock/batch/expiry tracking and direct-dispense to patients.
-        </p>
-      </div>
+      <PageBanner
+        icon={Pill}
+        title="Pharmacy"
+        subtitle="Stock/batch/expiry tracking and direct-dispense to patients."
+      />
 
       <div className="flex flex-1 flex-col gap-8 p-6 lg:p-8">
         {hasPermission('pharmacy.create') && (

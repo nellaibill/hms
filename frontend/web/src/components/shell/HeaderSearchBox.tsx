@@ -30,7 +30,7 @@ export function HeaderSearchBox() {
   const showSuggestions = scope === 'patient' && isFocused && trimmedQuery.length > 0;
 
   const { data, isFetching } = usePatientsQuery(
-    { page: 1, pageSize: 8, sort: 'lastName', search: trimmedQuery },
+    { page: 1, pageSize: 25, sort: 'lastName', search: trimmedQuery },
     { enabled: showSuggestions },
   );
   const suggestions = showSuggestions ? (data?.items ?? []) : [];

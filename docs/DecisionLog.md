@@ -37,7 +37,24 @@ _To be documented._
 
 ## Decisions
 
-### ADR-081: Missing EF Core migration meant `pharmacy.view-cost`/`finance-billing.discount-approve` never reached any real database — found by live-verifying ADR-077/ADR-080
+### ADR-082: Mode of Arrival is now editable on Patient Edit, reversing ADR-008's "Registration Details stays out of this form" scope for this one field
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+ADR-008 scoped `PatientEditForm` to Patient/Contact/Medical Information only, explicitly excluding Registration Details (Mode of Arrival, encounter/visit data) and Billing, with instruction that adding either back "should be treated as a new decision requiring its own review." The user directly requested Mode of Arrival be editable here, matching Registration's own Medical Information tab — a real gap noticed by comparing the two forms side by side (Edit's Medical Information tab had Allergy Details/ID Proof/Document Upload but no Mode of Arrival, while Registration's had it between Allergy Details and Document Upload).
+
+**Decision**
+Add `arrivalSource` to `patientEditUiSchema` (frontend/shared/validation/patients/patientRegistrationUiValidation.ts), reusing the exact same `arrivalSourceSchema` Registration already validates against. `PatientEditForm.tsx` gets the identical "Mode of Arrival" `FormSection` Registration renders (Source category → DoctorReferral/PatientOrRelativeReferral/OnlineAdvertisement/OfflineAdvertisement branch, each with its own channel/details fields), inserted between Allergy Details and ID Proof. `PatientEditPage.tsx`'s `toDefaultValues()`/`toRequest()` now round-trip it through two new `bridging.ts` helpers: `fromModeOfArrivalFields()` (new — the reverse of the existing `toModeOfArrivalRequest()`, turning a saved patient's flat `ModeOfArrivalSource`/`Channel`/`Specify` back into the UI's richer `arrivalSource` shape) and the existing `toModeOfArrivalRequest()` for submit. No backend change was needed — `UpdatePatientRequest`/`Patient.UpdateModeOfArrival` already accepted and persisted these fields; only the create-only Registration form and the backend actually used that capability until now, per ADR-008's original scoping.
+
+Billing stays excluded — this reversal is scoped to Mode of Arrival specifically, not a blanket reopening of ADR-008.
+
+While implementing, also fixed the Online/Offline Advertisement channel labels: the generic `humanize()` helper (splits PascalCase tokens on capital letters) mangled `WhatsApp` → "Whats App", `TvNews` → "Tv News", `FmAd` → "Fm Ad" on both forms and on the read-only Registration Details card. Added `frontend/web/src/features/patients/arrivalChannelLabel.ts` with explicit label maps for both channel enums, used by Registration, Edit, and `PatientDetails.tsx`'s display card alike.
+
+**Consequences**
+- Editing Mode of Arrival after registration is now possible and, per ADR-008's own framing, an explicit, reviewed exception — not a silent reopening of the rest of that scope (Billing, encounter/visit data generally).
+- `fromModeOfArrivalFields()` falls back to "unselected" for a stored channel value that doesn't match any of today's known enum options, rather than guessing — matches how any other now-invalid saved value behaves in this form.
+ Missing EF Core migration meant `pharmacy.view-cost`/`finance-billing.discount-approve` never reached any real database — found by live-verifying ADR-077/ADR-080
 **Date:** 2026-09-10
 **Status:** Accepted
 

@@ -24,6 +24,7 @@ internal class BrandingService : IBrandingService
     // keep both in sync if the curated list ever changes.
     private static readonly string[] AllowedFontFamilies = ["Inter", "Roboto", "OpenSans", "Lato", "Poppins"];
     private static readonly string[] AllowedFontSizeScales = ["sm", "md", "lg"];
+    private static readonly string[] AllowedIconSizeScales = ["sm", "md", "lg"];
     private static readonly string[] AllowedLogoExtensions = [".png", ".jpg", ".jpeg", ".svg", ".webp"];
     private const long MaxLogoSizeBytes = 500 * 1024; // 500KB, matching the frontend mock store's limit.
     // Pixel bounds for the header's fixed logo box (a 16px logo already reads fine at that
@@ -71,10 +72,17 @@ internal class BrandingService : IBrandingService
                 $"'{request.FontSizeScale}' is not a supported font size scale.");
         }
 
+        if (!AllowedIconSizeScales.Contains(request.IconSizeScale))
+        {
+            return Result<BrandingResponse>.Failure(
+                BrandingErrorCodes.InvalidIconSizeScale,
+                $"'{request.IconSizeScale}' is not a supported icon size scale.");
+        }
+
         var settings = await GetOrCreateAsync(cancellationToken);
 
         settings.UpdateIdentity(request.HospitalName, request.AppTitle, actorId);
-        settings.UpdateTypography(request.FontFamily, request.FontSizeScale, actorId);
+        settings.UpdateTypography(request.FontFamily, request.FontSizeScale, request.IconSizeScale, actorId);
         settings.UpdateTokens(
             JsonSerializer.Serialize(request.TokensLight),
             JsonSerializer.Serialize(request.TokensDark),
@@ -292,6 +300,7 @@ internal class BrandingService : IBrandingService
             BrandingDefaults.AppTitle,
             BrandingDefaults.FontFamily,
             BrandingDefaults.FontSizeScale,
+            BrandingDefaults.IconSizeScale,
             JsonSerializer.Serialize(BrandingDefaults.TokensLight),
             JsonSerializer.Serialize(BrandingDefaults.TokensDark));
 

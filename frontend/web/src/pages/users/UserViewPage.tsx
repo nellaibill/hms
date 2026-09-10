@@ -1,9 +1,10 @@
 import { ApiError } from '@hms/shared';
-import { ArrowLeft, Camera, KeyRound, Loader2, Pencil } from 'lucide-react';
+import { Camera, KeyRound, Loader2, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { PageBanner } from '@/components/PageBanner';
 import { env } from '@/config/env';
 import {
   SetPasswordDialog,
@@ -60,37 +61,8 @@ export default function UserViewPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/users" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to users
-        </Link>
-      </div>
-
-      {/* Centered, brand-colored banner — matches the Page banner style used
-          across module pages (Theme & Branding → Section headers). */}
-      <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="absolute right-6 top-1/2 flex -translate-y-1/2 items-center gap-2">
-          <Button
-            variant="outline"
-            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-            onClick={() => setIsSettingPassword(true)}
-          >
-            <KeyRound className="h-4 w-4" />
-            Set password
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-          >
-            <Link to={`/users/${user.id}/edit`}>
-              <Pencil className="h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageBanner
+        leading={
           <div className="relative shrink-0">
             <Avatar className="h-12 w-12 border-2 border-page-banner-foreground/20">
               <AvatarImage
@@ -110,12 +82,32 @@ export default function UserViewPage() {
               <Camera className="h-3 w-3" />
             </button>
           </div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            {user.firstName} {user.lastName}
-          </h1>
-        </div>
-        <p className="text-sm text-page-banner-foreground/85">{user.email}</p>
-      </div>
+        }
+        title={`${user.firstName} ${user.lastName}`}
+        subtitle={user.email}
+        rightActions={
+          <>
+            <Button
+              variant="outline"
+              className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+              onClick={() => setIsSettingPassword(true)}
+            >
+              <KeyRound className="h-4 w-4" />
+              Set password
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+            >
+              <Link to={`/users/${user.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
       <UserDetails user={user} />

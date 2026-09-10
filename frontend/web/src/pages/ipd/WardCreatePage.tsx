@@ -1,6 +1,7 @@
 import { ApiError, type WardFormValues } from '@hms/shared';
-import { ArrowLeft, BedDouble } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { BedDouble } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { WardForm, useCreateWardMutation } from '../../features/ipd/wards';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 
@@ -17,22 +18,13 @@ export default function WardCreatePage() {
   return (
     <RequirePermission permission="clinical-care.create">
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/clinical/ipd/wards" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to wards
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <BedDouble className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">New Ward</h1>
-        </div>
-        <p className="text-sm text-page-banner-foreground/85">Create a new hospital ward.</p>
-      </div>
+      <PageBanner
+        icon={BedDouble}
+        title="New Ward"
+        subtitle="Create a new hospital ward."
+        backTo="/clinical/ipd/wards"
+        backLabel="Back to wards"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <WardForm

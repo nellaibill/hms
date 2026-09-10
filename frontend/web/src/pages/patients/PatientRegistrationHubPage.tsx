@@ -1,6 +1,7 @@
 import { ArrowRight, ClipboardList, CloudUpload, UserPlus, UserSearch, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
 import { RequirePermission } from '@/features/auth/RequirePermission';
 
@@ -51,17 +52,11 @@ export default function PatientRegistrationHubPage() {
   return (
     <RequirePermission permission="patient-management.view">
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <ClipboardList className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight text-page-banner-foreground">Reception &amp; Registration</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Register a new patient, or find an existing one to update their registration.
-        </p>
-      </div>
+      <PageBanner
+        icon={ClipboardList}
+        title="Reception & Registration"
+        subtitle="Register a new patient, or find an existing one to update their registration."
+      />
 
       {/* Centered as one pair (not a full-width 50/50 split, which centered each card
           independently within its own half — spreading them apart the wider the

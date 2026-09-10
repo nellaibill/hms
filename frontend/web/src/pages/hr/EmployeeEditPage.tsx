@@ -1,6 +1,7 @@
 import { ApiError, type EmployeeFormValues, type UpdateEmployeeRequest } from '@hms/shared';
-import { ArrowLeft, Loader2, Users } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Loader2, Users } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { EmployeeForm, useEmployeeQuery, useUpdateEmployeeMutation } from '../../features/employees';
 
 export default function EmployeeEditPage() {
@@ -57,24 +58,17 @@ export default function EmployeeEditPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to={`/admin/hr/employees/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to employee
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Users className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">
+      <PageBanner
+        icon={Users}
+        title={
+          <>
             Edit {employee.firstName} {employee.lastName}
-          </h1>
-        </div>
-        <p className="text-sm text-page-banner-foreground/85">Update this employee's record.</p>
-      </div>
+          </>
+        }
+        subtitle="Update this employee's record."
+        backTo={`/admin/hr/employees/${id}`}
+        backLabel="Back to employee"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <EmployeeForm

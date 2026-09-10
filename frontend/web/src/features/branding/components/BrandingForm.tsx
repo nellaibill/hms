@@ -17,6 +17,8 @@ import {
   FONT_FAMILY_LABELS,
   FONT_SIZE_SCALES,
   FONT_SIZE_SCALE_LABELS,
+  ICON_SIZE_SCALES,
+  ICON_SIZE_SCALE_LABELS,
   TOKEN_GROUPS,
   type BrandingConfig,
 } from '../types';
@@ -27,6 +29,7 @@ const identitySchema = z.object({
   appTitle: z.string().trim().min(1, 'App title is required'),
   fontFamily: z.enum(FONT_FAMILIES),
   fontSizeScale: z.enum(FONT_SIZE_SCALES),
+  iconSizeScale: z.enum(ICON_SIZE_SCALES),
 });
 
 type IdentityFormValues = z.infer<typeof identitySchema>;
@@ -146,7 +149,7 @@ export function BrandingForm() {
     formState: { errors },
   } = useForm<IdentityFormValues>({
     resolver: zodResolver(identitySchema),
-    defaultValues: { hospitalName: '', appTitle: '', fontFamily: 'Inter', fontSizeScale: 'md' },
+    defaultValues: { hospitalName: '', appTitle: '', fontFamily: 'Inter', fontSizeScale: 'md', iconSizeScale: 'md' },
   });
 
   // Sync local editable state from the persisted config whenever it changes —
@@ -163,6 +166,7 @@ export function BrandingForm() {
       appTitle: query.data.appTitle,
       fontFamily: query.data.fontFamily,
       fontSizeScale: query.data.fontSizeScale,
+      iconSizeScale: query.data.iconSizeScale,
     });
   }, [query.data, reset]);
 
@@ -319,6 +323,23 @@ export function BrandingForm() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="iconSizeScale">Top bar icon size</Label>
+                <Select value={watched.iconSizeScale} onValueChange={(value) => setValue('iconSizeScale', value as IdentityFormValues['iconSizeScale'])}>
+                  <SelectTrigger id="iconSizeScale">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ICON_SIZE_SCALES.map((scale) => (
+                      <SelectItem key={scale} value={scale}>
+                        {ICON_SIZE_SCALE_LABELS[scale]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Language, Notifications, Calendar, Calculator, Tasks, Expenses, and Profile icons in the top bar.</p>
               </div>
             </div>
           </TabsContent>

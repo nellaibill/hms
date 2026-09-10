@@ -83,7 +83,7 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
         <thead>
           <tr className="border-y-2 border-black">
             <th className="py-2 pr-2 text-left font-semibold">#</th>
-            <th className="py-2 pr-2 text-left font-semibold">Description</th>
+            <th className="py-2 pr-2 text-left font-semibold">Item / Service Details</th>
             <th className="py-2 text-right font-semibold">Amount</th>
           </tr>
         </thead>

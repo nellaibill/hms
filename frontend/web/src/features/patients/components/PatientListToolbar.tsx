@@ -54,7 +54,7 @@ export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear,
   const showSuggestions = Boolean(onSuggestionSelect) && activeField !== null && debouncedValue.trim().length > 0;
 
   const { data: suggestionData, isFetching: suggestionsFetching } = usePatientsQuery(
-    { page: 1, pageSize: 8, sort: 'lastName', search: debouncedValue.trim() },
+    { page: 1, pageSize: 25, sort: 'lastName', search: debouncedValue.trim() },
     { enabled: showSuggestions },
   );
   const suggestions = showSuggestions ? (suggestionData?.items ?? []) : [];

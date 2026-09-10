@@ -1,16 +1,19 @@
-import type {
-  AllergyInput,
-  AllergySeverity,
-  AllergyType,
-  CreatePatientVisitRequest,
-  EmergencyContactInput,
-  Gender,
-  ModeOfArrivalSource,
-  PatientGenderUi,
-  PatientRegistrationUiFormValues,
-  RecordVisitUiFormValues,
-  VisitConsultation,
-  VisitType,
+import {
+  OFFLINE_AD_CHANNELS,
+  ONLINE_AD_CHANNELS,
+  PATIENT_RELATIVE_REFERRAL_SOURCES,
+  type AllergyInput,
+  type AllergySeverity,
+  type AllergyType,
+  type CreatePatientVisitRequest,
+  type EmergencyContactInput,
+  type Gender,
+  type ModeOfArrivalSource,
+  type PatientGenderUi,
+  type PatientRegistrationUiFormValues,
+  type RecordVisitUiFormValues,
+  type VisitConsultation,
+  type VisitType,
 } from '@hms/shared';
 
 /**
@@ -114,6 +117,47 @@ export function toModeOfArrivalRequest(arrivalSource: PatientRegistrationUiFormV
     };
   }
   return { modeOfArrivalSource: category };
+}
+
+/**
+ * The reverse of {@link toModeOfArrivalRequest} — a saved patient's flat
+ * {ModeOfArrivalSource, ModeOfArrivalChannel, ModeOfArrivalSpecify} back into the UI's richer
+ * arrivalSource shape, so Patient Edit can prefill Mode of Arrival the same way Registration
+ * fills it in fresh (see PatientEditPage.tsx's toDefaultValues()). A stored channel that
+ * doesn't match any of today's known options (older data, or a value saved before an option
+ * list changed) falls back to unselected rather than guessing — the field then just needs a
+ * fresh pick, same as any other now-invalid saved value would.
+ */
+export function fromModeOfArrivalFields(patient: {
+  modeOfArrivalSource: ModeOfArrivalSource;
+  modeOfArrivalChannel?: string | null;
+  modeOfArrivalSpecify?: string | null;
+}): PatientRegistrationUiFormValues['arrivalSource'] {
+  const category = patient.modeOfArrivalSource;
+  const channel = patient.modeOfArrivalChannel ?? '';
+  const specify = patient.modeOfArrivalSpecify ?? '';
+
+  if (category === 'OnlineAdvertisement') {
+    const knownChannel = (ONLINE_AD_CHANNELS as readonly string[]).includes(channel) ? (channel as (typeof ONLINE_AD_CHANNELS)[number]) : undefined;
+    return { category, onlineAd: knownChannel ? { channel: knownChannel, details: knownChannel === 'Other' ? specify : '' } : undefined };
+  }
+  if (category === 'OfflineAdvertisement') {
+    const knownChannel = (OFFLINE_AD_CHANNELS as readonly string[]).includes(channel) ? (channel as (typeof OFFLINE_AD_CHANNELS)[number]) : undefined;
+    return { category, offlineAd: knownChannel ? { channel: knownChannel, details: knownChannel === 'Other' ? specify : '' } : undefined };
+  }
+  if (category === 'PatientOrRelativeReferral') {
+    const knownSource = (PATIENT_RELATIVE_REFERRAL_SOURCES as readonly string[]).includes(channel)
+      ? (channel as (typeof PATIENT_RELATIVE_REFERRAL_SOURCES)[number])
+      : undefined;
+    return {
+      category,
+      patientRelativeReferral: knownSource ? { source: knownSource, details: knownSource === 'Other' ? specify : '' } : undefined,
+    };
+  }
+  if (category === 'DoctorReferral') {
+    return { category, doctorReferral: { department: channel } };
+  }
+  return { category };
 }
 
 /** Registration Details tab (or the standalone "Add Visit" page's RecordVisitUiFormValues,

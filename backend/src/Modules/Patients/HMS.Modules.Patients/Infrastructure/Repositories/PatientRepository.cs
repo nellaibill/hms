@@ -224,7 +224,7 @@ internal class PatientRepository : IPatientRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 
-    private static IQueryable<Patient> ApplySort(IQueryable<Patient> patients, string? sort)
+    private IQueryable<Patient> ApplySort(IQueryable<Patient> patients, string? sort)
     {
         if (string.IsNullOrWhiteSpace(sort))
         {
@@ -240,7 +240,29 @@ internal class PatientRepository : IPatientRepository
             "lastname" => descending ? patients.OrderByDescending(p => p.LastName) : patients.OrderBy(p => p.LastName),
             "uhid" => descending ? patients.OrderByDescending(p => p.Uhid) : patients.OrderBy(p => p.Uhid),
             "createdat" => descending ? patients.OrderByDescending(p => p.CreatedAt) : patients.OrderBy(p => p.CreatedAt),
+            "lastvisitat" => ApplyLastVisitSort(patients, descending),
             _ => patients.OrderByDescending(p => p.CreatedAt),
         };
+    }
+
+    /// <summary>Orders by each patient's most recent visit (a correlated MAX subquery — an
+    /// intentional exception to GetLastVisitsAsync's "no correlated subquery" note above, which
+    /// is about avoiding one that fetches a full row-with-Includes per patient; this is a single
+    /// scalar per row, the ordinary shape for "sort by last activity" and index-friendly given
+    /// patient_visits(patient_id, created_at)). Falls back to the patient's own registration
+    /// timestamp when they have zero visits yet, so a patient registered moments ago still sorts
+    /// sensibly near the top of "recently active" rather than dropping to the very end on a null
+    /// last-visit date — used by Billing's patient picker (see PatientPicker.tsx) to default to
+    /// the most recently active patients instead of an empty "today only" list overnight.</summary>
+    private IQueryable<Patient> ApplyLastVisitSort(IQueryable<Patient> patients, bool descending)
+    {
+        var withLastVisit = patients.Select(p => new
+        {
+            Patient = p,
+            LastActivity = (DateTime?)_dbContext.PatientVisits.Where(v => v.PatientId == p.Id).Max(v => (DateTime?)v.CreatedAt) ?? p.CreatedAt,
+        });
+
+        return (descending ? withLastVisit.OrderByDescending(x => x.LastActivity) : withLastVisit.OrderBy(x => x.LastActivity))
+            .Select(x => x.Patient);
     }
 }

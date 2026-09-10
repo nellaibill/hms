@@ -102,6 +102,7 @@ function defaultConfig(): BrandingConfig {
     logoUrl: null,
     fontFamily: 'Inter',
     fontSizeScale: 'md',
+    iconSizeScale: 'md',
     tokensLight: { ...DEFAULT_TOKENS_LIGHT },
     tokensDark: { ...DEFAULT_TOKENS_DARK },
   };

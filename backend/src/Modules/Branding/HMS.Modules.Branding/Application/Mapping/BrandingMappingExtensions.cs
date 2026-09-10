@@ -13,6 +13,7 @@ internal static class BrandingMappingExtensions
         LogoUrl = settings.LogoPath,
         FontFamily = settings.FontFamily,
         FontSizeScale = settings.FontSizeScale,
+        IconSizeScale = settings.IconSizeScale,
         TokensLight = JsonSerializer.Deserialize<Dictionary<string, string>>(settings.TokensLightJson) ?? new Dictionary<string, string>(),
         TokensDark = JsonSerializer.Deserialize<Dictionary<string, string>>(settings.TokensDarkJson) ?? new Dictionary<string, string>(),
     };

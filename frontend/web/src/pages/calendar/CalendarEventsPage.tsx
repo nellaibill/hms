@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays, Menu, Plus } from 'lucide-react';
 import { ApiError } from '@hms/shared';
+import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -172,17 +173,11 @@ export default function CalendarEventsPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <CalendarDays className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Calendar &amp; Events</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Hospital holidays, events, doctor leave, meetings, training, and maintenance — all in one place.
-        </p>
-      </div>
+      <PageBanner
+        icon={CalendarDays}
+        title="Calendar & Events"
+        subtitle="Hospital holidays, events, doctor leave, meetings, training, and maintenance — all in one place."
+      />
 
       <div className="flex min-h-0 flex-1">
         {isPending ? (

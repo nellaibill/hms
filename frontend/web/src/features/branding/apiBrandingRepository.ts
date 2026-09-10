@@ -2,7 +2,15 @@ import type { BrandingConfigDto } from '@hms/shared';
 import { env } from '@/config/env';
 import { brandingApi } from '@/services/apiClient';
 import { mockBrandingStore } from './mockBrandingStore';
-import { FONT_FAMILIES, FONT_SIZE_SCALES, type BrandingConfig, type FontFamily, type FontSizeScale } from './types';
+import {
+  FONT_FAMILIES,
+  FONT_SIZE_SCALES,
+  ICON_SIZE_SCALES,
+  type BrandingConfig,
+  type FontFamily,
+  type FontSizeScale,
+  type IconSizeScale,
+} from './types';
 
 function toFontFamily(value: string): FontFamily {
   return (FONT_FAMILIES as readonly string[]).includes(value) ? (value as FontFamily) : 'Inter';
@@ -10,6 +18,10 @@ function toFontFamily(value: string): FontFamily {
 
 function toFontSizeScale(value: string): FontSizeScale {
   return (FONT_SIZE_SCALES as readonly string[]).includes(value) ? (value as FontSizeScale) : 'md';
+}
+
+function toIconSizeScale(value: string): IconSizeScale {
+  return (ICON_SIZE_SCALES as readonly string[]).includes(value) ? (value as IconSizeScale) : 'md';
 }
 
 // The backend returns the logo as a server-relative path (e.g. "uploads/branding/logo/xxx.png"),
@@ -29,6 +41,7 @@ function fromDto(dto: BrandingConfigDto): BrandingConfig {
     logoUrl: resolveLogoUrl(dto.logoUrl),
     fontFamily: toFontFamily(dto.fontFamily),
     fontSizeScale: toFontSizeScale(dto.fontSizeScale),
+    iconSizeScale: toIconSizeScale(dto.iconSizeScale),
     tokensLight: dto.tokensLight,
     tokensDark: dto.tokensDark,
   };
@@ -69,6 +82,7 @@ export const apiBrandingRepository = {
       appTitle: merged.appTitle,
       fontFamily: merged.fontFamily,
       fontSizeScale: merged.fontSizeScale,
+      iconSizeScale: merged.iconSizeScale,
       tokensLight: merged.tokensLight,
       tokensDark: merged.tokensDark,
     });

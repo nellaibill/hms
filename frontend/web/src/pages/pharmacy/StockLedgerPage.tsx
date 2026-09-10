@@ -1,7 +1,7 @@
 import { Loader2, Receipt } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageBanner } from '@/components/PageBanner';
 import { Pagination } from '@/components/Pagination';
 import { StockLedgerTable, StockLedgerToolbar, useStockLedgerQuery, type StockLedgerFilters } from '@/features/pharmacy/stock-ledger';
 
@@ -30,21 +30,13 @@ export default function StockLedgerPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/pharmacy" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to Pharmacy
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Receipt className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Stock Ledger</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">Combined, filterable receipt + dispense history.</p>
-      </div>
+      <PageBanner
+        icon={Receipt}
+        title="Stock Ledger"
+        subtitle="Combined, filterable receipt + dispense history."
+        backTo="/pharmacy"
+        backLabel="Back to Pharmacy"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <StockLedgerToolbar filters={filters} onChange={handleFiltersChange} />

@@ -102,7 +102,7 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
         ) : undefined
       }
       onAdd={() => append({ ...emptyLaboratoryRow })}
-      addLabel="Add another laboratory item"
+      addLabel="Add another laboratory test"
     >
       {fields.map((field, index) => (
         <LaboratoryBillingRow
@@ -195,7 +195,7 @@ function LaboratoryBillingRow({
           means every field below has the same plain label+control shape, so plain
           items-start alignment lines them all up with no extra bookkeeping. */}
       <div>
-        <span className="mb-1 block text-sm font-medium leading-none text-foreground">Item type</span>
+        <span className="mb-1 block text-sm font-medium leading-none text-foreground">Test Type</span>
         <div className="inline-flex w-fit overflow-hidden rounded-md border border-input">
           <button
             type="button"
@@ -204,7 +204,7 @@ function LaboratoryBillingRow({
               filterType === 'service' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'
             }`}
           >
-            Services
+            Individual
           </button>
           <button
             type="button"
@@ -219,7 +219,12 @@ function LaboratoryBillingRow({
       </div>
 
       <div className="flex flex-wrap items-start gap-3">
-        <Field label="Item" htmlFor={`${basePath}-item`} error={rowErrors?.itemId?.message} className="flex min-w-[240px] flex-1 flex-col gap-1">
+        <Field
+          label="Test Name / Package Name"
+          htmlFor={`${basePath}-item`}
+          error={rowErrors?.itemId?.message}
+          className="flex min-w-[240px] flex-1 flex-col gap-1"
+        >
           <Controller
             name={`${basePath}.itemId`}
             control={control}

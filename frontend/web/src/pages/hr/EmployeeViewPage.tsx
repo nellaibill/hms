@@ -1,6 +1,7 @@
-import { ArrowLeft, CalendarPlus, Loader2, Pencil, Users } from 'lucide-react';
+import { CalendarPlus, Loader2, Pencil, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,15 +46,18 @@ export default function EmployeeViewPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/admin/hr/employees" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to employees
-        </Link>
-      </div>
-
-      <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="absolute right-6 top-1/2 -translate-y-1/2">
+      <PageBanner
+        icon={Users}
+        title={
+          <>
+            {employee.firstName} {employee.lastName}
+          </>
+        }
+        titleExtra={<EmploymentStatusBadge status={employee.employmentStatus} />}
+        subtitle={<span className="font-mono">{employee.employeeCode}</span>}
+        backTo="/admin/hr/employees"
+        backLabel="Back to employees"
+        rightActions={
           <Button
             asChild
             variant="outline"
@@ -64,18 +68,8 @@ export default function EmployeeViewPage() {
               Edit
             </Link>
           </Button>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <Users className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">
-            {employee.firstName} {employee.lastName}
-          </h1>
-          <EmploymentStatusBadge status={employee.employmentStatus} />
-        </div>
-        <p className="font-mono text-sm text-page-banner-foreground/85">{employee.employeeCode}</p>
-      </div>
+        }
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <Tabs defaultValue="overview">

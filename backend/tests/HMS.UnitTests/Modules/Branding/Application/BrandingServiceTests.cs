@@ -21,7 +21,7 @@ public class BrandingServiceTests
         _sut = new BrandingService(_repository, _logoStorage, NullLogger<BrandingService>.Instance);
 
         _repository.GetAsync(Arg.Any<CancellationToken>())
-            .Returns(BrandingSettings.CreateDefault("Hospital", "App", "Inter", "md", "{}", "{}"));
+            .Returns(BrandingSettings.CreateDefault("Hospital", "App", "Inter", "md", "md", "{}", "{}"));
         _logoStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns("uploads/branding/logo/fake.png");
     }

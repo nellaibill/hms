@@ -1,6 +1,7 @@
 import { ApiError } from '@hms/shared';
 import { ArrowLeft, Download, Loader2, Pencil } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAdmissionQuery } from '@/features/ipd/admissions';
@@ -64,22 +65,13 @@ export default function DischargeSummaryViewPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to={`/clinical/ipd/admissions/${admission.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to admission
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">
-            Discharge Summary — {patient.firstName} {patient.lastName}
-          </h1>
-          <Badge variant={summary.status === 'Finalized' ? 'success' : 'secondary'}>{summary.status}</Badge>
-        </div>
-        <p className="font-mono text-sm text-page-banner-foreground/85">{admission.admissionNumber}</p>
-      </div>
+      <PageBanner
+        title={`Discharge Summary — ${patient.firstName} ${patient.lastName}`}
+        titleExtra={<Badge variant={summary.status === 'Finalized' ? 'success' : 'secondary'}>{summary.status}</Badge>}
+        subtitle={<span className="font-mono">{admission.admissionNumber}</span>}
+        backTo={`/clinical/ipd/admissions/${admission.id}`}
+        backLabel="Back to admission"
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <div className="flex flex-wrap gap-3">

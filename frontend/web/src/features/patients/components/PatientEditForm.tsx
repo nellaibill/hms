@@ -5,11 +5,15 @@ import {
   type AllergySeverity,
   type AllergyType,
   ApiError,
+  ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
   ID_PROOF_TYPES,
   MARITAL_STATUSES,
+  OFFLINE_AD_CHANNELS,
+  ONLINE_AD_CHANNELS,
   patientEditUiSchema,
   PATIENT_GENDERS,
+  PATIENT_RELATIVE_REFERRAL_SOURCES,
   RELATIONSHIPS,
   TITLES,
   type PatientEditUiFormValues,
@@ -24,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DistrictSelect } from '@/components/DistrictSelect';
 import { StateSelect } from '@/components/StateSelect';
+import { offlineAdChannelLabel, onlineAdChannelLabel } from '../arrivalChannelLabel';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
 import { tabErrorMessages } from '../formErrorSummary';
@@ -76,7 +81,7 @@ const TAB_ERROR_FIELDS: Record<TabId, (keyof PatientEditUiFormValues)[]> = {
     'emergencyContactPhone',
     'additionalEmergencyContacts',
   ],
-  'medical-info': ['idProofType', 'idProofNumber'],
+  'medical-info': ['idProofType', 'idProofNumber', 'arrivalSource'],
 };
 
 function tabWithFirstError(errors: FieldErrors<PatientEditUiFormValues>): TabId | null {
@@ -119,6 +124,10 @@ export function PatientEditForm({
 
   const idProofType = watch('idProofType');
   const state = watch('state');
+  const arrivalCategory = watch('arrivalSource.category');
+  const patientRelativeSource = watch('arrivalSource.patientRelativeReferral.source');
+  const onlineChannel = watch('arrivalSource.onlineAd.channel');
+  const offlineChannel = watch('arrivalSource.offlineAd.channel');
 
   // Allergy add/remove happen immediately against the real backend endpoints — see this
   // component's own doc comment on the `allergies` prop for why they're not part of the RHF
@@ -671,6 +680,127 @@ export function PatientEditForm({
               Add another Allergy
             </Button>
           )}
+        </FormSection>
+
+        <FormSection id="mode-of-arrival" title="Mode of Arrival" description="How the patient found or was referred to the hospital.">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Source" htmlFor="arrivalCategory" className="flex w-full flex-col gap-1 sm:w-56">
+              <Controller
+                name="arrivalSource.category"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="arrivalCategory" aria-label="Mode of arrival source">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ARRIVAL_SOURCE_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {humanize(c)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
+            {arrivalCategory === 'DoctorReferral' && (
+              <Field label="Department" htmlFor="doctorReferralDepartment" className="flex min-w-[160px] flex-1 flex-col gap-1">
+                <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
+              </Field>
+            )}
+
+            {arrivalCategory === 'PatientOrRelativeReferral' && (
+              <>
+                <Field label="Source" htmlFor="patientRelativeSource" className="flex w-full flex-col gap-1 sm:w-48">
+                  <Controller
+                    name="arrivalSource.patientRelativeReferral.source"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="patientRelativeSource" aria-label="Patient or relative referral source">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PATIENT_RELATIVE_REFERRAL_SOURCES.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {humanize(s)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                {patientRelativeSource === 'Other' && (
+                  <Field label="Please specify" htmlFor="patientRelativeDetails" className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md">
+                    <Input id="patientRelativeDetails" {...register('arrivalSource.patientRelativeReferral.details')} />
+                  </Field>
+                )}
+              </>
+            )}
+
+            {arrivalCategory === 'OnlineAdvertisement' && (
+              <>
+                <Field label="Channel" htmlFor="onlineChannel" className="flex w-full flex-col gap-1 sm:w-48">
+                  <Controller
+                    name="arrivalSource.onlineAd.channel"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="onlineChannel" aria-label="Online advertisement channel">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ONLINE_AD_CHANNELS.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {onlineAdChannelLabel(c)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                {onlineChannel === 'Other' && (
+                  <Field label="Please specify" htmlFor="onlineDetails" className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md">
+                    <Input id="onlineDetails" {...register('arrivalSource.onlineAd.details')} />
+                  </Field>
+                )}
+              </>
+            )}
+
+            {arrivalCategory === 'OfflineAdvertisement' && (
+              <>
+                <Field label="Channel" htmlFor="offlineChannel" className="flex w-full flex-col gap-1 sm:w-56">
+                  <Controller
+                    name="arrivalSource.offlineAd.channel"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="offlineChannel" aria-label="Offline advertisement channel">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OFFLINE_AD_CHANNELS.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {offlineAdChannelLabel(c)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                {offlineChannel === 'Other' && (
+                  <Field label="Please specify" htmlFor="offlineDetails" className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md">
+                    <Input id="offlineDetails" {...register('arrivalSource.offlineAd.details')} />
+                  </Field>
+                )}
+              </>
+            )}
+          </div>
         </FormSection>
 
         <FormSection id="id-proof" title="ID Proof">

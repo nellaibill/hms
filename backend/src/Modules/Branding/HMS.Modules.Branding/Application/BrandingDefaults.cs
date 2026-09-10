@@ -15,6 +15,7 @@ internal static class BrandingDefaults
     public const string AppTitle = "Hospital Management Information System (HMIS)";
     public const string FontFamily = "Inter";
     public const string FontSizeScale = "md";
+    public const string IconSizeScale = "md";
 
     public static readonly IReadOnlyDictionary<string, string> TokensLight = new Dictionary<string, string>
     {

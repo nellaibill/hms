@@ -23,13 +23,19 @@ interface SimpleServiceBillingCardProps {
   hasError: boolean;
   /** True while `services` is still loading from its source (e.g. an API-backed catalog) — disables the Service dropdown so it doesn't briefly render empty. */
   isLoadingServices?: boolean;
+  /** Overrides the row's item-picker label (and its placeholder/search text) — defaults to
+   * "Service". Currently always default (only InjectionBillingCard uses this component; File
+   * Charges moved into ConsultationBillingCard's own table and calls it "File Type" there
+   * instead), kept as an override point rather than removed since nothing about the shape
+   * changed, only which category still renders through this particular card. */
+  serviceFieldLabel?: string;
 }
 
 /**
- * Shared implementation behind InjectionBillingCard / FileBillingCard — a stripped-down sibling
- * of ServiceBillingCard for the two categories with no consultant/doctor involved: a list of
+ * Shared implementation behind InjectionBillingCard — a stripped-down sibling of
+ * ServiceBillingCard for categories with no consultant/doctor involved: a list of
  * Service -> auto-priced charge -> discount rows, no Consultant field at all (per the user's
- * requirement — Injection/File billing never asks who administered/issued it).
+ * requirement — Injection billing never asks who administered it).
  */
 export function SimpleServiceBillingCard({
   category,
@@ -41,6 +47,7 @@ export function SimpleServiceBillingCard({
   onToggle,
   hasError,
   isLoadingServices = false,
+  serviceFieldLabel = 'Service',
 }: SimpleServiceBillingCardProps) {
   const { control } = useFormContext<BillingFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: category });
@@ -80,6 +87,7 @@ export function SimpleServiceBillingCard({
           onRemove={() => remove(index)}
           isLast={index === fields.length - 1}
           isLoadingServices={isLoadingServices}
+          serviceFieldLabel={serviceFieldLabel}
         />
       ))}
     </CollapsibleCard>
@@ -94,9 +102,19 @@ interface SimpleServiceBillingRowProps {
   onRemove: () => void;
   isLast: boolean;
   isLoadingServices: boolean;
+  serviceFieldLabel: string;
 }
 
-function SimpleServiceBillingRow({ category, index, services, showRemove, onRemove, isLast, isLoadingServices }: SimpleServiceBillingRowProps) {
+function SimpleServiceBillingRow({
+  category,
+  index,
+  services,
+  showRemove,
+  onRemove,
+  isLast,
+  isLoadingServices,
+  serviceFieldLabel,
+}: SimpleServiceBillingRowProps) {
   const {
     control,
     setValue,
@@ -121,7 +139,7 @@ function SimpleServiceBillingRow({ category, index, services, showRemove, onRemo
     <div className={showRemove || !isLast ? 'flex flex-col gap-4 border-b border-dashed border-border pb-4' : 'flex flex-col gap-4'}>
       <div className="flex flex-wrap items-start gap-3">
         <Field
-          label="Service"
+          label={serviceFieldLabel}
           htmlFor={`${basePath}-service`}
           error={rowErrors?.serviceId?.message}
           className="flex min-w-[220px] flex-1 flex-col gap-1"
@@ -132,12 +150,12 @@ function SimpleServiceBillingRow({ category, index, services, showRemove, onRemo
             render={({ field }) => (
               <SearchableSelect
                 id={`${basePath}-service`}
-                ariaLabel="Service"
+                ariaLabel={serviceFieldLabel}
                 value={field.value}
                 onValueChange={field.onChange}
                 options={serviceOptions}
-                placeholder={isLoadingServices ? 'Loading services…' : 'Select service'}
-                searchPlaceholder="Search services…"
+                placeholder={isLoadingServices ? 'Loading…' : `Select ${serviceFieldLabel.toLowerCase()}`}
+                searchPlaceholder={`Search ${serviceFieldLabel.toLowerCase()}…`}
                 disabled={isLoadingServices}
               />
             )}

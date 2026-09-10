@@ -5,7 +5,6 @@ import { billingFormSchema, defaultBillingFormValues, type BillingFormValues } f
 import type { BillingType } from '../types';
 import { BillingSummaryCard } from './BillingSummaryCard';
 import { ConsultationBillingCard } from './ConsultationBillingCard';
-import { FileBillingCard } from './FileBillingCard';
 import { InjectionBillingCard } from './InjectionBillingCard';
 import { LaboratoryBillingCard } from './LaboratoryBillingCard';
 import { ProcedureBillingCard } from './ProcedureBillingCard';
@@ -148,7 +147,6 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
           />
           <ProcedureBillingCard expanded={expanded.Procedure} onToggle={() => toggleCategory('Procedure')} hasError={hasFieldError('Procedure')} />
           <InjectionBillingCard expanded={expanded.Injection} onToggle={() => toggleCategory('Injection')} hasError={hasFieldError('Injection')} />
-          <FileBillingCard expanded={expanded.File} onToggle={() => toggleCategory('File')} hasError={hasFieldError('File')} />
         </div>
         <BillingSummaryCard onSave={onSave} isSaving={isSaving} saveError={saveError} saveErrorDetails={saveErrorDetails} />
       </div>

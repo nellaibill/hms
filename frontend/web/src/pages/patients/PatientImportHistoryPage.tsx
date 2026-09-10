@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageBanner } from '@/components/PageBanner';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { Pagination } from '../../features/patients';
 import { usePatientImportBatchesQuery } from '../../features/patientImport';
@@ -28,17 +29,7 @@ export default function PatientImportHistoryPage() {
   return (
     <RequirePermission permission={IMPORT_PERMISSION}>
       <div className="flex flex-1 flex-col">
-        <div className="relative flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-              <History className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl font-semibold tracking-tight">Import History</h1>
-          </div>
-          <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-            Every bulk patient import run on this account, newest first.
-          </p>
-        </div>
+        <PageBanner icon={History} title="Import History" subtitle="Every bulk patient import run on this account, newest first." />
 
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
           <div className="flex justify-end">

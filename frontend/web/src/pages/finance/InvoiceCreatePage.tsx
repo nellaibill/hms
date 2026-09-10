@@ -1,11 +1,12 @@
 import { ApiError, NetworkError, type Patient } from '@hms/shared';
-import { ArrowLeft, FilePlus2, Loader2 } from 'lucide-react';
+import { FilePlus2, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useBlocker } from 'react-router-dom';
+import { useBlocker } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageBanner } from '@/components/PageBanner';
 import {
   BillingStep,
   InvoiceDetailCard,
@@ -284,26 +285,13 @@ export default function InvoiceCreatePage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/finance/accounts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Accounts and Finance
-        </Link>
-      </div>
-
-      {/* Centered, brand-colored banner — matches the Page banner style used
-          across module pages (Theme & Branding → Section headers). */}
-      <div className="relative mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <FilePlus2 className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">OPD Billing Entry</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Bill an existing patient's visit — Consultation, Radiology, Laboratory, or Procedure.
-        </p>
-      </div>
+      <PageBanner
+        icon={FilePlus2}
+        title="OPD Billing Entry"
+        subtitle="Bill an existing patient's visit — Consultation, Radiology, Laboratory, or Procedure."
+        backTo="/finance/accounts"
+        backLabel="Back to Accounts and Finance"
+      />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
         {/* Full width, not centered — matches PatientRegistrationForm, which renders

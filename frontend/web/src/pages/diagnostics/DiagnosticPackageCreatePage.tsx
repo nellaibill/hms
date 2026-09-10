@@ -1,7 +1,8 @@
 import { ApiError, type DiagnosticPackageFormValues } from '@hms/shared';
-import { ArrowLeft, PackageSearch } from 'lucide-react';
+import { PackageSearch } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -54,22 +55,13 @@ export default function DiagnosticPackageCreatePage() {
   return (
     <RequirePermission permission="diagnostics.create">
       <div className="flex flex-1 flex-col">
-        <div className="px-6 pt-4 lg:px-8">
-          <Link to="/diagnostics/lab/packages" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-            Back to packages
-          </Link>
-        </div>
-
-        <div className="mt-3 flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-              <PackageSearch className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl font-semibold tracking-tight">New Package</h1>
-          </div>
-          <p className="text-sm text-page-banner-foreground/85">Add a new bundled test package.</p>
-        </div>
+        <PageBanner
+          icon={PackageSearch}
+          title="New Package"
+          subtitle="Add a new bundled test package."
+          backTo="/diagnostics/lab/packages"
+          backLabel="Back to packages"
+        />
 
         <div className="flex flex-1 flex-col gap-5 p-6 lg:p-8">
           <div className="mx-auto w-full max-w-3xl">

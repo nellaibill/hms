@@ -12,6 +12,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAttendanceQuery } from '@/features/attendance';
@@ -176,23 +177,22 @@ export default function HrHubPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col items-center gap-3 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <UsersRound className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Human Resource Management (HR)</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Staff directory, roster/shift assignment, leave management, and credentialing.
-        </p>
-        <Button asChild variant="secondary" size="sm">
-          <Link to="/admin/hr/dashboard">
-            <LayoutDashboard className="h-4 w-4" />
-            Open HR Dashboard
-          </Link>
-        </Button>
-      </div>
+      <PageBanner
+        icon={UsersRound}
+        title="Human Resource Management (HR)"
+        subtitle={
+          <>
+            <span className="block">Staff directory, roster/shift assignment, leave management, and credentialing.</span>
+            <Button asChild variant="secondary" size="sm" className="mt-3">
+              <Link to="/admin/hr/dashboard">
+                <LayoutDashboard className="h-4 w-4" />
+                Open HR Dashboard
+              </Link>
+            </Button>
+          </>
+        }
+        className="gap-3"
+      />
 
       <div className="flex flex-1 flex-col gap-8 p-6 lg:p-8">
         <section className="flex flex-col gap-3">

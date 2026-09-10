@@ -22,6 +22,7 @@ internal class BrandingSettings : Entity
     public string? LogoPath { get; private set; }
     public string FontFamily { get; private set; } = null!;
     public string FontSizeScale { get; private set; } = null!;
+    public string IconSizeScale { get; private set; } = null!;
 
     /// <summary>Flat "--css-var-name": "H S% L%" map, serialized as JSON — see docs on the token-map storage decision.</summary>
     public string TokensLightJson { get; private set; } = null!;
@@ -39,6 +40,7 @@ internal class BrandingSettings : Entity
         string appTitle,
         string fontFamily,
         string fontSizeScale,
+        string iconSizeScale,
         string tokensLightJson,
         string tokensDarkJson)
         : base(SingletonId, createdBy: null)
@@ -47,6 +49,7 @@ internal class BrandingSettings : Entity
         AppTitle = appTitle;
         FontFamily = fontFamily;
         FontSizeScale = fontSizeScale;
+        IconSizeScale = iconSizeScale;
         TokensLightJson = tokensLightJson;
         TokensDarkJson = tokensDarkJson;
     }
@@ -61,6 +64,7 @@ internal class BrandingSettings : Entity
         string appTitle,
         string fontFamily,
         string fontSizeScale,
+        string iconSizeScale,
         string tokensLightJson,
         string tokensDarkJson)
     {
@@ -68,10 +72,11 @@ internal class BrandingSettings : Entity
         Guard.AgainstNullOrWhiteSpace(appTitle, nameof(appTitle));
         Guard.AgainstNullOrWhiteSpace(fontFamily, nameof(fontFamily));
         Guard.AgainstNullOrWhiteSpace(fontSizeScale, nameof(fontSizeScale));
+        Guard.AgainstNullOrWhiteSpace(iconSizeScale, nameof(iconSizeScale));
         Guard.AgainstNullOrWhiteSpace(tokensLightJson, nameof(tokensLightJson));
         Guard.AgainstNullOrWhiteSpace(tokensDarkJson, nameof(tokensDarkJson));
 
-        return new BrandingSettings(hospitalName.Trim(), appTitle.Trim(), fontFamily, fontSizeScale, tokensLightJson, tokensDarkJson);
+        return new BrandingSettings(hospitalName.Trim(), appTitle.Trim(), fontFamily, fontSizeScale, iconSizeScale, tokensLightJson, tokensDarkJson);
     }
 
     public void UpdateIdentity(string hospitalName, string appTitle, Guid? updatedBy)
@@ -84,13 +89,15 @@ internal class BrandingSettings : Entity
         MarkUpdated(updatedBy);
     }
 
-    public void UpdateTypography(string fontFamily, string fontSizeScale, Guid? updatedBy)
+    public void UpdateTypography(string fontFamily, string fontSizeScale, string iconSizeScale, Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(fontFamily, nameof(fontFamily));
         Guard.AgainstNullOrWhiteSpace(fontSizeScale, nameof(fontSizeScale));
+        Guard.AgainstNullOrWhiteSpace(iconSizeScale, nameof(iconSizeScale));
 
         FontFamily = fontFamily;
         FontSizeScale = fontSizeScale;
+        IconSizeScale = iconSizeScale;
         MarkUpdated(updatedBy);
     }
 

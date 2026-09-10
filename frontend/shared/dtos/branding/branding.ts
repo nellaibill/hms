@@ -5,6 +5,7 @@ export interface BrandingConfigDto {
   logoUrl: string | null;
   fontFamily: string;
   fontSizeScale: string;
+  iconSizeScale: string;
   tokensLight: Record<string, string>;
   tokensDark: Record<string, string>;
 }
@@ -15,6 +16,7 @@ export interface UpdateBrandingRequest {
   appTitle: string;
   fontFamily: string;
   fontSizeScale: string;
+  iconSizeScale: string;
   tokensLight: Record<string, string>;
   tokensDark: Record<string, string>;
 }
