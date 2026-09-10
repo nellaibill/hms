@@ -86,6 +86,25 @@ after the fact.
    `System.Security.Cryptography.Xml`'s own transitive-CVE pin in the same file. SSH.NET/
    Testcontainers are test-only (`HMS.IntegrationTests`, not run in CI per its own Testcontainers
    exclusion, but still built) — this was never a production-runtime exposure.
+4. **A second real batch found the same way, on the frontend side**: `npm audit
+   --audit-level=high` in `web` immediately surfaced 4 real high-severity transitive
+   vulnerabilities — `brace-expansion` (GHSA-mh99-v99m-4gvg / GHSA-rgw5-rvv9-x895, DoS via
+   unbounded expansion), `js-yaml` (GHSA-5p4m-2wfm-xmqj / GHSA-2883-xcg3-v3hh, quadratic-CPU
+   DoS), and `nanoid` (GHSA-2v37-7h3g-55p8, infinite loop on a zero-size generator) — all pulled
+   in transitively by dev/build tooling (`@typescript-eslint/typescript-estree`, `glob`, etc.),
+   never runtime code shipped to users. Fixed via `overrides` in `frontend/package.json` (the
+   npm-workspaces root, covering `web`+`shared`) and `frontend/mobile/package.json` (a fully
+   standalone project, not part of that workspace — confirmed via its own lockfile, which
+   resolves the same three packages independently). **Deliberately picked the smallest safe
+   version for each** (`brace-expansion` to `^2.0.2`, not the `5.x` line also seen elsewhere in
+   the tree; `js-yaml` to `^4.3.2`, a patch bump; `nanoid` to `^3.3.18`, a patch bump) rather
+   than jumping every resolution to the newest major release each package has published — a
+   deliberately-transitive dev-tooling dependency is exactly the wrong place to risk an
+   unreviewed breaking change (e.g. a CJS/ESM split) for a fix that has a same-major patch
+   available. `dompurify`/`esbuild`/`postcss`/`react-router`/`uuid` findings from the same
+   `npm audit` run are moderate severity (don't fail `--audit-level=high`) and only have
+   `--force` (breaking-change) fixes available — left as an explicit, disclosed follow-up rather
+   than bundled into this pass.
 
 **Consequences**
 - The gitleaks/npm-audit/dotnet-vulnerable checks are new CI gates that will now block a PR
@@ -93,6 +112,16 @@ after the fact.
 - The full solution build (`dotnet build HMS.sln`) and the full test suite excluding
   IntegrationTests (98 architecture tests + 925 unit tests) both pass unchanged with the
   SSH.NET/BouncyCastle.Cryptography version bump — confirmed directly, not assumed.
+- **The frontend `overrides` fix could not be locally verified** — this session's local
+  environment had persistent, unexplained npm-registry/process reliability problems for the
+  entire session (multi-minute hangs with zero output on operations that complete in seconds in
+  CI, most likely a `timeout` command name collision between GNU coreutils and Windows'
+  built-in `timeout.exe` on this Git Bash setup silently defeating every timeout guard used to
+  bound the attempts). `frontend/package-lock.json`/`frontend/mobile/package-lock.json` are
+  therefore **not** regenerated in this commit — CI's own `npm install` (not `npm ci`, so it's
+  free to update the lockfile) is the actual verification, and will commit an updated lockfile
+  reflecting the new resolutions the next time someone runs `npm install` locally after pulling
+  this change. Flagged explicitly here rather than silently claimed as verified.
 - Dependabot's weekly PRs will start surfacing on their own schedule after this merges — normal
   and expected, not something this ADR needs to pre-emptively triage.
 
