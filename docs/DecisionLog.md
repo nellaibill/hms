@@ -37,6 +37,85 @@ _To be documented._
 
 ## Decisions
 
+### ADR-081: Missing EF Core migration meant `pharmacy.view-cost`/`finance-billing.discount-approve` never reached any real database — found by live-verifying ADR-077/ADR-080
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+The user asked to live-verify Phase 0/1 of the security-review remediation against the real
+`lhs` (Lakshmi Hospitals) tenant, logged in as its Super Admin, rather than trust merged PRs and
+passing unit tests alone. That verification found a genuine bug: `pharmacy.view-cost`
+(ADR-077) and `finance-billing.discount-approve` (ADR-080) were both **missing from the
+`lhs` tenant's permission catalog entirely** — not just unassigned to a role, absent as rows.
+
+**Root cause**: `PermissionConfiguration.cs` seeds the permission catalog via EF Core's
+`HasData(PermissionSeedData.GetPermissions())` — a **migration-time** mechanism. Editing
+`PermissionSeedData.cs`'s C# source (which both ADR-077 and ADR-080 did) changes what the
+*next generated migration* would contain, but does nothing to any actual database until that
+migration is generated (`dotnet ef migrations add`) and applied. **Neither PR generated one.**
+Confirmed via `git log` on `backend/src/Database/HMS.Database.Migrations/Identity/Migrations/`
+— the most recent Identity migration was `AddDischargeSummaryPermissions` from Sept 8, two days
+before ADR-077/080 shipped.
+
+**A second, more surprising finding**: even after generating and applying the missing
+migration (which inserts the two `Permission` catalog rows), the `lhs` tenant's **Super Admin
+role still didn't have them** — confirmed by querying `identity.role_permissions` directly.
+The ADR-077/080 claim that "Super Admin auto-syncs to it, no manual step needed" turned out
+to be **wrong for any already-provisioned tenant**. `IdentityDataSeeder.
+EnsureSuperAdminRoleAsync`'s "re-syncs on every startup" auto-sync genuinely exists, but per
+`Program.cs`, it only ever runs for the Platform DB and the single legacy/demo tenant at host
+startup — never for a real hospital tenant. `TenantMigrationService.MigrateAsync` (the Platform
+Portal's per-tenant "Migrate" button) confirms this by inspection too: it only calls
+`db.Database.MigrateAsync()` per module schema, never the Identity seeder. So for a tenant that
+already exists, granting a new permission to a role — even the Super Admin role — is a normal
+Roles-admin action (`PUT /api/v1/roles/{id}` with the permission key added to
+`permissionKeys`), the same action an operator would take for any other RBAC change; there is
+no separate "system role" auto-expansion at request time.
+
+Verified end-to-end against `lhs` directly: applied the migration (`dotnet ef database update`
+with `HMS_DESIGN_TIME_CONNECTION_STRING` pointed at `hms_lhs`), confirmed the two permissions
+now exist via `GET /api/v1/permissions`, granted them to Super Admin via
+`PUT /api/v1/roles/{id}`, then confirmed with the *original* (pre-grant) session token that
+`POST /api/v1/billing/invoices` with an approved discount correctly still returned
+`403 BILLING.DISCOUNT_APPROVAL_FORBIDDEN` — proving the permission-check code itself
+(`ClaimsPrincipalExtensions.HasPermission`, added in ADR-077) was correct all along; only the
+data was missing.
+
+**Decision**
+1. Generated the missing migration:
+   `20260910082423_AddPharmacyViewCostAndDiscountApprovePermissions` (via `dotnet ef migrations
+   add`, not hand-written), inserting both `Permission` rows in one migration since both were
+   already merged to `main` before this was caught.
+2. **ADR-077 and ADR-080's "Super Admin auto-syncs, no manual step needed" claims are corrected
+   here, not silently edited in place** — that statement was only ever true for a *brand-new*
+   tenant provisioned after the permission exists in the catalog, and for the Platform's own
+   legacy/demo tenant. For any tenant that already existed when a new permission ships, rolling
+   it out requires: (a) migrating that tenant's Identity schema (Platform Portal → Hospitals →
+   Migrate, or `dotnet ef database update` against its connection string) to get the catalog
+   row, then (b) an explicit Roles-admin grant to whichever role(s) should have it.
+3. **Not fixed here, explicitly flagged instead**: every other already-provisioned tenant in
+   this environment (`hms_lakshmi_hospitals`, `hms_qa`, and the several `*_test_hospital`/
+   `*_test_hosp` databases found during this verification) has the identical gap and needs the
+   same two-step rollout — migrate, then grant — before either permission will work for any of
+   their users. Out of scope to fix every tenant from this session; flagged as a real
+   operational follow-up.
+
+**Consequences**
+- `dotnet build`/`dotnet test` both clean (928 unit tests, unchanged) — this fix is pure
+  migration-data, no application code changed.
+- Process gap, not just a one-off mistake: any future PR that adds a permission to
+  `PermissionSeedData.cs` must also generate its EF migration in the same PR — worth flagging
+  explicitly in review from now on, since the compiler/test suite will not catch a missed one.
+- The live-verification session that caught this also independently re-confirmed H1 (Branding
+  settings loads for Super Admin), H2 (Patient Reports — 31,272 real patients — and Documents
+  both load correctly for a permitted user), H3 (confirmed above), and M15 (security headers
+  genuinely present on real responses — an initial `fetch()`-based check showed them as
+  missing, which turned out to be the browser's CORS response-header visibility restriction on
+  that test method, not a real gap; confirmed via `curl` directly instead) — all against the
+  real `lhs` tenant on today's merged `main`, not mocks.
+
+---
+
 ### ADR-080: Invoice discount approval requires a real server-side permission; the unbuilt phone-override UI removed
 **Date:** 2026-09-10
 **Status:** Accepted
