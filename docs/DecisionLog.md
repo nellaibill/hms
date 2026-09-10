@@ -37,6 +37,67 @@ _To be documented._
 
 ## Decisions
 
+### ADR-078: CI security gates — dependency-vulnerability scanning, secret scanning, Dependabot
+**Date:** 2026-09-10
+**Status:** Accepted
+
+**Context**
+Finding M8 from the security review: the CI pipeline (`.github/workflows/build.yml`) validated
+build correctness and ran tests, but had no dependency-vulnerability scan, no secret scan, and
+no Dependabot configuration — the exact class of tooling that would have caught the committed
+credential leak (ADR-073) and any vulnerable package before merge, rather than by manual review
+after the fact.
+
+**Decision**
+1. **New `security` job** in `build.yml`, separate from `backend`/`frontend` so a scan failure
+   reads clearly as a security gate, not a build/test failure:
+   - **Secret scan (gitleaks)**, run via `docker run zricethezav/gitleaks:latest` (Docker is
+     preinstalled on GitHub-hosted runners) rather than a marketplace Action, avoiding any
+     ambiguity around Action-specific licensing terms for private repos — the underlying
+     `gitleaks` CLI itself is open-source. **Deliberately scoped to only the commits a PR/push
+     actually introduces** (`--log-opts` against the PR's base commit, or `HEAD~1..HEAD` for a
+     direct push — every push to `main` in this repo's workflow is a single-commit squash-merge,
+     so that range is exact) rather than the whole repository history on every run. Scanning
+     full history today would immediately and permanently fail this gate on the real, known,
+     not-yet-purged leak from ADR-073's own git history — this gate exists to catch a
+     *recurrence*, not to re-litigate an already-disclosed, already-scrubbed-from-HEAD incident
+     whose history purge is a separate, deliberately-deferred, user-owned action.
+   - **`.NET dependency vulnerability scan`** — `dotnet list package --vulnerable
+     --include-transitive` against `HMS.sln`, with a shell check that fails the step if the
+     output contains "has the following vulnerable packages" (the command itself doesn't exit
+     non-zero on its own).
+   - **`npm audit --audit-level=high`** across all three frontend workspaces (`web`/`mobile`/
+     `shared`) — `npm audit` already exits non-zero on a qualifying finding, no extra check
+     needed.
+2. **New `.github/dependabot.yml`** — weekly update PRs for NuGet (`/backend`, landing in
+   `Directory.Packages.props` regardless of which module first pulled a package, since Central
+   Package Management is already in use), all three npm workspaces individually (no shared
+   workspace root to point at instead), and `github-actions` itself (an outdated Action version
+   is its own supply-chain surface).
+3. **Real vulnerability found and fixed while standing this up, not left for the new gate to
+   immediately fail on**: `dotnet list package --vulnerable` surfaced
+   `HMS.IntegrationTests → Testcontainers.PostgreSql → (transitive) SSH.NET 2023.0.0`,
+   GHSA-q939-rpr3-3284 (high severity — SCP recursive-download arbitrary file write). Fetched
+   the advisory directly (`vulnerable_version_range: "<= 2025.1.0"`,
+   `first_patched_version: "2026.0.0"`) rather than guessing a version — bumping
+   Testcontainers.PostgreSql itself didn't change the resolved SSH.NET version, so this is a
+   **direct force-pin** (`Directory.Packages.props` + a direct `PackageReference` in
+   `HMS.IntegrationTests.csproj`), the exact same pattern already established for
+   `System.Security.Cryptography.Xml`'s own transitive-CVE pin in the same file. SSH.NET/
+   Testcontainers are test-only (`HMS.IntegrationTests`, not run in CI per its own Testcontainers
+   exclusion, but still built) — this was never a production-runtime exposure.
+
+**Consequences**
+- The gitleaks/npm-audit/dotnet-vulnerable checks are new CI gates that will now block a PR
+  whose diff introduces a real secret or a newly-vulnerable dependency — expected and intended.
+- The full solution build (`dotnet build HMS.sln`) and the full test suite excluding
+  IntegrationTests (98 architecture tests + 925 unit tests) both pass unchanged with the
+  SSH.NET/BouncyCastle.Cryptography version bump — confirmed directly, not assumed.
+- Dependabot's weekly PRs will start surfacing on their own schedule after this merges — normal
+  and expected, not something this ADR needs to pre-emptively triage.
+
+---
+
 ### ADR-077: Product `CostPrice` now requires a separate `pharmacy.view-cost` permission
 **Date:** 2026-09-10
 **Status:** Accepted

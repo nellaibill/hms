@@ -17,6 +17,10 @@
          (and by this project's EF Core Design dependency via HMS.Api) — see
          Directory.Packages.props for why. -->
     <PackageReference Include="System.Security.Cryptography.Xml" />
+    <!-- Same reasoning, same precedent as the pin above: Testcontainers.PostgreSql pulls in a
+         vulnerable transitive SSH.NET (GHSA-q939-rpr3-3284, high severity) even at its current
+         pinned version — see Directory.Packages.props for the patched version this forces. -->
+    <PackageReference Include="SSH.NET" />
   </ItemGroup>
 
   <ItemGroup>

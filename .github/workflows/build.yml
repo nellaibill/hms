@@ -54,3 +54,61 @@ jobs:
       - name: Test
         working-directory: frontend/${{ matrix.workspace }}
         run: npm test --if-present
+
+  # Security gate (ADR-078): dependency-vulnerability scanning for both ecosystems, plus a
+  # secret scan — added after a real committed-credential leak (ADR-073) surfaced with nothing
+  # in CI that would have caught it. A separate job (not folded into backend/frontend above) so
+  # a scan failure reads clearly as a security gate, not a build/test failure.
+  security:
+    name: Security scans
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Needed for the gitleaks commit range below (git log against the PR's base commit,
+          # or the previous push-to-main commit) — a shallow clone has no such history to diff.
+          fetch-depth: 0
+
+      - name: Determine commit range to scan
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "range=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "range=HEAD~1..HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Scoped to only the commits this PR/push actually introduces, not the whole repository's
+      # history on every run — re-flagging main's pre-existing (already-scrubbed-from-HEAD,
+      # not-yet-purged-from-history, ADR-073) known leak on every single future CI run would
+      # make this gate useless noise until that separate, user-owned history purge happens.
+      # gitleaks' own exit code (1 on any finding) fails this step without an extra flag.
+      - name: Secret scan (gitleaks)
+        run: docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:latest detect --source /repo --redact -v --log-opts="${{ steps.range.outputs.range }}"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: .NET dependency vulnerability scan
+        run: |
+          dotnet restore backend/HMS.sln
+          report=$(dotnet list backend/HMS.sln package --vulnerable --include-transitive 2>&1)
+          echo "$report"
+          if echo "$report" | grep -q "has the following vulnerable packages"; then
+            echo "::error::Vulnerable NuGet package(s) found — see the report above."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: npm audit (web, mobile, shared)
+        run: |
+          for workspace in web mobile shared; do
+            echo "== frontend/$workspace =="
+            (cd "frontend/$workspace" && npm install && npm audit --audit-level=high)
+          done
