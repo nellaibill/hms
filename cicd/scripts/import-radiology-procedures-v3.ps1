@@ -32,7 +32,7 @@
     Defaults to the local dev API.
 
 .EXAMPLE
-    ./import-radiology-procedures-v3.ps1 -HospitalCode lhs -Username lhsadmin -Password 'Lakshmi@123'
+    ./import-radiology-procedures-v3.ps1 -HospitalCode lhs -Username lhsadmin -Password '<super-admin-password>'
 #>
 [CmdletBinding()]
 param(

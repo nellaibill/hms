@@ -40,7 +40,7 @@
     Defaults to the local dev API.
 
 .EXAMPLE
-    ./seed-diagnostic-tests.ps1 -HospitalCode lhs -Username lhsadmin -Password 'Lakshmi@123'
+    ./seed-diagnostic-tests.ps1 -HospitalCode lhs -Username lhsadmin -Password '<super-admin-password>'
 #>
 [CmdletBinding()]
 param(
