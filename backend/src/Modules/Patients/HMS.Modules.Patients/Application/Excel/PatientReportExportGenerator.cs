@@ -32,14 +32,14 @@ internal static class PatientReportExportGenerator
             var patient = row.Patient;
             var excelRow = r + 2;
 
-            sheet.Cell(excelRow, 1).Value = patient.Uhid;
-            sheet.Cell(excelRow, 2).Value = $"{patient.FirstName} {patient.LastName}";
+            sheet.Cell(excelRow, 1).Value = ExcelCellSafety.Sanitize(patient.Uhid);
+            sheet.Cell(excelRow, 2).Value = ExcelCellSafety.Sanitize($"{patient.FirstName} {patient.LastName}");
             sheet.Cell(excelRow, 3).Value = patient.Age;
             sheet.Cell(excelRow, 4).Value = patient.Gender.ToString();
-            sheet.Cell(excelRow, 5).Value = patient.PrimaryPhone;
+            sheet.Cell(excelRow, 5).Value = ExcelCellSafety.Sanitize(patient.PrimaryPhone);
             sheet.Cell(excelRow, 6).Value = patient.CreatedAt.ToString("yyyy-MM-dd");
             sheet.Cell(excelRow, 7).Value = row.LastVisitDepartmentId.HasValue && departmentNames.TryGetValue(row.LastVisitDepartmentId.Value, out var name)
-                ? name
+                ? ExcelCellSafety.Sanitize(name)
                 : "—";
             sheet.Cell(excelRow, 8).Value = row.LastVisitAt?.ToString("yyyy-MM-dd") ?? "—";
             sheet.Cell(excelRow, 9).Value = patient.BloodGroup.ToString();
