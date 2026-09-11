@@ -258,6 +258,8 @@ export const API_ROUTES = {
       transferHistory: (id: string) => `/api/v1/ipd/admissions/${id}/transfer-history`,
       bedHistory: (id: string) => `/api/v1/ipd/admissions/${id}/bed-history`,
       discharge: (id: string) => `/api/v1/ipd/admissions/${id}/discharge`,
+      request: '/api/v1/ipd/admissions/request',
+      assignBed: (id: string) => `/api/v1/ipd/admissions/${id}/assign-bed`,
       charges: (id: string) => `/api/v1/ipd/admissions/${id}/charges`,
       advances: (id: string) => `/api/v1/ipd/admissions/${id}/advances`,
       vitals: (id: string) => `/api/v1/ipd/admissions/${id}/vitals`,
@@ -285,6 +287,7 @@ export const API_ROUTES = {
       byPatientId: (patientId: string) => `/api/v1/billing/invoices/by-patient/${patientId}`,
       recordPayment: (invoiceId: string, itemId: string) => `/api/v1/billing/invoices/${invoiceId}/items/${itemId}/payments`,
       void: (id: string) => `/api/v1/billing/invoices/${id}/void`,
+      procedures: '/api/v1/billing/invoices/procedures',
     },
   },
   /** Mirrors HMS.Modules.Laboratory.Endpoints.LabOrdersController — the lab worklist: sample
@@ -308,6 +311,17 @@ export const API_ROUTES = {
       generateReport: (id: string) => `/api/v1/laboratory/orders/${id}/generate-report`,
       releaseReport: (id: string) => `/api/v1/laboratory/orders/${id}/release-report`,
     },
+  },
+  /** Mirrors HMS.Modules.Patients.Endpoints.OpdController — the OPD Patient List's queue and
+   * its consultation state transitions. */
+  opd: {
+    patients: '/api/v1/opd/patients',
+    consultationsSummary: '/api/v1/opd/consultations/summary',
+    consultationCheckIn: (id: string) => `/api/v1/opd/consultations/${id}/check-in`,
+    consultationStart: (id: string) => `/api/v1/opd/consultations/${id}/start-consultation`,
+    consultationComplete: (id: string) => `/api/v1/opd/consultations/${id}/complete`,
+    consultationCancel: (id: string) => `/api/v1/opd/consultations/${id}/cancel`,
+    consultationNoShow: (id: string) => `/api/v1/opd/consultations/${id}/no-show`,
   },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
   pharmacy: {

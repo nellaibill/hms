@@ -14,7 +14,10 @@ export type BedType = (typeof BED_TYPES)[number];
 export const IPD_ADMISSION_TYPES = ['Emergency', 'Elective', 'Transfer'] as const;
 export type IpdAdmissionType = (typeof IPD_ADMISSION_TYPES)[number];
 
-export const ADMISSION_STATUSES = ['Admitted', 'Discharged'] as const;
+// 'Requested' is a new admission with no ward/bed assigned yet (raised from OPD via
+// POST /ipd/admissions/request) — 'Cancelled' lets staff withdraw a request before it's
+// ever assigned a bed. Both join the pre-existing Admitted/Discharged pair.
+export const ADMISSION_STATUSES = ['Requested', 'Admitted', 'Discharged', 'Cancelled'] as const;
 export type AdmissionStatus = (typeof ADMISSION_STATUSES)[number];
 
 export const DISCHARGE_TYPES = ['Normal', 'AgainstMedicalAdvice', 'Referred'] as const;

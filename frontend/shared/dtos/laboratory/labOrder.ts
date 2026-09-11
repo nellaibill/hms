@@ -7,6 +7,7 @@ import type {
   LabSampleRejectionReason,
   LabSampleType,
 } from '../../enums';
+import type { DiagnosticServiceType } from '../diagnostics/diagnosticService';
 
 /** Mirrors HMS.Modules.Laboratory.Contracts.CollectSampleRequest. */
 export interface CollectSampleRequest {
@@ -54,6 +55,10 @@ export interface LabOrderListQuery {
   priority?: LabOrderPriority;
   dateFrom?: string;
   dateTo?: string;
+  /** "OP" selects OPD-originated orders — passed by the OPD Investigations tab. */
+  source?: string;
+  departmentId?: string;
+  consultantId?: string;
 }
 
 /** Mirrors HMS.Modules.Laboratory.Contracts.ResultParameterResponse. */
@@ -86,6 +91,8 @@ export interface LabOrderItemResponse {
   consultantId?: string | null;
   sampleType?: LabSampleType | null;
   status: LabOrderItemStatus;
+  /** Laboratory or Radiology — the OPD Investigations tab's "Type" column. */
+  serviceType?: DiagnosticServiceType | null;
 
   collectedAt?: string | null;
   collectedBy?: string | null;

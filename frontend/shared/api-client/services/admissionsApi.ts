@@ -8,6 +8,7 @@ import type {
   BedTransferHistory,
   CreateAdmissionAdvanceRequest,
   CreateAdmissionChargeRequest,
+  AssignBedRequest,
   CancelDoctorOrderRequest,
   CreateAdmissionRequest,
   CreateDoctorOrderRequest,
@@ -28,6 +29,7 @@ import type {
   NursingAssessment,
   NursingNote,
   ProgressNote,
+  RequestAdmissionRequest,
   TransferBedRequest,
   UpdateAdmissionRequest,
   VitalsReading,
@@ -71,6 +73,19 @@ export class AdmissionsApi {
 
   async createAdmission(request: CreateAdmissionRequest): Promise<Admission> {
     const response = await this.client.post<Admission>(API_ROUTES.ipd.admissions.base, request);
+    return response.data;
+  }
+
+  /** Raises a Requested admission with no ward/bed yet — backs the OPD Admissions List
+   * tab's "Request Admission" action. */
+  async requestAdmission(request: RequestAdmissionRequest): Promise<Admission> {
+    const response = await this.client.post<Admission>(API_ROUTES.ipd.admissions.request, request);
+    return response.data;
+  }
+
+  /** Assigns a ward/bed to a Requested admission, moving it to Admitted. */
+  async assignBed(id: string, request: AssignBedRequest): Promise<Admission> {
+    const response = await this.client.post<Admission>(API_ROUTES.ipd.admissions.assignBed(id), request);
     return response.data;
   }
 

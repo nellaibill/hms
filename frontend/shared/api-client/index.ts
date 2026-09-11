@@ -33,6 +33,7 @@ export * from './services/admissionsApi';
 export * from './services/ipdDashboardApi';
 export * from './services/billingApi';
 export * from './services/laboratoryApi';
+export * from './services/opdApi';
 export * from './services/pharmacyApi';
 export * from './services/notificationsApi';
 export * from './services/notificationPreferencesApi';
