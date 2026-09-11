@@ -1,3 +1,5 @@
+using HMS.Modules.Masters.Contracts;
+
 namespace HMS.Modules.Laboratory.Contracts;
 
 /// <summary>One line Billing supplies per BillingType.Laboratory invoice line item — either
@@ -108,6 +110,16 @@ public record LabOrderListQuery
     public LabOrderPriority? Priority { get; init; }
     public DateTime? DateFrom { get; init; }
     public DateTime? DateTo { get; init; }
+
+    /// <summary>Matches LabOrder.Source exactly (e.g. "OP"/"IP"/"IPD") — lets the OPD
+    /// Investigations List tab ask for only orders raised from an OP visit.</summary>
+    public string? Source { get; init; }
+
+    /// <summary>Filters via Items.Any(...) — Department/Consultant live on each LabOrderItem,
+    /// not on the order itself (a single invoice-originated order can carry items billed
+    /// against more than one department/consultant).</summary>
+    public Guid? DepartmentId { get; init; }
+    public Guid? ConsultantId { get; init; }
 }
 
 public record ResultParameterResponse
@@ -140,6 +152,12 @@ public record LabOrderItemResponse
     public Guid? ConsultantId { get; init; }
     public LabSampleType? SampleType { get; init; }
     public LabOrderItemStatus Status { get; init; }
+
+    /// <summary>Resolved from Masters' DiagnosticService.ServiceType (Laboratory/Radiology) at
+    /// response-mapping time — LabOrderItem doesn't store this itself, see
+    /// LabOrderService.ToOrderResponseAsync. Null only if the referenced service could no
+    /// longer be resolved (e.g. deleted after the order was placed).</summary>
+    public DiagnosticTestServiceType? ServiceType { get; init; }
 
     public DateTime? CollectedAt { get; init; }
     public Guid? CollectedBy { get; init; }

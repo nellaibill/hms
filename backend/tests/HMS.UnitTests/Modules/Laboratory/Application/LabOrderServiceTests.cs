@@ -294,13 +294,13 @@ public class LabOrderServiceTests
     }
 
     [Fact]
-    public async Task CreateFromInvoiceAsync_WhenServiceCannotBeResolvedAsLaboratory_ReturnsInvalidServiceOrPackageFailure()
+    public async Task CreateFromInvoiceAsync_WhenServiceIsNeitherLaboratoryNorRadiology_ReturnsInvalidServiceOrPackageFailure()
     {
         var invoiceId = Guid.NewGuid();
         var serviceId = Guid.NewGuid();
         _repository.GetByInvoiceIdAsync(invoiceId, Arg.Any<CancellationToken>()).Returns((LabOrder?)null);
         _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
-            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = serviceId, Name = "X-Ray Chest", ServiceType = DiagnosticTestServiceType.Radiology }));
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = serviceId, Name = "Wound Dressing", ServiceType = DiagnosticTestServiceType.Procedure }));
 
         var result = await _sut.CreateFromInvoiceAsync(ValidRequest(invoiceId, serviceId), actorId: null, CancellationToken.None);
 
@@ -448,5 +448,52 @@ public class LabOrderServiceTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().ContainSingle(o => o.Id == order.Id);
+    }
+
+    [Fact]
+    public async Task CreateFromInvoiceAsync_WithARadiologyServiceLine_CreatesOneItemTaggedWithRadiologyServiceType()
+    {
+        // Billing's InvoiceService now raises this same hook for BillingType.Radiology lines,
+        // not just Laboratory — LabOrder itself doesn't discriminate between the two (both
+        // resolve through the same Masters DiagnosticService), so from this module's own
+        // perspective a Radiology-typed service line behaves identically to a Laboratory one.
+        var invoiceId = Guid.NewGuid();
+        var serviceId = Guid.NewGuid();
+        _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = serviceId, Name = "X-Ray Chest", ServiceType = DiagnosticTestServiceType.Radiology }));
+        _repository.GetByInvoiceIdAsync(invoiceId, Arg.Any<CancellationToken>()).Returns((LabOrder?)null);
+
+        var result = await _sut.CreateFromInvoiceAsync(ValidRequest(invoiceId, serviceId), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Should().ContainSingle(i => i.ServiceId == serviceId);
+        await _repository.Received(1).AddAsync(Arg.Any<LabOrder>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ResolvesEachItemsServiceTypeFromMasters()
+    {
+        var order = BuildOrder(out var itemId);
+        _repository.GetByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        var serviceId = order.Items.Single().ServiceId;
+        _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = serviceId, Name = "CBC", ServiceType = DiagnosticTestServiceType.Laboratory }));
+
+        var result = await _sut.GetByIdAsync(order.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Single().ServiceType.Should().Be(DiagnosticTestServiceType.Laboratory);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenTheItemsServiceCanNoLongerBeResolved_LeavesServiceTypeNull()
+    {
+        var order = BuildOrder(out _);
+        _repository.GetByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await _sut.GetByIdAsync(order.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Single().ServiceType.Should().BeNull();
     }
 }

@@ -180,11 +180,15 @@ internal class InvoiceService : IInvoiceService
         // the thing that's committed, and raising the corresponding lab order is the
         // best-effort follow-on. A Laboratory-module failure (unreachable, a genuine
         // exception, or a Result.Failure) must never fail Reception's billing/payment flow —
-        // the invoice itself always still succeeds; lab staff have no path to act on an
-        // un-raised order today (no manual "create lab order" screen, by design, see
+        // the invoice itself always still succeeds; lab/radiology staff have no path to act on
+        // an un-raised order today (no manual "create lab order" screen, by design, see
         // HMS.Modules.Laboratory's own doc comments), so this is logged as a warning for
-        // operational visibility rather than silently swallowed.
-        if (invoice.Items.Any(i => i.BillingType == BillingType.Laboratory))
+        // operational visibility rather than silently swallowed. Radiology lines are raised
+        // through this same hook — both service types already live on the shared LabOrder
+        // aggregate (Masters' DiagnosticService/DiagnosticPackage model both via ServiceType),
+        // so one invoice with both a Laboratory and a Radiology line produces a single LabOrder
+        // with mixed items rather than two separate orders.
+        if (invoice.Items.Any(i => i.BillingType is BillingType.Laboratory or BillingType.Radiology))
         {
             try
             {
@@ -196,7 +200,7 @@ internal class InvoiceService : IInvoiceService
                 }
 
                 var lines = invoice.Items
-                    .Where(i => i.BillingType == BillingType.Laboratory)
+                    .Where(i => i.BillingType is BillingType.Laboratory or BillingType.Radiology)
                     .Select(i =>
                     {
                         Guid.TryParse(i.ServiceId, out var serviceId);

@@ -59,6 +59,23 @@ internal class LabOrderRepository : ILabOrderRepository
             orders = ApplyStatusFilter(orders, query.Status.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(query.Source))
+        {
+            orders = orders.Where(o => o.Source == query.Source);
+        }
+
+        if (query.DepartmentId.HasValue)
+        {
+            var departmentId = query.DepartmentId.Value;
+            orders = orders.Where(o => o.Items.Any(i => i.DepartmentId == departmentId));
+        }
+
+        if (query.ConsultantId.HasValue)
+        {
+            var consultantId = query.ConsultantId.Value;
+            orders = orders.Where(o => o.Items.Any(i => i.ConsultantId == consultantId));
+        }
+
         orders = ApplySort(orders, query.Sort);
 
         var totalCount = await orders.CountAsync(cancellationToken);
