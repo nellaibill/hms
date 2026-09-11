@@ -329,7 +329,7 @@ export default function AdmissionViewPage() {
           <TransferBedDialog
             currentWardName={admission.wardName}
             currentBedNumber={admission.bedNumber}
-            currentBedId={admission.bedId}
+            currentBedId={admission.bedId ?? ''}
             isSubmitting={transferMutation.isPending}
             apiError={transferMutation.error instanceof ApiError ? transferMutation.error : null}
             onSubmit={handleTransfer}

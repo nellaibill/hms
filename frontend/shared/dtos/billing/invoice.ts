@@ -123,3 +123,38 @@ export interface RecentPatientBill {
   paymentStatus: InvoicePaymentStatus;
   isVoided: boolean;
 }
+
+/** Mirrors HMS.Modules.Billing.Contracts.ProcedureListItem — one row of the OPD Procedures
+ * List tab. `serviceId`/`consultantId`/`departmentId` are deliberately typed as free-text
+ * strings, not Guids/lookup ids — Procedure line items store these as plain display text
+ * (unlike Consultation/Laboratory lines), so `serviceId` here is actually the procedure's
+ * display NAME, and `consultantId`/`departmentId` are free-text names too. */
+export interface ProcedureListItem {
+  invoiceId: string;
+  invoiceLineItemId: string;
+  patientId: string;
+  patientName: string;
+  patientUhid: string;
+  /** The procedure's display name (not a lookup id, despite the backend field name). */
+  serviceId?: string | null;
+  /** Free-text consultant name (not a Guid). */
+  consultantId?: string | null;
+  /** Free-text department name (not a Guid). */
+  departmentId?: string | null;
+  createdAt: string;
+  paymentStatus: InvoicePaymentStatus;
+  total: number;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.ProcedureListQuery. `departmentId`/`consultantId`
+ * filter against the same free-text strings ProcedureListItem carries, not Guids. */
+export interface ProcedureListQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  from?: string;
+  to?: string;
+  departmentId?: string;
+  consultantId?: string;
+  paymentStatus?: InvoicePaymentStatus;
+}

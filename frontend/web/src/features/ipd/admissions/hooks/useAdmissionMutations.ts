@@ -1,4 +1,4 @@
-import type { CreateAdmissionRequest, DischargeAdmissionRequest, TransferBedRequest } from '@hms/shared';
+import type { AssignBedRequest, CreateAdmissionRequest, DischargeAdmissionRequest, RequestAdmissionRequest, TransferBedRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { admissionsApi } from '../../../../services/apiClient';
 
@@ -22,6 +22,22 @@ export function useCreateAdmissionMutation() {
   return useMutation({
     mutationFn: (request: CreateAdmissionRequest) => admissionsApi.createAdmission(request),
     onSuccess: () => invalidate(),
+  });
+}
+
+export function useRequestAdmissionMutation() {
+  const invalidate = useInvalidateAdmissions();
+  return useMutation({
+    mutationFn: (request: RequestAdmissionRequest) => admissionsApi.requestAdmission(request),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useAssignBedMutation() {
+  const invalidate = useInvalidateAdmissions();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: AssignBedRequest }) => admissionsApi.assignBed(id, request),
+    onSuccess: (_data, variables) => invalidate(variables.id),
   });
 }
 
