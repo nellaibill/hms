@@ -1,4 +1,5 @@
 using HMS.Api.Provisioning;
+using HMS.Modules.Backups;
 using HMS.Modules.Billing;
 using HMS.Modules.Branding;
 using HMS.Modules.Calendar;
@@ -112,6 +113,10 @@ public static class ModuleRegistration
         // migrate step, not duplicated).
         services.AddScoped<ITenantMigrationService, TenantMigrationService>();
         services.AddScoped<ITenantProvisioner, TenantProvisioningService>();
+
+        // Backups depends on Platform's public ITenantDirectory.GetAllActiveTenantsAsync (the
+        // daily job's list of what to dump), so it registers after AddPlatformModule above.
+        services.AddBackupsModule(configuration);
 
         // Future modules register here, e.g.:
         // services.AddAppointmentsModule(configuration);

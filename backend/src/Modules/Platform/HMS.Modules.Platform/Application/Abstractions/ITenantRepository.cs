@@ -30,5 +30,9 @@ internal interface ITenantRepository
 
     Task<(int Total, int Active, int Inactive)> GetCountsAsync(CancellationToken cancellationToken);
 
+    /// <summary>Every non-deleted tenant with <see cref="TenantStatus.Active"/> status, unpaged
+    /// — backs the daily backup job, which needs the complete set to dump, not a page of it.</summary>
+    Task<IReadOnlyList<Tenant>> GetAllActiveAsync(CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

@@ -25,6 +25,11 @@ export const API_ROUTES = {
     changePassword: '/api/platform/auth/change-password',
   },
   /** Mirrors HMS.Modules.Platform.Endpoints.HospitalsController. */
+  /** Mirrors HMS.Modules.Backups.Endpoints.PlatformBackupsController. */
+  platformBackups: {
+    base: '/api/platform/backups',
+    download: (key: string) => `/api/platform/backups/${key}/download`,
+  },
   platformHospitals: {
     base: '/api/platform/hospitals',
     stats: '/api/platform/hospitals/stats',
@@ -80,6 +85,11 @@ export const API_ROUTES = {
   branding: {
     base: '/api/v1/branding',
     logo: '/api/v1/branding/logo',
+  },
+  /** Mirrors HMS.Modules.Backups.Endpoints.TenantBackupsController. */
+  backups: {
+    mine: '/api/v1/backups/mine',
+    mineDownload: '/api/v1/backups/mine/download',
   },
   /** Mirrors HMS.Modules.Documents.Endpoints.DocumentsController — see documentsApi.ts. */
   documents: {

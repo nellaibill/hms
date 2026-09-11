@@ -42,6 +42,17 @@ internal sealed class TenantDirectory : ITenantDirectory
         return tenant is null ? null : await ToTenantInfoAsync(tenant, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<TenantInfo>> GetAllActiveTenantsAsync(CancellationToken cancellationToken)
+    {
+        var tenants = await _tenantRepository.GetAllActiveAsync(cancellationToken);
+        var result = new List<TenantInfo>(tenants.Count);
+        foreach (var tenant in tenants)
+        {
+            result.Add(await ToTenantInfoAsync(tenant, cancellationToken));
+        }
+        return result;
+    }
+
     private async Task<TenantInfo> ToTenantInfoAsync(Tenant tenant, CancellationToken cancellationToken)
     {
         var builder = new NpgsqlConnectionStringBuilder(_baseConnectionString) { Database = tenant.DatabaseName };

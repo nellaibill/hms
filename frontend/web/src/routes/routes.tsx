@@ -32,6 +32,7 @@ const PatientImportHistoryPage = lazy(() => import('../pages/patients/PatientImp
 const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
 const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
 const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettingsPage'));
+const BackupSettingsPage = lazy(() => import('../pages/settings/BackupSettingsPage'));
 const MastersHubPage = lazy(() => import('../pages/masters/MastersHubPage'));
 const MasterListPage = lazy(() => import('../pages/masters/MasterListPage'));
 const MasterFormPage = lazy(() => import('../pages/masters/MasterFormPage'));
@@ -120,6 +121,7 @@ const PlatformLoginPage = lazy(() => import('../pages/platform/PlatformLoginPage
 const PlatformDashboardPage = lazy(() => import('../pages/platform/PlatformDashboardPage'));
 const PlatformSecuritySettingsPage = lazy(() => import('../pages/platform/PlatformSecuritySettingsPage'));
 const CreateHospitalPage = lazy(() => import('../pages/platform/CreateHospitalPage'));
+const PlatformBackupsPage = lazy(() => import('../pages/platform/PlatformBackupsPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -242,6 +244,17 @@ const brandingRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [{ path: 'admin/settings/branding', element: withSuspense(<BrandingSettingsPage />) }],
+  },
+];
+
+// Database Backup — same Settings-page permission grain as brandingRoutes above; the
+// backend's own GET endpoints (TenantBackupsController) independently require
+// 'identity-administration.view' too, so this route guard matches the real enforcement
+// boundary here (unlike Branding's write actions, there's no stricter '.edit' action to gate).
+const backupRoutes = [
+  {
+    element: <RequirePermissionRoute permission="identity-administration.view" />,
+    children: [{ path: 'admin/settings/backup', element: withSuspense(<BackupSettingsPage />) }],
   },
 ];
 
@@ -497,6 +510,7 @@ export const router = createBrowserRouter(
         { path: '/platform/dashboard', element: withSuspense(<PlatformDashboardPage />) },
         { path: '/platform/hospitals/new', element: withSuspense(<CreateHospitalPage />) },
         { path: '/platform/security', element: withSuspense(<PlatformSecuritySettingsPage />) },
+        { path: '/platform/backups', element: withSuspense(<PlatformBackupsPage />) },
       ],
     },
     {
@@ -513,6 +527,7 @@ export const router = createBrowserRouter(
             ...patientRoutes,
             ...roleRoutes,
             ...brandingRoutes,
+            ...backupRoutes,
             ...mastersRoutes,
             ...productRoutes,
             ...financeRoutes,

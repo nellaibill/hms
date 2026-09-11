@@ -40,7 +40,12 @@ param(
     [string]$PlatformAdminPassword,
     [string]$PgUser = "hms",
     [string]$PgPassword = "hms",
-    [string]$ServiceName = "HmsApi"
+    [string]$ServiceName = "HmsApi",
+    # Daily backup job (masters + every tenant, 1 AM IST — see HMS.Modules.Backups). pg_dump
+    # must actually be installed at this path and match the Postgres server's major version -
+    # this script does not install it, only points the app at where it should be.
+    [string]$PgDumpExecutablePath = "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe",
+    [string]$BackupRootDirectory = "C:\hms-backups"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -81,7 +86,9 @@ $envVars = @(
     "Jwt__SigningKey=$JwtSigningKey",
     "SuperAdminSeed__Password=$SuperAdminPassword",
     "PlatformAdminSeed__Password=$PlatformAdminPassword",
-    "Cors__AllowedOrigins__0=$PublicOrigin"
+    "Cors__AllowedOrigins__0=$PublicOrigin",
+    "Backups__PgDumpExecutablePath=$PgDumpExecutablePath",
+    "Backups__BackupRootDirectory=$BackupRootDirectory"
 )
 
 # Migrations no longer ride on ASPNETCORE_ENVIRONMENT=Development auto-migrate-on-startup
