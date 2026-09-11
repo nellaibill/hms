@@ -90,6 +90,8 @@ public static class IPDModule
         services.AddScoped<IValidator<UpdateAdmissionRequest>, UpdateAdmissionRequestValidator>();
         services.AddScoped<IValidator<TransferBedRequest>, TransferBedRequestValidator>();
         services.AddScoped<IValidator<DischargeAdmissionRequest>, DischargeAdmissionRequestValidator>();
+        services.AddScoped<IValidator<RequestAdmissionRequest>, RequestAdmissionRequestValidator>();
+        services.AddScoped<IValidator<AssignBedRequest>, AssignBedRequestValidator>();
 
         services.AddScoped<IValidator<CreateAdmissionChargeRequest>, CreateAdmissionChargeRequestValidator>();
         services.AddScoped<IValidator<CreateAdmissionAdvanceRequest>, CreateAdmissionAdvanceRequestValidator>();

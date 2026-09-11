@@ -49,3 +49,24 @@ internal class DischargeAdmissionRequestValidator : AbstractValidator<DischargeA
         RuleFor(x => x.FollowUpAdvice).MaximumLength(2000);
     }
 }
+
+internal class RequestAdmissionRequestValidator : AbstractValidator<RequestAdmissionRequest>
+{
+    public RequestAdmissionRequestValidator()
+    {
+        RuleFor(x => x.PatientId).NotEmpty();
+        RuleFor(x => x.DepartmentId).NotEmpty();
+        RuleFor(x => x.ConsultantId).NotEmpty();
+        RuleFor(x => x.AdmissionType).IsInEnum();
+        RuleFor(x => x.ReasonForAdmission).NotEmpty().MaximumLength(500);
+    }
+}
+
+internal class AssignBedRequestValidator : AbstractValidator<AssignBedRequest>
+{
+    public AssignBedRequestValidator()
+    {
+        RuleFor(x => x.WardId).NotEmpty();
+        RuleFor(x => x.BedId).NotEmpty();
+    }
+}

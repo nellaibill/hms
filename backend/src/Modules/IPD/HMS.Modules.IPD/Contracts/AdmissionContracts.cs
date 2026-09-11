@@ -31,6 +31,27 @@ public record TransferBedRequest
     public string? TransferReason { get; init; }
 }
 
+/// <summary>Raises a Requested admission — no ward/bed chosen yet (see Admission.CreateRequest).
+/// Typically filed from OPD once a consultant decides a patient needs to be admitted.</summary>
+public record RequestAdmissionRequest
+{
+    public Guid PatientId { get; init; }
+    public Guid DepartmentId { get; init; }
+    public Guid ConsultantId { get; init; }
+    public AdmissionType AdmissionType { get; init; }
+    public string ReasonForAdmission { get; init; } = string.Empty;
+    public DateTime? RequestedDateTime { get; init; }
+}
+
+/// <summary>Fulfils a Requested admission once IPD has picked a ward/bed for the patient — see
+/// Admission.AssignBed.</summary>
+public record AssignBedRequest
+{
+    public Guid WardId { get; init; }
+    public Guid BedId { get; init; }
+    public DateTime? AdmissionDateTime { get; init; }
+}
+
 public record DischargeAdmissionRequest
 {
     public DateTime DischargeDateTime { get; init; }
@@ -60,9 +81,13 @@ public record AdmissionResponse
     public Guid DepartmentId { get; init; }
     public Guid ConsultantId { get; init; }
     public string ConsultantName { get; init; } = string.Empty;
-    public Guid WardId { get; init; }
+
+    /// <summary>Null while Status is Requested — no ward/bed has been chosen yet.
+    /// WardName/BedNumber stay empty strings (not null) in that case, matching every other
+    /// "resolved display name" field in this response.</summary>
+    public Guid? WardId { get; init; }
     public string WardName { get; init; } = string.Empty;
-    public Guid BedId { get; init; }
+    public Guid? BedId { get; init; }
     public string BedNumber { get; init; } = string.Empty;
 
     public DateTime AdmissionDateTime { get; init; }

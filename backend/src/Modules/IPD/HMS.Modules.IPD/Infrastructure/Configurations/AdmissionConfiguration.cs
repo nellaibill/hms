@@ -17,8 +17,10 @@ internal class AdmissionConfiguration : IEntityTypeConfiguration<Admission>
         builder.Property(a => a.PatientId).HasColumnName("patient_id").IsRequired();
         builder.Property(a => a.DepartmentId).HasColumnName("department_id").IsRequired();
         builder.Property(a => a.ConsultantId).HasColumnName("consultant_id").IsRequired();
-        builder.Property(a => a.WardId).HasColumnName("ward_id").IsRequired();
-        builder.Property(a => a.BedId).HasColumnName("bed_id").IsRequired();
+        // Nullable: a Requested admission (raised from OPD) has no ward/bed until IPD calls
+        // AssignBed — see Domain/Admission.cs's own doc comment.
+        builder.Property(a => a.WardId).HasColumnName("ward_id");
+        builder.Property(a => a.BedId).HasColumnName("bed_id");
         builder.Property(a => a.AdmissionDateTime).HasColumnName("admission_datetime").IsRequired();
         builder.Property(a => a.AdmissionType).HasColumnName("admission_type").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(a => a.ReasonForAdmission).HasColumnName("reason_for_admission").HasMaxLength(500).IsRequired();
@@ -48,11 +50,13 @@ internal class AdmissionConfiguration : IEntityTypeConfiguration<Admission>
         // Defense-in-depth against a race between two concurrent admissions: the app-level
         // "one active admission per patient" / "bed must be Available" checks in
         // AdmissionService are the primary guard, but a DB-level partial unique index closes
-        // the TOCTOU gap between that check and the INSERT.
+        // the TOCTOU gap between that check and the INSERT. Requested is included alongside
+        // Admitted — a patient shouldn't be able to rack up two simultaneous active rows
+        // (Requested+Requested or Requested+Admitted) any more than two Admitted ones.
         builder.HasIndex(a => a.PatientId)
             .IsUnique()
             .HasDatabaseName("ux_admissions_active_patient")
-            .HasFilter("status = 'Admitted' AND is_deleted = false");
+            .HasFilter("status IN ('Admitted', 'Requested') AND is_deleted = false");
 
         builder.HasIndex(a => a.BedId)
             .IsUnique()

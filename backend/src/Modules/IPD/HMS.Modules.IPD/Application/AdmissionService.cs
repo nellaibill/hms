@@ -30,6 +30,17 @@ public interface IAdmissionService
     Task<Result<IReadOnlyList<BedTransferHistoryResponse>>> GetTransferHistoryAsync(Guid id, CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<AdmissionBedStayResponse>>> GetBedStayHistoryAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>Raises a Requested admission — no ward/bed chosen yet, so none of CreateAsync's
+    /// Ward/Bed existence/availability checks apply here. Typically filed from OPD once a
+    /// consultant decides a patient needs to be admitted; IPD later fulfils it via
+    /// AssignBedAsync.</summary>
+    Task<Result<AdmissionResponse>> RequestAdmissionAsync(RequestAdmissionRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Fulfils a Requested admission by picking its ward/bed — the same Ward/Bed
+    /// existence/availability checks and bed-occupied/bed-stay side effects CreateAsync already
+    /// runs for a direct admission, just triggered here instead once IPD has a bed to offer.</summary>
+    Task<Result<AdmissionResponse>> AssignBedAsync(Guid id, AssignBedRequest request, Guid? actorId, CancellationToken cancellationToken);
 }
 
 internal class AdmissionService : IAdmissionService
@@ -134,6 +145,90 @@ internal class AdmissionService : IAdmissionService
         return Result<AdmissionResponse>.Success(await BuildResponseAsync(admission, cancellationToken));
     }
 
+    public async Task<Result<AdmissionResponse>> RequestAdmissionAsync(RequestAdmissionRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var patientResult = await _patientService.GetByIdAsync(request.PatientId, cancellationToken);
+        if (!patientResult.IsSuccess)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.InvalidPatient, $"Patient '{request.PatientId}' was not found.");
+        }
+
+        if (!(await _departmentService.GetByIdAsync(request.DepartmentId, cancellationToken)).IsSuccess)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.InvalidDepartment, $"Department '{request.DepartmentId}' was not found.");
+        }
+
+        if (!(await _consultantService.GetByIdAsync(request.ConsultantId, cancellationToken)).IsSuccess)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.InvalidConsultant, $"Consultant '{request.ConsultantId}' was not found.");
+        }
+
+        if (await _repository.GetActiveByPatientIdAsync(request.PatientId, cancellationToken) is not null)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.PatientAlreadyAdmitted, "This patient already has an active admission.");
+        }
+
+        var admissionNumber = await _identifierGenerator.NextAdmissionNumberAsync(cancellationToken);
+        var requestedDateTime = request.RequestedDateTime ?? DateTime.UtcNow;
+
+        var admission = Admission.CreateRequest(
+            admissionNumber,
+            request.PatientId,
+            request.DepartmentId,
+            request.ConsultantId,
+            requestedDateTime,
+            request.AdmissionType,
+            request.ReasonForAdmission,
+            actorId);
+
+        await _repository.AddAsync(admission, cancellationToken);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        return Result<AdmissionResponse>.Success(await BuildResponseAsync(admission, cancellationToken));
+    }
+
+    public async Task<Result<AdmissionResponse>> AssignBedAsync(Guid id, AssignBedRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var admission = await _repository.GetByIdAsync(id, cancellationToken);
+        if (admission is null)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.NotFound, $"Admission '{id}' was not found.");
+        }
+
+        if (admission.Status != AdmissionStatus.Requested)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.AdmissionNotRequested, "Only a Requested admission can be assigned a bed.");
+        }
+
+        if (await _wardRepository.GetByIdAsync(request.WardId, cancellationToken) is null)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.InvalidWard, $"Ward '{request.WardId}' was not found.");
+        }
+
+        var bed = await _bedRepository.GetByIdAsync(request.BedId, cancellationToken);
+        if (bed is null || bed.WardId != request.WardId)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.InvalidBed, $"Bed '{request.BedId}' was not found in ward '{request.WardId}'.");
+        }
+
+        if (bed.Status != BedStatus.Available)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.BedNotAvailable, $"Bed '{bed.BedNumber}' is not available.");
+        }
+
+        var admissionDateTime = request.AdmissionDateTime ?? DateTime.UtcNow;
+
+        bed.SetStatus(BedStatus.Occupied, actorId);
+
+        var bedStay = AdmissionBedStay.Create(admission.Id, bed.Id, admissionDateTime, bed.DailyCharge, actorId);
+        await _bedStayRepository.AddAsync(bedStay, cancellationToken);
+
+        admission.AssignBed(request.WardId, request.BedId, admissionDateTime, actorId);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        return Result<AdmissionResponse>.Success(await BuildResponseAsync(admission, cancellationToken));
+    }
+
     public async Task<Result<AdmissionResponse>> UpdateAsync(Guid id, UpdateAdmissionRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var admission = await _repository.GetByIdAsync(id, cancellationToken);
@@ -211,10 +306,12 @@ internal class AdmissionService : IAdmissionService
             return Result<AdmissionResponse>.Failure(IPDErrorCodes.BedNotAvailable, $"Bed '{newBed.BedNumber}' is not available.");
         }
 
-        var oldWardId = admission.WardId;
-        var oldBedId = admission.BedId;
+        // An Admitted admission always has both set (Create/AssignBed both require them before
+        // moving to Admitted) — the guard above already rejected any other status.
+        var oldWardId = admission.WardId!.Value;
+        var oldBedId = admission.BedId!.Value;
 
-        var oldBed = await _bedRepository.GetByIdAsync(admission.BedId, cancellationToken);
+        var oldBed = await _bedRepository.GetByIdAsync(oldBedId, cancellationToken);
         oldBed?.SetStatus(BedStatus.Available, actorId);
         newBed.SetStatus(BedStatus.Occupied, actorId);
 
@@ -327,7 +424,9 @@ internal class AdmissionService : IAdmissionService
             return Result<AdmissionResponse>.Failure(IPDErrorCodes.InvalidDischargeDate, "Discharge date/time cannot be before the admission date/time.");
         }
 
-        var bed = await _bedRepository.GetByIdAsync(admission.BedId, cancellationToken);
+        // An Admitted admission always has a bed set (Create/AssignBed both require one before
+        // moving to Admitted) — the guard above already rejected any other status.
+        var bed = await _bedRepository.GetByIdAsync(admission.BedId!.Value, cancellationToken);
         bed?.SetStatus(BedStatus.Available, actorId);
 
         var activeStay = await _bedStayRepository.GetActiveByAdmissionIdAsync(admission.Id, cancellationToken);
@@ -380,8 +479,8 @@ internal class AdmissionService : IAdmissionService
     {
         var patientResult = await _patientService.GetByIdAsync(admission.PatientId, cancellationToken);
         var consultantResult = await _consultantService.GetByIdAsync(admission.ConsultantId, cancellationToken);
-        var ward = await _wardRepository.GetByIdAsync(admission.WardId, cancellationToken);
-        var bed = await _bedRepository.GetByIdAsync(admission.BedId, cancellationToken);
+        var ward = admission.WardId.HasValue ? await _wardRepository.GetByIdAsync(admission.WardId.Value, cancellationToken) : null;
+        var bed = admission.BedId.HasValue ? await _bedRepository.GetByIdAsync(admission.BedId.Value, cancellationToken) : null;
 
         var patient = patientResult.Value;
 
