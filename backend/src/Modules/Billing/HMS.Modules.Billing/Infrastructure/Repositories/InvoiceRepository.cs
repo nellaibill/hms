@@ -68,6 +68,73 @@ internal class InvoiceRepository : IInvoiceRepository
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<(IReadOnlyList<ProcedureLineItemRow> Items, int TotalCount)> GetProcedureLineItemsPagedAsync(ProcedureListQuery query, CancellationToken cancellationToken)
+    {
+        var rows =
+            from item in _dbContext.InvoiceLineItems
+            join invoice in _dbContext.Invoices on item.InvoiceId equals invoice.Id
+            where item.BillingType == BillingType.Procedure
+            select new ProcedureLineItemRow(
+                invoice.Id,
+                item.Id,
+                invoice.PatientId,
+                invoice.PatientName,
+                invoice.PatientUhid,
+                item.ServiceId,
+                item.BilledConsultantId,
+                item.DepartmentId,
+                invoice.CreatedAt,
+                item.PaymentStatus,
+                item.Total);
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = $"%{query.Search.Trim()}%";
+            rows = rows.Where(r => EF.Functions.ILike(r.PatientName, term) || EF.Functions.ILike(r.PatientUhid, term));
+        }
+
+        // Model binding produces DateTime.Kind = Unspecified for a plain query-string date —
+        // Npgsql rejects that against a `timestamp with time zone` column ("only UTC is
+        // supported"), so it must be normalized before use — same fix as
+        // PatientVisitRepository.GetPagedAsync/PatientRepository.BuildFilteredQuery.
+        if (query.From.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            rows = rows.Where(r => r.CreatedAt >= from);
+        }
+
+        if (query.To.HasValue)
+        {
+            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            rows = rows.Where(r => r.CreatedAt <= to);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.DepartmentId))
+        {
+            rows = rows.Where(r => r.DepartmentId == query.DepartmentId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.ConsultantId))
+        {
+            rows = rows.Where(r => r.ConsultantId == query.ConsultantId);
+        }
+
+        if (query.PaymentStatus.HasValue)
+        {
+            rows = rows.Where(r => r.PaymentStatus == query.PaymentStatus.Value);
+        }
+
+        var totalCount = await rows.CountAsync(cancellationToken);
+
+        var items = await rows
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 

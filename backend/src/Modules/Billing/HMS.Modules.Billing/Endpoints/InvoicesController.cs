@@ -108,6 +108,22 @@ public class InvoicesController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Lists BillingType.Procedure invoice line items, paged/filtered — backs the
+    /// OPD Procedures List tab. A separate, literal route (not a query-param mode switch on
+    /// GetPaged) since this operates at the line-item level, not the whole-invoice level
+    /// GetPaged/GetById/GetRecent all share.</summary>
+    [Authorize]
+    [RequirePermission("finance-billing.view")]
+    [HttpGet("procedures")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ProcedureListItem>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProcedures([FromQuery] ProcedureListQuery query, CancellationToken cancellationToken)
+    {
+        var paged = await _service.GetProcedureLineItemsAsync(query, cancellationToken);
+        var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
+
+        return Ok(new ApiResponse<IReadOnlyList<ProcedureListItem>> { Data = paged.Items, Meta = meta });
+    }
+
     /// <summary>Records a payment against one line item, marking it Paid.</summary>
     [Authorize]
     [RequirePermission("finance-billing.edit")]

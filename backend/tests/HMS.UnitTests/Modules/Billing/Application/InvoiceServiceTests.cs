@@ -539,4 +539,40 @@ public class InvoiceServiceTests
             Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task GetProcedureLineItemsAsync_MapsRepositoryRowsIntoProcedureListItems()
+    {
+        var invoiceId = Guid.NewGuid();
+        var lineItemId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        var row = new ProcedureLineItemRow(
+            invoiceId,
+            lineItemId,
+            patientId,
+            "Aravind Nadar",
+            "NH20260001",
+            "svc-dressing",
+            "dr-revathi",
+            "cardiology",
+            new DateTime(2026, 9, 11, 10, 0, 0, DateTimeKind.Utc),
+            PaymentStatus.Paid,
+            500m);
+        var query = new ProcedureListQuery { Page = 1, PageSize = 20 };
+        _repository.GetProcedureLineItemsPagedAsync(query, Arg.Any<CancellationToken>())
+            .Returns((new List<ProcedureLineItemRow> { row }, 1));
+
+        var result = await _sut.GetProcedureLineItemsAsync(query, CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        var item = result.Items.Should().ContainSingle().Subject;
+        item.InvoiceId.Should().Be(invoiceId);
+        item.InvoiceLineItemId.Should().Be(lineItemId);
+        item.PatientId.Should().Be(patientId);
+        item.PatientName.Should().Be("Aravind Nadar");
+        item.ConsultantId.Should().Be("dr-revathi");
+        item.DepartmentId.Should().Be("cardiology");
+        item.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        item.Total.Should().Be(500m);
+    }
 }
