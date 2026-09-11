@@ -1,13 +1,24 @@
 import type { Admission } from '@hms/shared';
 import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { DownloadDischargeSummaryButton } from './DownloadDischargeSummaryButton';
+
+const STATUS_VARIANTS: Record<Admission['status'], BadgeProps['variant']> = {
+  Requested: 'warning',
+  Admitted: 'success',
+  Discharged: 'secondary',
+  Cancelled: 'destructive',
+};
 
 interface AdmissionTableProps {
   admissions: Admission[];
+  /** Renders an "Assign Bed" action for Requested rows (no ward/bed yet) — omitted entirely
+   * when the caller has nowhere to route the click (e.g. read-only contexts). */
+  onAssignBed?: (admission: Admission) => void;
 }
 
-export function AdmissionTable({ admissions }: AdmissionTableProps) {
+export function AdmissionTable({ admissions, onAssignBed }: AdmissionTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -21,7 +32,7 @@ export function AdmissionTable({ admissions }: AdmissionTableProps) {
             <th className="px-4 py-2.5">Consultant</th>
             <th className="px-4 py-2.5">Admission Date</th>
             <th className="px-4 py-2.5">Status</th>
-            <th className="px-4 py-2.5">Discharge Report</th>
+            <th className="px-4 py-2.5">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -41,15 +52,20 @@ export function AdmissionTable({ admissions }: AdmissionTableProps) {
                 {admission.age} / {admission.gender}
               </td>
               <td className="px-4 py-3 text-sm text-foreground">
-                {admission.wardName} / {admission.bedNumber}
+                {admission.wardId && admission.bedId ? `${admission.wardName} / ${admission.bedNumber}` : '—'}
               </td>
               <td className="px-4 py-3 text-sm text-foreground">{admission.consultantName}</td>
               <td className="px-4 py-3 text-sm text-foreground">{new Date(admission.admissionDateTime).toLocaleString('en-IN')}</td>
               <td className="px-4 py-3">
-                <Badge variant={admission.status === 'Admitted' ? 'success' : 'secondary'}>{admission.status}</Badge>
+                <Badge variant={STATUS_VARIANTS[admission.status]}>{admission.status}</Badge>
               </td>
               <td className="px-4 py-3">
                 {admission.status === 'Discharged' && <DownloadDischargeSummaryButton admission={admission} />}
+                {admission.status === 'Requested' && onAssignBed && (
+                  <Button size="sm" onClick={() => onAssignBed(admission)}>
+                    Assign Bed
+                  </Button>
+                )}
               </td>
             </tr>
           ))}
