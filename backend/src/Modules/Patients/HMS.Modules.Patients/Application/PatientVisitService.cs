@@ -85,7 +85,7 @@ internal class PatientVisitService : IPatientVisitService
         var visit = PatientVisit.Create(patientId, request.VisitType, request.AppointmentTypeId, actorId);
         foreach (var line in request.Consultations)
         {
-            visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, line.DepartmentId, line.ConsultantId, line.ConsultationTypeId), actorId);
+            visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, line.DepartmentId, line.ConsultantId, line.ConsultationTypeId, line.AppointmentTime), actorId);
         }
 
         await _repository.AddAsync(visit, cancellationToken);

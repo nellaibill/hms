@@ -44,6 +44,7 @@ public static class PatientsModule
 
         services.AddScoped<IPatientVisitRepository, PatientVisitRepository>();
         services.AddScoped<IPatientVisitService, PatientVisitService>();
+        services.AddScoped<IOpdQueryService, OpdQueryService>();
 
         // Bulk Excel import (Super Admin only — see PermissionSeedData's
         // "patient-management.import" entry). One in-memory queue/hosted-service pair each for

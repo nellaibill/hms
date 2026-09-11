@@ -22,6 +22,10 @@ internal class PatientVisitConsultationConfiguration : IEntityTypeConfiguration<
         builder.Property(c => c.ConsultantId).HasColumnName("consultant_id").IsRequired();
         builder.Property(c => c.ConsultationTypeId).HasColumnName("consultation_type_id");
 
+        builder.Property(c => c.AppointmentTime).HasColumnName("appointment_time").IsRequired();
+        builder.Property(c => c.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
+
         builder.HasIndex(c => c.VisitId).HasDatabaseName("ix_patient_visit_consultations_visit_id");
+        builder.HasIndex(c => c.AppointmentTime).HasDatabaseName("ix_patient_visit_consultations_appointment_time");
     }
 }
