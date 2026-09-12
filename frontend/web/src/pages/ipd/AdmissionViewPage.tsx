@@ -329,6 +329,10 @@ export default function AdmissionViewPage() {
           <TransferBedDialog
             currentWardName={admission.wardName}
             currentBedNumber={admission.bedNumber}
+            // bedId/wardId are only null for a Requested admission (see AdmissionResponse's own
+            // doc comment) — this dialog only opens from the isAdmitted-gated Transfer Bed
+            // button above, so a real bed is always assigned here; the fallback just satisfies
+            // the now-nullable type without changing behavior.
             currentBedId={admission.bedId ?? ''}
             isSubmitting={transferMutation.isPending}
             apiError={transferMutation.error instanceof ApiError ? transferMutation.error : null}
