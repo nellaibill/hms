@@ -49,6 +49,14 @@ public record OpdConsultationSummaryItem
     public int Waiting { get; init; }
     public int InConsultation { get; init; }
     public int Completed { get; init; }
+
+    /// <summary>Denormalized from Masters' Consultant.AvailableDays/VisitStartTime/VisitEndTime
+    /// (see that entity's own doc comment) so the receptionist can see at a glance when this
+    /// consultant is normally available, without a separate lookup. Empty/null when the
+    /// consultant hasn't had this set yet.</summary>
+    public IReadOnlyList<string> AvailableDays { get; init; } = [];
+    public TimeOnly? VisitStartTime { get; init; }
+    public TimeOnly? VisitEndTime { get; init; }
 }
 
 public record OpdConsultationSummaryQuery

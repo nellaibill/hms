@@ -75,6 +75,9 @@ internal class OpdQueryService : IOpdQueryService
                 Waiting = rowsForConsultant.Count(r => r.Status == OpdConsultationStatus.Waiting),
                 InConsultation = rowsForConsultant.Count(r => r.Status == OpdConsultationStatus.InConsultation),
                 Completed = rowsForConsultant.Count(r => r.Status == OpdConsultationStatus.Completed),
+                AvailableDays = consultant.Value?.AvailableDays ?? [],
+                VisitStartTime = consultant.Value?.VisitStartTime,
+                VisitEndTime = consultant.Value?.VisitEndTime,
             });
         }
 

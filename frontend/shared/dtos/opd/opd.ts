@@ -53,6 +53,11 @@ export interface OpdConsultationSummaryItem {
   waiting: number;
   inConsultation: number;
   completed: number;
+  /** Denormalized from Masters' Consultant.availableDays/visitStartTime/visitEndTime — empty/
+   * null when the consultant hasn't had this set yet. */
+  availableDays: string[];
+  visitStartTime?: string | null;
+  visitEndTime?: string | null;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.OpdConsultationSummaryQuery. */
