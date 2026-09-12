@@ -19,6 +19,23 @@ internal class ConsultantConfiguration : IEntityTypeConfiguration<Consultant>
         builder.Property(c => c.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
         builder.Property(c => c.Priority).HasColumnName("priority");
 
+        builder.Property(c => c.ConsultantType).HasColumnName("consultant_type").HasConversion<string>().HasMaxLength(20);
+
+        // Native Postgres text[] — Npgsql's EF Core provider maps List<string>/string[]
+        // properties to array columns without needing a HasConversion; a value comparer is
+        // required so EF's change tracker can tell two lists with the same contents apart from
+        // a genuine mutation (the same reason any collection-typed property needs one).
+        builder.Property(c => c.AvailableDays)
+            .HasColumnName("available_days")
+            .HasColumnType("text[]")
+            .Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<IReadOnlyList<string>>(
+                (a, b) => a!.SequenceEqual(b!),
+                a => a.Aggregate(0, (hash, day) => HashCode.Combine(hash, day.GetHashCode())),
+                a => a.ToList()));
+
+        builder.Property(c => c.VisitStartTime).HasColumnName("visit_start_time");
+        builder.Property(c => c.VisitEndTime).HasColumnName("visit_end_time");
+
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(c => c.CreatedBy).HasColumnName("created_by");
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at");

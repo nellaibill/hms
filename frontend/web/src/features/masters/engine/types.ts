@@ -8,11 +8,32 @@ import type { ReactNode } from 'react';
  * (engine/masterStoreFactory.ts) talks to the real /api/v1/masters/* backend.
  */
 
-export type MasterFieldType = 'text' | 'textarea' | 'number' | 'decimal' | 'boolean' | 'select' | 'reference';
+export type MasterFieldType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'decimal'
+  | 'boolean'
+  | 'select'
+  | 'reference'
+  | 'time'
+  | 'radio-card'
+  | 'day-checkboxes';
 
 export interface MasterSelectOption {
   value: string;
   label: string;
+  /** Shown on a 'radio-card' option's card, under its label. */
+  description?: string;
+  /** Shown on a 'radio-card' option's card, in a small icon chip above/beside the label. */
+  icon?: LucideIcon;
+}
+
+/** A small colored callout box — used beside a 'radio-card' field's options
+ * (MasterFieldDef.infoBox) and at the bottom of a MasterFieldGroup's card (MasterFieldGroup.infoText). */
+export interface MasterInfoBox {
+  title?: string;
+  text: string;
 }
 
 export interface MasterFieldDef {
@@ -48,6 +69,35 @@ export interface MasterFieldDef {
   max?: number;
   step?: number;
   helpText?: string;
+  /** 'radio-card' only — a callout shown beside the option cards (see MasterInfoBox). */
+  infoBox?: MasterInfoBox;
+  /**
+   * 'time' only — when set AND the next field declared in the same MasterFieldGroup.fieldKeys
+   * is also type 'time', the two render as one connected "label + start + to + end" control
+   * (e.g. "Visiting Hours") instead of two separate fields. Data-wise each field still submits
+   * independently — this is presentation-only.
+   */
+  rangeLabel?: string;
+}
+
+/**
+ * Groups a subset of `fields` into their own titled/iconed Card instead of the default single
+ * flat card — opt-in via MasterEntityConfig.fieldGroups. Every field key must appear in exactly
+ * one group when a config declares any groups at all (MasterForm falls back to the classic
+ * single-card layout when fieldGroups is omitted, so every entity that doesn't need this keeps
+ * rendering exactly as before).
+ */
+export interface MasterFieldGroup {
+  key: string;
+  label: string;
+  icon?: LucideIcon;
+  fieldKeys: string[];
+  /** Callout shown at the bottom of this group's card, below its fields. */
+  infoText?: string;
+  /** Renders this group's fields as columns separated by a vertical rule, instead of the
+   * default plain flex-wrap row — for a form section that reads as genuinely side-by-side
+   * comparisons (e.g. "Available Days" beside "Visiting Hours"). */
+  dividedColumns?: boolean;
 }
 
 export interface MasterEntityConfig {
@@ -81,6 +131,9 @@ export interface MasterEntityConfig {
    * up editable or included in a create/update request body.
    */
   extraColumns?: MasterExtraColumn[];
+  /** Opt-in sectioned-card layout (see MasterFieldGroup) — omit to keep the default single
+   * flat-card layout every other Masters entity already uses. */
+  fieldGroups?: MasterFieldGroup[];
 }
 
 export interface MasterExtraColumn {
