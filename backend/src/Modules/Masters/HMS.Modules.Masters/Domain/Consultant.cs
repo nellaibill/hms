@@ -1,3 +1,4 @@
+using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Masters.Domain;
@@ -24,6 +25,25 @@ internal class Consultant : Entity
     /// two consultants can share the same priority and just tie-break alphabetically.</summary>
     public int? Priority { get; private set; }
 
+    /// <summary>In-house (employed) vs Visiting (external, scheduled hours) — drives the
+    /// consultation billing category at invoicing time. Nullable so a consultant created
+    /// before this field existed doesn't need a data migration; CreateConsultantRequestValidator
+    /// requires it for every new save going forward.</summary>
+    public ConsultantType? ConsultantType { get; private set; }
+
+    /// <summary>Days of the week this consultant is available at the hospital, as plain
+    /// System.DayOfWeek names (e.g. "Monday") — purely static reference info shown to Reception/
+    /// OPD when picking a consultant, not a scheduling engine (no per-day distinct hours, no
+    /// conflict/overlap validation). Empty until set. See ConsultantConfiguration for the
+    /// Postgres text[] mapping.</summary>
+    public IReadOnlyList<string> AvailableDays { get; private set; } = [];
+
+    /// <summary>One shared visiting-hours range applied to every day in AvailableDays — not
+    /// per-day. Both null until set; when either is set the other must be too (enforced by
+    /// Create/Update's Guard below), and VisitEndTime must be after VisitStartTime.</summary>
+    public TimeOnly? VisitStartTime { get; private set; }
+    public TimeOnly? VisitEndTime { get; private set; }
+
     // Required by EF Core materialization.
     private Consultant()
     {
@@ -36,6 +56,10 @@ internal class Consultant : Entity
         string? specialization,
         bool isActive,
         int? priority,
+        ConsultantType? consultantType,
+        IReadOnlyList<string> availableDays,
+        TimeOnly? visitStartTime,
+        TimeOnly? visitEndTime,
         Guid? createdBy)
         : base(id, createdBy)
     {
@@ -44,6 +68,10 @@ internal class Consultant : Entity
         Specialization = specialization;
         IsActive = isActive;
         Priority = priority;
+        ConsultantType = consultantType;
+        AvailableDays = availableDays;
+        VisitStartTime = visitStartTime;
+        VisitEndTime = visitEndTime;
     }
 
     public static Consultant Create(
@@ -52,9 +80,14 @@ internal class Consultant : Entity
         string? specialization,
         bool isActive,
         int? priority,
+        ConsultantType? consultantType,
+        IReadOnlyList<string> availableDays,
+        TimeOnly? visitStartTime,
+        TimeOnly? visitEndTime,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
+        GuardAvailability(availableDays, visitStartTime, visitEndTime);
 
         return new Consultant(
             Guid.CreateVersion7(),
@@ -63,6 +96,10 @@ internal class Consultant : Entity
             specialization?.Trim(),
             isActive,
             priority,
+            consultantType,
+            availableDays,
+            visitStartTime,
+            visitEndTime,
             createdBy);
     }
 
@@ -72,15 +109,49 @@ internal class Consultant : Entity
         string? specialization,
         bool isActive,
         int? priority,
+        ConsultantType? consultantType,
+        IReadOnlyList<string> availableDays,
+        TimeOnly? visitStartTime,
+        TimeOnly? visitEndTime,
         Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
+        GuardAvailability(availableDays, visitStartTime, visitEndTime);
 
         Name = name.Trim();
         DepartmentId = departmentId;
         Specialization = specialization?.Trim();
         IsActive = isActive;
         Priority = priority;
+        ConsultantType = consultantType;
+        AvailableDays = availableDays;
+        VisitStartTime = visitStartTime;
+        VisitEndTime = visitEndTime;
         MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Repeats the request-level validator's own rules as a genuine domain invariant
+    /// (same split as every other entity in this codebase, e.g. LabOrder.GenerateReport) —
+    /// VisitStartTime/VisitEndTime must both be set or both be unset, and the end must be after
+    /// the start.</summary>
+    private static void GuardAvailability(IReadOnlyList<string> availableDays, TimeOnly? visitStartTime, TimeOnly? visitEndTime)
+    {
+        if (visitStartTime.HasValue != visitEndTime.HasValue)
+        {
+            throw new ArgumentException("Visit start time and end time must both be set, or both left blank.");
+        }
+
+        if (visitStartTime.HasValue && visitEndTime.HasValue && visitEndTime.Value <= visitStartTime.Value)
+        {
+            throw new ArgumentException("Visit end time must be after the start time.");
+        }
+
+        foreach (var day in availableDays)
+        {
+            if (!Enum.TryParse<DayOfWeek>(day, out _))
+            {
+                throw new ArgumentException($"'{day}' is not a valid day of the week.");
+            }
+        }
     }
 }
