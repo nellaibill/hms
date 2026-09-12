@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, PaymentStatusBadge } from '@/features/billing';
 import { consultantsApi, departmentsApi } from '@/services/apiClient';
 import { useOpdProceduresQuery } from '../hooks/useOpdProceduresQuery';
-import type { OpdFilterValues } from '../types';
+import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
 
 const PAGE_SIZE = 10;
 
@@ -47,8 +47,8 @@ export function OpdProceduresListTable({ filters, page, onPageChange }: OpdProce
   const { data, isPending, isError, error } = useOpdProceduresQuery({
     page,
     pageSize: PAGE_SIZE,
-    from: filters.from || undefined,
-    to: filters.to || undefined,
+    from: toRangeStart(filters.from),
+    to: toRangeEnd(filters.to),
     departmentId: departmentName,
     consultantId: consultantName,
     paymentStatus: filters.status as InvoicePaymentStatus | undefined,

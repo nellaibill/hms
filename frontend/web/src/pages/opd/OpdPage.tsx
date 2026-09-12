@@ -14,6 +14,8 @@ import {
   OpdProceduresListTable,
   emptyOpdFilters,
   todayIsoDate,
+  toRangeEnd,
+  toRangeStart,
   type OpdFilterValues,
   type OpdTab,
 } from '@/features/opd';
@@ -58,8 +60,8 @@ export default function OpdPage() {
    * own on-screen query; this is a separate, one-off fetch rather than lifting that state up
    * to the page just for this. */
   async function handleExport() {
-    const commonFrom = filters.from || undefined;
-    const commonTo = filters.to || undefined;
+    const commonFrom = toRangeStart(filters.from);
+    const commonTo = toRangeEnd(filters.to);
     let section: ReportSection;
 
     switch (tab) {

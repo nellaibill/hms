@@ -2,7 +2,7 @@ import { Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOpdConsultationSummaryQuery } from '../hooks/useOpdConsultationSummaryQuery';
-import type { OpdFilterValues } from '../types';
+import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
 
 interface OpdConsultationListTableProps {
   filters: OpdFilterValues;
@@ -17,8 +17,8 @@ interface OpdConsultationListTableProps {
  * departmentId — the shared filter bar's Consultant/Status/Search fields don't apply here. */
 export function OpdConsultationListTable({ filters, onViewPatients }: OpdConsultationListTableProps) {
   const { data, isPending, isError, error } = useOpdConsultationSummaryQuery({
-    from: filters.from || undefined,
-    to: filters.to || undefined,
+    from: toRangeStart(filters.from),
+    to: toRangeEnd(filters.to),
     departmentId: filters.departmentId,
   });
 

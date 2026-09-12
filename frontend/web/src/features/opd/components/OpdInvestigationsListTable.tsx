@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LabStatusBadge } from '@/features/laboratory';
 import { useOpdInvestigationsQuery } from '../hooks/useOpdInvestigationsQuery';
-import type { OpdFilterValues } from '../types';
+import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
 
 const PAGE_SIZE = 10;
 
@@ -24,8 +24,8 @@ export function OpdInvestigationsListTable({ filters, page, onPageChange }: OpdI
   const { data, isPending, isError, error } = useOpdInvestigationsQuery({
     page,
     pageSize: PAGE_SIZE,
-    dateFrom: filters.from || undefined,
-    dateTo: filters.to || undefined,
+    dateFrom: toRangeStart(filters.from),
+    dateTo: toRangeEnd(filters.to),
     departmentId: filters.departmentId,
     consultantId: filters.consultantId,
     status: filters.status as LabOrderItemStatus | undefined,

@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useStartConsultationMutation } from '../hooks/useStartConsultationMutation';
 import { useOpdPatientListQuery } from '../hooks/useOpdPatientListQuery';
 import { OpdStatusBadge } from './OpdStatusBadge';
-import type { OpdFilterValues } from '../types';
+import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
 
 // A consultation still Waiting or already CheckedIn hasn't started yet — "Consult" starts it.
 // Every other status (InConsultation/Completed/Cancelled/NoShow) is read-only from here.
@@ -43,8 +43,8 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
   const { data, isPending, isError, error } = useOpdPatientListQuery({
     page,
     pageSize: PAGE_SIZE,
-    from: filters.from || undefined,
-    to: filters.to || undefined,
+    from: toRangeStart(filters.from),
+    to: toRangeEnd(filters.to),
     departmentId: filters.departmentId,
     consultantId: filters.consultantId,
     status: filters.status as OpdConsultationStatus | undefined,
