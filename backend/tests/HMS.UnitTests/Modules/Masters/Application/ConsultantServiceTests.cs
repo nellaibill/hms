@@ -48,7 +48,17 @@ public class ConsultantServiceTests
     [Fact]
     public async Task UpdateAsync_ChangesThePriority()
     {
-        var consultant = Consultant.Create("Dr. Karthikeyan", departmentId: null, specialization: null, isActive: true, priority: 5, createdBy: null);
+        var consultant = Consultant.Create(
+            "Dr. Karthikeyan",
+            departmentId: null,
+            specialization: null,
+            isActive: true,
+            priority: 5,
+            consultantType: null,
+            availableDays: [],
+            visitStartTime: null,
+            visitEndTime: null,
+            createdBy: null);
         _repository.GetByIdAsync(consultant.Id, Arg.Any<CancellationToken>()).Returns(consultant);
 
         var result = await _sut.UpdateAsync(
