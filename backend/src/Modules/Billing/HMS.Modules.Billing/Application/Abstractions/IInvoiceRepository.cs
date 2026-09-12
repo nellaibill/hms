@@ -19,5 +19,11 @@ internal interface IInvoiceRepository
 
     Task<IReadOnlyList<Invoice>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 
+    /// <summary>The Procedures List's backing query — one row per BillingType.Procedure
+    /// invoice line item, joined with its owning Invoice for patient display fields, paged/
+    /// filtered per ProcedureListQuery. See ProcedureLineItemRow's own doc comment for why
+    /// this returns a plain projection rather than the InvoiceLineItem/Invoice entities.</summary>
+    Task<(IReadOnlyList<ProcedureLineItemRow> Items, int TotalCount)> GetProcedureLineItemsPagedAsync(ProcedureListQuery query, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

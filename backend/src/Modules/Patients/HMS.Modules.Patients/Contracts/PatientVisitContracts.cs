@@ -18,6 +18,10 @@ public record VisitConsultationRequest
     public Guid DepartmentId { get; init; }
     public Guid ConsultantId { get; init; }
     public Guid? ConsultationTypeId { get; init; }
+
+    /// <summary>Optional — the service defaults to DateTime.UtcNow when omitted, matching
+    /// today's walk-in-registration behavior unchanged.</summary>
+    public DateTime? AppointmentTime { get; init; }
 }
 
 public record PatientVisitResponse
@@ -36,4 +40,6 @@ public record VisitConsultationResponse
     public Guid DepartmentId { get; init; }
     public Guid ConsultantId { get; init; }
     public Guid? ConsultationTypeId { get; init; }
+    public DateTime AppointmentTime { get; init; }
+    public OpdConsultationStatus Status { get; init; }
 }

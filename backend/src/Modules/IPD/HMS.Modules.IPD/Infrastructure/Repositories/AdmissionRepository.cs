@@ -20,9 +20,12 @@ internal class AdmissionRepository : IAdmissionRepository
     public Task<Admission?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Admissions.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
+    /// <summary>"Active" means Admitted or Requested — a patient shouldn't be able to have a
+    /// second live admission (whether already admitted or still awaiting a bed) at once.
+    /// Discharged/Cancelled are both terminal and therefore excluded.</summary>
     public Task<Admission?> GetActiveByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
         => _dbContext.Admissions.FirstOrDefaultAsync(
-            a => a.PatientId == patientId && a.Status == AdmissionStatus.Admitted,
+            a => a.PatientId == patientId && (a.Status == AdmissionStatus.Admitted || a.Status == AdmissionStatus.Requested),
             cancellationToken);
 
     public async Task<(IReadOnlyList<Admission> Items, int TotalCount)> GetPagedAsync(AdmissionListQuery query, CancellationToken cancellationToken)

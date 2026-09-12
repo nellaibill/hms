@@ -109,4 +109,100 @@ public class AdmissionTests
         admission.FollowUpAdvice.Should().Be("Follow up in 1 week");
         admission.UpdatedBy.Should().Be(updatedBy);
     }
+
+    private static Admission NewRequest(Guid? patientId = null) => Admission.CreateRequest(
+        "ADM-2026-000002",
+        patientId ?? Guid.NewGuid(),
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        new DateTime(2026, 8, 11, 9, 0, 0, DateTimeKind.Utc),
+        AdmissionType.Elective,
+        "Suspected appendicitis",
+        null);
+
+    [Fact]
+    public void CreateRequest_SetsStatusRequestedAndLeavesWardBedNull()
+    {
+        var patientId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+
+        var admission = Admission.CreateRequest(
+            "ADM-2026-000002",
+            patientId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new DateTime(2026, 8, 11, 9, 0, 0, DateTimeKind.Utc),
+            AdmissionType.Emergency,
+            "Suspected appendicitis",
+            actorId);
+
+        admission.Status.Should().Be(AdmissionStatus.Requested);
+        admission.WardId.Should().BeNull();
+        admission.BedId.Should().BeNull();
+        admission.PatientId.Should().Be(patientId);
+        admission.ReasonForAdmission.Should().Be("Suspected appendicitis");
+        admission.CreatedBy.Should().Be(actorId);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreateRequest_WithInvalidReasonForAdmission_ThrowsArgumentException(string invalidReason)
+    {
+        var act = () => Admission.CreateRequest(
+            "ADM-2026-000002", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            DateTime.UtcNow, AdmissionType.Elective, invalidReason, null);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AssignBed_FromRequested_SetsWardBedAndTransitionsToAdmitted()
+    {
+        var admission = NewRequest();
+        var wardId = Guid.NewGuid();
+        var bedId = Guid.NewGuid();
+        var admissionDateTime = new DateTime(2026, 8, 12, 8, 0, 0, DateTimeKind.Utc);
+        var updatedBy = Guid.NewGuid();
+
+        admission.AssignBed(wardId, bedId, admissionDateTime, updatedBy);
+
+        admission.WardId.Should().Be(wardId);
+        admission.BedId.Should().Be(bedId);
+        admission.AdmissionDateTime.Should().Be(admissionDateTime);
+        admission.Status.Should().Be(AdmissionStatus.Admitted);
+        admission.UpdatedBy.Should().Be(updatedBy);
+    }
+
+    [Fact]
+    public void AssignBed_WhenNotRequested_Throws()
+    {
+        var admission = NewAdmission();
+
+        var act = () => admission.AssignBed(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, null);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void CancelRequest_FromRequested_TransitionsToCancelled()
+    {
+        var admission = NewRequest();
+        var updatedBy = Guid.NewGuid();
+
+        admission.CancelRequest(updatedBy);
+
+        admission.Status.Should().Be(AdmissionStatus.Cancelled);
+        admission.UpdatedBy.Should().Be(updatedBy);
+    }
+
+    [Fact]
+    public void CancelRequest_WhenNotRequested_Throws()
+    {
+        var admission = NewAdmission();
+
+        var act = () => admission.CancelRequest(null);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

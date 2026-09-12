@@ -35,6 +35,14 @@ public enum AdmissionStatus
 {
     Admitted,
     Discharged,
+
+    /// <summary>Raised from OPD before a ward/bed has been assigned — WardId/BedId are null
+    /// in this state. See Admission.CreateRequest/AssignBed.</summary>
+    Requested,
+
+    /// <summary>A Requested admission that was withdrawn or declined before a bed was ever
+    /// assigned. Terminal, like Discharged — never reachable from Admitted.</summary>
+    Cancelled,
 }
 
 public enum DischargeType

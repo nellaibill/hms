@@ -14,6 +14,7 @@ internal static class IPDErrorCodes
     public const string BedOccupied = "IPD.BED_OCCUPIED";
     public const string PatientAlreadyAdmitted = "IPD.PATIENT_ALREADY_ADMITTED";
     public const string AdmissionAlreadyDischarged = "IPD.ADMISSION_ALREADY_DISCHARGED";
+    public const string AdmissionNotRequested = "IPD.ADMISSION_NOT_REQUESTED";
     public const string InvalidDischargeDate = "IPD.INVALID_DISCHARGE_DATE";
     public const string DoctorOrderNotFound = "IPD.DOCTOR_ORDER_NOT_FOUND";
     public const string InvalidOrderStatusTransition = "IPD.INVALID_ORDER_STATUS_TRANSITION";

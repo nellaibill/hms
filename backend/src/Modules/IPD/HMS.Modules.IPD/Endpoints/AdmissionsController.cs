@@ -20,19 +20,25 @@ public class AdmissionsController : ControllerBase
     private readonly IValidator<UpdateAdmissionRequest> _updateValidator;
     private readonly IValidator<TransferBedRequest> _transferValidator;
     private readonly IValidator<DischargeAdmissionRequest> _dischargeValidator;
+    private readonly IValidator<RequestAdmissionRequest> _requestAdmissionValidator;
+    private readonly IValidator<AssignBedRequest> _assignBedValidator;
 
     public AdmissionsController(
         IAdmissionService service,
         IValidator<CreateAdmissionRequest> createValidator,
         IValidator<UpdateAdmissionRequest> updateValidator,
         IValidator<TransferBedRequest> transferValidator,
-        IValidator<DischargeAdmissionRequest> dischargeValidator)
+        IValidator<DischargeAdmissionRequest> dischargeValidator,
+        IValidator<RequestAdmissionRequest> requestAdmissionValidator,
+        IValidator<AssignBedRequest> assignBedValidator)
     {
         _service = service;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _transferValidator = transferValidator;
         _dischargeValidator = dischargeValidator;
+        _requestAdmissionValidator = requestAdmissionValidator;
+        _assignBedValidator = assignBedValidator;
     }
 
     [Authorize]
@@ -49,6 +55,40 @@ public class AdmissionsController : ControllerBase
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
+    }
+
+    /// <summary>Raises a Requested admission — no ward/bed chosen yet. Typically filed from
+    /// OPD once a consultant decides a patient needs to be admitted; see AssignBed for how IPD
+    /// later fulfils it.</summary>
+    [Authorize]
+    [RequirePermission("clinical-care.create")]
+    [HttpPost("request")]
+    public async Task<IActionResult> RequestAdmission([FromBody] RequestAdmissionRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _requestAdmissionValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.RequestAdmissionAsync(request, actorId: User.GetUserId(), cancellationToken);
+        return !result.IsSuccess
+            ? MapFailure(result.ErrorCode!, result.Error!)
+            : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
+    }
+
+    /// <summary>Fulfils a Requested admission by picking its ward/bed.</summary>
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
+    [HttpPost("{id:guid}/assign-bed")]
+    public async Task<IActionResult> AssignBed(Guid id, [FromBody] AssignBedRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _assignBedValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.AssignBedAsync(id, request, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     [Authorize]
@@ -144,6 +184,7 @@ public class AdmissionsController : ControllerBase
             IPDErrorCodes.BedNotAvailable => StatusCodes.Status409Conflict,
             IPDErrorCodes.PatientAlreadyAdmitted => StatusCodes.Status409Conflict,
             IPDErrorCodes.AdmissionAlreadyDischarged => StatusCodes.Status409Conflict,
+            IPDErrorCodes.AdmissionNotRequested => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

@@ -21,5 +21,7 @@ internal static class PatientVisitMappingExtensions
         DepartmentId = consultation.DepartmentId,
         ConsultantId = consultation.ConsultantId,
         ConsultationTypeId = consultation.ConsultationTypeId,
+        AppointmentTime = consultation.AppointmentTime,
+        Status = consultation.Status,
     };
 }

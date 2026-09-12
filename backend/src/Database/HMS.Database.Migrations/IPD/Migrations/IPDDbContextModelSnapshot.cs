@@ -47,7 +47,7 @@ namespace HMS.Database.Migrations.IPD.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("admission_type");
 
-                    b.Property<Guid>("BedId")
+                    b.Property<Guid?>("BedId")
                         .HasColumnType("uuid")
                         .HasColumnName("bed_id");
 
@@ -133,7 +133,7 @@ namespace HMS.Database.Migrations.IPD.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
-                    b.Property<Guid>("WardId")
+                    b.Property<Guid?>("WardId")
                         .HasColumnType("uuid")
                         .HasColumnName("ward_id");
 
@@ -159,7 +159,7 @@ namespace HMS.Database.Migrations.IPD.Migrations
                     b.HasIndex("PatientId")
                         .IsUnique()
                         .HasDatabaseName("ux_admissions_active_patient")
-                        .HasFilter("status = 'Admitted' AND is_deleted = false");
+                        .HasFilter("status IN ('Admitted', 'Requested') AND is_deleted = false");
 
                     b.ToTable("admissions", "ipd");
                 });

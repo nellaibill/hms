@@ -551,6 +551,10 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime>("AppointmentTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("appointment_time");
+
                     b.Property<Guid>("ConsultantId")
                         .HasColumnType("uuid")
                         .HasColumnName("consultant_id");
@@ -563,12 +567,21 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("department_id");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
                     b.Property<Guid>("VisitId")
                         .HasColumnType("uuid")
                         .HasColumnName("visit_id");
 
                     b.HasKey("Id")
                         .HasName("pk_patient_visit_consultations");
+
+                    b.HasIndex("AppointmentTime")
+                        .HasDatabaseName("ix_patient_visit_consultations_appointment_time");
 
                     b.HasIndex("VisitId")
                         .HasDatabaseName("ix_patient_visit_consultations_visit_id");

@@ -1,4 +1,4 @@
-import type { AdmissionStatus } from '@hms/shared';
+import { ApiError, type Admission, type AdmissionStatus } from '@hms/shared';
 import { ClipboardList, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -9,13 +9,21 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/Pagination';
 import { PageBanner } from '@/components/PageBanner';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { AdmissionTable, useAdmissionsQuery } from '../../features/ipd/admissions';
+import { AdmissionTable, AssignBedDialog, useAdmissionsQuery, useAssignBedMutation } from '../../features/ipd/admissions';
 import { useAuth } from '../../features/auth/AuthContext';
+
+const STATUS_LABELS: Record<AdmissionStatus, string> = {
+  Requested: 'requested',
+  Admitted: 'admitted',
+  Discharged: 'discharged',
+  Cancelled: 'cancelled',
+};
 
 export default function AdmissionsListPage() {
   const [status, setStatus] = useState<AdmissionStatus>('Admitted');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [assigningAdmission, setAssigningAdmission] = useState<Admission | null>(null);
   const { hasPermission } = useAuth();
 
   const debouncedSearch = useDebouncedValue(search);
@@ -27,6 +35,8 @@ export default function AdmissionsListPage() {
     status,
   });
 
+  const assignBedMutation = useAssignBedMutation();
+
   function handleStatusChange(value: string) {
     setStatus(value as AdmissionStatus);
     setPage(1);
@@ -35,6 +45,16 @@ export default function AdmissionsListPage() {
   function handleSearchChange(value: string) {
     setSearch(value);
     setPage(1);
+  }
+
+  function handleAssignBed(request: { wardId: string; bedId: string }) {
+    if (!assigningAdmission) {
+      return;
+    }
+    assignBedMutation.mutate(
+      { id: assigningAdmission.id, request },
+      { onSuccess: () => setAssigningAdmission(null) },
+    );
   }
 
   return (
@@ -50,6 +70,7 @@ export default function AdmissionsListPage() {
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <Tabs value={status} onValueChange={handleStatusChange}>
           <TabsList>
+            <TabsTrigger value="Requested">Requested</TabsTrigger>
             <TabsTrigger value="Admitted">Admitted Patients</TabsTrigger>
             <TabsTrigger value="Discharged">Discharged Patients</TabsTrigger>
           </TabsList>
@@ -91,7 +112,7 @@ export default function AdmissionsListPage() {
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
               <p className="text-sm font-medium text-foreground">
-                No {status === 'Admitted' ? 'admitted' : 'discharged'} patients found
+                No {STATUS_LABELS[status]} patients found
               </p>
               <p className="text-sm text-muted-foreground">
                 {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Nothing here yet.'}
@@ -102,9 +123,19 @@ export default function AdmissionsListPage() {
 
         {!isPending && !isError && data && data.items.length > 0 && (
           <div className="flex flex-col gap-3">
-            <AdmissionTable admissions={data.items} />
+            <AdmissionTable admissions={data.items} onAssignBed={setAssigningAdmission} />
             <Pagination meta={data.meta} onPageChange={setPage} />
           </div>
+        )}
+
+        {assigningAdmission && (
+          <AssignBedDialog
+            patientName={assigningAdmission.patientName}
+            isSubmitting={assignBedMutation.isPending}
+            apiError={assignBedMutation.error instanceof ApiError ? assignBedMutation.error : null}
+            onSubmit={handleAssignBed}
+            onCancel={() => setAssigningAdmission(null)}
+          />
         )}
       </div>
     </div>

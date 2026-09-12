@@ -4,6 +4,7 @@ using HMS.Modules.Billing.Application.Abstractions;
 using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Domain;
 using HMS.Modules.Laboratory.Application;
+using HMS.Modules.Laboratory.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Kernel;
@@ -485,5 +486,93 @@ public class InvoiceServiceTests
         await _sut.GetRecentAsync(500, CancellationToken.None);
 
         await _repository.Received(1).GetPagedAsync(Arg.Is<InvoiceListQuery>(q => q.PageSize == 50), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithARadiologyLine_RaisesALabOrderTheSameWayALaboratoryLineDoes()
+    {
+        var serviceId = Guid.NewGuid();
+        var request = ValidRequest() with
+        {
+            Items =
+            [
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Radiology, ConsultantId = "dr-revathi", ServiceId = serviceId.ToString(), Quantity = 1, UnitPrice = 1500m },
+            ],
+        };
+        _patientVisitService.GetByIdAsync(_patientId, request.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitType = VisitType.OP }));
+        _labOrderService.CreateFromInvoiceAsync(Arg.Any<CreateLabOrderFromInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<LabOrderResponse>.Success(new LabOrderResponse()));
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _labOrderService.Received(1).CreateFromInvoiceAsync(
+            Arg.Is<CreateLabOrderFromInvoiceRequest>(r => r.Lines.Count == 1 && r.Lines[0].ServiceId == serviceId),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithBothLaboratoryAndRadiologyLines_RaisesOneLabOrderCoveringBoth()
+    {
+        var labServiceId = Guid.NewGuid();
+        var radiologyServiceId = Guid.NewGuid();
+        var request = ValidRequest() with
+        {
+            Items =
+            [
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ConsultantId = "dr-revathi", ServiceId = labServiceId.ToString(), Quantity = 1, UnitPrice = 300m },
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Radiology, ConsultantId = "dr-revathi", ServiceId = radiologyServiceId.ToString(), Quantity = 1, UnitPrice = 1500m },
+            ],
+        };
+        _patientVisitService.GetByIdAsync(_patientId, request.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitType = VisitType.OP }));
+        _labOrderService.CreateFromInvoiceAsync(Arg.Any<CreateLabOrderFromInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<LabOrderResponse>.Success(new LabOrderResponse()));
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _labOrderService.Received(1).CreateFromInvoiceAsync(
+            Arg.Is<CreateLabOrderFromInvoiceRequest>(r => r.Lines.Count == 2),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetProcedureLineItemsAsync_MapsRepositoryRowsIntoProcedureListItems()
+    {
+        var invoiceId = Guid.NewGuid();
+        var lineItemId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        var row = new ProcedureLineItemRow(
+            invoiceId,
+            lineItemId,
+            patientId,
+            "Aravind Nadar",
+            "NH20260001",
+            "svc-dressing",
+            "dr-revathi",
+            "cardiology",
+            new DateTime(2026, 9, 11, 10, 0, 0, DateTimeKind.Utc),
+            PaymentStatus.Paid,
+            500m);
+        var query = new ProcedureListQuery { Page = 1, PageSize = 20 };
+        _repository.GetProcedureLineItemsPagedAsync(query, Arg.Any<CancellationToken>())
+            .Returns((new List<ProcedureLineItemRow> { row }, 1));
+
+        var result = await _sut.GetProcedureLineItemsAsync(query, CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        var item = result.Items.Should().ContainSingle().Subject;
+        item.InvoiceId.Should().Be(invoiceId);
+        item.InvoiceLineItemId.Should().Be(lineItemId);
+        item.PatientId.Should().Be(patientId);
+        item.PatientName.Should().Be("Aravind Nadar");
+        item.ConsultantId.Should().Be("dr-revathi");
+        item.DepartmentId.Should().Be("cardiology");
+        item.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        item.Total.Should().Be(500m);
     }
 }

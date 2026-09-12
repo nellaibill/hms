@@ -96,7 +96,7 @@ internal class LabOrderService : ILabOrderService
         var existing = await _repository.GetByInvoiceIdAsync(request.InvoiceId, cancellationToken);
         if (existing is not null)
         {
-            return Result<LabOrderResponse>.Success(existing.ToResponse());
+            return Result<LabOrderResponse>.Success(await ToOrderResponseAsync(existing, cancellationToken));
         }
 
         var itemSpecs = new List<LabOrderItemSpec>();
@@ -115,7 +115,9 @@ internal class LabOrderService : ILabOrderService
                 }
 
                 // A package could in theory mix service types (e.g. a lab test bundled with a
-                // procedure) — only the Laboratory-typed members are expanded into LabOrderItems.
+                // procedure) — only the Laboratory/Radiology-typed members are expanded into
+                // LabOrderItems (Billing's InvoiceService now raises this hook for both
+                // BillingType.Laboratory and BillingType.Radiology invoice lines).
                 foreach (var packageItem in packageResult.Value!.Items)
                 {
                     var serviceResult = await _diagnosticServiceService.GetByIdAsync(packageItem.ServiceId, cancellationToken);
@@ -127,7 +129,7 @@ internal class LabOrderService : ILabOrderService
                         continue;
                     }
 
-                    if (serviceResult.Value!.ServiceType != DiagnosticTestServiceType.Laboratory)
+                    if (serviceResult.Value!.ServiceType is not (DiagnosticTestServiceType.Laboratory or DiagnosticTestServiceType.Radiology))
                     {
                         continue;
                     }
@@ -145,11 +147,11 @@ internal class LabOrderService : ILabOrderService
             else if (line.ServiceId is { } serviceId)
             {
                 var serviceResult = await _diagnosticServiceService.GetByIdAsync(serviceId, cancellationToken);
-                if (!serviceResult.IsSuccess || serviceResult.Value!.ServiceType != DiagnosticTestServiceType.Laboratory)
+                if (!serviceResult.IsSuccess || serviceResult.Value!.ServiceType is not (DiagnosticTestServiceType.Laboratory or DiagnosticTestServiceType.Radiology))
                 {
                     return Result<LabOrderResponse>.Failure(
                         LaboratoryErrorCodes.InvalidServiceOrPackage,
-                        $"Service '{serviceId}' could not be resolved as a laboratory service.");
+                        $"Service '{serviceId}' could not be resolved as a laboratory or radiology service.");
                 }
 
                 itemSpecs.Add(new LabOrderItemSpec(
@@ -167,7 +169,7 @@ internal class LabOrderService : ILabOrderService
         {
             return Result<LabOrderResponse>.Failure(
                 LaboratoryErrorCodes.EmptyOrder,
-                "No laboratory items could be resolved from the supplied invoice lines.");
+                "No laboratory or radiology items could be resolved from the supplied invoice lines.");
         }
 
         var labOrderNumber = await _numberGenerator.NextLabOrderNumberAsync(cancellationToken);
@@ -186,7 +188,7 @@ internal class LabOrderService : ILabOrderService
         await _repository.AddAsync(order, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<LabOrderResponse>.Success(order.ToResponse());
+        return Result<LabOrderResponse>.Success(await ToOrderResponseAsync(order, cancellationToken));
     }
 
     /// <summary>Mirrors CreateFromInvoiceAsync's service/package resolution, with one
@@ -282,7 +284,7 @@ internal class LabOrderService : ILabOrderService
         await _repository.AddAsync(order, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<LabOrderResponse>.Success(order.ToResponse());
+        return Result<LabOrderResponse>.Success(await ToOrderResponseAsync(order, cancellationToken));
     }
 
     public async Task<Result<LabOrderResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -290,25 +292,25 @@ internal class LabOrderService : ILabOrderService
         var order = await _repository.GetByIdAsync(id, cancellationToken);
         return order is null
             ? Result<LabOrderResponse>.Failure(LaboratoryErrorCodes.OrderNotFound, $"Lab order '{id}' was not found.")
-            : Result<LabOrderResponse>.Success(order.ToResponse());
+            : Result<LabOrderResponse>.Success(await ToOrderResponseAsync(order, cancellationToken));
     }
 
     public async Task<PagedResult<LabOrderResponse>> GetPagedAsync(LabOrderListQuery query, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
-        return new PagedResult<LabOrderResponse>(items.Select(o => o.ToResponse()).ToList(), query.Page, query.PageSize, totalCount);
+        return new PagedResult<LabOrderResponse>(await ToOrderResponsesAsync(items, cancellationToken), query.Page, query.PageSize, totalCount);
     }
 
     public async Task<Result<IReadOnlyList<LabOrderResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
     {
         var orders = await _repository.GetByPatientIdAsync(patientId, cancellationToken);
-        return Result<IReadOnlyList<LabOrderResponse>>.Success(orders.Select(o => o.ToResponse()).ToList());
+        return Result<IReadOnlyList<LabOrderResponse>>.Success(await ToOrderResponsesAsync(orders, cancellationToken));
     }
 
     public async Task<Result<IReadOnlyList<LabOrderResponse>>> GetByAdmissionIdAsync(Guid admissionId, CancellationToken cancellationToken)
     {
         var orders = await _repository.GetByAdmissionIdAsync(admissionId, cancellationToken);
-        return Result<IReadOnlyList<LabOrderResponse>>.Success(orders.Select(o => o.ToResponse()).ToList());
+        return Result<IReadOnlyList<LabOrderResponse>>.Success(await ToOrderResponsesAsync(orders, cancellationToken));
     }
 
     public async Task<Result<LabDashboardSummaryResponse>> GetDashboardSummaryAsync(CancellationToken cancellationToken)
@@ -366,7 +368,7 @@ internal class LabOrderService : ILabOrderService
         order.GenerateReport(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<LabOrderResponse>.Success(order.ToResponse());
+        return Result<LabOrderResponse>.Success(await ToOrderResponseAsync(order, cancellationToken));
     }
 
     public async Task<Result<LabOrderResponse>> ReleaseReportAsync(Guid orderId, Guid? actorId, CancellationToken cancellationToken)
@@ -390,7 +392,7 @@ internal class LabOrderService : ILabOrderService
         order.ReleaseReport(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<LabOrderResponse>.Success(order.ToResponse());
+        return Result<LabOrderResponse>.Success(await ToOrderResponseAsync(order, cancellationToken));
     }
 
     /// <summary>Shared shape for every per-item mutator: load the owning order (full graph),
@@ -419,6 +421,41 @@ internal class LabOrderService : ILabOrderService
 
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<LabOrderResponse>.Success(order.ToResponse());
+        return Result<LabOrderResponse>.Success(await ToOrderResponseAsync(order, cancellationToken));
+    }
+
+    /// <summary>LabOrderMappingExtensions.ToResponse is a plain synchronous mapper — it can't
+    /// resolve each item's ServiceType (Laboratory/Radiology), which lives on Masters'
+    /// DiagnosticService, not on LabOrderItem itself. This wraps that mapper and patches every
+    /// item's ServiceType in afterward via one GetByIdAsync lookup per item — the same N+1-per-
+    /// row pattern already accepted elsewhere in this codebase (see
+    /// HMS.Modules.IPD.Application.AdmissionService.BuildResponseAsync). Every LabOrderItem
+    /// always carries a real ServiceId (package lines are expanded into one item per resolved
+    /// service before LabOrder.Create is ever called — see CreateFromInvoiceAsync/
+    /// CreateFromAdmissionAsync above), so there's no PackageId special case to resolve
+    /// ServiceType a different way.</summary>
+    private async Task<LabOrderResponse> ToOrderResponseAsync(LabOrder order, CancellationToken cancellationToken)
+    {
+        var response = order.ToResponse();
+
+        var items = new List<LabOrderItemResponse>(response.Items.Count);
+        foreach (var item in response.Items)
+        {
+            var serviceResult = await _diagnosticServiceService.GetByIdAsync(item.ServiceId, cancellationToken);
+            items.Add(item with { ServiceType = serviceResult is { IsSuccess: true } ? serviceResult.Value!.ServiceType : null });
+        }
+
+        return response with { Items = items };
+    }
+
+    private async Task<IReadOnlyList<LabOrderResponse>> ToOrderResponsesAsync(IReadOnlyList<LabOrder> orders, CancellationToken cancellationToken)
+    {
+        var responses = new List<LabOrderResponse>(orders.Count);
+        foreach (var order in orders)
+        {
+            responses.Add(await ToOrderResponseAsync(order, cancellationToken));
+        }
+
+        return responses;
     }
 }

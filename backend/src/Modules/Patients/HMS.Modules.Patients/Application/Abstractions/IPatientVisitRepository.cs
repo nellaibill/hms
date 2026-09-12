@@ -22,5 +22,20 @@ internal interface IPatientVisitRepository
     /// one patient.</summary>
     Task<(IReadOnlyList<PatientVisit> Items, int TotalCount)> GetPagedAsync(PatientVisitListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Loads the owning visit (with its Consultations included) for one consultation
+    /// line — used by OpdQueryService.TransitionAsync, which needs the aggregate root to call
+    /// a domain transition method on one of its children.</summary>
+    Task<PatientVisit?> GetByConsultationIdAsync(Guid consultationId, CancellationToken cancellationToken);
+
+    /// <summary>The OPD Patient List's backing query — one row per PatientVisitConsultation,
+    /// joined with its owning PatientVisit and Patient, paged/filtered per OpdPatientListQuery.
+    /// Returns a plain projection (OpdPatientListRow), not domain entities, since callers only
+    /// ever read this data. See OpdQueryService.GetPatientListAsync.</summary>
+    Task<(IReadOnlyList<OpdPatientListRow> Items, int TotalCount)> GetOpdPatientListPagedAsync(OpdPatientListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>The same joined rows GetOpdPatientListPagedAsync produces, unpaged and without
+    /// the Status filter — backs the Consultation List tab's per-consultant summary counts.</summary>
+    Task<IReadOnlyList<OpdPatientListRow>> GetOpdConsultationSummaryRowsAsync(OpdConsultationSummaryQuery query, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

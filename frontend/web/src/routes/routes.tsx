@@ -82,6 +82,7 @@ const LeaveRequestsListPage = lazy(() => import('../pages/hr/LeaveRequestsListPa
 const CalendarEventsPage = lazy(() => import('../pages/calendar/CalendarEventsPage'));
 const MessagesAndNotificationsPage = lazy(() => import('../pages/messaging/MessagesAndNotificationsPage'));
 const DocumentManagementPage = lazy(() => import('../pages/documents/DocumentManagementPage'));
+const OpdPage = lazy(() => import('../pages/opd/OpdPage'));
 const IpdDashboardPage = lazy(() => import('../pages/ipd/IpdDashboardPage'));
 const WardsListPage = lazy(() => import('../pages/ipd/WardsListPage'));
 const WardCreatePage = lazy(() => import('../pages/ipd/WardCreatePage'));
@@ -142,6 +143,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/admin/hr': withSuspense(<HrHubPage />),
   '/engagement/programmes': withSuspense(<CalendarEventsPage />),
   '/engagement/messages': withSuspense(<MessagesAndNotificationsPage />),
+  '/clinical/opd': withSuspense(<OpdPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
   '/pharmacy': withSuspense(<PharmacyHubPage />),
   '/diagnostics/lab': withSuspense(<CentralLaboratoryHubPage />),

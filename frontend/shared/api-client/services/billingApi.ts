@@ -1,10 +1,24 @@
 import { API_ROUTES } from '../../constants';
-import type { CreateInvoiceRequest, InvoiceListQuery, InvoiceResponse, RecentPatientBill, RecordPaymentRequest, VoidInvoiceRequest } from '../../dtos';
+import type {
+  CreateInvoiceRequest,
+  InvoiceListQuery,
+  InvoiceResponse,
+  ProcedureListItem,
+  ProcedureListQuery,
+  RecentPatientBill,
+  RecordPaymentRequest,
+  VoidInvoiceRequest,
+} from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
 export interface PagedInvoices {
   items: InvoiceResponse[];
+  meta: PaginationMeta;
+}
+
+export interface PagedProcedures {
+  items: ProcedureListItem[];
   meta: PaginationMeta;
 }
 
@@ -63,5 +77,27 @@ export class BillingApi {
   async voidInvoice(id: string, request: VoidInvoiceRequest): Promise<InvoiceResponse> {
     const response = await this.client.post<InvoiceResponse>(API_ROUTES.billing.invoices.void(id), request);
     return response.data;
+  }
+
+  /** Backs the OPD Procedures List tab — one row per Procedure invoice line item, across
+   * every invoice, filterable by date range/department/consultant/payment status. */
+  async getProcedureLineItems(query: ProcedureListQuery = {}): Promise<PagedProcedures> {
+    const response = await this.client.get<ProcedureListItem[]>(API_ROUTES.billing.invoices.procedures, {
+      query: {
+        page: query.page,
+        pageSize: query.pageSize,
+        search: query.search,
+        from: query.from,
+        to: query.to,
+        departmentId: query.departmentId,
+        consultantId: query.consultantId,
+        paymentStatus: query.paymentStatus,
+      },
+    });
+
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
   }
 }

@@ -68,6 +68,84 @@ internal class InvoiceRepository : IInvoiceRepository
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<(IReadOnlyList<ProcedureLineItemRow> Items, int TotalCount)> GetProcedureLineItemsPagedAsync(ProcedureListQuery query, CancellationToken cancellationToken)
+    {
+        // Deliberately projects into an anonymous type first, not directly into
+        // ProcedureLineItemRow: EF Core can't translate a Where/OrderBy applied *after* a
+        // Select that already projected into a user-defined record/class — it inlines the
+        // constructor call at the point of member access instead of pushing the predicate down
+        // to the underlying columns, producing a runtime "could not be translated" exception
+        // (confirmed live; same fix as HMS.Modules.Patients.Infrastructure.Repositories
+        // .PatientVisitRepository's OPD queries). Anonymous types don't have this problem, so
+        // every filter below stays on the `select new { ... }` shape all the way through to the
+        // single final Select into ProcedureLineItemRow, which — as the terminal projection,
+        // never followed by more query composition — is safe.
+        var rows =
+            from item in _dbContext.InvoiceLineItems
+            join invoice in _dbContext.Invoices on item.InvoiceId equals invoice.Id
+            where item.BillingType == BillingType.Procedure
+            select new { item, invoice };
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = $"%{query.Search.Trim()}%";
+            rows = rows.Where(r => EF.Functions.ILike(r.invoice.PatientName, term) || EF.Functions.ILike(r.invoice.PatientUhid, term));
+        }
+
+        // Model binding produces DateTime.Kind = Unspecified for a plain query-string date —
+        // Npgsql rejects that against a `timestamp with time zone` column ("only UTC is
+        // supported"), so it must be normalized before use — same fix as
+        // PatientVisitRepository.GetPagedAsync/PatientRepository.BuildFilteredQuery.
+        if (query.From.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            rows = rows.Where(r => r.invoice.CreatedAt >= from);
+        }
+
+        if (query.To.HasValue)
+        {
+            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            rows = rows.Where(r => r.invoice.CreatedAt <= to);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.DepartmentId))
+        {
+            rows = rows.Where(r => r.item.DepartmentId == query.DepartmentId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.ConsultantId))
+        {
+            rows = rows.Where(r => r.item.BilledConsultantId == query.ConsultantId);
+        }
+
+        if (query.PaymentStatus.HasValue)
+        {
+            rows = rows.Where(r => r.item.PaymentStatus == query.PaymentStatus.Value);
+        }
+
+        var totalCount = await rows.CountAsync(cancellationToken);
+
+        var items = await rows
+            .OrderByDescending(r => r.invoice.CreatedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(r => new ProcedureLineItemRow(
+                r.invoice.Id,
+                r.item.Id,
+                r.invoice.PatientId,
+                r.invoice.PatientName,
+                r.invoice.PatientUhid,
+                r.item.ServiceId,
+                r.item.BilledConsultantId,
+                r.item.DepartmentId,
+                r.invoice.CreatedAt,
+                r.item.PaymentStatus,
+                r.item.Total))
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 

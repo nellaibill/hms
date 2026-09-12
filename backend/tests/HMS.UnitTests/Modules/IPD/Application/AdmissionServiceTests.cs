@@ -286,4 +286,114 @@ public class AdmissionServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(IPDErrorCodes.AdmissionAlreadyDischarged);
     }
+
+    private RequestAdmissionRequest NewRequestAdmissionRequest() => new()
+    {
+        PatientId = Guid.NewGuid(),
+        DepartmentId = Guid.NewGuid(),
+        ConsultantId = Guid.NewGuid(),
+        AdmissionType = AdmissionType.Elective,
+        ReasonForAdmission = "Suspected appendicitis",
+        RequestedDateTime = new DateTime(2026, 8, 11, 9, 0, 0, DateTimeKind.Utc),
+    };
+
+    [Fact]
+    public async Task RequestAdmissionAsync_WithValidRequest_CreatesRequestedAdmissionWithNoBed()
+    {
+        var result = await _sut.RequestAdmissionAsync(NewRequestAdmissionRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(AdmissionStatus.Requested);
+        result.Value.WardId.Should().BeNull();
+        result.Value.BedId.Should().BeNull();
+        result.Value.AdmissionNumber.Should().Be("ADM-2026-000001");
+        await _repository.Received(1).AddAsync(Arg.Any<Admission>(), Arg.Any<CancellationToken>());
+        await _bedRepository.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RequestAdmissionAsync_WhenPatientDoesNotExist_ReturnsInvalidPatientFailure()
+    {
+        _patientService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<PatientResponse>.Failure("PATIENTS.NOT_FOUND", "not found"));
+
+        var result = await _sut.RequestAdmissionAsync(NewRequestAdmissionRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.InvalidPatient);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Admission>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RequestAdmissionAsync_WhenPatientAlreadyHasAnActiveAdmission_ReturnsPatientAlreadyAdmittedFailure()
+    {
+        var request = NewRequestAdmissionRequest();
+        var existing = Admission.Create("ADM-2026-000000", request.PatientId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, AdmissionType.Emergency, "Prior admission", null);
+        _repository.GetActiveByPatientIdAsync(request.PatientId, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var result = await _sut.RequestAdmissionAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.PatientAlreadyAdmitted);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Admission>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignBedAsync_WithValidRequest_AssignsBedAndOccupiesIt()
+    {
+        var admission = Admission.CreateRequest("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, AdmissionType.Elective, "Observation", null);
+        _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
+
+        var request = new AssignBedRequest { WardId = _wardId, BedId = _bedId, AdmissionDateTime = new DateTime(2026, 8, 12, 8, 0, 0, DateTimeKind.Utc) };
+        var result = await _sut.AssignBedAsync(admission.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(AdmissionStatus.Admitted);
+        result.Value.WardId.Should().Be(_wardId);
+        result.Value.BedId.Should().Be(_bedId);
+
+        var bed = await _bedRepository.GetByIdAsync(_bedId, CancellationToken.None);
+        bed!.Status.Should().Be(BedStatus.Occupied);
+        await _bedStayRepository.Received(1).AddAsync(Arg.Any<AdmissionBedStay>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignBedAsync_WhenAdmissionIsNotRequested_ReturnsAdmissionNotRequestedFailure()
+    {
+        var admission = Admission.Create("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), _wardId, _bedId, DateTime.UtcNow, AdmissionType.Elective, "Observation", null);
+        _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
+
+        var request = new AssignBedRequest { WardId = _wardId, BedId = _bedId };
+        var result = await _sut.AssignBedAsync(admission.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.AdmissionNotRequested);
+    }
+
+    [Fact]
+    public async Task AssignBedAsync_WhenBedIsNotAvailable_ReturnsBedNotAvailableFailure()
+    {
+        var admission = Admission.CreateRequest("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, AdmissionType.Elective, "Observation", null);
+        _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
+
+        var occupiedBed = Bed.Create(_wardId, "b-101", BedType.Standard, BedStatus.Occupied, true, 1500m, null);
+        _bedRepository.GetByIdAsync(_bedId, Arg.Any<CancellationToken>()).Returns(occupiedBed);
+
+        var request = new AssignBedRequest { WardId = _wardId, BedId = _bedId };
+        var result = await _sut.AssignBedAsync(admission.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.BedNotAvailable);
+    }
+
+    [Fact]
+    public async Task AssignBedAsync_WhenAdmissionDoesNotExist_ReturnsNotFoundFailure()
+    {
+        _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Admission?)null);
+
+        var result = await _sut.AssignBedAsync(Guid.NewGuid(), new AssignBedRequest { WardId = _wardId, BedId = _bedId }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.NotFound);
+    }
 }

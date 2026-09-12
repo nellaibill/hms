@@ -36,6 +36,9 @@ export class LaboratoryApi {
         priority: query.priority,
         dateFrom: query.dateFrom,
         dateTo: query.dateTo,
+        source: query.source,
+        departmentId: query.departmentId,
+        consultantId: query.consultantId,
       },
     });
 

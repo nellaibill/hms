@@ -1,0 +1,112 @@
+import type { OpdConsultationSummaryItem } from '@hms/shared';
+import { Loader2, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { useOpdConsultationSummaryQuery } from '../hooks/useOpdConsultationSummaryQuery';
+import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+
+function formatTime(time?: string | null): string | undefined {
+  if (!time) return undefined;
+  // time is "HH:mm:ss" (TimeOnly's JSON shape) — anchor it to an arbitrary date just to reuse
+  // the locale time formatter, matching OpdPatientListTable's formatAppointmentTime approach.
+  return new Date(`1970-01-01T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+/** "Mon, Wed, Fri · 4:00 PM – 6:00 PM" — blank until the consultant's Masters record has this
+ * set (see Consultant Type/Availability on the Masters > Consultant form). `availableDays`
+ * defensively defaults to [] — an API server still running a pre-upgrade build (or a consultant
+ * predating this field) can omit it entirely rather than sending an empty array. */
+function formatAvailability(row: OpdConsultationSummaryItem): string {
+  const days = (row.availableDays ?? []).map((day) => day.slice(0, 3)).join(', ');
+  const start = formatTime(row.visitStartTime);
+  const end = formatTime(row.visitEndTime);
+  const timeRange = start && end ? `${start} – ${end}` : undefined;
+  return [days, timeRange].filter(Boolean).join(' · ') || '—';
+}
+
+interface OpdConsultationListTableProps {
+  filters: OpdFilterValues;
+  /** Switches the page to the Patient List tab, scoped to this row's consultant — the
+   * "View Patients" action. */
+  onViewPatients: (consultantId: string) => void;
+}
+
+/** OPD Consultation List tab — one row per consultant with any OPD activity in the selected
+ * date range, aggregated by HMS.Modules.Patients.Contracts.OpdConsultationSummaryItem. Not
+ * paginated (the backend returns a plain list); this endpoint only filters on from/to/
+ * departmentId — the shared filter bar's Consultant/Status/Search fields don't apply here. */
+export function OpdConsultationListTable({ filters, onViewPatients }: OpdConsultationListTableProps) {
+  const { data, isPending, isError, error } = useOpdConsultationSummaryQuery({
+    from: toRangeStart(filters.from),
+    to: toRangeEnd(filters.to),
+    departmentId: filters.departmentId,
+  });
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading consultation summary…
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        {error instanceof Error ? error.message : 'Failed to load consultation summary.'}
+      </p>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+          <p className="text-sm font-medium text-foreground">No consultation activity found</p>
+          <p className="text-sm text-muted-foreground">Try a different date range or department.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2.5">Consultant</th>
+              <th className="px-4 py-2.5">Department</th>
+              <th className="px-4 py-2.5">Availability</th>
+              <th className="px-4 py-2.5">Total Patients</th>
+              <th className="px-4 py-2.5">Waiting</th>
+              <th className="px-4 py-2.5">In Consultation</th>
+              <th className="px-4 py-2.5">Completed</th>
+              <th className="px-4 py-2.5">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {data.map((row) => (
+              <tr key={row.consultantId} className="hover:bg-muted/30">
+                <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{row.consultantName}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAvailability(row)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.totalPatients}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.waiting}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.inConsultation}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.completed}</td>
+                <td className="whitespace-nowrap px-4 py-3">
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onViewPatients(row.consultantId)}>
+                    <Users className="h-3.5 w-3.5" />
+                    View Patients
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

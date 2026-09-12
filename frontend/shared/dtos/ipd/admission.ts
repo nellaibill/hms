@@ -13,6 +13,26 @@ export interface CreateAdmissionRequest {
   reasonForAdmission: string;
 }
 
+/** Mirrors HMS.Modules.IPD.Contracts.RequestAdmissionRequest — raises an admission with no
+ * ward/bed yet (status Requested); a bed is assigned later via AssignBedRequest. Used by the
+ * OPD Admissions List tab's "Request Admission" action. */
+export interface RequestAdmissionRequest {
+  patientId: string;
+  departmentId: string;
+  consultantId: string;
+  admissionType: IpdAdmissionType;
+  reasonForAdmission: string;
+  requestedDateTime?: string | null;
+}
+
+/** Mirrors HMS.Modules.IPD.Contracts.AssignBedRequest — moves a Requested admission to
+ * Admitted by assigning it a ward/bed. */
+export interface AssignBedRequest {
+  wardId: string;
+  bedId: string;
+  admissionDateTime?: string | null;
+}
+
 /** Mirrors HMS.Modules.IPD.Contracts.UpdateAdmissionRequest — PatientId/WardId/BedId are
  * intentionally absent, matching the backend (patient can't change after admission; ward/bed
  * moves go through the transfer-bed workflow instead). */
@@ -54,9 +74,11 @@ export interface Admission {
   departmentId: string;
   consultantId: string;
   consultantName: string;
-  wardId: string;
+  /** Unset while status is Requested — a ward/bed hasn't been assigned yet. */
+  wardId?: string | null;
   wardName: string;
-  bedId: string;
+  /** Unset while status is Requested — a ward/bed hasn't been assigned yet. */
+  bedId?: string | null;
   bedNumber: string;
 
   admissionDateTime: string;

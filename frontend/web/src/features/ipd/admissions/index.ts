@@ -1,6 +1,7 @@
 export * from './components/AdmissionForm';
 export * from './components/AdmissionTable';
 export * from './components/AdvancePanel';
+export * from './components/AssignBedDialog';
 export * from './components/BedStayHistoryPanel';
 export * from './components/ChargesPanel';
 export * from './components/DischargeForm';
