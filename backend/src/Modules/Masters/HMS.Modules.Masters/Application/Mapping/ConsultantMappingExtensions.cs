@@ -13,6 +13,10 @@ internal static class ConsultantMappingExtensions
         Specialization = consultant.Specialization,
         IsActive = consultant.IsActive,
         Priority = consultant.Priority,
+        ConsultantType = consultant.ConsultantType,
+        AvailableDays = consultant.AvailableDays,
+        VisitStartTime = consultant.VisitStartTime,
+        VisitEndTime = consultant.VisitEndTime,
         CreatedAt = consultant.CreatedAt,
         UpdatedAt = consultant.UpdatedAt,
     };

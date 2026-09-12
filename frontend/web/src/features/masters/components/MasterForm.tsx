@@ -1,4 +1,5 @@
 import type { ApiError } from '@hms/shared';
+import { Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -6,12 +7,87 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 import { useMasterOptionsQuery } from '../hooks/useMasterQuery';
 import { getDisplayLabel, getMasterConfig } from '../engine/registry';
-import type { MasterEntityConfig, MasterFieldDef, MasterRecord } from '../engine/types';
+import type { MasterEntityConfig, MasterFieldDef, MasterFieldGroup, MasterInfoBox, MasterRecord } from '../engine/types';
+
+const WEEKDAYS = [
+  { value: 'Monday', label: 'Mon' },
+  { value: 'Tuesday', label: 'Tue' },
+  { value: 'Wednesday', label: 'Wed' },
+  { value: 'Thursday', label: 'Thu' },
+  { value: 'Friday', label: 'Fri' },
+  { value: 'Saturday', label: 'Sat' },
+  { value: 'Sunday', label: 'Sun' },
+];
+
+/** Small colored callout used both beside a 'radio-card' field's options and at the bottom of a
+ * MasterFieldGroup's card — see MasterInfoBox. */
+function InfoCallout({ box }: { box: MasterInfoBox }) {
+  return (
+    <div className="flex gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm dark:border-blue-900 dark:bg-blue-950">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+      <p className="text-blue-900 dark:text-blue-200">
+        {box.title && <span className="font-semibold">{box.title}: </span>}
+        {box.text}
+      </p>
+    </div>
+  );
+}
 
 /** Radix Select can't represent "no selection" with an empty string, so optional reference/select fields use this sentinel internally. */
 const NONE_VALUE = '__none__';
+
+/** Renders two adjacent 'time' MasterFieldDefs (the first with `rangeLabel` set) as one
+ * connected "label + start + to + end" control — see MasterFieldDef.rangeLabel's own doc
+ * comment. Each field still registers/submits independently; this is presentation-only. */
+function TimeRangeControl({
+  startField,
+  endField,
+  register,
+  errors,
+  readOnly,
+}: {
+  startField: MasterFieldDef;
+  endField: MasterFieldDef;
+  register: UseFormRegister<Record<string, unknown>>;
+  errors: FieldErrors<Record<string, unknown>>;
+  readOnly: boolean;
+}) {
+  const startError = errors[startField.key];
+  const endError = errors[endField.key];
+  const required = startField.required || endField.required;
+
+  return (
+    <div className="flex min-w-[280px] flex-1 flex-col gap-1">
+      <label className="text-sm font-medium leading-none text-foreground">
+        {startField.rangeLabel}
+        {required && <span className="text-destructive"> *</span>}
+      </label>
+      <div className="flex items-center gap-2">
+        <Input
+          type="time"
+          step="1"
+          disabled={readOnly}
+          aria-label={startField.label}
+          {...register(startField.key, { required: startField.required ? `${startField.label} is required.` : false })}
+        />
+        <span className="text-sm text-muted-foreground">to</span>
+        <Input
+          type="time"
+          step="1"
+          disabled={readOnly}
+          aria-label={endField.label}
+          {...register(endField.key, { required: endField.required ? `${endField.label} is required.` : false })}
+        />
+      </div>
+      {startField.helpText && <p className="text-xs text-muted-foreground">{startField.helpText}</p>}
+      {startError && <p className="text-sm text-destructive">{String(startError.message)}</p>}
+      {endError && <p className="text-sm text-destructive">{String(endError.message)}</p>}
+    </div>
+  );
+}
 
 interface MasterFormProps {
   config: MasterEntityConfig;
@@ -33,6 +109,9 @@ function toFormDefaults(config: MasterEntityConfig, values: Record<string, unkno
     }
     if ((field.type === 'reference' || field.type === 'select') && (result[field.key] === undefined || result[field.key] === null || result[field.key] === '')) {
       result[field.key] = NONE_VALUE;
+    }
+    if (field.type === 'day-checkboxes' && !Array.isArray(result[field.key])) {
+      result[field.key] = [];
     }
   }
   if (result.isActive === undefined) result.isActive = true;
@@ -159,6 +238,122 @@ function FieldControl({ field, register, control, errors, readOnly, recordId, sc
     );
   }
 
+  if (field.type === 'time') {
+    return (
+      <div className="flex min-w-[160px] flex-1 flex-col gap-1">
+        <label htmlFor={inputId} className="text-sm font-medium leading-none text-foreground">
+          {field.label}
+          {field.required && <span className="text-destructive"> *</span>}
+        </label>
+        <Input
+          id={inputId}
+          type="time"
+          step="1"
+          disabled={readOnly}
+          {...register(field.key, { required: field.required ? `${field.label} is required.` : false })}
+        />
+        {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+        {error && <p className="text-sm text-destructive">{String(error.message)}</p>}
+      </div>
+    );
+  }
+
+  if (field.type === 'radio-card') {
+    return (
+      <div className="flex w-full flex-col gap-3 sm:flex-row">
+        <Controller
+          name={field.key}
+          control={control}
+          rules={field.required ? { required: `${field.label} is required.` } : undefined}
+          render={({ field: controllerField }) => (
+            <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+              {(field.options ?? []).map((option) => {
+                const isSelected = controllerField.value === option.value;
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => controllerField.onChange(option.value)}
+                    className={cn(
+                      'flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                      isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-input hover:bg-accent/50',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+                        isSelected ? 'border-primary' : 'border-muted-foreground',
+                      )}
+                    >
+                      {isSelected && <span className="h-2 w-2 rounded-full bg-primary" />}
+                    </span>
+                    {Icon && (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold text-foreground">{option.label}</span>
+                      {option.description && <span className="text-xs text-muted-foreground">{option.description}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        />
+        {field.infoBox && (
+          <div className="sm:w-64 sm:shrink-0">
+            <InfoCallout box={field.infoBox} />
+          </div>
+        )}
+        {error && <p className="w-full text-sm text-destructive">{String(error.message)}</p>}
+      </div>
+    );
+  }
+
+  if (field.type === 'day-checkboxes') {
+    return (
+      <div className="flex min-w-[260px] flex-1 flex-col gap-1">
+        <label className="text-sm font-medium leading-none text-foreground">
+          {field.label}
+          {field.required && <span className="text-destructive"> *</span>}
+        </label>
+        <Controller
+          name={field.key}
+          control={control}
+          rules={field.required ? { validate: (value) => (Array.isArray(value) && value.length > 0) || `Select at least one ${field.label.toLowerCase()}.` } : undefined}
+          render={({ field: controllerField }) => {
+            const selected: string[] = Array.isArray(controllerField.value) ? controllerField.value : [];
+            function toggle(day: string) {
+              controllerField.onChange(selected.includes(day) ? selected.filter((d) => d !== day) : [...selected, day]);
+            }
+            return (
+              <div className="flex flex-wrap gap-4">
+                {WEEKDAYS.map((day) => (
+                  <label key={day.value} className="flex items-center gap-1.5 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input"
+                      checked={selected.includes(day.value)}
+                      disabled={readOnly}
+                      onChange={() => toggle(day.value)}
+                    />
+                    {day.label}
+                  </label>
+                ))}
+              </div>
+            );
+          }}
+        />
+        {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+        {error && <p className="text-sm text-destructive">{String(error.message)}</p>}
+      </div>
+    );
+  }
+
   // text | number | decimal
   const isNumeric = field.type === 'number' || field.type === 'decimal';
   return (
@@ -248,69 +443,76 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
   const nonTextareaFields = config.fields.filter((field) => field.type !== 'textarea');
   const textareaFields = config.fields.filter((field) => field.type === 'textarea');
 
-  return (
-    <form onSubmit={handleSubmit(submitHandler)} noValidate className="mx-auto flex w-full max-w-4xl flex-col gap-5">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{config.label} Information</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-4">
-            {nonTextareaFields.map((field) => (
-              <FieldControl
-                key={field.key}
-                field={field}
-                register={register}
-                control={control}
-                errors={errors}
-                // The code field is immutable after creation server-side (Update*Request DTOs
-                // never include it) — disable it in edit mode too, not just view, so the UI
-                // doesn't look editable for a change that would silently no-op.
-                readOnly={readOnly || (mode === 'edit' && field.key === config.codeField)}
-                recordId={recordId}
-                scopeValue={field.referenceScopeField ? watch(field.referenceScopeField) : undefined}
-                validate={
-                  field.key === (config.codeField ?? config.nameField) && !field.skipUniquenessCheck
-                    ? makeCodeUniquenessValidator(field)
-                    : undefined
-                }
-              />
-            ))}
+  function renderField(field: MasterFieldDef) {
+    return (
+      <FieldControl
+        key={field.key}
+        field={field}
+        register={register}
+        control={control}
+        errors={errors}
+        // The code field is immutable after creation server-side (Update*Request DTOs never
+        // include it) — disable it in edit mode too, not just view, so the UI doesn't look
+        // editable for a change that would silently no-op.
+        readOnly={readOnly || (mode === 'edit' && field.key === config.codeField)}
+        recordId={recordId}
+        scopeValue={field.referenceScopeField ? watch(field.referenceScopeField) : undefined}
+        validate={
+          field.key === (config.codeField ?? config.nameField) && !field.skipUniquenessCheck
+            ? makeCodeUniquenessValidator(field)
+            : undefined
+        }
+      />
+    );
+  }
 
-            <div className="flex w-full flex-col gap-1 sm:w-40">
-              <span className="text-sm font-medium leading-none text-foreground">Status</span>
-              <Controller
-                name="isActive"
-                control={control}
-                render={({ field: controllerField }) => (
-                  <div className="flex h-10 items-center gap-2">
-                    <Switch
-                      checked={Boolean(controllerField.value)}
-                      onCheckedChange={controllerField.onChange}
-                      disabled={readOnly}
-                      aria-label="Active"
-                    />
-                    <span className="text-sm text-muted-foreground">{controllerField.value ? 'Active' : 'Inactive'}</span>
-                  </div>
-                )}
+  /** Walks a group's fieldKeys, collapsing an adjacent `rangeLabel`-tagged 'time' pair into one
+   * TimeRangeControl instead of two separate FieldControls — see MasterFieldDef.rangeLabel. */
+  function renderGroupFields(group: MasterFieldGroup) {
+    const nodes: React.ReactNode[] = [];
+    for (let i = 0; i < group.fieldKeys.length; i += 1) {
+      const field = config.fields.find((f) => f.key === group.fieldKeys[i])!;
+      const nextField = i + 1 < group.fieldKeys.length ? config.fields.find((f) => f.key === group.fieldKeys[i + 1]) : undefined;
+      if (field.type === 'time' && field.rangeLabel && nextField?.type === 'time') {
+        nodes.push(<TimeRangeControl key={field.key} startField={field} endField={nextField} register={register} errors={errors} readOnly={readOnly} />);
+        i += 1;
+        continue;
+      }
+      nodes.push(renderField(field));
+    }
+    return nodes;
+  }
+
+  const statusCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Status</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Controller
+          name="isActive"
+          control={control}
+          render={({ field: controllerField }) => (
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={Boolean(controllerField.value)}
+                onCheckedChange={controllerField.onChange}
+                disabled={readOnly}
+                aria-label="Active"
               />
+              <div>
+                <p className="text-sm font-medium text-foreground">{controllerField.value ? 'Active' : 'Inactive'}</p>
+                <p className="text-xs text-muted-foreground">Inactive {config.label.toLowerCase()}s will not be available for selection.</p>
+              </div>
             </div>
-          </div>
+          )}
+        />
+      </CardContent>
+    </Card>
+  );
 
-          {textareaFields.map((field) => (
-            <FieldControl
-              key={field.key}
-              field={field}
-              register={register}
-              control={control}
-              errors={errors}
-              readOnly={readOnly}
-              recordId={recordId}
-            />
-          ))}
-        </CardContent>
-      </Card>
-
+  const footer = (
+    <>
       {generalError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {generalError}
@@ -333,6 +535,82 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
           </Button>
         </div>
       )}
+    </>
+  );
+
+  // Opt-in sectioned layout (MasterEntityConfig.fieldGroups) — every other entity leaves this
+  // unset and falls through to the classic single flat-card layout below, unchanged.
+  if (config.fieldGroups) {
+    return (
+      <form onSubmit={handleSubmit(submitHandler)} noValidate className="flex w-full flex-col gap-5">
+        {config.fieldGroups.map((group) => (
+          <Card key={group.key}>
+            <CardHeader className="flex flex-row items-center gap-2 space-y-0 rounded-t-xl bg-muted/50 py-3">
+              {group.icon && (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <group.icon className="h-4 w-4" />
+                </span>
+              )}
+              <CardTitle className="text-base">{group.label}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4 pt-4">
+              <div
+                className={cn(
+                  'flex flex-wrap gap-4',
+                  group.dividedColumns && 'gap-0 divide-x divide-border [&>*]:px-4 [&>*]:first:pl-0',
+                )}
+              >
+                {renderGroupFields(group)}
+              </div>
+              {group.infoText && <InfoCallout box={{ text: group.infoText }} />}
+            </CardContent>
+          </Card>
+        ))}
+
+        {textareaFields.map((field) => renderField(field))}
+
+        {statusCard}
+
+        {footer}
+      </form>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit(submitHandler)} noValidate className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{config.label} Information</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-4">
+            {nonTextareaFields.map((field) => renderField(field))}
+
+            <div className="flex w-full flex-col gap-1 sm:w-40">
+              <span className="text-sm font-medium leading-none text-foreground">Status</span>
+              <Controller
+                name="isActive"
+                control={control}
+                render={({ field: controllerField }) => (
+                  <div className="flex h-10 items-center gap-2">
+                    <Switch
+                      checked={Boolean(controllerField.value)}
+                      onCheckedChange={controllerField.onChange}
+                      disabled={readOnly}
+                      aria-label="Active"
+                    />
+                    <span className="text-sm text-muted-foreground">{controllerField.value ? 'Active' : 'Inactive'}</span>
+                  </div>
+                )}
+              />
+            </div>
+          </div>
+
+          {textareaFields.map((field) => renderField(field))}
+        </CardContent>
+      </Card>
+
+      {footer}
     </form>
   );
 }
