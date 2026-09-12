@@ -503,7 +503,7 @@ export function PatientRegistrationForm({
         <TabErrorSummary messages={tabMessages('patient-info')} />
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
-            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
+            <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -529,6 +529,7 @@ export function PatientRegistrationForm({
             <Field
               label="First name"
               htmlFor="firstName"
+              error={errors.firstName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="firstName" {...register('firstName')} />
@@ -536,18 +537,19 @@ export function PatientRegistrationForm({
             <Field
               label="Last name"
               htmlFor="lastName"
+              error={errors.lastName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
+            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-48">
               <Input id="dateOfBirth" type="date" {...dateOfBirthInputBounds()} {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Field label="Gender" htmlFor="gender" className="flex w-full flex-col gap-1 sm:w-36">
+            <Field label="Gender" htmlFor="gender" error={errors.gender?.message} className="flex w-full flex-col gap-1 sm:w-36">
               <Controller
                 name="gender"
                 control={control}
@@ -570,6 +572,7 @@ export function PatientRegistrationForm({
             <Field
               label="Blood group"
               htmlFor="bloodGroup"
+              error={errors.bloodGroup?.message}
               className="flex w-full flex-col gap-1 sm:w-32"
             >
               <Controller
@@ -591,7 +594,7 @@ export function PatientRegistrationForm({
                 )}
               />
             </Field>
-            <Field label="Marital status" htmlFor="maritalStatus" className="flex w-full flex-col gap-1 sm:w-40">
+            <Field label="Marital status" htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
               <Controller
                 name="maritalStatus"
                 control={control}
@@ -622,19 +625,30 @@ export function PatientRegistrationForm({
             <Field
               label="Address line 1 (door no. & building name)"
               htmlFor="addressLine1"
+              error={errors.addressLine1?.message}
               className="flex min-w-[260px] flex-1 flex-col gap-1"
             >
               <Input id="addressLine1" {...register('addressLine1')} />
             </Field>
-            <Field label="Address line 2 (street)" htmlFor="addressLine2" className="flex min-w-[220px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 2 (street)"
+              htmlFor="addressLine2"
+              error={errors.addressLine2?.message}
+              className="flex min-w-[220px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine2" {...register('addressLine2')} />
             </Field>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 3 (city)"
+              htmlFor="addressLine3"
+              error={errors.addressLine3?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-            <Field label="State" htmlFor="state" className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Controller
                 name="state"
                 control={control}
@@ -646,6 +660,7 @@ export function PatientRegistrationForm({
             <Field
               label="District"
               htmlFor="district"
+              error={errors.district?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Controller
@@ -654,7 +669,7 @@ export function PatientRegistrationForm({
                 render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateId={state} />}
               />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" className="flex w-full flex-col gap-1 sm:w-32">
+            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
@@ -665,6 +680,7 @@ export function PatientRegistrationForm({
             <Field
               label="Primary phone"
               htmlFor="primaryPhoneNumber"
+              error={errors.primaryPhone?.number?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="primaryPhoneNumber" {...register('primaryPhone.number')} />
@@ -672,11 +688,12 @@ export function PatientRegistrationForm({
             <Field
               label="Secondary phone (optional)"
               htmlFor="secondaryPhone"
+              error={errors.secondaryPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="secondaryPhone" {...register('secondaryPhone')} />
             </Field>
-            <Field label="Email" htmlFor="email" className="flex min-w-[180px] flex-1 flex-col gap-1">
+            <Field label="Email" htmlFor="email" error={errors.email?.message} className="flex min-w-[180px] flex-1 flex-col gap-1">
               <Input id="email" type="email" {...register('email')} />
             </Field>
             <Field label="Profession" htmlFor="profession" className="flex min-w-[160px] flex-1 flex-col gap-1">
@@ -687,7 +704,12 @@ export function PatientRegistrationForm({
 
         <FormSection id="emergency-contact" title="Emergency Contact">
           <div className="flex flex-wrap gap-3">
-            <Field label="Relationship" htmlFor="emergencyContactRelationship" className="flex w-full flex-col gap-1 sm:w-44">
+            <Field
+              label="Relationship"
+              htmlFor="emergencyContactRelationship"
+              error={errors.emergencyContactRelationship?.message}
+              className="flex w-full flex-col gap-1 sm:w-44"
+            >
               <Controller
                 name="emergencyContactRelationship"
                 control={control}
@@ -710,6 +732,7 @@ export function PatientRegistrationForm({
             <Field
               label="Name"
               htmlFor="emergencyContactName"
+              error={errors.emergencyContactName?.message}
               className="flex min-w-[180px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
@@ -717,6 +740,7 @@ export function PatientRegistrationForm({
             <Field
               label="Phone"
               htmlFor="emergencyContactPhone"
+              error={errors.emergencyContactPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
@@ -731,6 +755,7 @@ export function PatientRegistrationForm({
               <Field
                 label="Relationship"
                 htmlFor={`additionalEmergencyContacts.${index}.relationship`}
+                error={errors.additionalEmergencyContacts?.[index]?.relationship?.message}
                 className="flex w-full flex-col gap-1 sm:w-44"
               >
                 <Controller
@@ -755,6 +780,7 @@ export function PatientRegistrationForm({
               <Field
                 label="Name"
                 htmlFor={`additionalEmergencyContacts.${index}.name`}
+                error={errors.additionalEmergencyContacts?.[index]?.name?.message}
                 className="flex min-w-[180px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.name`} {...register(`additionalEmergencyContacts.${index}.name` as const)} />
@@ -762,6 +788,7 @@ export function PatientRegistrationForm({
               <Field
                 label="Phone"
                 htmlFor={`additionalEmergencyContacts.${index}.phone`}
+                error={errors.additionalEmergencyContacts?.[index]?.phone?.message}
                 className="flex min-w-[160px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.phone`} {...register(`additionalEmergencyContacts.${index}.phone` as const)} />
@@ -805,7 +832,7 @@ export function PatientRegistrationForm({
           {hasKnownAllergy && (
             <>
             <div className="flex flex-wrap gap-3">
-              <Field label="Type" htmlFor="allergyCategory" className="flex w-full flex-col gap-1 sm:w-40">
+              <Field label="Type" htmlFor="allergyCategory" error={errors.allergyCategory?.message} className="flex w-full flex-col gap-1 sm:w-40">
                 <Controller
                   name="allergyCategory"
                   control={control}
@@ -828,6 +855,7 @@ export function PatientRegistrationForm({
               <Field
                 label="Specify"
                 htmlFor="allergySpecify"
+                error={errors.allergySpecify?.message}
                 className="flex min-w-[200px] flex-1 flex-col gap-1"
               >
                 <Input id="allergySpecify" placeholder="e.g. Penicillin, Peanuts…" {...register('allergySpecify')} />
@@ -835,6 +863,7 @@ export function PatientRegistrationForm({
               <Field
                 label="Severity"
                 htmlFor="allergySeverity"
+                error={errors.allergySeverity?.message}
                 className="flex w-full flex-col gap-1 sm:w-60"
               >
                 <Controller
@@ -866,6 +895,7 @@ export function PatientRegistrationForm({
                 <Field
                   label="Type"
                   htmlFor={`additionalAllergies.${index}.allergyCategory`}
+                  error={errors.additionalAllergies?.[index]?.allergyCategory?.message}
                   className="flex w-full flex-col gap-1 sm:w-40"
                 >
                   <Controller
@@ -890,6 +920,7 @@ export function PatientRegistrationForm({
                 <Field
                   label="Specify"
                   htmlFor={`additionalAllergies.${index}.allergySpecify`}
+                  error={errors.additionalAllergies?.[index]?.allergySpecify?.message}
                   className="flex min-w-[200px] flex-1 flex-col gap-1"
                 >
                   <Input
@@ -901,6 +932,7 @@ export function PatientRegistrationForm({
                 <Field
                   label="Severity"
                   htmlFor={`additionalAllergies.${index}.allergySeverity`}
+                  error={errors.additionalAllergies?.[index]?.allergySeverity?.message}
                   className="flex w-full flex-col gap-1 sm:w-60"
                 >
                   <Controller
@@ -955,6 +987,7 @@ export function PatientRegistrationForm({
             <Field
               label="Source"
               htmlFor="arrivalCategory"
+              error={errors.arrivalSource?.category?.message}
               className="flex w-full flex-col gap-1 sm:w-56"
             >
               <Controller
@@ -978,7 +1011,12 @@ export function PatientRegistrationForm({
             </Field>
 
             {arrivalCategory === 'DoctorReferral' && (
-              <Field label="Department" htmlFor="doctorReferralDepartment" className="flex min-w-[160px] flex-1 flex-col gap-1">
+              <Field
+                label="Department"
+                htmlFor="doctorReferralDepartment"
+                error={errors.arrivalSource?.doctorReferral?.department?.message}
+                className="flex min-w-[160px] flex-1 flex-col gap-1"
+              >
                 <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
               </Field>
             )}
@@ -988,6 +1026,7 @@ export function PatientRegistrationForm({
                 <Field
                   label="Source"
                   htmlFor="patientRelativeSource"
+                  error={errors.arrivalSource?.patientRelativeReferral?.source?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
                 >
                   <Controller
@@ -1013,6 +1052,7 @@ export function PatientRegistrationForm({
                   <Field
                     label="Please specify"
                     htmlFor="patientRelativeDetails"
+                    error={errors.arrivalSource?.patientRelativeReferral?.details?.message}
                     className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
                   >
                     <Input id="patientRelativeDetails" {...register('arrivalSource.patientRelativeReferral.details')} />
@@ -1026,6 +1066,7 @@ export function PatientRegistrationForm({
                 <Field
                   label="Channel"
                   htmlFor="onlineChannel"
+                  error={errors.arrivalSource?.onlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
                 >
                   <Controller
@@ -1051,6 +1092,7 @@ export function PatientRegistrationForm({
                   <Field
                     label="Please specify"
                     htmlFor="onlineDetails"
+                    error={errors.arrivalSource?.onlineAd?.details?.message}
                     className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
                   >
                     <Input id="onlineDetails" {...register('arrivalSource.onlineAd.details')} />
@@ -1064,6 +1106,7 @@ export function PatientRegistrationForm({
                 <Field
                   label="Channel"
                   htmlFor="offlineChannel"
+                  error={errors.arrivalSource?.offlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-56"
                 >
                   <Controller
@@ -1089,6 +1132,7 @@ export function PatientRegistrationForm({
                   <Field
                     label="Please specify"
                     htmlFor="offlineDetails"
+                    error={errors.arrivalSource?.offlineAd?.details?.message}
                     className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
                   >
                     <Input id="offlineDetails" {...register('arrivalSource.offlineAd.details')} />
@@ -1131,7 +1175,12 @@ export function PatientRegistrationForm({
         )}
         <FormSection id="registration-details" title="Registration / Encounter Details">
           <div className="flex flex-wrap gap-3">
-            <Field label="Encounter type" htmlFor="encounterType" className="flex w-full flex-col gap-1 sm:w-56">
+            <Field
+              label="Encounter type"
+              htmlFor="encounterType"
+              error={errors.registration?.encounterType?.message}
+              className="flex w-full flex-col gap-1 sm:w-56"
+            >
               <Controller
                 name="registration.encounterType"
                 control={control}
@@ -1278,7 +1327,12 @@ export function PatientRegistrationForm({
 
           {showReferralColumn && (
             <div className="flex flex-wrap gap-3 rounded-md border border-dashed border-border p-3">
-              <Field label="Referral category" htmlFor="referralCategory" className="flex w-full flex-col gap-1 sm:w-36">
+              <Field
+                label="Referral category"
+                htmlFor="referralCategory"
+                error={errors.registration?.referral?.category?.message}
+                className="flex w-full flex-col gap-1 sm:w-36"
+              >
                 <Controller
                   name="registration.referral.category"
                   control={control}
@@ -1298,12 +1352,18 @@ export function PatientRegistrationForm({
                   )}
                 />
               </Field>
-              <Field label="Details" htmlFor="referralDetails" className="flex min-w-[160px] flex-1 flex-col gap-1 sm:max-w-md">
+              <Field
+                label="Details"
+                htmlFor="referralDetails"
+                error={errors.registration?.referral?.details?.message}
+                className="flex min-w-[160px] flex-1 flex-col gap-1 sm:max-w-md"
+              >
                 <Input id="referralDetails" {...register('registration.referral.details')} />
               </Field>
               <Field
                 label="Contact number"
                 htmlFor="referralContactNumber"
+                error={errors.registration?.referral?.contactNumber?.message}
                 className="flex w-full flex-col gap-1 sm:w-48"
               >
                 <Input id="referralContactNumber" {...register('registration.referral.contactNumber')} />
