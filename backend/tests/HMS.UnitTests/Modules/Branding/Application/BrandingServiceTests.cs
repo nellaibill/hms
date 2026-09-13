@@ -37,8 +37,8 @@ public class BrandingServiceTests
         var storedBytes = await CaptureStoredBytesAsync(originalBytes, originalBytes.Length);
 
         using var stored = Image.Load(storedBytes);
-        stored.Width.Should().BeLessOrEqualTo(512);
-        stored.Height.Should().BeLessOrEqualTo(512);
+        stored.Width.Should().BeLessThanOrEqualTo(512);
+        stored.Height.Should().BeLessThanOrEqualTo(512);
         // Longer edge (width, 1000x800) should land exactly on the cap; aspect ratio preserved.
         stored.Width.Should().Be(512);
         stored.Height.Should().Be(410);
