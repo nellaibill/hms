@@ -1,8 +1,9 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { LoginResponse } from '@hms/shared';
 import { brandingQueryKey } from '../branding/hooks/useBrandingQuery';
-import { authApi, setAuthToken } from '../../services/apiClient';
+import { authApi, setAuthToken, setUnauthorizedHandler } from '../../services/apiClient';
+import { markSessionExpired } from '../../lib/sessionExpiry';
 import type { AuthUser, Role } from './types';
 
 const STORAGE_KEY = 'hms-session';
@@ -95,6 +96,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     void queryClient.invalidateQueries({ queryKey: brandingQueryKey });
   };
+
+  // Lets the shared HttpClient force a logout the moment any request comes back 401 (an
+  // expired or otherwise invalid token) instead of leaving every subsequent request on the
+  // page fail silently. Refs (rather than listing `user`/`logout` as effect deps) avoid
+  // re-registering the handler on every render while still always calling the latest
+  // versions. Guarded on `userRef.current` — GET /branding is deliberately called with no
+  // token at all on the pre-login screen and always 401s there by design (see
+  // useBrandingQuery's own doc comment), which must never be mistaken for a real session
+  // expiring.
+  const userRef = useRef(user);
+  userRef.current = user;
+  const logoutRef = useRef(logout);
+  logoutRef.current = logout;
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (!userRef.current) return;
+      markSessionExpired('hospital');
+      logoutRef.current();
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const hasPermission = (key: string) => user?.permissionKeys.includes(key) ?? false;
   const hasFeature = (key: string) => user?.featureKeys.includes(key) ?? false;

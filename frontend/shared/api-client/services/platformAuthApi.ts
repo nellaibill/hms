@@ -19,15 +19,23 @@ import type { HttpClient } from '../httpClient';
 export class PlatformAuthApi {
   constructor(private readonly client: HttpClient) {}
 
+  // Both login and verifyMfa pass skipUnauthorizedHandling — a 401 from either means "wrong
+  // credentials" or "invalid/expired MFA challenge", not "your existing session expired"
+  // (there is no session yet), so neither should trigger the client's global
+  // logout-and-redirect handling.
   async login(request: PlatformLoginRequest): Promise<PlatformLoginResponse> {
-    const response = await this.client.post<PlatformLoginResponse>(API_ROUTES.platformAuth.login, request);
+    const response = await this.client.post<PlatformLoginResponse>(API_ROUTES.platformAuth.login, request, {
+      skipUnauthorizedHandling: true,
+    });
     return response.data;
   }
 
   /** Second step of a two-step MFA login — exchanges the challenge token `login` returned
    * (when `mfaRequired` is true), plus a current authenticator code, for the real token. */
   async verifyMfa(request: PlatformMfaVerifyRequest): Promise<PlatformLoginResponse> {
-    const response = await this.client.post<PlatformLoginResponse>(API_ROUTES.platformAuth.mfaVerify, request);
+    const response = await this.client.post<PlatformLoginResponse>(API_ROUTES.platformAuth.mfaVerify, request, {
+      skipUnauthorizedHandling: true,
+    });
     return response.data;
   }
 

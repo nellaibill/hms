@@ -10,8 +10,12 @@ export class AuthApi {
   constructor(private readonly client: HttpClient) {}
 
   async login(hospitalCode: string, request: LoginRequest): Promise<LoginResponse> {
+    // skipUnauthorizedHandling — a 401 here means "wrong credentials", not "your existing
+    // session expired" (there is no session yet), so it must not trigger the client's global
+    // logout-and-redirect handling.
     const response = await this.client.post<LoginResponse>(API_ROUTES.auth.login, request, {
       headers: { 'X-Hospital-Code': hospitalCode },
+      skipUnauthorizedHandling: true,
     });
     return response.data;
   }

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
+import { consumeSessionExpiredFlag } from '@/lib/sessionExpiry';
 
 interface LocationState {
   from?: string;
@@ -20,7 +21,12 @@ export default function PlatformLoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // Lazy initializer — reads (and clears) the flag the global 401 handler sets exactly once,
+  // so a forced logout from an expired session shows an explanation here instead of a bare
+  // sign-in form with no context for why the user was suddenly signed out.
+  const [error, setError] = useState<string | null>(() =>
+    consumeSessionExpiredFlag('platform') ? 'Your session has expired. Please sign in again.' : null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Set once the password step passes for an MFA-enabled account — switches the form to

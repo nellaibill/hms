@@ -12,6 +12,11 @@ export interface HttpClientConfig {
   /** Reads the current access token. Not wired to anything yet — Authentication ships later. */
   getAuthToken?: () => string | null | undefined;
   getCorrelationId?: () => string | undefined;
+  /** Called once per 401 response, right before the ApiError is thrown — lets the auth context
+   * that owns this client's token clear an expired/invalid session and redirect to login,
+   * instead of leaving every subsequent request on the page failing silently. Skipped for a
+   * request that opted out via RequestOptions.skipUnauthorizedHandling. */
+  onUnauthorized?: () => void;
 }
 
 export interface RequestOptions {
@@ -22,6 +27,10 @@ export interface RequestOptions {
    * travel outside the JSON body (see HMS.Api.Middleware.TenantResolutionMiddleware's own
    * doc comment for why). */
   headers?: Record<string, string>;
+  /** Skips the client's onUnauthorized callback for this one request — for calls where a 401
+   * is an expected, unauthenticated-by-design outcome (e.g. a login attempt with the wrong
+   * password) rather than a sign that an existing session's token has expired. */
+  skipUnauthorizedHandling?: boolean;
 }
 
 function buildUrl(baseUrl: string, path: string, query?: RequestOptions['query']): string {
@@ -100,6 +109,9 @@ export class HttpClient {
     const payload = await response.json().catch(() => undefined);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.config.onUnauthorized?.();
+      }
       throw new ApiError(response.status, payload as ApiErrorResponse);
     }
 
@@ -136,6 +148,9 @@ export class HttpClient {
     }
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.config.onUnauthorized?.();
+      }
       const payload = await response.json().catch(() => undefined);
       throw new ApiError(response.status, payload as ApiErrorResponse);
     }
@@ -201,6 +216,9 @@ export class HttpClient {
     const payload = await response.json().catch(() => undefined);
 
     if (!response.ok) {
+      if (response.status === 401 && !options?.skipUnauthorizedHandling) {
+        this.config.onUnauthorized?.();
+      }
       throw new ApiError(response.status, payload as ApiErrorResponse);
     }
 
