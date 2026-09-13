@@ -44,7 +44,7 @@
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
 
     <!-- Authentication -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     <!-- RFC 6238 TOTP codes for Platform Admin MFA (HMS.Modules.Platform's TotpService) —
          a well-established, single-purpose library rather than hand-rolling HMAC-based
