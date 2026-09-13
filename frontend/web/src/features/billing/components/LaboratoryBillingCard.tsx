@@ -19,6 +19,13 @@ interface LaboratoryBillingCardProps {
   expanded: boolean;
   onToggle: () => void;
   hasError: boolean;
+  /** The last consultant picked across Radiology/Laboratory/Procedure (see BillingStep's own
+   * comment) — seeds a row's Consultant field the moment it's created, if it doesn't already
+   * have one. */
+  defaultConsultantId?: string;
+  /** Reports a row's consultant the moment it's picked, so BillingStep can remember it for the
+   * next row added in any of these three categories. */
+  onConsultantSelected?: (consultantId: string) => void;
 }
 
 /** `svc:<id>` / `pkg:<id>` — disambiguates a single flat SearchableSelect's value into
@@ -50,7 +57,7 @@ function findPrice(services: BillingServiceOption[], packages: DiagnosticPackage
  * already provides the cross-category summary, and a second table would just duplicate these
  * same rows with its own remove/edit affordances.
  */
-export function LaboratoryBillingCard({ expanded, onToggle, hasError }: LaboratoryBillingCardProps) {
+export function LaboratoryBillingCard({ expanded, onToggle, hasError, defaultConsultantId, onConsultantSelected }: LaboratoryBillingCardProps) {
   const { control } = useFormContext<BillingFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: 'laboratory' });
   const rows = useWatch({ control, name: 'laboratory' });
@@ -117,6 +124,8 @@ export function LaboratoryBillingCard({ expanded, onToggle, hasError }: Laborato
           onRemove={() => remove(index)}
           isLast={index === fields.length - 1}
           isLoadingItems={isLoadingItems}
+          defaultConsultantId={defaultConsultantId}
+          onConsultantSelected={onConsultantSelected}
         />
       ))}
     </CollapsibleCard>
@@ -134,6 +143,8 @@ interface LaboratoryBillingRowProps {
   onRemove: () => void;
   isLast: boolean;
   isLoadingItems: boolean;
+  defaultConsultantId?: string;
+  onConsultantSelected?: (consultantId: string) => void;
 }
 
 function LaboratoryBillingRow({
@@ -147,11 +158,14 @@ function LaboratoryBillingRow({
   onRemove,
   isLast,
   isLoadingItems,
+  defaultConsultantId,
+  onConsultantSelected,
 }: LaboratoryBillingRowProps) {
   const {
     control,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useFormContext<BillingFormValues>();
   const basePath = `laboratory.${index}` as const;
@@ -183,6 +197,16 @@ function LaboratoryBillingRow({
     // `services`/`packages`/`basePath` are stable per row instance — only the selected item should recompute the price.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemType, itemId, services, packages, setValue]);
+
+  useEffect(() => {
+    // Seeds this row's Consultant once, when it's first created — see ServiceBillingCard's
+    // identical effect (Radiology/Procedure) for the full reasoning; Laboratory has its own row
+    // component but shares the same remembered-consultant behavior.
+    if (defaultConsultantId && !getValues(`${basePath}.consultantId`)) {
+      setValue(`${basePath}.consultantId`, defaultConsultantId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const rowErrors = errors.laboratory?.[index];
   const amount = Math.max(quantity * charge - discount, 0);
@@ -258,7 +282,13 @@ function LaboratoryBillingRow({
             name={`${basePath}.consultantId`}
             control={control}
             render={({ field }) => (
-              <Select value={field.value || undefined} onValueChange={field.onChange}>
+              <Select
+                value={field.value || undefined}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  onConsultantSelected?.(value);
+                }}
+              >
                 <SelectTrigger id={`${basePath}-consultant`} aria-label="Consultant">
                   <SelectValue placeholder="Select consultant" />
                 </SelectTrigger>

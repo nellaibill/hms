@@ -222,7 +222,18 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                       name={`payments.${index}.method`}
                       control={control}
                       render={({ field: methodField }) => (
-                        <Select value={methodField.value ?? ''} onValueChange={methodField.onChange}>
+                        <Select
+                          value={methodField.value ?? ''}
+                          onValueChange={(value) => {
+                            methodField.onChange(value);
+                            // Cash never has a reference/transaction number — clear any value
+                            // already typed in before switching, so it can't linger and get
+                            // saved against a cash payment it no longer applies to.
+                            if (value === 'Cash') {
+                              setValue(`payments.${index}.referenceNumber`, '');
+                            }
+                          }}
+                        >
                           <SelectTrigger id={`billing-payment-${index}-mode`}>
                             <SelectValue placeholder="Select payment mode" />
                           </SelectTrigger>
@@ -238,20 +249,22 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                     />
                   </Field>
 
-                  <Field label="Reference / Transaction No. (Optional)" htmlFor={`billing-payment-${index}-reference`} className="flex flex-col gap-1">
-                    <Controller
-                      name={`payments.${index}.referenceNumber`}
-                      control={control}
-                      render={({ field: referenceField }) => (
-                        <Input
-                          id={`billing-payment-${index}-reference`}
-                          placeholder="Enter reference or transaction number"
-                          value={referenceField.value}
-                          onChange={referenceField.onChange}
-                        />
-                      )}
-                    />
-                  </Field>
+                  {values.payments[index]?.method !== 'Cash' && (
+                    <Field label="Reference / Transaction No. (Optional)" htmlFor={`billing-payment-${index}-reference`} className="flex flex-col gap-1">
+                      <Controller
+                        name={`payments.${index}.referenceNumber`}
+                        control={control}
+                        render={({ field: referenceField }) => (
+                          <Input
+                            id={`billing-payment-${index}-reference`}
+                            placeholder="Enter reference or transaction number"
+                            value={referenceField.value}
+                            onChange={referenceField.onChange}
+                          />
+                        )}
+                      />
+                    </Field>
+                  )}
                 </div>
               ))}
 

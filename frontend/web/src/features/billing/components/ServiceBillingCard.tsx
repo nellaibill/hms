@@ -29,6 +29,13 @@ interface ServiceBillingCardProps {
    * "Service", but e.g. Procedure Billing calls it "Procedure Name" since that's what a
    * receptionist is actually picking from that category's catalog. */
   serviceFieldLabel?: string;
+  /** The last consultant picked across Radiology/Laboratory/Procedure (see BillingStep's own
+   * comment) — seeds a row's Consultant field the moment it's created, if it doesn't already
+   * have one. */
+  defaultConsultantId?: string;
+  /** Reports a row's consultant the moment it's picked, so BillingStep can remember it for the
+   * next row added in any of these three categories. */
+  onConsultantSelected?: (consultantId: string) => void;
 }
 
 /**
@@ -50,6 +57,8 @@ export function ServiceBillingCard({
   hasError,
   isLoadingServices = false,
   serviceFieldLabel = 'Service',
+  defaultConsultantId,
+  onConsultantSelected,
 }: ServiceBillingCardProps) {
   const { control } = useFormContext<BillingFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: category });
@@ -91,6 +100,8 @@ export function ServiceBillingCard({
           isLast={index === fields.length - 1}
           isLoadingServices={isLoadingServices}
           serviceFieldLabel={serviceFieldLabel}
+          defaultConsultantId={defaultConsultantId}
+          onConsultantSelected={onConsultantSelected}
         />
       ))}
     </CollapsibleCard>
@@ -107,6 +118,8 @@ interface ServiceBillingRowProps {
   isLast: boolean;
   isLoadingServices: boolean;
   serviceFieldLabel: string;
+  defaultConsultantId?: string;
+  onConsultantSelected?: (consultantId: string) => void;
 }
 
 function ServiceBillingRow({
@@ -119,11 +132,14 @@ function ServiceBillingRow({
   isLast,
   isLoadingServices,
   serviceFieldLabel,
+  defaultConsultantId,
+  onConsultantSelected,
 }: ServiceBillingRowProps) {
   const {
     control,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useFormContext<BillingFormValues>();
   const basePath = `${category}.${index}` as const;
@@ -136,6 +152,19 @@ function ServiceBillingRow({
     // `services`/`basePath` are stable per row instance — only the selected service should recompute the price.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceId, services, setValue]);
+
+  useEffect(() => {
+    // Seeds this row's Consultant once, when it's first created — a brand-new row (the
+    // category's first row, or one just added via "Add another") starts blank, so there's
+    // nothing of the receptionist's own choice to protect yet. Deliberately does not re-run
+    // when defaultConsultantId changes later: once a row has a consultant (typed by hand or
+    // seeded here), a different remembered value picked afterward in another row must never
+    // silently overwrite it.
+    if (defaultConsultantId && !getValues(`${basePath}.consultantId`)) {
+      setValue(`${basePath}.consultantId`, defaultConsultantId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const serviceOptions = services.map((s) => ({ value: s.id, label: `${s.name} — ${formatCurrency(s.price)}`, keywords: s.name }));
   const rowErrors = errors[category]?.[index];
@@ -176,7 +205,13 @@ function ServiceBillingRow({
             name={`${basePath}.consultantId`}
             control={control}
             render={({ field }) => (
-              <Select value={field.value || undefined} onValueChange={field.onChange}>
+              <Select
+                value={field.value || undefined}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  onConsultantSelected?.(value);
+                }}
+              >
                 <SelectTrigger id={`${basePath}-consultant`} aria-label="Consultant">
                   <SelectValue placeholder="Select consultant" />
                 </SelectTrigger>

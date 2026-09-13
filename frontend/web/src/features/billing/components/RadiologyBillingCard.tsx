@@ -7,6 +7,8 @@ interface RadiologyBillingCardProps {
   expanded: boolean;
   onToggle: () => void;
   hasError: boolean;
+  defaultConsultantId?: string;
+  onConsultantSelected?: (consultantId: string) => void;
 }
 
 /** Data source swapped from the old untyped DiagnosticTest master to the new typed
