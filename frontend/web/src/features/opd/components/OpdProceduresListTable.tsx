@@ -1,12 +1,10 @@
 import type { InvoicePaymentStatus } from '@hms/shared';
-import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, PaymentStatusBadge } from '@/features/billing';
-import { consultantsApi, departmentsApi } from '@/services/apiClient';
 import { useOpdProceduresQuery } from '../hooks/useOpdProceduresQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
 
@@ -21,36 +19,22 @@ interface OpdProceduresListTableProps {
 /**
  * OPD Procedures List tab — one row per Procedure invoice line item, across every invoice.
  *
- * ProcedureListItem's serviceId/consultantId/departmentId are free-text display strings on
- * the backend (Procedure billing lines store plain text, not lookup ids — see
- * ProcedureListItem's own doc comment in dtos/billing/invoice.ts), while the shared
- * OpdFilterBar's Department/Consultant selects hand back Guids. To actually filter, this
- * component resolves the selected department/consultant Guid to its display name (reusing
- * the same cached department/consultant list DepartmentSelect/ConsultantSelect already
- * populate, so this adds no extra round-trip) and sends that name string to the query instead
- * of the raw id.
+ * ProcedureListItem's serviceId/consultantId/departmentId are typed as free-text strings on
+ * the backend (matching InvoiceLineItem's own storage), but ServiceBillingCard.tsx's Procedure
+ * Billing form actually populates them from Masters' DiagnosticService/Consultant Guid selects
+ * — so the shared OpdFilterBar's Department/Consultant Guids are exactly what's stored and can
+ * be sent straight through as the query filter; the backend (InvoiceService
+ * .GetProcedureLineItemsAsync) resolves them to display names for the columns below, but
+ * filtering happens against the raw stored ids before that resolution.
  */
 export function OpdProceduresListTable({ filters, page, onPageChange }: OpdProceduresListTableProps) {
-  const { data: departments } = useQuery({
-    queryKey: ['departments', 'select-list'],
-    queryFn: () => departmentsApi.getDepartments({ pageSize: 100, isActive: true }),
-  });
-  const { data: consultants } = useQuery({
-    queryKey: ['consultants', 'select-list', filters.departmentId],
-    queryFn: () => consultantsApi.getConsultants({ pageSize: 100, isActive: true, departmentId: filters.departmentId }),
-    enabled: Boolean(filters.departmentId),
-  });
-
-  const departmentName = departments?.items.find((department) => department.id === filters.departmentId)?.name;
-  const consultantName = consultants?.items.find((consultant) => consultant.id === filters.consultantId)?.name;
-
   const { data, isPending, isError, error } = useOpdProceduresQuery({
     page,
     pageSize: PAGE_SIZE,
     from: toRangeStart(filters.from),
     to: toRangeEnd(filters.to),
-    departmentId: departmentName,
-    consultantId: consultantName,
+    departmentId: filters.departmentId,
+    consultantId: filters.consultantId,
     paymentStatus: filters.status as InvoicePaymentStatus | undefined,
     search: filters.search || undefined,
   });

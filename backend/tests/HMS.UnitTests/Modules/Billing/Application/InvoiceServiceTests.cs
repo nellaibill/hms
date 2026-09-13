@@ -5,6 +5,7 @@ using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Domain;
 using HMS.Modules.Laboratory.Application;
 using HMS.Modules.Laboratory.Contracts;
+using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Kernel;
@@ -22,13 +23,26 @@ public class InvoiceServiceTests
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
     private readonly ILabOrderService _labOrderService = Substitute.For<ILabOrderService>();
+    private readonly IDiagnosticServiceService _diagnosticServiceService = Substitute.For<IDiagnosticServiceService>();
+    private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
+    private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
     private readonly InvoiceService _sut;
     private readonly Guid _patientId = Guid.NewGuid();
 
     public InvoiceServiceTests()
     {
-        _sut = new InvoiceService(_repository, _paymentRepository, _numberGenerator, _patientService, _patientVisitService, _labOrderService, _logger);
+        _sut = new InvoiceService(
+            _repository,
+            _paymentRepository,
+            _numberGenerator,
+            _patientService,
+            _patientVisitService,
+            _labOrderService,
+            _diagnosticServiceService,
+            _consultantService,
+            _departmentService,
+            _logger);
 
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientResponse>.Success(new PatientResponse()));

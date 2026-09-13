@@ -125,21 +125,23 @@ export interface RecentPatientBill {
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.ProcedureListItem — one row of the OPD Procedures
- * List tab. `serviceId`/`consultantId`/`departmentId` are deliberately typed as free-text
- * strings, not Guids/lookup ids — Procedure line items store these as plain display text
- * (unlike Consultation/Laboratory lines), so `serviceId` here is actually the procedure's
- * display NAME, and `consultantId`/`departmentId` are free-text names too. */
+ * List tab. `serviceId`/`consultantId`/`departmentId` are typed as free-text strings (matching
+ * InvoiceLineItem's own storage — not Guids/lookup ids) but hold Masters Guids in practice
+ * (ServiceBillingCard.tsx's Procedure Billing form picks a real DiagnosticService/Consultant),
+ * so the backend (InvoiceService.GetProcedureLineItemsAsync) resolves them to display names
+ * before they reach here — these are always names by the time this DTO is populated, never
+ * raw ids. */
 export interface ProcedureListItem {
   invoiceId: string;
   invoiceLineItemId: string;
   patientId: string;
   patientName: string;
   patientUhid: string;
-  /** The procedure's display name (not a lookup id, despite the backend field name). */
+  /** The procedure's resolved display name. */
   serviceId?: string | null;
-  /** Free-text consultant name (not a Guid). */
+  /** The consultant's resolved display name. */
   consultantId?: string | null;
-  /** Free-text department name (not a Guid). */
+  /** The department's resolved display name, when this procedure had one. */
   departmentId?: string | null;
   createdAt: string;
   paymentStatus: InvoicePaymentStatus;

@@ -4,6 +4,7 @@ using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Domain;
 using HMS.Modules.Laboratory.Application;
 using HMS.Modules.Laboratory.Contracts;
+using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Kernel;
@@ -52,6 +53,9 @@ internal class InvoiceService : IInvoiceService
     private readonly IPatientService _patientService;
     private readonly IPatientVisitService _patientVisitService;
     private readonly ILabOrderService _labOrderService;
+    private readonly IDiagnosticServiceService _diagnosticServiceService;
+    private readonly IConsultantService _consultantService;
+    private readonly IDepartmentService _departmentService;
     private readonly ILogger<InvoiceService> _logger;
 
     public InvoiceService(
@@ -61,6 +65,9 @@ internal class InvoiceService : IInvoiceService
         IPatientService patientService,
         IPatientVisitService patientVisitService,
         ILabOrderService labOrderService,
+        IDiagnosticServiceService diagnosticServiceService,
+        IConsultantService consultantService,
+        IDepartmentService departmentService,
         ILogger<InvoiceService> logger)
     {
         _repository = repository;
@@ -69,6 +76,9 @@ internal class InvoiceService : IInvoiceService
         _patientService = patientService;
         _patientVisitService = patientVisitService;
         _labOrderService = labOrderService;
+        _diagnosticServiceService = diagnosticServiceService;
+        _consultantService = consultantService;
+        _departmentService = departmentService;
         _logger = logger;
     }
 
@@ -400,21 +410,53 @@ internal class InvoiceService : IInvoiceService
     {
         var (rows, totalCount) = await _repository.GetProcedureLineItemsPagedAsync(query, cancellationToken);
 
-        var items = rows.Select(r => new ProcedureListItem
+        // ServiceId/ConsultantId/DepartmentId are typed as free-text on InvoiceLineItem (see
+        // its own doc comment), but ServiceBillingCard.tsx's Procedure Billing form actually
+        // populates them from Masters' DiagnosticService/Consultant Guid selects — so in
+        // practice these values are Guids, not display names, and were showing raw ids on the
+        // Procedures List. Resolve them the same N+1-per-row way OpdQueryService/
+        // AdmissionService already do at this data volume; a value that isn't a parseable Guid
+        // (a genuinely free-text legacy row, if any exist) passes through unchanged.
+        var items = new List<ProcedureListItem>(rows.Count);
+        foreach (var r in rows)
         {
-            InvoiceId = r.InvoiceId,
-            InvoiceLineItemId = r.InvoiceLineItemId,
-            PatientId = r.PatientId,
-            PatientName = r.PatientName,
-            PatientUhid = r.PatientUhid,
-            ServiceId = r.ServiceId,
-            ConsultantId = r.ConsultantId,
-            DepartmentId = r.DepartmentId,
-            CreatedAt = r.CreatedAt,
-            PaymentStatus = r.PaymentStatus,
-            Total = r.Total,
-        }).ToList();
+            items.Add(new ProcedureListItem
+            {
+                InvoiceId = r.InvoiceId,
+                InvoiceLineItemId = r.InvoiceLineItemId,
+                PatientId = r.PatientId,
+                PatientName = r.PatientName,
+                PatientUhid = r.PatientUhid,
+                ServiceId = await ResolveServiceNameAsync(r.ServiceId, cancellationToken),
+                ConsultantId = await ResolveConsultantNameAsync(r.ConsultantId, cancellationToken),
+                DepartmentId = await ResolveDepartmentNameAsync(r.DepartmentId, cancellationToken),
+                CreatedAt = r.CreatedAt,
+                PaymentStatus = r.PaymentStatus,
+                Total = r.Total,
+            });
+        }
 
         return new PagedResult<ProcedureListItem>(items, query.Page, query.PageSize, totalCount);
+    }
+
+    private async Task<string?> ResolveServiceNameAsync(string? serviceId, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(serviceId, out var id)) return serviceId;
+        var service = await _diagnosticServiceService.GetByIdAsync(id, cancellationToken);
+        return service.Value?.Name ?? serviceId;
+    }
+
+    private async Task<string?> ResolveConsultantNameAsync(string? consultantId, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(consultantId, out var id)) return consultantId;
+        var consultant = await _consultantService.GetByIdAsync(id, cancellationToken);
+        return consultant.Value?.Name ?? consultantId;
+    }
+
+    private async Task<string?> ResolveDepartmentNameAsync(string? departmentId, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(departmentId, out var id)) return departmentId;
+        var department = await _departmentService.GetByIdAsync(id, cancellationToken);
+        return department.Value?.Name ?? departmentId;
     }
 }
