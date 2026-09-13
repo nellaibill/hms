@@ -53,7 +53,7 @@ internal class InvoiceService : IInvoiceService
     private readonly IPatientService _patientService;
     private readonly IPatientVisitService _patientVisitService;
     private readonly ILabOrderService _labOrderService;
-    private readonly IDiagnosticServiceService _diagnosticServiceService;
+    private readonly IDiagnosticTestService _diagnosticTestService;
     private readonly IConsultantService _consultantService;
     private readonly IDepartmentService _departmentService;
     private readonly ILogger<InvoiceService> _logger;
@@ -65,7 +65,7 @@ internal class InvoiceService : IInvoiceService
         IPatientService patientService,
         IPatientVisitService patientVisitService,
         ILabOrderService labOrderService,
-        IDiagnosticServiceService diagnosticServiceService,
+        IDiagnosticTestService diagnosticTestService,
         IConsultantService consultantService,
         IDepartmentService departmentService,
         ILogger<InvoiceService> logger)
@@ -76,7 +76,7 @@ internal class InvoiceService : IInvoiceService
         _patientService = patientService;
         _patientVisitService = patientVisitService;
         _labOrderService = labOrderService;
-        _diagnosticServiceService = diagnosticServiceService;
+        _diagnosticTestService = diagnosticTestService;
         _consultantService = consultantService;
         _departmentService = departmentService;
         _logger = logger;
@@ -412,8 +412,10 @@ internal class InvoiceService : IInvoiceService
 
         // ServiceId/ConsultantId/DepartmentId are typed as free-text on InvoiceLineItem (see
         // its own doc comment), but ServiceBillingCard.tsx's Procedure Billing form actually
-        // populates them from Masters' DiagnosticService/Consultant Guid selects — so in
-        // practice these values are Guids, not display names. The ids themselves are returned
+        // populates ServiceId from Masters' DiagnosticTest catalog (useDiagnosticTestServices —
+        // note this is DiagnosticTest, a separate Masters entity from DiagnosticService, which
+        // only Radiology/Laboratory Billing use) and ConsultantId from Masters' Consultant — so
+        // in practice these values are Guids, not display names. The ids themselves are returned
         // unchanged (callers that need the real id — deep-linking, filtering — must still get
         // it); ServiceName/ConsultantName/DepartmentName are resolved alongside them the same
         // N+1-per-row way OpdQueryService/AdmissionService already do at this data volume. A
@@ -447,7 +449,7 @@ internal class InvoiceService : IInvoiceService
     private async Task<string?> ResolveServiceNameAsync(string? serviceId, CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(serviceId, out var id)) return serviceId;
-        var service = await _diagnosticServiceService.GetByIdAsync(id, cancellationToken);
+        var service = await _diagnosticTestService.GetByIdAsync(id, cancellationToken);
         return service.Value?.Name ?? serviceId;
     }
 

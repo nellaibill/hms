@@ -24,7 +24,7 @@ public class InvoiceServiceTests
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
     private readonly ILabOrderService _labOrderService = Substitute.For<ILabOrderService>();
-    private readonly IDiagnosticServiceService _diagnosticServiceService = Substitute.For<IDiagnosticServiceService>();
+    private readonly IDiagnosticTestService _diagnosticTestService = Substitute.For<IDiagnosticTestService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
@@ -40,7 +40,7 @@ public class InvoiceServiceTests
             _patientService,
             _patientVisitService,
             _labOrderService,
-            _diagnosticServiceService,
+            _diagnosticTestService,
             _consultantService,
             _departmentService,
             _logger);
@@ -619,8 +619,8 @@ public class InvoiceServiceTests
         var query = new ProcedureListQuery { Page = 1, PageSize = 20 };
         _repository.GetProcedureLineItemsPagedAsync(query, Arg.Any<CancellationToken>())
             .Returns((new List<ProcedureLineItemRow> { row }, 1));
-        _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
-            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = serviceId, Name = "Wound Dressing" }));
+        _diagnosticTestService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticTestResponse>.Success(new DiagnosticTestResponse { Id = serviceId, Name = "Wound Dressing" }));
         _consultantService.GetByIdAsync(consultantId, Arg.Any<CancellationToken>())
             .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse { Id = consultantId, Name = "Dr. Revathi" }));
         _departmentService.GetByIdAsync(departmentId, Arg.Any<CancellationToken>())
