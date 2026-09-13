@@ -31,7 +31,7 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
 
     <!-- Excel parsing (Patient Import module only) -->
-    <PackageVersion Include="ClosedXML" Version="0.104.2" />
+    <PackageVersion Include="ClosedXML" Version="0.105.1" />
 
     <!-- Image decoding (Branding module only) — confirms an uploaded logo's actual content
          decodes as a real raster image and reads its real pixel dimensions, rather than
