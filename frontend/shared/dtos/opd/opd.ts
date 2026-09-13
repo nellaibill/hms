@@ -16,6 +16,7 @@ export interface OpdPatientListItem {
   patientId: string;
   uhid: string;
   patientName: string;
+  phoneNumber: string;
   age: number;
   gender: Gender;
   appointmentTime: string;

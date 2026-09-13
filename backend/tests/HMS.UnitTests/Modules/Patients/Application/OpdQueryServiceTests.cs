@@ -40,6 +40,7 @@ public class OpdQueryServiceTests
         VisitId,
         PatientId,
         "UHID001",
+        "9876543210",
         "John",
         "Doe",
         new DateOnly(1990, 1, 1),
@@ -64,6 +65,7 @@ public class OpdQueryServiceTests
         item.ConsultationId.Should().Be(ConsultationId);
         item.PatientName.Should().Be("John Doe");
         item.Uhid.Should().Be("UHID001");
+        item.PhoneNumber.Should().Be("9876543210");
         item.DepartmentName.Should().Be("Cardiology");
         item.ConsultantName.Should().Be("Dr. Rao");
         item.Status.Should().Be(OpdConsultationStatus.Waiting);

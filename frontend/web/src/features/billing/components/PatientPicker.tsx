@@ -1,13 +1,11 @@
 import type { Patient } from '@hms/shared';
 import { Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { DistrictName } from '@/components/DistrictName';
-import { StateName } from '@/components/StateName';
+import { ConsultantName } from '@/components/ConsultantName';
+import { DepartmentName } from '@/components/DepartmentName';
 import { PatientListToolbar, emptyPatientSearchFilters, usePatientsQuery, type PatientSearchFilters } from '@/features/patients';
-import { bloodGroupLabel } from '@/features/patients/bloodGroupLabel';
 import { cn } from '@/lib/utils';
 import { Pagination } from './Pagination';
 
@@ -20,10 +18,18 @@ const RECENT_VISITS_PAGE_SIZE = 20;
 const RECENT_VISITS_LIMIT = 100;
 const RECENT_VISITS_MAX_PAGE = RECENT_VISITS_LIMIT / RECENT_VISITS_PAGE_SIZE;
 
+function formatAppointmentTime(iso?: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 /** A real `<table>` (header + aligned columns) rather than a flex row list — the previous
  * flex layout let each field's own content width push everything else out of vertical
- * alignment (a longer name shifted its row's Locality/Select out of line with the row above).
- * Shared by both the "Last 100 visits" default list and the search results below. */
+ * alignment (a longer name shifted its row's UHID/Select out of line with the row above).
+ * Shared by both the "Last 100 visits" default list and the search results below. Department/
+ * Consultant/Appointment Time come from the patient's most recent visit (see
+ * Patient.lastVisit* — populated because both queries below pass includeLastVisit: true), so
+ * reception can tell at a glance which visit they're about to bill without opening it first. */
 function PatientPickerTable({ items, onSelect }: { items: Patient[]; onSelect: (patient: Patient) => void }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
@@ -33,39 +39,32 @@ function PatientPickerTable({ items, onSelect }: { items: Patient[]; onSelect: (
             <tr>
               <th className="px-4 py-2">Patient</th>
               <th className="px-4 py-2">Age / Gender</th>
+              <th className="px-4 py-2">UHID</th>
               <th className="px-4 py-2">Phone</th>
-              <th className="px-4 py-2">Blood Group</th>
-              <th className="px-4 py-2">Locality</th>
+              <th className="px-4 py-2">Consultant</th>
+              <th className="px-4 py-2">Department</th>
+              <th className="px-4 py-2">Appointment Time</th>
               <th className="px-4 py-2 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {items.map((patient, index) => (
               <tr key={patient.id} className={cn('hover:bg-accent/60', index % 2 === 1 && 'bg-muted/40')}>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-foreground">
-                      {patient.title} {patient.firstName} {patient.lastName}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{patient.uhid}</span>
-                  </div>
+                <td className="whitespace-nowrap px-4 py-2.5 font-medium text-foreground">
+                  {patient.title} {patient.firstName} {patient.lastName}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                   {patient.age} Yrs · {patient.gender}
                 </td>
+                <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-muted-foreground">{patient.uhid}</td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{patient.primaryPhone}</td>
-                <td className="px-4 py-2.5">
-                  {patient.bloodGroup === 'Unknown' ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px]">
-                      {bloodGroupLabel(patient.bloodGroup)}
-                    </Badge>
-                  )}
+                <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
+                  {patient.lastVisitConsultantId ? <ConsultantName consultantId={patient.lastVisitConsultantId} /> : '—'}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
-                  <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />, <StateName stateId={patient.address.stateId} />
+                  {patient.lastVisitDepartmentId ? <DepartmentName departmentId={patient.lastVisitDepartmentId} /> : '—'}
                 </td>
+                <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{formatAppointmentTime(patient.lastVisitAppointmentTime)}</td>
                 <td className="px-4 py-2.5 text-right">
                   <Button size="sm" onClick={() => onSelect(patient)}>
                     Select
@@ -115,6 +114,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
       page: resultsPage,
       pageSize: RESULTS_PAGE_SIZE,
       sort: 'lastName',
+      includeLastVisit: true,
       requiresDataVerification: activeFilters?.needsVerification || undefined,
       ...(singleFreeTextValue
         ? { search: singleFreeTextValue.trim() }
@@ -139,7 +139,10 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
     data: recentData,
     isPending: isRecentPending,
     isError: isRecentError,
-  } = usePatientsQuery({ page: recentPage, pageSize: RECENT_VISITS_PAGE_SIZE, sort: '-lastVisitAt' }, { enabled: !hasSearched });
+  } = usePatientsQuery(
+    { page: recentPage, pageSize: RECENT_VISITS_PAGE_SIZE, sort: '-lastVisitAt', includeLastVisit: true },
+    { enabled: !hasSearched },
+  );
   const recentMeta = recentData
     ? {
         ...recentData.meta,

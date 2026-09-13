@@ -43,6 +43,14 @@ public record PatientResponse
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
     public Guid? UpdatedBy { get; init; }
+
+    /// <summary>Department/Consultant/AppointmentTime of this patient's most recent visit —
+    /// only populated when PatientListQuery.IncludeLastVisit was set on the list request that
+    /// produced this response (see PatientService.GetPagedAsync); null otherwise, including on
+    /// every non-list response (GetByIdAsync, create/update, etc).</summary>
+    public Guid? LastVisitDepartmentId { get; init; }
+    public Guid? LastVisitConsultantId { get; init; }
+    public DateTime? LastVisitAppointmentTime { get; init; }
 }
 
 public record AddressResponse

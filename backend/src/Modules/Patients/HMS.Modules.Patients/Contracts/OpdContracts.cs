@@ -15,6 +15,7 @@ public record OpdPatientListItem
     public Guid PatientId { get; init; }
     public string Uhid { get; init; } = string.Empty;
     public string PatientName { get; init; } = string.Empty;
+    public string PhoneNumber { get; init; } = string.Empty;
     public int Age { get; init; }
     public Gender Gender { get; init; }
     public DateTime AppointmentTime { get; init; }

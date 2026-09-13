@@ -191,6 +191,22 @@ internal class PatientService : IPatientService
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
         var mapped = items.Select(p => p.ToResponse(_repository.GetRowVersion(p))).ToList();
 
+        if (query.IncludeLastVisit == true)
+        {
+            var lastVisits = await _repository.GetLastVisitsAsync(items.Select(p => p.Id).ToList(), cancellationToken);
+            mapped = mapped.Select(response =>
+            {
+                if (!lastVisits.TryGetValue(response.Id, out var lastVisit)) return response;
+                var consultation = lastVisit.Consultations.FirstOrDefault();
+                return response with
+                {
+                    LastVisitDepartmentId = consultation?.DepartmentId,
+                    LastVisitConsultantId = consultation?.ConsultantId,
+                    LastVisitAppointmentTime = consultation?.AppointmentTime,
+                };
+            }).ToList();
+        }
+
         return new PagedResult<PatientResponse>(mapped, query.Page, query.PageSize, totalCount);
     }
 

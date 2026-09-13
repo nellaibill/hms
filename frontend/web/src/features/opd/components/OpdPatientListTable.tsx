@@ -16,8 +16,16 @@ const CONSULTABLE_STATUSES: OpdConsultationStatus[] = ['Waiting', 'CheckedIn'];
 
 const PAGE_SIZE = 10;
 
-function formatAppointmentTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+// Includes the date, not just the time — the From/To filter above can span more than one day,
+// so time alone can't tell two rows on different days apart.
+function formatAppointmentDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 function formatHeadingDate(dateIso: string): string {
@@ -53,7 +61,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
 
   function handleConsult(row: OpdPatientListItem) {
     startConsultation.mutate(row.consultationId, {
-      onSuccess: () => navigate(`/patients/${row.patientId}`),
+      onSuccess: () => navigate(`/patients/registration/${row.patientId}`),
     });
   }
 
@@ -99,12 +107,12 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                   <tr>
                     <th className="px-4 py-2.5">#</th>
                     <th className="px-4 py-2.5">Patient Name</th>
-                    <th className="px-4 py-2.5">UHID</th>
                     <th className="px-4 py-2.5">Age/Gender</th>
-                    <th className="px-4 py-2.5">Appointment Time</th>
-                    <th className="px-4 py-2.5">Appointment Type</th>
+                    <th className="px-4 py-2.5">UHID</th>
+                    <th className="px-4 py-2.5">Phone Number</th>
                     <th className="px-4 py-2.5">Consultant</th>
                     <th className="px-4 py-2.5">Department</th>
+                    <th className="px-4 py-2.5">Appointment Date &amp; Time</th>
                     <th className="px-4 py-2.5">Status</th>
                     <th className="px-4 py-2.5">Action</th>
                   </tr>
@@ -114,14 +122,14 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                     <tr key={row.consultationId} className="hover:bg-muted/30">
                       <td className="px-4 py-3 text-muted-foreground">{(page - 1) * PAGE_SIZE + index + 1}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{row.patientName}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.uhid}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">
                         {row.age} Years / {row.gender[0]}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentTime(row.appointmentTime)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.appointmentTypeName ?? '—'}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.uhid}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.phoneNumber}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.consultantName}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <OpdStatusBadge status={row.status} />
                       </td>
@@ -132,7 +140,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                             Consult
                           </Button>
                         ) : (
-                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/patients/${row.patientId}`)}>
+                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/patients/registration/${row.patientId}`)}>
                             <Eye className="h-3.5 w-3.5" />
                             View
                           </Button>
