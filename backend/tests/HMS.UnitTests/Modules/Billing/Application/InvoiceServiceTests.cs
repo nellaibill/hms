@@ -6,6 +6,7 @@ using HMS.Modules.Billing.Domain;
 using HMS.Modules.Laboratory.Application;
 using HMS.Modules.Laboratory.Contracts;
 using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Kernel;
@@ -23,7 +24,7 @@ public class InvoiceServiceTests
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
     private readonly ILabOrderService _labOrderService = Substitute.For<ILabOrderService>();
-    private readonly IDiagnosticServiceService _diagnosticServiceService = Substitute.For<IDiagnosticServiceService>();
+    private readonly IDiagnosticTestService _diagnosticTestService = Substitute.For<IDiagnosticTestService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
@@ -39,7 +40,7 @@ public class InvoiceServiceTests
             _patientService,
             _patientVisitService,
             _labOrderService,
-            _diagnosticServiceService,
+            _diagnosticTestService,
             _consultantService,
             _departmentService,
             _logger);
@@ -584,9 +585,57 @@ public class InvoiceServiceTests
         item.InvoiceLineItemId.Should().Be(lineItemId);
         item.PatientId.Should().Be(patientId);
         item.PatientName.Should().Be("Aravind Nadar");
+        // None of these parse as a Guid — a genuinely free-text legacy row, so the id is
+        // returned unchanged and the resolved name just mirrors it (there's no Masters
+        // record to look up).
+        item.ServiceId.Should().Be("svc-dressing");
+        item.ServiceName.Should().Be("svc-dressing");
         item.ConsultantId.Should().Be("dr-revathi");
+        item.ConsultantName.Should().Be("dr-revathi");
         item.DepartmentId.Should().Be("cardiology");
+        item.DepartmentName.Should().Be("cardiology");
         item.PaymentStatus.Should().Be(PaymentStatus.Paid);
         item.Total.Should().Be(500m);
+    }
+
+    [Fact]
+    public async Task GetProcedureLineItemsAsync_WhenIdsAreGuids_ResolvesNamesWithoutChangingTheIds()
+    {
+        var serviceId = Guid.NewGuid();
+        var consultantId = Guid.NewGuid();
+        var departmentId = Guid.NewGuid();
+        var row = new ProcedureLineItemRow(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            serviceId.ToString(),
+            consultantId.ToString(),
+            departmentId.ToString(),
+            new DateTime(2026, 9, 11, 10, 0, 0, DateTimeKind.Utc),
+            PaymentStatus.Paid,
+            500m);
+        var query = new ProcedureListQuery { Page = 1, PageSize = 20 };
+        _repository.GetProcedureLineItemsPagedAsync(query, Arg.Any<CancellationToken>())
+            .Returns((new List<ProcedureLineItemRow> { row }, 1));
+        _diagnosticTestService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticTestResponse>.Success(new DiagnosticTestResponse { Id = serviceId, Name = "Wound Dressing" }));
+        _consultantService.GetByIdAsync(consultantId, Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse { Id = consultantId, Name = "Dr. Revathi" }));
+        _departmentService.GetByIdAsync(departmentId, Arg.Any<CancellationToken>())
+            .Returns(Result<DepartmentResponse>.Success(new DepartmentResponse { Id = departmentId, Name = "Cardiology" }));
+
+        var result = await _sut.GetProcedureLineItemsAsync(query, CancellationToken.None);
+
+        var item = result.Items.Should().ContainSingle().Subject;
+        // The ids come back exactly as stored — the frontend still needs the real id (e.g. for
+        // filtering) even though it renders the *Name field instead.
+        item.ServiceId.Should().Be(serviceId.ToString());
+        item.ServiceName.Should().Be("Wound Dressing");
+        item.ConsultantId.Should().Be(consultantId.ToString());
+        item.ConsultantName.Should().Be("Dr. Revathi");
+        item.DepartmentId.Should().Be(departmentId.ToString());
+        item.DepartmentName.Should().Be("Cardiology");
     }
 }

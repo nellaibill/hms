@@ -23,9 +23,9 @@ interface OpdProceduresListTableProps {
  * the backend (matching InvoiceLineItem's own storage), but ServiceBillingCard.tsx's Procedure
  * Billing form actually populates them from Masters' DiagnosticService/Consultant Guid selects
  * — so the shared OpdFilterBar's Department/Consultant Guids are exactly what's stored and can
- * be sent straight through as the query filter; the backend (InvoiceService
- * .GetProcedureLineItemsAsync) resolves them to display names for the columns below, but
- * filtering happens against the raw stored ids before that resolution.
+ * be sent straight through as the query filter. The columns below render the resolved
+ * serviceName/consultantName/departmentName instead of the ids themselves — see
+ * ProcedureListItem's own doc comment for why both are returned.
  */
 export function OpdProceduresListTable({ filters, page, onPageChange }: OpdProceduresListTableProps) {
   const { data, isPending, isError, error } = useOpdProceduresQuery({
@@ -86,34 +86,29 @@ export function OpdProceduresListTable({ filters, page, onPageChange }: OpdProce
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {data.items.map((item) => {
-                // serviceId is actually the procedure's display NAME, not a lookup id — see
-                // ProcedureListItem's own doc comment.
-                const procedureName = item.serviceId;
-                return (
-                  <tr key={item.invoiceLineItemId} className="hover:bg-muted/30">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.patientName}</td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{item.patientUhid}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-foreground">{procedureName ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.consultantId ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.departmentId ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
-                      {new Date(item.createdAt).toLocaleString('en-IN')}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <PaymentStatusBadge status={item.paymentStatus} />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{formatCurrency(item.total)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link to={`/finance/accounts/${item.invoiceId}`}>View</Link>
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {data.items.map((item) => (
+                <tr key={item.invoiceLineItemId} className="hover:bg-muted/30">
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.patientName}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{item.patientUhid}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.serviceName ?? '—'}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.consultantName ?? '—'}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.departmentName ?? '—'}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {new Date(item.createdAt).toLocaleString('en-IN')}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <PaymentStatusBadge status={item.paymentStatus} />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{formatCurrency(item.total)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/finance/accounts/${item.invoiceId}`}>View</Link>
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
