@@ -16,8 +16,16 @@ const CONSULTABLE_STATUSES: OpdConsultationStatus[] = ['Waiting', 'CheckedIn'];
 
 const PAGE_SIZE = 10;
 
-function formatAppointmentTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+// Includes the date, not just the time — the From/To filter above can span more than one day,
+// so time alone can't tell two rows on different days apart.
+function formatAppointmentDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 function formatHeadingDate(dateIso: string): string {
@@ -102,7 +110,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                     <th className="px-4 py-2.5">UHID</th>
                     <th className="px-4 py-2.5">Phone Number</th>
                     <th className="px-4 py-2.5">Age/Gender</th>
-                    <th className="px-4 py-2.5">Appointment Time</th>
+                    <th className="px-4 py-2.5">Appointment Date &amp; Time</th>
                     <th className="px-4 py-2.5">Consultant</th>
                     <th className="px-4 py-2.5">Department</th>
                     <th className="px-4 py-2.5">Status</th>
@@ -119,7 +127,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">
                         {row.age} Years / {row.gender[0]}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentTime(row.appointmentTime)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.consultantName}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
                       <td className="whitespace-nowrap px-4 py-3">
