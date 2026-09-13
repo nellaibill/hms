@@ -1,13 +1,11 @@
 import type { Patient } from '@hms/shared';
 import { Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
 import { PatientListToolbar, emptyPatientSearchFilters, usePatientsQuery, type PatientSearchFilters } from '@/features/patients';
-import { bloodGroupLabel } from '@/features/patients/bloodGroupLabel';
 import { cn } from '@/lib/utils';
 import { Pagination } from './Pagination';
 
@@ -40,12 +38,11 @@ function PatientPickerTable({ items, onSelect }: { items: Patient[]; onSelect: (
           <thead className="bg-muted/60 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-2">Patient</th>
-              <th className="px-4 py-2">UHID</th>
               <th className="px-4 py-2">Age / Gender</th>
+              <th className="px-4 py-2">UHID</th>
               <th className="px-4 py-2">Phone</th>
-              <th className="px-4 py-2">Blood Group</th>
-              <th className="px-4 py-2">Department</th>
               <th className="px-4 py-2">Consultant</th>
+              <th className="px-4 py-2">Department</th>
               <th className="px-4 py-2">Appointment Time</th>
               <th className="px-4 py-2 text-right">Action</th>
             </tr>
@@ -56,25 +53,16 @@ function PatientPickerTable({ items, onSelect }: { items: Patient[]; onSelect: (
                 <td className="whitespace-nowrap px-4 py-2.5 font-medium text-foreground">
                   {patient.title} {patient.firstName} {patient.lastName}
                 </td>
-                <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-muted-foreground">{patient.uhid}</td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                   {patient.age} Yrs · {patient.gender}
                 </td>
+                <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-muted-foreground">{patient.uhid}</td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{patient.primaryPhone}</td>
-                <td className="px-4 py-2.5">
-                  {patient.bloodGroup === 'Unknown' ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px]">
-                      {bloodGroupLabel(patient.bloodGroup)}
-                    </Badge>
-                  )}
+                <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
+                  {patient.lastVisitConsultantId ? <ConsultantName consultantId={patient.lastVisitConsultantId} /> : '—'}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                   {patient.lastVisitDepartmentId ? <DepartmentName departmentId={patient.lastVisitDepartmentId} /> : '—'}
-                </td>
-                <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
-                  {patient.lastVisitConsultantId ? <ConsultantName consultantId={patient.lastVisitConsultantId} /> : '—'}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{formatAppointmentTime(patient.lastVisitAppointmentTime)}</td>
                 <td className="px-4 py-2.5 text-right">

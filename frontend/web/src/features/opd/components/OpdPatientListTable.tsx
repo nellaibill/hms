@@ -107,12 +107,12 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                   <tr>
                     <th className="px-4 py-2.5">#</th>
                     <th className="px-4 py-2.5">Patient Name</th>
+                    <th className="px-4 py-2.5">Age/Gender</th>
                     <th className="px-4 py-2.5">UHID</th>
                     <th className="px-4 py-2.5">Phone Number</th>
-                    <th className="px-4 py-2.5">Age/Gender</th>
-                    <th className="px-4 py-2.5">Appointment Date &amp; Time</th>
                     <th className="px-4 py-2.5">Consultant</th>
                     <th className="px-4 py-2.5">Department</th>
+                    <th className="px-4 py-2.5">Appointment Date &amp; Time</th>
                     <th className="px-4 py-2.5">Status</th>
                     <th className="px-4 py-2.5">Action</th>
                   </tr>
@@ -122,14 +122,14 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                     <tr key={row.consultationId} className="hover:bg-muted/30">
                       <td className="px-4 py-3 text-muted-foreground">{(page - 1) * PAGE_SIZE + index + 1}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{row.patientName}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.uhid}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.phoneNumber}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">
                         {row.age} Years / {row.gender[0]}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.uhid}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.phoneNumber}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.consultantName}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <OpdStatusBadge status={row.status} />
                       </td>
