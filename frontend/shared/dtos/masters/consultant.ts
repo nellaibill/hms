@@ -53,4 +53,5 @@ export interface ConsultantListQuery {
   search?: string;
   isActive?: boolean;
   departmentId?: string;
+  consultantType?: ConsultantType;
 }

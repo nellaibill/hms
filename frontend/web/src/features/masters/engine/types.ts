@@ -134,6 +134,22 @@ export interface MasterEntityConfig {
   /** Opt-in sectioned-card layout (see MasterFieldGroup) — omit to keep the default single
    * flat-card layout every other Masters entity already uses. */
   fieldGroups?: MasterFieldGroup[];
+  /**
+   * Field keys (from `fields`) to render as extra filter dropdowns on the list page's toolbar,
+   * in addition to the always-present Search/Status filters — omit to keep the default toolbar
+   * every other Masters entity already uses. Each key's own field type decides how its
+   * dropdown is populated: 'reference' fetches that entity's records (like a form field does),
+   * 'select'/'radio-card' uses the field's own `options`. The resulting value is sent to the
+   * backend under that same field key (see MastersApi.list's generic `filters` passthrough) —
+   * the real per-entity endpoint must already support filtering on it (e.g.
+   * ConsultantListQuery.DepartmentId/ConsultantType).
+   */
+  listFilters?: string[];
+  /** Extra line rendered under the primary name/link in the list table's first column (e.g.
+   * a consultant's availability) — omit for the default single-line name cell every other
+   * Masters entity already uses. Return undefined/null to render nothing for a given record
+   * (e.g. no availability set yet), rather than a placeholder dash. */
+  getRowSubtitle?: (record: MasterRecord) => ReactNode;
 }
 
 export interface MasterExtraColumn {
@@ -157,6 +173,8 @@ export interface MasterListQuery {
   sort?: string;
   search?: string;
   isActive?: boolean;
+  /** Values for MasterEntityConfig.listFilters, keyed by field key. */
+  filters?: Record<string, string | undefined>;
 }
 
 export interface PaginationMeta {

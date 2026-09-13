@@ -1,28 +1,9 @@
-import type { OpdConsultationSummaryItem } from '@hms/shared';
 import { Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatConsultantAvailability } from '@/features/masters';
 import { useOpdConsultationSummaryQuery } from '../hooks/useOpdConsultationSummaryQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
-
-function formatTime(time?: string | null): string | undefined {
-  if (!time) return undefined;
-  // time is "HH:mm:ss" (TimeOnly's JSON shape) — anchor it to an arbitrary date just to reuse
-  // the locale time formatter, matching OpdPatientListTable's formatAppointmentTime approach.
-  return new Date(`1970-01-01T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-}
-
-/** "Mon, Wed, Fri · 4:00 PM – 6:00 PM" — blank until the consultant's Masters record has this
- * set (see Consultant Type/Availability on the Masters > Consultant form). `availableDays`
- * defensively defaults to [] — an API server still running a pre-upgrade build (or a consultant
- * predating this field) can omit it entirely rather than sending an empty array. */
-function formatAvailability(row: OpdConsultationSummaryItem): string {
-  const days = (row.availableDays ?? []).map((day) => day.slice(0, 3)).join(', ');
-  const start = formatTime(row.visitStartTime);
-  const end = formatTime(row.visitEndTime);
-  const timeRange = start && end ? `${start} – ${end}` : undefined;
-  return [days, timeRange].filter(Boolean).join(' · ') || '—';
-}
 
 interface OpdConsultationListTableProps {
   filters: OpdFilterValues;
@@ -91,7 +72,13 @@ export function OpdConsultationListTable({ filters, onViewPatients }: OpdConsult
               <tr key={row.consultantId} className="hover:bg-muted/30">
                 <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{row.consultantName}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAvailability(row)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                  {formatConsultantAvailability({
+                    availableDays: row.availableDays ?? [],
+                    visitStartTime: row.visitStartTime,
+                    visitEndTime: row.visitEndTime,
+                  }) ?? '—'}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.totalPatients}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.waiting}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.inConsultation}</td>

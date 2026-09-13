@@ -12,6 +12,7 @@ export default function MasterListPage() {
 
   const [search, setSearch] = useState('');
   const [isActive, setIsActive] = useState<boolean | undefined>(undefined);
+  const [filters, setFilters] = useState<Record<string, string | undefined>>({});
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState(config?.nameField ?? config?.codeField ?? 'updatedAt');
 
@@ -23,6 +24,7 @@ export default function MasterListPage() {
     sort,
     search: debouncedSearch || undefined,
     isActive,
+    filters,
   });
 
   if (!config) {
@@ -45,6 +47,11 @@ export default function MasterListPage() {
 
   function handleIsActiveChange(value: boolean | undefined) {
     setIsActive(value);
+    setPage(1);
+  }
+
+  function handleFilterChange(key: string, value: string | undefined) {
+    setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1);
   }
 
@@ -73,6 +80,9 @@ export default function MasterListPage() {
           onSearchChange={handleSearchChange}
           isActive={isActive}
           onIsActiveChange={handleIsActiveChange}
+          config={config}
+          filters={filters}
+          onFilterChange={handleFilterChange}
         />
 
         {isPending && (

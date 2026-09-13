@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { MasterEntityConfig } from '../engine/types';
+import { MasterListFilterControl } from './MasterListFilterControl';
 
 interface MasterListToolbarProps {
   entityKey: string;
@@ -11,9 +13,24 @@ interface MasterListToolbarProps {
   onSearchChange: (value: string) => void;
   isActive: boolean | undefined;
   onIsActiveChange: (value: boolean | undefined) => void;
+  /** Renders one MasterListFilterControl per MasterEntityConfig.listFilters key — omitted
+   * entirely (no props needed) for every entity that doesn't declare any. */
+  config?: MasterEntityConfig;
+  filters?: Record<string, string | undefined>;
+  onFilterChange?: (key: string, value: string | undefined) => void;
 }
 
-export function MasterListToolbar({ entityKey, entityLabel, search, onSearchChange, isActive, onIsActiveChange }: MasterListToolbarProps) {
+export function MasterListToolbar({
+  entityKey,
+  entityLabel,
+  search,
+  onSearchChange,
+  isActive,
+  onIsActiveChange,
+  config,
+  filters,
+  onFilterChange,
+}: MasterListToolbarProps) {
   const statusValue = isActive === undefined ? 'all' : isActive ? 'active' : 'inactive';
 
   return (
@@ -43,6 +60,19 @@ export function MasterListToolbar({ entityKey, entityLabel, search, onSearchChan
           <SelectItem value="inactive">Inactive only</SelectItem>
         </SelectContent>
       </Select>
+
+      {config?.listFilters?.map((key) => {
+        const field = config.fields.find((f) => f.key === key);
+        if (!field) return null;
+        return (
+          <MasterListFilterControl
+            key={key}
+            field={field}
+            value={filters?.[key]}
+            onChange={(value) => onFilterChange?.(key, value)}
+          />
+        );
+      })}
 
       <Button asChild className="ml-auto gap-1.5">
         <Link to={`/admin/masters/${entityKey}/new`}>
