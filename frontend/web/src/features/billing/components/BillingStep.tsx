@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { isConsultationEntryActive } from '../billingActivity';
 import { billingFormSchema, defaultBillingFormValues, type BillingFormValues } from '../billingValidation';
 import type { BillingType } from '../types';
 import { BillingSummaryCard } from './BillingSummaryCard';
@@ -76,14 +77,18 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
     formState: { errors, isDirty },
   } = methods;
 
-  const [expanded, setExpanded] = useState<Record<BillingType, boolean>>({
-    Consultation: false,
+  // Consultation starts expanded when its rows were prefilled from the patient's visit (see
+  // InvoiceCreatePage's billingDefaultValues) — reception should see those already-registered
+  // charges right away rather than having to click to reveal them. The other categories are
+  // never prefilled on this page, so they stay collapsed until opened.
+  const [expanded, setExpanded] = useState<Record<BillingType, boolean>>(() => ({
+    Consultation: (defaultValues?.consultation ?? []).some(isConsultationEntryActive),
     Radiology: false,
     Laboratory: false,
     Procedure: false,
     Injection: false,
     File: false,
-  });
+  }));
   const [attempted, setAttempted] = useState<ReadonlySet<BillingType>>(new Set());
 
   useImperativeHandle(
