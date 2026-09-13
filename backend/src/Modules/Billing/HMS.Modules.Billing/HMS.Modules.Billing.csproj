@@ -31,6 +31,9 @@
          persisted (ILabOrderService.CreateFromInvoiceAsync) — see InvoiceService.CreateAsync's
          own comment on why this can never fail Reception's billing/payment flow. -->
     <ProjectReference Include="..\..\Laboratory\HMS.Modules.Laboratory\HMS.Modules.Laboratory.csproj" />
+    <!-- Resolves Service/Consultant/Department display names for the Procedures List — see
+         InvoiceService.GetProcedureLineItemsAsync's own comment. -->
+    <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
   </ItemGroup>
 
 </Project>
