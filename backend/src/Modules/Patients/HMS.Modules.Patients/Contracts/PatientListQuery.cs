@@ -39,4 +39,11 @@ public class PatientListQuery : PagedRequest
     /// department — Department lives on PatientVisitConsultation, not Patient itself, so this
     /// is an EXISTS filter, not a direct column match.</summary>
     public Guid? DepartmentId { get; set; }
+
+    /// <summary>When true, GetPagedAsync additionally resolves each patient's most recent visit
+    /// (Department/Consultant/AppointmentTime) onto the response — see PatientResponse's
+    /// LastVisit* fields. Opt-in (defaults false/unset) so the plain Patients List/Enquiry pages
+    /// don't pay for a lookup they don't use; set by OPD Billing's "pick a patient" screen,
+    /// which shows this alongside each row.</summary>
+    public bool? IncludeLastVisit { get; set; }
 }

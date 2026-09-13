@@ -67,6 +67,7 @@ export class PatientsApi {
         registeredToday: query.registeredToday,
         from: query.from,
         to: query.to,
+        includeLastVisit: query.includeLastVisit,
       },
     });
     return {

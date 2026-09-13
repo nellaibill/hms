@@ -88,6 +88,13 @@ export interface Patient {
    * no dedicated Staff module yet, so this is a bare Identity user id, same as StaffName's own
    * existing use). Null/undefined for a patient that's never been edited since creation. */
   updatedBy?: string | null;
+
+  /** Department/Consultant/AppointmentTime of this patient's most recent visit — only present
+   * when PatientListQuery.includeLastVisit was set on the list request this came from; see
+   * OPD Billing's PatientPicker for the one consumer of this today. */
+  lastVisitDepartmentId?: string | null;
+  lastVisitConsultantId?: string | null;
+  lastVisitAppointmentTime?: string | null;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.CreatePatientRequest. */
@@ -180,6 +187,9 @@ export interface PatientListQuery {
   bloodGroup?: BloodGroup;
   /** Narrows to patients with at least one visit in this department. */
   departmentId?: string;
+  /** When true, resolves each patient's most recent visit onto the response — see
+   * Patient.lastVisitDepartmentId/lastVisitConsultantId/lastVisitAppointmentTime. */
+  includeLastVisit?: boolean;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.PatientReportRowResponse. */

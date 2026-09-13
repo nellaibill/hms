@@ -53,7 +53,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
 
   function handleConsult(row: OpdPatientListItem) {
     startConsultation.mutate(row.consultationId, {
-      onSuccess: () => navigate(`/patients/${row.patientId}`),
+      onSuccess: () => navigate(`/patients/registration/${row.patientId}`),
     });
   }
 
@@ -100,9 +100,9 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                     <th className="px-4 py-2.5">#</th>
                     <th className="px-4 py-2.5">Patient Name</th>
                     <th className="px-4 py-2.5">UHID</th>
+                    <th className="px-4 py-2.5">Phone Number</th>
                     <th className="px-4 py-2.5">Age/Gender</th>
                     <th className="px-4 py-2.5">Appointment Time</th>
-                    <th className="px-4 py-2.5">Appointment Type</th>
                     <th className="px-4 py-2.5">Consultant</th>
                     <th className="px-4 py-2.5">Department</th>
                     <th className="px-4 py-2.5">Status</th>
@@ -115,11 +115,11 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                       <td className="px-4 py-3 text-muted-foreground">{(page - 1) * PAGE_SIZE + index + 1}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{row.patientName}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.uhid}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.phoneNumber}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">
                         {row.age} Years / {row.gender[0]}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentTime(row.appointmentTime)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.appointmentTypeName ?? '—'}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.consultantName}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
                       <td className="whitespace-nowrap px-4 py-3">
@@ -132,7 +132,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                             Consult
                           </Button>
                         ) : (
-                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/patients/${row.patientId}`)}>
+                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/patients/registration/${row.patientId}`)}>
                             <Eye className="h-3.5 w-3.5" />
                             View
                           </Button>

@@ -15,6 +15,7 @@ internal sealed record OpdPatientListRow(
     Guid VisitId,
     Guid PatientId,
     string Uhid,
+    string PrimaryPhone,
     string FirstName,
     string LastName,
     DateOnly DateOfBirth,
