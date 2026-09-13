@@ -289,7 +289,7 @@ export function PatientEditForm({
         <TabErrorSummary messages={tabMessages('patient-info')} />
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
-            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
+            <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -315,6 +315,7 @@ export function PatientEditForm({
             <Field
               label="First name"
               htmlFor="firstName"
+              error={errors.firstName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="firstName" {...register('firstName')} />
@@ -322,18 +323,19 @@ export function PatientEditForm({
             <Field
               label="Last name"
               htmlFor="lastName"
+              error={errors.lastName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="lastName" {...register('lastName')} />
             </Field>
-            <Field label="Date of birth" htmlFor="dateOfBirth" className="flex w-full flex-col gap-1 sm:w-48">
+            <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message} className="flex w-full flex-col gap-1 sm:w-48">
               <Input id="dateOfBirth" type="date" {...dateOfBirthInputBounds()} {...register('dateOfBirth')} />
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Field label="Gender" htmlFor="gender" className="flex w-full flex-col gap-1 sm:w-36">
+            <Field label="Gender" htmlFor="gender" error={errors.gender?.message} className="flex w-full flex-col gap-1 sm:w-36">
               <Controller
                 name="gender"
                 control={control}
@@ -356,6 +358,7 @@ export function PatientEditForm({
             <Field
               label="Blood group"
               htmlFor="bloodGroup"
+              error={errors.bloodGroup?.message}
               className="flex w-full flex-col gap-1 sm:w-32"
             >
               <Controller
@@ -377,7 +380,7 @@ export function PatientEditForm({
                 )}
               />
             </Field>
-            <Field label="Marital status" htmlFor="maritalStatus" className="flex w-full flex-col gap-1 sm:w-40">
+            <Field label="Marital status" htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
               <Controller
                 name="maritalStatus"
                 control={control}
@@ -408,19 +411,30 @@ export function PatientEditForm({
             <Field
               label="Address line 1 (door no. & building name)"
               htmlFor="addressLine1"
+              error={errors.addressLine1?.message}
               className="flex min-w-[260px] flex-1 flex-col gap-1"
             >
               <Input id="addressLine1" {...register('addressLine1')} />
             </Field>
-            <Field label="Address line 2 (street)" htmlFor="addressLine2" className="flex min-w-[220px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 2 (street)"
+              htmlFor="addressLine2"
+              error={errors.addressLine2?.message}
+              className="flex min-w-[220px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine2" {...register('addressLine2')} />
             </Field>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Field label="Address line 3 (city)" htmlFor="addressLine3" className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field
+              label="Address line 3 (city)"
+              htmlFor="addressLine3"
+              error={errors.addressLine3?.message}
+              className="flex min-w-[160px] flex-1 flex-col gap-1"
+            >
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-            <Field label="State" htmlFor="state" className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Controller
                 name="state"
                 control={control}
@@ -432,6 +446,7 @@ export function PatientEditForm({
             <Field
               label="District"
               htmlFor="district"
+              error={errors.district?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Controller
@@ -440,7 +455,7 @@ export function PatientEditForm({
                 render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateId={state} />}
               />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" className="flex w-full flex-col gap-1 sm:w-32">
+            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
@@ -451,6 +466,7 @@ export function PatientEditForm({
             <Field
               label="Primary phone"
               htmlFor="primaryPhoneNumber"
+              error={errors.primaryPhone?.number?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="primaryPhoneNumber" {...register('primaryPhone.number')} />
@@ -458,11 +474,12 @@ export function PatientEditForm({
             <Field
               label="Secondary phone (optional)"
               htmlFor="secondaryPhone"
+              error={errors.secondaryPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="secondaryPhone" {...register('secondaryPhone')} />
             </Field>
-            <Field label="Email" htmlFor="email" className="flex min-w-[180px] flex-1 flex-col gap-1">
+            <Field label="Email" htmlFor="email" error={errors.email?.message} className="flex min-w-[180px] flex-1 flex-col gap-1">
               <Input id="email" type="email" {...register('email')} />
             </Field>
             <Field label="Profession" htmlFor="profession" className="flex min-w-[160px] flex-1 flex-col gap-1">
@@ -473,7 +490,12 @@ export function PatientEditForm({
 
         <FormSection id="emergency-contact" title="Emergency Contact">
           <div className="flex flex-wrap gap-3">
-            <Field label="Relationship" htmlFor="emergencyContactRelationship" className="flex w-full flex-col gap-1 sm:w-44">
+            <Field
+              label="Relationship"
+              htmlFor="emergencyContactRelationship"
+              error={errors.emergencyContactRelationship?.message}
+              className="flex w-full flex-col gap-1 sm:w-44"
+            >
               <Controller
                 name="emergencyContactRelationship"
                 control={control}
@@ -496,6 +518,7 @@ export function PatientEditForm({
             <Field
               label="Name"
               htmlFor="emergencyContactName"
+              error={errors.emergencyContactName?.message}
               className="flex min-w-[180px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
@@ -503,6 +526,7 @@ export function PatientEditForm({
             <Field
               label="Phone"
               htmlFor="emergencyContactPhone"
+              error={errors.emergencyContactPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
             >
               <Input id="emergencyContactPhone" {...register('emergencyContactPhone')} />
@@ -514,6 +538,7 @@ export function PatientEditForm({
               <Field
                 label="Relationship"
                 htmlFor={`additionalEmergencyContacts.${index}.relationship`}
+                error={errors.additionalEmergencyContacts?.[index]?.relationship?.message}
                 className="flex w-full flex-col gap-1 sm:w-44"
               >
                 <Controller
@@ -538,6 +563,7 @@ export function PatientEditForm({
               <Field
                 label="Name"
                 htmlFor={`additionalEmergencyContacts.${index}.name`}
+                error={errors.additionalEmergencyContacts?.[index]?.name?.message}
                 className="flex min-w-[180px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.name`} {...register(`additionalEmergencyContacts.${index}.name` as const)} />
@@ -545,6 +571,7 @@ export function PatientEditForm({
               <Field
                 label="Phone"
                 htmlFor={`additionalEmergencyContacts.${index}.phone`}
+                error={errors.additionalEmergencyContacts?.[index]?.phone?.message}
                 className="flex min-w-[160px] flex-1 flex-col gap-1"
               >
                 <Input id={`additionalEmergencyContacts.${index}.phone`} {...register(`additionalEmergencyContacts.${index}.phone` as const)} />
@@ -684,7 +711,12 @@ export function PatientEditForm({
 
         <FormSection id="mode-of-arrival" title="Mode of Arrival" description="How the patient found or was referred to the hospital.">
           <div className="flex flex-wrap gap-3">
-            <Field label="Source" htmlFor="arrivalCategory" className="flex w-full flex-col gap-1 sm:w-56">
+            <Field
+              label="Source"
+              htmlFor="arrivalCategory"
+              error={errors.arrivalSource?.category?.message}
+              className="flex w-full flex-col gap-1 sm:w-56"
+            >
               <Controller
                 name="arrivalSource.category"
                 control={control}
@@ -706,14 +738,24 @@ export function PatientEditForm({
             </Field>
 
             {arrivalCategory === 'DoctorReferral' && (
-              <Field label="Department" htmlFor="doctorReferralDepartment" className="flex min-w-[160px] flex-1 flex-col gap-1">
+              <Field
+                label="Department"
+                htmlFor="doctorReferralDepartment"
+                error={errors.arrivalSource?.doctorReferral?.department?.message}
+                className="flex min-w-[160px] flex-1 flex-col gap-1"
+              >
                 <Input id="doctorReferralDepartment" {...register('arrivalSource.doctorReferral.department')} />
               </Field>
             )}
 
             {arrivalCategory === 'PatientOrRelativeReferral' && (
               <>
-                <Field label="Source" htmlFor="patientRelativeSource" className="flex w-full flex-col gap-1 sm:w-48">
+                <Field
+                  label="Source"
+                  htmlFor="patientRelativeSource"
+                  error={errors.arrivalSource?.patientRelativeReferral?.source?.message}
+                  className="flex w-full flex-col gap-1 sm:w-48"
+                >
                   <Controller
                     name="arrivalSource.patientRelativeReferral.source"
                     control={control}
@@ -734,7 +776,12 @@ export function PatientEditForm({
                   />
                 </Field>
                 {patientRelativeSource === 'Other' && (
-                  <Field label="Please specify" htmlFor="patientRelativeDetails" className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md">
+                  <Field
+                    label="Please specify"
+                    htmlFor="patientRelativeDetails"
+                    error={errors.arrivalSource?.patientRelativeReferral?.details?.message}
+                    className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
+                  >
                     <Input id="patientRelativeDetails" {...register('arrivalSource.patientRelativeReferral.details')} />
                   </Field>
                 )}
@@ -743,7 +790,12 @@ export function PatientEditForm({
 
             {arrivalCategory === 'OnlineAdvertisement' && (
               <>
-                <Field label="Channel" htmlFor="onlineChannel" className="flex w-full flex-col gap-1 sm:w-48">
+                <Field
+                  label="Channel"
+                  htmlFor="onlineChannel"
+                  error={errors.arrivalSource?.onlineAd?.channel?.message}
+                  className="flex w-full flex-col gap-1 sm:w-48"
+                >
                   <Controller
                     name="arrivalSource.onlineAd.channel"
                     control={control}
@@ -764,7 +816,12 @@ export function PatientEditForm({
                   />
                 </Field>
                 {onlineChannel === 'Other' && (
-                  <Field label="Please specify" htmlFor="onlineDetails" className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md">
+                  <Field
+                    label="Please specify"
+                    htmlFor="onlineDetails"
+                    error={errors.arrivalSource?.onlineAd?.details?.message}
+                    className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
+                  >
                     <Input id="onlineDetails" {...register('arrivalSource.onlineAd.details')} />
                   </Field>
                 )}
@@ -773,7 +830,12 @@ export function PatientEditForm({
 
             {arrivalCategory === 'OfflineAdvertisement' && (
               <>
-                <Field label="Channel" htmlFor="offlineChannel" className="flex w-full flex-col gap-1 sm:w-56">
+                <Field
+                  label="Channel"
+                  htmlFor="offlineChannel"
+                  error={errors.arrivalSource?.offlineAd?.channel?.message}
+                  className="flex w-full flex-col gap-1 sm:w-56"
+                >
                   <Controller
                     name="arrivalSource.offlineAd.channel"
                     control={control}
@@ -794,7 +856,12 @@ export function PatientEditForm({
                   />
                 </Field>
                 {offlineChannel === 'Other' && (
-                  <Field label="Please specify" htmlFor="offlineDetails" className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md">
+                  <Field
+                    label="Please specify"
+                    htmlFor="offlineDetails"
+                    error={errors.arrivalSource?.offlineAd?.details?.message}
+                    className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-md"
+                  >
                     <Input id="offlineDetails" {...register('arrivalSource.offlineAd.details')} />
                   </Field>
                 )}
@@ -803,9 +870,9 @@ export function PatientEditForm({
           </div>
         </FormSection>
 
-        <FormSection id="id-proof" title="ID Proof">
+        <FormSection id="document-upload" title="Document Upload" description="Upload or replace the patient's photo and ID proof.">
           <div className="flex flex-wrap gap-3">
-            <Field label="ID proof type" htmlFor="idProofType" className="flex w-full flex-col gap-1 sm:w-48">
+            <Field label="ID proof type" htmlFor="idProofType" error={errors.idProofType?.message} className="flex w-full flex-col gap-1 sm:w-48">
               <Controller
                 name="idProofType"
                 control={control}
@@ -825,13 +892,15 @@ export function PatientEditForm({
                 )}
               />
             </Field>
-            <Field label={`${idProofType} number`} htmlFor="idProofNumber" className="flex min-w-[200px] flex-1 flex-col gap-1">
+            <Field
+              label={`${idProofType} number`}
+              htmlFor="idProofNumber"
+              error={errors.idProofNumber?.message}
+              className="flex min-w-[200px] flex-1 flex-col gap-1"
+            >
               <Input id="idProofNumber" {...register('idProofNumber')} />
             </Field>
           </div>
-        </FormSection>
-
-        <FormSection id="document-upload" title="Document Upload" description="Upload or replace the patient's photo and ID proof.">
           <PatientDocumentUpload patientId={patientId} bare />
         </FormSection>
         </TabsContent>
