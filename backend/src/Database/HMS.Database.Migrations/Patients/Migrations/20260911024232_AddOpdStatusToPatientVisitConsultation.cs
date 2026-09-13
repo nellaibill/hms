@@ -51,7 +51,7 @@ namespace HMS.Database.Migrations.Patients.Migrations
                 UPDATE patients.patient_visit_consultations c
                 SET appointment_time = v.created_at
                 FROM patients.patient_visits v
-                WHERE c.visit_id = v.id
+                WHERE c.visit_id = v.visit_id
                   AND c.appointment_time < '1900-01-01'::timestamptz;
 
                 UPDATE patients.patient_visit_consultations
