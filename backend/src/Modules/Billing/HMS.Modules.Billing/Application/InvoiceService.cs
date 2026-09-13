@@ -413,10 +413,12 @@ internal class InvoiceService : IInvoiceService
         // ServiceId/ConsultantId/DepartmentId are typed as free-text on InvoiceLineItem (see
         // its own doc comment), but ServiceBillingCard.tsx's Procedure Billing form actually
         // populates them from Masters' DiagnosticService/Consultant Guid selects — so in
-        // practice these values are Guids, not display names, and were showing raw ids on the
-        // Procedures List. Resolve them the same N+1-per-row way OpdQueryService/
-        // AdmissionService already do at this data volume; a value that isn't a parseable Guid
-        // (a genuinely free-text legacy row, if any exist) passes through unchanged.
+        // practice these values are Guids, not display names. The ids themselves are returned
+        // unchanged (callers that need the real id — deep-linking, filtering — must still get
+        // it); ServiceName/ConsultantName/DepartmentName are resolved alongside them the same
+        // N+1-per-row way OpdQueryService/AdmissionService already do at this data volume. A
+        // value that isn't a parseable Guid (a genuinely free-text legacy row, if any exist)
+        // resolves to itself, so the *Name field still has something sensible to show.
         var items = new List<ProcedureListItem>(rows.Count);
         foreach (var r in rows)
         {
@@ -427,9 +429,12 @@ internal class InvoiceService : IInvoiceService
                 PatientId = r.PatientId,
                 PatientName = r.PatientName,
                 PatientUhid = r.PatientUhid,
-                ServiceId = await ResolveServiceNameAsync(r.ServiceId, cancellationToken),
-                ConsultantId = await ResolveConsultantNameAsync(r.ConsultantId, cancellationToken),
-                DepartmentId = await ResolveDepartmentNameAsync(r.DepartmentId, cancellationToken),
+                ServiceId = r.ServiceId,
+                ServiceName = await ResolveServiceNameAsync(r.ServiceId, cancellationToken),
+                ConsultantId = r.ConsultantId,
+                ConsultantName = await ResolveConsultantNameAsync(r.ConsultantId, cancellationToken),
+                DepartmentId = r.DepartmentId,
+                DepartmentName = await ResolveDepartmentNameAsync(r.DepartmentId, cancellationToken),
                 CreatedAt = r.CreatedAt,
                 PaymentStatus = r.PaymentStatus,
                 Total = r.Total,
