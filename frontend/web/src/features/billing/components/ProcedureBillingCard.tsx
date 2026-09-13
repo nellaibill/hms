@@ -7,6 +7,8 @@ interface ProcedureBillingCardProps {
   expanded: boolean;
   onToggle: () => void;
   hasError: boolean;
+  defaultConsultantId?: string;
+  onConsultantSelected?: (consultantId: string) => void;
 }
 
 export function ProcedureBillingCard(props: ProcedureBillingCardProps) {

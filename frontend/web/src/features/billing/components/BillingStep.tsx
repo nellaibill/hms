@@ -91,6 +91,17 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
   }));
   const [attempted, setAttempted] = useState<ReadonlySet<BillingType>>(new Set());
 
+  // Remembers the last consultant picked in Radiology/Laboratory/Procedure Billing (the three
+  // categories with a per-row Consultant field — Injection has none, Consultation's is locked
+  // to the visit's own department/consultant), so the next row added in any of those three
+  // starts pre-filled with the same consultant instead of asking reception to reselect them
+  // for every line item on the same visit. Plain component state (not part of the RHF form —
+  // it's a UI convenience, not billing data) that lives only as long as this BillingStep
+  // instance does; InvoiceCreatePage remounts a fresh one per patient (key={patient.id}) and
+  // "Bill Another Patient" resets to no patient at all, so this always starts blank for a new
+  // billing transaction.
+  const [lastConsultantId, setLastConsultantId] = useState('');
+
   useImperativeHandle(
     ref,
     () => ({
@@ -144,13 +155,27 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
             onToggle={() => toggleCategory('Consultation')}
             hasError={hasFieldError('Consultation')}
           />
-          <RadiologyBillingCard expanded={expanded.Radiology} onToggle={() => toggleCategory('Radiology')} hasError={hasFieldError('Radiology')} />
+          <RadiologyBillingCard
+            expanded={expanded.Radiology}
+            onToggle={() => toggleCategory('Radiology')}
+            hasError={hasFieldError('Radiology')}
+            defaultConsultantId={lastConsultantId}
+            onConsultantSelected={setLastConsultantId}
+          />
           <LaboratoryBillingCard
             expanded={expanded.Laboratory}
             onToggle={() => toggleCategory('Laboratory')}
             hasError={hasFieldError('Laboratory')}
+            defaultConsultantId={lastConsultantId}
+            onConsultantSelected={setLastConsultantId}
           />
-          <ProcedureBillingCard expanded={expanded.Procedure} onToggle={() => toggleCategory('Procedure')} hasError={hasFieldError('Procedure')} />
+          <ProcedureBillingCard
+            expanded={expanded.Procedure}
+            onToggle={() => toggleCategory('Procedure')}
+            hasError={hasFieldError('Procedure')}
+            defaultConsultantId={lastConsultantId}
+            onConsultantSelected={setLastConsultantId}
+          />
           <InjectionBillingCard expanded={expanded.Injection} onToggle={() => toggleCategory('Injection')} hasError={hasFieldError('Injection')} />
         </div>
         <BillingSummaryCard onSave={onSave} isSaving={isSaving} saveError={saveError} saveErrorDetails={saveErrorDetails} />
