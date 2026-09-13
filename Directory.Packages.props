@@ -28,7 +28,7 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
 
     <!-- Validation -->
-    <PackageVersion Include="FluentValidation" Version="11.10.0" />
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
 
     <!-- Excel parsing (Patient Import module only) -->
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
