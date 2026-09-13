@@ -37,6 +37,11 @@ internal class ConsultantRepository : IConsultantRepository
             consultants = consultants.Where(c => c.DepartmentId == query.DepartmentId.Value);
         }
 
+        if (query.ConsultantType.HasValue)
+        {
+            consultants = consultants.Where(c => c.ConsultantType == query.ConsultantType.Value);
+        }
+
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = $"%{query.Search.Trim()}%";

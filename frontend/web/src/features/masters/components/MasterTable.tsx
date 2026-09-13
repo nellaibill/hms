@@ -96,6 +96,9 @@ export function MasterTable({ config, records, sort, onSortChange }: MasterTable
                 >
                   {getDisplayLabel(config, record)}
                 </Link>
+                {config.getRowSubtitle?.(record) && (
+                  <div className="text-xs text-muted-foreground">{config.getRowSubtitle(record)}</div>
+                )}
               </td>
               {columnFields.map((field) => (
                 <td key={field.key} className="max-w-xs truncate px-4 py-3 text-muted-foreground">

@@ -1,4 +1,5 @@
 import { Building2, Calendar, Stethoscope, User } from 'lucide-react';
+import { formatConsultantAvailability } from '../formatConsultantAvailability';
 import type { MasterEntityConfig } from '../engine/types';
 
 export const consultantConfig: MasterEntityConfig = {
@@ -9,6 +10,13 @@ export const consultantConfig: MasterEntityConfig = {
   icon: Stethoscope,
   section: 'Hospital Reference Data',
   nameField: 'name',
+  listFilters: ['departmentId', 'consultantType'],
+  getRowSubtitle: (record) =>
+    formatConsultantAvailability({
+      availableDays: (record.availableDays as string[] | undefined) ?? [],
+      visitStartTime: record.visitStartTime as string | null | undefined,
+      visitEndTime: record.visitEndTime as string | null | undefined,
+    }),
   fields: [
     {
       key: 'consultantType',

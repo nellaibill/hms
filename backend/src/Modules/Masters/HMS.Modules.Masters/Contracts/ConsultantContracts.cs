@@ -60,4 +60,5 @@ public class ConsultantListQuery : PagedRequest
 {
     public bool? IsActive { get; set; }
     public Guid? DepartmentId { get; set; }
+    public ConsultantType? ConsultantType { get; set; }
 }

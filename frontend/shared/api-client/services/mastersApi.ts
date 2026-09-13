@@ -7,6 +7,10 @@ export type MastersEntityKey = keyof typeof API_ROUTES.masters;
 
 export interface MastersListQuery extends PagedQuery {
   isActive?: boolean;
+  /** Extra entity-specific filters (e.g. { departmentId, consultantType }) forwarded as-is to
+   * the real per-entity REST endpoint (see MasterEntityConfig.listFilters on the frontend) —
+   * generic so a new filterable field never needs a change here. */
+  filters?: Record<string, string | undefined>;
 }
 
 /** A Masters record's shape varies per entity — described by each MasterEntityConfig.fields on the frontend. */
@@ -39,6 +43,7 @@ export class MastersApi {
         sort: query.sort,
         search: query.search,
         isActive: query.isActive,
+        ...query.filters,
       },
     });
     return {
