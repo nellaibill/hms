@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '@hms/shared';
+import { consumeSessionExpiredFlag } from '@/lib/sessionExpiry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,7 +46,12 @@ export default function LoginPage() {
   const [role, setRole] = useState<Role>('superAdmin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // Lazy initializer — reads (and clears) the flag the global 401 handler sets exactly once,
+  // so a forced logout from an expired session shows an explanation here instead of a bare
+  // sign-in form with no context for why the user was suddenly signed out.
+  const [error, setError] = useState<string | null>(() =>
+    consumeSessionExpiredFlag('hospital') ? 'Your session has expired. Please sign in again.' : null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

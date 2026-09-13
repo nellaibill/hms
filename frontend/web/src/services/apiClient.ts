@@ -58,9 +58,20 @@ export function setAuthToken(token: string | null) {
   authToken = token;
 }
 
+// Lets AuthContext react to a 401 on any hospital-session request (expired/invalid token) by
+// logging out and redirecting to /login, rather than leaving every request on the page fail
+// silently in the console. Registered by AuthProvider on mount; same indirection reasoning as
+// authToken above — this client exists before that provider does.
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
 export const httpClient = new HttpClient({
   baseUrl: env.apiBaseUrl,
   getAuthToken: () => authToken,
+  onUnauthorized: () => unauthorizedHandler?.(),
 });
 
 // Independent token holder + HttpClient instance for the Platform Portal — a Platform Admin
@@ -72,9 +83,17 @@ export function setPlatformAuthToken(token: string | null) {
   platformAuthToken = token;
 }
 
+// Same reasoning as unauthorizedHandler above, for the Platform Portal's own session.
+let platformUnauthorizedHandler: (() => void) | null = null;
+
+export function setPlatformUnauthorizedHandler(handler: (() => void) | null) {
+  platformUnauthorizedHandler = handler;
+}
+
 export const platformHttpClient = new HttpClient({
   baseUrl: env.apiBaseUrl,
   getAuthToken: () => platformAuthToken,
+  onUnauthorized: () => platformUnauthorizedHandler?.(),
 });
 
 export const platformAuthApi = new PlatformAuthApi(platformHttpClient);

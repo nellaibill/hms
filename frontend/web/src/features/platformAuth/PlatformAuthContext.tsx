@@ -1,6 +1,7 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { PlatformLoginResponse, PlatformLoginUserResponse } from '@hms/shared';
-import { platformAuthApi, setPlatformAuthToken } from '../../services/apiClient';
+import { platformAuthApi, setPlatformAuthToken, setPlatformUnauthorizedHandler } from '../../services/apiClient';
+import { markSessionExpired } from '../../lib/sessionExpiry';
 
 const STORAGE_KEY = 'hms-platform-session';
 
@@ -91,6 +92,21 @@ export function PlatformAuthProvider({ children }: { children: ReactNode }) {
     setPlatformAuthToken(null);
     setUser(null);
   };
+
+  // See AuthContext's identical registration for why this uses refs and guards on
+  // userRef.current — same reasoning applies to the Platform Portal's own session.
+  const userRef = useRef(user);
+  userRef.current = user;
+  const logoutRef = useRef(logout);
+  logoutRef.current = logout;
+  useEffect(() => {
+    setPlatformUnauthorizedHandler(() => {
+      if (!userRef.current) return;
+      markSessionExpired('platform');
+      logoutRef.current();
+    });
+    return () => setPlatformUnauthorizedHandler(null);
+  }, []);
 
   const value = useMemo(
     () => ({ user, isAuthenticated: user !== null, login, completeMfaLogin, logout }),
