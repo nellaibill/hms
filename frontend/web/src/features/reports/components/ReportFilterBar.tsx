@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Building2, CalendarRange, Layers, RotateCcw, Search, User } from 'lucide-react';
 import { BILLING_TYPES, type BillingItem } from '@/features/billing';
 import { getDisplayLabel, getMasterConfig, useMasterOptionsQuery } from '@/features/masters';
@@ -26,25 +27,49 @@ const BILLING_TYPE_LABELS: Record<BillingItem['billingType'], string> = {
   InpatientCharge: 'Inpatient Charge',
 };
 
-interface ProfitReportFilterBarProps {
+interface ReportFilterBarProps {
   range: ReportDateRange;
   filters: ProfitReportFilterState;
   onRangeChange: (range: ReportDateRange) => void;
   onFiltersChange: (filters: ProfitReportFilterState) => void;
   onSearch: () => void;
   onReset: () => void;
+  /** Hide the Billing Type dropdown on a report already fixed to one type (Laboratory,
+   * Radiology, Consultant) — showing a filter with no real effect just invites confusion.
+   * Defaults to shown (Hospital Profit Report, which mixes every type). */
+  showBillingType?: boolean;
+  /** Hide the Consultant dropdown on a report that's already organized by consultant
+   * (Consultant Profit Report) — filtering a "one row per consultant" table down to one
+   * consultant has no real use there. Defaults to shown. */
+  showConsultant?: boolean;
+  /** Rendered after Search/Reset, in the same row — each page supplies its own export control
+   * (or omits this entirely, like Consultant Profit Report, which has none yet) rather than this
+   * shared bar owning export behavior itself. */
+  exportSlot?: ReactNode;
 }
 
 /**
- * Hospital Profit Report's one-card filter bar — date range, free-text search, and Billing
- * Type/Department/Consultant dropdowns, applied only once "Search" is clicked rather than live
- * on every keystroke/selection (see ProfitReportPage's own doc comment on why: this report can
- * mix a large date range with several filters at once, so committing them together as one
- * explicit action reads more predictably than the page's numbers shifting under a half-typed
- * search term). "Reset" clears every field back to the page's defaults and returns to the
- * pre-search empty state, not just clearing the inputs.
+ * Every Finance report's shared one-card filter bar — Date Range + free-text Search always,
+ * Billing Type/Department/Consultant dropdowns as each report needs (see showBillingType/
+ * showConsultant), Search/Reset (and each page's own export control) grouped at the end of the
+ * same row. Applies only once "Search" is clicked rather than live on every keystroke/selection:
+ * a report can mix a large date range with several filters at once, so committing them together
+ * as one explicit action reads more predictably than the numbers shifting under a half-typed
+ * search term. "Reset" clears every field back to the page's defaults and returns to the
+ * pre-search empty state, not just clearing the inputs — see each report page's own
+ * handleReset for what "defaults" means there.
  */
-export function ProfitReportFilterBar({ range, filters, onRangeChange, onFiltersChange, onSearch, onReset }: ProfitReportFilterBarProps) {
+export function ReportFilterBar({
+  range,
+  filters,
+  onRangeChange,
+  onFiltersChange,
+  onSearch,
+  onReset,
+  showBillingType = true,
+  showConsultant = true,
+  exportSlot,
+}: ReportFilterBarProps) {
   const { data: departments } = useMasterOptionsQuery('department');
   const { data: consultants } = useMasterOptionsQuery('consultant');
   const departmentConfig = getMasterConfig('department');
@@ -86,12 +111,12 @@ export function ProfitReportFilterBar({ range, filters, onRangeChange, onFilters
       <div className="hidden h-14 w-px bg-border sm:block" />
 
       <div className="flex flex-col gap-1">
-        <Label htmlFor="profit-report-search" className="flex items-center gap-1.5">
+        <Label htmlFor="report-filter-search" className="flex items-center gap-1.5">
           <Search className="h-4 w-4 text-muted-foreground" />
           Search
         </Label>
         <Input
-          id="profit-report-search"
+          id="report-filter-search"
           type="search"
           placeholder="Search by service, package, patient or invoice…"
           value={filters.search ?? ''}
@@ -100,31 +125,33 @@ export function ProfitReportFilterBar({ range, filters, onRangeChange, onFilters
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="profit-report-billing-type" className="flex items-center gap-1.5">
-          <Layers className="h-4 w-4 text-muted-foreground" />
-          Billing Type
-        </Label>
-        <Select
-          value={filters.billingType ?? ALL_VALUE}
-          onValueChange={(value) => onFiltersChange({ ...filters, billingType: value === ALL_VALUE ? undefined : (value as BillingItem['billingType']) })}
-        >
-          <SelectTrigger id="profit-report-billing-type" className="w-40" aria-label="Filter by billing type">
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>All types</SelectItem>
-            {[...BILLING_TYPES, ...SERVER_ONLY_BILLING_TYPES].map((type) => (
-              <SelectItem key={type} value={type}>
-                {BILLING_TYPE_LABELS[type]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showBillingType && (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="report-filter-billing-type" className="flex items-center gap-1.5">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            Billing Type
+          </Label>
+          <Select
+            value={filters.billingType ?? ALL_VALUE}
+            onValueChange={(value) => onFiltersChange({ ...filters, billingType: value === ALL_VALUE ? undefined : (value as BillingItem['billingType']) })}
+          >
+            <SelectTrigger id="report-filter-billing-type" className="w-40" aria-label="Filter by billing type">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>All types</SelectItem>
+              {[...BILLING_TYPES, ...SERVER_ONLY_BILLING_TYPES].map((type) => (
+                <SelectItem key={type} value={type}>
+                  {BILLING_TYPE_LABELS[type]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
-        <Label htmlFor="profit-report-department" className="flex items-center gap-1.5">
+        <Label htmlFor="report-filter-department" className="flex items-center gap-1.5">
           <Building2 className="h-4 w-4 text-muted-foreground" />
           Department
         </Label>
@@ -132,7 +159,7 @@ export function ProfitReportFilterBar({ range, filters, onRangeChange, onFilters
           value={filters.departmentId ?? ALL_VALUE}
           onValueChange={(value) => onFiltersChange({ ...filters, departmentId: value === ALL_VALUE ? undefined : value })}
         >
-          <SelectTrigger id="profit-report-department" className="w-44" aria-label="Filter by department">
+          <SelectTrigger id="report-filter-department" className="w-44" aria-label="Filter by department">
             <SelectValue placeholder="All departments" />
           </SelectTrigger>
           <SelectContent>
@@ -146,30 +173,32 @@ export function ProfitReportFilterBar({ range, filters, onRangeChange, onFilters
         </Select>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="profit-report-consultant" className="flex items-center gap-1.5">
-          <User className="h-4 w-4 text-muted-foreground" />
-          Consultant
-        </Label>
-        <Select
-          value={filters.consultantId ?? ALL_VALUE}
-          onValueChange={(value) => onFiltersChange({ ...filters, consultantId: value === ALL_VALUE ? undefined : value })}
-        >
-          <SelectTrigger id="profit-report-consultant" className="w-44" aria-label="Filter by consultant">
-            <SelectValue placeholder="All consultants" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>All consultants</SelectItem>
-            {(consultants ?? []).map((consultant) => (
-              <SelectItem key={consultant.id} value={consultant.id}>
-                {consultantConfig ? getDisplayLabel(consultantConfig, consultant) : consultant.id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showConsultant && (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="report-filter-consultant" className="flex items-center gap-1.5">
+            <User className="h-4 w-4 text-muted-foreground" />
+            Consultant
+          </Label>
+          <Select
+            value={filters.consultantId ?? ALL_VALUE}
+            onValueChange={(value) => onFiltersChange({ ...filters, consultantId: value === ALL_VALUE ? undefined : value })}
+          >
+            <SelectTrigger id="report-filter-consultant" className="w-44" aria-label="Filter by consultant">
+              <SelectValue placeholder="All consultants" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>All consultants</SelectItem>
+              {(consultants ?? []).map((consultant) => (
+                <SelectItem key={consultant.id} value={consultant.id}>
+                  {consultantConfig ? getDisplayLabel(consultantConfig, consultant) : consultant.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" className="gap-1.5" onClick={onSearch}>
           <Search className="h-4 w-4" />
           Search
@@ -178,6 +207,7 @@ export function ProfitReportFilterBar({ range, filters, onRangeChange, onFilters
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
+        {exportSlot}
       </div>
     </div>
   );
