@@ -1,5 +1,5 @@
 import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceCostPrice, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
-import { resolveRecordCostPrice, resolveRecordLabel } from '@/features/masters';
+import { resolveConsultantCharge, resolveRecordCostPrice, resolveRecordLabel } from '@/features/masters';
 import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
 import type {
   BillingFormValues,
@@ -294,11 +294,18 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
  * Resolves a BillingItem's per-unit CostPrice for profit reporting (features/reports/
  * profitReport.ts) — same billingType branching as describeBillingItem above, reading the
  * same reference caches, but returning the numeric CostPrice instead of a display label.
- * Returns null (never 0) whenever cost genuinely can't be attributed to this line, so a
- * report can distinguish "no cost data" from "confirmed zero cost" rather than silently
- * understating cost or overstating margin:
+ * Returns null (never a fabricated 0) whenever cost genuinely can't be attributed to this
+ * line, so a report can distinguish "no cost data" from "confirmed zero cost" rather than
+ * silently understating cost or overstating margin:
  *   - Pharmacy: no cost concept in this system yet (a dispense's cost lives in Products/
  *     batch data, a different domain) — always null.
+ *   - Consultation: cost is what the *billed consultant* charges for that specific
+ *     consultation type (Consultant.consultationTypeCharges, set on the Consultant Edit page)
+ *     — genuinely different consultant to consultant for the same type, unlike every other
+ *     billing type's cost, which lives on the service/type itself. Reads `billedConsultantId`
+ *     (not `consultantId`) for the same reason the Consultant report groups by it — it survives
+ *     payment. An explicit charge of 0 is real (a consultant who takes none of the fee), so
+ *     resolveConsultantCharge returns it as-is rather than folding it into "unknown."
  *   - Laboratory package lines (packageId set): DiagnosticPackage has no CostPrice of its
  *     own (it's a bundle of DiagnosticService items, each separately costed) — null.
  *   - Everything else: null if serviceId is unset, the referenced record hasn't resolved
@@ -308,7 +315,7 @@ export function resolveItemCostPrice(item: BillingItem): number | null {
   if (item.billingType === 'Pharmacy' || item.billingType === 'InpatientCharge') return null;
 
   if (item.billingType === 'Consultation') {
-    return item.serviceId ? resolveRecordCostPrice('consultationType', item.serviceId) : null;
+    return resolveConsultantCharge(item.billedConsultantId, item.serviceId);
   }
 
   if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {

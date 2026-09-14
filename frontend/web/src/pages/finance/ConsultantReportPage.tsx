@@ -40,14 +40,17 @@ export default function ConsultantReportPage() {
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
   const { data: consultantOptions } = useMasterOptionsQuery('consultant');
 
-  const rows = useMemo(() => getProfitRows(billings ?? [], range), [billings, range]);
+  // Depends on consultantOptions even though getProfitRows doesn't take it as a parameter —
+  // resolveItemCostPrice (called inside getProfitRows) reads the consultant reference cache
+  // synchronously for Consultation lines (billed consultant's charge per consultation type),
+  // same as resolveRecordLabel does for names; without this dependency, `rows` (and everything
+  // derived from it below) would freeze at whatever the cache held on the very first render —
+  // usually still empty — and never pick up the real figures once the priming query resolves.
+  // Mirrors ProfitReportPage's identical reasoning for its own `rows` memo.
+  const rows = useMemo(() => getProfitRows(billings ?? [], range), [billings, range, consultantOptions]);
   const consultationRows = useMemo(() => rows.filter((row) => row.billingType === 'Consultation'), [rows]);
   const totals = useMemo(() => getProfitTotals(consultationRows), [consultationRows]);
-  // Depends on consultantOptions even though it isn't read directly — priming the reference
-  // cache is what makes ConsultantProfitTable's resolveRecordLabel calls resolve real names
-  // instead of raw ids on the first render, same reasoning ProfitReportPage's own priming
-  // hooks give.
-  const byConsultant = useMemo(() => getProfitByConsultant(consultationRows), [consultationRows, consultantOptions]);
+  const byConsultant = useMemo(() => getProfitByConsultant(consultationRows), [consultationRows]);
 
   function handleRangeChange(next: ReportDateRange) {
     setRange(next);
