@@ -84,6 +84,7 @@ internal class ConsultantConsultationTypeConfiguration : IEntityTypeConfiguratio
         // App-level reference into ConsultationType — no DB FK, validated in ConsultantService
         // (see Domain/ConsultantConsultationType.cs).
         builder.Property(ct => ct.ConsultationTypeId).HasColumnName("consultation_type_id").IsRequired();
+        builder.Property(ct => ct.ConsultantCharge).HasColumnName("consultant_charge").HasColumnType("numeric(10,2)");
 
         builder.HasIndex(ct => ct.ConsultantId).HasDatabaseName("ix_consultant_consultation_types_consultant_id");
         builder.HasIndex(ct => ct.ConsultationTypeId).HasDatabaseName("ix_consultant_consultation_types_consultation_type_id");

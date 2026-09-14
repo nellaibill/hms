@@ -59,7 +59,7 @@ public class ConsultantServiceTests
             availableDays: [],
             visitStartTime: null,
             visitEndTime: null,
-            consultationTypeIds: [],
+            consultationTypes: [],
             createdBy: null);
         _repository.GetByIdAsync(consultant.Id, Arg.Any<CancellationToken>()).Returns(consultant);
 
@@ -91,11 +91,11 @@ public class ConsultantServiceTests
         var consultationTypeId = Guid.NewGuid();
         _consultationTypeRepository.ExistsAsync(consultationTypeId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var request = NewCreateRequest() with { ConsultationTypeIds = [consultationTypeId] };
+        var request = NewCreateRequest() with { ConsultationTypeCharges = [new ConsultationTypeChargeDto(consultationTypeId, null)] };
         var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.ConsultationTypeIds.Should().ContainSingle().Which.Should().Be(consultationTypeId);
+        result.Value!.ConsultationTypeCharges.Should().ContainSingle().Which.ConsultationTypeId.Should().Be(consultationTypeId);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class ConsultantServiceTests
         var consultationTypeId = Guid.NewGuid();
         _consultationTypeRepository.ExistsAsync(consultationTypeId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var request = NewCreateRequest() with { ConsultationTypeIds = [consultationTypeId] };
+        var request = NewCreateRequest() with { ConsultationTypeCharges = [new ConsultationTypeChargeDto(consultationTypeId, null)] };
         var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -128,18 +128,47 @@ public class ConsultantServiceTests
             availableDays: [],
             visitStartTime: null,
             visitEndTime: null,
-            consultationTypeIds: [oldConsultationTypeId],
+            consultationTypes: [new ConsultationTypeSelection(oldConsultationTypeId, null)],
             createdBy: null);
         _repository.GetByIdAsync(consultant.Id, Arg.Any<CancellationToken>()).Returns(consultant);
 
         var result = await _sut.UpdateAsync(
             consultant.Id,
-            new UpdateConsultantRequest { Name = "Dr. Karthikeyan", IsActive = true, ConsultationTypeIds = [newConsultationTypeId] },
+            new UpdateConsultantRequest { Name = "Dr. Karthikeyan", IsActive = true, ConsultationTypeCharges = [new ConsultationTypeChargeDto(newConsultationTypeId, null)] },
             actorId: null,
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.ConsultationTypeIds.Should().ContainSingle().Which.Should().Be(newConsultationTypeId);
+        result.Value!.ConsultationTypeCharges.Should().ContainSingle().Which.ConsultationTypeId.Should().Be(newConsultationTypeId);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_PersistsAConsultantChargePerConsultationType()
+    {
+        var consultationTypeId = Guid.NewGuid();
+        _consultationTypeRepository.ExistsAsync(consultationTypeId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var consultant = Consultant.Create(
+            "Dr. Karthikeyan",
+            departmentId: null,
+            specialization: null,
+            isActive: true,
+            priority: null,
+            availableDays: [],
+            visitStartTime: null,
+            visitEndTime: null,
+            consultationTypes: [new ConsultationTypeSelection(consultationTypeId, null)],
+            createdBy: null);
+        _repository.GetByIdAsync(consultant.Id, Arg.Any<CancellationToken>()).Returns(consultant);
+
+        var result = await _sut.UpdateAsync(
+            consultant.Id,
+            new UpdateConsultantRequest { Name = "Dr. Karthikeyan", IsActive = true, ConsultationTypeCharges = [new ConsultationTypeChargeDto(consultationTypeId, 200m)] },
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.ConsultationTypeCharges.Should().ContainSingle().Which.ConsultantCharge.Should().Be(200m);
     }
 
     [Fact]
@@ -154,7 +183,7 @@ public class ConsultantServiceTests
             availableDays: [],
             visitStartTime: null,
             visitEndTime: null,
-            consultationTypeIds: [],
+            consultationTypes: [],
             createdBy: null);
         _repository.GetByIdAsync(consultant.Id, Arg.Any<CancellationToken>()).Returns(consultant);
         _fileStorage.SavePhotoAsync(consultant.Id, "photo.jpg", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
@@ -196,7 +225,7 @@ public class ConsultantServiceTests
             availableDays: [],
             visitStartTime: null,
             visitEndTime: null,
-            consultationTypeIds: [],
+            consultationTypes: [],
             createdBy: null);
         _repository.GetByIdAsync(consultant.Id, Arg.Any<CancellationToken>()).Returns(consultant);
         using var content = new MemoryStream([0x25, 0x50, 0x44, 0x46]);

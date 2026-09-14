@@ -19,7 +19,8 @@ export type MasterFieldType =
   | 'time'
   | 'radio-card'
   | 'day-checkboxes'
-  | 'reference-checkboxes';
+  | 'reference-checkboxes'
+  | 'reference-checkboxes-amount';
 
 export interface MasterSelectOption {
   value: string;
@@ -55,12 +56,21 @@ export interface MasterFieldDef {
   /** Static options for type: 'select'. */
   options?: MasterSelectOption[];
   /** Entity key (MasterEntityConfig.key) this field references, for type: 'reference' (a
-   * single id) or 'reference-checkboxes' (a string[] of ids). */
+   * single id), 'reference-checkboxes' (a string[] of ids), or 'reference-checkboxes-amount'
+   * (an array of {id, amount} objects — see arrayItemKeys). */
   referenceEntityKey?: string;
-  /** 'reference-checkboxes' only — when set, only options where this field is truthy are
-   * offered (e.g. an inactive ConsultationType shouldn't show up as a pickable checkbox even
-   * though an already-saved mapping to one still renders read-only). */
+  /** 'reference-checkboxes' and 'reference-checkboxes-amount' only — when set, only options
+   * where this field is truthy are offered (e.g. an inactive ConsultationType shouldn't show up
+   * as a pickable checkbox even though an already-saved mapping to one still renders read-only). */
   referenceActiveOnly?: boolean;
+  /** 'reference-checkboxes-amount' only — the two property names written into each selected
+   * item's object (e.g. `{ id: 'consultationTypeId', amount: 'consultantCharge' }`), so the
+   * submitted shape matches the backend request contract directly with no translation layer. */
+  arrayItemKeys?: { id: string; amount: string };
+  /** 'reference-checkboxes-amount' only — the property on each *referenced* option (e.g.
+   * ConsultationType's own `amount`) to show, read-only, as that row's reference price — purely
+   * presentational context for the editable amount beside it, never written back anywhere. */
+  referenceAmountField?: string;
   /**
    * When set, only reference options whose [scopeField] matches the current form's
    * value for [scopeField] are offered — e.g. a storage location's parent must be in

@@ -11,7 +11,14 @@ export const consultationTypeConfig: MasterEntityConfig = {
   nameField: 'name',
   fields: [
     { key: 'name', label: 'Consultation Type Name', type: 'text', required: true },
-    { key: 'amount', label: 'Amount (₹)', type: 'decimal', min: 0, step: 1, helpText: 'Leave blank for categories with no fixed rate (e.g. On-call) — decided per visit instead.' },
+    {
+      key: 'amount',
+      label: 'Hospital Charge (₹)',
+      type: 'decimal',
+      min: 0,
+      step: 1,
+      helpText: 'What the patient is billed for this consultation type. Leave blank for categories with no fixed rate (e.g. On-call) — decided per visit instead.',
+    },
     {
       key: 'costPrice',
       label: 'Running Cost (₹)',

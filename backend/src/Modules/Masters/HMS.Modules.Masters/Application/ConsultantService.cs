@@ -66,7 +66,7 @@ internal class ConsultantService : IConsultantService
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Department '{request.DepartmentId}' was not found.");
         }
 
-        var invalidConsultationTypeId = await FindInvalidConsultationTypeIdAsync(request.ConsultationTypeIds, cancellationToken);
+        var invalidConsultationTypeId = await FindInvalidConsultationTypeIdAsync(request.ConsultationTypeCharges, cancellationToken);
         if (invalidConsultationTypeId.HasValue)
         {
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Consultation type '{invalidConsultationTypeId}' was not found.");
@@ -81,7 +81,7 @@ internal class ConsultantService : IConsultantService
             request.AvailableDays,
             request.VisitStartTime,
             request.VisitEndTime,
-            request.ConsultationTypeIds,
+            ToSelections(request.ConsultationTypeCharges),
             actorId);
 
         await _repository.AddAsync(consultant, cancellationToken);
@@ -103,7 +103,7 @@ internal class ConsultantService : IConsultantService
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Department '{request.DepartmentId}' was not found.");
         }
 
-        var invalidConsultationTypeId = await FindInvalidConsultationTypeIdAsync(request.ConsultationTypeIds, cancellationToken);
+        var invalidConsultationTypeId = await FindInvalidConsultationTypeIdAsync(request.ConsultationTypeCharges, cancellationToken);
         if (invalidConsultationTypeId.HasValue)
         {
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Consultation type '{invalidConsultationTypeId}' was not found.");
@@ -118,7 +118,7 @@ internal class ConsultantService : IConsultantService
             request.AvailableDays,
             request.VisitStartTime,
             request.VisitEndTime,
-            request.ConsultationTypeIds,
+            ToSelections(request.ConsultationTypeCharges),
             actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
@@ -190,9 +190,9 @@ internal class ConsultantService : IConsultantService
         return Result<ConsultantResponse>.Success(consultant.ToResponse());
     }
 
-    private async Task<Guid?> FindInvalidConsultationTypeIdAsync(IReadOnlyList<Guid> consultationTypeIds, CancellationToken cancellationToken)
+    private async Task<Guid?> FindInvalidConsultationTypeIdAsync(IReadOnlyList<ConsultationTypeChargeDto> consultationTypeCharges, CancellationToken cancellationToken)
     {
-        foreach (var consultationTypeId in consultationTypeIds.Distinct())
+        foreach (var consultationTypeId in consultationTypeCharges.Select(c => c.ConsultationTypeId).Distinct())
         {
             if (!await _consultationTypeRepository.ExistsAsync(consultationTypeId, cancellationToken))
             {
@@ -202,6 +202,9 @@ internal class ConsultantService : IConsultantService
 
         return null;
     }
+
+    private static IReadOnlyList<ConsultationTypeSelection> ToSelections(IReadOnlyList<ConsultationTypeChargeDto> consultationTypeCharges)
+        => consultationTypeCharges.Select(c => new ConsultationTypeSelection(c.ConsultationTypeId, c.ConsultantCharge)).ToList();
 
     // A client-supplied extension and Content-Type header are just claims — this checks the
     // file's actual bytes against the well-known signatures for the two allowed formats, so a

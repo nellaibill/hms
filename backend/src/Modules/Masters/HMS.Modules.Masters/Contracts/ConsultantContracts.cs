@@ -15,9 +15,9 @@ public record CreateConsultantRequest
     public IReadOnlyList<string> AvailableDays { get; init; } = [];
     public TimeOnly? VisitStartTime { get; init; }
     public TimeOnly? VisitEndTime { get; init; }
-    /// <summary>Which Masters ConsultationType records this consultant offers — see
-    /// Domain/Consultant.cs's ConsultationTypes doc comment.</summary>
-    public IReadOnlyList<Guid> ConsultationTypeIds { get; init; } = [];
+    /// <summary>Which Masters ConsultationType records this consultant offers, and what the
+    /// hospital pays them for each — see Domain/Consultant.cs's ConsultationTypes doc comment.</summary>
+    public IReadOnlyList<ConsultationTypeChargeDto> ConsultationTypeCharges { get; init; } = [];
 }
 
 // Code is intentionally absent — a natural-key field, protected from change after creation.
@@ -31,8 +31,14 @@ public record UpdateConsultantRequest
     public IReadOnlyList<string> AvailableDays { get; init; } = [];
     public TimeOnly? VisitStartTime { get; init; }
     public TimeOnly? VisitEndTime { get; init; }
-    public IReadOnlyList<Guid> ConsultationTypeIds { get; init; } = [];
+    public IReadOnlyList<ConsultationTypeChargeDto> ConsultationTypeCharges { get; init; } = [];
 }
+
+/// <summary>One consultation type a consultant offers, paired with what the hospital pays them
+/// for it. ConsultantCharge is nullable — same "not yet decided" convention as
+/// ConsultationType.Amount — and is entirely separate from that Amount (the patient-facing fee,
+/// constant per type; this is the doctor's payout, which can differ consultant to consultant).</summary>
+public record ConsultationTypeChargeDto(Guid ConsultationTypeId, decimal? ConsultantCharge);
 
 public record ConsultantResponse
 {
@@ -49,7 +55,7 @@ public record ConsultantResponse
     public IReadOnlyList<string> AvailableDays { get; init; } = [];
     public TimeOnly? VisitStartTime { get; init; }
     public TimeOnly? VisitEndTime { get; init; }
-    public IReadOnlyList<Guid> ConsultationTypeIds { get; init; } = [];
+    public IReadOnlyList<ConsultationTypeChargeDto> ConsultationTypeCharges { get; init; } = [];
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

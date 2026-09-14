@@ -15,10 +15,17 @@ export interface Consultant {
   /** TimeOnly serializes as "HH:mm:ss". */
   visitStartTime?: string | null;
   visitEndTime?: string | null;
-  /** Masters ConsultationType ids this consultant offers. */
-  consultationTypeIds: string[];
+  /** Masters ConsultationType ids this consultant offers, paired with what the hospital pays
+   * them for each (nullable — a rate not yet decided). */
+  consultationTypeCharges: ConsultationTypeCharge[];
   createdAt: string;
   updatedAt?: string | null;
+}
+
+/** Mirrors HMS.Modules.Masters.Contracts.ConsultationTypeChargeDto. */
+export interface ConsultationTypeCharge {
+  consultationTypeId: string;
+  consultantCharge?: number | null;
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.CreateConsultantRequest. */
@@ -31,7 +38,7 @@ export interface CreateConsultantRequest {
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
-  consultationTypeIds: string[];
+  consultationTypeCharges: ConsultationTypeCharge[];
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.UpdateConsultantRequest. */
@@ -44,7 +51,7 @@ export interface UpdateConsultantRequest {
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
-  consultationTypeIds: string[];
+  consultationTypeCharges: ConsultationTypeCharge[];
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.ConsultantListQuery. */

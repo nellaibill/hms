@@ -33,14 +33,17 @@ export const consultantConfig: MasterEntityConfig = {
       helpText: 'Controls display order in consultant pickers (Registration, Billing, etc.) — lower shows first. Leave blank for no preference.',
     },
     {
-      key: 'consultationTypeIds',
+      key: 'consultationTypeCharges',
       label: 'Consultation Types',
-      type: 'reference-checkboxes',
+      type: 'reference-checkboxes-amount',
       referenceEntityKey: 'consultationType',
       referenceActiveOnly: true,
+      arrayItemKeys: { id: 'consultationTypeId', amount: 'consultantCharge' },
+      referenceAmountField: 'amount',
       required: true,
       showInTable: false,
-      helpText: 'Select the consultation types applicable for this consultant. You can select multiple types.',
+      helpText:
+        'Select the consultation types this consultant offers and set the consultant charge for each — the hospital charge and resulting margin are shown alongside it.',
     },
     {
       key: 'availableDays',
@@ -67,7 +70,7 @@ export const consultantConfig: MasterEntityConfig = {
       key: 'consultationTypes',
       label: 'Consultation Types',
       icon: ClipboardList,
-      fieldKeys: ['consultationTypeIds'],
+      fieldKeys: ['consultationTypeCharges'],
       infoText: 'Only active consultation types are shown. Please select all applicable types for this consultant.',
     },
     {

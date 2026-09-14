@@ -43,7 +43,8 @@ internal class Consultant : Entity
     public TimeOnly? VisitEndTime { get; private set; }
 
     /// <summary>Which consultation types (billing categories, e.g. "Doctor's Consultation
-    /// (In-house) - Regular") this consultant offers — a many-to-many replaced wholesale on
+    /// (In-house) - Regular") this consultant offers, and what the hospital pays them for each
+    /// (ConsultantConsultationType.ConsultantCharge) — a many-to-many replaced wholesale on
     /// every Create/Update (see SetConsultationTypes), the same "fully replace, no incremental
     /// add/remove" convention AvailableDays already uses on this same entity.</summary>
     private readonly List<ConsultantConsultationType> _consultationTypes = [];
@@ -86,7 +87,7 @@ internal class Consultant : Entity
         IReadOnlyList<string> availableDays,
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
-        IReadOnlyList<Guid> consultationTypeIds,
+        IReadOnlyList<ConsultationTypeSelection> consultationTypes,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
@@ -104,7 +105,7 @@ internal class Consultant : Entity
             visitEndTime,
             createdBy);
 
-        consultant.SetConsultationTypes(consultationTypeIds);
+        consultant.SetConsultationTypes(consultationTypes);
 
         return consultant;
     }
@@ -118,7 +119,7 @@ internal class Consultant : Entity
         IReadOnlyList<string> availableDays,
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
-        IReadOnlyList<Guid> consultationTypeIds,
+        IReadOnlyList<ConsultationTypeSelection> consultationTypes,
         Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
@@ -132,7 +133,7 @@ internal class Consultant : Entity
         AvailableDays = availableDays;
         VisitStartTime = visitStartTime;
         VisitEndTime = visitEndTime;
-        SetConsultationTypes(consultationTypeIds);
+        SetConsultationTypes(consultationTypes);
         MarkUpdated(updatedBy);
     }
 
@@ -144,12 +145,12 @@ internal class Consultant : Entity
         MarkUpdated(updatedBy);
     }
 
-    private void SetConsultationTypes(IReadOnlyList<Guid> consultationTypeIds)
+    private void SetConsultationTypes(IReadOnlyList<ConsultationTypeSelection> consultationTypes)
     {
         _consultationTypes.Clear();
-        foreach (var consultationTypeId in consultationTypeIds.Distinct())
+        foreach (var selection in consultationTypes.DistinctBy(s => s.ConsultationTypeId))
         {
-            _consultationTypes.Add(ConsultantConsultationType.Create(Id, consultationTypeId));
+            _consultationTypes.Add(ConsultantConsultationType.Create(Id, selection.ConsultationTypeId, selection.ConsultantCharge));
         }
     }
 
@@ -178,3 +179,8 @@ internal class Consultant : Entity
         }
     }
 }
+
+/// <summary>One consultation type to assign to a consultant, with what the hospital pays them
+/// for it — see ConsultantConsultationType.ConsultantCharge's own doc comment for why this is
+/// per-(consultant, type) rather than a single flat rate.</summary>
+internal sealed record ConsultationTypeSelection(Guid ConsultationTypeId, decimal? ConsultantCharge);
