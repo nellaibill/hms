@@ -25,7 +25,13 @@ internal class ConsultantRepository : IConsultantRepository
 
     public async Task<(IReadOnlyList<Consultant> Items, int TotalCount)> GetPagedAsync(ConsultantListQuery query, CancellationToken cancellationToken)
     {
-        var consultants = _dbContext.Consultants.AsQueryable();
+        // Without this, every consultant returned here comes back with an empty
+        // ConsultationTypes collection: it's a private-backed collection (not a `virtual`
+        // navigation), so EF can't lazy-load it — every caller of this list (ConsultantSelect,
+        // the Consultants list page, Billing's per-consultant type scoping) would otherwise see
+        // every consultant as offering zero consultation types, matching GetByIdAsync's own
+        // Include for the exact same reason.
+        var consultants = _dbContext.Consultants.Include(c => c.ConsultationTypes).AsQueryable();
 
         if (query.IsActive.HasValue)
         {
