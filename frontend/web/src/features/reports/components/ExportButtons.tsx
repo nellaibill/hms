@@ -1,6 +1,7 @@
-import { FileSpreadsheet, FileText, Sheet } from 'lucide-react';
+import { ChevronDown, FileSpreadsheet, FileText, Sheet } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { exportReportToCsv, exportReportToExcel, exportReportToPdf, type ReportSection } from '../exportUtils';
 import type { ExpenseReportRow, IncomeReportRow, ReportDateRange } from '../types';
 
@@ -48,19 +49,28 @@ export function ExportButtons({ range, income, expense }: ExportButtonsProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={handleExportCsv}>
-        <FileText className="h-4 w-4" />
-        Export CSV
-      </Button>
-      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={handleExportExcel} disabled={isExportingExcel}>
-        <FileSpreadsheet className="h-4 w-4" />
-        {isExportingExcel ? 'Exporting…' : 'Export Excel'}
-      </Button>
-      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={handleExportPdf}>
-        <Sheet className="h-4 w-4" />
-        Export PDF
-      </Button>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={isExportingExcel}>
+          <FileText className="h-4 w-4" />
+          {isExportingExcel ? 'Exporting…' : 'Export'}
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleExportPdf}>
+          <Sheet className="h-4 w-4 text-destructive" />
+          Export as PDF
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleExportExcel}>
+          <FileSpreadsheet className="h-4 w-4 text-success" />
+          Export as Excel
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleExportCsv}>
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          Export as CSV
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

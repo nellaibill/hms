@@ -42,10 +42,18 @@ interface ReportFilterBarProps {
    * (Consultant Profit Report) — filtering a "one row per consultant" table down to one
    * consultant has no real use there. Defaults to shown. */
   showConsultant?: boolean;
+  /** Hide the Department dropdown on a report whose rows carry no department attribution at
+   * all (Income & Expense — Income is invoice-level with no per-department breakdown, Expenses
+   * are hospital-wide entries with no department concept yet). Defaults to shown. */
+  showDepartment?: boolean;
   /** Rendered after Search/Reset, in the same row — each page supplies its own export control
    * (or omits this entirely, like Consultant Profit Report, which has none yet) rather than this
    * shared bar owning export behavior itself. */
   exportSlot?: ReactNode;
+  /** Overrides the Search field's placeholder — the default assumes a line-item profit report
+   * (service/package/patient/invoice); a report with a different row shape (e.g. Income &
+   * Expense) should describe what it actually searches instead. */
+  searchPlaceholder?: string;
 }
 
 /**
@@ -68,7 +76,9 @@ export function ReportFilterBar({
   onReset,
   showBillingType = true,
   showConsultant = true,
+  showDepartment = true,
   exportSlot,
+  searchPlaceholder = 'Search by service, package, patient or invoice…',
 }: ReportFilterBarProps) {
   const { data: departments } = useMasterOptionsQuery('department');
   const { data: consultants } = useMasterOptionsQuery('consultant');
@@ -118,7 +128,7 @@ export function ReportFilterBar({
         <Input
           id="report-filter-search"
           type="search"
-          placeholder="Search by service, package, patient or invoice…"
+          placeholder={searchPlaceholder}
           value={filters.search ?? ''}
           onChange={(event) => onFiltersChange({ ...filters, search: event.target.value || undefined })}
           className="w-64"
@@ -150,28 +160,30 @@ export function ReportFilterBar({
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="report-filter-department" className="flex items-center gap-1.5">
-          <Building2 className="h-4 w-4 text-muted-foreground" />
-          Department
-        </Label>
-        <Select
-          value={filters.departmentId ?? ALL_VALUE}
-          onValueChange={(value) => onFiltersChange({ ...filters, departmentId: value === ALL_VALUE ? undefined : value })}
-        >
-          <SelectTrigger id="report-filter-department" className="w-44" aria-label="Filter by department">
-            <SelectValue placeholder="All departments" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>All departments</SelectItem>
-            {(departments ?? []).map((department) => (
-              <SelectItem key={department.id} value={department.id}>
-                {departmentConfig ? getDisplayLabel(departmentConfig, department) : department.id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showDepartment && (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="report-filter-department" className="flex items-center gap-1.5">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            Department
+          </Label>
+          <Select
+            value={filters.departmentId ?? ALL_VALUE}
+            onValueChange={(value) => onFiltersChange({ ...filters, departmentId: value === ALL_VALUE ? undefined : value })}
+          >
+            <SelectTrigger id="report-filter-department" className="w-44" aria-label="Filter by department">
+              <SelectValue placeholder="All departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>All departments</SelectItem>
+              {(departments ?? []).map((department) => (
+                <SelectItem key={department.id} value={department.id}>
+                  {departmentConfig ? getDisplayLabel(departmentConfig, department) : department.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {showConsultant && (
         <div className="flex flex-col gap-1">
