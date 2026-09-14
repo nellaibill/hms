@@ -18,7 +18,8 @@ export type MasterFieldType =
   | 'reference'
   | 'time'
   | 'radio-card'
-  | 'day-checkboxes';
+  | 'day-checkboxes'
+  | 'reference-checkboxes';
 
 export interface MasterSelectOption {
   value: string;
@@ -53,8 +54,13 @@ export interface MasterFieldDef {
   skipUniquenessCheck?: boolean;
   /** Static options for type: 'select'. */
   options?: MasterSelectOption[];
-  /** Entity key (MasterEntityConfig.key) this field references, for type: 'reference'. */
+  /** Entity key (MasterEntityConfig.key) this field references, for type: 'reference' (a
+   * single id) or 'reference-checkboxes' (a string[] of ids). */
   referenceEntityKey?: string;
+  /** 'reference-checkboxes' only — when set, only options where this field is truthy are
+   * offered (e.g. an inactive ConsultationType shouldn't show up as a pickable checkbox even
+   * though an already-saved mapping to one still renders read-only). */
+  referenceActiveOnly?: boolean;
   /**
    * When set, only reference options whose [scopeField] matches the current form's
    * value for [scopeField] are offered — e.g. a storage location's parent must be in
@@ -142,7 +148,7 @@ export interface MasterEntityConfig {
    * 'select'/'radio-card' uses the field's own `options`. The resulting value is sent to the
    * backend under that same field key (see MastersApi.list's generic `filters` passthrough) —
    * the real per-entity endpoint must already support filtering on it (e.g.
-   * ConsultantListQuery.DepartmentId/ConsultantType).
+   * ConsultantListQuery.DepartmentId).
    */
   listFilters?: string[];
   /** Extra line rendered under the primary name/link in the list table's first column (e.g.
@@ -150,6 +156,21 @@ export interface MasterEntityConfig {
    * Masters entity already uses. Return undefined/null to render nothing for a given record
    * (e.g. no availability set yet), rather than a placeholder dash. */
   getRowSubtitle?: (record: MasterRecord) => ReactNode;
+  /**
+   * Opts this entity into a single photo upload/preview widget, rendered beside the first
+   * fieldGroup's fields (so this only has an effect when `fieldGroups` is also set) — omit for
+   * every entity that doesn't need one. The real upload goes through MastersApi.uploadPhoto's
+   * generic `{id}/photo` endpoint convention; the backend controller for this entity must
+   * actually implement it (e.g. ConsultantsController.UploadPhoto). In create mode (no record
+   * id yet) the chosen file is staged client-side and uploaded once the record is created; in
+   * edit mode it uploads immediately, independent of the main Save button — mirrors Users'
+   * own profile-photo upload (a photo is only ever added once the record already exists).
+   */
+  photo?: {
+    /** Field on the record holding the stored relative path (e.g. 'photoUrl'). */
+    urlField: string;
+    helpText?: string;
+  };
 }
 
 export interface MasterExtraColumn {

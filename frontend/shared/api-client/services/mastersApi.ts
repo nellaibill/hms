@@ -7,7 +7,7 @@ export type MastersEntityKey = keyof typeof API_ROUTES.masters;
 
 export interface MastersListQuery extends PagedQuery {
   isActive?: boolean;
-  /** Extra entity-specific filters (e.g. { departmentId, consultantType }) forwarded as-is to
+  /** Extra entity-specific filters (e.g. { departmentId }) forwarded as-is to
    * the real per-entity REST endpoint (see MasterEntityConfig.listFilters on the frontend) —
    * generic so a new filterable field never needs a change here. */
   filters?: Record<string, string | undefined>;
@@ -64,6 +64,18 @@ export class MastersApi {
 
   async update(entityKey: MastersEntityKey, id: string, payload: MasterRecordDto): Promise<MasterRecordDto> {
     const response = await this.client.put<MasterRecordDto>(this.routes(entityKey).byId(id), payload);
+    return response.data;
+  }
+
+  /** Uploads (or replaces) a record's photo — only entities with a photo field (see
+   * MasterEntityConfig.photo on the frontend) actually expose a `{id}/photo` endpoint; calling
+   * this for any other entity 404s. Mirrors UsersApi.uploadProfilePhoto's exact multipart shape. */
+  async uploadPhoto(entityKey: MastersEntityKey, id: string, file: File): Promise<MasterRecordDto> {
+    const formData = new FormData();
+    // Field name must be "photo" — mirrors {Entity}Controller.UploadPhoto's IFormFile
+    // parameter name, which ASP.NET Core model binding matches against.
+    formData.append('photo', file);
+    const response = await this.client.postFormData<MasterRecordDto>(`${this.routes(entityKey).byId(id)}/photo`, formData);
     return response.data;
   }
 }

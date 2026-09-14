@@ -18,7 +18,7 @@ internal class ConsultantRepository : IConsultantRepository
         => await _dbContext.Consultants.AddAsync(consultant, cancellationToken);
 
     public Task<Consultant?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        => _dbContext.Consultants.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        => _dbContext.Consultants.Include(c => c.ConsultationTypes).FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Consultants.AnyAsync(c => c.Id == id, cancellationToken);
@@ -35,11 +35,6 @@ internal class ConsultantRepository : IConsultantRepository
         if (query.DepartmentId.HasValue)
         {
             consultants = consultants.Where(c => c.DepartmentId == query.DepartmentId.Value);
-        }
-
-        if (query.ConsultantType.HasValue)
-        {
-            consultants = consultants.Where(c => c.ConsultantType == query.ConsultantType.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Search))

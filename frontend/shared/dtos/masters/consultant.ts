@@ -1,6 +1,3 @@
-/** Mirrors HMS.Modules.Masters.Contracts.ConsultantType. */
-export type ConsultantType = 'InHouse' | 'Visiting';
-
 /** Mirrors HMS.Modules.Masters.Contracts.ConsultantResponse. */
 export interface Consultant {
   id: string;
@@ -9,12 +6,17 @@ export interface Consultant {
   specialization?: string | null;
   isActive: boolean;
   priority?: number | null;
-  consultantType?: ConsultantType | null;
+  /** Relative path (e.g. "uploads/consultants/{id}.jpg"), set only via the dedicated photo
+   * upload endpoint — resolve to a full URL the same way Consultant Photo does elsewhere
+   * (`${apiBaseUrl}/${photoUrl}`). */
+  photoUrl?: string | null;
   /** Day names, e.g. "Monday" — see Domain/Consultant.cs's own doc comment. */
   availableDays: string[];
   /** TimeOnly serializes as "HH:mm:ss". */
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  /** Masters ConsultationType ids this consultant offers. */
+  consultationTypeIds: string[];
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -26,10 +28,10 @@ export interface CreateConsultantRequest {
   specialization?: string | null;
   isActive: boolean;
   priority?: number | null;
-  consultantType?: ConsultantType | null;
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  consultationTypeIds: string[];
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.UpdateConsultantRequest. */
@@ -39,10 +41,10 @@ export interface UpdateConsultantRequest {
   specialization?: string | null;
   isActive: boolean;
   priority?: number | null;
-  consultantType?: ConsultantType | null;
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  consultationTypeIds: string[];
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.ConsultantListQuery. */
@@ -53,5 +55,4 @@ export interface ConsultantListQuery {
   search?: string;
   isActive?: boolean;
   departmentId?: string;
-  consultantType?: ConsultantType;
 }

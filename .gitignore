@@ -43,6 +43,13 @@ frontend/mobile/ios/DerivedData/
 !.env.test
 
 # =========================
+# Local file uploads (Users/Branding/Patients/Consultants/Products photos, etc.) — real,
+# potentially sensitive uploaded content belongs on disk/blob storage per environment, never in
+# source control. wwwroot/.gitkeep keeps the parent folder itself tracked.
+# =========================
+backend/src/HMS.Api/wwwroot/uploads/
+
+# =========================
 # IDE
 # =========================
 .idea/

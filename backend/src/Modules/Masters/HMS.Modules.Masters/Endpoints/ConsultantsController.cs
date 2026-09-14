@@ -118,6 +118,33 @@ public class ConsultantsController : ControllerBase
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Uploads (or replaces) a consultant's photo.</summary>
+    /// <response code="200">The photo was uploaded.</response>
+    /// <response code="400">The file failed validation (not JPG/PNG, over 2MB, or not a real image).</response>
+    /// <response code="404">No consultant was found for the given id.</response>
+    [Authorize]
+    [RequirePermission("identity-administration.edit")]
+    [HttpPost("{id:guid}/photo")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadPhoto(Guid id, IFormFile photo, CancellationToken cancellationToken)
+    {
+        if (photo is null || photo.Length == 0)
+        {
+            return BadRequest(new ApiErrorResponse
+            {
+                ErrorCode = MastersErrorCodes.InvalidFile,
+                Message = "A photo file is required.",
+                CorrelationId = HttpContext.GetCorrelationId(),
+                Timestamp = DateTime.UtcNow,
+            });
+        }
+
+        await using var stream = photo.OpenReadStream();
+        var result = await _service.UploadPhotoAsync(
+            id, stream, photo.FileName, photo.ContentType, photo.Length, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     private static ApiResponse<ConsultantResponse> Envelope(ConsultantResponse? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)
@@ -127,6 +154,7 @@ public class ConsultantsController : ControllerBase
             MastersErrorCodes.NotFound => StatusCodes.Status404NotFound,
             MastersErrorCodes.DuplicateCode => StatusCodes.Status400BadRequest,
             MastersErrorCodes.InvalidReference => StatusCodes.Status400BadRequest,
+            MastersErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };
 

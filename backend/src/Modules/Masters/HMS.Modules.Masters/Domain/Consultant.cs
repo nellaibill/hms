@@ -1,4 +1,3 @@
-using HMS.Modules.Masters.Contracts;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Masters.Domain;
@@ -25,11 +24,10 @@ internal class Consultant : Entity
     /// two consultants can share the same priority and just tie-break alphabetically.</summary>
     public int? Priority { get; private set; }
 
-    /// <summary>In-house (employed) vs Visiting (external, scheduled hours) — drives the
-    /// consultation billing category at invoicing time. Nullable so a consultant created
-    /// before this field existed doesn't need a data migration; CreateConsultantRequestValidator
-    /// requires it for every new save going forward.</summary>
-    public ConsultantType? ConsultantType { get; private set; }
+    /// <summary>Relative path (e.g. "uploads/consultants/{id}.jpg") to this consultant's photo,
+    /// set only via UploadPhotoAsync — never part of Create/Update (mirrors User.ProfilePhotoUrl,
+    /// which is likewise excluded from UpdateUserRequest). Null until a photo is uploaded.</summary>
+    public string? PhotoUrl { get; private set; }
 
     /// <summary>Days of the week this consultant is available at the hospital, as plain
     /// System.DayOfWeek names (e.g. "Monday") — purely static reference info shown to Reception/
@@ -44,6 +42,13 @@ internal class Consultant : Entity
     public TimeOnly? VisitStartTime { get; private set; }
     public TimeOnly? VisitEndTime { get; private set; }
 
+    /// <summary>Which consultation types (billing categories, e.g. "Doctor's Consultation
+    /// (In-house) - Regular") this consultant offers — a many-to-many replaced wholesale on
+    /// every Create/Update (see SetConsultationTypes), the same "fully replace, no incremental
+    /// add/remove" convention AvailableDays already uses on this same entity.</summary>
+    private readonly List<ConsultantConsultationType> _consultationTypes = [];
+    public IReadOnlyCollection<ConsultantConsultationType> ConsultationTypes => _consultationTypes;
+
     // Required by EF Core materialization.
     private Consultant()
     {
@@ -56,7 +61,6 @@ internal class Consultant : Entity
         string? specialization,
         bool isActive,
         int? priority,
-        ConsultantType? consultantType,
         IReadOnlyList<string> availableDays,
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
@@ -68,7 +72,6 @@ internal class Consultant : Entity
         Specialization = specialization;
         IsActive = isActive;
         Priority = priority;
-        ConsultantType = consultantType;
         AvailableDays = availableDays;
         VisitStartTime = visitStartTime;
         VisitEndTime = visitEndTime;
@@ -80,27 +83,30 @@ internal class Consultant : Entity
         string? specialization,
         bool isActive,
         int? priority,
-        ConsultantType? consultantType,
         IReadOnlyList<string> availableDays,
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
+        IReadOnlyList<Guid> consultationTypeIds,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         GuardAvailability(availableDays, visitStartTime, visitEndTime);
 
-        return new Consultant(
+        var consultant = new Consultant(
             Guid.CreateVersion7(),
             name.Trim(),
             departmentId,
             specialization?.Trim(),
             isActive,
             priority,
-            consultantType,
             availableDays,
             visitStartTime,
             visitEndTime,
             createdBy);
+
+        consultant.SetConsultationTypes(consultationTypeIds);
+
+        return consultant;
     }
 
     public void Update(
@@ -109,10 +115,10 @@ internal class Consultant : Entity
         string? specialization,
         bool isActive,
         int? priority,
-        ConsultantType? consultantType,
         IReadOnlyList<string> availableDays,
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
+        IReadOnlyList<Guid> consultationTypeIds,
         Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
@@ -123,11 +129,28 @@ internal class Consultant : Entity
         Specialization = specialization?.Trim();
         IsActive = isActive;
         Priority = priority;
-        ConsultantType = consultantType;
         AvailableDays = availableDays;
         VisitStartTime = visitStartTime;
         VisitEndTime = visitEndTime;
+        SetConsultationTypes(consultationTypeIds);
         MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Set only by ConsultantService.UploadPhotoAsync, after the file has already been
+    /// written to storage — see Domain/Consultant.cs's own PhotoUrl doc comment.</summary>
+    public void SetPhoto(string photoUrl, Guid? updatedBy)
+    {
+        PhotoUrl = photoUrl;
+        MarkUpdated(updatedBy);
+    }
+
+    private void SetConsultationTypes(IReadOnlyList<Guid> consultationTypeIds)
+    {
+        _consultationTypes.Clear();
+        foreach (var consultationTypeId in consultationTypeIds.Distinct())
+        {
+            _consultationTypes.Add(ConsultantConsultationType.Create(Id, consultationTypeId));
+        }
     }
 
     /// <summary>Repeats the request-level validator's own rules as a genuine domain invariant

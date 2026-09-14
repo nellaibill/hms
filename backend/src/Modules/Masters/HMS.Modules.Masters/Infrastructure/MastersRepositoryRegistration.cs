@@ -43,6 +43,11 @@ internal static class MastersRepositoryRegistration
         services.AddScoped<IStateRepository, StateRepository>();
         services.AddScoped<IDistrictRepository, DistrictRepository>();
 
+        // Not a repository, but this Infrastructure-DI file is where every other Masters
+        // registration already lives (see this file's own doc comment) — a whole separate
+        // registration file for one file-storage service would be more indirection than it saves.
+        services.AddScoped<IConsultantFileStorage, ConsultantFileStorage>();
+
         return services;
     }
 }
