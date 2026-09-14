@@ -121,3 +121,23 @@ export function resolveRecordCostPrice(entityKey: string, id: string | undefined
   const cost = record?.costPrice;
   return typeof cost === 'number' && cost > 0 ? cost : null;
 }
+
+/**
+ * Resolves what a specific consultant charges for a specific consultation type, for
+ * Consultation-line profit reporting (see billingCalculations.ts's resolveItemCostPrice) —
+ * reads the same synchronous `consultant` reference cache resolveRecordLabel uses, primed by
+ * Masters config's `arrayItemKeys: { id: 'consultationTypeId', amount: 'consultantCharge' }`
+ * (see configs/consultant.ts). Unlike resolveRecordCostPrice, 0 is a genuine, real charge here
+ * (a consultant who takes none of the fee) rather than "not yet costed" — so only a missing
+ * consultant/id, an unresolved cache, or a consultation type the consultant doesn't actually
+ * offer collapse to null; an explicit 0 is returned as-is.
+ */
+export function resolveConsultantCharge(consultantId: string | undefined | null, consultationTypeId: string | undefined | null): number | null {
+  if (!consultantId || !consultationTypeId) return null;
+  const consultant = referenceCache.get('consultant')?.get(consultantId);
+  const charges = consultant?.consultationTypeCharges;
+  if (!Array.isArray(charges)) return null;
+  const entry = charges.find((charge) => (charge as { consultationTypeId?: string }).consultationTypeId === consultationTypeId);
+  const charge = (entry as { consultantCharge?: unknown } | undefined)?.consultantCharge;
+  return typeof charge === 'number' ? charge : null;
+}
