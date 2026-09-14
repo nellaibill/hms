@@ -15,12 +15,6 @@ internal class ConsultationType : Entity
     public string Name { get; private set; } = null!;
     public decimal? Amount { get; private set; }
 
-    /// <summary>What it actually costs the hospital to deliver this consultation once
-    /// (allocated staff/facility time) — distinct from <see cref="Amount"/>, what the patient
-    /// is billed. Defaults to 0 (unknown/not yet costed) rather than being required, matching
-    /// DiagnosticTest/DiagnosticService.CostPrice's reasoning.</summary>
-    public decimal CostPrice { get; private set; }
-
     public bool IsActive { get; private set; } = true;
 
     // Required by EF Core materialization.
@@ -32,21 +26,18 @@ internal class ConsultationType : Entity
         Guid id,
         string name,
         decimal? amount,
-        decimal costPrice,
         bool isActive,
         Guid? createdBy)
         : base(id, createdBy)
     {
         Name = name;
         Amount = amount;
-        CostPrice = costPrice;
         IsActive = isActive;
     }
 
     public static ConsultationType Create(
         string name,
         decimal? amount,
-        decimal costPrice,
         bool isActive,
         Guid? createdBy)
     {
@@ -55,16 +46,11 @@ internal class ConsultationType : Entity
         {
             throw new ArgumentOutOfRangeException(nameof(amount), "Amount cannot be negative.");
         }
-        if (costPrice < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(costPrice), "Cost price cannot be negative.");
-        }
 
         return new ConsultationType(
             Guid.CreateVersion7(),
             name.Trim(),
             amount,
-            costPrice,
             isActive,
             createdBy);
     }
@@ -72,7 +58,6 @@ internal class ConsultationType : Entity
     public void Update(
         string name,
         decimal? amount,
-        decimal costPrice,
         bool isActive,
         Guid? updatedBy)
     {
@@ -81,14 +66,9 @@ internal class ConsultationType : Entity
         {
             throw new ArgumentOutOfRangeException(nameof(amount), "Amount cannot be negative.");
         }
-        if (costPrice < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(costPrice), "Cost price cannot be negative.");
-        }
 
         Name = name.Trim();
         Amount = amount;
-        CostPrice = costPrice;
         IsActive = isActive;
         MarkUpdated(updatedBy);
     }

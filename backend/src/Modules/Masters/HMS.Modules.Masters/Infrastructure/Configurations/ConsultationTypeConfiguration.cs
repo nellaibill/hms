@@ -15,7 +15,6 @@ internal class ConsultationTypeConfiguration : IEntityTypeConfiguration<Consulta
 
         builder.Property(c => c.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
         builder.Property(c => c.Amount).HasColumnName("amount").HasColumnType("numeric(10,2)");
-        builder.Property(c => c.CostPrice).HasColumnName("cost_price").HasColumnType("numeric(10,2)").IsRequired().HasDefaultValue(0m);
         builder.Property(c => c.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
 
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
