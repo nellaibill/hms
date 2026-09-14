@@ -114,7 +114,10 @@ function toFormDefaults(config: MasterEntityConfig, values: Record<string, unkno
     if ((field.type === 'reference' || field.type === 'select') && (result[field.key] === undefined || result[field.key] === null || result[field.key] === '')) {
       result[field.key] = NONE_VALUE;
     }
-    if ((field.type === 'day-checkboxes' || field.type === 'reference-checkboxes') && !Array.isArray(result[field.key])) {
+    if (
+      (field.type === 'day-checkboxes' || field.type === 'reference-checkboxes' || field.type === 'reference-checkboxes-amount') &&
+      !Array.isArray(result[field.key])
+    ) {
       result[field.key] = [];
     }
   }
@@ -148,7 +151,7 @@ interface FieldControlProps {
 }
 
 function FieldControl({ field, register, control, errors, readOnly, recordId, scopeValue, validate }: FieldControlProps) {
-  const isReferenceLike = field.type === 'reference' || field.type === 'reference-checkboxes';
+  const isReferenceLike = field.type === 'reference' || field.type === 'reference-checkboxes' || field.type === 'reference-checkboxes-amount';
   const referenceOptions = useMasterOptionsQuery(isReferenceLike ? field.referenceEntityKey : undefined);
   const referenceConfig = isReferenceLike ? getMasterConfig(field.referenceEntityKey) : undefined;
   const error = errors[field.key];
@@ -400,6 +403,103 @@ function FieldControl({ field, register, control, errors, readOnly, recordId, sc
                     {item.label}
                   </label>
                 ))}
+              </div>
+            );
+          }}
+        />
+        {error && <p className="text-sm text-destructive">{String(error.message)}</p>}
+      </div>
+    );
+  }
+
+  if (field.type === 'reference-checkboxes-amount') {
+    const idKey = field.arrayItemKeys?.id ?? 'id';
+    const amountKey = field.arrayItemKeys?.amount ?? 'amount';
+    const items = (referenceOptions.data ?? [])
+      .filter((option) => !field.referenceActiveOnly || option.isActive)
+      .map((option) => ({
+        id: option.id,
+        label: referenceConfig ? getDisplayLabel(referenceConfig, option) : option.id,
+        referenceAmount: field.referenceAmountField ? (option[field.referenceAmountField] as number | null | undefined) : undefined,
+      }));
+
+    return (
+      <div className="flex w-full flex-col gap-2">
+        <label className="text-sm font-medium leading-none text-foreground">
+          {field.label}
+          {field.required && <span className="text-destructive"> *</span>}
+        </label>
+        {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+        <Controller
+          name={field.key}
+          control={control}
+          rules={field.required ? { validate: (value) => (Array.isArray(value) && value.length > 0) || `Select at least one ${field.label.toLowerCase()}.` } : undefined}
+          render={({ field: controllerField }) => {
+            const selected: Record<string, unknown>[] = Array.isArray(controllerField.value) ? controllerField.value : [];
+            const findEntry = (id: string) => selected.find((entry) => entry[idKey] === id);
+            function toggle(id: string) {
+              controllerField.onChange(findEntry(id) ? selected.filter((entry) => entry[idKey] !== id) : [...selected, { [idKey]: id, [amountKey]: null }]);
+            }
+            function setAmount(id: string, raw: string) {
+              const parsed = raw === '' ? null : Number(raw);
+              controllerField.onChange(selected.map((entry) => (entry[idKey] === id ? { ...entry, [amountKey]: parsed } : entry)));
+            }
+            return (
+              <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+                {items.map((item) => {
+                  const entry = findEntry(item.id);
+                  const checked = Boolean(entry);
+                  const consultantCharge = entry ? (entry[amountKey] as number | null | undefined) : undefined;
+                  const hasHospitalCharge = item.referenceAmount !== null && item.referenceAmount !== undefined;
+                  const hospitalCharge = hasHospitalCharge ? Number(item.referenceAmount) : undefined;
+                  const income = hospitalCharge !== undefined && consultantCharge != null ? hospitalCharge - Number(consultantCharge) : undefined;
+                  const incomePercent = income !== undefined && hospitalCharge ? (income / hospitalCharge) * 100 : undefined;
+
+                  return (
+                    <div key={item.id} className="rounded-md border border-transparent px-2 py-1.5 has-[:checked]:border-input">
+                      <label className="flex items-center gap-2 text-sm text-foreground">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input"
+                          checked={checked}
+                          disabled={readOnly}
+                          onChange={() => toggle(item.id)}
+                        />
+                        {item.label}
+                      </label>
+                      {checked && (
+                        <div className="mt-2 grid grid-cols-1 gap-3 pl-6 sm:grid-cols-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-muted-foreground">Consultant charge (₹)</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="any"
+                              disabled={readOnly}
+                              value={consultantCharge ?? ''}
+                              onChange={(e) => setAmount(item.id, e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-muted-foreground">Hospital charge (₹)</span>
+                            <div className="flex h-8 items-center text-sm text-muted-foreground">
+                              {hospitalCharge !== undefined ? `₹${hospitalCharge.toLocaleString('en-IN')}` : '—'}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-muted-foreground">Hospital income</span>
+                            <div className="flex h-8 items-center text-sm font-medium text-foreground">
+                              {income !== undefined
+                                ? `₹${income.toLocaleString('en-IN')}${incomePercent !== undefined ? ` (${incomePercent.toFixed(0)}%)` : ''}`
+                                : '—'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           }}

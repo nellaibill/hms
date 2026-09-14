@@ -15,18 +15,33 @@ internal class ConsultantConsultationType
     public Guid ConsultantId { get; private set; }
     public Guid ConsultationTypeId { get; private set; }
 
+    /// <summary>What the hospital pays this specific consultant for this specific consultation
+    /// type — distinct from ConsultationType.Amount (what the patient is billed, constant per
+    /// type). Genuinely varies doctor to doctor for the same type, which is exactly why it lives
+    /// here on the join row rather than on ConsultationType or Consultant alone. Nullable for the
+    /// same reason ConsultationType.Amount is: a rate not yet decided shouldn't be forced to 0.</summary>
+    public decimal? ConsultantCharge { get; private set; }
+
     // Required by EF Core materialization.
     private ConsultantConsultationType()
     {
     }
 
-    private ConsultantConsultationType(Guid id, Guid consultantId, Guid consultationTypeId)
+    private ConsultantConsultationType(Guid id, Guid consultantId, Guid consultationTypeId, decimal? consultantCharge)
     {
         Id = id;
         ConsultantId = consultantId;
         ConsultationTypeId = consultationTypeId;
+        ConsultantCharge = consultantCharge;
     }
 
-    public static ConsultantConsultationType Create(Guid consultantId, Guid consultationTypeId)
-        => new(Guid.CreateVersion7(), consultantId, consultationTypeId);
+    public static ConsultantConsultationType Create(Guid consultantId, Guid consultationTypeId, decimal? consultantCharge)
+    {
+        if (consultantCharge is < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(consultantCharge), "Consultant charge cannot be negative.");
+        }
+
+        return new(Guid.CreateVersion7(), consultantId, consultationTypeId, consultantCharge);
+    }
 }

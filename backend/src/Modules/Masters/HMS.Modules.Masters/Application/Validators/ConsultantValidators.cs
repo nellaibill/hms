@@ -21,7 +21,10 @@ internal class CreateConsultantRequestValidator : AbstractValidator<CreateConsul
             .When(x => x.VisitStartTime.HasValue && x.VisitEndTime.HasValue)
             .WithMessage("Visit end time must be after the start time.");
 
-        RuleFor(x => x.ConsultationTypeIds).NotEmpty().WithMessage("Select at least one consultation type.");
+        RuleFor(x => x.ConsultationTypeCharges).NotEmpty().WithMessage("Select at least one consultation type.");
+        RuleForEach(x => x.ConsultationTypeCharges)
+            .ChildRules(charge => charge.RuleFor(c => c.ConsultantCharge).GreaterThanOrEqualTo(0).When(c => c.ConsultantCharge.HasValue)
+                .WithMessage("Consultant charge cannot be negative."));
     }
 
     internal static bool BeAValidDayName(string day) => Enum.TryParse<DayOfWeek>(day, out _);
@@ -45,6 +48,9 @@ internal class UpdateConsultantRequestValidator : AbstractValidator<UpdateConsul
             .When(x => x.VisitStartTime.HasValue && x.VisitEndTime.HasValue)
             .WithMessage("Visit end time must be after the start time.");
 
-        RuleFor(x => x.ConsultationTypeIds).NotEmpty().WithMessage("Select at least one consultation type.");
+        RuleFor(x => x.ConsultationTypeCharges).NotEmpty().WithMessage("Select at least one consultation type.");
+        RuleForEach(x => x.ConsultationTypeCharges)
+            .ChildRules(charge => charge.RuleFor(c => c.ConsultantCharge).GreaterThanOrEqualTo(0).When(c => c.ConsultantCharge.HasValue)
+                .WithMessage("Consultant charge cannot be negative."));
     }
 }
