@@ -1,4 +1,4 @@
-import { describeBillingItem, resolveItemCostPrice, type Billing, type BillingType } from '@/features/billing';
+import { describeBillingItem, resolveItemCostPrice, type Billing, type BillingItem, type BillingType } from '@/features/billing';
 import type { BreakdownRow } from './incomeExpenseReport';
 import type { ReportDateRange } from './types';
 
@@ -21,10 +21,11 @@ export interface ProfitReportRow {
   patientName: string;
   billingType: BillingType;
   serviceLabel: string;
-  /** Only ever set on Consultation-type rows — the only BillingType carrying consultant
-   * attribution at all. Sourced from `billedConsultantId`, not `consultantId` (see
-   * InvoiceLineItemResponse.billedConsultantId's own doc comment), so this stays populated
-   * even after the line item is paid. */
+  departmentId?: string;
+  /** Set whenever the underlying line item had a consultant at billing time — every billing
+   * type except Injection/File (no doctor involved there). Sourced from `billedConsultantId`,
+   * not `consultantId` (see InvoiceLineItemResponse.billedConsultantId's own doc comment), so
+   * this stays populated even after the line item is paid. */
   billedConsultantId?: string;
   quantity: number;
   /** Already net of discount — same figure the invoice itself bills. */
@@ -66,6 +67,7 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
         patientName: billing.patientName,
         billingType: item.billingType as BillingType,
         serviceLabel,
+        departmentId: item.departmentId,
         billedConsultantId: item.billedConsultantId,
         quantity: item.quantity,
         revenue: item.total,
@@ -168,4 +170,34 @@ export function getProfitByConsultant(rows: ProfitReportRow[]): ConsultantProfit
     profit: t.hasCost ? t.profit : null,
     marginPercent: t.hasCost && t.revenue > 0 ? Math.round((t.profit / t.revenue) * 100) : null,
   })).sort((a, b) => b.revenue - a.revenue);
+}
+
+/** Hospital Profit Report's own filter bar state (see ProfitReportFilters) — every field is
+ * optional/unset meaning "don't narrow by this," so `{}` is the natural "no filters" value. */
+export interface ProfitReportFilterState {
+  billingType?: BillingItem['billingType'];
+  departmentId?: string;
+  consultantId?: string;
+  /** Case-insensitive substring match against service/package name, patient name, or invoice
+   * number — one box standing in for a formal per-catalog service/package picker, since
+   * diagnostic tests/services/consultation types live in separate Masters catalogs with no
+   * single combined list to build a dropdown from. */
+  search?: string;
+}
+
+/** Applies the Hospital Profit Report's filter bar on top of the date-ranged rows — plain
+ * `.filter()`, no different in kind from the date-range filter `getProfitRows` already applies,
+ * just a second pass so the date range and these filters stay independently reasoned about. */
+export function filterProfitRows(rows: ProfitReportRow[], filters: ProfitReportFilterState): ProfitReportRow[] {
+  const search = filters.search?.trim().toLowerCase();
+  return rows.filter((row) => {
+    if (filters.billingType && row.billingType !== filters.billingType) return false;
+    if (filters.departmentId && row.departmentId !== filters.departmentId) return false;
+    if (filters.consultantId && row.billedConsultantId !== filters.consultantId) return false;
+    if (search) {
+      const haystack = `${row.serviceLabel} ${row.patientName} ${row.invoiceNumber ?? ''}`.toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
 }
