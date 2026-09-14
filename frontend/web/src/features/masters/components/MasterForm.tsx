@@ -468,7 +468,7 @@ function FieldControl({ field, register, control, errors, readOnly, recordId, sc
                         {item.label}
                       </label>
                       {checked && (
-                        <div className="mt-2 grid grid-cols-1 gap-3 pl-6 sm:grid-cols-3">
+                        <div className="mt-2 grid max-w-xl grid-cols-1 gap-3 pl-6 sm:grid-cols-[minmax(0,140px)_minmax(0,140px)_minmax(0,160px)]">
                           <div className="flex flex-col gap-1">
                             <span className="text-[11px] text-muted-foreground">Consultant charge (₹)</span>
                             <Input
@@ -478,7 +478,7 @@ function FieldControl({ field, register, control, errors, readOnly, recordId, sc
                               disabled={readOnly}
                               value={consultantCharge ?? ''}
                               onChange={(e) => setAmount(item.id, e.target.value)}
-                              className="h-8 text-sm"
+                              className="h-8 w-full text-sm"
                             />
                           </div>
                           <div className="flex flex-col gap-1">

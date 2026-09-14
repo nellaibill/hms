@@ -9,7 +9,7 @@ import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Field } from '@/features/patients/components/FormSection';
-import { consultationTypesApi } from '@/services/apiClient';
+import { consultantsApi, consultationTypesApi } from '@/services/apiClient';
 import { isConsultationEntryActive } from '../billingActivity';
 import { getServicePrice, type BillingService } from '../billingCatalog';
 import { formatCurrency } from '../billingCalculations';
@@ -24,15 +24,14 @@ interface ConsultationBillingCardProps {
 }
 
 /**
- * One or more Department → Consultant → Consultation Type rows. Charge defaults to the
- * selected Consultation Type's real standard fee but is directly editable — real-world cases
- * (a waived fee, a negotiated corporate/insurance rate) need a genuinely different charge, not
- * a Discount against the standard one, which would otherwise drag in the discount-approval
- * flow for something that isn't actually a discount. Department/Consultant stay pure
- * attribution (who saw the patient, where). Mirrors ServiceBillingCard's row/array pattern
- * used by Radiology/Laboratory/Procedure, so a visit seen by more than one specialist can bill
- * more than one consultation (previously a "demo affordance" row that silently never reached
- * the saved invoice).
+ * One or more Department → Consultant → Consultation Type rows. Charge auto-fills from the
+ * selected Consultation Type's master rate and is locked once that rate exists — staff pick the
+ * category, they don't set the price. Types with no fixed master rate (e.g. "Others/On-call")
+ * leave the field open for manual entry, since there's nothing to lock it to. Department/
+ * Consultant stay pure attribution (who saw the patient, where). Mirrors ServiceBillingCard's
+ * row/array pattern used by Radiology/Laboratory/Procedure, so a visit seen by more than one
+ * specialist can bill more than one consultation (previously a "demo affordance" row that
+ * silently never reached the saved invoice).
  */
 export function ConsultationBillingCard({ expanded, onToggle, hasError }: ConsultationBillingCardProps) {
   const { control } = useFormContext<BillingFormValues>();
@@ -245,6 +244,7 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
   const basePath = `consultation.${index}` as const;
 
   const departmentId = watch(`${basePath}.departmentId`);
+  const consultantId = watch(`${basePath}.consultantId`);
   const consultationTypeId = watch(`${basePath}.consultationTypeId`);
   const fromVisit = watch(`${basePath}.fromVisit`);
 
@@ -255,15 +255,39 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
     queryFn: () => consultationTypesApi.getConsultationTypes({ pageSize: 100, isActive: true }),
   });
 
+  // Same query key ConsultantSelect uses for its own list, so switching consultants within an
+  // already-loaded department is a cache read too — just here to read the selected consultant's
+  // own Consultation Types (Masters → Consultant Edit) so this row only offers types this
+  // specific doctor actually does, instead of every active type hospital-wide.
+  const { data: consultants } = useQuery({
+    queryKey: ['consultants', 'select-list', departmentId],
+    queryFn: () => consultantsApi.getConsultants({ pageSize: 100, isActive: true, departmentId }),
+    enabled: Boolean(departmentId),
+  });
+  const selectedConsultant = consultants?.items.find((c) => c.id === consultantId);
+  const allowedConsultationTypeIds = selectedConsultant?.consultationTypeCharges.map((c) => c.consultationTypeId);
+
+  // A consultant's previously-picked type can fall out of scope when the consultant itself
+  // changes (or is cleared) — mirrors Department→Consultant's identical clearing just below.
   useEffect(() => {
-    const selectedType = consultationTypes?.items.find((t) => t.id === consultationTypeId);
-    // Types like "Doctor's Consultation - Others/On-call" have no fixed master amount
-    // (amount: null, "Amount to be filled" — see ConsultationTypeSelect) — leave the charge
-    // alone for those so staff can type the actual amount, instead of forcing it to 0. Also
-    // deliberately depends only on consultationTypeId, not `consultationTypes` itself: the
-    // query object gets a new reference on every refetch (focus, cache invalidation from an
-    // unrelated mutation, etc.), and re-running this on that alone used to stomp whatever the
-    // user had just typed back to the master default on every such refetch.
+    if (consultationTypeId && allowedConsultationTypeIds && !allowedConsultationTypeIds.includes(consultationTypeId)) {
+      setValue(`${basePath}.consultationTypeId`, '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consultantId]);
+
+  const selectedType = consultationTypes?.items.find((t) => t.id === consultationTypeId);
+  // Types like "Doctor's Consultation - Others/On-call" have no fixed master amount (amount:
+  // null, "Amount to be filled" — see ConsultationTypeSelect) — the charge field stays editable
+  // for those since there's no master rate to lock it to; every other type locks it, so staff
+  // pick the category rather than set the price.
+  const hasFixedCharge = selectedType?.amount != null;
+
+  useEffect(() => {
+    // Deliberately depends only on consultationTypeId, not `consultationTypes`/`selectedType`
+    // itself: the query object gets a new reference on every refetch (focus, cache invalidation
+    // from an unrelated mutation, etc.), and re-running this on that alone used to stomp
+    // whatever the user had just typed back to the master default on every such refetch.
     if (selectedType?.amount != null) {
       setValue(`${basePath}.charge`, selectedType.amount, { shouldValidate: true });
     }
@@ -329,12 +353,19 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
           label="Consultation type"
           htmlFor={`${basePath}-type`}
           error={rowErrors?.consultationTypeId?.message}
-          className="flex w-full flex-col gap-1 sm:w-48"
+          className="flex w-full min-w-[220px] flex-1 flex-col gap-1 sm:w-auto"
         >
           <Controller
             name={`${basePath}.consultationTypeId`}
             control={control}
-            render={({ field }) => <ConsultationTypeSelect id={`${basePath}-type`} value={field.value} onValueChange={field.onChange} />}
+            render={({ field }) => (
+              <ConsultationTypeSelect
+                id={`${basePath}-type`}
+                value={field.value}
+                onValueChange={field.onChange}
+                allowedIds={allowedConsultationTypeIds}
+              />
+            )}
           />
         </Field>
         <Field
@@ -352,6 +383,7 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
                 type="number"
                 min={0}
                 inputMode="decimal"
+                disabled={hasFixedCharge}
                 value={field.value}
                 // The field starts at (or gets cleared back to) 0 — e.g. "Doctor's Consultation
                 // - Others/On-call" has no master fee (see the effect above), so staff type the
