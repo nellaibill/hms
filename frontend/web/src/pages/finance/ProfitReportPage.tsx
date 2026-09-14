@@ -6,6 +6,7 @@ import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/feature
 import { useMasterOptionsQuery } from '@/features/masters';
 import {
   CategoryBreakdownCard,
+  filterProfitRows,
   getProfitByBillingType,
   getProfitByTest,
   getProfitRows,
@@ -13,12 +14,13 @@ import {
   Pagination,
   paginate,
   ProfitExportButtons,
+  ProfitReportFilters,
   ProfitSummaryCards,
   ProfitTable,
   ReportDateRangeFilter,
   AccountsNavTabs,
 } from '@/features/reports';
-import type { ReportDateRange } from '@/features/reports';
+import type { ProfitReportFilterState, ReportDateRange } from '@/features/reports';
 
 const ROWS_PER_PAGE = 10;
 
@@ -42,6 +44,7 @@ function defaultRange(): ReportDateRange {
  * opened directly, without ever visiting a live billing form first. */
 export default function ProfitReportPage() {
   const [range, setRange] = useState<ReportDateRange>(defaultRange);
+  const [filters, setFilters] = useState<ProfitReportFilterState>({});
   const [page, setPage] = useState(1);
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
@@ -65,14 +68,20 @@ export default function ProfitReportPage() {
     () => getProfitRows(billings ?? [], range),
     [billings, range, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices],
   );
-  const totals = useMemo(() => getProfitTotals(rows), [rows]);
-  const byTest = useMemo(() => getProfitByTest(rows), [rows]);
-  const byBillingType = useMemo(() => getProfitByBillingType(rows), [rows]);
+  const filteredRows = useMemo(() => filterProfitRows(rows, filters), [rows, filters]);
+  const totals = useMemo(() => getProfitTotals(filteredRows), [filteredRows]);
+  const byTest = useMemo(() => getProfitByTest(filteredRows), [filteredRows]);
+  const byBillingType = useMemo(() => getProfitByBillingType(filteredRows), [filteredRows]);
 
-  const pagedRows = paginate(rows, page, ROWS_PER_PAGE);
+  const pagedRows = paginate(filteredRows, page, ROWS_PER_PAGE);
 
   function handleRangeChange(next: ReportDateRange) {
     setRange(next);
+    setPage(1);
+  }
+
+  function handleFiltersChange(next: ProfitReportFilterState) {
+    setFilters(next);
     setPage(1);
   }
 
@@ -92,8 +101,10 @@ export default function ProfitReportPage() {
         <div className="flex w-full flex-col gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <ReportDateRangeFilter range={range} onChange={handleRangeChange} />
-            <ProfitExportButtons range={range} rows={rows} />
+            <ProfitExportButtons range={range} rows={filteredRows} />
           </div>
+
+          <ProfitReportFilters filters={filters} onChange={handleFiltersChange} />
 
           <ProfitSummaryCards totals={totals} />
 
@@ -104,15 +115,15 @@ export default function ProfitReportPage() {
 
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-foreground">
-              Billed Services <span className="font-normal text-muted-foreground">({rows.length} line items)</span>
+              Billed Services <span className="font-normal text-muted-foreground">({filteredRows.length} line items)</span>
             </h2>
             {isLoadingBillings ? (
               <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading invoices…
               </div>
-            ) : rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No billed services in this period.</p>
+            ) : filteredRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No billed services match the current filters.</p>
             ) : (
               <>
                 <ProfitTable rows={pagedRows.items} />

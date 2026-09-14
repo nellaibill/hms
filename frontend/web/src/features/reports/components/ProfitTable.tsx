@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/features/billing';
+import { resolveRecordLabel } from '@/features/masters';
 import type { ProfitReportRow } from '../profitReport';
 
 interface ProfitTableProps {
@@ -15,7 +16,7 @@ function formatMaybeCurrency(value: number | null): string {
 export function ProfitTable({ rows }: ProfitTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[900px] text-sm">
+      <table className="w-full min-w-[1100px] text-sm">
         <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-2.5">Date</th>
@@ -23,6 +24,8 @@ export function ProfitTable({ rows }: ProfitTableProps) {
             <th className="px-4 py-2.5">Patient</th>
             <th className="px-4 py-2.5">Type</th>
             <th className="px-4 py-2.5">Service</th>
+            <th className="px-4 py-2.5">Department</th>
+            <th className="px-4 py-2.5">Consultant</th>
             <th className="px-4 py-2.5 text-right">Qty</th>
             <th className="px-4 py-2.5 text-right">Revenue</th>
             <th className="px-4 py-2.5 text-right">Cost</th>
@@ -42,6 +45,8 @@ export function ProfitTable({ rows }: ProfitTableProps) {
               <td className="px-4 py-3 text-foreground">{row.patientName}</td>
               <td className="px-4 py-3 text-muted-foreground">{row.billingType}</td>
               <td className="px-4 py-3 text-muted-foreground">{row.serviceLabel}</td>
+              <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('department', row.departmentId)}</td>
+              <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('consultant', row.billedConsultantId)}</td>
               <td className="px-4 py-3 text-right text-muted-foreground">{row.quantity}</td>
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(row.revenue)}</td>
               <td className="px-4 py-3 text-right text-muted-foreground">{formatMaybeCurrency(row.cost)}</td>
