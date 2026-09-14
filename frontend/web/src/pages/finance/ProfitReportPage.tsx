@@ -14,9 +14,9 @@ import {
   Pagination,
   paginate,
   ProfitExportButtons,
-  ProfitReportFilterBar,
   ProfitSummaryCards,
   ProfitTable,
+  ReportFilterBar,
   AccountsNavTabs,
 } from '@/features/reports';
 import type { ProfitReportFilterState, ReportDateRange } from '@/features/reports';
@@ -45,10 +45,10 @@ function defaultRange(): ReportDateRange {
  *
  * Filters are a draft/applied split, not live: the filter bar edits `draftRange`/`draftFilters`
  * on every keystroke, but the report only recomputes once "Search" commits them into
- * `appliedRange`/`appliedFilters` (see ProfitReportFilterBar's own doc comment for why). The
- * page shows nothing until the first Search — `hasSearched` gates both the report body and
- * `rows` itself, so exporting before ever searching produces an empty file rather than
- * silently exporting the untouched default range.
+ * `appliedRange`/`appliedFilters` (see ReportFilterBar's own doc comment for why — shared with
+ * every other Finance report, not just this one). The page shows nothing until the first Search
+ * — `hasSearched` gates both the report body and `rows` itself, so exporting before ever
+ * searching produces an empty file rather than silently exporting the untouched default range.
  */
 export default function ProfitReportPage() {
   const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultRange);
@@ -128,18 +128,15 @@ export default function ProfitReportPage() {
         <AccountsNavTabs />
 
         <div className="flex w-full flex-col gap-4">
-          <ProfitReportFilterBar
+          <ReportFilterBar
             range={draftRange}
             filters={draftFilters}
             onRangeChange={setDraftRange}
             onFiltersChange={setDraftFilters}
             onSearch={handleSearch}
             onReset={handleReset}
+            exportSlot={<ProfitExportButtons range={appliedRange} rows={filteredRows} />}
           />
-
-          <div className="flex justify-end">
-            <ProfitExportButtons range={appliedRange} rows={filteredRows} />
-          </div>
 
           {!hasSearched ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card px-6 py-20 text-center">

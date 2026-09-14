@@ -37,6 +37,23 @@ export function getExpenseRows(range: ReportDateRange): ExpenseReportRow[] {
   return MOCK_EXPENSES.filter((row) => inRange(row.date, range)).sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/** Income & Expense Report's own Search field — case-insensitive substring match, same "one box"
+ * reasoning as the Hospital Profit Report's filterProfitRows, just against this report's own
+ * (invoice-level, not line-item) row shapes. Income matches patient/UHID/invoice; Expense
+ * matches category/description — the two row shapes share no fields, so this stays two small
+ * functions rather than one generic one. */
+export function filterIncomeRows(rows: IncomeReportRow[], search: string | undefined): IncomeReportRow[] {
+  const term = search?.trim().toLowerCase();
+  if (!term) return rows;
+  return rows.filter((row) => `${row.patientName} ${row.patientUhid} ${row.invoiceNumber ?? row.id} ${row.billingTypes}`.toLowerCase().includes(term));
+}
+
+export function filterExpenseRows(rows: ExpenseReportRow[], search: string | undefined): ExpenseReportRow[] {
+  const term = search?.trim().toLowerCase();
+  if (!term) return rows;
+  return rows.filter((row) => `${row.category} ${row.description}`.toLowerCase().includes(term));
+}
+
 export interface ReportTotals {
   totalIncome: number;
   totalExpense: number;

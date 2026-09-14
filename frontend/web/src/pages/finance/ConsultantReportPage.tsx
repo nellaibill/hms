@@ -1,4 +1,4 @@
-import { Stethoscope } from 'lucide-react';
+import { FileSearch, Stethoscope } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useInvoicesForReportQuery } from '@/features/billing';
@@ -6,11 +6,13 @@ import { useMasterOptionsQuery } from '@/features/masters';
 import {
   ConsultantProfitTable,
   ProfitSummaryCards,
-  ReportDateRangeFilter,
+  ReportFilterBar,
   AccountsNavTabs,
+  filterProfitRows,
   getProfitByConsultant,
   getProfitRows,
   getProfitTotals,
+  type ProfitReportFilterState,
   type ReportDateRange,
 } from '@/features/reports';
 
@@ -33,9 +35,18 @@ function defaultRange(): ReportDateRange {
  * correctly — `consultantId` itself is cleared once a line item is paid (ADR-048); the whole
  * point of adding `billedConsultantId` was to make this report possible without that gap
  * silently omitting the majority of real (paid) revenue.
+ *
+ * Same shared filter bar and draft/applied/"click Search" pattern every other Finance report
+ * uses (see ReportFilterBar's own doc comment) — Billing Type and Consultant dropdowns are
+ * hidden here: Billing Type is always Consultation, and this report is already one row per
+ * consultant, so filtering it down to a single one has no real use.
  */
 export default function ConsultantReportPage() {
-  const [range, setRange] = useState<ReportDateRange>(defaultRange);
+  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultRange);
+  const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
+  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultRange);
+  const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
+  const [hasSearched, setHasSearched] = useState(false);
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
   const { data: consultantOptions } = useMasterOptionsQuery('consultant');
@@ -47,13 +58,28 @@ export default function ConsultantReportPage() {
   // derived from it below) would freeze at whatever the cache held on the very first render —
   // usually still empty — and never pick up the real figures once the priming query resolves.
   // Mirrors ProfitReportPage's identical reasoning for its own `rows` memo.
-  const rows = useMemo(() => getProfitRows(billings ?? [], range), [billings, range, consultantOptions]);
-  const consultationRows = useMemo(() => rows.filter((row) => row.billingType === 'Consultation'), [rows]);
+  const rows = useMemo(
+    () => (hasSearched ? getProfitRows(billings ?? [], appliedRange) : []),
+    [hasSearched, billings, appliedRange, consultantOptions],
+  );
+  const filteredRows = useMemo(() => filterProfitRows(rows, appliedFilters), [rows, appliedFilters]);
+  const consultationRows = useMemo(() => filteredRows.filter((row) => row.billingType === 'Consultation'), [filteredRows]);
   const totals = useMemo(() => getProfitTotals(consultationRows), [consultationRows]);
   const byConsultant = useMemo(() => getProfitByConsultant(consultationRows), [consultationRows]);
 
-  function handleRangeChange(next: ReportDateRange) {
-    setRange(next);
+  function handleSearch() {
+    setAppliedRange(draftRange);
+    setAppliedFilters(draftFilters);
+    setHasSearched(true);
+  }
+
+  function handleReset() {
+    const fresh = defaultRange();
+    setDraftRange(fresh);
+    setDraftFilters({});
+    setAppliedRange(fresh);
+    setAppliedFilters({});
+    setHasSearched(false);
   }
 
   return (
@@ -70,22 +96,45 @@ export default function ConsultantReportPage() {
         <AccountsNavTabs />
 
         <div className="flex w-full flex-col gap-4">
-          <ReportDateRangeFilter range={range} onChange={handleRangeChange} />
+          <ReportFilterBar
+            range={draftRange}
+            filters={draftFilters}
+            onRangeChange={setDraftRange}
+            onFiltersChange={setDraftFilters}
+            onSearch={handleSearch}
+            onReset={handleReset}
+            showBillingType={false}
+            showConsultant={false}
+          />
 
-          <ProfitSummaryCards totals={totals} />
+          {!hasSearched ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card px-6 py-20 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <FileSearch className="h-8 w-8" aria-hidden="true" />
+              </span>
+              <p className="text-base font-medium text-foreground">No data to display</p>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                Please select a date range and filters, then click Search to view this report.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ProfitSummaryCards totals={totals} />
 
-          <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-foreground">
-              By Consultant <span className="font-normal text-muted-foreground">({byConsultant.length} consultants)</span>
-            </h2>
-            {isLoadingBillings ? (
-              <p className="text-sm text-muted-foreground">Loading invoices…</p>
-            ) : byConsultant.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No consultation charges in this period.</p>
-            ) : (
-              <ConsultantProfitTable rows={byConsultant} />
-            )}
-          </div>
+              <div className="flex flex-col gap-3">
+                <h2 className="text-sm font-semibold text-foreground">
+                  By Consultant <span className="font-normal text-muted-foreground">({byConsultant.length} consultants)</span>
+                </h2>
+                {isLoadingBillings ? (
+                  <p className="text-sm text-muted-foreground">Loading invoices…</p>
+                ) : byConsultant.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No consultation charges match the current filters.</p>
+                ) : (
+                  <ConsultantProfitTable rows={byConsultant} />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
