@@ -10,6 +10,7 @@ import {
   useCreateMasterMutation,
   useMasterQuery,
   useUpdateMasterMutation,
+  useUploadMasterPhotoMutation,
 } from '@/features/masters';
 
 interface MasterFormPageProps {
@@ -25,6 +26,7 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
   const { data: record, isPending, isError } = useMasterQuery(entityKey ?? '', isNew ? undefined : id);
   const createMutation = useCreateMasterMutation(entityKey ?? '');
   const updateMutation = useUpdateMasterMutation(entityKey ?? '');
+  const uploadPhotoMutation = useUploadMasterPhotoMutation(entityKey ?? '');
 
   if (!config) {
     return (
@@ -63,9 +65,20 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
     );
   }
 
-  function handleSubmit(values: Record<string, unknown>) {
+  function handleSubmit(values: Record<string, unknown>, photoFile?: File) {
     if (isNew) {
-      createMutation.mutate(values, { onSuccess: (created) => navigate(`${listPath}/${created.id}`) });
+      createMutation.mutate(values, {
+        onSuccess: (created) => {
+          // A staged photo (see MasterPhotoUpload) only ever comes from a config.photo entity
+          // — the created record's real id now exists, so upload it before navigating away.
+          // Best-effort: the record itself is already saved either way, so a failed photo
+          // upload here shouldn't block navigation or need its own separate retry flow.
+          if (photoFile) {
+            uploadPhotoMutation.mutate({ id: created.id, file: photoFile });
+          }
+          navigate(`${listPath}/${created.id}`);
+        },
+      });
     } else {
       updateMutation.mutate({ id: id as string, values }, { onSuccess: () => navigate(`${listPath}/${id}`) });
     }

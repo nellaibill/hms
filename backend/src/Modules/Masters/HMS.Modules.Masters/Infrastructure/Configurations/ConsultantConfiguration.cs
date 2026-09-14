@@ -18,8 +18,7 @@ internal class ConsultantConfiguration : IEntityTypeConfiguration<Consultant>
         builder.Property(c => c.Specialization).HasColumnName("specialization").HasMaxLength(150);
         builder.Property(c => c.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
         builder.Property(c => c.Priority).HasColumnName("priority");
-
-        builder.Property(c => c.ConsultantType).HasColumnName("consultant_type").HasConversion<string>().HasMaxLength(20);
+        builder.Property(c => c.PhotoUrl).HasColumnName("photo_url").HasMaxLength(500);
 
         // Native Postgres text[] — Npgsql's EF Core provider maps List<string>/string[]
         // properties to array columns without needing a HasConversion; a value comparer is
@@ -62,5 +61,31 @@ internal class ConsultantConfiguration : IEntityTypeConfiguration<Consultant>
             .HasForeignKey(c => c.DepartmentId)
             .HasConstraintName("fk_consultants_department_id")
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasMany(c => c.ConsultationTypes)
+            .WithOne()
+            .HasForeignKey(ct => ct.ConsultantId)
+            .HasConstraintName("fk_consultant_consultation_types_consultant_id")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(c => c.ConsultationTypes).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+internal class ConsultantConsultationTypeConfiguration : IEntityTypeConfiguration<ConsultantConsultationType>
+{
+    public void Configure(EntityTypeBuilder<ConsultantConsultationType> builder)
+    {
+        builder.ToTable("consultant_consultation_types");
+
+        builder.HasKey(ct => ct.Id).HasName("pk_consultant_consultation_types");
+        builder.Property(ct => ct.Id).HasColumnName("id").ValueGeneratedNever();
+
+        builder.Property(ct => ct.ConsultantId).HasColumnName("consultant_id").IsRequired();
+        // App-level reference into ConsultationType — no DB FK, validated in ConsultantService
+        // (see Domain/ConsultantConsultationType.cs).
+        builder.Property(ct => ct.ConsultationTypeId).HasColumnName("consultation_type_id").IsRequired();
+
+        builder.HasIndex(ct => ct.ConsultantId).HasDatabaseName("ix_consultant_consultation_types_consultant_id");
+        builder.HasIndex(ct => ct.ConsultationTypeId).HasDatabaseName("ix_consultant_consultation_types_consultation_type_id");
     }
 }

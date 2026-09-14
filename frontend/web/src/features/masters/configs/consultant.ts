@@ -1,4 +1,4 @@
-import { Building2, Calendar, Stethoscope, User } from 'lucide-react';
+import { Calendar, ClipboardList, Stethoscope, User } from 'lucide-react';
 import { formatConsultantAvailability } from '../formatConsultantAvailability';
 import type { MasterEntityConfig } from '../engine/types';
 
@@ -10,28 +10,15 @@ export const consultantConfig: MasterEntityConfig = {
   icon: Stethoscope,
   section: 'Hospital Reference Data',
   nameField: 'name',
-  listFilters: ['departmentId', 'consultantType'],
+  listFilters: ['departmentId'],
   getRowSubtitle: (record) =>
     formatConsultantAvailability({
       availableDays: (record.availableDays as string[] | undefined) ?? [],
       visitStartTime: record.visitStartTime as string | null | undefined,
       visitEndTime: record.visitEndTime as string | null | undefined,
     }),
+  photo: { urlField: 'photoUrl', helpText: 'JPG, PNG (Max 2MB)' },
   fields: [
-    {
-      key: 'consultantType',
-      label: 'Consultant Type',
-      type: 'radio-card',
-      required: true,
-      options: [
-        { value: 'InHouse', label: 'In-house Doctor', description: 'Regular doctor employed by the hospital.', icon: Building2 },
-        { value: 'Visiting', label: 'Visiting Doctor', description: 'External consultant who visits the hospital on specific days and time.', icon: User },
-      ],
-      infoBox: {
-        title: 'Billing Information',
-        text: 'Consultant type determines the applicable consultation billing category (In-house or Visiting). This setting will be used during patient billing.',
-      },
-    },
     // skipUniquenessCheck: two consultants can legitimately share a display name (e.g. two
     // "Dr. Sharma"s) — see ConsultantSelect's own comment on using Specialization instead of
     // a Code to tell them apart.
@@ -44,6 +31,16 @@ export const consultantConfig: MasterEntityConfig = {
       type: 'number',
       min: 1,
       helpText: 'Controls display order in consultant pickers (Registration, Billing, etc.) — lower shows first. Leave blank for no preference.',
+    },
+    {
+      key: 'consultationTypeIds',
+      label: 'Consultation Types',
+      type: 'reference-checkboxes',
+      referenceEntityKey: 'consultationType',
+      referenceActiveOnly: true,
+      required: true,
+      showInTable: false,
+      helpText: 'Select the consultation types applicable for this consultant. You can select multiple types.',
     },
     {
       key: 'availableDays',
@@ -65,8 +62,14 @@ export const consultantConfig: MasterEntityConfig = {
     { key: 'visitEndTime', label: 'End Time', type: 'time', required: true, showInTable: false },
   ],
   fieldGroups: [
-    { key: 'consultantType', label: 'Consultant Type *', icon: User, fieldKeys: ['consultantType'] },
     { key: 'info', label: 'Consultant Information', icon: User, fieldKeys: ['name', 'departmentId', 'specialization', 'priority'] },
+    {
+      key: 'consultationTypes',
+      label: 'Consultation Types',
+      icon: ClipboardList,
+      fieldKeys: ['consultationTypeIds'],
+      infoText: 'Only active consultation types are shown. Please select all applicable types for this consultant.',
+    },
     {
       key: 'availability',
       label: 'Doctor Availability',

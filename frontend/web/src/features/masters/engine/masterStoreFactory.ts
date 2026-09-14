@@ -13,6 +13,9 @@ export interface MasterStore {
   getAll(): Promise<MasterRecord[]>;
   create(values: Record<string, unknown>): Promise<MasterRecord>;
   update(id: string, values: Record<string, unknown>): Promise<MasterRecord>;
+  /** Only meaningful for an entity whose MasterEntityConfig declares `photo` — see that
+   * config's own doc comment. */
+  uploadPhoto(id: string, file: File): Promise<MasterRecord>;
 }
 
 /** The server clamps pageSize to this (see HMS.Shared.Kernel.PagedRequest.MaxPageSize) — there's no true unpaged endpoint, so "all records" means walking every page at the server's ceiling. */
@@ -48,5 +51,9 @@ export function createMasterStore(config: MasterEntityConfig): MasterStore {
     return (await mastersApi.update(entityKey, id, values)) as MasterRecord;
   }
 
-  return { list, getById, getAll, create, update };
+  async function uploadPhoto(id: string, file: File): Promise<MasterRecord> {
+    return (await mastersApi.uploadPhoto(entityKey, id, file)) as MasterRecord;
+  }
+
+  return { list, getById, getAll, create, update, uploadPhoto };
 }

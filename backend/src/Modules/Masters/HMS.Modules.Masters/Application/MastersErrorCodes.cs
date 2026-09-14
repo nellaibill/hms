@@ -23,4 +23,8 @@ internal static class MastersErrorCodes
     /// <summary>A DiagnosticPackageItem's ServiceId doesn't reference an existing
     /// DiagnosticService.</summary>
     public const string InvalidPackageItemService = "MASTERS.INVALID_PACKAGE_ITEM_SERVICE";
+
+    /// <summary>An uploaded file (e.g. Consultant.PhotoUrl) failed extension/content-type/size/
+    /// magic-byte validation.</summary>
+    public const string InvalidFile = "MASTERS.INVALID_FILE";
 }

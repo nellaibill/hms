@@ -56,3 +56,19 @@ export function useUpdateMasterMutation(entityKey: string) {
     onSuccess: invalidate,
   });
 }
+
+/** Only meaningful for an entity whose MasterEntityConfig declares `photo` — see that config's
+ * own doc comment. Invalidates the same keys create/update already do, so the new photo shows
+ * up immediately everywhere this record is displayed (its own detail query, the list page, and
+ * any dedicated picker). */
+export function useUploadMasterPhotoMutation(entityKey: string) {
+  const invalidate = useInvalidateMasters(entityKey);
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const store = getMasterStore(entityKey);
+      if (!store) throw new Error(`Unknown Masters entity "${entityKey}".`);
+      return store.uploadPhoto(id, file);
+    },
+    onSuccess: invalidate,
+  });
+}

@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useMasterOptionsQuery } from '../hooks/useMasterQuery';
 import { getDisplayLabel, getMasterConfig } from '../engine/registry';
+import { MasterPhotoUpload } from './MasterPhotoUpload';
 import type { MasterEntityConfig, MasterFieldDef, MasterFieldGroup, MasterInfoBox, MasterRecord } from '../engine/types';
 
 const WEEKDAYS = [
@@ -96,7 +97,10 @@ interface MasterFormProps {
   defaultValues: Record<string, unknown>;
   isSubmitting?: boolean;
   apiError?: ApiError | null;
-  onSubmit: (values: Record<string, unknown>) => void;
+  /** photoFile is only ever passed in create mode, when config.photo is set and a file was
+   * staged (see MasterPhotoUpload's own doc comment) — the caller uploads it once the create
+   * call this came from actually succeeds and a real record id exists. */
+  onSubmit: (values: Record<string, unknown>, photoFile?: File) => void;
   onCancel: () => void;
 }
 
@@ -110,7 +114,7 @@ function toFormDefaults(config: MasterEntityConfig, values: Record<string, unkno
     if ((field.type === 'reference' || field.type === 'select') && (result[field.key] === undefined || result[field.key] === null || result[field.key] === '')) {
       result[field.key] = NONE_VALUE;
     }
-    if (field.type === 'day-checkboxes' && !Array.isArray(result[field.key])) {
+    if ((field.type === 'day-checkboxes' || field.type === 'reference-checkboxes') && !Array.isArray(result[field.key])) {
       result[field.key] = [];
     }
   }
@@ -144,8 +148,9 @@ interface FieldControlProps {
 }
 
 function FieldControl({ field, register, control, errors, readOnly, recordId, scopeValue, validate }: FieldControlProps) {
-  const referenceOptions = useMasterOptionsQuery(field.type === 'reference' ? field.referenceEntityKey : undefined);
-  const referenceConfig = field.type === 'reference' ? getMasterConfig(field.referenceEntityKey) : undefined;
+  const isReferenceLike = field.type === 'reference' || field.type === 'reference-checkboxes';
+  const referenceOptions = useMasterOptionsQuery(isReferenceLike ? field.referenceEntityKey : undefined);
+  const referenceConfig = isReferenceLike ? getMasterConfig(field.referenceEntityKey) : undefined;
   const error = errors[field.key];
   const inputId = `master-field-${field.key}`;
 
@@ -354,6 +359,56 @@ function FieldControl({ field, register, control, errors, readOnly, recordId, sc
     );
   }
 
+  if (field.type === 'reference-checkboxes') {
+    // Only active options are offered going forward, per this field type's own doc comment —
+    // but a record already mapped to one that's since been made inactive still shows it
+    // (checked, disabled) rather than silently hiding a mapping that's still saved.
+    const items = (referenceOptions.data ?? [])
+      .filter((option) => !field.referenceActiveOnly || option.isActive)
+      .map((option) => ({ id: option.id, label: referenceConfig ? getDisplayLabel(referenceConfig, option) : option.id }));
+
+    return (
+      <div className="flex w-full flex-col gap-2">
+        <label className="text-sm font-medium leading-none text-foreground">
+          {field.label}
+          {field.required && <span className="text-destructive"> *</span>}
+        </label>
+        {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+        <Controller
+          name={field.key}
+          control={control}
+          rules={field.required ? { validate: (value) => (Array.isArray(value) && value.length > 0) || `Select at least one ${field.label.toLowerCase()}.` } : undefined}
+          render={({ field: controllerField }) => {
+            const selected: string[] = Array.isArray(controllerField.value) ? controllerField.value : [];
+            function toggle(id: string) {
+              controllerField.onChange(selected.includes(id) ? selected.filter((existing) => existing !== id) : [...selected, id]);
+            }
+            return (
+              <div className="grid grid-cols-1 gap-2 rounded-md border border-border p-3 sm:grid-cols-2">
+                {items.map((item) => (
+                  <label
+                    key={item.id}
+                    className="flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm text-foreground hover:border-input"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input"
+                      checked={selected.includes(item.id)}
+                      disabled={readOnly}
+                      onChange={() => toggle(item.id)}
+                    />
+                    {item.label}
+                  </label>
+                ))}
+              </div>
+            );
+          }}
+        />
+        {error && <p className="text-sm text-destructive">{String(error.message)}</p>}
+      </div>
+    );
+  }
+
   // text | number | decimal
   const isNumeric = field.type === 'number' || field.type === 'decimal';
   return (
@@ -389,6 +444,9 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
   const existingRecordsQuery = useMasterOptionsQuery(config.key);
   const existingRecords: MasterRecord[] = existingRecordsQuery.data ?? [];
   const [crossFieldError, setCrossFieldError] = useState<string | undefined>(undefined);
+  // Create mode only — see MasterPhotoUpload's own doc comment for why a file can't just
+  // upload itself immediately when there's no record id yet to attach it to.
+  const [stagedPhotoFile, setStagedPhotoFile] = useState<File | null>(null);
 
   const {
     register,
@@ -437,7 +495,7 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
       }
     }
     setCrossFieldError(undefined);
-    onSubmit(normalized);
+    onSubmit(normalized, stagedPhotoFile ?? undefined);
   }
 
   const nonTextareaFields = config.fields.filter((field) => field.type !== 'textarea');
@@ -543,7 +601,7 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
   if (config.fieldGroups) {
     return (
       <form onSubmit={handleSubmit(submitHandler)} noValidate className="flex w-full flex-col gap-5">
-        {config.fieldGroups.map((group) => (
+        {config.fieldGroups.map((group, index) => (
           <Card key={group.key}>
             <CardHeader className="flex flex-row items-center gap-2 space-y-0 rounded-t-xl bg-muted/50 py-3">
               {group.icon && (
@@ -554,13 +612,24 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
               <CardTitle className="text-base">{group.label}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 pt-4">
-              <div
-                className={cn(
-                  'flex flex-wrap gap-4',
-                  group.dividedColumns && 'gap-0 divide-x divide-border [&>*]:px-4 [&>*]:first:pl-0',
+              <div className={cn('flex flex-col gap-4', config.photo && index === 0 && 'sm:flex-row')}>
+                {config.photo && index === 0 && (
+                  <MasterPhotoUpload
+                    config={config}
+                    mode={mode}
+                    recordId={recordId}
+                    initialUrl={defaultValues[config.photo.urlField] as string | null | undefined}
+                    onFileStaged={setStagedPhotoFile}
+                  />
                 )}
-              >
-                {renderGroupFields(group)}
+                <div
+                  className={cn(
+                    'flex flex-1 flex-wrap gap-4',
+                    group.dividedColumns && 'gap-0 divide-x divide-border [&>*]:px-4 [&>*]:first:pl-0',
+                  )}
+                >
+                  {renderGroupFields(group)}
+                </div>
               </div>
               {group.infoText && <InfoCallout box={{ text: group.infoText }} />}
             </CardContent>
