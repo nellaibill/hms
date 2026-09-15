@@ -17,6 +17,7 @@ export * from './services/departmentsApi';
 export * from './services/consultantsApi';
 export * from './services/appointmentTypesApi';
 export * from './services/consultationTypesApi';
+export * from './services/opdConsultationApi';
 export * from './services/diagnosticCategoriesApi';
 export * from './services/diagnosticProvidersApi';
 export * from './services/diagnosticServicesApi';

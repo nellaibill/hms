@@ -38,6 +38,8 @@ function fromDto(dto: BrandingConfigDto): BrandingConfig {
   return {
     hospitalName: dto.hospitalName,
     appTitle: dto.appTitle,
+    address: dto.address ?? '',
+    phoneNumber: dto.phoneNumber ?? '',
     logoUrl: resolveLogoUrl(dto.logoUrl),
     fontFamily: toFontFamily(dto.fontFamily),
     fontSizeScale: toFontSizeScale(dto.fontSizeScale),
@@ -80,6 +82,8 @@ export const apiBrandingRepository = {
     const dto = await brandingApi.updateBranding({
       hospitalName: merged.hospitalName,
       appTitle: merged.appTitle,
+      address: merged.address || null,
+      phoneNumber: merged.phoneNumber || null,
       fontFamily: merged.fontFamily,
       fontSizeScale: merged.fontSizeScale,
       iconSizeScale: merged.iconSizeScale,

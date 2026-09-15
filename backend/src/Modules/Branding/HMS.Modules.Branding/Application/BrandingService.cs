@@ -81,7 +81,7 @@ internal class BrandingService : IBrandingService
 
         var settings = await GetOrCreateAsync(cancellationToken);
 
-        settings.UpdateIdentity(request.HospitalName, request.AppTitle, actorId);
+        settings.UpdateIdentity(request.HospitalName, request.AppTitle, request.Address, request.PhoneNumber, actorId);
         settings.UpdateTypography(request.FontFamily, request.FontSizeScale, request.IconSizeScale, actorId);
         settings.UpdateTokens(
             JsonSerializer.Serialize(request.TokensLight),

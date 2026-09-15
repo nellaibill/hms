@@ -30,6 +30,7 @@ import {
   NotificationsApi,
   NotificationTemplatesApi,
   OpdApi,
+  OpdConsultationApi,
   PatientImportApi,
   PatientsApi,
   PharmacyApi,
@@ -133,6 +134,7 @@ export const dischargeSummaryApi = new DischargeSummaryApi(httpClient);
 export const billingApi = new BillingApi(httpClient);
 export const laboratoryApi = new LaboratoryApi(httpClient);
 export const opdApi = new OpdApi(httpClient);
+export const opdConsultationApi = new OpdConsultationApi(httpClient);
 export const pharmacyApi = new PharmacyApi(httpClient);
 export const notificationsApi = new NotificationsApi(httpClient);
 export const notificationPreferencesApi = new NotificationPreferencesApi(httpClient);

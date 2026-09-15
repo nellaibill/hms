@@ -29,6 +29,11 @@ namespace HMS.Database.Migrations.Branding.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
                     b.Property<string>("AppTitle")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -87,6 +92,11 @@ namespace HMS.Database.Migrations.Branding.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("logo_path");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone_number");
 
                     b.Property<string>("TokensDarkJson")
                         .IsRequired()

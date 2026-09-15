@@ -22,6 +22,12 @@ public interface IOpdQueryService
     /// their matching consultations are Waiting/InConsultation/Completed.</summary>
     Task<Result<IReadOnlyList<OpdConsultationSummaryItem>>> GetConsultationSummaryAsync(OpdConsultationSummaryQuery query, CancellationToken cancellationToken);
 
+    /// <summary>The same denormalized shape GetPatientListAsync's rows have, for exactly one
+    /// consultation — backs the OPD Consultation form's read-only header. Used by
+    /// HMS.Modules.OpdConsultation (a different module) as its one seam into Patients' OPD read
+    /// side, so that module never needs its own Patient/Department/Consultant lookups.</summary>
+    Task<Result<OpdPatientListItem>> GetConsultationDetailAsync(Guid consultationId, CancellationToken cancellationToken);
+
     /// <summary>Advances one consultation's queue status. transitionAction is one of
     /// "check-in", "start-consultation", "complete", "cancel", "no-show" — matching
     /// OpdController's route segments exactly.</summary>

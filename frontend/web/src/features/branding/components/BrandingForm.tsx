@@ -27,6 +27,8 @@ import { BrandingLivePreview } from './BrandingLivePreview';
 const identitySchema = z.object({
   hospitalName: z.string().trim().min(1, 'Hospital name is required'),
   appTitle: z.string().trim().min(1, 'App title is required'),
+  address: z.string().trim().max(500),
+  phoneNumber: z.string().trim().max(20),
   fontFamily: z.enum(FONT_FAMILIES),
   fontSizeScale: z.enum(FONT_SIZE_SCALES),
   iconSizeScale: z.enum(ICON_SIZE_SCALES),
@@ -149,7 +151,7 @@ export function BrandingForm() {
     formState: { errors },
   } = useForm<IdentityFormValues>({
     resolver: zodResolver(identitySchema),
-    defaultValues: { hospitalName: '', appTitle: '', fontFamily: 'Inter', fontSizeScale: 'md', iconSizeScale: 'md' },
+    defaultValues: { hospitalName: '', appTitle: '', address: '', phoneNumber: '', fontFamily: 'Inter', fontSizeScale: 'md', iconSizeScale: 'md' },
   });
 
   // Sync local editable state from the persisted config whenever it changes —
@@ -164,6 +166,8 @@ export function BrandingForm() {
     reset({
       hospitalName: query.data.hospitalName,
       appTitle: query.data.appTitle,
+      address: query.data.address,
+      phoneNumber: query.data.phoneNumber,
       fontFamily: query.data.fontFamily,
       fontSizeScale: query.data.fontSizeScale,
       iconSizeScale: query.data.iconSizeScale,
@@ -230,6 +234,19 @@ export function BrandingForm() {
                 <Label htmlFor="appTitle">Application title</Label>
                 <Input id="appTitle" {...register('appTitle')} />
                 {errors.appTitle && <p className="text-sm text-destructive">{errors.appTitle.message}</p>}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="address">Hospital address</Label>
+                <Input id="address" placeholder="e.g. 123 Anna Salai, Chennai, Tamil Nadu 600002" {...register('address')} />
+                {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
+                <p className="text-xs text-muted-foreground">Shown on printed/exported clinical documents (e.g. OPD Consultation).</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="phoneNumber">Hospital phone number</Label>
+                <Input id="phoneNumber" placeholder="e.g. 044-12345678" {...register('phoneNumber')} />
+                {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>}
               </div>
 
               <div className="flex flex-col gap-1.5">

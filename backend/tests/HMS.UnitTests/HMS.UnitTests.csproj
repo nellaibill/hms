@@ -33,6 +33,7 @@
     <ProjectReference Include="..\..\src\Modules\Messaging\HMS.Modules.Messaging\HMS.Modules.Messaging.csproj" />
     <ProjectReference Include="..\..\src\Modules\Branding\HMS.Modules.Branding\HMS.Modules.Branding.csproj" />
     <ProjectReference Include="..\..\src\Modules\DischargeSummary\HMS.Modules.DischargeSummary\HMS.Modules.DischargeSummary.csproj" />
+    <ProjectReference Include="..\..\src\Modules\OpdConsultation\HMS.Modules.OpdConsultation\HMS.Modules.OpdConsultation.csproj" />
     <ProjectReference Include="..\..\src\Modules\Backups\HMS.Modules.Backups\HMS.Modules.Backups.csproj" />
   </ItemGroup>
 

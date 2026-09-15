@@ -99,6 +99,8 @@ function defaultConfig(): BrandingConfig {
   return {
     hospitalName: branding.hospitalName,
     appTitle: branding.systemName,
+    address: '',
+    phoneNumber: '',
     logoUrl: null,
     fontFamily: 'Inter',
     fontSizeScale: 'md',

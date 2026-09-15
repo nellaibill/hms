@@ -10,6 +10,7 @@ using HMS.Modules.Laboratory.Infrastructure;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Modules.Messaging.Infrastructure;
 using HMS.Modules.Notifications.Infrastructure;
+using HMS.Modules.OpdConsultation.Infrastructure;
 using HMS.Modules.Patients.Infrastructure;
 using HMS.Modules.Pharmacy.Infrastructure;
 using HMS.Modules.Platform.Application.Abstractions;
@@ -142,6 +143,15 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("discharge-summary"))
         {
             await using var db = new DischargeSummaryDbContext(BuildOptions<DischargeSummaryDbContext>(tenantConnectionString, DischargeSummaryDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // Mandatory (see FeatureCatalog.Mandatory's own comment on why) — always present
+        // regardless of any toggle, so the OPD Patient List's "Consult" action never depends on
+        // an admin having separately enabled a second feature on top of "opd".
+        if (resolved.Contains("opd-consultation"))
+        {
+            await using var db = new OpdConsultationDbContext(BuildOptions<OpdConsultationDbContext>(tenantConnectionString, OpdConsultationDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
     }

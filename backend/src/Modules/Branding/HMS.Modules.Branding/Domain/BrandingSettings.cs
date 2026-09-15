@@ -19,6 +19,10 @@ internal class BrandingSettings : Entity
 
     public string HospitalName { get; private set; } = null!;
     public string AppTitle { get; private set; } = null!;
+    /// <summary>Shown alongside HospitalName on printed/exported clinical documents (e.g. the
+    /// OPD Consultation report) — optional, unlike HospitalName/AppTitle.</summary>
+    public string? Address { get; private set; }
+    public string? PhoneNumber { get; private set; }
     public string? LogoPath { get; private set; }
     public string FontFamily { get; private set; } = null!;
     public string FontSizeScale { get; private set; } = null!;
@@ -79,13 +83,15 @@ internal class BrandingSettings : Entity
         return new BrandingSettings(hospitalName.Trim(), appTitle.Trim(), fontFamily, fontSizeScale, iconSizeScale, tokensLightJson, tokensDarkJson);
     }
 
-    public void UpdateIdentity(string hospitalName, string appTitle, Guid? updatedBy)
+    public void UpdateIdentity(string hospitalName, string appTitle, string? address, string? phoneNumber, Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(hospitalName, nameof(hospitalName));
         Guard.AgainstNullOrWhiteSpace(appTitle, nameof(appTitle));
 
         HospitalName = hospitalName.Trim();
         AppTitle = appTitle.Trim();
+        Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+        PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
         MarkUpdated(updatedBy);
     }
 

@@ -22,6 +22,8 @@ internal class BrandingSettingsConfiguration : IEntityTypeConfiguration<Branding
 
         builder.Property(b => b.HospitalName).HasColumnName("hospital_name").HasMaxLength(200).IsRequired();
         builder.Property(b => b.AppTitle).HasColumnName("app_title").HasMaxLength(200).IsRequired();
+        builder.Property(b => b.Address).HasColumnName("address").HasMaxLength(500);
+        builder.Property(b => b.PhoneNumber).HasColumnName("phone_number").HasMaxLength(20);
         builder.Property(b => b.LogoPath).HasColumnName("logo_path").HasMaxLength(500);
         builder.Property(b => b.FontFamily).HasColumnName("font_family").HasMaxLength(50).IsRequired();
         builder.Property(b => b.FontSizeScale).HasColumnName("font_size_scale").HasMaxLength(10).IsRequired();

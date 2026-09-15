@@ -112,6 +112,7 @@ export const API_ROUTES = {
     currency: mastersEntity('currencies'),
     customer: mastersEntity('customers'),
     department: mastersEntity('departments'),
+    diagnosis: mastersEntity('diagnoses'),
     diagnosticTest: mastersEntity('diagnostic-tests'),
     designation: mastersEntity('designations'),
     manufacturer: mastersEntity('manufacturers'),
@@ -322,6 +323,16 @@ export const API_ROUTES = {
     consultationComplete: (id: string) => `/api/v1/opd/consultations/${id}/complete`,
     consultationCancel: (id: string) => `/api/v1/opd/consultations/${id}/cancel`,
     consultationNoShow: (id: string) => `/api/v1/opd/consultations/${id}/no-show`,
+  },
+  /** Mirrors HMS.Modules.OpdConsultation.Endpoints.OpdConsultationsController — the clinical
+   * note (vitals, diagnosis, investigations, plan) behind the OPD Patient List's "Consult"
+   * action, keyed by consultationId (the same id `opd.consultationComplete` above operates
+   * on — this is a different module's own record for that same consultation). */
+  opdConsultations: {
+    byConsultationId: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}`,
+    saveDraft: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/draft`,
+    complete: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/complete`,
+    reopen: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/reopen`,
   },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
   pharmacy: {

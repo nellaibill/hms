@@ -80,6 +80,20 @@ internal class PatientVisitConsultation
         Status = OpdConsultationStatus.Completed;
     }
 
+    /// <summary>The inverse of Complete — used when a completed consultation's clinical note is
+    /// reopened for editing (HMS.Modules.OpdConsultation's ReopenAsync), so the queue's own
+    /// status stays in sync with the note's Draft/Completed state the same way Complete already
+    /// keeps them in sync going the other direction. Legal only from Completed.</summary>
+    public void Reopen()
+    {
+        if (Status != OpdConsultationStatus.Completed)
+        {
+            throw new InvalidOperationException($"Cannot reopen a consultation in status '{Status}'.");
+        }
+
+        Status = OpdConsultationStatus.InConsultation;
+    }
+
     /// <summary>Legal from any non-terminal state — a patient can be pulled off the queue at
     /// any point before their consultation is actually finished.</summary>
     public void Cancel()

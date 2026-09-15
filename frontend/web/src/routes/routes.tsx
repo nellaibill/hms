@@ -83,6 +83,7 @@ const CalendarEventsPage = lazy(() => import('../pages/calendar/CalendarEventsPa
 const MessagesAndNotificationsPage = lazy(() => import('../pages/messaging/MessagesAndNotificationsPage'));
 const DocumentManagementPage = lazy(() => import('../pages/documents/DocumentManagementPage'));
 const OpdPage = lazy(() => import('../pages/opd/OpdPage'));
+const OpdConsultationPage = lazy(() => import('../pages/opd/OpdConsultationPage'));
 const IpdDashboardPage = lazy(() => import('../pages/ipd/IpdDashboardPage'));
 const WardsListPage = lazy(() => import('../pages/ipd/WardsListPage'));
 const WardCreatePage = lazy(() => import('../pages/ipd/WardCreatePage'));
@@ -496,6 +497,20 @@ const dischargeSummaryRoutes = [
   },
 ];
 
+// OPD Consultation (HMS.Modules.OpdConsultation) — reached from the OPD Patient List's
+// "Consult" action (OpdPatientListTable.tsx), not from a top-level nav item. No
+// RequireFeatureRoute wrapper: unlike DischargeSummary, this module is Mandatory (see
+// FeatureCatalog.Mandatory's own comment) since the existing "Consult" button now depends on
+// it unconditionally, with no more placeholder fallback. Uses the same 'clinical-care'
+// permission the OPD nav leaf itself already declares — this is additive clinical
+// documentation for the same workflow, not a separate RBAC concern.
+const opdConsultationRoutes = [
+  {
+    element: <RequirePermissionRoute permission="clinical-care.view" />,
+    children: [{ path: 'clinical/opd/consultations/:consultationId', element: withSuspense(<OpdConsultationPage />) }],
+  },
+];
+
 export const router = createBrowserRouter(
   [
     {
@@ -539,6 +554,7 @@ export const router = createBrowserRouter(
             ...diagnosticsRoutes,
             ...labWorkflowRoutes,
             ...dischargeSummaryRoutes,
+            ...opdConsultationRoutes,
             ...documentsRoutes,
             ...patientReportsRoutes,
           ],
