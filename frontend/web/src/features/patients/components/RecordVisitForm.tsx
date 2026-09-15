@@ -1,5 +1,6 @@
 import { ENCOUNTER_TYPES_UI, recordVisitUiSchema, type ApiError, type RecordVisitUiFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { Controller, useController, useFieldArray, useForm, type Control } from 'react-hook-form';
@@ -9,8 +10,22 @@ import { AppointmentTypeSelect } from '@/components/AppointmentTypeSelect';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { ConsultationTypeSelect } from '@/components/ConsultationTypeSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
+import { consultantsApi } from '@/services/apiClient';
 import { Field, FormSection } from './FormSection';
 import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLabel';
+
+/** Scopes a Consultation Type field to the consultant's own offered types (Masters →
+ * Consultant Edit) — same lookup ConsultationBillingCard.tsx uses, kept here so both the main
+ * row and each "additional consultant" row can share it without duplicating the query. */
+function useAllowedConsultationTypeIds(departmentId: string | undefined, consultantId: string | undefined) {
+  const { data: consultants } = useQuery({
+    queryKey: ['consultants', 'select-list', departmentId],
+    queryFn: () => consultantsApi.getConsultants({ pageSize: 100, isActive: true, departmentId }),
+    enabled: Boolean(departmentId),
+  });
+  const selectedConsultant = consultants?.items.find((c) => c.id === consultantId);
+  return selectedConsultant?.consultationTypeCharges.map((c) => c.consultationTypeId);
+}
 
 interface RecordVisitFormProps {
   isSubmitting: boolean;
@@ -57,7 +72,20 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 
   const encounterType = watch('encounterType');
   const departmentId = watch('departmentId');
+  const consultantId = watch('consultantId');
+  const consultationTypeId = watch('consultationTypeId');
   const additionalConsultants = useFieldArray({ control, name: 'additionalConsultants' });
+
+  const allowedConsultationTypeIds = useAllowedConsultationTypeIds(departmentId || undefined, consultantId);
+
+  // A consultant's previously-picked type can fall out of scope when the consultant itself
+  // changes (or is cleared) — mirrors ConsultationBillingCard's identical clearing.
+  useEffect(() => {
+    if (consultationTypeId && allowedConsultationTypeIds && !allowedConsultationTypeIds.includes(consultationTypeId)) {
+      setValue('consultationTypeId', '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consultantId]);
 
   // A consultant picked under the previous department is meaningless once the department
   // changes — same reasoning as the wizard's own handleDepartmentChange.
@@ -156,7 +184,14 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
             <Controller
               name="consultationTypeId"
               control={control}
-              render={({ field }) => <ConsultationTypeSelect id="consultationType" value={field.value ?? ''} onValueChange={field.onChange} />}
+              render={({ field }) => (
+                <ConsultationTypeSelect
+                  id="consultationType"
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                  allowedIds={allowedConsultationTypeIds}
+                />
+              )}
             />
           </Field>
         </div>
@@ -190,6 +225,17 @@ function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsult
   const consultantField = useController({ control, name: `additionalConsultants.${index}.consultantId` as const });
   const consultationTypeField = useController({ control, name: `additionalConsultants.${index}.consultationTypeId` as const });
 
+  const consultantId = consultantField.field.value;
+  const consultationTypeId = consultationTypeField.field.value;
+  const allowedConsultationTypeIds = useAllowedConsultationTypeIds(departmentField.field.value || undefined, consultantId);
+
+  useEffect(() => {
+    if (consultationTypeId && allowedConsultationTypeIds && !allowedConsultationTypeIds.includes(consultationTypeId)) {
+      consultationTypeField.field.onChange('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consultantId]);
+
   function handleRowDepartmentChange(value: string) {
     departmentField.field.onChange(value);
     consultantField.field.onChange('');
@@ -217,6 +263,7 @@ function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsult
           id={`additional-consultation-type-${index}`}
           value={consultationTypeField.field.value ?? ''}
           onValueChange={consultationTypeField.field.onChange}
+          allowedIds={allowedConsultationTypeIds}
         />
       </Field>
       <Button type="button" variant="ghost" size="icon" aria-label={`Remove consultant ${index + 2}`} onClick={onRemove}>
