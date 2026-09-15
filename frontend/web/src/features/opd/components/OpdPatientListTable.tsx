@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useStartConsultationMutation } from '../hooks/useStartConsultationMutation';
 import { useOpdPatientListQuery } from '../hooks/useOpdPatientListQuery';
+import { useVisitPaymentStatusesQuery } from '../hooks/useVisitPaymentStatusesQuery';
+import { OpdPaymentStatusBadge } from './OpdPaymentStatusBadge';
 import { OpdStatusBadge } from './OpdStatusBadge';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
 
@@ -71,6 +73,8 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
     });
   }
 
+  const { getStatus: getPaymentStatus } = useVisitPaymentStatusesQuery((data?.items ?? []).map((row) => row.patientId));
+
   return (
     <div className="flex flex-col gap-3">
       <Card>
@@ -120,6 +124,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                     <th className="px-4 py-2.5">Department</th>
                     <th className="px-4 py-2.5">Appointment Date &amp; Time</th>
                     <th className="px-4 py-2.5">Status</th>
+                    <th className="px-4 py-2.5">Payment Status</th>
                     <th className="px-4 py-2.5">Action</th>
                   </tr>
                 </thead>
@@ -138,6 +143,9 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                       <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <OpdStatusBadge status={row.status} />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <OpdPaymentStatusBadge status={getPaymentStatus(row.patientId, row.visitId)} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         {CONSULTABLE_STATUSES.includes(row.status) ? (
