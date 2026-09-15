@@ -2,7 +2,7 @@ import { ListChecks } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HeaderIconLabel } from '@/components/shell/HeaderIconLabel';
 import { pendingTasks } from '@/features/dashboard/mockData';
 
 const PRIORITY_VARIANT = {
@@ -15,22 +15,23 @@ const PRIORITY_VARIANT = {
 export function PendingTasksMenu() {
   return (
     <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative" aria-label="Pending Tasks">
-              <ListChecks className="!h-[var(--header-icon-size)] !w-[var(--header-icon-size)]" />
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-auto w-auto px-2.5 py-1" aria-label="Pending Tasks">
+          <HeaderIconLabel
+            icon={ListChecks}
+            label="Tasks"
+            showChevron
+            badge={
               <Badge
                 variant="warning"
                 className="absolute right-0 top-0 flex h-5 min-w-5 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none ring-2 ring-header"
               >
                 {pendingTasks.length}
               </Badge>
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>Pending Tasks</TooltipContent>
-      </Tooltip>
+            }
+          />
+        </Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>Pending Tasks</DropdownMenuLabel>
         <DropdownMenuSeparator />

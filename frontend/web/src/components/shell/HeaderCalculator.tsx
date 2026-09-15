@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Calculator as CalculatorIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HeaderIconLabel } from '@/components/shell/HeaderIconLabel';
 
 type Operator = '+' | '-' | '×' | '÷';
 
@@ -106,19 +106,16 @@ function Calculator() {
   );
 }
 
+/** Labeled "Tools" in the top bar (matches the app's updated header design) — still just the
+ * calculator popover underneath for now; the label is generic in case more tools join it later. */
 export function HeaderCalculator() {
   return (
     <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Calculator">
-              <CalculatorIcon className="!h-[var(--header-icon-size)] !w-[var(--header-icon-size)]" />
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>Calculator</TooltipContent>
-      </Tooltip>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-auto w-auto px-2.5 py-1" aria-label="Tools">
+          <HeaderIconLabel icon={CalculatorIcon} label="Tools" showChevron />
+        </Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onCloseAutoFocus={(event) => event.preventDefault()}>
         <Calculator />
       </DropdownMenuContent>

@@ -1,10 +1,10 @@
 import { useState, type ComponentType } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar as CalendarIcon, Menu, Wallet } from 'lucide-react';
+import { Calendar as CalendarIcon, FileText, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HeaderCalculator } from '@/components/shell/HeaderCalculator';
+import { HeaderIconLabel } from '@/components/shell/HeaderIconLabel';
 import { HeaderSearchBox } from '@/components/shell/HeaderSearchBox';
 import { HospitalLogo } from '@/components/shell/HospitalLogo';
 import { branding } from '@/config/branding';
@@ -22,18 +22,13 @@ interface HeaderLinkIconProps {
   icon: ComponentType<{ className?: string }>;
 }
 
-function HeaderLinkIcon({ to, label, icon: Icon }: HeaderLinkIconProps) {
+function HeaderLinkIcon({ to, label, icon }: HeaderLinkIconProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button asChild variant="ghost" size="icon" aria-label={label}>
-          <Link to={to}>
-            <Icon className="!h-[var(--header-icon-size)] !w-[var(--header-icon-size)]" />
-          </Link>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
+    <Button asChild variant="ghost" size="icon" className="h-auto w-auto px-2.5 py-1" aria-label={label}>
+      <Link to={to}>
+        <HeaderIconLabel icon={icon} label={label} />
+      </Link>
+    </Button>
   );
 }
 
@@ -83,8 +78,9 @@ export function TopHeader() {
         </div>
       </div>
 
-      {/* Icon actions — equally spaced, icon-only with a hover tooltip, vertically centered; the row itself (not its icons) shrinks and scrolls horizontally rather than clipping on narrow viewports. */}
-      <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto py-3 [&>*]:shrink-0">
+      {/* Icon actions — icon-over-label, vertically centered; the row itself (not its icons)
+          shrinks and scrolls horizontally rather than clipping on narrow viewports. */}
+      <div className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto py-1 [&>*]:shrink-0">
         <LanguageMenu />
         <NotificationsMenu />
         {hasPermission('engagement.view') && hasFeature('calendar') && (
@@ -92,9 +88,8 @@ export function TopHeader() {
         )}
         <HeaderCalculator />
         <PendingTasksMenu />
-        {hasPermission('finance-billing.view') && (
-          <HeaderLinkIcon to="/finance/accounts" label="Expenses Tracking" icon={Wallet} />
-        )}
+        {hasPermission('records-compliance.view') && <HeaderLinkIcon to="/documents" label="Documents" icon={FileText} />}
+        <div className="mx-1 h-8 w-px shrink-0 bg-header-foreground/20" aria-hidden="true" />
         <ProfileMenu />
       </div>
     </header>
