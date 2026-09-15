@@ -48,12 +48,20 @@ export function BrandingLivePreview({ hospitalName, appTitle, logoUrl, fontFamil
       </div>
 
       <div className="flex">
+        {/* Shows more than just the active row — the odd/even stripe pattern (Left nav tab)
+            only reads once there are a few consecutive inactive rows to alternate across. */}
         <div className="hidden w-36 shrink-0 border-r border-sidebar-border bg-sidebar p-3 sm:block">
-          <div className="mb-2 rounded-md border-l-[3px] border-primary bg-sidebar-active px-2 py-1.5 text-xs font-medium text-sidebar-active-foreground">
+          <div className="mb-1 rounded-md border-l-[3px] border-primary bg-sidebar-active px-2 py-1.5 text-xs font-medium text-sidebar-active-foreground">
             Dashboard
           </div>
-          <div className="rounded-md border-l-[3px] border-transparent bg-sidebar-accent px-2 py-1.5 text-xs text-sidebar-foreground/75">
+          <div className="mb-1 rounded-md border-l-[3px] border-transparent bg-sidebar-odd px-2 py-1.5 text-xs text-sidebar-foreground/75">
             Patients
+          </div>
+          <div className="mb-1 rounded-md border-l-[3px] border-transparent bg-sidebar-even px-2 py-1.5 text-xs text-sidebar-foreground/75">
+            Appointments
+          </div>
+          <div className="rounded-md border-l-[3px] border-transparent bg-sidebar-odd px-2 py-1.5 text-xs text-sidebar-foreground/75">
+            Billing
           </div>
         </div>
 

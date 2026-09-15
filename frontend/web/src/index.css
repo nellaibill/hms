@@ -86,6 +86,11 @@
     --sidebar-foreground: 222 40% 18%;
     --sidebar-border: 214 28% 91%;
     --sidebar-accent: 210 40% 95%;
+    /* Alternating row stripe, admin-editable via Theme & Branding's Left nav tab — odd
+       defaults to --sidebar itself (blends in), even defaults to --card (a hair lighter),
+       matching the subtle look SidebarNav.tsx used to hardcode before this became configurable. */
+    --sidebar-odd-bg: 210 33% 99%;
+    --sidebar-even-bg: 0 0% 100%;
     --sidebar-active-bg: 210 82% 95%;
     --sidebar-active-fg: 210 82% 40%;
 
@@ -151,6 +156,8 @@
     --sidebar-foreground: 210 30% 92%;
     --sidebar-border: 217 24% 20%;
     --sidebar-accent: 217 30% 16%;
+    --sidebar-odd-bg: 222 44% 8%;
+    --sidebar-even-bg: 222 40% 10%;
     --sidebar-active-bg: 210 60% 20%;
     --sidebar-active-fg: 210 90% 72%;
   }
