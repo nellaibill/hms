@@ -11,7 +11,7 @@ const STORAGE_KEY = 'hms-branding-config';
  * "Reset to default theme", so the app looks byte-identical to pre-feature
  * HMS until an admin actually changes something.
  */
-const DEFAULT_TOKENS_LIGHT: Record<string, string> = {
+export const DEFAULT_TOKENS_LIGHT: Record<string, string> = {
   '--background': '0 0% 100%',
   '--foreground': '222 47% 11%',
   '--card': '0 0% 100%',
@@ -47,13 +47,15 @@ const DEFAULT_TOKENS_LIGHT: Record<string, string> = {
   '--sidebar-foreground': '222 40% 18%',
   '--sidebar-border': '214 28% 91%',
   '--sidebar-accent': '210 40% 95%',
+  '--sidebar-odd-bg': '210 33% 99%',
+  '--sidebar-even-bg': '0 0% 100%',
   '--sidebar-active-bg': '210 82% 95%',
   '--sidebar-active-fg': '210 82% 40%',
   '--header-bg': branding.primaryColor.light,
   '--header-foreground': contrastForeground(branding.primaryColor.light, '222 47% 11%', '0 0% 100%'),
 };
 
-const DEFAULT_TOKENS_DARK: Record<string, string> = {
+export const DEFAULT_TOKENS_DARK: Record<string, string> = {
   '--background': '222 47% 7%',
   '--foreground': '210 40% 98%',
   '--card': '222 40% 10%',
@@ -89,6 +91,8 @@ const DEFAULT_TOKENS_DARK: Record<string, string> = {
   '--sidebar-foreground': '210 30% 92%',
   '--sidebar-border': '217 24% 20%',
   '--sidebar-accent': '217 30% 16%',
+  '--sidebar-odd-bg': '222 44% 8%',
+  '--sidebar-even-bg': '222 40% 10%',
   '--sidebar-active-bg': '210 60% 20%',
   '--sidebar-active-fg': '210 90% 72%',
   '--header-bg': branding.primaryColor.light,

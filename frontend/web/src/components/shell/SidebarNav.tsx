@@ -32,10 +32,9 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
         lastSection = node.section ?? lastSection;
 
         const Icon = node.icon;
-        // Every other row gets a faint card-like lift (a fill plus a soft all-around shadow,
-        // not just a bottom-edge shadow — a bare shadow with rows this close together read as
-        // a stray divider line rather than elevation) so the list scans as a stack of distinct
-        // rows. Skipped on the active row so it doesn't compete with that row's own
+        // Odd/even rows (1-based) get their own admin-configurable background — Theme &
+        // Branding's Left nav tab (--sidebar-odd-bg/--sidebar-even-bg) — for a clean striped
+        // appearance. Skipped on the active row so it doesn't compete with that row's own
         // highlight/border-accent treatment.
         const isAlternate = index % 2 === 1;
 
@@ -49,9 +48,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
             <NavLink
               to={node.path}
               onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(linkClasses(isActive), isAlternate && !isActive && 'bg-card shadow shadow-black/[0.06] dark:bg-white/[0.03] dark:shadow-black/30')
-              }
+              className={({ isActive }) => cn(linkClasses(isActive), !isActive && (isAlternate ? 'bg-sidebar-even' : 'bg-sidebar-odd'))}
               title={collapsed ? node.label : undefined}
             >
               {({ isActive }) => (

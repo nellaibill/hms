@@ -76,6 +76,8 @@ const config: Config = {
           foreground: 'hsl(var(--sidebar-foreground))',
           border: 'hsl(var(--sidebar-border))',
           accent: 'hsl(var(--sidebar-accent))',
+          odd: 'hsl(var(--sidebar-odd-bg))',
+          even: 'hsl(var(--sidebar-even-bg))',
           active: {
             DEFAULT: 'hsl(var(--sidebar-active-bg))',
             foreground: 'hsl(var(--sidebar-active-fg))',

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { hexToHslTriple, hslTripleToHex } from '@/lib/color';
 import { useBrandingQuery } from '../hooks/useBrandingQuery';
 import { useResetBrandingMutation, useUpdateBrandingMutation, useUploadLogoMutation } from '../hooks/useBrandingMutations';
+import { DEFAULT_TOKENS_DARK, DEFAULT_TOKENS_LIGHT } from '../mockBrandingStore';
 import {
   FONT_FAMILIES,
   FONT_FAMILY_LABELS,
@@ -41,9 +42,12 @@ interface ColorFieldProps {
   tokenKey: string;
   value: string;
   onChange: (tokenKey: string, hex: string) => void;
+  /** Shows a small reset-to-default icon button at the end of the row when provided — only the
+   * Left nav tab wires this up today; every other tab is unchanged. */
+  onReset?: () => void;
 }
 
-function ColorField({ label, tokenKey, value, onChange }: ColorFieldProps) {
+function ColorField({ label, tokenKey, value, onChange, onReset }: ColorFieldProps) {
   const hex = hslTripleToHex(value);
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0">
@@ -60,6 +64,11 @@ function ColorField({ label, tokenKey, value, onChange }: ColorFieldProps) {
           aria-label={label}
         />
         <span className="w-16 text-right font-mono text-xs text-muted-foreground">{hex}</span>
+        {onReset && (
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={onReset} aria-label={`Reset ${label} to default`}>
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -75,22 +84,31 @@ function TokenGroupFields({
   items,
   tokens,
   onChange,
+  onResetField,
 }: {
   items: readonly TokenGroupItem[];
   tokens: Record<string, string>;
   onChange: (tokenKey: string, hex: string) => void;
+  onResetField?: (tokenKey: string) => void;
 }) {
   return (
     <div className="rounded-lg border border-border p-4">
       {items.map((item) => (
         <div key={item.key}>
-          <ColorField label={item.label} tokenKey={item.key} value={tokens[item.key] ?? '0 0% 50%'} onChange={onChange} />
+          <ColorField
+            label={item.label}
+            tokenKey={item.key}
+            value={tokens[item.key] ?? '0 0% 50%'}
+            onChange={onChange}
+            onReset={onResetField ? () => onResetField(item.key) : undefined}
+          />
           {item.pairedForeground && (
             <ColorField
               label={`${item.label} — text`}
               tokenKey={item.pairedForeground}
               value={tokens[item.pairedForeground] ?? '0 0% 100%'}
               onChange={onChange}
+              onReset={onResetField ? () => onResetField(item.pairedForeground!) : undefined}
             />
           )}
         </div>
@@ -179,6 +197,17 @@ export function BrandingForm() {
 
   const handleTokenChange = (tokenKey: string, hex: string) => {
     setActiveTokens((prev) => ({ ...prev, [tokenKey]: hexToHslTriple(hex) }));
+    setSavedMessage(false);
+  };
+
+  // Per-field reset (Left nav tab only) — reverts just that one token back to the app's
+  // pre-feature default for whichever theme (light/dark) is currently being edited, rather
+  // than the "Reset to default theme" button below, which resets everything at once.
+  const defaultTokensForActiveTheme = editingTheme === 'light' ? DEFAULT_TOKENS_LIGHT : DEFAULT_TOKENS_DARK;
+  const handleTokenReset = (tokenKey: string) => {
+    const fallback = defaultTokensForActiveTheme[tokenKey];
+    if (fallback === undefined) return;
+    setActiveTokens((prev) => ({ ...prev, [tokenKey]: fallback }));
     setSavedMessage(false);
   };
 
@@ -297,7 +326,11 @@ export function BrandingForm() {
           </TabsContent>
 
           <TabsContent value="nav">
-            <TokenGroupFields items={TOKEN_GROUPS.leftNav} tokens={activeTokens} onChange={handleTokenChange} />
+            <div className="flex flex-col gap-1 pb-3">
+              <h3 className="text-sm font-semibold text-foreground">Left Navigation Menu</h3>
+              <p className="text-xs text-muted-foreground">Configure the appearance of the left navigation menu. Use alternating colors for better readability.</p>
+            </div>
+            <TokenGroupFields items={TOKEN_GROUPS.leftNav} tokens={activeTokens} onChange={handleTokenChange} onResetField={handleTokenReset} />
           </TabsContent>
 
           <TabsContent value="headers">
@@ -356,7 +389,7 @@ export function BrandingForm() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Language, Notifications, Calendar, Calculator, Tasks, Expenses, and Profile icons in the top bar.</p>
+                <p className="text-xs text-muted-foreground">Language, Notifications, Calendar, Tools, Tasks, and Documents icons in the top bar.</p>
               </div>
             </div>
           </TabsContent>

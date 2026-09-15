@@ -89,10 +89,15 @@ export const TOKEN_GROUPS = {
     { key: '--icon', label: 'Icon color (neutral chrome icons)' },
   ],
   topBar: [{ key: '--header-bg', label: 'Top bar background', pairedForeground: '--header-foreground' }],
+  // Flat list (no pairedForeground nesting) — every row stands on its own per the Left nav
+  // tab's own redesigned layout (BrandingForm.tsx), unlike every other group here.
   leftNav: [
-    { key: '--sidebar', label: 'Left nav background', pairedForeground: '--sidebar-foreground' },
+    { key: '--sidebar-odd-bg', label: 'Left nav background (odd items)' },
+    { key: '--sidebar-even-bg', label: 'Left nav background (even items)' },
+    { key: '--sidebar-foreground', label: 'Left nav text (default)' },
     { key: '--sidebar-border', label: 'Left nav border' },
-    { key: '--sidebar-active-bg', label: 'Left nav active item background', pairedForeground: '--sidebar-active-fg' },
+    { key: '--sidebar-active-bg', label: 'Left nav active item background' },
+    { key: '--sidebar-active-fg', label: 'Left nav active item text' },
     { key: '--sidebar-accent', label: 'Left nav hover background' },
   ],
   sectionHeaders: [

@@ -46,6 +46,10 @@ function applyStaticBrandingDefaults(theme: Theme) {
   root.setProperty('--card-header-foreground', theme === 'dark' ? '210 40% 98%' : '222 47% 11%');
   root.setProperty('--page-banner-bg', '196 86% 58%');
   root.setProperty('--page-banner-foreground', '0 0% 100%');
+  // Left nav alternating row stripe — odd matches --sidebar itself, even matches --card,
+  // reproducing what SidebarNav.tsx used to hardcode before this became admin-configurable.
+  root.setProperty('--sidebar-odd-bg', theme === 'dark' ? '222 44% 8%' : '210 33% 99%');
+  root.setProperty('--sidebar-even-bg', theme === 'dark' ? '222 40% 10%' : '0 0% 100%');
   root.setProperty('--font-sans', FONT_FAMILY_STACKS.Inter);
   root.setProperty('--font-size-base', FONT_SIZE_SCALE_PX.md);
   root.setProperty('--header-icon-size', ICON_SIZE_SCALE_PX.md);
