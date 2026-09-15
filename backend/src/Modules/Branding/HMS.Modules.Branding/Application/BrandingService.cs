@@ -24,7 +24,7 @@ internal class BrandingService : IBrandingService
     // keep both in sync if the curated list ever changes.
     private static readonly string[] AllowedFontFamilies = ["Inter", "Roboto", "OpenSans", "Lato", "Poppins"];
     private static readonly string[] AllowedFontSizeScales = ["sm", "md", "lg"];
-    private static readonly string[] AllowedIconSizeScales = ["sm", "md", "lg"];
+    private static readonly string[] AllowedIconSizeScales = ["sm", "md", "lg", "xl"];
     private static readonly string[] AllowedLogoExtensions = [".png", ".jpg", ".jpeg", ".svg", ".webp"];
     private const long MaxLogoSizeBytes = 500 * 1024; // 500KB, matching the frontend mock store's limit.
     // Pixel bounds for the header's fixed logo box (a 16px logo already reads fine at that

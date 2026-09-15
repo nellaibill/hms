@@ -17,7 +17,7 @@ export function NotificationsMenu() {
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-              <Bell className="h-[var(--header-icon-size)] w-[var(--header-icon-size)]" />
+              <Bell className="!h-[var(--header-icon-size)] !w-[var(--header-icon-size)]" />
               {unreadCount > 0 && (
                 <Badge
                   variant="destructive"
