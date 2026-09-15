@@ -60,19 +60,21 @@ export const FONT_SIZE_SCALE_PX: Record<FontSizeScale, string> = {
 /** Only the top bar's own icon-only action buttons (Language, Notifications, Calendar,
  * Calculator, Tasks, Expenses Tracking, Profile) — not every icon app-wide, which would need
  * a much bigger, riskier sweep across compact tables/cards that assume a fixed icon size. */
-export const ICON_SIZE_SCALES = ['sm', 'md', 'lg'] as const;
+export const ICON_SIZE_SCALES = ['sm', 'md', 'lg', 'xl'] as const;
 export type IconSizeScale = (typeof ICON_SIZE_SCALES)[number];
 
 export const ICON_SIZE_SCALE_LABELS: Record<IconSizeScale, string> = {
   sm: 'Small (18px)',
   md: 'Medium (20px, default)',
   lg: 'Large (24px)',
+  xl: 'Extra Large (28px)',
 };
 
 export const ICON_SIZE_SCALE_PX: Record<IconSizeScale, string> = {
   sm: '18px',
   md: '20px',
   lg: '24px',
+  xl: '28px',
 };
 
 /** Every token key the admin UI edits, grouped by section. Values are seeded/derived elsewhere (mockBrandingStore.ts). */
