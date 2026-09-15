@@ -1,9 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Moon, Sun, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, Moon, Sun, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/features/auth/AuthContext';
 import { roleDefinitions } from '@/features/auth/roleDefinitions';
 import { useTheme } from '@/lib/theme-provider';
@@ -31,18 +30,20 @@ export function ProfileMenu() {
 
   return (
     <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="User Login / Profile Details">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{user ? initialsOf(user.name) : <UserRound className="h-4 w-4" />}</AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>User Login / Profile Details</TooltipContent>
-      </Tooltip>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-auto w-auto gap-2 px-2 py-1" aria-label="User Login / Profile Details">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback>{user ? initialsOf(user.name) : <UserRound className="h-4 w-4" />}</AvatarFallback>
+          </Avatar>
+          {user && (
+            <span className="hidden flex-col items-start leading-tight sm:flex">
+              <span className="text-xs font-medium text-header-foreground">{user.name}</span>
+              <span className="text-[11px] text-header-foreground/70">{roleLabel}</span>
+            </span>
+          )}
+          <ChevronDown className="h-4 w-4 text-header-foreground/60" />
+        </Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           <span className="block text-sm font-medium">{user?.name}</span>
