@@ -11,8 +11,14 @@ import { OpdStatusBadge } from './OpdStatusBadge';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
 
 // A consultation still Waiting or already CheckedIn hasn't started yet — "Consult" starts it.
-// Every other status (InConsultation/Completed/Cancelled/NoShow) is read-only from here.
 const CONSULTABLE_STATUSES: OpdConsultationStatus[] = ['Waiting', 'CheckedIn'];
+
+// InConsultation/Completed rows have a real OpdConsultationNote — "View" opens that same
+// clinical form (read-only once Completed, per OpdConsultationForm's own fieldset) so a
+// consultation can be reopened to check, edit (while still InConsultation), print, or
+// download it. Cancelled/NoShow rows never got that far, so they still go to the patient's
+// registration/demographics page instead — there's no clinical note to show for those.
+const CONSULTATION_VIEWABLE_STATUSES: OpdConsultationStatus[] = ['InConsultation', 'Completed'];
 
 const PAGE_SIZE = 10;
 
@@ -138,6 +144,16 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                           <Button size="sm" className="gap-1.5" disabled={startConsultation.isPending} onClick={() => handleConsult(row)}>
                             <Stethoscope className="h-3.5 w-3.5" />
                             Consult
+                          </Button>
+                        ) : CONSULTATION_VIEWABLE_STATUSES.includes(row.status) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => navigate(`/clinical/opd/consultations/${row.consultationId}`)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View
                           </Button>
                         ) : (
                           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/patients/registration/${row.patientId}`)}>
