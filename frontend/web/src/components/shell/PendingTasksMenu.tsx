@@ -19,7 +19,7 @@ export function PendingTasksMenu() {
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative" aria-label="Pending Tasks">
-              <ListChecks className="h-[var(--header-icon-size)] w-[var(--header-icon-size)]" />
+              <ListChecks className="!h-[var(--header-icon-size)] !w-[var(--header-icon-size)]" />
               <Badge
                 variant="warning"
                 className="absolute right-0 top-0 flex h-5 min-w-5 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none ring-2 ring-header"

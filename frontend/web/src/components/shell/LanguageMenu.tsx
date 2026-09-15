@@ -27,7 +27,7 @@ export function LanguageMenu() {
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Language Selector">
-              <Languages className="h-[var(--header-icon-size)] w-[var(--header-icon-size)]" />
+              <Languages className="!h-[var(--header-icon-size)] !w-[var(--header-icon-size)]" />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
