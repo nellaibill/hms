@@ -84,6 +84,17 @@ internal class OpdQueryService : IOpdQueryService
         return Result<IReadOnlyList<OpdConsultationSummaryItem>>.Success(items);
     }
 
+    public async Task<Result<OpdPatientListItem>> GetConsultationDetailAsync(Guid consultationId, CancellationToken cancellationToken)
+    {
+        var row = await _repository.GetOpdConsultationDetailAsync(consultationId, cancellationToken);
+        if (row is null)
+        {
+            return Result<OpdPatientListItem>.Failure(PatientErrorCodes.ConsultationNotFound, $"Consultation '{consultationId}' was not found.");
+        }
+
+        return Result<OpdPatientListItem>.Success(await ToItemAsync(row, cancellationToken));
+    }
+
     public async Task<Result<VisitConsultationResponse>> TransitionAsync(Guid consultationId, string transitionAction, Guid? actorId, CancellationToken cancellationToken)
     {
         var visit = await _repository.GetByConsultationIdAsync(consultationId, cancellationToken);

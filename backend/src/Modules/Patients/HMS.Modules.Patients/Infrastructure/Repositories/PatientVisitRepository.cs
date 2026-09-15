@@ -196,6 +196,37 @@ internal class PatientVisitRepository : IPatientVisitRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<OpdPatientListRow?> GetOpdConsultationDetailAsync(Guid consultationId, CancellationToken cancellationToken)
+    {
+        // See GetOpdPatientListPagedAsync's own comment for why this duplicates the join/
+        // projection instead of sharing a helper — an EF Core translation constraint, not a
+        // stylistic choice.
+        var rows =
+            from visit in _dbContext.PatientVisits
+            from consultation in visit.Consultations
+            join patient in _dbContext.Patients on visit.PatientId equals patient.Id
+            where consultation.Id == consultationId
+            select new { consultation, visit, patient };
+
+        return await rows
+            .Select(r => new OpdPatientListRow(
+                r.consultation.Id,
+                r.visit.Id,
+                r.patient.Id,
+                r.patient.Uhid,
+                r.patient.PrimaryPhone,
+                r.patient.FirstName,
+                r.patient.LastName,
+                r.patient.DateOfBirth,
+                r.patient.Gender,
+                r.consultation.AppointmentTime,
+                r.visit.AppointmentTypeId,
+                r.consultation.DepartmentId,
+                r.consultation.ConsultantId,
+                r.consultation.Status))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 }

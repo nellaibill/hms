@@ -37,5 +37,12 @@ internal interface IPatientVisitRepository
     /// the Status filter — backs the Consultation List tab's per-consultant summary counts.</summary>
     Task<IReadOnlyList<OpdPatientListRow>> GetOpdConsultationSummaryRowsAsync(OpdConsultationSummaryQuery query, CancellationToken cancellationToken);
 
+    /// <summary>The same joined row shape GetOpdPatientListPagedAsync produces, for exactly one
+    /// consultation — backs the OPD Consultation form's read-only header (patient/appointment/
+    /// consultant/department), which needs the same denormalized fields the list already
+    /// resolves but for a single id rather than a page. Null if the consultation doesn't
+    /// exist.</summary>
+    Task<OpdPatientListRow?> GetOpdConsultationDetailAsync(Guid consultationId, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

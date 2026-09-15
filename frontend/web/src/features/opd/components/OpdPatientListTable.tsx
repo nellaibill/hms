@@ -61,7 +61,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
 
   function handleConsult(row: OpdPatientListItem) {
     startConsultation.mutate(row.consultationId, {
-      onSuccess: () => navigate(`/patients/registration/${row.patientId}`),
+      onSuccess: () => navigate(`/clinical/opd/consultations/${row.consultationId}`),
     });
   }
 

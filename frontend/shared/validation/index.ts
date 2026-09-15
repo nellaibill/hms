@@ -24,3 +24,4 @@ export * from './diagnostics/diagnosticProviderValidation';
 export * from './diagnostics/diagnosticServiceValidation';
 export * from './diagnostics/diagnosticPackageValidation';
 export * from './dischargeSummary/dischargeSummaryValidation';
+export * from './opdConsultation/opdConsultationValidation';

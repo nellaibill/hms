@@ -62,6 +62,16 @@ public static class FeatureCatalog
         // discharge document (clinical summary, medications, advice) for an already-
         // Discharged IPD admission. See docs/DecisionLog.md.
         "discharge-summary",
+
+        // HMS.Modules.OpdConsultation, schema "opd_consultation" — the clinical note (vitals,
+        // diagnosis, investigations, plan) behind the OPD Patient List's "Consult" action.
+        // Mandatory (see that list below), not merely Optional, for the same reason "billing"
+        // is: the existing "Consult" button unconditionally navigates every tenant with the
+        // (UiOnly) "opd" key enabled straight into this module's form now, with no more
+        // placeholder fallback — making it optional would mean a tenant could have "opd"
+        // enabled but not this, breaking that button outright unless an admin also separately
+        // remembered to toggle this on.
+        "opd-consultation",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate
@@ -106,6 +116,7 @@ public static class FeatureCatalog
         "documents",
         "branding",
         "billing",
+        "opd-consultation",
     ];
 
     /// <summary>Platform-admin toggleable per tenant — every catalog key that isn't mandatory,

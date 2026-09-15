@@ -16,6 +16,8 @@ export * from './hr/department';
 export * from './masters/consultant';
 export * from './masters/appointmentType';
 export * from './masters/consultationType';
+export * from './masters/diagnosis';
+export * from './opdConsultation/opdConsultation';
 export * from './masters/state';
 export * from './diagnostics/diagnosticCategory';
 export * from './diagnostics/diagnosticProvider';

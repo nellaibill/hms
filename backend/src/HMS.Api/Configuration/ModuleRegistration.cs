@@ -12,6 +12,7 @@ using HMS.Modules.Laboratory;
 using HMS.Modules.Masters;
 using HMS.Modules.Messaging;
 using HMS.Modules.Notifications;
+using HMS.Modules.OpdConsultation;
 using HMS.Modules.Patients;
 using HMS.Modules.Pharmacy;
 using HMS.Modules.Platform;
@@ -85,6 +86,13 @@ public static class ModuleRegistration
         // cross-module reference validation, so it must register after both — same reasoning
         // as IPD above (both are already satisfied by this point).
         services.AddDischargeSummaryModule(configuration);
+
+        // OpdConsultation depends on Patients' IOpdQueryService (consultation header lookup +
+        // the Complete transition) and Masters' IDiagnosisService/IDepartmentService/
+        // IConsultantService (cross-module reference validation) public service seams, so it
+        // must register after both — same reasoning as IPD above (both already satisfied by
+        // this point).
+        services.AddOpdConsultationModule(configuration);
 
         // Notifications depends on Identity's IUserService public service seam (resolving a
         // recipient's email/phone number for the background Email/Sms delivery pipeline —
