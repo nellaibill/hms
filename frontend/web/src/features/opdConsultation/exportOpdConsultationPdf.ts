@@ -24,23 +24,44 @@ function formatNumber(value?: number | null): string {
   return value === null || value === undefined ? '—' : String(value);
 }
 
+export interface OpdConsultationPdfHospitalInfo {
+  name: string;
+  address?: string | null;
+  phoneNumber?: string | null;
+}
+
 /**
  * Client-side PDF export for an OPD consultation note — same jsPDF + jspdf-autotable pattern as
  * exportDischargeSummaryPdf.ts (no backend PDF library exists in this codebase). Every section
  * is a borderless two-column (label/value) autotable; Diagnoses/Investigations are real headed
  * tables. Section order mirrors OpdConsultationForm.
  */
-export function exportOpdConsultationPdf(header: OpdConsultationHeader, note: OpdConsultationNote) {
+export function exportOpdConsultationPdf(header: OpdConsultationHeader, note: OpdConsultationNote, hospital: OpdConsultationPdfHospitalInfo) {
   const doc = new jsPDF() as DocWithLastAutoTable;
   const marginLeft = 14;
   const marginRight = 14;
 
-  doc.setFontSize(16);
-  doc.text('OPD Consultation', marginLeft, 16);
-  doc.setFontSize(10);
-  doc.text(note.status, doc.internal.pageSize.getWidth() - marginRight, 16, { align: 'right' });
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(hospital.name, marginLeft, 16);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  let headerY = 22;
+  if (hospital.address) {
+    doc.text(hospital.address, marginLeft, headerY);
+    headerY += 5;
+  }
+  if (hospital.phoneNumber) {
+    doc.text(`Phone: ${hospital.phoneNumber}`, marginLeft, headerY);
+    headerY += 5;
+  }
 
-  let cursorY = 24;
+  doc.setFontSize(16);
+  doc.text('OPD Consultation', marginLeft, headerY + 4);
+  doc.setFontSize(10);
+  doc.text(note.status, doc.internal.pageSize.getWidth() - marginRight, headerY + 4, { align: 'right' });
+
+  let cursorY = headerY + 12;
 
   function section(title: string, rows: [string, string][]) {
     doc.setFontSize(11);

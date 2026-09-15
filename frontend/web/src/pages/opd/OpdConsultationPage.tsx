@@ -1,13 +1,16 @@
-import { ApiError, type OpdConsultationFormValues } from '@hms/shared';
+import { ApiError, type SaveOpdConsultationRequest } from '@hms/shared';
 import { History, Loader2, Stethoscope } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
+import { branding } from '@/config/branding';
+import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import {
   exportOpdConsultationPdf,
   OpdConsultationForm,
   OpdConsultationHeader,
+  OpdConsultationPrintTemplate,
   useCompleteOpdConsultationMutation,
   useOpdConsultationQuery,
   useSaveOpdConsultationDraftMutation,
@@ -26,6 +29,7 @@ export default function OpdConsultationPage() {
   const { data, isPending, isError } = useOpdConsultationQuery(consultationId);
   const saveDraftMutation = useSaveOpdConsultationDraftMutation(consultationId);
   const completeMutation = useCompleteOpdConsultationMutation(consultationId);
+  const { data: brandingConfig } = useBrandingQuery();
 
   if (isPending) {
     return (
@@ -51,11 +55,11 @@ export default function OpdConsultationPage() {
 
   const { header, note } = data;
 
-  function handleSaveDraft(values: OpdConsultationFormValues) {
+  function handleSaveDraft(values: SaveOpdConsultationRequest) {
     saveDraftMutation.mutate(values, { onSuccess: () => toast({ title: 'Draft saved', description: 'The consultation draft has been saved.' }) });
   }
 
-  function handleComplete(values: OpdConsultationFormValues) {
+  function handleComplete(values: SaveOpdConsultationRequest) {
     completeMutation.mutate(values, {
       onSuccess: () => toast({ title: 'Consultation completed', description: 'The consultation has been marked as completed.' }),
     });
@@ -66,7 +70,11 @@ export default function OpdConsultationPage() {
   }
 
   function handleDownloadPdf() {
-    exportOpdConsultationPdf(header, note);
+    exportOpdConsultationPdf(header, note, {
+      name: brandingConfig?.hospitalName ?? branding.hospitalName,
+      address: brandingConfig?.address,
+      phoneNumber: brandingConfig?.phoneNumber,
+    });
   }
 
   const activeError = saveDraftMutation.error ?? completeMutation.error;
@@ -107,6 +115,8 @@ export default function OpdConsultationPage() {
           onDownloadPdf={handleDownloadPdf}
         />
       </div>
+
+      <OpdConsultationPrintTemplate header={header} note={note} />
     </div>
   );
 }

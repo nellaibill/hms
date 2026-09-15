@@ -4,6 +4,7 @@ import {
   type ApiError,
   type OpdConsultationFormValues,
   type OpdConsultationNote,
+  type SaveOpdConsultationRequest,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -309,6 +310,20 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
   );
 }
 
+/** The form keeps unset optional single-value fields (reviewDate, referral pickers) as ''
+ * (react-hook-form/Select inputs need a defined string, not undefined) but the backend's
+ * SaveOpdConsultationRequest declares them Guid?/DateOnly? — an empty string fails JSON
+ * deserialization before the controller runs and comes back as a 400. Normalize '' to null here,
+ * at the one seam between the form's own values and the wire request. */
+function toSaveRequest(values: OpdConsultationFormValues): SaveOpdConsultationRequest {
+  return {
+    ...values,
+    reviewDate: values.reviewDate || null,
+    referralDepartmentId: values.referralDepartmentId || null,
+    referralConsultantId: values.referralConsultantId || null,
+  };
+}
+
 function toFormValues(note: OpdConsultationNote): OpdConsultationFormValues {
   return {
     heightCm: note.heightCm ?? undefined,
@@ -337,8 +352,8 @@ interface OpdConsultationFormProps {
   isSavingDraft: boolean;
   isCompleting: boolean;
   apiError: ApiError | null;
-  onSaveDraft: (values: OpdConsultationFormValues) => void;
-  onComplete: (values: OpdConsultationFormValues) => void;
+  onSaveDraft: (values: SaveOpdConsultationRequest) => void;
+  onComplete: (values: SaveOpdConsultationRequest) => void;
   onPrint: () => void;
   onDownloadPdf: () => void;
 }
@@ -396,132 +411,128 @@ export function OpdConsultationForm({ note, isSavingDraft, isCompleting, apiErro
       }
       return;
     }
-    onComplete(result.data);
+    onComplete(toSaveRequest(result.data));
   }
 
   return (
-    <form onSubmit={handleSubmit(onSaveDraft)} noValidate className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit((values) => onSaveDraft(toSaveRequest(values)))} noValidate className="flex flex-col gap-6">
       {generalError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {generalError}
         </p>
       )}
 
-      <fieldset disabled={readOnly} className="flex flex-col gap-6">
-        <SectionCard icon={Activity} title="Vitals">
-          <div className="flex flex-wrap gap-4">
-            <TextField id="heightCm" label="Height (cm)" registration={register('heightCm')} error={errors.heightCm?.message} required type="number" step="0.1" />
-            <TextField id="weightKg" label="Weight (kg)" registration={register('weightKg')} error={errors.weightKg?.message} required type="number" step="0.1" />
-            <div className="flex flex-1 flex-col gap-1.5" style={{ minWidth: 100 }}>
-              <Label>BMI</Label>
-              <div className="flex h-10 items-center rounded-md border border-dashed border-input bg-muted px-3 text-sm text-muted-foreground">{bmi ?? '—'}</div>
+      <fieldset disabled={readOnly} className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col gap-6">
+          <SectionCard icon={Activity} title="Vitals">
+            <div className="flex flex-wrap gap-4">
+              <TextField id="heightCm" label="Height (cm)" registration={register('heightCm')} error={errors.heightCm?.message} required type="number" step="0.1" />
+              <TextField id="weightKg" label="Weight (kg)" registration={register('weightKg')} error={errors.weightKg?.message} required type="number" step="0.1" />
+              <div className="flex flex-1 flex-col gap-1.5" style={{ minWidth: 100 }}>
+                <Label>BMI</Label>
+                <div className="flex h-10 items-center rounded-md border border-dashed border-input bg-muted px-3 text-sm text-muted-foreground">{bmi ?? '—'}</div>
+              </div>
+              <TextField id="pulseRate" label="PR (bpm)" registration={register('pulseRate')} error={errors.pulseRate?.message} type="number" step="1" />
+              <TextField id="bloodPressure" label="BP (mmHg)" registration={register('bloodPressure')} error={errors.bloodPressure?.message} placeholder="e.g. 120/80" />
+              <TextField id="temperatureF" label="Temperature (°F)" registration={register('temperatureF')} error={errors.temperatureF?.message} type="number" step="0.1" />
+              <TextField id="spO2Percent" label="SpO2 (%)" registration={register('spO2Percent')} error={errors.spO2Percent?.message} type="number" step="1" />
             </div>
-            <TextField id="pulseRate" label="PR (bpm)" registration={register('pulseRate')} error={errors.pulseRate?.message} type="number" step="1" />
-            <TextField id="bloodPressure" label="BP (mmHg)" registration={register('bloodPressure')} error={errors.bloodPressure?.message} placeholder="e.g. 120/80" />
-            <TextField id="temperatureF" label="Temperature (°F)" registration={register('temperatureF')} error={errors.temperatureF?.message} type="number" step="0.1" />
-            <TextField id="spO2Percent" label="SpO2 (%)" registration={register('spO2Percent')} error={errors.spO2Percent?.message} type="number" step="1" />
-          </div>
-        </SectionCard>
+          </SectionCard>
 
-        <SectionCard icon={ClipboardList} title="Clinical Assessment">
-          <TextAreaField
-            id="presentingComplaints"
-            label="Presenting Complaints"
-            registration={register('presentingComplaints')}
-            error={errors.presentingComplaints?.message}
-            required
-            rows={2}
-          />
-          <TextAreaField id="clinicalHistory" label="Clinical History" registration={register('clinicalHistory')} error={errors.clinicalHistory?.message} rows={2} />
-          <TextAreaField
-            id="examinationFindings"
-            label="Examination Findings"
-            registration={register('examinationFindings')}
-            error={errors.examinationFindings?.message}
-            rows={3}
-          />
-        </SectionCard>
+          <SectionCard icon={ClipboardList} title="Clinical Assessment">
+            <TextAreaField
+              id="presentingComplaints"
+              label="Presenting Complaints"
+              registration={register('presentingComplaints')}
+              error={errors.presentingComplaints?.message}
+              required
+              rows={2}
+            />
+            <TextAreaField id="clinicalHistory" label="Clinical History" registration={register('clinicalHistory')} error={errors.clinicalHistory?.message} rows={2} />
+            <TextAreaField
+              id="examinationFindings"
+              label="Examination Findings"
+              registration={register('examinationFindings')}
+              error={errors.examinationFindings?.message}
+              rows={3}
+            />
+          </SectionCard>
 
-        <SectionCard icon={Stethoscope} title="Diagnosis">
-          <DiagnosisSection control={control} errors={errors} />
-        </SectionCard>
+          <SectionCard icon={Stethoscope} title="Diagnosis">
+            <DiagnosisSection control={control} errors={errors} />
+          </SectionCard>
+        </div>
 
-        <SectionCard icon={FlaskConical} title="Investigations">
-          <InvestigationsSection control={control} register={register} />
-        </SectionCard>
+        <div className="flex flex-col gap-6">
+          <SectionCard icon={FlaskConical} title="Investigations">
+            <InvestigationsSection control={control} register={register} />
+          </SectionCard>
 
-        <SectionCard icon={ListChecks} title="Plan of Management">
-          <TextAreaField
-            id="planOfManagement"
-            label="Plan of Management"
-            registration={register('planOfManagement')}
-            error={errors.planOfManagement?.message}
-            rows={4}
-            placeholder="e.g. Tablet Paracetamol 500 mg SOS for pain, Knee support advised, Physiotherapy…"
-          />
-        </SectionCard>
+          <SectionCard icon={ListChecks} title="Plan of Management">
+            <TextAreaField
+              id="planOfManagement"
+              label="Plan of Management"
+              registration={register('planOfManagement')}
+              error={errors.planOfManagement?.message}
+              rows={4}
+              placeholder="e.g. Tablet Paracetamol 500 mg SOS for pain, Knee support advised, Physiotherapy…"
+            />
+          </SectionCard>
 
-        <SectionCard icon={CalendarClock} title="Follow-up / Review">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex flex-1 flex-col gap-1.5" style={{ minWidth: 160 }}>
-              <Label htmlFor="reviewDate">Review Date</Label>
-              <Input id="reviewDate" type="date" {...register('reviewDate')} />
+          <SectionCard icon={CalendarClock} title="Follow-up / Review">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex flex-1 flex-col gap-1.5" style={{ minWidth: 160 }}>
+                <Label htmlFor="reviewDate">Review Date</Label>
+                <Input id="reviewDate" type="date" {...register('reviewDate')} />
+              </div>
+              <div className="flex flex-[2] flex-col gap-1.5" style={{ minWidth: 240 }}>
+                <Label htmlFor="followUpInstructions">Follow-up Instructions</Label>
+                <textarea id="followUpInstructions" rows={2} className={textareaClassName} {...register('followUpInstructions')} />
+              </div>
             </div>
-            <div className="flex flex-[2] flex-col gap-1.5" style={{ minWidth: 240 }}>
-              <Label htmlFor="followUpInstructions">Follow-up Instructions</Label>
-              <textarea id="followUpInstructions" rows={2} className={textareaClassName} {...register('followUpInstructions')} />
-            </div>
-          </div>
-        </SectionCard>
+          </SectionCard>
 
-        <SectionCard icon={AlertTriangle} title="Emergency Review (SOS)">
-          <TextAreaField
-            id="emergencyReviewInstructions"
-            label="Emergency Review Instructions"
-            registration={register('emergencyReviewInstructions')}
-            error={errors.emergencyReviewInstructions?.message}
-            rows={2}
-            placeholder="e.g. In case of increased pain, swelling or fever, visit emergency department."
-          />
-        </SectionCard>
+          <SectionCard icon={AlertTriangle} title="Emergency Review (SOS)">
+            <TextAreaField
+              id="emergencyReviewInstructions"
+              label="Emergency Review Instructions"
+              registration={register('emergencyReviewInstructions')}
+              error={errors.emergencyReviewInstructions?.message}
+              rows={2}
+              placeholder="e.g. In case of increased pain, swelling or fever, visit emergency department."
+            />
+          </SectionCard>
 
-        <SectionCard icon={Send} title="Referral (if any)">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
-              <Label htmlFor="referralDepartmentId">Referral Department</Label>
-              <Controller
-                control={control}
-                name="referralDepartmentId"
-                render={({ field }) => <DepartmentSelect id="referralDepartmentId" value={field.value ?? ''} onValueChange={field.onChange} />}
-              />
+          <SectionCard icon={Send} title="Referral (if any)">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
+                <Label htmlFor="referralDepartmentId">Referral Department</Label>
+                <Controller
+                  control={control}
+                  name="referralDepartmentId"
+                  render={({ field }) => <DepartmentSelect id="referralDepartmentId" value={field.value ?? ''} onValueChange={field.onChange} />}
+                />
+              </div>
+              <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
+                <Label htmlFor="referralConsultantId">Referral Doctor</Label>
+                <Controller
+                  control={control}
+                  name="referralConsultantId"
+                  render={({ field }) => (
+                    <ConsultantSelect id="referralConsultantId" value={field.value ?? ''} onValueChange={field.onChange} departmentId={watch('referralDepartmentId') || undefined} />
+                  )}
+                />
+              </div>
+              <div className="flex min-w-[240px] flex-[2] flex-col gap-1.5">
+                <Label htmlFor="referralReason">Reason</Label>
+                <textarea id="referralReason" rows={2} placeholder="Enter referral reason…" className={textareaClassName} {...register('referralReason')} />
+              </div>
             </div>
-            <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
-              <Label htmlFor="referralConsultantId">Referral Doctor</Label>
-              <Controller
-                control={control}
-                name="referralConsultantId"
-                render={({ field }) => (
-                  <ConsultantSelect id="referralConsultantId" value={field.value ?? ''} onValueChange={field.onChange} departmentId={watch('referralDepartmentId') || undefined} />
-                )}
-              />
-            </div>
-            <div className="flex min-w-[240px] flex-[2] flex-col gap-1.5">
-              <Label htmlFor="referralReason">Reason</Label>
-              <textarea id="referralReason" rows={2} placeholder="Enter referral reason…" className={textareaClassName} {...register('referralReason')} />
-            </div>
-          </div>
-        </SectionCard>
+          </SectionCard>
+        </div>
       </fieldset>
 
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <Button type="button" variant="outline" className="gap-1.5" onClick={onPrint}>
-          <Printer className="h-4 w-4" />
-          Print
-        </Button>
-        <Button type="button" variant="outline" className="gap-1.5" onClick={onDownloadPdf}>
-          <Download className="h-4 w-4" />
-          Download PDF
-        </Button>
         {!readOnly && (
           <>
             <Button type="submit" variant="outline" disabled={isSavingDraft} className="gap-1.5">
@@ -534,6 +545,14 @@ export function OpdConsultationForm({ note, isSavingDraft, isCompleting, apiErro
             </Button>
           </>
         )}
+        <Button type="button" variant="outline" className="gap-1.5" onClick={onPrint}>
+          <Printer className="h-4 w-4" />
+          Print
+        </Button>
+        <Button type="button" variant="outline" className="gap-1.5" onClick={onDownloadPdf}>
+          <Download className="h-4 w-4" />
+          Download PDF
+        </Button>
       </div>
     </form>
   );

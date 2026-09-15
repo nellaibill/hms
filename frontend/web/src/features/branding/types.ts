@@ -8,6 +8,10 @@
 export interface BrandingConfig {
   hospitalName: string;
   appTitle: string;
+  /** Shown alongside hospitalName on printed/exported clinical documents (e.g. the OPD
+   * Consultation report) — optional, unlike hospitalName/appTitle. */
+  address: string;
+  phoneNumber: string;
   /** data: URI in the mock store; a server-relative URL once a backend exists. Null = no custom logo uploaded. */
   logoUrl: string | null;
   fontFamily: FontFamily;

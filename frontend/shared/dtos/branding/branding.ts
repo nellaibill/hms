@@ -2,6 +2,8 @@
 export interface BrandingConfigDto {
   hospitalName: string;
   appTitle: string;
+  address: string | null;
+  phoneNumber: string | null;
   logoUrl: string | null;
   fontFamily: string;
   fontSizeScale: string;
@@ -14,6 +16,8 @@ export interface BrandingConfigDto {
 export interface UpdateBrandingRequest {
   hospitalName: string;
   appTitle: string;
+  address: string | null;
+  phoneNumber: string | null;
   fontFamily: string;
   fontSizeScale: string;
   iconSizeScale: string;

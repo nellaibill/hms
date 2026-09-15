@@ -10,6 +10,8 @@ internal static class BrandingMappingExtensions
     {
         HospitalName = settings.HospitalName,
         AppTitle = settings.AppTitle,
+        Address = settings.Address,
+        PhoneNumber = settings.PhoneNumber,
         LogoUrl = settings.LogoPath,
         FontFamily = settings.FontFamily,
         FontSizeScale = settings.FontSizeScale,

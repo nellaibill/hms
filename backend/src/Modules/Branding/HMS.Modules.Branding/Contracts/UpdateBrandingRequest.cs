@@ -4,6 +4,8 @@ public record UpdateBrandingRequest
 {
     public string HospitalName { get; init; } = string.Empty;
     public string AppTitle { get; init; } = string.Empty;
+    public string? Address { get; init; }
+    public string? PhoneNumber { get; init; }
     public string FontFamily { get; init; } = string.Empty;
     public string FontSizeScale { get; init; } = string.Empty;
     public string IconSizeScale { get; init; } = string.Empty;
