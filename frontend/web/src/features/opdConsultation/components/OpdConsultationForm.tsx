@@ -17,6 +17,7 @@ import {
   ListChecks,
   Plus,
   Printer,
+  RotateCcw,
   Save,
   Send,
   Stethoscope,
@@ -351,9 +352,12 @@ interface OpdConsultationFormProps {
   note: OpdConsultationNote;
   isSavingDraft: boolean;
   isCompleting: boolean;
+  isReopening: boolean;
+  canReopen: boolean;
   apiError: ApiError | null;
   onSaveDraft: (values: SaveOpdConsultationRequest) => void;
   onComplete: (values: SaveOpdConsultationRequest) => void;
+  onReopen: () => void;
   onPrint: () => void;
   onDownloadPdf: () => void;
 }
@@ -371,7 +375,19 @@ interface OpdConsultationFormProps {
  * on click (not via the form's resolver, since react-hook-form only supports one resolver per
  * form instance) and only calls onComplete once that passes.
  */
-export function OpdConsultationForm({ note, isSavingDraft, isCompleting, apiError, onSaveDraft, onComplete, onPrint, onDownloadPdf }: OpdConsultationFormProps) {
+export function OpdConsultationForm({
+  note,
+  isSavingDraft,
+  isCompleting,
+  isReopening,
+  canReopen,
+  apiError,
+  onSaveDraft,
+  onComplete,
+  onReopen,
+  onPrint,
+  onDownloadPdf,
+}: OpdConsultationFormProps) {
   const {
     control,
     register,
@@ -544,6 +560,12 @@ export function OpdConsultationForm({ note, isSavingDraft, isCompleting, apiErro
               {isCompleting ? 'Completing…' : 'Complete Consultation'}
             </Button>
           </>
+        )}
+        {readOnly && canReopen && (
+          <Button type="button" variant="outline" disabled={isReopening} className="gap-1.5" onClick={onReopen}>
+            <RotateCcw className="h-4 w-4" />
+            {isReopening ? 'Reopening…' : 'Reopen'}
+          </Button>
         )}
         <Button type="button" variant="outline" className="gap-1.5" onClick={onPrint}>
           <Printer className="h-4 w-4" />

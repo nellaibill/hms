@@ -230,4 +230,63 @@ public class OpdConsultationServiceTests
         result.ErrorCode.Should().Be(PatientErrorCodes.InvalidStatusTransition);
         await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task ReopenAsync_WhenNoteDoesNotExist_ReturnsNotFound()
+    {
+        var consultationId = Guid.NewGuid();
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns((OpdConsultationNote?)null);
+
+        var result = await _sut.ReopenAsync(consultationId, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(OpdConsultationErrorCodes.NotFound);
+    }
+
+    [Fact]
+    public async Task ReopenAsync_WhenNoteIsStillDraft_ReturnsNotCompleted()
+    {
+        var consultationId = Guid.NewGuid();
+        var note = OpdConsultationNote.Create(consultationId, Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.ReopenAsync(consultationId, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(OpdConsultationErrorCodes.NotCompleted);
+    }
+
+    [Fact]
+    public async Task ReopenAsync_WhenCompleted_MovesBackToDraftAndTransitionsTheOwningConsultation()
+    {
+        var consultationId = Guid.NewGuid();
+        var note = OpdConsultationNote.Create(consultationId, Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.Complete(updatedBy: null);
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns(note);
+        _opdQueryService.TransitionAsync(consultationId, "reopen", Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<VisitConsultationResponse>.Success(new VisitConsultationResponse()));
+
+        var result = await _sut.ReopenAsync(consultationId, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(OpdConsultationNoteStatus.Draft);
+        await _opdQueryService.Received(1).TransitionAsync(consultationId, "reopen", Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReopenAsync_WhenTheOwningConsultationTransitionFails_ReturnsThatFailure()
+    {
+        var consultationId = Guid.NewGuid();
+        var note = OpdConsultationNote.Create(consultationId, Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.Complete(updatedBy: null);
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns(note);
+        _opdQueryService.TransitionAsync(consultationId, "reopen", Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<VisitConsultationResponse>.Failure(PatientErrorCodes.InvalidStatusTransition, "not completed"));
+
+        var result = await _sut.ReopenAsync(consultationId, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.InvalidStatusTransition);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
 }

@@ -154,5 +154,16 @@ internal class OpdConsultationNote : Entity
         MarkUpdated(updatedBy);
     }
 
+    /// <summary>The inverse of Complete — moves a Completed note back to Draft so it can be
+    /// edited again. Caller (OpdConsultationService) is responsible for confirming Status is
+    /// currently Completed before calling this, and for calling Patients'
+    /// PatientVisitConsultation.Reopen() transition alongside it, same as Complete does going
+    /// the other direction.</summary>
+    public void Reopen(Guid? updatedBy)
+    {
+        Status = OpdConsultationNoteStatus.Draft;
+        MarkUpdated(updatedBy);
+    }
+
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

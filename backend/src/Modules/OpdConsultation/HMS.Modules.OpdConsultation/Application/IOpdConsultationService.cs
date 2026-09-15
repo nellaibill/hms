@@ -33,6 +33,14 @@ public interface IOpdConsultationService
     /// entry complete together. Fails with AlreadyCompleted if already Completed, or
     /// MissingRequiredFieldsForCompletion if the three fields above aren't all set.</summary>
     Task<Result<OpdConsultationNoteResponse>> CompleteAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>The inverse of CompleteAsync — moves a Completed note back to Draft so it can
+    /// be edited again, and reverts the owning PatientVisitConsultation's queue status from
+    /// Completed back to InConsultation via Patients' public IOpdQueryService, same seam
+    /// CompleteAsync uses going the other direction. Fails with NotCompleted if the note isn't
+    /// currently Completed. Permission-gated at the controller to clinical-care.edit — the same
+    /// gate SaveDraft/Complete already use.</summary>
+    Task<Result<OpdConsultationNoteResponse>> ReopenAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken);
 }
 
 internal class OpdConsultationService : IOpdConsultationService
@@ -159,6 +167,33 @@ internal class OpdConsultationService : IOpdConsultationService
             return Result<OpdConsultationNoteResponse>.Failure(transitionResult.ErrorCode!, transitionResult.Error!);
         }
 
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        return Result<OpdConsultationNoteResponse>.Success(note.ToResponse());
+    }
+
+    public async Task<Result<OpdConsultationNoteResponse>> ReopenAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var note = await _repository.GetByConsultationIdAsync(consultationId, cancellationToken);
+        if (note is null)
+        {
+            return Result<OpdConsultationNoteResponse>.Failure(OpdConsultationErrorCodes.NotFound, $"No consultation note exists for consultation '{consultationId}'.");
+        }
+
+        if (note.Status != OpdConsultationNoteStatus.Completed)
+        {
+            return Result<OpdConsultationNoteResponse>.Failure(OpdConsultationErrorCodes.NotCompleted, "Only a completed consultation can be reopened.");
+        }
+
+        // The clinical note and the OPD queue entry move back together — mirrors CompleteAsync's
+        // own use of this same transition seam going the other direction.
+        var transitionResult = await _opdQueryService.TransitionAsync(consultationId, "reopen", actorId, cancellationToken);
+        if (!transitionResult.IsSuccess)
+        {
+            return Result<OpdConsultationNoteResponse>.Failure(transitionResult.ErrorCode!, transitionResult.Error!);
+        }
+
+        note.Reopen(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<OpdConsultationNoteResponse>.Success(note.ToResponse());

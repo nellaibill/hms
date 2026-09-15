@@ -141,6 +141,38 @@ public class OpdQueryServiceTests
     }
 
     [Fact]
+    public async Task TransitionAsync_Reopen_MovesCompletedBackToInConsultation()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null);
+        visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, DepartmentId, ConsultantId, consultationTypeId: null), updatedBy: null);
+        var consultation = visit.Consultations.Single();
+        consultation.StartConsultation();
+        consultation.Complete();
+        _repository.GetByConsultationIdAsync(consultation.Id, Arg.Any<CancellationToken>()).Returns(visit);
+
+        var result = await _sut.TransitionAsync(consultation.Id, "reopen", actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(OpdConsultationStatus.InConsultation);
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TransitionAsync_Reopen_IllegalFromNonCompletedStatus_ReturnsFailureAndDoesNotSave()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null);
+        visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, DepartmentId, ConsultantId, consultationTypeId: null), updatedBy: null);
+        var consultation = visit.Consultations.Single();
+        _repository.GetByConsultationIdAsync(consultation.Id, Arg.Any<CancellationToken>()).Returns(visit);
+
+        var result = await _sut.TransitionAsync(consultation.Id, "reopen", actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.InvalidStatusTransition);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task TransitionAsync_UnknownAction_ReturnsFailure()
     {
         var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null);

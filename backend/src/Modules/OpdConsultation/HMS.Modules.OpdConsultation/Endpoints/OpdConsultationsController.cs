@@ -80,6 +80,22 @@ public class OpdConsultationsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapNoteFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Reopens a Completed consultation back to Draft so it can be edited again, and
+    /// reverts the owning PatientVisitConsultation's queue status accordingly. Gated by the
+    /// same clinical-care.edit permission as SaveDraft/Complete — the consultant, or any role
+    /// granted broader clinical-care permissions such as an administrator.</summary>
+    /// <response code="200">The consultation was reopened.</response>
+    /// <response code="404">No consultation note exists for this consultation.</response>
+    /// <response code="409">The consultation isn't currently Completed.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
+    [HttpPost("{consultationId:guid}/reopen")]
+    public async Task<IActionResult> Reopen(Guid consultationId, CancellationToken cancellationToken)
+    {
+        var result = await _service.ReopenAsync(consultationId, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapNoteFailure(result.ErrorCode!, result.Error!);
+    }
+
     private static ApiResponse<OpdConsultationDetailResponse> Envelope(OpdConsultationDetailResponse? data) => new() { Data = data };
 
     private static ApiResponse<OpdConsultationNoteResponse> Envelope(OpdConsultationNoteResponse? data) => new() { Data = data };
@@ -102,6 +118,7 @@ public class OpdConsultationsController : ControllerBase
         {
             OpdConsultationErrorCodes.NotFound => StatusCodes.Status404NotFound,
             OpdConsultationErrorCodes.AlreadyCompleted => StatusCodes.Status409Conflict,
+            OpdConsultationErrorCodes.NotCompleted => StatusCodes.Status409Conflict,
             OpdConsultationErrorCodes.NotDraft => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest,
         };

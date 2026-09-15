@@ -33,3 +33,19 @@ export function useCompleteOpdConsultationMutation(consultationId: string | unde
     },
   });
 }
+
+/** The inverse of useCompleteOpdConsultationMutation — moves a Completed note back to Draft so
+ * it can be edited again, reverting the owning PatientVisitConsultation's queue status back to
+ * InConsultation on the backend, so the same list invalidations apply here too. */
+export function useReopenOpdConsultationMutation(consultationId: string | undefined) {
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateOpdConsultation(consultationId);
+  return useMutation({
+    mutationFn: () => opdConsultationApi.reopen(consultationId as string),
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ['opd', 'patients'] });
+      queryClient.invalidateQueries({ queryKey: ['opd', 'consultations'] });
+    },
+  });
+}

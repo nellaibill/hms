@@ -1,18 +1,22 @@
 import { ApiError, type SaveOpdConsultationRequest } from '@hms/shared';
 import { History, Loader2, Stethoscope } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
 import { branding } from '@/config/branding';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import {
   exportOpdConsultationPdf,
   OpdConsultationForm,
   OpdConsultationHeader,
   OpdConsultationPrintTemplate,
+  ReopenConsultationDialog,
   useCompleteOpdConsultationMutation,
   useOpdConsultationQuery,
+  useReopenOpdConsultationMutation,
   useSaveOpdConsultationDraftMutation,
 } from '@/features/opdConsultation';
 
@@ -25,10 +29,13 @@ import {
 export default function OpdConsultationPage() {
   const { consultationId } = useParams<{ consultationId: string }>();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
 
   const { data, isPending, isError } = useOpdConsultationQuery(consultationId);
   const saveDraftMutation = useSaveOpdConsultationDraftMutation(consultationId);
   const completeMutation = useCompleteOpdConsultationMutation(consultationId);
+  const reopenMutation = useReopenOpdConsultationMutation(consultationId);
   const { data: brandingConfig } = useBrandingQuery();
 
   if (isPending) {
@@ -62,6 +69,15 @@ export default function OpdConsultationPage() {
   function handleComplete(values: SaveOpdConsultationRequest) {
     completeMutation.mutate(values, {
       onSuccess: () => toast({ title: 'Consultation completed', description: 'The consultation has been marked as completed.' }),
+    });
+  }
+
+  function handleReopen() {
+    reopenMutation.mutate(undefined, {
+      onSuccess: () => {
+        setShowReopenDialog(false);
+        toast({ title: 'Consultation reopened', description: 'The consultation is editable again.' });
+      },
     });
   }
 
@@ -108,13 +124,20 @@ export default function OpdConsultationPage() {
           note={note}
           isSavingDraft={saveDraftMutation.isPending}
           isCompleting={completeMutation.isPending}
+          isReopening={reopenMutation.isPending}
+          canReopen={hasPermission('clinical-care.edit')}
           apiError={activeError instanceof ApiError ? activeError : null}
           onSaveDraft={handleSaveDraft}
           onComplete={handleComplete}
+          onReopen={() => setShowReopenDialog(true)}
           onPrint={handlePrint}
           onDownloadPdf={handleDownloadPdf}
         />
       </div>
+
+      {showReopenDialog && (
+        <ReopenConsultationDialog isSaving={reopenMutation.isPending} onConfirm={handleReopen} onCancel={() => setShowReopenDialog(false)} />
+      )}
 
       <OpdConsultationPrintTemplate header={header} note={note} />
     </div>

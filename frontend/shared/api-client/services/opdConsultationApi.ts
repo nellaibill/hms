@@ -27,4 +27,10 @@ export class OpdConsultationApi {
     const response = await this.client.post<OpdConsultationNote>(API_ROUTES.opdConsultations.complete(consultationId), request);
     return response.data;
   }
+
+  /** Moves a Completed note back to Draft so it can be edited again. */
+  async reopen(consultationId: string): Promise<OpdConsultationNote> {
+    const response = await this.client.post<OpdConsultationNote>(API_ROUTES.opdConsultations.reopen(consultationId), {});
+    return response.data;
+  }
 }

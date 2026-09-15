@@ -117,6 +117,9 @@ internal class OpdQueryService : IOpdQueryService
                 case "complete":
                     consultation.Complete();
                     break;
+                case "reopen":
+                    consultation.Reopen();
+                    break;
                 case "cancel":
                     consultation.Cancel();
                     break;

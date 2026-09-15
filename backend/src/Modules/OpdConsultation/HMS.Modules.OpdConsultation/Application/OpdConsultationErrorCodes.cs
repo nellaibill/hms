@@ -33,4 +33,7 @@ internal static class OpdConsultationErrorCodes
     /// collide with SaveDraft's lenient one in DI, both being IValidator&lt;
     /// SaveOpdConsultationRequest&gt;).</summary>
     public const string MissingRequiredFieldsForCompletion = "OPD_CONSULTATION.MISSING_REQUIRED_FIELDS";
+
+    /// <summary>Reopen was attempted on a note that isn't currently Completed.</summary>
+    public const string NotCompleted = "OPD_CONSULTATION.NOT_COMPLETED";
 }
