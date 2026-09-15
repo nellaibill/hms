@@ -34,7 +34,13 @@ export function ProfileMenu() {
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="User Login / Profile Details">
+            <Button variant="ghost" size="icon" className="w-auto px-2" aria-label="User Login / Profile Details">
+              {user && (
+                <span className="hidden flex-col items-end leading-tight sm:flex">
+                  <span className="text-xs font-medium text-header-foreground">{user.name}</span>
+                  <span className="text-[11px] text-header-foreground/70">{roleLabel}</span>
+                </span>
+              )}
               <Avatar className="h-8 w-8">
                 <AvatarFallback>{user ? initialsOf(user.name) : <UserRound className="h-4 w-4" />}</AvatarFallback>
               </Avatar>
