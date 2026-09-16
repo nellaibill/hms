@@ -126,7 +126,7 @@ internal class PatientVisitRepository : IPatientVisitRepository
         var totalCount = await rows.CountAsync(cancellationToken);
 
         var items = await rows
-            .OrderBy(r => r.consultation.AppointmentTime)
+            .OrderByDescending(r => r.consultation.AppointmentTime)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(r => new OpdPatientListRow(
