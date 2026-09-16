@@ -1,5 +1,6 @@
 import { ID_PROOF_TYPES, type IdProofType } from '@hms/shared';
 import { useState } from 'react';
+import { CameraCaptureButton } from '@/components/ui/camera-capture-button';
 import { FileChooserButton } from '@/components/ui/file-chooser-button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,12 +72,15 @@ export function DocumentUploadStaging({ value, onChange }: DocumentUploadStaging
         error={photoError ?? undefined}
         className="flex min-w-[220px] max-w-sm flex-col gap-1.5"
       >
-        <FileChooserButton
-          id="photo-upload"
-          accept="image/jpeg,image/png"
-          onFileSelected={handlePhotoChange}
-          status={value.photo && !photoError ? `Selected: ${value.photo.name}` : undefined}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FileChooserButton
+            id="photo-upload"
+            accept="image/jpeg,image/png"
+            onFileSelected={handlePhotoChange}
+            status={value.photo && !photoError ? `Selected: ${value.photo.name}` : undefined}
+          />
+          <CameraCaptureButton fileNamePrefix="patient-photo" onCapture={handlePhotoChange} />
+        </div>
       </Field>
 
       <div className="flex flex-wrap gap-3">
