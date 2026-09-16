@@ -81,6 +81,32 @@ tenants (Platform, legacy) are already migrated. If you see `42703` right after 
 added a migration, this is the first thing to check: migrate the hospital tenant that request
 was actually resolved against, via the Migrate button above.
 
+### One-time: tenant-scoped file storage migration (`migrate-tenant-files`)
+Per [DecisionLog.md ADR-083](DecisionLog.md): uploaded files (documents, consultant/user
+photos, product images, branding logo) are now stored under a per-tenant subfolder rather than
+one shared `wwwroot/uploads`/`App_Data/documents` tree. Any file uploaded *before* this change
+still needs to be moved into its tenant's own folder (and, for everything except Documents, its
+DB path column rewritten to match) — this is a separate, one-time, explicitly-run step, deliberately
+**not** part of `migrate` or Development's auto-migrate, since unlike a schema migration it
+moves real files and rewrites real rows in each tenant's live database.
+
+Run it once, after `migrate` (so the schema is current) and after the new app version is
+deployed:
+
+```bash
+# 1. Dry run first — reports per-tenant, per-kind counts (moved / already-migrated /
+#    missing source file) without touching any file or row.
+dotnet HMS.Api.dll migrate-tenant-files --dry-run
+
+# 2. Review the report, then apply for real.
+dotnet HMS.Api.dll migrate-tenant-files
+```
+
+Idempotent and safe to re-run — anything already at its new tenant-scoped path is skipped, and
+one tenant failing is logged and skipped rather than aborting the whole run. Old files stay
+reachable at their old path until a tenant is migrated, so nothing breaks for a tenant that
+hasn't been run yet.
+
 ## Rollback Strategy
 _To be documented._
 

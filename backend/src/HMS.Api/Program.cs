@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using HMS.Api.Configuration;
 using HMS.Api.HealthChecks;
 using HMS.Api.Middleware;
+using HMS.Api.Provisioning;
 using HMS.Modules.Identity;
 using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
@@ -22,7 +23,15 @@ using Microsoft.EntityFrameworkCore;
 // configuration provider CreateBuilder(args) below wires up, so it's safe to pass through.
 var isMigrationOnlyRun = args.Contains("migrate", StringComparer.OrdinalIgnoreCase);
 
+// One-time fixup for the per-tenant file storage change (see TenantFileStorageMigrator's own
+// doc comment) — deliberately its own explicit command, never folded into the `migrate` step
+// or Development's auto-migrate, since unlike a schema migration this moves real files and
+// rewrites real rows. `--dry-run` reports what it would do without touching anything.
+var isTenantFileMigrationRun = args.Contains("migrate-tenant-files", StringComparer.OrdinalIgnoreCase);
+var isTenantFileMigrationDryRun = isTenantFileMigrationRun && args.Contains("--dry-run", StringComparer.OrdinalIgnoreCase);
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<TenantFileStorageMigrator>();
 
 // FluentValidation is invoked explicitly by controllers (see UsersController), so the
 // framework's own ModelState-based 400s are suppressed to keep one consistent error shape.
@@ -204,6 +213,23 @@ if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
 if (isMigrationOnlyRun)
 {
     // The deploy pipeline's migration step ends here — it never starts serving traffic.
+    return;
+}
+
+if (isTenantFileMigrationRun)
+{
+    var tenantFileMigrationLogger = app.Services.GetRequiredService<ILogger<Program>>();
+    using var scope = app.Services.CreateScope();
+    var tenants = await scope.ServiceProvider.GetRequiredService<ITenantDirectory>().GetAllActiveTenantsAsync(CancellationToken.None);
+
+    tenantFileMigrationLogger.LogInformation(
+        "Starting tenant file storage migration for {Count} active tenant(s){DryRunSuffix}.",
+        tenants.Count,
+        isTenantFileMigrationDryRun ? " (DRY RUN — nothing will be changed)" : string.Empty);
+
+    await app.Services.GetRequiredService<TenantFileStorageMigrator>().RunAsync(tenants, isTenantFileMigrationDryRun, CancellationToken.None);
+
+    tenantFileMigrationLogger.LogInformation("Tenant file storage migration {Verb}.", isTenantFileMigrationDryRun ? "dry run complete — re-run without --dry-run to apply" : "complete");
     return;
 }
 
