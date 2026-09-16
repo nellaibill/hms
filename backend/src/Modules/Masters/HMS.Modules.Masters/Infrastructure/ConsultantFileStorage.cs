@@ -11,7 +11,10 @@ namespace HMS.Modules.Masters.Infrastructure;
 /// re-upload simply overwrites it in place. Scoped under the caller's own
 /// <see cref="ITenantContext.TenantId"/> — this app is database-per-tenant but a single
 /// shared filesystem/process, so without this every hospital's consultant photos would sit
-/// in one shared directory tree (see docs/DecisionLog.md ADR-083).
+/// in one shared directory tree (see docs/DecisionLog.md ADR-083). Stored tenant-first —
+/// "uploads/Tenant/{tenantId}/consultants/…" — alongside every other upload kind's own
+/// subfolder under that same tenant folder, rather than the kind-first
+/// "uploads/consultants/{tenantId}/…" layout this replaced.
 /// </summary>
 internal class ConsultantFileStorage : IConsultantFileStorage
 {
@@ -20,7 +23,7 @@ internal class ConsultantFileStorage : IConsultantFileStorage
 
     public ConsultantFileStorage(IHostEnvironment environment, ITenantContext tenantContext)
     {
-        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "consultants");
+        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "Tenant");
         _tenantContext = tenantContext;
     }
 
@@ -28,7 +31,7 @@ internal class ConsultantFileStorage : IConsultantFileStorage
     {
         var tenantId = _tenantContext.TenantId
             ?? throw new InvalidOperationException("ConsultantFileStorage reached without a resolved tenant.");
-        var directory = Path.Combine(_rootPath, tenantId.ToString());
+        var directory = Path.Combine(_rootPath, tenantId.ToString(), "consultants");
         Directory.CreateDirectory(directory);
 
         // Only the extension is taken from the caller-supplied file name — the stored name
@@ -43,6 +46,6 @@ internal class ConsultantFileStorage : IConsultantFileStorage
             await content.CopyToAsync(fileStream, cancellationToken);
         }
 
-        return Path.Combine("uploads", "consultants", tenantId.ToString(), storedFileName).Replace('\\', '/');
+        return Path.Combine("uploads", "Tenant", tenantId.ToString(), "consultants", storedFileName).Replace('\\', '/');
     }
 }

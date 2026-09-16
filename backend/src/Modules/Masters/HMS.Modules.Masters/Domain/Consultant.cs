@@ -24,7 +24,7 @@ internal class Consultant : Entity
     /// two consultants can share the same priority and just tie-break alphabetically.</summary>
     public int? Priority { get; private set; }
 
-    /// <summary>Relative path (e.g. "uploads/consultants/{id}.jpg") to this consultant's photo,
+    /// <summary>Relative path (e.g. "uploads/Tenant/{tenantId}/consultants/{id}.jpg") to this consultant's photo,
     /// set only via UploadPhotoAsync — never part of Create/Update (mirrors User.ProfilePhotoUrl,
     /// which is likewise excluded from UpdateUserRequest). Null until a photo is uploaded.</summary>
     public string? PhotoUrl { get; private set; }

@@ -12,7 +12,9 @@ namespace HMS.Modules.Branding.Infrastructure;
 /// table — see that entity's own doc comment) — but this app is database-per-tenant with a
 /// single shared filesystem/process underneath, so the slot is scoped under the caller's own
 /// <see cref="ITenantContext.TenantId"/> rather than shared across every hospital (see
-/// docs/DecisionLog.md ADR-083).
+/// docs/DecisionLog.md ADR-083). Stored tenant-first — "uploads/Tenant/{tenantId}/branding/logo/…" —
+/// alongside every other upload kind's own subfolder under that same tenant folder, rather than
+/// the kind-first "uploads/branding/{tenantId}/…" layout this replaced.
 /// </summary>
 internal class BrandingLogoStorage : IBrandingLogoStorage
 {
@@ -21,7 +23,7 @@ internal class BrandingLogoStorage : IBrandingLogoStorage
 
     public BrandingLogoStorage(IHostEnvironment environment, ITenantContext tenantContext)
     {
-        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "branding");
+        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "Tenant");
         _tenantContext = tenantContext;
     }
 
@@ -29,7 +31,7 @@ internal class BrandingLogoStorage : IBrandingLogoStorage
     {
         var tenantId = _tenantContext.TenantId
             ?? throw new InvalidOperationException("BrandingLogoStorage reached without a resolved tenant.");
-        var directory = Path.Combine(_rootPath, tenantId.ToString(), "logo");
+        var directory = Path.Combine(_rootPath, tenantId.ToString(), "branding", "logo");
         Directory.CreateDirectory(directory);
 
         // Only the extension is taken from the caller-supplied file name — the stored
@@ -44,6 +46,6 @@ internal class BrandingLogoStorage : IBrandingLogoStorage
             await content.CopyToAsync(fileStream, cancellationToken);
         }
 
-        return Path.Combine("uploads", "branding", tenantId.ToString(), "logo", storedFileName).Replace('\\', '/');
+        return Path.Combine("uploads", "Tenant", tenantId.ToString(), "branding", "logo", storedFileName).Replace('\\', '/');
     }
 }

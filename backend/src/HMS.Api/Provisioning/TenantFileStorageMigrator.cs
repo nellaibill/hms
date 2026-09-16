@@ -6,15 +6,21 @@ using Npgsql;
 namespace HMS.Api.Provisioning;
 
 /// <summary>
-/// One-time, explicitly-invoked (never automatic) fixup for the per-tenant file storage
-/// change: every upload used to land in one shared directory tree regardless of which
-/// hospital it belonged to (see docs/DecisionLog.md ADR-083). This
-/// walks every active tenant and, for each of the five upload kinds, moves any file still
-/// sitting at its old un-scoped path into that tenant's own subfolder — rewriting the
-/// stored path column too, for the four kinds (everything except Documents' StorageKey,
-/// which was never a full path) where the column itself carries the path.
+/// One-time, explicitly-invoked (never automatic) fixup that lands every tenant's uploads in
+/// their final tenant-first shape — "wwwroot/uploads/Tenant/{tenantId}/{kind}/…" — one
+/// subfolder per upload kind underneath that tenant's own folder (see
+/// docs/DecisionLog.md ADR-083). This walks every active tenant and, for each of the four
+/// wwwroot-hosted upload kinds, moves any file still sitting at an older path shape into its
+/// final location — rewriting the stored path column too, since every one of these four kinds
+/// persists its full relative path in the database. Recognizes and moves files from either of
+/// two older shapes: the very first, fully-unscoped layout ("uploads/{kind}/…", shared by every
+/// tenant) and the interim kind-first-scoped layout from the previous tenant-scoping pass
+/// ("uploads/{kind}/{tenantId}/…"). Documents are deliberately out of scope here — they live
+/// under App_Data, outside wwwroot, specifically so they're never reachable through
+/// UseStaticFiles (see DocumentFileStorage's own doc comment), and DocumentFileStorage already
+/// resolves its own tenant folder at read/write time rather than persisting a path.
 ///
-/// Idempotent and safe to re-run: anything already at its new tenant-scoped shape is left
+/// Idempotent and safe to re-run: anything already at its final tenant-first shape is left
 /// alone, so a partially-completed or repeated run just picks up where it left off. One
 /// tenant/one row failing is logged and skipped rather than aborting the whole run — same
 /// "don't let one bad row take down the batch" posture as DailyBackupSchedulerService.
@@ -55,24 +61,22 @@ public sealed class TenantFileStorageMigrator
                 // tenant): Tenant Feature/Module Management means a given tenant may not have
                 // every module enabled/migrated (e.g. no "products" schema at all), which
                 // surfaces here as a 42P01 "relation does not exist" the moment that kind's
-                // query runs — that must skip only this one kind, not abandon the other four
+                // query runs — that must skip only this one kind, not abandon the others
                 // (found live: a tenant missing products.product_images otherwise also lost
                 // its Branding logo check, which has nothing to do with Products).
                 await RunKindAsync(tenant, "Documents", () => MigrateDocumentsAsync(connection, tenant, dryRun, cancellationToken));
                 await RunKindAsync(tenant, "consultant photos", () => MigrateSingleSlotColumnAsync(
                     connection, tenant, dryRun, cancellationToken,
                     label: "consultant photos",
+                    kind: "consultants",
                     selectSql: "SELECT id, photo_url FROM masters.consultants WHERE photo_url IS NOT NULL",
-                    updateSql: "UPDATE masters.consultants SET photo_url = @newPath WHERE id = @id",
-                    legacySegmentCount: 3,
-                    scopedSegmentCount: 4));
+                    updateSql: "UPDATE masters.consultants SET photo_url = @newPath WHERE id = @id"));
                 await RunKindAsync(tenant, "user photos", () => MigrateSingleSlotColumnAsync(
                     connection, tenant, dryRun, cancellationToken,
                     label: "user photos",
+                    kind: "users",
                     selectSql: "SELECT id, profile_photo_url FROM identity.users WHERE profile_photo_url IS NOT NULL",
-                    updateSql: "UPDATE identity.users SET profile_photo_url = @newPath WHERE id = @id",
-                    legacySegmentCount: 3,
-                    scopedSegmentCount: 4));
+                    updateSql: "UPDATE identity.users SET profile_photo_url = @newPath WHERE id = @id"));
                 await RunKindAsync(tenant, "Product images", () => MigrateProductImagesAsync(connection, tenant, dryRun, cancellationToken));
                 await RunKindAsync(tenant, "Branding logo", () => MigrateBrandingLogoAsync(connection, tenant, dryRun, cancellationToken));
             }
@@ -88,7 +92,7 @@ public sealed class TenantFileStorageMigrator
 
     /// <summary>
     /// Runs one file kind's migration for one tenant, isolating its failure from the other
-    /// four kinds — see the "Each kind runs in its own try/catch" note in RunAsync above for
+    /// kinds — see the "Each kind runs in its own try/catch" note in RunAsync above for
     /// why this matters (a tenant missing one module's schema entirely is a real, expected
     /// case, not a bug).
     /// </summary>
@@ -111,9 +115,55 @@ public sealed class TenantFileStorageMigrator
     }
 
     /// <summary>
+    /// Maps a stored relative path onto its tenant-first final shape
+    /// "uploads/Tenant/{tenantId}/{kind}/{tail...}", recognizing both older shapes this
+    /// migrator moves files out of: the original fully-unscoped "uploads/{kind}/{tail...}"
+    /// and the interim kind-first-scoped "uploads/{kind}/{tenantId}/{tail...}" from the
+    /// previous tenant-scoping pass. <paramref name="kind"/> is everything after the tenant
+    /// segment and before the entity-specific tail (e.g. "consultants", or "products" for
+    /// "products/{productId}/images/{file}") — the tail itself is carried through unchanged
+    /// regardless of which older shape it came from, since only the segments before it differ.
+    /// </summary>
+    private static (bool IsAlreadyFinal, string? NewPath) ResolveTenantFirstPath(string relativePath, string kind, Guid tenantId)
+    {
+        var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 2 || segments[0] != "uploads")
+        {
+            return (false, null);
+        }
+
+        if (segments[1] == "Tenant")
+        {
+            return (true, null);
+        }
+
+        if (segments[1] != kind)
+        {
+            return (false, null);
+        }
+
+        var tail = segments[2..];
+        if (tail.Length > 0 && tail[0] == tenantId.ToString())
+        {
+            tail = tail[1..];
+        }
+
+        if (tail.Length == 0)
+        {
+            return (false, null);
+        }
+
+        var newSegments = new List<string> { "uploads", "Tenant", tenantId.ToString(), kind };
+        newSegments.AddRange(tail);
+        return (false, string.Join('/', newSegments));
+    }
+
+    /// <summary>
     /// Documents: the stored `storage_key` column is only ever a bare filename
-    /// ("{documentId}{ext}") — DocumentFileStorage now resolves the tenant folder itself from
+    /// ("{documentId}{ext}") — DocumentFileStorage resolves the tenant folder itself from
     /// ITenantContext at read/write time, so no DB rewrite is needed, only the physical move.
+    /// Lives under App_Data, not wwwroot — untouched by the tenant-first wwwroot reshuffle
+    /// the other four kinds below go through.
     /// </summary>
     private async Task MigrateDocumentsAsync(NpgsqlConnection connection, TenantInfo tenant, bool dryRun, CancellationToken cancellationToken)
     {
@@ -163,10 +213,9 @@ public sealed class TenantFileStorageMigrator
     }
 
     /// <summary>
-    /// Shared shape for Consultant photos and User photos: a single "uploads/{kind}/{id}.ext"
-    /// column, moving to "uploads/{kind}/{tenantId}/{id}.ext". Detected as already-migrated by
-    /// segment count rather than re-parsing the tenant id out of the path, so a stray legacy
-    /// path that happens to collide is never misread as already-done.
+    /// Shared shape for Consultant photos and User photos: a single "uploads/{kind}/…" column
+    /// pointing at one always-replaceable slot, moving to
+    /// "uploads/Tenant/{tenantId}/{kind}/{file}".
     /// </summary>
     private async Task MigrateSingleSlotColumnAsync(
         NpgsqlConnection connection,
@@ -174,10 +223,9 @@ public sealed class TenantFileStorageMigrator
         bool dryRun,
         CancellationToken cancellationToken,
         string label,
+        string kind,
         string selectSql,
-        string updateSql,
-        int legacySegmentCount,
-        int scopedSegmentCount)
+        string updateSql)
     {
         var rows = new List<(Guid Id, string Path)>();
         await using (var command = new NpgsqlCommand(selectSql, connection))
@@ -192,23 +240,19 @@ public sealed class TenantFileStorageMigrator
         int moved = 0, alreadyDone = 0, missing = 0;
         foreach (var (id, relativePath) in rows)
         {
-            var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var (isAlreadyFinal, newRelativePath) = ResolveTenantFirstPath(relativePath, kind, tenant.Id);
 
-            if (segments.Length == scopedSegmentCount)
+            if (isAlreadyFinal)
             {
                 alreadyDone++;
                 continue;
             }
 
-            if (segments.Length != legacySegmentCount)
+            if (newRelativePath is null)
             {
                 _logger.LogWarning("  {Label}: row {Id} has an unrecognized path shape '{Path}' — left untouched.", label, id, relativePath);
                 continue;
             }
-
-            // "uploads/{kind}/{filename}" -> "uploads/{kind}/{tenantId}/{filename}"
-            var fileName = segments[^1];
-            var newRelativePath = string.Join('/', segments[..^1].Append(tenant.Id.ToString()).Append(fileName));
 
             var oldFullPath = Path.Combine(_wwwrootRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
             var newFullPath = Path.Combine(_wwwrootRoot, newRelativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -239,9 +283,9 @@ public sealed class TenantFileStorageMigrator
     }
 
     /// <summary>
-    /// Product images: "uploads/products/{productId}/images/{file}" -&gt;
-    /// "uploads/products/{tenantId}/{productId}/images/{file}" — one extra segment inserted
-    /// after "products" rather than appended at the end, unlike the single-slot columns above.
+    /// Product images: "uploads/products/{productId}/images/{file}" or
+    /// "uploads/products/{tenantId}/{productId}/images/{file}" -&gt;
+    /// "uploads/Tenant/{tenantId}/products/{productId}/images/{file}".
     /// </summary>
     private async Task MigrateProductImagesAsync(NpgsqlConnection connection, TenantInfo tenant, bool dryRun, CancellationToken cancellationToken)
     {
@@ -255,28 +299,22 @@ public sealed class TenantFileStorageMigrator
             }
         }
 
-        const int legacySegmentCount = 5; // uploads/products/{productId}/images/{file}
-        const int scopedSegmentCount = 6; // uploads/products/{tenantId}/{productId}/images/{file}
-
         int moved = 0, alreadyDone = 0, missing = 0;
         foreach (var (id, relativePath) in rows)
         {
-            var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var (isAlreadyFinal, newRelativePath) = ResolveTenantFirstPath(relativePath, "products", tenant.Id);
 
-            if (segments.Length == scopedSegmentCount)
+            if (isAlreadyFinal)
             {
                 alreadyDone++;
                 continue;
             }
 
-            if (segments.Length != legacySegmentCount)
+            if (newRelativePath is null)
             {
                 _logger.LogWarning("  Product images: row {Id} has an unrecognized path shape '{Path}' — left untouched.", id, relativePath);
                 continue;
             }
-
-            var newSegments = new[] { segments[0], segments[1], tenant.Id.ToString(), segments[2], segments[3], segments[4] };
-            var newRelativePath = string.Join('/', newSegments);
 
             var oldFullPath = Path.Combine(_wwwrootRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
             var newFullPath = Path.Combine(_wwwrootRoot, newRelativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -307,8 +345,9 @@ public sealed class TenantFileStorageMigrator
     }
 
     /// <summary>
-    /// Branding logo: "uploads/branding/logo/{file}" -&gt; "uploads/branding/{tenantId}/logo/{file}"
-    /// — at most one row (BrandingSettings is a singleton table per tenant database).
+    /// Branding logo: "uploads/branding/logo/{file}" or "uploads/branding/{tenantId}/logo/{file}"
+    /// -&gt; "uploads/Tenant/{tenantId}/branding/logo/{file}" — at most one row (BrandingSettings
+    /// is a singleton table per tenant database).
     /// </summary>
     private async Task MigrateBrandingLogoAsync(NpgsqlConnection connection, TenantInfo tenant, bool dryRun, CancellationToken cancellationToken)
     {
@@ -322,30 +361,22 @@ public sealed class TenantFileStorageMigrator
             }
         }
 
-        const int legacySegmentCount = 4; // uploads/branding/logo/{file}
-        const int scopedSegmentCount = 5; // uploads/branding/{tenantId}/logo/{file}
-
         int moved = 0, alreadyDone = 0, missing = 0;
         foreach (var (id, relativePath) in rows)
         {
-            // Kept as its own branch (rather than reusing MigrateSingleSlotColumnAsync)
-            // because the inserted tenant segment goes before "logo", not after the whole path.
-            var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var (isAlreadyFinal, newRelativePath) = ResolveTenantFirstPath(relativePath, "branding", tenant.Id);
 
-            if (segments.Length == scopedSegmentCount)
+            if (isAlreadyFinal)
             {
                 alreadyDone++;
                 continue;
             }
 
-            if (segments.Length != legacySegmentCount)
+            if (newRelativePath is null)
             {
                 _logger.LogWarning("  Branding logo: row {Id} has an unrecognized path shape '{Path}' — left untouched.", id, relativePath);
                 continue;
             }
-
-            // segments: ["uploads", "branding", "logo", "{file}"] -> insert tenantId before "logo"
-            var newRelativePath = string.Join('/', segments[0], segments[1], tenant.Id.ToString(), segments[2], segments[3]);
 
             var oldFullPath = Path.Combine(_wwwrootRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
             var newFullPath = Path.Combine(_wwwrootRoot, newRelativePath.Replace('/', Path.DirectorySeparatorChar));
