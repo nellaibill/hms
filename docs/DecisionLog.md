@@ -37,6 +37,33 @@ _To be documented._
 
 ## Decisions
 
+### ADR-083: Uploaded files (documents, consultant/user photos, product images, branding logo) are now scoped under the tenant's own folder on disk — plus a separate, explicit `migrate-tenant-files` command to fix up files already saved at the old shared paths
+**Date:** 2026-09-15
+**Status:** Accepted
+
+**Context**
+User asked how tenant-level isolation for uploaded images/documents was being handled, suspecting it wasn't. Investigation confirmed it wasn't: this app is database-per-tenant (each hospital has its own connection string, resolved per-request via `ITenantContext` — see `TenantResolutionMiddleware`), but a single shared filesystem/process serves every tenant. None of the five local-disk file storage classes (`DocumentFileStorage`, `ConsultantFileStorage`, `ProductImageStorage`, `BrandingLogoStorage`, `UserFileStorage`) took the current tenant into account — every upload landed in one shared directory tree (`wwwroot/uploads/...` or `App_Data/documents`), keyed only by the owning entity's own GUID. In practice this didn't cause cross-tenant collisions (GUIDs don't collide, and Branding's logo is a fresh GUID filename per upload too, not a literal shared slot — ADR-072 already made the *branding_settings* DB row itself tenant-aware, per-tenant database), but it meant no real isolation boundary: no way to back up, quota, or wipe one tenant's files without touching every other hospital's, and any future bug (predictable id, path traversal, static-file misconfiguration) had blast radius across every tenant rather than one.
+
+The established seam for this exact kind of fix already existed in the codebase: `HMS.Modules.Backups`' `FileSystemBackupStorage` keys backups by `ITenantContext.TenantId` via `TenantBackupsController`, and `DocumentScanBackgroundService`/`DailyBackupSchedulerService` already show the pattern for resolving a tenant inside a non-HTTP scope (`CreateScope()` + `ITenantContext.SetTenant(...)` before resolving anything tenant-aware).
+
+**Decision**
+1. All five storage classes now take `ITenantContext` in their constructor (all already registered `Scoped` in DI, so no captive-dependency risk) and insert `{tenantId}` as a path segment:
+   - Documents: `App_Data/documents/{tenantId}/{documentId}{ext}` — the DB's `storage_key` column is unchanged (still just the bare filename); the tenant folder is resolved fresh from `ITenantContext` on every read/write, so no DB rewrite was needed for this one.
+   - Consultants: `wwwroot/uploads/consultants/{tenantId}/{consultantId}{ext}`
+   - Users: `wwwroot/uploads/users/{tenantId}/{userId}{ext}`
+   - Products: `wwwroot/uploads/products/{tenantId}/{productId}/images/{guid}{ext}`
+   - Branding logo: `wwwroot/uploads/branding/{tenantId}/logo/{guid}{ext}`
+   Each throws `InvalidOperationException` if reached with no tenant resolved, same posture as every other tenant-aware component in this codebase.
+2. Unlike Documents, the other four kinds store the *full relative path* (not just a bare id) in their owning entity's DB column (`consultants.photo_url`, `users.profile_photo_url`, `product_images.image_url`, `branding_settings.logo_path`), so files already uploaded before this change have both a file sitting at the old flat path *and* a DB row pointing at that old path. A new `HMS.Api.Provisioning.TenantFileStorageMigrator`, invoked via `dotnet HMS.Api.dll migrate-tenant-files [--dry-run]` (wired into `Program.cs` next to the existing `migrate` command), loops every active tenant (`ITenantDirectory.GetAllActiveTenantsAsync`) and, per tenant, per upload kind: finds rows whose path is still in the old (fewer-segments) shape, moves the physical file into the new tenant-scoped path, and rewrites the DB column to match — using raw `Npgsql` (not each module's own `DbContext`/entities, which are `internal` and not visible from `HMS.Api`) since this only ever needs a handful of columns, not a real EF query surface. Idempotent (anything already at the new shape is skipped) and per-tenant fault-isolated (one tenant failing is logged and skipped, not fatal to the run) — same reasoning as `DailyBackupSchedulerService`.
+3. Deliberately **not** folded into the existing `migrate` command or Development's auto-migrate-on-startup: unlike a schema migration, this one moves real files and rewrites real rows against a live tenant database, so it needed to stay a separate, explicitly-typed, operator-run step — `--dry-run` reports per-kind counts (moved / already-migrated / missing source file) without touching anything, meant to be read before running for real.
+
+**Consequences**
+- New uploads are isolated per tenant from this point on; existing tenants' already-uploaded files need `migrate-tenant-files` run once (dry-run first) to catch up — until that runs, old files remain reachable at their old (still-valid, still-served) paths, so nothing breaks for a tenant that hasn't been migrated yet.
+- `app.UseStaticFiles()` still serves the whole `wwwroot/uploads` tree with no auth check, same as before this change — the tenant GUID segment is a directory boundary for backup/quota/blast-radius purposes, not an access-control mechanism; a capability-URL-style file path was already unauthenticated before this fix and remains so. Out of scope here; noted as a candidate for a future, separate hardening pass alongside ADR-075's file-upload sweep.
+- `TenantFileStorageMigrator` is a one-time fixup tool, not a permanent part of the request path — it can be deleted once every tenant that predates this change has been migrated (tracked informally, not by an automated check).
+
+---
+
 ### ADR-082: Mode of Arrival is now editable on Patient Edit, reversing ADR-008's "Registration Details stays out of this form" scope for this one field
 **Date:** 2026-09-10
 **Status:** Accepted
