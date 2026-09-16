@@ -51,30 +51,62 @@ public sealed class TenantFileStorageMigrator
                 await using var connection = new NpgsqlConnection(tenant.ConnectionString);
                 await connection.OpenAsync(cancellationToken);
 
-                await MigrateDocumentsAsync(connection, tenant, dryRun, cancellationToken);
-                await MigrateSingleSlotColumnAsync(
+                // Each kind runs in its own try/catch (not one try/catch around the whole
+                // tenant): Tenant Feature/Module Management means a given tenant may not have
+                // every module enabled/migrated (e.g. no "products" schema at all), which
+                // surfaces here as a 42P01 "relation does not exist" the moment that kind's
+                // query runs — that must skip only this one kind, not abandon the other four
+                // (found live: a tenant missing products.product_images otherwise also lost
+                // its Branding logo check, which has nothing to do with Products).
+                await RunKindAsync(tenant, "Documents", () => MigrateDocumentsAsync(connection, tenant, dryRun, cancellationToken));
+                await RunKindAsync(tenant, "consultant photos", () => MigrateSingleSlotColumnAsync(
                     connection, tenant, dryRun, cancellationToken,
                     label: "consultant photos",
                     selectSql: "SELECT id, photo_url FROM masters.consultants WHERE photo_url IS NOT NULL",
                     updateSql: "UPDATE masters.consultants SET photo_url = @newPath WHERE id = @id",
                     legacySegmentCount: 3,
-                    scopedSegmentCount: 4);
-                await MigrateSingleSlotColumnAsync(
+                    scopedSegmentCount: 4));
+                await RunKindAsync(tenant, "user photos", () => MigrateSingleSlotColumnAsync(
                     connection, tenant, dryRun, cancellationToken,
                     label: "user photos",
                     selectSql: "SELECT id, profile_photo_url FROM identity.users WHERE profile_photo_url IS NOT NULL",
                     updateSql: "UPDATE identity.users SET profile_photo_url = @newPath WHERE id = @id",
                     legacySegmentCount: 3,
-                    scopedSegmentCount: 4);
-                await MigrateProductImagesAsync(connection, tenant, dryRun, cancellationToken);
-                await MigrateBrandingLogoAsync(connection, tenant, dryRun, cancellationToken);
+                    scopedSegmentCount: 4));
+                await RunKindAsync(tenant, "Product images", () => MigrateProductImagesAsync(connection, tenant, dryRun, cancellationToken));
+                await RunKindAsync(tenant, "Branding logo", () => MigrateBrandingLogoAsync(connection, tenant, dryRun, cancellationToken));
             }
             catch (Exception ex)
             {
-                // A failure migrating one tenant must not stop the rest — same reasoning as
-                // DailyBackupSchedulerService's per-tenant try/catch.
+                // Only reachable for a failure that isn't specific to one kind (e.g. the
+                // connection itself couldn't open) — same "don't let one tenant stop the rest"
+                // reasoning as DailyBackupSchedulerService's per-tenant try/catch.
                 _logger.LogError(ex, "Failed to migrate tenant '{HospitalCode}' ({TenantId}) — skipping it; re-run this command to retry.", tenant.HospitalCode, tenant.Id);
             }
+        }
+    }
+
+    /// <summary>
+    /// Runs one file kind's migration for one tenant, isolating its failure from the other
+    /// four kinds — see the "Each kind runs in its own try/catch" note in RunAsync above for
+    /// why this matters (a tenant missing one module's schema entirely is a real, expected
+    /// case, not a bug).
+    /// </summary>
+    private async Task RunKindAsync(TenantInfo tenant, string label, Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            _logger.LogInformation(
+                "  {Label}: skipped for tenant '{HospitalCode}' — its database has no schema for this module (not enabled/migrated for this tenant).",
+                label, tenant.HospitalCode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "  {Label}: failed for tenant '{HospitalCode}' ({TenantId}) — skipped; re-run this command to retry.", label, tenant.HospitalCode, tenant.Id);
         }
     }
 
