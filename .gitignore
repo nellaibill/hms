@@ -6,6 +6,7 @@ obj/
 *.user
 *.suo
 .vs/
+backend/publish/
 
 # =========================
 # Node / TypeScript
