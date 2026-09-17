@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/shell/AppSidebar';
 import { TopHeader } from '@/components/shell/TopHeader';
-import { Breadcrumbs } from '@/components/shell/Breadcrumbs';
 import { AppFooter } from '@/components/shell/AppFooter';
 
 // Assembles the six structural regions from docs/LayoutFramework.md, in a
@@ -18,7 +17,6 @@ export function AppLayout() {
       <div className="flex flex-1">
         <AppSidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((prev) => !prev)} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <Breadcrumbs />
           <main className="flex flex-1 flex-col">
             <Outlet />
           </main>
