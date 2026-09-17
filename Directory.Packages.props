@@ -52,7 +52,7 @@
     <PackageVersion Include="Otp.NET" Version="1.4.0" />
     <!-- Test-only: builds an in-memory IConfiguration for JwtTokenGeneratorTests, without
          pulling in the full Microsoft.AspNetCore.App shared framework just for tests. -->
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
 
     <!-- Transitive-only pin: Microsoft.EntityFrameworkCore.Design 10.0.0 (and, via
          Testcontainers, Docker.DotNet) drag in System.Security.Cryptography.Xml 9.0.0,
