@@ -1,48 +1,46 @@
-import { ApiError, userProfileSchema, type User, type UserProfileFormValues } from '@hms/shared';
+import { ApiError, userProfileSchema, type UserProfileFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Settings, ShieldCheck, Stethoscope, Trash2, UserRound } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Info, Settings, ShieldCheck, UserRound } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CardHeading } from './CardHeading';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { ConsultantProfileCard } from './ConsultantProfileCard';
-import { StatusBadge } from './StatusBadge';
-import { env } from '@/config/env';
 import { useRolesForSelect } from '../hooks/useRolesForSelect';
-import { useActivateUserMutation, useDeactivateUserMutation } from '../hooks/useUserMutations';
 import { isConsultantRoleName } from '../utils/isConsultantRoleName';
 
-export interface UserEditFormSubmitValues extends UserProfileFormValues {
+export interface UserCreateFormSubmitValues extends UserProfileFormValues {
   consultantId: string | null;
 }
 
-interface UserEditFormProps {
-  user: User;
-  onSubmit: (values: UserEditFormSubmitValues) => void;
+interface UserCreateFormProps {
+  onSubmit: (values: UserCreateFormSubmitValues) => void;
   isSubmitting: boolean;
   apiError: ApiError | null;
-  onUploadPhoto: () => void;
-  onDelete: () => void;
   onCancel: () => void;
 }
 
 function initialsOf(firstName: string, lastName: string) {
-  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
+  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase() || '?';
 }
 
-export function UserEditForm({ user, onSubmit, isSubmitting, apiError, onUploadPhoto, onDelete, onCancel }: UserEditFormProps) {
+/** Same card layout as UserEditForm (Basic Information / Role & Access / Consultant
+ * Profile / Account Settings), minus the fields that only make sense once a user exists:
+ * no photo upload (UsersController.UploadProfilePhoto is a later, separate step — never
+ * part of creation), no Active toggle or Created/Last Login (a new account is always
+ * active from User.Create, and hasn't logged in yet), no Delete. Kept as a distinct
+ * component from UserEditForm rather than one form with an isEdit flag, since the two
+ * diverge on what's editable, not just on styling. */
+export function UserCreateForm({ onSubmit, isSubmitting, apiError, onCancel }: UserCreateFormProps) {
   const { data: roles } = useRolesForSelect();
-  const activateMutation = useActivateUserMutation();
-  const deactivateMutation = useDeactivateUserMutation();
 
-  const [linkToConsultant, setLinkToConsultant] = useState(Boolean(user.consultantId));
-  const [consultantId, setConsultantId] = useState(user.consultantId ?? '');
+  const [linkToConsultant, setLinkToConsultant] = useState(false);
+  const [consultantId, setConsultantId] = useState('');
   const [consultantError, setConsultantError] = useState<string | null>(null);
 
   const {
@@ -55,12 +53,12 @@ export function UserEditForm({ user, onSubmit, isSubmitting, apiError, onUploadP
   } = useForm<UserProfileFormValues>({
     resolver: zodResolver(userProfileSchema),
     defaultValues: {
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber ?? '',
-      roleId: user.roleId,
+      username: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: '',
+      roleId: '',
     },
   });
 
@@ -79,6 +77,8 @@ export function UserEditForm({ user, onSubmit, isSubmitting, apiError, onUploadP
 
   const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
 
+  const firstName = watch('firstName');
+  const lastName = watch('lastName');
   const selectedRoleId = watch('roleId');
   const selectedRole = roles?.items.find((role) => role.id === selectedRoleId);
   const consultantMappingRequired = isConsultantRoleName(selectedRole?.name);
@@ -105,14 +105,6 @@ export function UserEditForm({ user, onSubmit, isSubmitting, apiError, onUploadP
     onSubmit({ ...values, consultantId: linkToConsultant ? consultantId : null });
   }
 
-  function handleActiveToggle(checked: boolean) {
-    if (checked) {
-      activateMutation.mutate(user.id);
-    } else {
-      deactivateMutation.mutate(user.id);
-    }
-  }
-
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} noValidate className="flex flex-col gap-6">
       {generalError && (
@@ -130,14 +122,13 @@ export function UserEditForm({ user, onSubmit, isSubmitting, apiError, onUploadP
           <CardContent className="flex flex-col gap-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={user.profilePhotoUrl ? `${env.apiBaseUrl}/${user.profilePhotoUrl}` : undefined} alt="" />
-                <AvatarFallback className="text-base">{initialsOf(user.firstName, user.lastName)}</AvatarFallback>
+                <AvatarFallback className="text-base">{initialsOf(firstName, lastName)}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col gap-1">
-                <Button type="button" variant="outline" size="sm" onClick={onUploadPhoto}>
+                <Button type="button" variant="outline" size="sm" disabled title="Available after creating this account">
                   Change Photo
                 </Button>
-                <p className="text-xs text-muted-foreground">JPG, PNG up to 2MB</p>
+                <p className="text-xs text-muted-foreground">Add a photo after creating this account</p>
               </div>
             </div>
 
@@ -225,54 +216,23 @@ export function UserEditForm({ user, onSubmit, isSubmitting, apiError, onUploadP
             <CardHeader>
               <CardHeading icon={Settings} title="Account Settings" />
             </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-start gap-3">
-                  <Switch
-                    id="isActive"
-                    checked={user.isActive}
-                    onCheckedChange={handleActiveToggle}
-                    disabled={activateMutation.isPending || deactivateMutation.isPending}
-                    aria-label="Active"
-                  />
-                  <div className="flex flex-col gap-0.5">
-                    <Label htmlFor="isActive" className="cursor-pointer">
-                      Active
-                    </Label>
-                    <p className="text-xs text-muted-foreground">Inactive users cannot log in to the system.</p>
-                  </div>
-                </div>
-                <StatusBadge isActive={user.isActive} />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 border-t border-border pt-3 text-xs text-muted-foreground sm:grid-cols-2">
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground">Created On</span>
-                  <span>{new Date(user.createdAt).toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground">Last Login</span>
-                  <span>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('en-IN') : 'Never'}</span>
-                </div>
-              </div>
+            <CardContent>
+              <p className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                New accounts are active by default. A password and profile photo can be set from this user's details page after it's created.
+              </p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border pt-4">
-        <Button type="button" variant="destructive" className="gap-1.5" onClick={onDelete}>
-          <Trash2 className="h-4 w-4" />
-          Delete User
+      <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+          Cancel
         </Button>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save Changes'}
-          </Button>
-        </div>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Creating…' : 'Create User'}
+        </Button>
       </div>
     </form>
   );

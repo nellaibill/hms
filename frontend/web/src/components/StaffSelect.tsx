@@ -15,7 +15,7 @@ interface StaffSelectProps {
  * (Staff Availability, Shift Assignment, Shift Swap Request). No Staff/Department module
  * exists yet (see HMS.Modules.HR.Domain.ShiftAssignment's own doc comment), so this reuses
  * the existing, real GET /api/v1/users list as the closest stand-in for "who is staff" —
- * the same reuse pattern UserForm already applies to roleId via useRolesForSelect.
+ * the same reuse pattern UserEditForm already applies to roleId via useRolesForSelect.
  */
 export function StaffSelect({ id, value, onValueChange, ariaLabel = 'Staff', disabled }: StaffSelectProps) {
   const { data } = useQuery({
