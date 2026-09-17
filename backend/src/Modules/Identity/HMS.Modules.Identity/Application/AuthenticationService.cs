@@ -140,7 +140,7 @@ internal class AuthenticationService : IAuthenticationService
             : enabledFeatures;
 
         var (token, expiresInSeconds) = _jwtTokenGenerator.GenerateToken(
-            user.Id, user.Username, role.Id, role.Name, request.LoginType, permissionKeys, _tenantContext.TenantId!.Value, featureKeys);
+            user.Id, user.Username, role.Id, role.Name, request.LoginType, permissionKeys, _tenantContext.TenantId!.Value, featureKeys, user.ConsultantId);
 
         _logger.LogInformation("User {UserId} logged in", user.Id);
 
@@ -157,6 +157,7 @@ internal class AuthenticationService : IAuthenticationService
                 Email = user.Email,
                 RoleId = role.Id,
                 RoleName = role.Name,
+                ConsultantId = user.ConsultantId,
                 LoginType = request.LoginType,
                 ProfilePhotoUrl = user.ProfilePhotoUrl,
                 PermissionKeys = permissionKeys,

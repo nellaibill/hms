@@ -16,7 +16,7 @@ import { StatusBadge } from './StatusBadge';
 import { env } from '@/config/env';
 import { useRolesForSelect } from '../hooks/useRolesForSelect';
 import { useActivateUserMutation, useDeactivateUserMutation } from '../hooks/useUserMutations';
-import { isConsultantRoleName } from '../utils/isConsultantRoleName';
+import { isConsultantRoleName } from '@/lib/isConsultantRoleName';
 
 export interface UserEditFormSubmitValues extends UserProfileFormValues {
   consultantId: string | null;

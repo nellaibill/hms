@@ -65,4 +65,5 @@ public record OpdConsultationSummaryQuery
     public DateTime? From { get; init; }
     public DateTime? To { get; init; }
     public Guid? DepartmentId { get; init; }
+    public Guid? ConsultantId { get; init; }
 }

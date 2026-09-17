@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConsultantProfileCard } from './ConsultantProfileCard';
 import { useRolesForSelect } from '../hooks/useRolesForSelect';
-import { isConsultantRoleName } from '../utils/isConsultantRoleName';
+import { isConsultantRoleName } from '@/lib/isConsultantRoleName';
 
 export interface UserCreateFormSubmitValues extends UserProfileFormValues {
   consultantId: string | null;

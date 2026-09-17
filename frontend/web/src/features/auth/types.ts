@@ -40,4 +40,9 @@ export interface AuthUser {
    * HMS.Modules.Identity.Contracts.LoginUserResponse.MustChangePassword. ProtectedRoute
    * redirects to /change-password until this clears. */
   mustChangePassword: boolean;
+  /** Optional link to a Masters Consultant record, independent of role — mirrors
+   * HMS.Modules.Identity.Contracts.LoginUserResponse.ConsultantId. Prefer
+   * AuthContextValue.scopedConsultantId over reading this directly: that one already
+   * combines it with roleName the same way the backend's GetScopedConsultantId does. */
+  consultantId?: string | null;
 }

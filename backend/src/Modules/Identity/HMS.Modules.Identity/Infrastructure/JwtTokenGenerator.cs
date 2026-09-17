@@ -44,7 +44,8 @@ internal sealed class JwtTokenGenerator : IJwtTokenGenerator
         string loginType,
         IEnumerable<string> permissionKeys,
         Guid tenantId,
-        IEnumerable<string> featureKeys)
+        IEnumerable<string> featureKeys,
+        Guid? consultantId = null)
     {
         // Literal claim type names (UserId/Username/RoleId/RoleName/LoginType/TenantId),
         // not the long http://schemas.microsoft.com/... URIs JwtSecurityTokenHandler's
@@ -63,6 +64,15 @@ internal sealed class JwtTokenGenerator : IJwtTokenGenerator
             // infrastructure secret, just the tenant's identity (platform.tenants.Id).
             new("TenantId", tenantId.ToString()),
         };
+
+        // Optional — only present when this user is linked to a Masters.Consultant record
+        // (Identity.User.ConsultantId). ClaimsPrincipalExtensions.GetScopedConsultantId()
+        // combines this with RoleName to decide whether a caller's clinical-data queries
+        // (OPD, Investigations, Procedures, Admissions) get forced to their own consultant.
+        if (consultantId.HasValue)
+        {
+            claims.Add(new Claim("ConsultantId", consultantId.Value.ToString()));
+        }
 
         // One "Permission" claim per key — checked by
         // HMS.Shared.Infrastructure.PermissionAuthorizationHandler (HMS Security Hardening

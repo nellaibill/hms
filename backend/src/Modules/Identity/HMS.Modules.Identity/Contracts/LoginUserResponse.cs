@@ -9,6 +9,12 @@ public record LoginUserResponse
     public string Email { get; init; } = string.Empty;
     public Guid RoleId { get; init; }
     public string RoleName { get; init; } = string.Empty;
+
+    /// <summary>Optional link to a Masters.Consultant record, independent of RoleName —
+    /// see Identity.User.ConsultantId's own doc comment. The frontend uses this to lock the
+    /// Department/Consultant filters on clinical list screens to this user's own consultant.</summary>
+    public Guid? ConsultantId { get; init; }
+
     public string LoginType { get; init; } = string.Empty;
     public string? ProfilePhotoUrl { get; init; }
     public IReadOnlyList<string> PermissionKeys { get; init; } = [];

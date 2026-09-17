@@ -96,6 +96,16 @@ public class AdmissionsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] AdmissionListQuery query, CancellationToken cancellationToken)
     {
+        // A consultant only ever sees their own admissions here — see
+        // ClaimsPrincipalExtensions.GetScopedConsultantId's own doc comment. Overrides
+        // whatever ConsultantId the client asked for (this also backs the OPD Admissions
+        // List tab).
+        var scopedConsultantId = User.GetScopedConsultantId();
+        if (scopedConsultantId is not null)
+        {
+            query.ConsultantId = scopedConsultantId;
+        }
+
         var paged = await _service.GetPagedAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
         return Ok(new ApiResponse<IReadOnlyList<AdmissionResponse>> { Data = paged.Items, Meta = meta });

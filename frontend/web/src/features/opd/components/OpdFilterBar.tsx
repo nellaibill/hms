@@ -34,12 +34,17 @@ interface OpdFilterBarProps {
   onChange: (filters: OpdFilterValues) => void;
   onRefresh: () => void;
   onExport: () => void;
+  /** True when the signed-in user is a Consultant/Doctor linked to their own consultant
+   * record (AuthContextValue.scopedConsultantId) — locks Department/Consultant to their own
+   * so they can't browse another consultant's queue. UI convenience only: the backend forces
+   * this same restriction regardless of what these fields are set to. */
+  lockDepartmentAndConsultant?: boolean;
 }
 
 /** Shared filter toolbar for every OPD tab — mirrors LabWorklistFilters' exact layout shape
  * (rounded card, flex-wrap row of labeled fields), plus the Refresh/Export actions the OPD
  * list page's screenshot shows pinned to the row's right edge. */
-export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport }: OpdFilterBarProps) {
+export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
   const statusOptions = statusOptionsForTab(tab);
 
   return (
@@ -75,6 +80,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport }: Op
           value={filters.departmentId ?? ''}
           onValueChange={(value) => onChange({ ...filters, departmentId: value || undefined, consultantId: undefined })}
           ariaLabel="Filter by department"
+          disabled={lockDepartmentAndConsultant}
         />
       </div>
 
@@ -86,6 +92,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport }: Op
           onValueChange={(value) => onChange({ ...filters, consultantId: value || undefined })}
           departmentId={filters.departmentId}
           ariaLabel="Filter by consultant"
+          disabled={lockDepartmentAndConsultant}
         />
       </div>
 

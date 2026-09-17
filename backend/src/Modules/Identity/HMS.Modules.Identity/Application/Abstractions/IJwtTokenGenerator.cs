@@ -16,5 +16,6 @@ internal interface IJwtTokenGenerator
         string loginType,
         IEnumerable<string> permissionKeys,
         Guid tenantId,
-        IEnumerable<string> featureKeys);
+        IEnumerable<string> featureKeys,
+        Guid? consultantId = null);
 }
