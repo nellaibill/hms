@@ -74,6 +74,31 @@ public class JwtTokenGeneratorTests
     }
 
     [Fact]
+    public void GenerateToken_IncludesConsultantIdClaim_WhenConsultantIdIsProvided()
+    {
+        var sut = CreateSut();
+        var consultantId = Guid.NewGuid();
+
+        var (token, _) = sut.GenerateToken(
+            Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), [], consultantId);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        jwt.Claims.Should().Contain(c => c.Type == "ConsultantId" && c.Value == consultantId.ToString());
+    }
+
+    [Fact]
+    public void GenerateToken_OmitsConsultantIdClaim_WhenConsultantIdIsNull()
+    {
+        var sut = CreateSut();
+
+        var (token, _) = sut.GenerateToken(
+            Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), [], consultantId: null);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        jwt.Claims.Should().NotContain(c => c.Type == "ConsultantId");
+    }
+
+    [Fact]
     public void GenerateToken_SetsIssuerAndAudienceFromConfiguration()
     {
         var sut = CreateSut();
