@@ -1,6 +1,7 @@
 import { ID_PROOF_TYPES, type IdProofType } from '@hms/shared';
 import { CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
+import { CameraCaptureButton } from '@/components/ui/camera-capture-button';
 import { FileChooserButton } from '@/components/ui/file-chooser-button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,10 +16,10 @@ interface PatientDocumentUploadProps {
 }
 
 /**
- * Plain file pickers for Photo and ID Proof (docs/PatientRegistrationModule.md §12) — no
- * drag-drop zone, no webcam capture (§13 is deferred, see docs/DecisionLog.md). Uploaded
- * immediately on selection (unlike DocumentUploadStaging's create-flow deferral, this always
- * has a real patient id to attach to).
+ * File pickers for Photo and ID Proof (docs/PatientRegistrationModule.md §12), plus a webcam
+ * capture option for the photo alone (§13) — no drag-drop zone. Uploaded immediately on
+ * selection (unlike DocumentUploadStaging's create-flow deferral, this always has a real
+ * patient id to attach to).
  *
  * The chosen filename is tracked here in state rather than read back off a native file
  * input's own display — see FileChooserButton's own doc comment for why that native text
@@ -81,13 +82,16 @@ export function PatientDocumentUpload({ patientId, bare = false }: PatientDocume
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="photo-upload">Patient photo (JPG/PNG, max {MAX_PATIENT_DOCUMENT_SIZE_MB}MB)</Label>
-        <FileChooserButton
-          id="photo-upload"
-          accept="image/jpeg,image/png"
-          disabled={photoMutation.isPending}
-          onFileSelected={handlePhotoChange}
-          status={photoStatus}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FileChooserButton
+            id="photo-upload"
+            accept="image/jpeg,image/png"
+            disabled={photoMutation.isPending}
+            onFileSelected={handlePhotoChange}
+            status={photoStatus}
+          />
+          <CameraCaptureButton fileNamePrefix="patient-photo" disabled={photoMutation.isPending} onCapture={handlePhotoChange} />
+        </div>
         {photoValidationError && <p className="text-sm text-destructive">{photoValidationError}</p>}
         {photoMutation.isError && <p className="text-sm text-destructive">Failed to upload {photoFileName ?? 'photo'} — please try again.</p>}
       </div>
