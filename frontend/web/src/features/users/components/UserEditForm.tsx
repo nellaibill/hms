@@ -2,7 +2,7 @@ import { ApiError, userProfileSchema, type User, type UserProfileFormValues } fr
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Settings, ShieldCheck, Stethoscope, Trash2, UserRound } from 'lucide-react';
+import { Settings, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
