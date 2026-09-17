@@ -1,8 +1,10 @@
 import type { User } from '@hms/shared';
 import { Loader2, Users as UsersIcon } from 'lucide-react';
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { PageBanner } from '@/components/PageBanner';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
+  CardHeading,
   DeleteUserDialog,
   Pagination,
   UserListToolbar,
@@ -77,65 +79,63 @@ export default function UsersListPage() {
   return (
     <RequirePermission permission="identity-administration.view">
     <div className="flex flex-1 flex-col">
-      {/* Centered, brand-colored banner — matches the Page banner style used
-          across module pages (Theme & Branding → Section headers). */}
-      <div className="flex flex-col items-center gap-1 bg-page-banner px-6 py-5 text-center text-page-banner-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
-            <UsersIcon className="h-5 w-5" />
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Users</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-page-banner-foreground/85">
-          Manage system accounts — the Identity reference module, connected live to the HMS.Api backend.
-        </p>
-      </div>
-
-      <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-      <UserListToolbar
-        search={search}
-        onSearchChange={handleSearchChange}
-        isActive={isActive}
-        onIsActiveChange={handleIsActiveChange}
+      <PageBanner
+        icon={UsersIcon}
+        title="Users"
+        subtitle="Manage system accounts — the Identity reference module, connected live to the HMS.Api backend."
       />
 
-      {isPending && (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading users…
-        </div>
-      )}
+      <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
+        <Card>
+          <CardHeader>
+            <CardHeading icon={UsersIcon} title="All Users" description="Search, filter, and manage every account in this hospital." />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <UserListToolbar
+              search={search}
+              onSearchChange={handleSearchChange}
+              isActive={isActive}
+              onIsActiveChange={handleIsActiveChange}
+            />
 
-      {isError && (
-        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error instanceof Error ? error.message : 'Failed to load users.'}
-        </p>
-      )}
+            {isPending && (
+              <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading users…
+              </div>
+            )}
 
-      {!isPending && !isError && data && data.items.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">No users found</p>
-            <p className="text-sm text-muted-foreground">
-              {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Create the first user account to get started.'}
-            </p>
+            {isError && (
+              <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error instanceof Error ? error.message : 'Failed to load users.'}
+              </p>
+            )}
+
+            {!isPending && !isError && data && data.items.length === 0 && (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-16 text-center">
+                <p className="text-sm font-medium text-foreground">No users found</p>
+                <p className="text-sm text-muted-foreground">
+                  {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Create the first user account to get started.'}
+                </p>
+              </div>
+            )}
+
+            {!isPending && !isError && data && data.items.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <UserTable
+                  users={data.items}
+                  sort={sort}
+                  onSortChange={handleSortChange}
+                  onDeleteRequested={setUserPendingDelete}
+                  onToggleActive={handleToggleActive}
+                  isTogglingId={isTogglingId}
+                />
+                <Pagination meta={data.meta} onPageChange={setPage} />
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
-
-      {!isPending && !isError && data && data.items.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <UserTable
-            users={data.items}
-            sort={sort}
-            onSortChange={handleSortChange}
-            onDeleteRequested={setUserPendingDelete}
-            onToggleActive={handleToggleActive}
-            isTogglingId={isTogglingId}
-          />
-          <Pagination meta={data.meta} onPageChange={setPage} />
-        </div>
-      )}
+      </div>
 
       {userPendingDelete && (
         <DeleteUserDialog
@@ -145,7 +145,6 @@ export default function UsersListPage() {
           onCancel={() => setUserPendingDelete(null)}
         />
       )}
-      </div>
     </div>
     </RequirePermission>
   );
