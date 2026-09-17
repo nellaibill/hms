@@ -66,6 +66,7 @@ export interface OpdConsultationSummaryQuery {
   from?: string;
   to?: string;
   departmentId?: string;
+  consultantId?: string;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.VisitConsultationResponse as returned by the OPD

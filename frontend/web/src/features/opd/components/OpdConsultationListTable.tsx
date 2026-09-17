@@ -15,12 +15,13 @@ interface OpdConsultationListTableProps {
 /** OPD Consultation List tab — one row per consultant with any OPD activity in the selected
  * date range, aggregated by HMS.Modules.Patients.Contracts.OpdConsultationSummaryItem. Not
  * paginated (the backend returns a plain list); this endpoint only filters on from/to/
- * departmentId — the shared filter bar's Consultant/Status/Search fields don't apply here. */
+ * departmentId/consultantId — the shared filter bar's Status/Search fields don't apply here. */
 export function OpdConsultationListTable({ filters, onViewPatients }: OpdConsultationListTableProps) {
   const { data, isPending, isError, error } = useOpdConsultationSummaryQuery({
     from: toRangeStart(filters.from),
     to: toRangeEnd(filters.to),
     departmentId: filters.departmentId,
+    consultantId: filters.consultantId,
   });
 
   if (isPending) {

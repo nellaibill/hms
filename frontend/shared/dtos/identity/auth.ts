@@ -15,6 +15,10 @@ export interface LoginUserResponse {
   email: string;
   roleId: string;
   roleName: string;
+  /** Optional link to a Masters Consultant record, independent of role — used to lock the
+   * Department/Consultant filters on clinical list screens (OPD, Admissions, etc.) to this
+   * user's own consultant when their role is Consultant/Doctor. */
+  consultantId?: string | null;
   loginType: string;
   profilePhotoUrl?: string | null;
   permissionKeys: string[];

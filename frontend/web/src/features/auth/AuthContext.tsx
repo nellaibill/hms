@@ -4,6 +4,7 @@ import type { LoginResponse } from '@hms/shared';
 import { brandingQueryKey } from '../branding/hooks/useBrandingQuery';
 import { authApi, setAuthToken, setUnauthorizedHandler } from '../../services/apiClient';
 import { markSessionExpired } from '../../lib/sessionExpiry';
+import { isConsultantRoleName } from '../../lib/isConsultantRoleName';
 import type { AuthUser, Role } from './types';
 
 const STORAGE_KEY = 'hms-session';
@@ -30,6 +31,13 @@ interface AuthContextValue {
   /** Called after a successful change-password submission — clears the forced-change flag
    * on the in-memory and stored session without a full re-login. */
   clearMustChangePassword: () => void;
+  /** Non-null only when this user's Role is Consultant/Doctor AND they're linked to a
+   * consultant record — mirrors the backend's ClaimsPrincipalExtensions.GetScopedConsultantId
+   * exactly, so a Super Admin/Admin who happens to also be linked isn't restricted. Clinical
+   * list screens (OPD, Admissions, etc.) use this to lock their Department/Consultant filters
+   * to this user's own consultant. UI convenience only — the backend enforces the real
+   * restriction regardless of what this value is. */
+  scopedConsultantId: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -61,6 +69,7 @@ function toAuthUser(response: LoginResponse): AuthUser {
     permissionKeys: user.permissionKeys,
     featureKeys: user.featureKeys,
     mustChangePassword: user.mustChangePassword,
+    consultantId: user.consultantId,
   };
 }
 
@@ -133,9 +142,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const scopedConsultantId =
+    user?.consultantId && isConsultantRoleName(user.roleName) ? user.consultantId : null;
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: user !== null, login, logout, hasPermission, hasFeature, clearMustChangePassword }),
-    [user],
+    () => ({ user, isAuthenticated: user !== null, login, logout, hasPermission, hasFeature, clearMustChangePassword, scopedConsultantId }),
+    [user, scopedConsultantId],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

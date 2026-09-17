@@ -118,6 +118,16 @@ public class InvoicesController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ProcedureListItem>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetProcedures([FromQuery] ProcedureListQuery query, CancellationToken cancellationToken)
     {
+        // A consultant only ever sees their own billed procedures here — see
+        // ClaimsPrincipalExtensions.GetScopedConsultantId's own doc comment. Overrides
+        // whatever ConsultantId the client asked for (this also backs the OPD Procedures
+        // List tab).
+        var scopedConsultantId = User.GetScopedConsultantId();
+        if (scopedConsultantId is not null)
+        {
+            query = query with { ConsultantId = scopedConsultantId.Value.ToString() };
+        }
+
         var paged = await _service.GetProcedureLineItemsAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
 

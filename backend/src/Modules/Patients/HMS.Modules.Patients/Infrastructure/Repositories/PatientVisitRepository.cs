@@ -177,6 +177,11 @@ internal class PatientVisitRepository : IPatientVisitRepository
             rows = rows.Where(r => r.consultation.DepartmentId == query.DepartmentId.Value);
         }
 
+        if (query.ConsultantId.HasValue)
+        {
+            rows = rows.Where(r => r.consultation.ConsultantId == query.ConsultantId.Value);
+        }
+
         return await rows
             .Select(r => new OpdPatientListRow(
                 r.consultation.Id,

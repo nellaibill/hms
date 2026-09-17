@@ -58,6 +58,16 @@ public class LabOrdersController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<LabOrderResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPaged([FromQuery] LabOrderListQuery query, CancellationToken cancellationToken)
     {
+        // A consultant only ever sees orders raised against their own patients — see
+        // ClaimsPrincipalExtensions.GetScopedConsultantId's own doc comment. Overrides
+        // whatever ConsultantId the client asked for (this also backs the OPD Investigations
+        // List tab, which calls this same endpoint with source=OP).
+        var scopedConsultantId = User.GetScopedConsultantId();
+        if (scopedConsultantId is not null)
+        {
+            query = query with { ConsultantId = scopedConsultantId };
+        }
+
         var paged = await _service.GetPagedAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
 

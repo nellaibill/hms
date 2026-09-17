@@ -33,6 +33,16 @@ public class OpdController : ControllerBase
     [HttpGet("patients")]
     public async Task<IActionResult> GetPatientList([FromQuery] OpdPatientListQuery query, CancellationToken cancellationToken)
     {
+        // A consultant only ever sees their own patients here — see
+        // ClaimsPrincipalExtensions.GetScopedConsultantId's own doc comment for exactly who
+        // this does (and doesn't) restrict. Overrides whatever ConsultantId the client asked
+        // for, so this can't be bypassed by editing the query string.
+        var scopedConsultantId = User.GetScopedConsultantId();
+        if (scopedConsultantId is not null)
+        {
+            query.ConsultantId = scopedConsultantId;
+        }
+
         var paged = await _service.GetPatientListAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
         return Ok(new ApiResponse<IReadOnlyList<OpdPatientListItem>> { Data = paged.Items, Meta = meta });
@@ -45,6 +55,13 @@ public class OpdController : ControllerBase
     [HttpGet("consultations/summary")]
     public async Task<IActionResult> GetConsultationSummary([FromQuery] OpdConsultationSummaryQuery query, CancellationToken cancellationToken)
     {
+        // See GetPatientList's own comment — same forced scoping.
+        var scopedConsultantId = User.GetScopedConsultantId();
+        if (scopedConsultantId is not null)
+        {
+            query = query with { ConsultantId = scopedConsultantId };
+        }
+
         var result = await _service.GetConsultationSummaryAsync(query, cancellationToken);
         return result.IsSuccess
             ? Ok(new ApiResponse<IReadOnlyList<OpdConsultationSummaryItem>> { Data = result.Value })

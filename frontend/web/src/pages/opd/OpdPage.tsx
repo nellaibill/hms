@@ -1,8 +1,9 @@
 import type { AdmissionStatus, InvoicePaymentStatus, LabOrderItemStatus, OpdConsultationStatus } from '@hms/shared';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, BedDouble, FlaskConical, Stethoscope, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { exportReportToCsv, type ReportSection } from '@/features/reports';
 import {
@@ -19,16 +20,41 @@ import {
   type OpdFilterValues,
   type OpdTab,
 } from '@/features/opd';
-import { admissionsApi, billingApi, laboratoryApi, opdApi } from '@/services/apiClient';
+import { admissionsApi, billingApi, consultantsApi, laboratoryApi, opdApi } from '@/services/apiClient';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 const EXPORT_PAGE_SIZE = 1000;
 
 export default function OpdPage() {
   const queryClient = useQueryClient();
+  const { scopedConsultantId } = useAuth();
   const [tab, setTab] = useState<OpdTab>('patients');
   const [filters, setFilters] = useState<OpdFilterValues>(emptyOpdFilters);
   const [page, setPage] = useState(1);
+
+  // A Consultant/Doctor user only ever sees their own queue here — the backend forces this
+  // regardless (see OpdController.GetPatientList's own comment), this just locks the
+  // Department/Consultant filters to match so the UI isn't misleadingly showing pickers that
+  // can't actually change what comes back. Needs one lookup to learn their own department,
+  // since ConsultantSelect (like the rest of the app) requires a department to show consultant
+  // options against.
+  const { data: ownConsultant } = useQuery({
+    queryKey: ['consultants', scopedConsultantId],
+    queryFn: () => consultantsApi.getConsultantById(scopedConsultantId as string),
+    enabled: Boolean(scopedConsultantId),
+  });
+
+  useEffect(() => {
+    if (!scopedConsultantId || !ownConsultant) {
+      return;
+    }
+
+    setFilters((prev) =>
+      prev.departmentId === ownConsultant.departmentId && prev.consultantId === scopedConsultantId
+        ? prev
+        : { ...prev, departmentId: ownConsultant.departmentId ?? undefined, consultantId: scopedConsultantId },
+    );
+  }, [scopedConsultantId, ownConsultant]);
 
   // The filter bar's Search field updates `filters.search` immediately (so the input feels
   // responsive), but every tab's query below reads the debounced value instead — otherwise
@@ -93,7 +119,12 @@ export default function OpdPage() {
         break;
       }
       case 'consultations': {
-        const result = await opdApi.getConsultationSummary({ from: commonFrom, to: commonTo, departmentId: filters.departmentId });
+        const result = await opdApi.getConsultationSummary({
+          from: commonFrom,
+          to: commonTo,
+          departmentId: filters.departmentId,
+          consultantId: filters.consultantId,
+        });
         section = {
           heading: 'OPD Consultations',
           headers: ['Consultant', 'Department', 'Total Patients', 'Waiting', 'In Consultation', 'Completed'],
@@ -191,7 +222,14 @@ export default function OpdPage() {
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <OpdFilterBar tab={tab} filters={filters} onChange={handleFiltersChange} onRefresh={handleRefresh} onExport={handleExport} />
+        <OpdFilterBar
+          tab={tab}
+          filters={filters}
+          onChange={handleFiltersChange}
+          onRefresh={handleRefresh}
+          onExport={handleExport}
+          lockDepartmentAndConsultant={Boolean(scopedConsultantId)}
+        />
 
         <Tabs value={tab} onValueChange={handleTabChange}>
           <TabsList>
