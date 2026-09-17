@@ -1,3 +1,4 @@
+export * from './components/CardHeading';
 export * from './components/DeleteUserDialog';
 export * from './components/Pagination';
 export * from './components/SetPasswordDialog';
