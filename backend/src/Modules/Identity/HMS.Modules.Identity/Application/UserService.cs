@@ -71,7 +71,8 @@ internal class UserService : IUserService
             request.Email,
             request.PhoneNumber,
             request.RoleId,
-            actorId);
+            actorId,
+            request.ConsultantId);
 
         await _repository.AddAsync(user, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -130,6 +131,7 @@ internal class UserService : IUserService
         }
 
         user.UpdateProfile(request.FirstName, request.LastName, request.PhoneNumber, actorId);
+        user.SetConsultant(request.ConsultantId, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         // Role stayed the same, so it was never looked up above — needed now only for the

@@ -22,6 +22,16 @@ internal class User : Entity
     public Role Role { get; private set; } = null!;
 
     /// <summary>
+    /// Optional link to a Masters.Consultant record — a plain id with no navigation/FK
+    /// constraint, since Consultant lives in a different module's schema (same cross-module
+    /// reference convention as ConsultantId elsewhere: Patients/IPD/Billing all store it as
+    /// a bare Guid, existence enforced at the UI layer only, per docs/Architecture.md's
+    /// module-isolation rule). Independent of Role: any user can be linked to a consultant
+    /// regardless of RoleId, so this is never touched by <see cref="ChangeRole"/>.
+    /// </summary>
+    public Guid? ConsultantId { get; private set; }
+
+    /// <summary>
     /// Never a plaintext password — the hash of one, written only via
     /// <see cref="SetPasswordHash"/>. Null until Authentication ships and a credential is
     /// actually set; never serialized into <c>UserResponse</c>.
@@ -82,6 +92,7 @@ internal class User : Entity
         string email,
         string? phoneNumber,
         Guid roleId,
+        Guid? consultantId,
         Guid? createdBy)
         : base(id, createdBy)
     {
@@ -91,6 +102,7 @@ internal class User : Entity
         Email = email;
         PhoneNumber = phoneNumber;
         RoleId = roleId;
+        ConsultantId = consultantId;
         EmailVerified = false;
         IsActive = true;
     }
@@ -102,7 +114,8 @@ internal class User : Entity
         string email,
         string? phoneNumber,
         Guid roleId,
-        Guid? createdBy)
+        Guid? createdBy,
+        Guid? consultantId = null)
     {
         Guard.AgainstNullOrWhiteSpace(username, nameof(username));
         Guard.AgainstNullOrWhiteSpace(firstName, nameof(firstName));
@@ -119,6 +132,7 @@ internal class User : Entity
             NormalizeEmail(email),
             phoneNumber,
             roleId,
+            consultantId,
             createdBy);
     }
 
@@ -154,6 +168,16 @@ internal class User : Entity
     public void ChangeRole(Guid roleId, Guid? updatedBy)
     {
         RoleId = roleId;
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>
+    /// Links or unlinks (pass null) this user to a Masters.Consultant record, independent
+    /// of Role — a Super Admin or Admin can be linked just as much as a clinical role.
+    /// </summary>
+    public void SetConsultant(Guid? consultantId, Guid? updatedBy)
+    {
+        ConsultantId = consultantId;
         MarkUpdated(updatedBy);
     }
 

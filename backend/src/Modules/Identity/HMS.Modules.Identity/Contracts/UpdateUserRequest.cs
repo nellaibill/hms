@@ -8,4 +8,8 @@ public record UpdateUserRequest
     public string Email { get; init; } = string.Empty;
     public string? PhoneNumber { get; init; }
     public Guid RoleId { get; init; }
+
+    /// <summary>Optional link to a Masters.Consultant record, independent of RoleId. Null
+    /// clears an existing link.</summary>
+    public Guid? ConsultantId { get; init; }
 }

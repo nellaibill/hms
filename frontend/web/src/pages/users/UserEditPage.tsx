@@ -1,7 +1,17 @@
-import { ApiError, type UserProfileFormValues } from '@hms/shared';
+import { ApiError } from '@hms/shared';
 import { ArrowLeft, Loader2, UserCog } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { UserForm, useUpdateUserMutation, useUserQuery } from '../../features/users';
+import {
+  DeleteUserDialog,
+  UploadProfilePhotoDialog,
+  UserEditForm,
+  type UserEditFormSubmitValues,
+  useDeleteUserMutation,
+  useUpdateUserMutation,
+  useUploadProfilePhotoMutation,
+  useUserQuery,
+} from '../../features/users';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 
 export default function UserEditPage() {
@@ -9,6 +19,10 @@ export default function UserEditPage() {
   const navigate = useNavigate();
   const { data: user, isPending, isError } = useUserQuery(id);
   const mutation = useUpdateUserMutation();
+  const uploadPhotoMutation = useUploadProfilePhotoMutation();
+  const deleteMutation = useDeleteUserMutation();
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (isPending) {
     return (
@@ -29,7 +43,7 @@ export default function UserEditPage() {
     );
   }
 
-  function handleSubmit(values: UserProfileFormValues) {
+  function handleSubmit(values: UserEditFormSubmitValues) {
     mutation.mutate(
       {
         id: id as string,
@@ -40,12 +54,23 @@ export default function UserEditPage() {
           email: values.email,
           phoneNumber: values.phoneNumber,
           roleId: values.roleId,
+          consultantId: values.consultantId,
         },
       },
       {
         onSuccess: () => navigate(`/users/${id}`),
       },
     );
+  }
+
+  function handleUploadPhoto(file: File) {
+    if (!id) return;
+    uploadPhotoMutation.mutate({ id, file }, { onSuccess: () => setIsUploadingPhoto(false) });
+  }
+
+  function handleDelete() {
+    if (!id) return;
+    deleteMutation.mutate(id, { onSuccess: () => navigate('/users') });
   }
 
   return (
@@ -65,29 +90,47 @@ export default function UserEditPage() {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
             <UserCog className="h-5 w-5" />
           </span>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Edit {user.firstName} {user.lastName}
-          </h1>
+          <h1 className="text-xl font-semibold tracking-tight">Edit User</h1>
         </div>
-        <p className="text-sm text-page-banner-foreground/85">Update this user's profile details.</p>
+        <p className="text-sm text-page-banner-foreground/85">Update user information, role, and consultant mapping.</p>
       </div>
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
-      <UserForm
-        submitLabel="Save Changes"
-        isSubmitting={mutation.isPending}
-        apiError={mutation.error instanceof ApiError ? mutation.error : null}
-        defaultValues={{
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phoneNumber: user.phoneNumber ?? '',
-          roleId: user.roleId,
-        }}
-        onSubmit={handleSubmit}
-      />
+        <UserEditForm
+          user={user}
+          isSubmitting={mutation.isPending}
+          apiError={mutation.error instanceof ApiError ? mutation.error : null}
+          onSubmit={handleSubmit}
+          onUploadPhoto={() => setIsUploadingPhoto(true)}
+          onDelete={() => setIsDeleting(true)}
+          onCancel={() => navigate(`/users/${id}`)}
+        />
       </div>
+
+      {isUploadingPhoto && (
+        <UploadProfilePhotoDialog
+          user={user}
+          isSubmitting={uploadPhotoMutation.isPending}
+          apiError={uploadPhotoMutation.error instanceof ApiError ? uploadPhotoMutation.error : null}
+          onSubmit={handleUploadPhoto}
+          onCancel={() => {
+            uploadPhotoMutation.reset();
+            setIsUploadingPhoto(false);
+          }}
+        />
+      )}
+
+      {isDeleting && (
+        <DeleteUserDialog
+          user={user}
+          isDeleting={deleteMutation.isPending}
+          onConfirm={handleDelete}
+          onCancel={() => {
+            deleteMutation.reset();
+            setIsDeleting(false);
+          }}
+        />
+      )}
     </div>
     </RequirePermission>
   );
