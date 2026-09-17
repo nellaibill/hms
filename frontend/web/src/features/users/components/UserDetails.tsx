@@ -1,7 +1,9 @@
 import type { User } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
+import { Stethoscope, UserRound } from 'lucide-react';
 import { DepartmentName } from '@/components/DepartmentName';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { CardHeading } from './CardHeading';
 import { consultantsApi } from '@/services/apiClient';
 import { StatusBadge } from './StatusBadge';
 
@@ -29,8 +31,7 @@ export function UserDetails({ user }: UserDetailsProps) {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>User Information</CardTitle>
-          <CardDescription>Basic details and contact information.</CardDescription>
+          <CardHeading icon={UserRound} title="User Information" description="Basic details and contact information." />
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-y-0">
@@ -49,8 +50,7 @@ export function UserDetails({ user }: UserDetailsProps) {
       {user.consultantId && (
         <Card>
           <CardHeader>
-            <CardTitle>Consultant Information</CardTitle>
-            <CardDescription>Linked consultant/doctor details.</CardDescription>
+            <CardHeading icon={Stethoscope} title="Consultant Information" description="Linked consultant/doctor details." />
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-y-0">
