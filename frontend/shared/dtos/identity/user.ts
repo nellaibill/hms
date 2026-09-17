@@ -9,6 +9,8 @@ export interface User {
   profilePhotoUrl?: string | null;
   roleId: string;
   roleName: string;
+  /** Optional link to a Masters Consultant record, independent of role. */
+  consultantId?: string | null;
   emailVerified: boolean;
   lastLoginAt?: string | null;
   isActive: boolean;
@@ -24,6 +26,7 @@ export interface CreateUserRequest {
   email: string;
   phoneNumber?: string | null;
   roleId: string;
+  consultantId?: string | null;
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.UpdateUserRequest. */
@@ -34,6 +37,7 @@ export interface UpdateUserRequest {
   email: string;
   phoneNumber?: string | null;
   roleId: string;
+  consultantId?: string | null;
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.UserListQuery. */

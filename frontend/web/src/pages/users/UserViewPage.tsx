@@ -62,6 +62,8 @@ export default function UserViewPage() {
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
+        backTo="/users"
+        backLabel="Back to Users"
         leading={
           <div className="relative shrink-0">
             <Avatar className="h-12 w-12 border-2 border-page-banner-foreground/20">

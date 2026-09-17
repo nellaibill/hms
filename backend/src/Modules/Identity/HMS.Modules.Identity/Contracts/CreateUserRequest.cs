@@ -8,4 +8,7 @@ public record CreateUserRequest
     public string Email { get; init; } = string.Empty;
     public string? PhoneNumber { get; init; }
     public Guid RoleId { get; init; }
+
+    /// <summary>Optional link to a Masters.Consultant record, independent of RoleId.</summary>
+    public Guid? ConsultantId { get; init; }
 }

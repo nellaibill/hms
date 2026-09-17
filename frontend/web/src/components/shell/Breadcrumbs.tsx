@@ -10,7 +10,8 @@ function usersTrailSegments(pathname: string): string[] | undefined {
   if (pathname === '/users') return ['Settings', 'Users'];
   if (pathname === '/users/new') return ['Settings', 'Users', 'New'];
   if (/^\/users\/[^/]+\/edit$/.test(pathname)) return ['Settings', 'Users', 'Edit'];
-  if (/^\/users\/[^/]+$/.test(pathname)) return ['Settings', 'Users', 'Details'];
+  // Deliberately no trail for /users/:id (Details) — that page has its own "Back to
+  // Users" button instead of a breadcrumb (see UserViewPage.tsx).
   return undefined;
 }
 

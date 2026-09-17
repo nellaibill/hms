@@ -28,6 +28,7 @@ internal static class UserMappingExtensions
         ProfilePhotoUrl = user.ProfilePhotoUrl,
         RoleId = user.RoleId,
         RoleName = roleName,
+        ConsultantId = user.ConsultantId,
         EmailVerified = user.EmailVerified,
         LastLoginAt = user.LastLoginAt,
         IsActive = user.IsActive,

@@ -11,6 +11,7 @@ public record UserResponse
     public string? ProfilePhotoUrl { get; init; }
     public Guid RoleId { get; init; }
     public string RoleName { get; init; } = string.Empty;
+    public Guid? ConsultantId { get; init; }
     public bool EmailVerified { get; init; }
     public DateTime? LastLoginAt { get; init; }
     public bool IsActive { get; init; }

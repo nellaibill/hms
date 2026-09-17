@@ -4,6 +4,7 @@ export * from './components/SetPasswordDialog';
 export * from './components/StatusBadge';
 export * from './components/UploadProfilePhotoDialog';
 export * from './components/UserDetails';
+export * from './components/UserEditForm';
 export * from './components/UserForm';
 export * from './components/UserListToolbar';
 export * from './components/UserTable';

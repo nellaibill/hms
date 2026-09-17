@@ -37,6 +37,10 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(u => u.RoleId)
             .OnDelete(DeleteBehavior.Restrict); // A role in use by a user cannot be deleted out from under them.
 
+        // Cross-module reference to Masters.Consultant — bare id, no navigation/FK, same
+        // convention as ConsultantId in Patients/IPD/Billing (different schema entirely).
+        builder.Property(u => u.ConsultantId).HasColumnName("consultant_id");
+
         // Additive credential-support columns per ADR-001 (docs/DecisionLog.md) — see the
         // doc comment on User itself. PasswordHash is nullable/unset until Authentication
         // ships; no column here stores a plaintext password.
@@ -84,5 +88,7 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.IsActive).HasDatabaseName("ix_users_is_active");
 
         builder.HasIndex(u => u.RoleId).HasDatabaseName("ix_users_role_id");
+
+        builder.HasIndex(u => u.ConsultantId).HasDatabaseName("ix_users_consultant_id");
     }
 }
