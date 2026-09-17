@@ -26,7 +26,7 @@ import {
 // Flat, two-section Primary Navigation model — Dashboard stands alone at the
 // top, everything else lives directly under a "Clinical" or "Administrative"
 // section with no further nesting. This file is the single source of truth
-// the Sidebar, Breadcrumbs, and route table are all generated from.
+// the Sidebar and route table are both generated from.
 
 export interface NavLeaf {
   type: 'leaf';
@@ -318,10 +318,6 @@ export function filterNavigationForPermissions(
   return navigationTree.filter(
     (node) => (!node.permission || hasPermission(`${node.permission}.view`)) && (!node.feature || hasFeature(node.feature)),
   );
-}
-
-export function findLeafByPath(path: string): NavLeaf | undefined {
-  return navigationTree.find((node) => node.path === path);
 }
 
 /** Every leaf route in the tree — the single source routes.tsx generates pages from. */
