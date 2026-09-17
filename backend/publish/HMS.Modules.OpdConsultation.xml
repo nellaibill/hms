@@ -1,0 +1,278 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.OpdConsultation</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.OpdConsultation.Application.Abstractions.IOpdConsultationRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency inversion
+            rule in docs/Architecture.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Application.IOpdConsultationService">
+            <summary>
+            Public (not internal): OpdConsultationsController requires a public constructor dependency
+            (CS0051 otherwise). Interface and implementation share this file, matching
+            DischargeSummaryService's convention.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Application.IOpdConsultationService.GetOrCreateByConsultationIdAsync(System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Fetches the note for a consultation, auto-creating an empty Draft one on first
+            call — there is no separate "Create" action a user triggers themselves (unlike
+            DischargeSummary, where creating one is its own deliberate step from a list of
+            discharged admissions); opening the form is itself the first save point. Fails with
+            InvalidConsultation if the consultation doesn't exist.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Application.IOpdConsultationService.SaveDraftAsync(System.Guid,HMS.Modules.OpdConsultation.Contracts.SaveOpdConsultationRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Full-record save with no required fields. Fails with NotDraft once
+            Completed.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Application.IOpdConsultationService.CompleteAsync(System.Guid,HMS.Modules.OpdConsultation.Contracts.SaveOpdConsultationRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Same full-record save as SaveDraft, but requires PresentingComplaints/
+            HeightCm/WeightKg, and additionally transitions the owning PatientVisitConsultation to
+            Completed via Patients' public IOpdQueryService — the clinical note and the OPD queue
+            entry complete together. Fails with AlreadyCompleted if already Completed, or
+            MissingRequiredFieldsForCompletion if the three fields above aren't all set.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Application.IOpdConsultationService.ReopenAsync(System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>The inverse of CompleteAsync — moves a Completed note back to Draft so it can
+            be edited again, and reverts the owning PatientVisitConsultation's queue status from
+            Completed back to InConsultation via Patients' public IOpdQueryService, same seam
+            CompleteAsync uses going the other direction. Fails with NotCompleted if the note isn't
+            currently Completed. Permission-gated at the controller to clinical-care.edit — the same
+            gate SaveDraft/Complete already use.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Application.OpdConsultationService.ValidateReferencesAsync(HMS.Modules.OpdConsultation.Contracts.SaveOpdConsultationRequest,System.Threading.CancellationToken)">
+            <summary>Validates every cross-module reference the request carries — each Diagnosis
+            line's DiagnosisId (Masters), and ReferralDepartmentId/ReferralConsultantId if set
+            (Masters) — returning the first failure found, or null if everything resolves.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected OpdConsultation-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes.InvalidConsultation">
+            <summary>The referenced PatientVisitConsultation does not exist (Patients'
+            IOpdQueryService.GetConsultationDetailAsync returned a failure).</summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes.InvalidDiagnosis">
+            <summary>One of the submitted DiagnosisIds does not exist in Masters' Diagnosis
+            catalog.</summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes.InvalidReferral">
+            <summary>ReferralDepartmentId/ReferralConsultantId does not resolve via Masters'
+            public services.</summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes.NotDraft">
+            <summary>SaveDraft was attempted while Status is already Completed.</summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes.AlreadyCompleted">
+            <summary>Complete was attempted while Status is already Completed.</summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes.MissingRequiredFieldsForCompletion">
+            <summary>Complete was attempted without PresentingComplaints/HeightCm/WeightKg set —
+            SaveDraft has no such requirement, only Complete does (matches the form's own `*`
+            markers), so this is checked in OpdConsultationService.CompleteAsync directly rather
+            than via a second FluentValidation validator for the same request shape (which would
+            collide with SaveDraft's lenient one in DI, both being IValidator&lt;
+            SaveOpdConsultationRequest&gt;).</summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Application.OpdConsultationErrorCodes.NotCompleted">
+            <summary>Reopen was attempted on a note that isn't currently Completed.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Application.Validators.SaveOpdConsultationRequestValidator">
+            <summary>
+            Format checks only — no required fields here, since this same request shape backs both
+            SaveDraft (nothing required) and Complete (PresentingComplaints/HeightCm/WeightKg required,
+            enforced by OpdConsultationService.CompleteAsync directly — see that method's own comment on
+            why a second FluentValidation validator for this same request type would collide in DI).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdConsultationDiagnosisRequest">
+            <summary>One diagnosis line, as submitted on SaveDraft/Complete. The full list is replaced
+            wholesale each time (list-sync, no separate per-line CRUD) — see
+            OpdConsultationNote.ReplaceDiagnoses.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdConsultationInvestigationRequest">
+            <summary>One investigation line, as submitted on SaveDraft/Complete. The full list is
+            replaced wholesale each time, same convention as diagnoses.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.SaveOpdConsultationRequest">
+            <summary>
+            Full-record save — every vitals/assessment/plan/follow-up/referral field, submitted together
+            on both SaveDraft and Complete (matches DischargeSummary's identical "PUT is a full-record
+            update" MVP scope: no per-field PATCH). SaveDraft applies no required-field validation;
+            Complete additionally requires PresentingComplaints/HeightCm/WeightKg (enforced by
+            CompleteOpdConsultationRequestValidator, not this shared shape).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.OpdConsultation.Contracts.SaveOpdConsultationRequest.BloodPressure">
+            <summary>Free-text, e.g. "120/80" — a single snapshot per visit, not IPD's repeating,
+            separately-systolic/diastolic VitalsReading log.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdConsultationNoteResponse">
+            <summary>
+            Deliberately carries only this note's own authored content — no live-joined Patient/
+            Consultant/Department display fields. Those come from OpdConsultationHeader below, fetched
+            via Patients' public IOpdQueryService, never duplicated here — same separation
+            DischargeSummaryResponse's own doc comment describes for Patient/Admission fields.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdConsultationHeader">
+            <summary>The read-only header the form's top strip renders — patient/appointment/
+            consultant/department, resolved from Patients' OpdPatientListItem (see
+            IOpdConsultationService.GetOrCreateByConsultationIdAsync).</summary>
+        </member>
+        <member name="P:HMS.Modules.OpdConsultation.Contracts.OpdConsultationHeader.ConsultationStatus">
+            <summary>The owning PatientVisitConsultation's own queue status (Waiting/CheckedIn/
+            InConsultation/Completed/Cancelled/NoShow) — distinct from OpdConsultationNoteResponse.
+            Status above, which only ever tracks this note's own Draft/Completed state.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdConsultationDetailResponse">
+            <summary>The form's one "give me everything I need to render" response — the note (or an
+            empty Draft shape, auto-created on first fetch) plus the read-only header.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdConsultationNoteStatus">
+            <summary>Draft while the doctor is still documenting; Completed once "Complete Consultation"
+            is clicked — at which point CompleteAsync also advances the owning
+            PatientVisitConsultation's own queue status via Patients' public IOpdQueryService, so the
+            two stay in lockstep. No richer workflow than this two-state split, matching
+            DischargeSummaryStatus's identical Draft/Finalized precedent.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdDiagnosisType">
+            <summary>Whether a recorded diagnosis is the primary reason for this consultation or a
+            secondary/incidental finding.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Contracts.OpdInvestigationDepartment">
+            <summary>Which workflow an investigation belongs to — the only two catalogs an OPD doctor
+            can request into (matches ConsultationBillingCard's own Laboratory/Radiology split).</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Domain.OpdConsultationDiagnosis">
+            <summary>
+            One diagnosis line, always owned by exactly one OpdConsultationNote — a real, same-schema
+            DB foreign key (unlike DiagnosisId, an app-level reference into Masters' Diagnosis catalog,
+            validated by OpdConsultationService before this is created — same convention
+            ConsultantConsultationType.ConsultationTypeId already uses for its own cross-module Masters
+            reference). The full list is replaced wholesale on every save
+            (OpdConsultationNote.ReplaceDiagnoses), no separate per-line CRUD.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Domain.OpdConsultationInvestigation">
+            <summary>
+            One investigation line, always owned by exactly one OpdConsultationNote — a real, same-schema
+            DB foreign key. Name is free text, not a DiagnosticTest/DiagnosticService catalog reference —
+            per the approved plan, this is clinical documentation only ("the doctor wants a CBC and a
+            knee X-ray"), not an order that creates a real LabOrder; the existing OPD Billing -> Laboratory
+            flow (invoice-driven) is unchanged and unrelated to this list. The full list is replaced
+            wholesale on every save, same convention as diagnoses.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote">
+            <summary>
+            The OPD Consultation clinical note aggregate root — one per PatientVisitConsultation (1:1,
+            enforced by a unique index on ConsultationId, not a DB FK: ConsultationId/PatientId/VisitId
+            are app-level references into Patients' schema, validated through that module's public
+            IOpdQueryService, never a real cross-schema foreign key, same convention
+            HMS.Modules.DischargeSummary.Domain.DischargeSummary's AdmissionId/PatientId already use).
+            Draft -> Completed is the only state transition; once Completed, the caller
+            (OpdConsultationService) is responsible for rejecting further SaveDraft calls — this entity
+            itself does not re-check its own Status before applying a mutation, same convention as
+            DischargeSummary.UpdateClinicalDetails/HMS.Modules.IPD.Domain.Admission.TransferBed.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote._diagnoses">
+            <summary>1:many child, real DB FK — see OpdConsultationDiagnosis's own doc comment.
+            Only ever loaded/replaced through this aggregate.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote.Create(System.Guid,System.Guid,System.Guid,System.Nullable{System.Guid})">
+            <summary>Caller (OpdConsultationService) is responsible for confirming the consultation
+            exists and that no note already exists for it before calling this.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote.SaveDetails(System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.Nullable{System.Int32},System.String,System.Nullable{System.Decimal},System.Nullable{System.Int32},System.String,System.String,System.String,System.String,System.Nullable{System.DateOnly},System.String,System.String,System.Nullable{System.Guid},System.Nullable{System.Guid},System.String,System.Nullable{System.Guid})">
+            <summary>Replaces every vitals/assessment/plan/follow-up/referral field in one call — a
+            full-record update, not per-field PATCH (matches DischargeSummary's identical MVP
+            scope). Used by both SaveDraft and Complete; the caller decides which fields are
+            required before calling (SaveDraft: none: Complete: PresentingComplaints/HeightCm/
+            WeightKg) — this entity does not re-validate. Caller is responsible for rejecting this
+            call while Status isn't Draft.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote.ReplaceDiagnoses(System.Collections.Generic.IEnumerable{HMS.Modules.OpdConsultation.Domain.OpdConsultationDiagnosis},System.Nullable{System.Guid})">
+            <summary>Fully replaces the diagnosis list — delete-then-reinsert list-sync, no separate
+            per-line CRUD. Caller (OpdConsultationService) constructs each new
+            OpdConsultationDiagnosis beforehand, already carrying this aggregate's Id.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote.Complete(System.Nullable{System.Guid})">
+            <summary>Caller (OpdConsultationService) is responsible for rejecting this call while
+            already Completed, and for calling Patients' PatientVisitConsultation.Complete()
+            transition alongside this — the two are advanced together, not by this entity.</summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote.Reopen(System.Nullable{System.Guid})">
+            <summary>The inverse of Complete — moves a Completed note back to Draft so it can be
+            edited again. Caller (OpdConsultationService) is responsible for confirming Status is
+            currently Completed before calling this, and for calling Patients'
+            PatientVisitConsultation.Reopen() transition alongside it, same as Complete does going
+            the other direction.</summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Endpoints.OpdConsultationsController">
+            <summary>
+            The OPD Consultation clinical form's backing endpoints — reached after the OPD Patient
+            List's "Consult" action (see docs/DecisionLog.md). Uses the "clinical-care" permission
+            group, the same one the OPD nav leaf already declares — this is additive clinical
+            documentation for the same workflow, not a separate RBAC concern.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Endpoints.OpdConsultationsController.GetOrCreate(System.Guid,System.Threading.CancellationToken)">
+            <summary>Fetches (auto-creating on first call) the consultation note plus its read-only
+            patient/appointment/consultant/department header.</summary>
+            <response code="200">The consultation note and header.</response>
+            <response code="404">No such consultation exists.</response>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Endpoints.OpdConsultationsController.SaveDraft(System.Guid,HMS.Modules.OpdConsultation.Contracts.SaveOpdConsultationRequest,System.Threading.CancellationToken)">
+            <summary>Saves the current form state with no required fields.</summary>
+            <response code="200">The consultation note was saved.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No consultation note exists for this consultation yet — GET first.</response>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Endpoints.OpdConsultationsController.Complete(System.Guid,HMS.Modules.OpdConsultation.Contracts.SaveOpdConsultationRequest,System.Threading.CancellationToken)">
+            <summary>Saves the form and marks the consultation Completed — requires
+            PresentingComplaints/HeightCm/WeightKg, and also advances the owning
+            PatientVisitConsultation's own queue status.</summary>
+            <response code="200">The consultation was completed.</response>
+            <response code="400">The request failed validation, or a required field is missing.</response>
+            <response code="404">No consultation note exists for this consultation yet — GET first.</response>
+        </member>
+        <member name="M:HMS.Modules.OpdConsultation.Endpoints.OpdConsultationsController.Reopen(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reopens a Completed consultation back to Draft so it can be edited again, and
+            reverts the owning PatientVisitConsultation's queue status accordingly. Gated by the
+            same clinical-care.edit permission as SaveDraft/Complete — the consultant, or any role
+            granted broader clinical-care permissions such as an administrator.</summary>
+            <response code="200">The consultation was reopened.</response>
+            <response code="404">No consultation note exists for this consultation.</response>
+            <response code="409">The consultation isn't currently Completed.</response>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Infrastructure.Configurations.OpdConsultationNoteConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.OpdConsultation.Domain.OpdConsultationNote"/> to opd_consultation.opd_consultation_notes. Internal
+            (not public): the entity is an internal domain type, so a public
+            Configure(EntityTypeBuilder&lt;OpdConsultationNote&gt;) member would be a CS0051
+            accessibility violation — EF Core's ApplyConfigurationsFromAssembly discovers and invokes
+            this via reflection regardless of the type's own visibility.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.Infrastructure.OpdConsultationDbContext">
+            <summary>
+            Owns the "opd_consultation" PostgreSQL schema. Per docs/DatabaseArchitecture.md §1, only
+            this module's own code constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.OpdConsultation.OpdConsultationModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration/ModuleRegistration.cs — mirrors every other module's AddXModule.
+            </summary>
+        </member>
+    </members>
+</doc>

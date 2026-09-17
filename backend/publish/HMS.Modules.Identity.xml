@@ -1,0 +1,650 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Identity</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Identity.Application.Abstractions.IJwtTokenGenerator">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — Application never references the JWT library's types directly.
+            Takes primitive claim values rather than the User/Role domain entities, so callers
+            don't need to construct one just to generate a token (see JwtTokenGeneratorTests).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Abstractions.IPasswordHasher">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as <see cref="T:HMS.Modules.Identity.Application.Abstractions.IUserFileStorage"/>. Synchronous, unlike the
+            repository abstractions: hashing/verifying is pure CPU-bound work with no I/O, so
+            wrapping it in a Task would add nothing.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Abstractions.IPermissionRepository">
+            <summary>
+            Provides read access to the system permission catalog.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Abstractions.IRoleRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule. Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Abstractions.IUserFileStorage">
+            <summary>
+            Persists an uploaded user profile photo and returns its stored relative path.
+            Implemented in Infrastructure as local disk storage under HMS.Api's wwwroot, mirroring
+            HMS.Modules.Patients.Infrastructure.PatientFileStorage — this app's established
+            file-upload pattern (see docs/DecisionLog.md's file-upload ADR). Only one photo per
+            user (no category parameter, unlike Patients' photo/ID-proof split), so the shape
+            stays as small as Branding's single-slot storage.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Abstractions.IUserRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/Architecture.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.AuthenticationErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Authentication-module failures, per
+            docs/ApiStandards.md §5. InvalidLogin is deliberately the single code used for every
+            login-rejection reason (user not found, wrong password, wrong login type, inactive
+            user) — never revealing which specific check failed is a standard login-security
+            practice, not an oversight.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Identity.Application.AuthenticationErrorCodes.InvalidCurrentPassword">
+            <summary>ChangePasswordAsync's one failure reason — unlike login, revealing this is
+            safe: the caller is already authenticated, so there's no username-enumeration risk.</summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.AuthenticationService">
+             <summary>
+             Orchestrates the Login use case. Every rejection reason (rules 1-5 below) returns the
+             same generic <see cref="F:HMS.Modules.Identity.Application.AuthenticationErrorCodes.InvalidLogin"/> failure — never
+             revealing which check failed, per standard login-security practice (docs/ApiStandards.md
+             §8). Soft-deleted users need no special handling: IUserRepository.GetByUsernameAsync
+             already excludes them via User's EF global query filter, so they naturally fail rule 1
+             exactly like a username that never existed.
+            
+             HMS Multi-Tenancy Phase C: by the time this runs, <see cref="T:HMS.Shared.Kernel.ITenantContext"/> has
+             already been resolved and populated by HMS.Api's TenantResolutionMiddleware (from the
+             X-Hospital-Code header on this same login request — see that middleware's own doc
+             comment for why tenant resolution can't happen here, inside this service, instead).
+             IUserRepository/IdentityDbContext are already tenant-aware by the time this method's
+             first line runs.
+             </summary>
+        </member>
+        <member name="F:HMS.Modules.Identity.Application.AuthenticationService.MaxFailedLoginAttempts">
+            <summary>Brute-force throttling thresholds (HMS Security Hardening: login had no
+            account lockout at all). Not user-configurable — a single deployment target, no
+            evidence yet of needing per-environment tuning.</summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Application.AuthenticationService.ChangePasswordAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Rule 1: the user exists and already has a PasswordHash to check against — same
+            generic-failure posture as LoginAsync would apply, except revealing "wrong current
+            password" here carries no enumeration risk (the caller already proved who they are
+            via a valid bearer token before reaching this method).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.IAuthenticationService">
+            <summary>
+            Public (not internal), for the same reason as <see cref="T:HMS.Modules.Identity.Application.IUserService"/>:
+            AuthenticationController's public constructor needs a public parameter type.
+            <see cref="T:HMS.Modules.Identity.Application.AuthenticationService"/> stays internal.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Application.IAuthenticationService.ChangePasswordAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>Self-service password change for the currently-authenticated user (Rule 1
+            in AuthenticationService.ChangePasswordAsync's own doc comment covers what "currently
+            authenticated" means for a caller with no PasswordHash yet).</summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.IUserService">
+            <summary>
+            Public (not internal): this is the one Application-layer type UsersController — which
+            ASP.NET Core requires to be public, with a public constructor, for controller discovery
+            and DI activation (see docs/Architecture.md) — takes as a constructor dependency. A
+            public constructor cannot have an internal parameter type (CS0051), so this interface
+            is the module's deliberate, narrow seam between its public HTTP boundary and its
+            otherwise-internal Application/Domain/Infrastructure layers. <see cref="T:HMS.Modules.Identity.Application.UserService"/>
+            (the implementation), <see cref="T:HMS.Modules.Identity.Domain.User"/>, and everything in Infrastructure
+            remain internal.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Application.IUserService.GetStaffDirectoryAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Backs the low-sensitivity staff picker any authenticated user can call — see
+            StaffDirectoryEntryResponse's own doc comment. Active users only.</summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.LoginTypes">
+            <summary>
+            The web login page's fixed "Sign In As" dropdown values
+            (frontend/web/src/features/auth/mockUsers.ts's roleDefinitions) — a closed set that is
+            NOT the same thing as the Roles module's freeform, admin-creatable Role names (no roles
+            are seeded by default; an admin creates them by hand). Business rule #4 ("the user's
+            assigned role matches the selected Login Type") needs some translation between the two,
+            so this maps each dropdown value to the Role display name a Super Admin is expected to
+            create for it — a small, explicit, in-code table rather than a new schema field, per the
+            task's own "for now" scoping. Compared case-insensitively against Role.Name.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Mapping.UserMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at MVP scale — see docs/DecisionLog.md.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.UserErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Users-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.UserService">
+            <summary>
+            Orchestrates Users use cases: expected failures (not found, duplicate email) are
+            returned as <see cref="T:HMS.Shared.Kernel.Result"/> failures, never thrown — see docs/Architecture.md's
+            exception handling strategy.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Validators.ChangePasswordRequestValidator">
+            <summary>
+            Malformed-request checks only — "current password doesn't match" is a business-rule
+            failure reported as a Result failure by AuthenticationService, not here. Matches
+            CreateHospitalRequestValidator/SetPasswordRequestValidator's split.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Validators.CreateUserRequestValidator">
+            <summary>
+            Server-side validation per docs/modules/Identity/Users.md's validation rules table.
+            The authoritative check — client-side validation (frontend/shared/validation) is a
+            UX convenience only, per docs/ApiStandards.md §7.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Validators.LoginRequestValidator">
+            <summary>
+            Malformed-request checks only (empty fields, unrecognized LoginType) — these return 400,
+            distinct from a credentials-didn't-match failure, which AuthenticationService reports as
+            a 401 Result failure. Matches CreateUserRequestValidator's split.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Application.Validators.RoleValidationRules">
+            <summary>
+            Shared validation rules for role create/update requests.
+            Keeps validation logic in one place to avoid duplication.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Contracts.ChangePasswordRequest">
+            <summary>
+            Self-service password change — the caller changes their own password by proving they
+            know the current one. Distinct from <see cref="T:HMS.Modules.Identity.Contracts.SetPasswordRequest"/> (an admin resetting
+            someone else's password without knowing their current one).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Contracts.CreateRoleRequest.PermissionKeys">
+            <summary>
+            Selected permission keys.
+            Example:
+            patient-management.view
+            patient-management.create
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Contracts.LoginRequest">
+            <summary>
+            LoginType is the web login page's "Sign In As" dropdown value (e.g. "doctor",
+            "superAdmin") — a fixed set unrelated to the freeform Role names created via the Roles
+            module. AuthenticationService maps it to an expected Role name; see LoginTypes.cs.
+            </summary>
+            <summary>
+            HMS Multi-Tenancy Phase C: the hospital (tenant) itself is identified by the
+            X-Hospital-Code request header, not a body field — see
+            HMS.Api.Middleware.TenantResolutionMiddleware's own doc comment for why tenant
+            resolution has to happen in middleware, before this DTO is even bound.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Contracts.LoginUserResponse.FeatureKeys">
+            <summary>The FeatureCatalog keys this tenant has enabled (Tenant Feature/Module
+            Management) — UI/nav-gating convenience only, a login-time snapshot. NEVER the
+            source of truth for backend authorization: FeatureAuthorizationHandler always checks
+            live tenant state instead, so a feature disabled mid-session is rejected on the very
+            next API call regardless of what this list still says.</summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Contracts.LoginUserResponse.MustChangePassword">
+            <summary>True when this user's current password was set by someone else (an admin
+            reset, or the initial password Platform Admin chose during hospital registration) —
+            see User.MustChangePassword's own doc comment. The frontend forces a change-password
+            screen before letting the user reach the app when this is true.</summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Contracts.RoleListQuery">
+            <summary>
+            Query parameters for GET /api/v1/roles.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Contracts.RoleResponse.PermissionKeys">
+            <summary>
+            Permission keys assigned to this role.
+            Example:
+            patient-management.view
+            patient-management.create
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Contracts.SetPasswordRequest">
+            <summary>
+            Admin-sets/resets a user's password. Not part of CreateUserRequest — user creation has
+            no credential step today, so this is the only way a PasswordHash ever gets set,
+            making login actually usable.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Contracts.StaffDirectoryEntryResponse">
+            <summary>
+            A deliberately minimal, low-sensitivity view of a user — just enough for a staff-picker
+            (e.g. HMS.Modules.Messaging's "start a conversation" screen) to let any authenticated
+            staff member find a colleague by name. Unlike <see cref="T:HMS.Modules.Identity.Contracts.UserResponse"/> (which requires
+            "identity-administration.view", an admin-level permission), this carries no email/phone/
+            login metadata and is available to any authenticated user — see
+            UsersController.GetDirectory's own doc comment for why this exists.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Contracts.UpdateRoleRequest.PermissionKeys">
+            <summary>
+            Selected permission keys.
+            Example:
+            patient-management.view
+            patient-management.create
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Contracts.UserListQuery">
+            <summary>
+            Query parameters for GET /api/v1/users — pagination/sort/search come from
+            <see cref="T:HMS.Shared.Kernel.PagedRequest"/>; <see cref="P:HMS.Modules.Identity.Contracts.UserListQuery.IsActive"/> is this endpoint's own filter.
+            "Search" (docs/modules/Identity/Users.md) is implemented as this endpoint's
+            <c>search</c> parameter rather than a separate route, per docs/ApiStandards.md §6.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Domain.Permission">
+            <summary>
+            Represents a system permission.
+            Permissions are seeded by the system and assigned to roles.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Domain.Permission.Create(System.String,System.String,System.String,System.String,System.Int32)">
+            <summary>
+            Creates a new permission at runtime.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Domain.Permission.CreateSeed(System.Guid,System.String,System.String,System.String,System.String,System.Int32)">
+            <summary>
+            Creates a permission with a fixed identifier for EF Core seed data.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Domain.Role">
+            <summary>
+            Represents a hospital role that can be assigned to users.
+            Examples: Super Admin, Doctor, Receptionist.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.Role.RolePermissions">
+            <summary>
+            Permissions assigned to this role.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Domain.RolePermission">
+            <summary>
+            Represents the assignment of a Permission to a Role.
+            This is the junction entity that implements the many-to-many
+            relationship between Roles and Permissions.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.RolePermission.RoleId">
+            <summary>
+            Gets the Role identifier.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.RolePermission.PermissionId">
+            <summary>
+            Gets the Permission identifier.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.RolePermission.Role">
+            <summary>
+            Navigation property to the Role.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.RolePermission.Permission">
+            <summary>
+            Navigation property to the Permission.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Domain.RolePermission.Create(System.Guid,System.Guid)">
+            <summary>
+            Creates a new RolePermission assignment.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Domain.User">
+            <summary>
+            A person who can be represented in HMS (front-desk staff, clinician, administrator).
+            Per ADR-001 (docs/DecisionLog.md), this originally carried no credential fields; the
+            four credential-related properties below (Username, PasswordHash, EmailVerified,
+            LastLoginAt) are exactly the additive columns ADR-001's "Consequences" section
+            anticipated — no redesign of the existing entity/schema/contracts. Login/JWT/hashing
+            logic itself remains out of scope (docs/Authentication.md is still a stub) — this is
+            storage only.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.User.PasswordHash">
+            <summary>
+            Never a plaintext password — the hash of one, written only via
+            <see cref="M:HMS.Modules.Identity.Domain.User.SetPasswordHash(System.String,System.Nullable{System.Guid})"/>. Null until Authentication ships and a credential is
+            actually set; never serialized into <c>UserResponse</c>.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.User.MustChangePassword">
+            <summary>
+            True whenever the current <see cref="P:HMS.Modules.Identity.Domain.User.PasswordHash"/> was chosen by someone other
+            than the user themselves — the initial password Platform Admin types in during
+            hospital registration (see IdentityModule.ProvisionTenantSuperAdminAsync), or a
+            reset an Identity admin performs via <see cref="M:HMS.Modules.Identity.Domain.User.SetPasswordHash(System.String,System.Nullable{System.Guid})"/>/SetPassword.
+            Never set by <see cref="M:HMS.Modules.Identity.Domain.User.ChangeOwnPassword(System.String)"/>. AuthenticationService surfaces this
+            on <c>LoginResponse</c> so the frontend can force a change before letting the user
+            proceed — see docs/DecisionLog.md's Super Admin password-hardening ADR for why this
+            stops short of a full email invite/reset-link system (no mail infra exists yet).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.User.FailedLoginAttempts">
+            <summary>
+            Consecutive wrong-password attempts since the last successful login or the last time
+            a lockout expired — reset to 0 by <see cref="M:HMS.Modules.Identity.Domain.User.RecordLogin(System.DateTime)"/>. Never incremented for a
+            login rejected for any other reason (user not found, inactive account, wrong login
+            type) — those aren't password-guessing attempts against this specific account.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.User.LockedOutUntil">
+            <summary>
+            Set by <see cref="M:HMS.Modules.Identity.Domain.User.RecordFailedLogin(System.DateTime,System.Int32,System.TimeSpan)"/> once <see cref="P:HMS.Modules.Identity.Domain.User.FailedLoginAttempts"/> reaches
+            <c>AuthenticationService.MaxFailedLoginAttempts</c>. While in the future, login is
+            rejected outright (same generic message as every other rejection reason — see
+            AuthenticationService's own doc comment) without even checking the password.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Domain.User.ProfilePhotoUrl">
+            <summary>
+            Relative path under wwwroot (e.g. "uploads/users/{id}.jpg"), written only via
+            <see cref="M:HMS.Modules.Identity.Domain.User.SetProfilePhoto(System.String,System.Nullable{System.Guid})"/>. Null until an admin uploads one from the User Details
+            page — never set at creation time (see UsersController.UploadProfilePhoto).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Domain.User.SetPasswordHash(System.String,System.Nullable{System.Guid})">
+            <summary>
+            Stores a pre-computed hash (never a plaintext password — hashing itself is an
+            Authentication-iteration concern, docs/Authentication.md) chosen by someone other
+            than this user — tenant provisioning (the Super Admin's initial password) or an
+            Identity admin's reset via UsersController.SetPassword. Always sets
+            <see cref="P:HMS.Modules.Identity.Domain.User.MustChangePassword"/>, since the person who just set this hash now knows
+            the plaintext. Self-service password changes go through
+            <see cref="M:HMS.Modules.Identity.Domain.User.ChangeOwnPassword(System.String)"/> instead, which clears that flag.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Domain.User.ChangeOwnPassword(System.String)">
+            <summary>
+            Self-service password change (AuthenticationService.ChangePasswordAsync, which has
+            already verified the caller knows the current password). Deliberately does not call
+            <see cref="M:HMS.Shared.Kernel.Entity.MarkUpdated(System.Nullable{System.Guid})"/> — same reasoning as <see cref="M:HMS.Modules.Identity.Domain.User.RecordLogin(System.DateTime)"/>, this
+            is the subject's own act, not an admin edit. Clears <see cref="P:HMS.Modules.Identity.Domain.User.MustChangePassword"/>:
+            the whole point is that nobody else now knows this password.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Domain.User.RecordLogin(System.DateTime)">
+            <summary>
+            Records a successful login. Deliberately does not call <see cref="M:HMS.Shared.Kernel.Entity.MarkUpdated(System.Nullable{System.Guid})"/>
+            — UpdatedAt/UpdatedBy represent an admin-style edit to the record, not the subject's
+            own act of logging in. Clears any lockout — a successful login is proof of a correct
+            password, so there's no reason to keep the account locked.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Domain.User.RecordFailedLogin(System.DateTime,System.Int32,System.TimeSpan)">
+            <summary>
+            Records a wrong-password attempt, locking the account out once
+            <paramref name="maxAttempts"/> is reached. Deliberately does not call
+            <see cref="M:HMS.Shared.Kernel.Entity.MarkUpdated(System.Nullable{System.Guid})"/> — same reasoning as <see cref="M:HMS.Modules.Identity.Domain.User.RecordLogin(System.DateTime)"/>.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Endpoints.AuthenticationController">
+            <summary>
+            The Authentication module's HTTP surface — login and a protected diagnostic endpoint
+            (GET /me) that proves the JWT bearer pipeline actually validates issued tokens.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.AuthenticationController.Login(HMS.Modules.Identity.Contracts.LoginRequest,System.Threading.CancellationToken)">
+            <summary>Authenticates a user and issues a JWT.</summary>
+            <response code="200">Login succeeded; the response contains a bearer token.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="401">The login type, username, or password was invalid.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.AuthenticationController.Me">
+            <summary>Returns the caller's own identity, as read from the validated JWT — proof
+            the bearer token pipeline is actually enforced end to end.</summary>
+            <response code="200">The token was valid.</response>
+            <response code="401">No token, or the token was missing/invalid/expired.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.AuthenticationController.ChangePassword(HMS.Modules.Identity.Contracts.ChangePasswordRequest,System.Threading.CancellationToken)">
+            <summary>Self-service password change for the caller's own account — proves the
+            current password, then rotates it and clears MustChangePassword.</summary>
+            <response code="204">The password was changed.</response>
+            <response code="400">The request failed validation, or the current password was wrong.</response>
+        </member>
+        <member name="T:HMS.Modules.Identity.Endpoints.PermissionsController">
+            <summary>
+            Read-only: permissions are a system-seeded catalog (see PermissionSeedData) and
+            cannot be created, updated or deleted through the API.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Endpoints.RolesController">
+            <summary>
+            Role management is protected end to end with "identity-administration.*" (see
+            HMS.Shared.Infrastructure.PermissionAuthorization): reads require ".view", mutations
+            require the matching ".create"/".edit"/".delete" — a bare Hospital token is not enough
+            on its own for any action here, since role/permission data is itself sensitive.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Endpoints.UsersController">
+            <summary>
+            The Users module's HTTP surface — CRUD, soft delete, paged/search/sort listing, and
+            activate/deactivate, per docs/modules/Identity/Users.md and docs/ApiStandards.md.
+            "Actor" (created/updated-by) is read from the caller's JWT via
+            ClaimsPrincipalExtensions.GetUserId.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.Create(HMS.Modules.Identity.Contracts.CreateUserRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new user.</summary>
+            <response code="201">The user was created.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="409">A user with the given username or email already exists.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.Update(System.Guid,HMS.Modules.Identity.Contracts.UpdateUserRequest,System.Threading.CancellationToken)">
+            <summary>Updates an existing user.</summary>
+            <response code="200">The user was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No user was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a user.</summary>
+            <response code="204">The user was deleted.</response>
+            <response code="404">No user was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single user by id.</summary>
+            <response code="200">The user was found.</response>
+            <response code="404">No user was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.GetPaged(HMS.Modules.Identity.Contracts.UserListQuery,System.Threading.CancellationToken)">
+            <summary>
+            Lists users with paging, sorting, and filtering. "Search" is this same endpoint's
+            <c>search</c> query parameter rather than a separate route (see
+            <see cref="T:HMS.Modules.Identity.Contracts.UserListQuery"/>) — there is no dedicated /search route.
+            </summary>
+            <response code="200">A page of users.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.Activate(System.Guid,System.Threading.CancellationToken)">
+            <summary>Activates a user.</summary>
+            <response code="200">The user was activated.</response>
+            <response code="404">No user was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.Deactivate(System.Guid,System.Threading.CancellationToken)">
+            <summary>Deactivates a user.</summary>
+            <response code="200">The user was deactivated.</response>
+            <response code="404">No user was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.UploadProfilePhoto(System.Guid,Microsoft.AspNetCore.Http.IFormFile,System.Threading.CancellationToken)">
+            <summary>Uploads/replaces a user's profile photo (JPG/PNG/WEBP, max 2MB). Never set at creation — always a later, separate step from the User Details page.</summary>
+            <response code="200">The profile photo was uploaded.</response>
+            <response code="400">The file failed validation.</response>
+            <response code="404">No user was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.SetPassword(System.Guid,HMS.Modules.Identity.Contracts.SetPasswordRequest,System.Threading.CancellationToken)">
+            <summary>Sets or resets a user's password (admin action). The only way a user ever
+            gets a PasswordHash — user creation has no credential step.</summary>
+            <response code="200">The password was set.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No user was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Identity.Endpoints.UsersController.GetDirectory(System.String,System.Threading.CancellationToken)">
+            <summary>A low-sensitivity staff picker — any authenticated user can look up a
+            colleague by name, e.g. HMS.Modules.Messaging's "start a conversation" screen. No
+            RequirePermission gate (unlike every other action here): this is deliberately not
+            admin data (no email/phone/login metadata, see StaffDirectoryEntryResponse's own doc
+            comment) — the same reasoning as NotificationsController's "my notifications" actions
+            needing only [Authorize].</summary>
+            <response code="200">Up to 100 matching active users.</response>
+        </member>
+        <member name="T:HMS.Modules.Identity.IdentityModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration — the pattern every future module's registration follows.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.IdentityModule.SeedAsync(System.IServiceProvider,System.Threading.CancellationToken)">
+            <summary>
+            Startup data seeding entry point, called once from Program.cs after
+            <c>IdentityDbContext.Database.Migrate()</c> — the same
+            "single public seam per module" shape as <see cref="M:HMS.Modules.Identity.IdentityModule.AddIdentityModule(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"/> itself.
+            <see cref="T:HMS.Modules.Identity.Infrastructure.Seed.IdentityDataSeeder"/> stays internal; resolving it here (inside this
+            module's own assembly) doesn't require it to be public.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.IdentityModule.ProvisionTenantSuperAdminAsync(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Provisioning-only seam: creates the "Super Admin" role (every permission attached)
+            and the hospital's first Super Admin user in a freshly-migrated tenant database.
+            Called by HMS.Api.Provisioning.TenantProvisioningService, which cannot construct
+            User/Role directly — they're internal to this assembly (see
+            HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner's doc comment).
+            Reuses the exact same domain factories/repositories/password hasher as
+            IdentityDataSeeder, just against a caller-supplied connection string instead of the
+            DI-registered <see cref="T:HMS.Modules.Identity.Infrastructure.IdentityDbContext"/>, and does not run migrations itself —
+            the caller already applied them before invoking this.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.Configurations.UserConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.Identity.Domain.User"/> to identity.users, following the naming/PK/audit-column/
+            soft-delete standards in docs/DatabaseArchitecture.md.
+            Internal (not public): <see cref="T:HMS.Modules.Identity.Domain.User"/> is an internal domain type, so a public
+            Configure(EntityTypeBuilder&lt;User&gt;) member would be a CS0051 accessibility violation.
+            EF Core's <c>ApplyConfigurationsFromAssembly</c> discovers and invokes this via
+            reflection regardless of the type's own visibility, so internal is sufficient here.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.IdentityDbContext">
+            <summary>
+            Owns the "identity" PostgreSQL schema. Per docs/DatabaseArchitecture.md §1, only this
+            module's own code constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.JwtTokenGenerator">
+            <summary>
+            Issues signed (HMAC-SHA256) JWTs. Reads Jwt:Issuer/Audience/SigningKey/ExpiresInMinutes
+            directly from IConfiguration in the constructor, matching how IdentityModule already
+            reads ConnectionStrings:Default — no IOptions&lt;T&gt; wrapper, since nothing else in this
+            codebase uses that pattern yet. HMS.Api's JwtConfiguration reads the same keys to
+            configure bearer-token validation, so issuing and validating always agree.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.PasswordHasher">
+            <summary>
+            Wraps ASP.NET Core Identity's own <see cref="T:Microsoft.AspNetCore.Identity.PasswordHasher`1"/> (PBKDF2, already
+            available via the Microsoft.AspNetCore.App shared framework — no extra package needed)
+            rather than a hand-rolled algorithm, per "reuse existing infrastructure wherever
+            possible."
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.Repositories.PermissionRepository">
+            <summary>
+            Provides read access to the system permission catalog.
+            Permissions are system-defined and cannot be created,
+            updated or deleted through the application.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.Seed.IdentityDataSeeder">
+            <summary>
+            Idempotent startup data seeder: ensures the "Super Admin" system role (with every
+            permission assigned) and a default Super Admin user exist. Runs once per startup,
+            after <c>IdentityDbContext.Database.Migrate()</c> has applied every pending
+            migration — see Program.cs. Reuses the same repositories, domain factory methods
+            (<see cref="M:HMS.Modules.Identity.Domain.Role.Create(System.String,System.String,System.Boolean,System.Int32,System.Nullable{System.Guid})"/>, <see cref="M:HMS.Modules.Identity.Domain.User.Create(System.String,System.String,System.String,System.String,System.String,System.Guid,System.Nullable{System.Guid})"/>) and <see cref="T:HMS.Modules.Identity.Application.Abstractions.IPasswordHasher"/>
+            that the ordinary Roles/Users API surface uses; this class only orchestrates them in
+            a different (non-HTTP) entry point, the same way RoleService.CreateAsync's own
+            comment already anticipated: "Public API never creates system roles; those are
+            seeded/provisioned internally."
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Infrastructure.Seed.IdentityDataSeeder.EnsureSuperAdminRoleAsync(System.Threading.CancellationToken)">
+            <summary>
+            Creates the "Super Admin" role with every currently-seeded permission attached,
+            if it does not already exist. Permission *records* themselves are not created
+            here — they already exist by this point via PermissionConfiguration.HasData,
+            applied as part of the migration this seeder runs after — this only reads and
+            assigns them. Re-syncs an already-existing role's permissions on every startup
+            too (HMS Security Hardening Phase B): the permission catalog can grow after the
+            role was first created (e.g. new module added), and without this an existing
+            Super Admin would silently miss newly-seeded permissions — a self-inflicted
+            lockout risk once actions start being gated with [RequirePermission].
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Identity.Infrastructure.Seed.IdentityDataSeeder.EnsureSuperAdminUserAsync(HMS.Modules.Identity.Domain.Role,System.Threading.CancellationToken)">
+            <summary>
+            Creates the default Super Admin user, if it does not already exist. Skipped
+            (with a warning, not a startup failure) when SuperAdminSeed configuration is
+            incomplete — e.g. a deployment that hasn't set the section yet should still
+            start up and serve the rest of the API.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.Seed.SuperAdminSeedOptions">
+            <summary>
+            Bound from the "SuperAdminSeed" configuration section (appsettings.json /
+            appsettings.Development.json), the same configuration-driven pattern
+            JwtConfiguration already uses for Jwt:SigningKey — no credential is hard-coded in
+            source. <see cref="T:HMS.Modules.Identity.Infrastructure.Seed.IdentityDataSeeder"/> uses this only to create the initial Super
+            Admin user; it is never read again afterwards.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Identity.Infrastructure.Seed.SuperAdminSeedOptions.Password">
+            <summary>
+            Plaintext, read once at startup and immediately discarded — only
+            <see cref="T:HMS.Modules.Identity.Infrastructure.Seed.IdentityDataSeeder"/> touches this property, and only to pass it
+            straight into <c>IPasswordHasher.HashPassword</c>. Never persisted as-is.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Identity.Infrastructure.UserFileStorage">
+            <summary>
+            Local-disk file storage under HMS.Api's wwwroot, mirroring
+            HMS.Modules.Patients.Infrastructure.PatientFileStorage — this app's established
+            file-upload pattern (see docs/DecisionLog.md's file-upload ADR). Unlike Patients'
+            history-preserving, freshly-GUID-named files, a profile photo is a single
+            always-replaceable slot per user, so the stored file is named after the user's own id
+            and a re-upload simply overwrites it in place.
+            </summary>
+        </member>
+    </members>
+</doc>

@@ -1,0 +1,888 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.HR</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.HR.Application.Abstractions.AttendanceWithEmployee">
+            <summary>Attendance plus the employee display fields a list row needs (EmployeeCode/
+            EmployeeName) — resolved via a same-schema join in AttendanceRepository (see Attendance's
+            own remarks on why this is a real FK/join, unlike Employee's cross-module references).</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.Abstractions.AttendanceWithEmployee.#ctor(HMS.Modules.HR.Domain.Attendance,System.String,System.String)">
+            <summary>Attendance plus the employee display fields a list row needs (EmployeeCode/
+            EmployeeName) — resolved via a same-schema join in AttendanceRepository (see Attendance's
+            own remarks on why this is a real FK/join, unlike Employee's cross-module references).</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.Abstractions.IAttendanceRepository.GetStatusCountsForDateAsync(System.DateOnly,System.Threading.CancellationToken)">
+            <summary>Backs the HR dashboard's Present/Absent/OnLeave-today tiles — one grouped
+            count query for a given calendar date.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Abstractions.LeaveRequestWithDetails">
+            <summary>LeaveRequest plus the Employee/LeaveType display fields a list row needs —
+            resolved via a same-schema join in LeaveRequestRepository, mirroring AttendanceWithEmployee.</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.Abstractions.LeaveRequestWithDetails.#ctor(HMS.Modules.HR.Domain.LeaveRequest,System.String,System.String,System.String)">
+            <summary>LeaveRequest plus the Employee/LeaveType display fields a list row needs —
+            resolved via a same-schema join in LeaveRequestRepository, mirroring AttendanceWithEmployee.</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.Abstractions.ILeaveRequestRepository.GetApprovedDaysAsync(System.Guid,System.Guid,System.Int32,System.Threading.CancellationToken)">
+            <summary>Sum of TotalDays for this employee+leave type's Approved requests whose
+            StartDate falls in the given calendar year — backs the leave-balance calculation.</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.Abstractions.ILeaveRequestRepository.CountPendingAsync(System.Threading.CancellationToken)">
+            <summary>Count of Pending requests across all employees — backs the HR dashboard.</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.Abstractions.ILeaveTypeRepository.GetActiveAsync(System.Threading.CancellationToken)">
+            <summary>Every active leave type — backs the leave-balance calculation (one row per
+            active leave type, per employee).</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Abstractions.IShiftAssignmentRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as IShiftRepository.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Abstractions.IShiftRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Abstractions.IShiftSwapRequestRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as IShiftAssignmentRepository.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Abstractions.IStaffAvailabilityRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as IWeeklyRosterRepository.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Abstractions.IWeeklyRosterRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as IShiftRepository/IShiftAssignmentRepository.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IAttendanceService">
+            <summary>
+            Public (not internal): AttendanceController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency (CS0051 otherwise). Interface and implementation share this file,
+            matching IShiftService/IEmployeeService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IEmployeeService">
+            <summary>
+            Public (not internal): EmployeesController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency (CS0051 otherwise). Interface and implementation share this file,
+            matching IShiftService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.IEmployeeService.GetByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>The rich "profile" read — resolves DepartmentName/DesignationName/
+            ReportingManagerName alongside the raw ids (see EmployeeResponse's remarks).</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.IEmployeeService.GetLeaveBalancesAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Per active LeaveType: max days, days used this calendar year (sum of
+            Approved LeaveRequests' TotalDays whose StartDate falls in the current year — the
+            server's UTC "now" year, no fiscal-year config), and days remaining. No separate
+            LeaveBalance table — computed on read every time, per the HR MVP spec.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IHrDashboardService">
+            <summary>
+            Public (not internal): HrDashboardController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency (CS0051 otherwise).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.HrDashboardService">
+            <summary>
+            A handful of independent count/group-by queries, not a single mega-query — correctness and
+            readability over micro-optimization for a dashboard endpoint, per the HR MVP spec.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.HRErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected HR-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text. One shared
+            class for the whole module (mirrors HMS.Modules.Masters.MastersErrorCodes) rather than a
+            per-entity {Entity}ErrorCodes class, since this module is expected to grow into several
+            roster-related entities (ShiftAssignment, WeeklyRoster, ...) that will all fail for the
+            same two reasons: not found, or a duplicate business code.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.ILeaveRequestService">
+            <summary>
+            Public (not internal): LeaveRequestsController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency (CS0051 otherwise). Interface and implementation share
+            this file, matching the module's other {Entity}Service.cs convention.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.ILeaveTypeService">
+            <summary>
+            Public (not internal): consumed both by LeaveTypesController (CS0051 otherwise) and by
+            EmployeeService's leave-balance calculation. Interface and implementation share this file,
+            matching the module's other {Entity}Service.cs convention.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Application.Mapping.EmployeeMappingExtensions.ToResponse(HMS.Modules.HR.Domain.Employee)">
+            <summary>Raw mapping — DepartmentName/DesignationName/ReportingManagerName are left
+            null. Used for paged list results; see EmployeeContracts.EmployeeResponse's remarks for
+            why enrichment is reserved for the single-record GetByIdAsync call.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Mapping.ShiftAssignmentMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at this scale — see docs/DecisionLog.md. Deliberately a flat,
+            direct mapping with no joined Shift/Staff/Department details (e.g. no ShiftName) —
+            none of those modules exist yet to join against, and denormalizing display fields
+            wasn't part of the Phase 2 spec.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Mapping.ShiftMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at this scale — see docs/DecisionLog.md.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Mapping.ShiftSwapRequestMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at this scale — see docs/DecisionLog.md.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Mapping.StaffAvailabilityMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at this scale — see docs/DecisionLog.md.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Mapping.WeeklyRosterMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at this scale — see docs/DecisionLog.md.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IShiftAssignmentService">
+            <summary>
+            Public (not internal): ShiftAssignmentsController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051). Interface and implementation share this file, matching IShiftService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IShiftService">
+            <summary>
+            Public (not internal): ShiftsController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as
+            a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051). Mirrors HMS.Modules.Masters.IWarehouseService, which keeps the interface and
+            implementation in the same file rather than splitting them (Masters' convention, used
+            here as the primary CRUD reference).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IShiftSwapRequestService">
+            <summary>
+            Public (not internal): ShiftSwapRequestsController — which ASP.NET Core requires to be
+            a public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051). Interface and implementation share this file, matching IShiftService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IStaffAvailabilityService">
+            <summary>
+            Public (not internal): StaffAvailabilityController — which ASP.NET Core requires to be
+            a public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051). Interface and implementation share this file, matching IShiftService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.RejectLeaveRequestRequestValidator">
+            <summary>A rejection reason is required, per the HR MVP spec — the one meaningful
+            difference from ApproveLeaveRequestRequest, where a note is optional.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.CreateShiftAssignmentRequestValidator">
+            <summary>
+            Only the four required fields — StaffId, DepartmentId, ShiftId, RosterDate — per the
+            Phase 2 spec. No overlap/leave/holiday/weekly-off checks; those are later phases.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.CreateSwapRequestValidator">
+            <summary>
+            Only the six required fields per the Phase 5 spec — RequestedByStaffId,
+            RequestedToStaffId, CurrentShiftAssignmentId, RequestedShiftAssignmentId, Status,
+            RequestedDate. Remarks is optional. No approval workflow validation, no conflict
+            detection — those are explicitly out of scope. Existence of the referenced
+            ShiftAssignments is checked in ShiftSwapRequestService, not here (this validator only
+            checks presence, matching the malformed-request-vs-business-rule split used everywhere
+            else in this codebase).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.CreateShiftRequestValidator">
+            <summary>
+            Only what the spec requires — Code, Name, StartTime, EndTime — plus one cross-field
+            consistency check added later: IsNightShift must agree with whether the shift actually
+            crosses midnight (EndTime earlier than StartTime). Previously IsNightShift was pure,
+            unchecked caller-supplied metadata, which let a shift be saved with a night/day flag
+            that contradicted its own timing (in either direction — a 9am–5pm shift saved as
+            "night", or an actual 22:00–06:00 shift saved as not-night, e.g. by toggling the flag
+            on Edit without changing the times). This only rejects a self-contradictory
+            combination — it still doesn't derive or auto-set the flag.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.CreateStaffAvailabilityRequestValidator">
+            <summary>
+            The four required fields — StaffId, StartDate, EndDate, AvailabilityStatus — per the
+            Phase 4 spec, plus one cross-field consistency check added later: EndDate must not be
+            before StartDate (a date range that ends before it starts is never meaningful, unlike
+            overlap/leave/holiday checks, which are genuinely optional business rules and remain
+            out of scope). Reason is optional.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.CreateWeeklyRosterRequestValidator">
+            <summary>
+            Only the two required fields — WeekStartDate, DepartmentId — per the Phase 3 spec. No
+            publish-state validation, no per-department-per-week uniqueness check; both explicitly
+            out of scope for this phase.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.CopyWeeklyRosterRequestValidator">
+            <summary>Phase 6 — the only field on the copy request, and the only thing that needs
+            validating: the caller must explicitly choose a destination week.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.Validators.MonthlyWeeklyRosterQueryValidator">
+            <summary>GET /weekly-rosters/monthly's query. Year/Month bounds are DateOnly's own
+            supported range and the calendar's actual month count — a structural fact, not an
+            invented business rule — not a "which months are valid for scheduling" decision.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Application.IWeeklyRosterService">
+            <summary>
+            Public (not internal): WeeklyRostersController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051). Interface and implementation share this file, matching IShiftService.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.HR.Contracts.CheckInRequest.CheckInTime">
+            <summary>Defaults to the server's current UTC time when omitted.</summary>
+        </member>
+        <member name="P:HMS.Modules.HR.Contracts.CheckOutRequest.CheckOutTime">
+            <summary>Defaults to the server's current UTC time when omitted.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.AttendanceResponse">
+            <summary>EmployeeName/EmployeeCode are a same-schema join enrichment (Attendance and
+            Employee both live in "hr" — see Attendance's own remarks) included on every row, unlike
+            EmployeeResponse's cross-module Department/Designation name enrichment which is reserved
+            for the single-record read.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.EmployeeResponse">
+            <summary>
+            One shape for both the paged list and the single-record "profile" GET. DepartmentName/
+            DesignationName/ReportingManagerName are populated only by GetByIdAsync (a single cheap
+            extra lookup each against Masters' public services / this module's own repository) — left
+            null on paged list results, where enriching every row would mean N extra cross-module
+            calls per page. The frontend already needs Department/Designation dropdown data for list
+            filters, so resolving names client-side for the list view is a non-issue; see
+            docs/DecisionLog.md ADR-036 for the reasoning.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.EmployeeListQuery">
+            <summary>Search spans EmployeeCode/FirstName/LastName/Email (see EmployeeRepository).</summary>
+        </member>
+        <member name="P:HMS.Modules.HR.Contracts.EmployeeLeaveBalanceResponse.RemainingDays">
+            <summary>Null when <see cref="P:HMS.Modules.HR.Contracts.EmployeeLeaveBalanceResponse.MaxDaysPerYear"/> is null (unlimited) — there is no
+            meaningful "remaining" figure for an unlimited leave type.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.HrDashboardResponse">
+            <summary>
+            GET /api/v1/hr/dashboard's response shape. PresentToday folds Late and HalfDay attendance
+            rows into the headline "present" count (a Late/HalfDay employee did still show up) — see
+            docs/DecisionLog.md ADR-036 for why, and AbsentToday/OnLeaveToday are each their own exact
+            Attendance.Status count for the current UTC calendar date.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.AssignmentStatus">
+            <summary>
+            Shared vocabulary for the HR module — public because these values cross the HTTP
+            boundary (request/response fields) and Swagger needs to describe them, but also used
+            directly by Domain/Application within this same assembly (mirrors
+            HMS.Modules.Patients.Contracts.PatientEnums — see docs/DecisionLog.md for why enums are
+            the one type Domain is allowed to share with Contracts).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.AvailabilityStatus">
+            <summary>
+            Just the binary availability state — "Available" or "Unavailable". Anything more
+            specific (Conference, Training, Medical Leave, ...) is free text in
+            StaffAvailability.Reason, not a status value.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.SwapRequestStatus">
+            <summary>
+            The lifecycle state of a shift swap request. No logic is attached to any of these
+            values — nothing here enforces valid transitions or reacts to a status change; per the
+            Phase 5 spec, approval workflow is explicitly out of scope and Status is simply stored.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.Gender">
+            <summary>Employee's self-identified gender — a closed enum (not a Masters lookup table)
+            per the HR MVP spec.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.EmployeeType">
+            <summary>The nature of an employee's engagement with the hospital.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.EmploymentStatus">
+            <summary>
+            A richer HR-domain lifecycle status, independent of Employee.IsActive (the generic
+            Activate/Deactivate toggle every master-ish entity in this codebase carries). An employee
+            can be IsActive=true and EmploymentStatus=OnLeave at the same time — the two are
+            deliberately orthogonal, per the HR MVP spec.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.AttendanceStatus">
+            <summary>A single day's attendance outcome for one employee.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.LeaveRequestStatus">
+            <summary>The lifecycle state of a leave request.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.CreateLeaveRequestRequest">
+            <summary>TotalDays is intentionally absent — always computed server-side from StartDate/
+            EndDate (see LeaveRequest.Create), never trusted from the caller.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Contracts.LeaveRequestResponse">
+            <summary>EmployeeName/LeaveTypeName are a same-schema join enrichment (LeaveRequest,
+            Employee, and LeaveType all live in "hr") included on every row, mirroring
+            AttendanceResponse's EmployeeName/EmployeeCode.</summary>
+        </member>
+        <member name="P:HMS.Modules.HR.Contracts.LeaveRequestListQuery.DateFrom">
+            <summary>Filters on StartDate falling within [DateFrom, DateTo].</summary>
+        </member>
+        <member name="P:HMS.Modules.HR.Contracts.CreateLeaveTypeRequest.MaxDaysPerYear">
+            <summary>Null means unlimited.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.Attendance">
+            <summary>
+            One employee's attendance outcome for one calendar day — the aggregate root backing both
+            the check-in/check-out flow and manual corrections (marking Absent/OnLeave without ever
+            checking in). EmployeeId is a real, same-schema FK (see AttendanceConfiguration) — unlike
+            Employee.DepartmentId/DesignationId, Attendance and Employee both live in the "hr" schema,
+            so a real database FK is used per docs/DecisionLog.md ADR-036. Enforces no domain
+            invariants around the check-in/check-out state machine itself (AlreadyCheckedIn/
+            NotCheckedIn/AlreadyCheckedOut) — those are Application-layer checks in AttendanceService,
+            mirroring every other cross-cutting business rule in this module; Domain only guards that
+            the mutation methods themselves apply the values given to them.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Domain.Attendance.Update(System.Nullable{System.DateTime},System.Nullable{System.DateTime},HMS.Modules.HR.Contracts.AttendanceStatus,System.String,System.Nullable{System.Guid})">
+            <summary>Manual correction (full replace of the mutable fields) — used by the plain
+            PUT endpoint, e.g. to mark Absent/OnLeave without ever checking in.</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Domain.Attendance.RecordCheckIn(System.DateTime,System.Nullable{System.Guid})">
+            <summary>Sets CheckInTime only — AttendanceService is responsible for the
+            AlreadyCheckedIn guard (this method itself has no invariant against overwriting an
+            already-set CheckInTime).</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Domain.Attendance.RecordCheckOut(System.DateTime,System.Nullable{System.Guid})">
+            <summary>Sets CheckOutTime only — AttendanceService is responsible for the
+            NotCheckedIn/AlreadyCheckedOut guards.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.Employee">
+             <summary>
+             A hospital staff member — the aggregate root for the Hospital HR Management MVP. Distinct
+             from both <c>identity.users</c> (a portal login) and <c>Masters.Consultant</c> (a doctor
+             name used for patient visits) — see docs/DecisionLog.md. Optionally links to an
+             <c>identity.users</c> row via <see cref="P:HMS.Modules.HR.Domain.Employee.UserId"/> for employees who also have a portal
+             login; never required.
+            
+             DepartmentId/DesignationId are plain Guid references with no database FK (Department lives
+             in Masters' schema, Designation likewise) — existence is checked only at the
+             Application/EmployeeService layer against Masters' public IDepartmentService/
+             IDesignationService, mirroring ShiftAssignment.DepartmentId's established cross-module
+             convention. ReportingManagerId is a same-table self-reference and does get a real database
+             FK (see EmployeeConfiguration) — Restrict delete, and an employee may not report to
+             themselves (checked in EmployeeService, not here — Domain accepts whatever value the
+             service already validated, same as every other cross-aggregate reference in this module).
+            
+             IsActive is the generic Activate/Deactivate toggle every master-ish entity in this codebase
+             carries; EmploymentStatus is a separate, richer HR-domain lifecycle value. The two are
+             deliberately orthogonal — an employee can be IsActive=true and EmploymentStatus=OnLeave at
+             the same time.
+             </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Domain.Employee.Activate(System.Nullable{System.Guid})">
+            <summary>The generic Activate/Deactivate toggle — independent of EmploymentStatus (see
+            class remarks). Idempotent: calling Activate on an already-active employee is a no-op
+            beyond touching the audit columns, matching Identity's User.Activate convention.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.LeaveRequest">
+            <summary>
+            An employee's request for time off — the aggregate root for the leave workflow. EmployeeId/
+            LeaveTypeId are real, same-schema FKs (both live in "hr" — see Attendance's remarks for why
+            this differs from Employee's cross-module Department/Designation references).
+            TotalDays is computed once, at creation, as an inclusive day count between StartDate and
+            EndDate — never trusted from the caller (see LeaveRequestService.CreateAsync). Approve/
+            Reject/Cancel are only valid from Pending; LeaveRequestService checks Status before calling
+            any of these (Domain trusts the caller already validated the transition, same convention as
+            every other cross-cutting business rule in this module).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Domain.LeaveRequest.Approve(System.Nullable{System.Guid},System.String)">
+            <summary>Only valid from Pending — LeaveRequestService checks Status before calling
+            this (see class remarks).</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Domain.LeaveRequest.Reject(System.Nullable{System.Guid},System.String)">
+            <summary>Only valid from Pending. LeaveRequestService's request-contract validator
+            requires a non-empty reason for a rejection; Domain itself doesn't re-enforce that
+            (mirrors how every other request-shape rule in this codebase lives at the validator
+            layer, not in Domain).</summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Domain.LeaveRequest.Cancel(System.Nullable{System.Guid})">
+            <summary>Only valid from Pending.</summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.LeaveType">
+            <summary>
+            A category of leave an employee can request (e.g. "Casual Leave", "Sick Leave") — a small
+            HR-specific master, kept inside this module (not Masters) since it's not reference data
+            shared by any other module, per docs/DecisionLog.md ADR-036. MaxDaysPerYear null means
+            unlimited; EmployeeService's leave-balance calculation treats that case specially (no
+            meaningful "remaining" figure).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.Shift">
+             <summary>
+             A recurring daily work-shift definition (e.g. "Morning, 08:00-16:00") used to build
+             staff duty rosters — the aggregate root for Phase 1 of Shift Management. Other roster
+             aggregates (ShiftAssignment, WeeklyRoster, StaffAvailability, ShiftSwapRequest) are
+             out of scope for this phase.
+            
+             StartTime/EndTime are time-of-day (TimeOnly), not tied to a specific calendar date —
+             a Shift is a reusable definition, not a scheduled occurrence. EndTime may be earlier
+             than StartTime for a shift that crosses midnight; IsNightShift is caller-supplied
+             (matches the spec's "no extra business rules" — it is not derived/validated here).
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.ShiftAssignment">
+            <summary>
+            Records which staff member is assigned to which shift on which date — the aggregate
+            root for Phase 2 of Shift Management. StaffId/DepartmentId are plain Guid references
+            with no backing entity yet (no Staff/Department module exists) and are validated only
+            for presence, at the Application/validator layer — same as ShiftId's presence check.
+            ShiftId's *existence* (does this Shift actually exist) is a separate, additional check
+            ShiftAssignmentService performs against IShiftRepository; this entity itself only
+            stores the id, per docs/DecisionLog.md's ID-reference convention for cross-aggregate
+            references (mirrors User.RoleId referencing Role by id, not by navigation).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.ShiftSwapRequest">
+            <summary>
+            Records a request from one staff member to exchange a shift with another — the
+            aggregate root for Phase 5. CRUD only: no approval workflow, no notification, and no
+            automatic assignment changes happen as a side effect of any state here — Status is
+            simply stored, per the Phase 5 spec. CurrentShiftAssignmentId/RequestedShiftAssignmentId
+            are validated for existence by ShiftSwapRequestService (application-layer referential
+            validation only), not enforced as a database foreign key — no new FK relationship was
+            requested for this phase.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.StaffAvailability">
+            <summary>
+            Records whether a staff member is available or unavailable during a date range — the
+            aggregate root for Phase 4. Purely informational: nothing yet reads this to block or
+            validate ShiftAssignments (see docs/DecisionLog.md — that belongs to a future phase).
+            AvailabilityStatus is just the binary Available/Unavailable state; anything more
+            specific (Conference, Training, Medical Leave, ...) belongs in Reason, not the status.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Domain.WeeklyRoster">
+            <summary>
+            The header record for one department's roster for one week — the aggregate root for
+            Phase 3. Deliberately just a header: it does not generate, store, or reference
+            ShiftAssignments — assigning staff to shifts on dates remains ShiftAssignment's sole
+            responsibility (see docs/DecisionLog.md). Publish (Phase 6) is the one minimal action
+            beyond plain CRUD — it only flips Published/PublishedDate, idempotently; nothing else
+            reacts to it, no state-machine rules, no side effects on ShiftAssignments.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.AttendanceController">
+            <summary>
+            Daily attendance tracking (check-in/check-out plus manual corrections) for the Hospital HR
+            Management MVP — see docs/DecisionLog.md ADR-036.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.AttendanceController.Create(HMS.Modules.HR.Contracts.CreateAttendanceRequest,System.Threading.CancellationToken)">
+            <summary>Creates an attendance record directly (manual correction — e.g. marking Absent/OnLeave without a check-in).</summary>
+            <response code="201">The attendance record was created.</response>
+            <response code="400">The request failed validation, the employee is invalid, or a record already exists for that employee/date.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.AttendanceController.GetPaged(HMS.Modules.HR.Contracts.AttendanceListQuery,System.Threading.CancellationToken)">
+            <summary>Lists attendance records with paging, date-range/employee/department/status filtering.</summary>
+            <response code="200">A page of attendance records.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.AttendanceController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single attendance record by id.</summary>
+            <response code="200">The attendance record was found.</response>
+            <response code="404">No attendance record was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.AttendanceController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateAttendanceRequest,System.Threading.CancellationToken)">
+            <summary>Updates an attendance record directly (manual correction).</summary>
+            <response code="200">The attendance record was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No attendance record was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.AttendanceController.CheckIn(HMS.Modules.HR.Contracts.CheckInRequest,System.Threading.CancellationToken)">
+            <summary>Checks an employee in for today — creates or updates today's row, defaults CheckInTime to now, sets Status to Present on a fresh row.</summary>
+            <response code="200">The check-in was recorded.</response>
+            <response code="400">The employee is invalid, or they've already checked in today.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.AttendanceController.CheckOut(HMS.Modules.HR.Contracts.CheckOutRequest,System.Threading.CancellationToken)">
+            <summary>Checks an employee out for today.</summary>
+            <response code="200">The check-out was recorded.</response>
+            <response code="400">The employee is invalid, hasn't checked in yet, or has already checked out today.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.EmployeesController">
+            <summary>
+            Employee master CRUD for the Hospital HR Management MVP — see docs/DecisionLog.md ADR-036
+            for the Employee/identity.users/Masters.Consultant separation this entity implements.
+            "Actor" is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId — matches
+            every other module's controllers.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.Create(HMS.Modules.HR.Contracts.CreateEmployeeRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new employee.</summary>
+            <response code="201">The employee was created.</response>
+            <response code="400">The request failed validation, or a reference (Department/Designation/ReportingManager/User) is invalid.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.GetPaged(HMS.Modules.HR.Contracts.EmployeeListQuery,System.Threading.CancellationToken)">
+            <summary>Lists employees with paging, search (EmployeeCode/FirstName/LastName/Email), sorting, and filtering (Department/Designation/EmployeeType/EmploymentStatus/IsActive).</summary>
+            <response code="200">A page of employees.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single employee's profile by id — includes resolved Department/Designation/ReportingManager names.</summary>
+            <response code="200">The employee was found.</response>
+            <response code="404">No employee was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateEmployeeRequest,System.Threading.CancellationToken)">
+            <summary>Updates an employee.</summary>
+            <response code="200">The employee was updated.</response>
+            <response code="400">The request failed validation, or a reference is invalid.</response>
+            <response code="404">No employee was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes an employee.</summary>
+            <response code="204">The employee was deleted.</response>
+            <response code="404">No employee was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.Activate(System.Guid,System.Threading.CancellationToken)">
+            <summary>Activates an employee (the generic IsActive toggle — independent of EmploymentStatus).</summary>
+            <response code="200">The employee is now active.</response>
+            <response code="404">No employee was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.Deactivate(System.Guid,System.Threading.CancellationToken)">
+            <summary>Deactivates an employee (the generic IsActive toggle — independent of EmploymentStatus).</summary>
+            <response code="200">The employee is now inactive.</response>
+            <response code="404">No employee was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.EmployeesController.GetLeaveBalances(System.Guid,System.Threading.CancellationToken)">
+            <summary>Per active LeaveType: max days/year, days used this calendar year, days remaining.</summary>
+            <response code="200">The employee's current leave balances.</response>
+            <response code="404">No employee was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.HrDashboardController">
+            <summary>
+            The Hospital HR Management MVP's dashboard — a single aggregate view for the HR landing
+            page (headcount, today's attendance, pending leave, expiring staff documents). See
+            docs/DecisionLog.md ADR-036.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.HrDashboardController.Get(System.Threading.CancellationToken)">
+            <summary>Gets the current HR dashboard snapshot.</summary>
+            <response code="200">The current dashboard snapshot.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.LeaveRequestsController">
+            <summary>
+            Employee leave request workflow (submit, approve, reject, cancel) for the Hospital HR
+            Management MVP — see docs/DecisionLog.md ADR-036.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveRequestsController.Create(HMS.Modules.HR.Contracts.CreateLeaveRequestRequest,System.Threading.CancellationToken)">
+            <summary>Submits a new leave request (starts as Pending).</summary>
+            <response code="201">The leave request was created.</response>
+            <response code="400">The request failed validation, or the employee/leave type is invalid.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveRequestsController.GetPaged(HMS.Modules.HR.Contracts.LeaveRequestListQuery,System.Threading.CancellationToken)">
+            <summary>Lists leave requests with paging, filtering by employee/status/leave type/date-range.</summary>
+            <response code="200">A page of leave requests.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveRequestsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single leave request by id.</summary>
+            <response code="200">The leave request was found.</response>
+            <response code="404">No leave request was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveRequestsController.Approve(System.Guid,HMS.Modules.HR.Contracts.ApproveLeaveRequestRequest,System.Threading.CancellationToken)">
+            <summary>Approves a Pending leave request.</summary>
+            <response code="200">The leave request was approved.</response>
+            <response code="400">The leave request is not Pending.</response>
+            <response code="404">No leave request was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveRequestsController.Reject(System.Guid,HMS.Modules.HR.Contracts.RejectLeaveRequestRequest,System.Threading.CancellationToken)">
+            <summary>Rejects a Pending leave request — a reason is required.</summary>
+            <response code="200">The leave request was rejected.</response>
+            <response code="400">The request failed validation (a reason is required), or the leave request is not Pending.</response>
+            <response code="404">No leave request was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveRequestsController.Cancel(System.Guid,System.Threading.CancellationToken)">
+            <summary>Cancels a Pending leave request.</summary>
+            <response code="200">The leave request was cancelled.</response>
+            <response code="400">The leave request is not Pending.</response>
+            <response code="404">No leave request was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.LeaveTypesController">
+            <summary>
+            Leave type master CRUD — small, HR-specific reference data (not shared by any other
+            module, so it stays inside HR rather than Masters — see docs/DecisionLog.md ADR-036).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveTypesController.Create(HMS.Modules.HR.Contracts.CreateLeaveTypeRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new leave type.</summary>
+            <response code="201">The leave type was created.</response>
+            <response code="400">The request failed validation, or the code is already in use.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveTypesController.GetPaged(HMS.Modules.HR.Contracts.LeaveTypeListQuery,System.Threading.CancellationToken)">
+            <summary>Lists leave types with paging, search, sorting, and active-status filtering.</summary>
+            <response code="200">A page of leave types.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveTypesController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single leave type by id.</summary>
+            <response code="200">The leave type was found.</response>
+            <response code="404">No leave type was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveTypesController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateLeaveTypeRequest,System.Threading.CancellationToken)">
+            <summary>Updates a leave type.</summary>
+            <response code="200">The leave type was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No leave type was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.LeaveTypesController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a leave type.</summary>
+            <response code="204">The leave type was deleted.</response>
+            <response code="404">No leave type was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.ShiftAssignmentsController">
+            <summary>
+            Shift Assignment CRUD, per the Shift Management Phase 2 spec. "Actor" (created/updated/
+            deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId —
+            matches ShiftsController/UsersController.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftAssignmentsController.Create(HMS.Modules.HR.Contracts.CreateShiftAssignmentRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new shift assignment.</summary>
+            <response code="201">The shift assignment was created.</response>
+            <response code="400">The request failed validation, or ShiftId does not reference an existing shift.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftAssignmentsController.GetPaged(HMS.Modules.HR.Contracts.ShiftAssignmentListQuery,System.Threading.CancellationToken)">
+            <summary>Lists shift assignments with paging, search (Remarks), and sorting.</summary>
+            <response code="200">A page of shift assignments.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftAssignmentsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single shift assignment by id.</summary>
+            <response code="200">The shift assignment was found.</response>
+            <response code="404">No shift assignment was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftAssignmentsController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateShiftAssignmentRequest,System.Threading.CancellationToken)">
+            <summary>Updates a shift assignment.</summary>
+            <response code="200">The shift assignment was updated.</response>
+            <response code="400">The request failed validation, or ShiftId does not reference an existing shift.</response>
+            <response code="404">No shift assignment was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftAssignmentsController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a shift assignment.</summary>
+            <response code="204">The shift assignment was deleted.</response>
+            <response code="404">No shift assignment was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.ShiftsController">
+            <summary>
+            Shift master CRUD, per the Shift Management Phase 1 spec. "Actor" (created/updated/
+            deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId —
+            matches UsersController/WarehousesController.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftsController.Create(HMS.Modules.HR.Contracts.CreateShiftRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new shift.</summary>
+            <response code="201">The shift was created.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="409">A shift with the given code already exists.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftsController.GetPaged(HMS.Modules.HR.Contracts.ShiftListQuery,System.Threading.CancellationToken)">
+            <summary>Lists shifts with paging, search, sorting, and active-status filtering.</summary>
+            <response code="200">A page of shifts.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single shift by id.</summary>
+            <response code="200">The shift was found.</response>
+            <response code="404">No shift was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftsController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateShiftRequest,System.Threading.CancellationToken)">
+            <summary>Updates a shift.</summary>
+            <response code="200">The shift was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No shift was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftsController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a shift.</summary>
+            <response code="204">The shift was deleted.</response>
+            <response code="404">No shift was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.ShiftSwapRequestsController">
+            <summary>
+            Shift Swap Request CRUD, per the Phase 5 spec. No approval workflow, no notifications,
+            no automatic assignment changes — Status is simply stored. "Actor" (created/updated/
+            deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId —
+            matches ShiftsController.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftSwapRequestsController.Create(HMS.Modules.HR.Contracts.CreateSwapRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new shift swap request.</summary>
+            <response code="201">The shift swap request was created.</response>
+            <response code="400">The request failed validation, or a referenced shift assignment does not exist.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftSwapRequestsController.GetPaged(HMS.Modules.HR.Contracts.SwapRequestListQuery,System.Threading.CancellationToken)">
+            <summary>Lists shift swap requests with paging, search (Remarks), and sorting.</summary>
+            <response code="200">A page of shift swap requests.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftSwapRequestsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single shift swap request by id.</summary>
+            <response code="200">The shift swap request was found.</response>
+            <response code="404">No shift swap request was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftSwapRequestsController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateSwapRequest,System.Threading.CancellationToken)">
+            <summary>Updates a shift swap request.</summary>
+            <response code="200">The shift swap request was updated.</response>
+            <response code="400">The request failed validation, or a referenced shift assignment does not exist.</response>
+            <response code="404">No shift swap request was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.ShiftSwapRequestsController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a shift swap request.</summary>
+            <response code="204">The shift swap request was deleted.</response>
+            <response code="404">No shift swap request was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.StaffAvailabilityController">
+            <summary>
+            Staff Availability CRUD, per the Shift Management Phase 4 spec. Purely informational —
+            nothing here reads or enforces this data against ShiftAssignments yet. "Actor"
+            (created/updated/deleted-by) is read from the caller's JWT via
+            ClaimsPrincipalExtensions.GetUserId — matches ShiftsController. Singular route
+            (staff-availability, not -availabilities) per spec.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.StaffAvailabilityController.Create(HMS.Modules.HR.Contracts.CreateStaffAvailabilityRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new staff availability record.</summary>
+            <response code="201">The staff availability record was created.</response>
+            <response code="400">The request failed validation.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.StaffAvailabilityController.GetPaged(HMS.Modules.HR.Contracts.StaffAvailabilityListQuery,System.Threading.CancellationToken)">
+            <summary>Lists staff availability records with paging, search (Reason), and sorting.</summary>
+            <response code="200">A page of staff availability records.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.StaffAvailabilityController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single staff availability record by id.</summary>
+            <response code="200">The staff availability record was found.</response>
+            <response code="404">No staff availability record was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.StaffAvailabilityController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateStaffAvailabilityRequest,System.Threading.CancellationToken)">
+            <summary>Updates a staff availability record.</summary>
+            <response code="200">The staff availability record was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No staff availability record was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.StaffAvailabilityController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a staff availability record.</summary>
+            <response code="204">The staff availability record was deleted.</response>
+            <response code="404">No staff availability record was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.Endpoints.WeeklyRostersController">
+            <summary>
+            Weekly Roster CRUD, per the Shift Management Phase 3 spec. Roster-header only — it does
+            not generate or reference ShiftAssignments. "Actor" (created/updated/deleted-by) is
+            read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId — matches ShiftsController.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.Create(HMS.Modules.HR.Contracts.CreateWeeklyRosterRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new weekly roster.</summary>
+            <response code="201">The weekly roster was created.</response>
+            <response code="400">The request failed validation.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.GetPaged(HMS.Modules.HR.Contracts.WeeklyRosterListQuery,System.Threading.CancellationToken)">
+            <summary>Lists weekly rosters with paging and sorting.</summary>
+            <response code="200">A page of weekly rosters.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.GetMonthly(HMS.Modules.HR.Contracts.MonthlyWeeklyRosterQuery,System.Threading.CancellationToken)">
+            <summary>Lists weekly rosters whose WeekStartDate falls within the given calendar
+            month — a read-only view over this same aggregate, not a separate resource.</summary>
+            <response code="200">A page of weekly rosters for the given month.</response>
+            <response code="400">Year/Month failed validation.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single weekly roster by id.</summary>
+            <response code="200">The weekly roster was found.</response>
+            <response code="404">No weekly roster was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.Update(System.Guid,HMS.Modules.HR.Contracts.UpdateWeeklyRosterRequest,System.Threading.CancellationToken)">
+            <summary>Updates a weekly roster.</summary>
+            <response code="200">The weekly roster was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No weekly roster was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a weekly roster.</summary>
+            <response code="204">The weekly roster was deleted.</response>
+            <response code="404">No weekly roster was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.Publish(System.Guid,System.Threading.CancellationToken)">
+            <summary>Publishes a weekly roster. Idempotent — publishing an already-published
+            roster is a no-op, not an error.</summary>
+            <response code="200">The weekly roster is published (whether it just became so, or already was).</response>
+            <response code="404">No weekly roster was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.HR.Endpoints.WeeklyRostersController.Copy(System.Guid,HMS.Modules.HR.Contracts.CopyWeeklyRosterRequest,System.Threading.CancellationToken)">
+            <summary>Duplicates a weekly roster's metadata (DepartmentId) onto a new, unpublished
+            roster for the caller-chosen target week. Does not copy ShiftAssignments.</summary>
+            <response code="201">The new weekly roster was created.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No source weekly roster was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.HR.HRModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration — mirrors HMS.Modules.Identity.IdentityModule. Registrations stay
+            inline in one file (not split into Service/Validator/Repository registration files like
+            HMS.Modules.Masters) since this module has a handful of entities so far; split out if/
+            when future phases make this file as large as Masters'.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Infrastructure.HRDbContext">
+            <summary>
+            Owns the "hr" PostgreSQL schema — staff scheduling data (Shift for Phase 1; future
+            phases add ShiftAssignment, WeeklyRoster, StaffAvailability, ShiftSwapRequest to this
+            same context). Per docs/DatabaseArchitecture.md §1, only this module's own code
+            constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.HR.Infrastructure.StaffDocumentOwnerExistenceChecker">
+            <summary>
+            Lets HMS.Modules.Documents validate that a Staff (Employee) owner id actually exists
+            before accepting an upload against it — see IDocumentOwnerExistenceChecker's remarks for
+            why this is a one-directional dependency (HR → Documents) rather than the other way
+            around, mirroring HMS.Modules.Patients.Infrastructure.PatientDocumentOwnerExistenceChecker.
+            Confirmed via docs/DecisionLog.md ADR-036: no existence checker was previously registered
+            for DocumentOwnerType.Staff, so uploads against it were never existence-validated before
+            this module's Employee entity existed.
+            </summary>
+        </member>
+    </members>
+</doc>

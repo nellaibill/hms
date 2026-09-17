@@ -1,0 +1,271 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.DischargeSummary</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.DischargeSummary.Application.Abstractions.IDischargeSummaryRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/Architecture.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Application.DischargeSummaryErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected DischargeSummary-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.DischargeSummary.Application.DischargeSummaryErrorCodes.InvalidAdmission">
+            <summary>The referenced Admission does not exist (IAdmissionService.GetByIdAsync
+            returned a failure).</summary>
+        </member>
+        <member name="F:HMS.Modules.DischargeSummary.Application.DischargeSummaryErrorCodes.AdmissionNotDischarged">
+            <summary>Create was attempted for an Admission whose Status isn't Discharged yet —
+            see docs/DecisionLog.md's creation-gate decision.</summary>
+        </member>
+        <member name="F:HMS.Modules.DischargeSummary.Application.DischargeSummaryErrorCodes.AlreadyExists">
+            <summary>A DischargeSummary already exists for this AdmissionId — one per admission,
+            enforced here (check-then-create) with a unique index as a backstop.</summary>
+        </member>
+        <member name="F:HMS.Modules.DischargeSummary.Application.DischargeSummaryErrorCodes.InvalidPatient">
+            <summary>The Admission's own PatientId does not resolve via IPatientService —
+            defense-in-depth (the patient could theoretically be soft-deleted after admission).</summary>
+        </member>
+        <member name="F:HMS.Modules.DischargeSummary.Application.DischargeSummaryErrorCodes.NotDraft">
+            <summary>Update was attempted while Status is already Finalized.</summary>
+        </member>
+        <member name="F:HMS.Modules.DischargeSummary.Application.DischargeSummaryErrorCodes.AlreadyFinalized">
+            <summary>Finalize was attempted while Status is already Finalized.</summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Application.DischargeSummaryService">
+            <summary>
+            Orchestrates DischargeSummary use cases: expected failures (not found, admission not
+            discharged, duplicate, already finalized) are returned as <see cref="T:HMS.Shared.Kernel.Result"/> failures,
+            never thrown — see docs/Architecture.md's exception handling strategy.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Application.IDischargeSummaryService">
+            <summary>
+            Public (not internal): DischargeSummariesController — which ASP.NET Core requires to be
+            public, with a public constructor, for controller discovery and DI activation — takes
+            this as a constructor dependency. A public constructor cannot have an internal parameter
+            type (CS0051), so this interface is the module's deliberate, narrow seam between its
+            public HTTP boundary and its otherwise-internal Application/Domain/Infrastructure layers.
+            Mirrors HMS.Modules.IPD.Application.IAdmissionService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.DischargeSummary.Application.IDischargeSummaryService.CreateDraftAsync(System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Creates a Draft for an already-Discharged admission. Fails with
+            DischargeSummaryErrorCodes.InvalidAdmission if the admission doesn't exist,
+            AdmissionNotDischarged if its Status isn't Discharged yet, or AlreadyExists if one
+            already exists for this AdmissionId.</summary>
+        </member>
+        <member name="M:HMS.Modules.DischargeSummary.Application.IDischargeSummaryService.UpdateAsync(System.Guid,HMS.Modules.DischargeSummary.Contracts.UpdateDischargeSummaryRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Full-record update of every clinical/examination/vitals/course/surgical/
+            advice field. Fails with DischargeSummaryErrorCodes.NotDraft once Finalized.</summary>
+        </member>
+        <member name="M:HMS.Modules.DischargeSummary.Application.IDischargeSummaryService.FinalizeAsync(System.Guid,HMS.Modules.DischargeSummary.Contracts.FinalizeDischargeSummaryRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Transitions Draft → Finalized, stamping FinalizedAt/FinalizedByUserId. Fails
+            with DischargeSummaryErrorCodes.AlreadyFinalized if already Finalized.</summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Application.Mapping.DischargeSummaryMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at MVP scale — see docs/DecisionLog.md ADR-003.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Application.Validators.FinalizeDischargeSummaryRequestValidator">
+            <summary>
+            Every field on FinalizeDischargeSummaryRequest is optional (docs/DecisionLog.md's
+            sign-off decision), so there are no RuleFor entries today — kept as a real validator
+            class (rather than omitted) so DischargeSummariesController.Finalize follows the same
+            validate-then-call-service shape as every other action, and so a future required field
+            has an obvious place to add its rule.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Application.Validators.UpdateDischargeSummaryRequestValidator">
+            <summary>
+            Server-side validation — the authoritative check — mirroring the max lengths enforced by
+            DischargeSummaryConfiguration and simple sanity ranges for the vitals fields. Every field
+            is optional (a doctor fills sections in over time before Finalize), so nothing here uses
+            NotEmpty.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Application.Validators.DischargeMedicationRequestValidator">
+            <summary>
+            Mirrors DischargeMedicationConfiguration's column max lengths. DrugName/Dose/Route are
+            the only required fields on a line — the four per-time-of-day quantities and
+            DurationDays default to 0 in the DTO if omitted, which is a legitimate (if unusual) line
+            (e.g. a "stop this drug" entry), so they're bounded to non-negative rather than required.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Contracts.DischargeMedicationRequest">
+            <summary>
+            One discharge medication line, as submitted on Update. The full list is replaced
+            wholesale each time (list-sync, no separate per-line CRUD) — see
+            DischargeSummary.ReplaceMedications.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Contracts.DischargeMedicationResponse">
+            <summary>One discharge medication line, as returned on Get/Update/Finalize.</summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Contracts.UpdateDischargeSummaryRequest">
+            <summary>
+            Full-record update — every clinical/examination/vitals/course/surgical/advice field,
+            submitted together on every PUT (matches the approved plan's MVP scope: no per-field
+            PATCH). Only allowed while Status is Draft; rejected once Finalized
+            (DischargeSummaryErrorCodes.NotDraft).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.DischargeSummary.Contracts.UpdateDischargeSummaryRequest.FinalDiagnosis">
+            <summary>Independently editable from its Create-time prefill (Admission.
+            FinalDiagnosis) — see docs/DecisionLog.md.</summary>
+        </member>
+        <member name="P:HMS.Modules.DischargeSummary.Contracts.UpdateDischargeSummaryRequest.BloodPressure">
+            <summary>Free-text, e.g. "130/80".</summary>
+        </member>
+        <member name="P:HMS.Modules.DischargeSummary.Contracts.UpdateDischargeSummaryRequest.Medications">
+            <summary>The full medication list — replaces whatever was there before in one call
+            (list-sync, no separate per-line CRUD). An empty list clears every medication line.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Contracts.FinalizeDischargeSummaryRequest">
+            <summary>
+            Sign-off captured once, at Finalize — not a multi-step approval workflow (see
+            docs/DecisionLog.md). All three fields are optional: a hospital that only ever fills in
+            "Prepared By" still gets a valid, finalized summary.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Contracts.DischargeSummaryResponse">
+            <summary>
+            Deliberately carries only this aggregate's own authored content — no live-joined
+            Patient/Admission display fields (name, UHID, ward/bed, consultant, etc.). Per the
+            approved plan, those are fetched separately by the frontend from
+            GET /api/v1/patients/{id} and GET /api/v1/ipd/admissions/{id} at render time, never
+            duplicated here.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.DischargeSummary.Contracts.DischargeSummaryResponse.FinalDiagnosis">
+            <summary>Pre-filled from Admission.FinalDiagnosis at Create time, independently
+            editable from that point — see docs/DecisionLog.md.</summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Contracts.DischargeSummaryStatus">
+            <summary>
+            Two states only, per the approved plan — the richer Prepared/Checked/Approved sign-off
+            pipeline is captured as a set of optional Guid fields stamped once at Finalize, not as a
+            multi-step workflow with its own states (see DischargeSummaryResponse's sign-off fields).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Contracts.FoodInstruction">
+            <summary>Whether a discharge medication line is taken before or after food.</summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.DischargeSummaryModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration/ModuleRegistration.cs — mirrors every other module's AddXModule.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Domain.DischargeMedication">
+            <summary>
+            One discharge medication line, always owned by exactly one DischargeSummary — a real,
+            same-schema DB foreign key (unlike AdmissionId/PatientId on the parent, which are
+            cross-module app-level Guids). DrugName is free text, not a Products/Masters catalog
+            reference — Pharmacy has no structured Prescription entity with dose/route/frequency
+            fields to source this from (confirmed at plan time), so this mirrors what's actually
+            printed on a discharge summary. The full list is replaced wholesale on every Update
+            (DischargeSummary.ReplaceMedications) — no separate per-line CRUD endpoints, matching the
+            approved plan's MVP scope.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Domain.DischargeSummary">
+            <summary>
+            The discharge summary aggregate root for one IPD admission. AdmissionId/PatientId are
+            bare Guids validated at the Application layer through IPD's/Patients' public service
+            interfaces — never a real cross-schema DB foreign key (docs/DatabaseArchitecture.md §7,
+            mirrors HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction's identical treatment of
+            PatientId/AdmissionId). Draft → Finalized is the only state transition; once Finalized,
+            the caller (DischargeSummaryService) is responsible for rejecting further updates — this
+            entity itself does not re-check its own Status before applying a mutation, same
+            convention as HMS.Modules.IPD.Domain.Admission.TransferBed/Discharge.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.DischargeSummary.Domain.DischargeSummary.FinalDiagnosis">
+            <summary>Pre-filled from Admission.FinalDiagnosis at <see cref="M:HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(System.Guid,System.Guid,System.String,System.Nullable{System.Guid})"/> time by the
+            caller (DischargeSummaryService) — independently editable from that point via
+            UpdateClinicalDetails, never re-read from Admission after creation.</summary>
+        </member>
+        <member name="P:HMS.Modules.DischargeSummary.Domain.DischargeSummary.CourseInHospital">
+            <summary>Single narrative field — the structured chronological-event alternative
+            needs richer IPD daily-event data that doesn't exist yet (deferred phase per the
+            approved plan).</summary>
+        </member>
+        <member name="F:HMS.Modules.DischargeSummary.Domain.DischargeSummary._medications">
+            <summary>1:many child, real DB FK (unlike AdmissionId/PatientId above) — see
+            DischargeMedication's own doc comment. Only ever loaded/replaced through this
+            aggregate (DischargeSummaryRepository.GetByIdAsync/GetByAdmissionIdAsync both
+            Include this navigation), same pattern as Patient.Allergies/EmergencyContacts.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.DischargeSummary.Domain.DischargeSummary.Create(System.Guid,System.Guid,System.String,System.Nullable{System.Guid})">
+            <summary>Caller (DischargeSummaryService) is responsible for confirming the admission
+            is Discharged and that no other DischargeSummary already exists for it before calling
+            this — see docs/DecisionLog.md.</summary>
+        </member>
+        <member name="M:HMS.Modules.DischargeSummary.Domain.DischargeSummary.UpdateClinicalDetails(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.Nullable{System.Int32},System.Nullable{System.Int32},System.Nullable{System.Decimal},System.Nullable{System.Int32},System.String,System.String,System.String,System.Nullable{System.DateTime},System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Nullable{System.Guid})">
+            <summary>Replaces every clinical/examination/vitals/course/surgical/advice field in
+            one call — the PUT endpoint is a full-record update, not per-field PATCH (matches the
+            approved plan's MVP scope). Caller (DischargeSummaryService) is responsible for
+            rejecting this call while Status isn't Draft — this entity does not re-check its own
+            Status, same convention as <see cref="M:HMS.Modules.DischargeSummary.Domain.DischargeSummary.Finalize(System.Nullable{System.Guid},System.Nullable{System.Guid},System.Nullable{System.Guid},System.DateTime,System.Nullable{System.Guid})"/> and
+            HMS.Modules.IPD.Domain.Admission.TransferBed/Discharge. Free-text fields are trimmed
+            and normalized to null when blank, so "cleared" and "never entered" read identically.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.DischargeSummary.Domain.DischargeSummary.ReplaceMedications(System.Collections.Generic.IEnumerable{HMS.Modules.DischargeSummary.Domain.DischargeMedication},System.Nullable{System.Guid})">
+            <summary>Fully replaces the medication list — delete-then-reinsert list-sync, no
+            separate per-line CRUD endpoints (matches the approved plan's MVP scope). Caller
+            (DischargeSummaryService) constructs each new DischargeMedication via
+            DischargeMedication.Create beforehand, already carrying this aggregate's Id and the
+            intended SortOrder. Caller is responsible for rejecting this call while Status isn't
+            Draft, same convention as UpdateClinicalDetails.</summary>
+        </member>
+        <member name="M:HMS.Modules.DischargeSummary.Domain.DischargeSummary.Finalize(System.Nullable{System.Guid},System.Nullable{System.Guid},System.Nullable{System.Guid},System.DateTime,System.Nullable{System.Guid})">
+            <summary>Caller (DischargeSummaryService) is responsible for rejecting this call while
+            already Finalized.</summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Endpoints.DischargeSummariesController">
+            <summary>
+            Base route is api/v1/discharge-summaries, but Create/GetByAdmission deliberately live
+            under api/v1/admissions/{admissionId}/discharge-summary instead (absolute route
+            overrides, per the approved plan's API section) — a discharge summary is always reached
+            starting from a specific admission for those two actions.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Infrastructure.Configurations.DischargeMedicationConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.DischargeSummary.Domain.DischargeMedication"/> to discharge_summary.discharge_medications.
+            Internal (not public) for the same CS0051 reason as DischargeSummaryConfiguration — the
+            entity is an internal domain type.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Infrastructure.Configurations.DischargeSummaryConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.DischargeSummary.Domain.DischargeSummary"/> to discharge_summary.discharge_summaries,
+            following the naming/PK/audit-column/soft-delete standards in
+            docs/DatabaseArchitecture.md. Internal (not public): the entity is an internal domain
+            type, so a public Configure(EntityTypeBuilder&lt;DischargeSummary&gt;) member would be a
+            CS0051 accessibility violation. EF Core's ApplyConfigurationsFromAssembly discovers and
+            invokes this via reflection regardless of the type's own visibility, so internal is
+            sufficient here.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.DischargeSummary.Infrastructure.DischargeSummaryDbContext">
+            <summary>
+            Owns the "discharge_summary" PostgreSQL schema. Per docs/DatabaseArchitecture.md §1,
+            only this module's own code constructs/migrates this context — no other module
+            references it.
+            </summary>
+        </member>
+    </members>
+</doc>

@@ -1,0 +1,396 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Billing</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Billing.Application.Abstractions.IInvoiceNumberGenerator">
+            <summary>
+            Generates the short, human-readable InvoiceNumber business identifier — distinct from
+            the entity's internal <c>Guid.CreateVersion7()</c> primary key. Implemented in
+            Infrastructure via a Postgres sequence, mirroring IPD's IAdmissionIdentifierGenerator.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Application.Abstractions.IInvoiceRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Application.Abstractions.IInvoiceRepository.GetByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Always includes Items — an Invoice is never meaningfully read without
+            its line items (mirrors Patients' IPatientRepository.GetByIdAsync + Registrations).</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Application.Abstractions.IInvoiceRepository.GetProcedureLineItemsPagedAsync(HMS.Modules.Billing.Contracts.ProcedureListQuery,System.Threading.CancellationToken)">
+            <summary>The Procedures List's backing query — one row per BillingType.Procedure
+            invoice line item, joined with its owning Invoice for patient display fields, paged/
+            filtered per ProcedureListQuery. See ProcedureLineItemRow's own doc comment for why
+            this returns a plain projection rather than the InvoiceLineItem/Invoice entities.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Application.Abstractions.ProcedureLineItemRow">
+            <summary>
+            One joined InvoiceLineItem+Invoice row, as returned by
+            IInvoiceRepository.GetProcedureLineItemsPagedAsync — the repository's own plain-scalar
+            projection (not the domain entities themselves, since InvoiceLineItem carries no navigation
+            back to its owning Invoice) that InvoiceService maps 1:1 into the public ProcedureListItem.
+            Mirrors HMS.Modules.Patients' OpdPatientListRow.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Application.Abstractions.ProcedureLineItemRow.#ctor(System.Guid,System.Guid,System.Guid,System.String,System.String,System.String,System.String,System.String,System.DateTime,HMS.Modules.Billing.Contracts.PaymentStatus,System.Decimal)">
+            <summary>
+            One joined InvoiceLineItem+Invoice row, as returned by
+            IInvoiceRepository.GetProcedureLineItemsPagedAsync — the repository's own plain-scalar
+            projection (not the domain entities themselves, since InvoiceLineItem carries no navigation
+            back to its owning Invoice) that InvoiceService maps 1:1 into the public ProcedureListItem.
+            Mirrors HMS.Modules.Patients' OpdPatientListRow.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Application.IInvoiceService">
+            <summary>
+            Public (not internal): InvoicesController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as
+            a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Application.IInvoiceService.GetRecentAsync(System.Int32,System.Threading.CancellationToken)">
+            <summary>The latest <paramref name="count"/> invoices (any patient), each composed with
+            its patient/visit context — backs the Patient Billing page's "Recent Patient Bills"
+            table. See RecentPatientBillResponse for what's included and how missing patient/visit
+            data is handled.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Application.IInvoiceService.GetProcedureLineItemsAsync(HMS.Modules.Billing.Contracts.ProcedureListQuery,System.Threading.CancellationToken)">
+            <summary>The Procedures List — every BillingType.Procedure invoice line item, paged/
+            filtered, with PaymentStatus doubling as this line's status column (there's no
+            dedicated procedure-order entity to base a richer status on — see
+            ProcedureListItem's own doc comment).</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.BillingType">
+            <summary>
+            Mirrors frontend/web/src/features/billing/types.ts's BILLING_TYPES — a category on a
+            line item, not a separate table per type. One Invoice/InvoiceLineItem shape covers every
+            category (see docs/DecisionLog.md's unified-invoice-engine ADR), matching the "single
+            billing/invoice engine" recommendation in docs/BusinessRequirementsAnalysis.md instead of
+            the four near-duplicate blocks the client's original brief described.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Billing.Contracts.BillingType.Injection">
+            <summary>Injections administered during a visit — no consultant/doctor involved, just a
+            priced service (see Masters' DiagnosticTestServiceType.Injection).</summary>
+        </member>
+        <member name="F:HMS.Modules.Billing.Contracts.BillingType.File">
+            <summary>File/documentation charges (General Blue File, ANC File…) — no consultant/
+            doctor involved, just a priced service (see Masters' DiagnosticTestServiceType.File).</summary>
+        </member>
+        <member name="F:HMS.Modules.Billing.Contracts.BillingType.Pharmacy">
+            <summary>A Pharmacy dispense (HMS.Modules.Pharmacy.Application.DispenseService) — the
+            one line item's UnitPrice is the dispense's total price (Quantity × Product.SellingPrice)
+            rather than a per-unit rate, because this record's own Quantity is `int` (see this
+            enum's own doc comment on the unified line-item shape) and a dispense's real quantity
+            is decimal (e.g. 150.5ml of a syrup) — see docs/DecisionLog.md ADR-028.</summary>
+        </member>
+        <member name="F:HMS.Modules.Billing.Contracts.BillingType.InpatientCharge">
+            <summary>One IPD AdmissionCharge ledger row (HMS.Modules.IPD.Application.
+            IPDBillingService.GenerateFinalBillAsync, called at discharge) — like Pharmacy, ServiceId
+            is already a full human-readable description ("BedCharge: Bed charge - 2026-09-09
+            (Highest room tariff)"), not a catalog id to resolve. Deliberately its own type rather
+            than reusing Laboratory/Radiology/Procedure/Consultation: this method's own
+            CreateAsync-time hook (below) treats BillingType.Laboratory as "create a new LabOrder"
+            — reusing it here would try to create a second, duplicate LabOrder for a charge whose
+            LabOrder already exists. See ADR-066.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.PaymentStatus">
+            <summary>Per-line-item status — an invoice's own overall status is derived (every item
+            Paid) rather than stored, matching the frontend's getOverallPaymentStatus.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.PaymentMethod">
+            <summary>How a payment was collected — not tied to Masters' PaymentMethod master data
+            (that catalog is for Supplier/Customer payment terms, a different concern); kept as a
+            small fixed enum here since front-desk collection methods don't need to be admin-editable
+            reference data the way tax rates or currencies do.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.CreateInvoiceLineItemRequest">
+            <summary>One priced line to create — mirrors frontend/web/src/features/billing/types.ts's
+            BillingItem, minus the fields the server derives (Id, PaymentStatus, Total).</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.CreateInvoiceLineItemRequest.DepartmentId">
+            <summary>Free-text department/consultant/service identifiers, not Masters-backed
+            Guid FKs — see Domain/InvoiceLineItem.cs for why.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.CreateInvoiceLineItemRequest.PackageId">
+            <summary>App-level reference into Masters' DiagnosticPackage — set for a package line,
+            null for a plain service line. See Domain/InvoiceLineItem.cs.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.CreateInvoiceRequest">
+            <summary>
+            Creates a whole invoice in one call — matches the UI's actual use case (a bill is
+            entered and saved as one transaction at the counter, not built up field-by-field against
+            a persisted draft), the same way PatientRegistration's Billing step and the standalone
+            OPD Billing Entry screen both work today against the mock store.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.CreateInvoiceRequest.VisitId">
+            <summary>References Patients' PatientRegistration.Id when a real encounter exists;
+            falls back to PatientId itself for flows with no registration concept yet (e.g. OPD
+            Billing Entry for a returning patient) — mirrors the frontend's own fallback.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.CreateInvoiceRequest.PatientName">
+            <summary>Snapshotted at creation, not a live join — see Domain/Invoice.cs.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.CreateInvoiceRequest.Payments">
+            <summary>Optional — when supplied, the whole invoice is paid in full at creation time
+            (every line item marked Paid, atomic with the invoice's own save). Null/empty means
+            save Pending, exactly like every invoice created before this field existed. Every row
+            together must add up to at least NetAmount; any excess is treated as change (not
+            persisted) — same whether it's one row (e.g. a single Cash row tendering more than
+            NetAmount) or several (e.g. part Upi, part Cash, with the excess coming back in Cash).
+            Once split across more than one row, only Cash may be the source of that excess — the
+            non-Cash rows alone can't add up to more than NetAmount, since a Card/Upi/BankTransfer
+            row can't be partially handed back at the counter. InvoiceService applies each row
+            against line items in order (Cash rows last, so any leftover always lands there) — a
+            Payment row still records against one line item each (see Domain/Payment.cs), so a
+            single tendered amount here may end up split across more than one Payment record, or
+            one line item's Total may end up covered by more than one row.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.CreateInvoicePaymentRequest">
+            <summary>One payment-method row at invoice-creation time — see
+            <see cref="P:HMS.Modules.Billing.Contracts.CreateInvoiceRequest.Payments"/> for why this is a list rather than reusing
+            RecordPaymentRequest per line item after the fact.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.CreateInvoicePaymentRequest.Amount">
+            <summary>How much was tendered via this method — unlike RecordPaymentRequest (which
+            always pays a line item's own Total), this is real user input, needed once more than
+            one row can exist for the same invoice.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.CreateInvoicePaymentRequest.ReferenceNumber">
+            <summary>Optional free-text transaction/reference number (UPI ref, card slip, bank
+            transfer UTR). See Domain/Payment.cs.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.InvoiceLineItemResponse.BilledConsultantId">
+            <summary>Same value as <see cref="P:HMS.Modules.Billing.Contracts.InvoiceLineItemResponse.ConsultantId"/> at creation, but survives payment
+            (unlike <see cref="P:HMS.Modules.Billing.Contracts.InvoiceLineItemResponse.ConsultantId"/>, which clears once paid — ADR-048) — for
+            per-consultant revenue reporting.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.InvoiceResponse.PaymentStatus">
+            <summary>Derived — Paid only once every line item is Paid, matching the frontend's
+            getOverallPaymentStatus so the ledger and the detail page never disagree.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.InvoiceListQuery">
+            <summary>Standard pagination/sort/search shape (docs/ApiStandards.md §6), plus the one
+            domain-specific filter the Ledger's toolbar offers.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.RecentBillConsultationResponse">
+            <summary>One department/consultant pairing on the visit behind a recent bill — mirrors
+            Patients' VisitConsultationResponse. Duplicated here (rather than referencing that type
+            directly) so RecentPatientBillResponse's shape stays entirely within Billing's own
+            Contracts, the same way PatientName/PatientUhid are snapshotted rather than referenced.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.RecentPatientBillResponse">
+             <summary>
+             One row of the "Recent Patient Bills" table on the Patient Billing page — the latest N
+             invoices, each composed with the demographic/visit context that lives in the Patients
+             module (Age/Gender/ContactNumber from Patient, RegistrationType/Consultants from
+             PatientVisit) via IPatientService/IPatientVisitService — the same in-process cross-module
+             composition InvoiceService.CreateAsync already uses to validate PatientId. No new data is
+             stored here; this is a read-only join over Billing + Patients' existing data.
+            
+             Age/Gender/ContactNumber/RegistrationType/Consultants come back null/empty (never an
+             error) when the source patient or visit record can no longer be resolved — e.g. an invoice
+             whose VisitId falls back to PatientId itself because no real PatientVisit was ever created
+             for it (see CreateInvoiceRequest.VisitId's own doc comment).
+             </summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Contracts.RecentPatientBillResponse.AppointmentDateTime">
+            <summary>The visit's own CreatedAt when a visit record was found; falls back to the
+            invoice's CreatedAt otherwise, so this column is always populated.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.ProcedureListItem">
+            <summary>
+            One BillingType.Procedure invoice line item — the Procedures List reads straight off
+            Billing's existing invoice line items rather than a dedicated procedure-order entity: there
+            is nothing else in the codebase to base a "procedure order" concept on (unlike Laboratory's
+            LabOrder), so PaymentStatus doubles as this line's status column. ConsultantId/DepartmentId
+            are typed as free-text (not Guid FKs) — see Domain/InvoiceLineItem.cs's own doc comment —
+            and ConsultantId here is deliberately sourced from InvoiceLineItem.BilledConsultantId, not
+            ConsultantId itself, since the latter is cleared once a line is paid (ADR-048) while
+            BilledConsultantId survives for reporting. In practice ServiceId/ConsultantId/DepartmentId
+            hold Masters Guids (ServiceBillingCard.tsx's Procedure Billing form picks a real
+            DiagnosticService/Consultant), so InvoiceService.GetProcedureLineItemsAsync additionally
+            resolves each into its own *Name field below — mirrors every other list item in this
+            codebase that denormalizes a display name alongside its id (e.g. OpdPatientListItem's
+            departmentId/departmentName) rather than replacing the id with the name.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Contracts.ProcedureListQuery">
+            <summary>DepartmentId/ConsultantId stay string (not Guid) to match InvoiceLineItem's own
+            free-text fields — see ProcedureListItem's doc comment.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Domain.InvoiceLineItemSpec">
+            <summary>One line to create, passed into <see cref="M:HMS.Modules.Billing.Domain.Invoice.Create(System.String,System.Guid,System.Guid,System.String,System.String,System.Collections.Generic.IReadOnlyList{HMS.Modules.Billing.Domain.InvoiceLineItemSpec},System.Nullable{System.Guid})"/> — the Application
+            layer's shape for a not-yet-persisted <see cref="T:HMS.Modules.Billing.Domain.InvoiceLineItem"/>. Internal like the
+            rest of Domain/Application (docs/DecisionLog.md ADR-006): Contracts' own
+            CreateInvoiceLineItemRequest is the public-facing equivalent InvoiceService maps from.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Domain.InvoiceLineItemSpec.#ctor(HMS.Modules.Billing.Contracts.BillingType,System.String,System.String,System.String,System.Nullable{System.Guid},System.Int32,System.Decimal,System.Decimal,System.Boolean,System.String)">
+            <summary>One line to create, passed into <see cref="M:HMS.Modules.Billing.Domain.Invoice.Create(System.String,System.Guid,System.Guid,System.String,System.String,System.Collections.Generic.IReadOnlyList{HMS.Modules.Billing.Domain.InvoiceLineItemSpec},System.Nullable{System.Guid})"/> — the Application
+            layer's shape for a not-yet-persisted <see cref="T:HMS.Modules.Billing.Domain.InvoiceLineItem"/>. Internal like the
+            rest of Domain/Application (docs/DecisionLog.md ADR-006): Contracts' own
+            CreateInvoiceLineItemRequest is the public-facing equivalent InvoiceService maps from.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Domain.Invoice">
+            <summary>
+            The bill for one visit — Reception &amp; Registration's Billing step and the standalone OPD
+            Billing Entry screen both create one of these per patient encounter. Patient name/UHID
+            are snapshotted at creation rather than a live join to Patients (see
+            frontend/web/src/features/billing/types.ts's identical rationale, and
+            docs/DecisionLog.md ADR-008 on why Billing stays out of Patient-edit's blast radius): an
+            invoice should keep showing who it was billed to even if the patient record is edited
+            later. Gross/discount/net totals are computed once at creation from the line items given
+            and stored, not recomputed on every read — a saved invoice is a settled transaction
+            record, not a live-recalculating view.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Domain.Invoice.PaymentStatus">
+            <summary>Derived, not stored — Paid only once every line item is Paid, matching
+            frontend/web/src/features/billing/billingCalculations.ts's getOverallPaymentStatus.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Domain.Invoice.Create(System.String,System.Guid,System.Guid,System.String,System.String,System.Collections.Generic.IReadOnlyList{HMS.Modules.Billing.Domain.InvoiceLineItemSpec},System.Nullable{System.Guid})">
+            <summary>Builds the invoice and every one of its line items in one call — matches the
+            UI's actual use case (a bill is entered and saved as one counter transaction, not
+            assembled incrementally against a persisted draft). Rejects an empty item list: an
+            invoice with nothing billed isn't a record worth keeping, mirroring
+            mockBillingStore.ts's saveBillingForPatient returning null for the same case —
+            enforced by InvoiceService/CreateInvoiceRequestValidator before this is ever called,
+            so Create itself can assume `items` is non-empty.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Domain.Invoice.MarkItemPaid(System.Guid,System.Nullable{System.Guid})">
+            <summary>Caller (InvoiceService) is responsible for creating the corresponding
+            Payment record and has already verified <paramref name="itemId"/> belongs to this
+            invoice and isn't already Paid.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Domain.Invoice.Void(System.String,System.Nullable{System.Guid})">
+            <summary>
+            Cancels the invoice — a mis-billed invoice can otherwise never be corrected, only
+            superseded by a second one, leaving the wrong one live forever. Deliberately not the
+            base Entity's SoftDelete: a voided invoice must stay visible/queryable (it's still a
+            real record for audit purposes), not disappear from every query like a deleted row.
+            Blocked once any payment has been recorded — reversing real collected money needs a
+            refund process, not a void, and no refund feature exists yet. Caller (InvoiceService)
+            has already checked both preconditions (not already voided, no paid items) so it can
+            return a proper Result.Failure instead of this throwing; the checks are repeated here
+            too since they're genuine invariants of a voided Invoice, not just HTTP-layer concerns.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Domain.InvoiceLineItem">
+            <summary>
+            One priced line on an <see cref="T:HMS.Modules.Billing.Domain.Invoice"/> — mirrors frontend/web/src/features/billing
+            /types.ts's BillingItem. <see cref="P:HMS.Modules.Billing.Domain.InvoiceLineItem.BillingType"/> is the category discriminator (a
+            unified shape covers Consultation/Radiology/Laboratory/Procedure, not four separate
+            tables — see docs/DecisionLog.md).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Domain.InvoiceLineItem.DepartmentId">
+            <summary>Free-text identifiers into the frontend's own billing reference catalog
+            (frontend/web/src/features/billing/billingCatalog.ts — department/consultant/service
+            names for consultation and per-category service pricing), not Masters-backed Guid
+            FKs. Billing pricing/staff catalogs are a separate concern from Masters' hospital-wide
+            department/consultant directory (used by Patient registration and IPD) and aren't
+            unified with it in this iteration — see docs/DecisionLog.md's Billing ADR.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Domain.InvoiceLineItem.BilledConsultantId">
+            <summary>Same value as <see cref="P:HMS.Modules.Billing.Domain.InvoiceLineItem.ConsultantId"/> at creation, but never cleared by
+            <see cref="M:HMS.Modules.Billing.Domain.InvoiceLineItem.MarkPaid(System.Nullable{System.Guid})"/> — a separate, reporting-only field so a Consultant Profit report
+            can still attribute revenue after payment, without reversing ADR-048's deliberate "no
+            longer currently assigned" behavior for <see cref="P:HMS.Modules.Billing.Domain.InvoiceLineItem.ConsultantId"/> itself.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Domain.InvoiceLineItem.PackageId">
+            <summary>App-level reference into Masters' DiagnosticPackage — set for a package line,
+            null for a plain service line. Unlike DepartmentId/ConsultantId/ServiceId above this is
+            a real Guid (Masters IDs are Guids, not the free-text billing-catalog identifiers those
+            three carry), but the convention is otherwise identical: no DB FK, no existence
+            validation at the Billing layer — Billing doesn't reach into Masters for this.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Domain.InvoiceLineItem.PaymentStatus">
+            <summary>Denormalized for fast ledger filtering — flipped to Paid by
+            <see cref="M:HMS.Modules.Billing.Domain.InvoiceLineItem.MarkPaid(System.Nullable{System.Guid})"/> when InvoiceService records a Payment against this line.</summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Domain.InvoiceLineItem.Total">
+            <summary>(Quantity × UnitPrice) − Discount, clamped at 0 — computed once at creation,
+            not recomputed on read, so a historical invoice's total can't drift if unit-price
+            catalogs change later.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Domain.InvoiceLineItem.MarkPaid(System.Nullable{System.Guid})">
+            <summary>Caller (InvoiceService) is responsible for creating the corresponding
+            Payment record — this only flips the denormalized status the ledger reads. Also
+            clears ConsultantId: once a line item is paid, it's a settled transaction record, not
+            an active assignment — a consultant shouldn't still read as "currently assigned" to a
+            patient's paid bill (ADR-048 in docs/DecisionLog.md). BilledConsultantId deliberately
+            does NOT get cleared here — see its own doc comment — so per-consultant reporting
+            still works after payment even though the "currently assigned" field no longer does.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Domain.Payment">
+            <summary>
+            One payment transaction recorded against an <see cref="T:HMS.Modules.Billing.Domain.InvoiceLineItem"/> — the real
+            receipt trail the mock store never had (it only flipped a line item's status with no
+            record of when/how/how-much was actually collected). CreatedAt/CreatedBy (from Entity)
+            are the paid-at timestamp and the staff member who recorded it; no separate fields are
+            needed for either.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Billing.Domain.Payment.ReferenceNumber">
+            <summary>Optional receptionist-entered transaction/reference number (UPI ref, card
+            slip, bank transfer UTR, etc.) — free text, not validated against any external
+            gateway. Null for cash or when the payer didn't provide one.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Endpoints.InvoicesController">
+            <summary>
+            Invoice CRUD plus payment recording. Every action requires "finance-billing.*" — unlike
+            Masters/Roles, where GETs stay at the baseline Hospital policy, an invoice is patient
+            financial data (docs/DecisionLog.md's authorization-gap ADRs), so even reads are gated —
+            matching RolesController's now-current end-to-end pattern rather than its original
+            GETs-are-baseline-only one.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.Create(HMS.Modules.Billing.Contracts.CreateInvoiceRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new invoice with its line items in one call.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.GetPaged(HMS.Modules.Billing.Contracts.InvoiceListQuery,System.Threading.CancellationToken)">
+            <summary>Lists invoices with paging, search, sorting, and payment-status filtering — the Unified Invoice Ledger.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single invoice by id, with its line items.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.GetRecent(System.Int32,System.Threading.CancellationToken)">
+            <summary>The latest bills across every patient, composed with patient/visit context
+            (age, gender, contact, registration type, consultant(s)) — backs the Patient Billing
+            page's "Recent Patient Bills" table. Gated by the same "finance-billing.view" permission
+            as every other read here, so visibility already follows whatever a Doctor/Receptionist/
+            Super Admin's assigned role grants — no role-specific filtering is hard-coded.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.GetByPatientId(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists every invoice for one patient, newest first — used by the patient detail page's Billing tab.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.GetProcedures(HMS.Modules.Billing.Contracts.ProcedureListQuery,System.Threading.CancellationToken)">
+            <summary>Lists BillingType.Procedure invoice line items, paged/filtered — backs the
+            OPD Procedures List tab. A separate, literal route (not a query-param mode switch on
+            GetPaged) since this operates at the line-item level, not the whole-invoice level
+            GetPaged/GetById/GetRecent all share.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.RecordPayment(System.Guid,System.Guid,HMS.Modules.Billing.Contracts.RecordPaymentRequest,System.Threading.CancellationToken)">
+            <summary>Records a payment against one line item, marking it Paid.</summary>
+        </member>
+        <member name="M:HMS.Modules.Billing.Endpoints.InvoicesController.Void(System.Guid,HMS.Modules.Billing.Contracts.VoidInvoiceRequest,System.Threading.CancellationToken)">
+            <summary>Cancels an invoice that hasn't had any payment recorded against it — see
+            Domain/Invoice.cs's Void for why a paid invoice is rejected instead. Requires the
+            "delete" permission (already seeded, previously unused by Billing) rather than
+            "edit" — voiding is a more sensitive action than recording a payment.</summary>
+        </member>
+        <member name="T:HMS.Modules.Billing.Infrastructure.InvoiceNumberGenerator">
+            <summary>
+            Formats a short, human-readable InvoiceNumber from a real Postgres sequence —
+            coordination-free under concurrent invoice creation, unlike a MAX(...)+1 query. Mirrors
+            IPD's AdmissionIdentifierGenerator.
+            </summary>
+        </member>
+    </members>
+</doc>

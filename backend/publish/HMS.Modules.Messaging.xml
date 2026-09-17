@@ -1,0 +1,221 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Messaging</name>
+    </assembly>
+    <members>
+        <member name="M:HMS.Modules.Messaging.Application.Abstractions.IConversationParticipantRepository.GetByConversationAndUserAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>The authorization check every conversation-scoped action runs first — see
+            ConversationParticipant's doc comment. Null means the caller isn't a member.</summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.Abstractions.IConversationParticipantRepository.GetByUserAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>"My conversations" — every conversation this user belongs to.</summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.Abstractions.IConversationParticipantRepository.FindOneToOneConversationIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>The existing OneToOne conversation between exactly these two users, if one
+            exists — CreateAsync uses this to avoid creating a duplicate thread when "start a
+            conversation" is invoked twice for the same pair. Null if no such conversation
+            exists yet.</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Application.Abstractions.IConversationRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/Architecture.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.Abstractions.IConversationRepository.GetManyByIdsAsync(System.Collections.Generic.IEnumerable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Batched lookup for GetMyConversationsAsync's conversation list — one query
+            instead of one per row (mirrors HMS.Modules.Notifications' identical
+            INotificationRepository.GetManyByIdsAsync).</summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.Abstractions.IMessageRepository.GetByConversationAsync(System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Paged history for one conversation, oldest-to-newest within the page —
+            <paramref name="page"/> 1 is the most recent page (mirrors typical chat-scrollback
+            pagination, not the ascending-from-the-start convention every other list endpoint in
+            this codebase uses, since a conversation is read newest-first).</summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.Abstractions.IMessageRepository.GetUnreadCountAsync(System.Guid,System.Guid,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>Unread count for one participant — messages after <paramref name="after"/>
+            (that participant's LastReadAt) sent by someone other than them.</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Application.ConversationErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Messaging-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Messaging.Application.ConversationErrorCodes.NotParticipant">
+            <summary>Returned for a caller who isn't a participant, *and* for a conversation id
+            that doesn't exist at all — a non-participant's lookup against
+            ConversationParticipants finds no row either way, so both cases collapse into the
+            same check and the same 403. This is a stricter privacy property than
+            HMS.Modules.Notifications' equivalent choice: a caller can't even tell whether a
+            given conversation id is valid, not just whether it's theirs.</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Application.ConversationService">
+            <summary>
+            Orchestrates Messaging use cases: expected failures (not a participant, wrong
+            participant count) are returned as <see cref="T:HMS.Shared.Kernel.Result"/> failures, never thrown — see
+            docs/Architecture.md's exception handling strategy. The participant check
+            (GetByConversationAndUserAsync returning non-null) is the sole authorization boundary for
+            every per-conversation action — see ConversationParticipant's own doc comment.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Messaging.Application.ConversationService.OneToOneParticipantCount">
+            <summary>A OneToOne conversation has exactly 2 participants (the caller + one other);
+            a Group needs at least one more than that. Mirrors Conversation's own Create*
+            factory split.</summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.ConversationService.NotifyOtherParticipantsAsync(HMS.Modules.Messaging.Domain.Conversation,System.Guid,System.String,System.Threading.CancellationToken)">
+            <summary>
+            The "one-line hook" into Notifications the design doc calls for — every participant
+            except the sender gets one in-app notification. No presence/"currently active in this
+            conversation" tracking exists (out of scope, per the design doc), so this fires
+            unconditionally rather than only for participants who are away; NotifyAsync's own
+            preference check still governs whether Email/Sms also go out.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Application.IConversationService">
+            <summary>Public for the same CS0051 reason as HMS.Modules.Identity's IUserService —
+            ConversationsController's public constructor takes this as a dependency.</summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.IConversationService.GetMyConversationsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Always scoped to <paramref name="userId"/> — there is no way to fetch
+            another user's conversations through this method, by design.</summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Application.IConversationService.GetMessagesAsync(System.Guid,System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Fails with <see cref="F:HMS.Modules.Messaging.Application.ConversationErrorCodes.NotParticipant"/> if
+            <paramref name="callerId"/> isn't a participant of <paramref name="conversationId"/>
+            (or that conversation doesn't exist at all) — see that error code's own doc comment.</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Application.Mapping.MessagingMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A couple of small entities doesn't justify a mapping
+            library (Mapster/AutoMapper) at MVP scale — see docs/DecisionLog.md, ADR-003.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Application.Validators.CreateConversationRequestValidator">
+            <summary>
+            Shape-only validation (non-empty participant list, a title for Group). The exact
+            participant-count rules (exactly one other for OneToOne, at least two others for Group)
+            depend on combining this request with the caller's own id, so those live in
+            ConversationService.CreateAsync instead, returning a Result failure rather than a
+            validation error.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Messaging.Contracts.ConversationResponse.ParticipantUserIds">
+            <summary>Just ids — resolving display names/avatars is a frontend concern (a batched
+            lookup against Identity's own Users API), not something this module reaches into
+            Identity for. Keeps this module's one cross-module dependency (Notifications, for the
+            new-message alert) from growing into two.</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Contracts.CreateConversationRequest">
+            <summary>The caller is added as a participant automatically — <see cref="P:HMS.Modules.Messaging.Contracts.CreateConversationRequest.ParticipantUserIds"/>
+            lists only the *other* participants. A OneToOne request (exactly one other id) that
+            already has a conversation between the same two users returns that existing conversation
+            instead of creating a duplicate.</summary>
+        </member>
+        <member name="P:HMS.Modules.Messaging.Contracts.CreateConversationRequest.Title">
+            <summary>Required for Group; ignored for OneToOne (see Conversation.Title's own doc
+            comment).</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Contracts.ConversationType">
+            <summary>Entity-owned enum kept in Contracts (not Domain) because it's also referenced
+            by DTOs added in a later phase — mirrors HMS.Modules.Pharmacy's Contracts/
+            PharmacyEnums.cs convention (e.g. TransactionType).</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Domain.Conversation">
+            <summary>
+            A thread. OneToOne and Group share this table — the only structural difference is how
+            many ConversationParticipant rows point at it (exactly 2 vs 3+); nothing here
+            special-cases the count. Membership and per-user read state live on
+            ConversationParticipant, not here.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Messaging.Domain.Conversation.Title">
+            <summary>Group name — null for OneToOne, where the UI derives a label from the other
+            participant instead.</summary>
+        </member>
+        <member name="P:HMS.Modules.Messaging.Domain.Conversation.LastMessageAt">
+            <summary>Denormalized so the conversation list can sort/query without joining
+            Messages. Bumped by <see cref="M:HMS.Modules.Messaging.Domain.Conversation.TouchLastMessage(System.DateTime)"/> whenever a message is sent (added
+            in a later phase, alongside Message.Create).</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Domain.ConversationParticipant">
+            <summary>
+            Membership *and* the authorization boundary — a user may read or send into a
+            conversation only if a row exists here (checked in the Application layer, added in a
+            later phase; mirrors HMS.Modules.Documents' IDocumentAccessPolicy). Also carries
+            per-user read state: a single <see cref="P:HMS.Modules.Messaging.Domain.ConversationParticipant.LastReadAt"/> timestamp rather than a
+            per-message read-receipt table — unread count for this participant is "messages in the
+            conversation, sent by someone else, with CreatedAt after LastReadAt". Deliberately the
+            cheapest structure that answers the actual requirement; see the design doc's §09 for why
+            a full read-receipt table was cut.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Domain.ConversationParticipant.MarkRead(System.DateTime)">
+            <summary>Called when this participant opens the conversation. Never moves
+            <see cref="P:HMS.Modules.Messaging.Domain.ConversationParticipant.LastReadAt"/> backwards — callers always pass "now", but guarding here
+            keeps the invariant true even against an out-of-order call.</summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Domain.Message">
+            <summary>
+            One row per message. Soft-deletable (an author retracting a message) via the standard
+            Entity columns — no separate edit-history table, and no Update method: a message's Body
+            is immutable once sent, matching Notification's "immutable event" shape.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Endpoints.ConversationsController">
+            <summary>
+            The Messaging module's HTTP surface — start a conversation, list "mine," read/send
+            messages, mark read. Every per-conversation action's only gate is participant membership
+            (checked in ConversationService, not here) — no RequirePermission beyond [Authorize],
+            since Doctor→Nurse/Nurse→Doctor/Staff→Staff messaging isn't a clinically gated action
+            (see the design doc's Security section). Creating a conversation requires
+            "engagement.view" — any authenticated staff member with access to the engagement
+            surface at all, not an elevated action. Every action requires the tenant to have the
+            "messages-and-notifications" feature enabled.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Endpoints.ConversationsController.Create(HMS.Modules.Messaging.Contracts.CreateConversationRequest,System.Threading.CancellationToken)">
+            <summary>Starts a one-to-one or group conversation. The caller is added as a
+            participant automatically. A one-to-one request that already has a conversation
+            between the same two users returns that existing conversation instead of creating a
+            duplicate.</summary>
+            <response code="201">The conversation was created (or the existing one was returned).</response>
+            <response code="400">The request failed validation, or the participant count doesn't match the conversation type.</response>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Endpoints.ConversationsController.GetMine(System.Threading.CancellationToken)">
+            <summary>The caller's conversations, most recently active first, with unread counts.</summary>
+            <response code="200">The caller's conversations.</response>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Endpoints.ConversationsController.GetMessages(System.Guid,HMS.Shared.Kernel.PagedRequest,System.Threading.CancellationToken)">
+            <summary>Paged message history, oldest-to-newest within the page.</summary>
+            <response code="200">A page of messages.</response>
+            <response code="403">The caller isn't a participant of this conversation.</response>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Endpoints.ConversationsController.SendMessage(System.Guid,HMS.Modules.Messaging.Contracts.SendMessageRequest,System.Threading.CancellationToken)">
+            <summary>Sends a message.</summary>
+            <response code="201">The message was sent.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="403">The caller isn't a participant of this conversation.</response>
+        </member>
+        <member name="M:HMS.Modules.Messaging.Endpoints.ConversationsController.MarkRead(System.Guid,System.Threading.CancellationToken)">
+            <summary>Bumps the caller's read position to now for this conversation.</summary>
+            <response code="204">The conversation was marked read.</response>
+            <response code="403">The caller isn't a participant of this conversation.</response>
+        </member>
+        <member name="T:HMS.Modules.Messaging.Infrastructure.MessagingDbContext">
+            <summary>
+            Owns the "messaging" PostgreSQL schema. Per docs/DatabaseArchitecture.md §1, only this
+            module's own code constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Messaging.MessagingModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration/ModuleRegistration.cs — mirrors every other module's AddXModule.
+            </summary>
+        </member>
+    </members>
+</doc>

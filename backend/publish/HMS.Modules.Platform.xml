@@ -1,0 +1,910 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Platform</name>
+    </assembly>
+    <members>
+        <member name="F:HMS.Modules.Platform.Application.Abstractions.IdempotencyReservationOutcome.Reserved">
+            <summary>No prior request used this key — the caller may proceed and must call
+            <see cref="M:HMS.Modules.Platform.Application.Abstractions.IHospitalRegistrationIdempotencyStore.CompleteAsync(System.Guid,HMS.Shared.Kernel.Result{HMS.Modules.Platform.Contracts.CreateHospitalResponse},System.Threading.CancellationToken)"/> with <see cref="P:HMS.Modules.Platform.Application.Abstractions.IdempotencyReservation.RecordId"/> when done.</summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.Abstractions.IdempotencyReservationOutcome.ReplayCompleted">
+            <summary>A prior request with this exact key and request body already finished —
+            <see cref="P:HMS.Modules.Platform.Application.Abstractions.IdempotencyReservation.ReplayedResult"/> is the result to return, unexecuted.</summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.Abstractions.IdempotencyReservationOutcome.ReplayInProgress">
+            <summary>A prior request with this exact key and request body is still in flight
+            (hasn't called CompleteAsync yet) — the caller must not execute anything.</summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.Abstractions.IdempotencyReservationOutcome.KeyReusedForDifferentRequest">
+            <summary>This key was already used for a request with a different body — misuse of
+            the Idempotency-Key contract, not a legitimate retry.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.IHospitalRegistrationIdempotencyStore">
+            <summary>
+            Scoped narrowly to hospital registration (not a generic idempotency framework) — this is
+            the only endpoint that needs it today. See IdempotencyRecord's own doc comment for the
+            concurrency guarantee this relies on.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.IPlatformAuthenticationService">
+            <summary>
+            Public (not internal): PlatformAuthController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal
+            parameter type (CS0051).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformAuthenticationService.VerifyMfaAsync(HMS.Modules.Platform.Contracts.PlatformMfaVerifyRequest,System.Threading.CancellationToken)">
+            <summary>Second step of a two-step MFA login — exchanges a challenge token
+            LoginAsync issued for the real bearer token once the TOTP code checks out.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformAuthenticationService.GetMfaStatusAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Whether the given Platform Admin's own account currently has MFA enabled.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformAuthenticationService.SetupMfaAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Starts (or restarts) MFA setup for the given Platform Admin's own account.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformAuthenticationService.EnableMfaAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <summary>Confirms a pending setup, turning MfaEnabled on.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformAuthenticationService.DisableMfaAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <summary>Turns MFA back off, after proving the caller still controls the authenticator.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformAuthenticationService.ChangePasswordAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>Self-service password change for the given Platform Admin's own account —
+            verifies the current password before rotating it. Mirrors
+            HMS.Modules.Identity.Application.IAuthenticationService.ChangePasswordAsync.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformDashboardService.MigrateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            HMS Multi-Tenancy Phase C's migration-management endpoint (requirement #8): applies
+            every hospital module's pending EF Core migrations to this tenant's existing
+            database — an explicit, operator-triggered action, never automatic. On failure the
+            tenant's existing database is left exactly as it was; nothing is dropped.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformDashboardService.GetDeletePreviewAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Dry-run preview shown before a delete is confirmed — see
+            TenantDeletePreviewResponse's own doc comment for why this is Platform-side data
+            only.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformDashboardService.DeleteHospitalAsync(System.Guid,System.String,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>
+            Soft-deletes a hospital: blocks its staff from logging in (TenantDirectory's lookups
+            already exclude soft-deleted tenants via the IsDeleted query filter) and hides it
+            from the active hospital list, but never touches its own database — that stays fully
+            intact and can be restored via <see cref="M:HMS.Modules.Platform.Application.Abstractions.IPlatformDashboardService.RestoreHospitalAsync(System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)"/>. Requires
+            <paramref name="confirmHospitalCode"/> to match the tenant's actual hospital code
+            (case-insensitive) — a server-enforced "type to confirm," not just a frontend dialog.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformDashboardService.RestoreHospitalAsync(System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Reverses a soft-delete, restoring the hospital to the active list with its
+            previous Status (Active/Inactive) and login access.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformDashboardService.GetDeletedHospitalsAsync(HMS.Modules.Platform.Contracts.TenantListQuery,System.Threading.CancellationToken)">
+            <summary>Lists soft-deleted hospitals, paged — the only way to find one to restore.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.IPlatformMfaChallengeStore">
+            <summary>
+            The second leg of a two-step Platform Admin login — see PlatformMfaChallenge's own doc
+            comment for the full flow. Internal (unlike IRevokedTokenStore/IProvisioningAlertStore):
+            both ends of this seam (PlatformAuthenticationService, PlatformAuthController) live
+            inside this module, so there's no Api/module boundary to bridge here.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformMfaChallengeStore.CreateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Issues a new single-use challenge token for <paramref name="platformUserId"/>,
+            valid for a short window (minutes, not hours).</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformMfaChallengeStore.ValidateAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Non-consuming lookup — returns the associated Platform Admin's id if
+            <paramref name="token"/> is unexpired and not already consumed, otherwise null. A
+            wrong TOTP code must not burn the challenge (the caller should be able to retry
+            until they get the code right or the challenge naturally expires), so verifying the
+            code and consuming the challenge are deliberately two separate steps — see
+            <see cref="M:HMS.Modules.Platform.Application.Abstractions.IPlatformMfaChallengeStore.ConsumeAsync(System.String,System.Threading.CancellationToken)"/>.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.IPlatformMfaChallengeStore.ConsumeAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Marks <paramref name="token"/> consumed, once and only once the caller has
+            confirmed the TOTP code was correct — a second verify attempt with the same token
+            (replayed or otherwise) always fails <see cref="M:HMS.Modules.Platform.Application.Abstractions.IPlatformMfaChallengeStore.ValidateAsync(System.String,System.Threading.CancellationToken)"/> afterward, even
+            though the code itself would still compute as valid for the next ~30s.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.IPlatformMfaSecretProtector">
+            <summary>
+            Encrypts/decrypts a Platform Admin's TOTP shared secret for storage in
+            PlatformUser.MfaSecret — the secret is as sensitive as a password (anyone who reads it
+            can generate valid codes forever), so it is never stored in plaintext. Defined here and
+            implemented in Infrastructure (wrapping ASP.NET Core's built-in Data Protection API), per
+            the dependency inversion rule.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.IPlatformUserRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.IProvisioningAlertStore">
+            <summary>
+            Public seam so HMS.Api's TenantProvisioningService (which implements
+            <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner"/>) can raise a durable, dashboard-visible alert when a
+            rollback fails, instead of only logging it. See ProvisioningAlert's own doc comment.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.IRevokedTokenStore">
+            <summary>
+            Public seam (like <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner"/>) so HMS.Api's JwtConfiguration can
+            check token revocation during JWT validation, and PlatformAuthController can revoke a
+            token on logout, without either needing to know how revocation is stored. See
+            RevokedToken's own doc comment for why this exists.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.ITenantDirectory">
+            <summary>
+            The public seam every hospital-facing module uses to turn a tenant identifier into a
+            ready-to-use database connection — HMS Multi-Tenancy Phase C's single source of tenant
+            truth (platform.tenants). Implemented here (not in HMS.Api, unlike
+            <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner"/>) because, unlike provisioning, resolving a tenant needs
+            no knowledge of other modules' DbContext types — just this module's own Tenant
+            aggregate — so there's no reason to push the implementation up to HMS.Api.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantDirectory.FindByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Used by TenantResolutionMiddleware for every request after login, keyed by
+            the "TenantId" claim already validated on the caller's Hospital JWT.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantDirectory.FindByHospitalCodeAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Used by AuthenticationService.LoginAsync — the one place a tenant must be
+            resolved *before* any JWT (and therefore before any TenantId claim) exists.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantDirectory.GetAllActiveTenantsAsync(System.Threading.CancellationToken)">
+            <summary>Every active tenant, ready-to-use connection strings included — used by the
+            daily backup job (HMS.Modules.Backups) to dump every hospital's database in turn. The
+            only bulk method on this interface; every other caller resolves one already-known
+            tenant at a time.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.TenantInfo">
+            <summary>
+            A trusted snapshot of a platform.tenants row, including a ready-to-use connection string
+            (already pointed at <see cref="P:HMS.Modules.Platform.Application.Abstractions.TenantInfo.DatabaseName"/>) — callers never construct or receive a
+            raw database name to build a connection from themselves (see Phase C's "no
+            client-controlled database selection" requirement).
+            </summary>
+            <summary>EnabledFeatures is the schema-level FeatureCatalog set (Tenant Feature/Module
+            Management) — distinct from EnabledModules (the RBAC ModuleCatalog set).</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.TenantInfo.#ctor(System.Guid,System.String,System.String,System.String,System.Boolean,System.Collections.Generic.IReadOnlyList{System.String},System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>
+            A trusted snapshot of a platform.tenants row, including a ready-to-use connection string
+            (already pointed at <see cref="P:HMS.Modules.Platform.Application.Abstractions.TenantInfo.DatabaseName"/>) — callers never construct or receive a
+            raw database name to build a connection from themselves (see Phase C's "no
+            client-controlled database selection" requirement).
+            </summary>
+            <summary>EnabledFeatures is the schema-level FeatureCatalog set (Tenant Feature/Module
+            Management) — distinct from EnabledModules (the RBAC ModuleCatalog set).</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.ITenantFeatureRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantRepository"/>.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.ITenantMigrationService">
+            <summary>
+            HMS Multi-Tenancy Phase C's migration-management seam (requirement #8) — a single place
+            that knows how to bring a tenant database up to the current schema, reused by both new
+            tenant provisioning (<see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner"/>) and by re-syncing an existing
+            tenant after new module migrations have been added. Implemented in HMS.Api (not this
+            module) for the same reason as <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner"/>: applying every module's
+            migrations requires referencing every module's DbContext type, and only HMS.Api is
+            allowed to know every module exists.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantMigrationService.MigrateAsync(System.String,System.Collections.Generic.IReadOnlyCollection{System.String},System.Threading.CancellationToken)">
+            <summary>
+            Applies pending EF Core migrations to the database behind
+            <paramref name="tenantConnectionString"/>, for exactly the modules named in
+            <paramref name="enabledFeatureKeys"/> (FeatureCatalog keys) — the selective-
+            provisioning seam (Tenant Feature/Module Management). FeatureCatalog.Mandatory is
+            unioned in defensively inside the implementation, so no caller can ever omit it, even
+            by bug. Idempotent per module: EF Core's Database.MigrateAsync only ever applies
+            migrations not already recorded in that module's own migrations-history table, so
+            calling this against an already up-to-date tenant (or re-passing a feature that was
+            already enabled) is a safe no-op — this is what lets the same seam serve new-tenant
+            provisioning, an operator-triggered re-migrate, and enabling a feature on an existing
+            tenant, all without separate code paths. Deliberately never invoked per-request.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner">
+            <summary>
+            Public seam implemented in HMS.Api (HMS.Api.Provisioning.TenantProvisioningService),
+            not inside this module — provisioning a tenant database requires referencing every
+            hospital module's public DbContext type to run its migrations, and only HMS.Api is
+            allowed to know every module exists (see docs/DecisionLog.md's SaaS provisioning ADR).
+            This module depends only on this abstraction; it never references EF Core or any other
+            module's DbContext directly.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner.ProvisionAsync(HMS.Modules.Platform.Application.Abstractions.TenantProvisionRequest,System.Threading.CancellationToken)">
+            <summary>
+            Creates a new isolated PostgreSQL database, applies every existing HMIS module's
+            migrations to it, and seeds the hospital's first Super Admin account. On any failure
+            after the database is created, the implementation drops it before returning — the
+            caller never has to clean up a partially-provisioned database.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.TenantProvisionRequest">
+            <param name="ImportedPatientCapacity">UHIDs 1 through this number are reserved for this
+            hospital's bulk-imported/legacy patients (Patients module's imported_uhid_seq); new manual
+            registrations start immediately after it (uhid_seq). Set once, here, at provisioning time —
+            the implementation sizes both Postgres sequences accordingly right after migrating.</param>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.TenantProvisionRequest.#ctor(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Collections.Generic.IReadOnlyCollection{System.String},System.Int32)">
+            <param name="ImportedPatientCapacity">UHIDs 1 through this number are reserved for this
+            hospital's bulk-imported/legacy patients (Patients module's imported_uhid_seq); new manual
+            registrations start immediately after it (uhid_seq). Set once, here, at provisioning time —
+            the implementation sizes both Postgres sequences accordingly right after migrating.</param>
+        </member>
+        <member name="P:HMS.Modules.Platform.Application.Abstractions.TenantProvisionRequest.ImportedPatientCapacity">
+            <summary>UHIDs 1 through this number are reserved for this
+            hospital's bulk-imported/legacy patients (Patients module's imported_uhid_seq); new manual
+            registrations start immediately after it (uhid_seq). Set once, here, at provisioning time —
+            the implementation sizes both Postgres sequences accordingly right after migrating.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.TenantProvisioningErrorCodes">
+            <summary>Shared with HMS.Modules.Platform.Application.PlatformErrorCodes.ProvisioningFailed.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.ITenantRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as <see cref="T:HMS.Modules.Platform.Application.Abstractions.IPlatformUserRepository"/>.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantRepository.GetByIdIncludingDeletedAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Same as <see cref="M:HMS.Modules.Platform.Application.Abstractions.ITenantRepository.GetByIdAsync(System.Guid,System.Threading.CancellationToken)"/> but bypasses the IsDeleted query filter
+            — the only way to look up a soft-deleted tenant, e.g. to restore it.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantRepository.GetDeletedPagedAsync(HMS.Modules.Platform.Contracts.TenantListQuery,System.Threading.CancellationToken)">
+            <summary>Mirrors <see cref="M:HMS.Modules.Platform.Application.Abstractions.ITenantRepository.GetPagedAsync(HMS.Modules.Platform.Contracts.TenantListQuery,System.Threading.CancellationToken)"/> but returns only soft-deleted tenants
+            (bypassing the IsDeleted query filter) — backs the deleted-hospitals list an admin
+            restores from.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITenantRepository.GetAllActiveAsync(System.Threading.CancellationToken)">
+            <summary>Every non-deleted tenant with <see cref="F:HMS.Modules.Platform.Contracts.TenantStatus.Active"/> status, unpaged
+            — backs the daily backup job, which needs the complete set to dump, not a page of it.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Abstractions.ITotpService">
+            <summary>
+            RFC 6238 (TOTP) — the Platform Admin MFA second factor. Defined here (Application) and
+            implemented in Infrastructure (wrapping the Otp.NET library), per the dependency
+            inversion rule — Application never references a third-party crypto library directly.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITotpService.GenerateSecret">
+            <summary>Generates a new random base32-encoded shared secret.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITotpService.BuildOtpAuthUri(System.String,System.String)">
+            <summary>Builds the otpauth:// URI an authenticator app scans/imports — encodes the
+            secret, account label, and issuer, but never leaves this process (rendered once on
+            the setup screen, never persisted).</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Application.Abstractions.ITotpService.VerifyCode(System.String,System.String)">
+            <summary>True if <paramref name="code"/> is a currently-valid 6-digit TOTP code for
+            <paramref name="secret"/> (small clock-skew window tolerated internally).</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.HospitalRegistrationService">
+            <summary>
+            Orchestrates hospital registration: duplicate checks against this module's own
+            platform.tenants table, then delegates the actual database provisioning to
+            <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner"/> (implemented in HMS.Api — see that interface's own
+            doc comment). Only writes a platform.tenants row after provisioning has fully
+            succeeded — a provisioning failure never leaves an orphaned tenant record, and never
+            touches Patient/Gender/BloodGroup or any other unrelated domain (see
+            docs/DecisionLog.md's SaaS provisioning ADR, "hard boundary" section).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.PlatformAuthenticationService">
+            <summary>
+            Orchestrates the Platform Admin login use case. Every rejection reason returns the same
+            generic InvalidLogin failure — never revealing which check failed, matching
+            HMS.Modules.Identity.Application.AuthenticationService's convention.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.PlatformAuthenticationService.MaxFailedLoginAttempts">
+            <summary>Brute-force throttling thresholds — mirrors
+            HMS.Modules.Identity.Application.AuthenticationService's identical constants.</summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.PlatformErrorCodes.MfaChallengeInvalid">
+            <summary>The MFA challenge token was missing/unknown/expired/already used — same
+            generic-failure posture as InvalidLogin, since revealing which of those applies
+            would tell an attacker whether a guessed token exists.</summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.PlatformErrorCodes.InvalidMfaCode">
+            <summary>The TOTP code did not match — used by both MFA login verification and the
+            enable/disable setup endpoints (the caller is already authenticated in the latter
+            two, so unlike InvalidLogin there's no enumeration risk in a specific code).</summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.PlatformErrorCodes.ConfirmationMismatch">
+            <summary>DeleteHospitalAsync's confirmation check — the caller-supplied hospital
+            code didn't match the tenant actually being deleted.</summary>
+        </member>
+        <member name="F:HMS.Modules.Platform.Application.PlatformErrorCodes.InvalidCurrentPassword">
+            <summary>ChangePasswordAsync's current-password check failed — mirrors
+            HMS.Modules.Identity.Application.AuthenticationErrorCodes.InvalidCurrentPassword.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.TenantFeatureService">
+            <summary>
+            Owns platform.tenant_features — the schema-level "which modules does this hospital have"
+            store, separate from Tenant.EnabledModules (RBAC). See FeatureCatalog's own doc comment
+            for the distinction.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Validators.CreateHospitalRequestValidator">
+            <summary>
+            Malformed-request checks only — duplicate hospital code/admin email are business-rule
+            failures reported as a Result failure by HospitalRegistrationService, not here. Matches
+            HMS.Modules.Identity.Application.Validators.CreateUserRequestValidator's phone-number
+            convention (exactly 10 digits).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Validators.PlatformLoginRequestValidator">
+            <summary>
+            Malformed-request checks only — a credentials-didn't-match failure is reported as a 401
+            Result failure by PlatformAuthenticationService, not here. Matches
+            HMS.Modules.Identity.Application.Validators.LoginRequestValidator's split.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Validators.MfaCodeRule">
+            <summary>Shared malformed-request check for every "prove you have an authenticator app"
+            request (MFA login verify, enable, disable) — a TOTP code is always 6 digits.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Validators.PlatformChangePasswordRequestValidator">
+            <summary>Malformed-request checks only — "current password doesn't match" is a
+            business-rule failure reported as a Result failure by PlatformAuthenticationService, not
+            here. Matches HMS.Modules.Identity's ChangePasswordRequestValidator exactly, including
+            reusing the same shared PasswordPolicy.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Validators.UpdateTenantConfigurationRequestValidator">
+            <summary>
+            Malformed-request checks only — module keys are not validated against
+            HMS.Shared.Kernel.ModuleCatalog here. An unrecognized key is harmless (it just never
+            matches any Permission.Module, so it's inert — see AuthenticationService.LoginAsync's
+            filter), and this is a Platform-Admin-only, internal-tool endpoint, so the risk of a
+            silent typo is accepted rather than adding a second place the module catalog must stay
+            in sync.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Application.Validators.UpdateTenantFeaturesRequestValidator">
+            <summary>
+            Unlike UpdateTenantConfigurationRequestValidator (which deliberately doesn't validate
+            against ModuleCatalog — see its own doc comment), this DOES validate against
+            FeatureCatalog: an unrecognized feature key here isn't harmless — it drives which
+            database schemas get provisioned/migrated, so a typo must be rejected, not silently
+            ignored. Mandatory features must also always be present in the enabled set — this is the
+            server-side half of "never let a caller disable a mandatory module" (FeatureCatalog's own
+            doc comment); TenantFeatureService additionally forces them on regardless, but rejecting
+            here gives the caller an explicit error instead of a silent override.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Contracts.CreateHospitalRequest.EnabledFeatureKeys">
+            <summary>Optional FeatureCatalog keys to enable for this tenant beyond
+            FeatureCatalog.Mandatory (which is always included regardless of this list) — drives
+            which schemas get provisioned (see Tenant Feature/Module Management). An empty list
+            provisions only the mandatory modules.</summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Contracts.CreateHospitalRequest.ImportedPatientCapacity">
+            <summary>UHIDs 1 through this number are reserved for this hospital's bulk-imported/
+            legacy patients; new manual registrations start immediately after it. Sizes the
+            Patients module's two UHID sequences once, at provisioning time — see
+            TenantProvisioningService. Defaults to 40,000.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.DeletedTenantListItemResponse">
+            <summary>
+            A soft-deleted hospital — <see cref="T:HMS.Modules.Platform.Contracts.TenantListItemResponse"/> plus when it was deleted.
+            Only ever returned by the deleted-hospitals list; an active hospital's response never
+            carries this field since it's meaningless there.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.TenantDeletePreviewResponse">
+            <summary>
+            Dry-run preview shown before a soft-delete is confirmed — deliberately Platform-side
+            data only (no row counts from the tenant's own database). See ADR for this finding: a
+            soft-delete never touches the tenant's own database at all (it stays fully intact,
+            login is just blocked), so there is nothing there to preview or warn about.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.TenantConfigurationResponse">
+            <summary>The Platform-level per-tenant configuration: which business-domain modules this
+            hospital's staff can use, and its subscription tier. See Tenant.EnabledModules's own doc
+            comment for how this is enforced.</summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Contracts.TenantConfigurationResponse.AllModules">
+            <summary>The full module catalog (ModuleCatalog.All), so the frontend can render a
+            checkbox per module without hardcoding its own copy of the list.</summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Contracts.TenantDashboardStatsResponse.ProvisioningAlertCount">
+            <summary>Count of ProvisioningAlert rows — a tenant-provisioning failure whose
+            rollback also failed, so an orphaned database may still exist. Zero in the normal
+            case; any nonzero value needs a human to investigate (see ADR for this finding).</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformLoginResponse">
+            <summary>
+            Either a completed login (MfaRequired false, Token/User populated) or the first half of
+            a two-step MFA login (MfaRequired true, MfaChallengeToken populated, Token/User null) —
+            see PlatformMfaChallenge's own doc comment for the full flow. Returned by both
+            LoginAsync (which decides which shape applies) and VerifyMfaAsync (always the completed
+            shape, since a second MFA challenge is never issued for an already-passed MFA step).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformMfaVerifyRequest">
+            <summary>Second step of a two-step MFA login — exchanges the challenge token LoginAsync
+            issued, plus a current TOTP code, for the real bearer token.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformMfaSetupResponse">
+            <summary>Starts (or restarts) MFA setup for the caller's own account — generates a new
+            secret and returns it once for the admin to add to their authenticator app.
+            MfaEnabled stays false until <see cref="T:HMS.Modules.Platform.Contracts.PlatformMfaEnableRequest"/> confirms a code.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformMfaEnableRequest">
+            <summary>Confirms a pending setup by proving the admin's authenticator app produces a
+            valid code — the only way MfaEnabled turns true.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformMfaDisableRequest">
+            <summary>Turns MFA back off. Requires a valid current code (not just an authenticated
+            session) — same reasoning as requiring the current password to change a password.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformMfaStatusResponse">
+            <summary>Whether the caller's own account currently has MFA enabled — lets the frontend
+            render "Set up MFA" vs "Disable MFA" without guessing from stale JWT claims.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformChangePasswordRequest">
+            <summary>Self-service password change for a Platform Admin's own account — mirrors
+            HMS.Modules.Identity.Contracts.ChangePasswordRequest. There is no admin-resets-another-
+            admin equivalent yet (see PlatformUser.ChangePassword's own doc comment).</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.PlatformRole">
+            <summary>
+            A Platform Admin's privilege level. SuperAdmin can perform every action, including the
+            destructive/high-privilege ones (register a hospital, enable/disable a hospital, trigger a
+            tenant migration). SupportUser is read-only — dashboard/list access only — until a real
+            per-tenant permission model exists (see docs/DecisionLog.md ADR-014).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Contracts.TenantFeaturesResponse">
+            <summary>
+            Which schema-level modules (FeatureCatalog keys) this hospital tenant has — governs
+            whether a module's database schema is provisioned/reachable at all. Distinct from
+            TenantConfigurationResponse (RBAC EnabledModules), which governs what a user can *do*
+            inside modules the tenant already has.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Contracts.TenantFeaturesResponse.AllFeatures">
+            <summary>The full feature catalog (FeatureCatalog.All), so the frontend can render a
+            toggle per feature without hardcoding its own copy of the list.</summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Contracts.TenantFeaturesResponse.MandatoryFeatures">
+            <summary>Always enabled, never toggleable — the frontend shows these checked and
+            disabled rather than omitting them entirely.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Domain.IdempotencyRecord">
+             <summary>
+             Backs the Idempotency-Key protection on <c>POST /api/platform/hospitals</c> (HMS
+             Security Hardening: hospital registration had no retry protection — a timed-out request
+             could be resubmitted and risk double-provisioning a hospital database). Deliberately not
+             an <see cref="T:HMS.Shared.Kernel.Entity"/> — this is infrastructure plumbing scoped to one
+             use case, not a business aggregate with audit/soft-delete semantics.
+            
+             Lifecycle: a request "reserves" a key by inserting a Pending row (the table's unique
+             index on Key is what makes two concurrent requests with the same key race safely — the
+             loser gets a unique-constraint violation instead of both provisioning a hospital). Once
+             the underlying work finishes, the row is completed with the outcome, so a retry with the
+             same key + same request body replays the stored result instead of re-executing.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Domain.PlatformMfaChallenge">
+            <summary>
+            The second leg of a two-step Platform Admin login: PlatformAuthenticationService.LoginAsync
+            issues one of these instead of a real JWT once the password checks out for an MFA-enabled
+            account, and PlatformAuthController's MFA-verify endpoint exchanges the opaque
+            <see cref="P:HMS.Modules.Platform.Domain.PlatformMfaChallenge.Token"/> plus a TOTP code for the real token. Mirrors RevokedToken/
+            IdempotencyRecord's shape — a short-lived operational record, not an
+            <see cref="T:HMS.Shared.Kernel.Entity"/>. Deliberately single-use and short-lived (a handful
+            of minutes): unlike a real session token, this only ever proves "the password step just
+            passed," so a wide validity window would widen the brute-force window on the 6-digit code.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Domain.PlatformUser">
+            <summary>
+            A Support User (Platform Admin) who can sign into the Platform Portal to register new
+            hospitals. Entirely separate from HMS.Modules.Identity.Domain.User — platform admins and
+            hospital users are never the same session, the same table, or the same database.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Domain.PlatformUser.FailedLoginAttempts">
+            <summary>Consecutive wrong-password attempts since the last successful login or the
+            last time a lockout expired — see HMS.Modules.Identity.Domain.User's identical
+            fields, the same brute-force throttling shape on the hospital-user side.</summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Domain.PlatformUser.MfaSecret">
+            <summary>
+            The TOTP shared secret (RFC 6238), encrypted at rest via
+            IPlatformMfaSecretProtector — never stored or returned in plaintext once set. Set by
+            <see cref="M:HMS.Modules.Platform.Domain.PlatformUser.SetPendingMfaSecret(System.String)"/> during setup, before <see cref="P:HMS.Modules.Platform.Domain.PlatformUser.MfaEnabled"/> turns
+            true; cleared by <see cref="M:HMS.Modules.Platform.Domain.PlatformUser.DisableMfa"/>.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Domain.PlatformUser.MfaEnabled">
+            <summary>
+            True once the Platform Admin has confirmed a setup code against
+            <see cref="P:HMS.Modules.Platform.Domain.PlatformUser.MfaSecret"/> — see <see cref="M:HMS.Modules.Platform.Domain.PlatformUser.EnableMfa"/>. A non-null
+            <see cref="P:HMS.Modules.Platform.Domain.PlatformUser.MfaSecret"/> with this still false means setup was started but never
+            confirmed; PlatformAuthenticationService.LoginAsync only requires the MFA step when
+            this is true.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Domain.PlatformUser.SetPendingMfaSecret(System.String)">
+            <summary>
+            Stores a freshly-generated, not-yet-confirmed MFA secret (already encrypted by the
+            caller). Overwrites any prior pending or active secret — starting setup again always
+            wins, matching SetPasswordHash's "the most recent write is authoritative" convention.
+            Does not itself enable MFA; <see cref="M:HMS.Modules.Platform.Domain.PlatformUser.EnableMfa"/> does that once the setup code is
+            verified.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Domain.PlatformUser.ChangePassword(System.String)">
+            <summary>
+            Self-service password change — the caller already proved they know the current
+            password (PlatformAuthenticationService.ChangePasswordAsync verifies it before
+            calling this). Mirrors HMS.Modules.Identity.Domain.User.ChangeOwnPassword, including
+            deliberately not calling Entity.MarkUpdated — UpdatedAt/UpdatedBy track an admin
+            editing someone else's record, not the subject's own self-service act. There is no
+            admin-resets-another-admin equivalent to HMS.Modules.Identity's SetPasswordHash here —
+            Platform Admin accounts are provisioned individually and don't have that concept yet.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Domain.ProvisioningAlert">
+            <summary>
+            A durable record of a tenant-provisioning failure whose rollback (DROP DATABASE) also
+            failed — HMS Security Hardening: previously this only produced a log line ("manual
+            cleanup required"), so an orphaned tenant database could silently sit there with nothing
+            surfacing it to a human. Recording it here makes it show up in the Platform dashboard's
+            stat tiles (see PlatformDashboardService.GetStatsAsync) instead. Deliberately not an
+            <see cref="T:HMS.Shared.Kernel.Entity"/> — this is an operational record, not a business
+            aggregate with audit/soft-delete semantics, and (like IdempotencyRecord) has no
+            createdBy actor — it's raised by the system during a failure, not by a caller.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Domain.RevokedToken">
+            <summary>
+            A durable record that one specific Platform Admin JWT (by its "jti" claim) must be
+            rejected even though it hasn't naturally expired yet — HMS Security Hardening: previously
+            a leaked or "logged out" Platform token stayed valid until natural JWT expiry, since
+            nothing checked revocation server-side. <see cref="P:HMS.Modules.Platform.Domain.RevokedToken.ExpiresAt"/> mirrors the token's own
+            "exp" claim so an expired row can be safely ignored/pruned — no point rejecting a token
+            that would already fail JWT validation on its own. Deliberately not an
+            <see cref="T:HMS.Shared.Kernel.Entity"/> — an operational record raised by the system, not
+            a business aggregate.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Domain.Tenant">
+            <summary>
+            Maps a provisioned hospital to its isolated PostgreSQL database. One row per hospital,
+            written once by TenantProvisioningService (HMS.Api) after that hospital's database has
+            been created and migrated — never edited except for Status (Enable/Disable).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Domain.Tenant.ImportedPatientCapacity">
+            <summary>UHIDs 1 through this number are reserved for this hospital's bulk-imported/
+            legacy patients; new manual registrations start immediately after it. Set once at
+            provisioning (TenantProvisioningService sizes the Patients module's two Postgres
+            sequences to match) — informational/audit here, never changed afterward.</summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Domain.Tenant.EnabledModules">
+            <summary>
+            The business-domain modules (ModuleCatalog keys) this hospital's staff can use —
+            Platform-Admin-managed, separate from any individual user's role/permissions within
+            those modules. Every module is enabled by default (see <see cref="M:HMS.Modules.Platform.Domain.Tenant.Create(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Int32,System.Nullable{System.Guid})"/>); a
+            Platform Admin restricts this explicitly via <see cref="M:HMS.Modules.Platform.Domain.Tenant.UpdateConfiguration(System.Collections.Generic.IReadOnlyList{System.String},System.String,System.Nullable{System.Guid})"/>.
+            AuthenticationService.LoginAsync strips any permission whose module isn't in this
+            list from the issued JWT, so a disabled module's [RequirePermission] gates reject
+            every user at this hospital through the existing authorization pipeline — no new
+            enforcement mechanism needed.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Domain.Tenant.SubscriptionTier">
+            <summary>Freeform label (e.g. "Standard", "Premium") — display/informational only
+            today, not tied to any billing or enforcement logic yet.</summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Domain.TenantFeature">
+            <summary>
+            One row per (tenant, FeatureCatalog key) — the Platform-DB source of truth for which
+            schema-level modules a hospital tenant actually has. Distinct from Tenant.EnabledModules
+            (an RBAC permission-category list governing what a user can *do*): this governs whether a
+            module's database schema is provisioned/reachable at all. Toggling a feature off never
+            deletes this row or any tenant-database schema/data — see TenantFeatureService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Endpoints.HospitalsController">
+            <summary>Hospital registration/provisioning — every action requires a Platform Admin token.</summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.GetAll(HMS.Modules.Platform.Contracts.TenantListQuery,System.Threading.CancellationToken)">
+            <summary>Lists hospitals, paged, most recently created first.</summary>
+            <response code="200">Returns the requested page.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.GetStats(System.Threading.CancellationToken)">
+            <summary>Returns hospital counts for the dashboard's stat tiles.</summary>
+            <response code="200">Returns the counts.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.UpdateStatus(System.Guid,HMS.Modules.Platform.Contracts.UpdateTenantStatusRequest,System.Threading.CancellationToken)">
+            <summary>Enables or disables a hospital.</summary>
+            <response code="200">The status was updated.</response>
+            <response code="400">The status value was not valid.</response>
+            <response code="404">No hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.GetDeleted(HMS.Modules.Platform.Contracts.TenantListQuery,System.Threading.CancellationToken)">
+            <summary>Lists soft-deleted hospitals, paged, most recently deleted first — the only
+            way to find one to restore.</summary>
+            <response code="200">Returns the requested page.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.GetDeletePreview(System.Guid,System.Threading.CancellationToken)">
+            <summary>Dry-run preview shown before confirming a delete.</summary>
+            <response code="200">Returns the preview.</response>
+            <response code="404">No hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.Delete(System.Guid,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Soft-deletes a hospital: blocks its staff from signing in and hides it from the
+            active list, but its own database is never touched — fully reversible via
+            <see cref="M:HMS.Modules.Platform.Endpoints.HospitalsController.Restore(System.Guid,System.Threading.CancellationToken)"/>. <paramref name="confirmHospitalCode"/> must match the
+            hospital's actual code (server-enforced "type to confirm").
+            </summary>
+            <response code="204">The hospital was soft-deleted.</response>
+            <response code="400">The confirmation code did not match.</response>
+            <response code="404">No hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.Restore(System.Guid,System.Threading.CancellationToken)">
+            <summary>Reverses a soft-delete, restoring the hospital's previous status and login access.</summary>
+            <response code="200">The hospital was restored.</response>
+            <response code="404">No soft-deleted hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.GetConfiguration(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns which business-domain modules this hospital's staff can use, and its
+            subscription tier.</summary>
+            <response code="200">Returns the configuration.</response>
+            <response code="404">No hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.UpdateConfiguration(System.Guid,HMS.Modules.Platform.Contracts.UpdateTenantConfigurationRequest,System.Threading.CancellationToken)">
+            <summary>
+            Updates which business-domain modules this hospital's staff can use, and its
+            subscription tier. Takes effect on each affected user's next login (permissions for
+            a disabled module are stripped from the JWT at login time — see
+            AuthenticationService.LoginAsync — not revoked from tokens already issued).
+            </summary>
+            <response code="200">The configuration was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.GetFeatures(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns which schema-level modules this hospital tenant has — distinct from
+            GetConfiguration's RBAC EnabledModules. See TenantFeaturesResponse's own doc comment.</summary>
+            <response code="200">Returns the tenant's features.</response>
+            <response code="404">No hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.UpdateFeatures(System.Guid,HMS.Modules.Platform.Contracts.UpdateTenantFeaturesRequest,System.Threading.CancellationToken)">
+            <summary>
+            Updates which schema-level modules this hospital tenant has. Enabling a feature that
+            was never provisioned schedules its schema to be created on next migrate; disabling a
+            feature never drops its schema or data — only its nav/API access is revoked, enforced
+            live on every request via FeatureAuthorizationHandler (not from a JWT snapshot), so it
+            takes effect immediately without waiting for affected users to re-login.
+            </summary>
+            <response code="200">The features were updated.</response>
+            <response code="400">The request failed validation (unknown key, or a mandatory feature was omitted).</response>
+            <response code="404">No hospital was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.Migrate(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Applies any pending EF Core migrations to this hospital's existing database — HMS
+            Multi-Tenancy Phase C's migration-management action. An explicit, operator-triggered
+            operation; never run automatically or per-request.
+            </summary>
+            <response code="200">Migrations were applied (or the database was already current).</response>
+            <response code="404">No hospital was found for the given id.</response>
+            <response code="400">Migration failed; the existing database was left unchanged.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.HospitalsController.Create(HMS.Modules.Platform.Contracts.CreateHospitalRequest,System.Threading.CancellationToken)">
+            <summary>Registers a new hospital: provisions its isolated database and its first Super Admin.</summary>
+            <remarks>
+            Requires an "Idempotency-Key" header — provisioning is not cheap to retry safely, so a
+            client must supply the same key across retries of the same logical attempt (e.g. after
+            a client-side timeout) rather than risk double-provisioning. A fresh key must be used
+            for each genuinely new registration.
+            </remarks>
+            <response code="201">The hospital was registered and its database provisioned.</response>
+            <response code="400">The request failed validation, provisioning failed, or the Idempotency-Key header was missing.</response>
+            <response code="409">The hospital code or Super Admin email is already registered, or the Idempotency-Key is still in flight or was reused for different data.</response>
+        </member>
+        <member name="T:HMS.Modules.Platform.Endpoints.PlatformAuthController">
+            <summary>
+            The Platform module's authentication HTTP surface — entirely separate from
+            HMS.Modules.Identity.Endpoints.AuthenticationController. Platform Admins and hospital
+            users never share a login endpoint, a session, or a database.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.Login(HMS.Modules.Platform.Contracts.PlatformLoginRequest,System.Threading.CancellationToken)">
+            <summary>Authenticates a Platform Admin and issues a JWT.</summary>
+            <response code="200">Login succeeded; the response contains a bearer token.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="401">The email or password was invalid.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.VerifyMfa(HMS.Modules.Platform.Contracts.PlatformMfaVerifyRequest,System.Threading.CancellationToken)">
+            <summary>Second step of a two-step MFA login — exchanges the challenge token
+            LoginAsync issued, plus a current authenticator code, for the real bearer token.</summary>
+            <response code="200">The code was correct; the response contains a bearer token.</response>
+            <response code="400">The request failed validation, the code was wrong, or the challenge is invalid/expired.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.GetMfaStatus(System.Threading.CancellationToken)">
+            <summary>Whether the caller's own account currently has MFA enabled.</summary>
+            <response code="200">The response contains the current status.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.SetupMfa(System.Threading.CancellationToken)">
+            <summary>Starts (or restarts) MFA setup for the caller's own account — generates a
+            new secret, shown once for the admin to add to their authenticator app.</summary>
+            <response code="200">Setup started; the response contains the secret and otpauth URI.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.EnableMfa(HMS.Modules.Platform.Contracts.PlatformMfaEnableRequest,System.Threading.CancellationToken)">
+            <summary>Confirms a pending MFA setup by proving the caller's authenticator app
+            produces a valid code — the only way MFA actually turns on.</summary>
+            <response code="204">MFA is now enabled.</response>
+            <response code="400">The request failed validation, or the code was wrong.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.DisableMfa(HMS.Modules.Platform.Contracts.PlatformMfaDisableRequest,System.Threading.CancellationToken)">
+            <summary>Turns MFA back off for the caller's own account. Requires a valid current
+            code, not just an authenticated session — same reasoning as requiring the current
+            password to change a password.</summary>
+            <response code="204">MFA is now disabled.</response>
+            <response code="400">The request failed validation, or the code was wrong.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.ChangePassword(HMS.Modules.Platform.Contracts.PlatformChangePasswordRequest,System.Threading.CancellationToken)">
+            <summary>Self-service password change for the caller's own account — proves the
+            current password, then rotates it. Mirrors HMS.Modules.Identity's
+            POST /api/v1/auth/change-password.</summary>
+            <response code="204">The password was changed.</response>
+            <response code="400">The request failed validation, or the current password was wrong.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.Me">
+            <summary>Returns the caller's own identity, as read from the validated JWT.</summary>
+            <response code="200">The token was valid.</response>
+            <response code="401">No token, or the token was missing/invalid/expired.</response>
+            <response code="403">The token was valid but was not issued for the Platform Portal.</response>
+        </member>
+        <member name="M:HMS.Modules.Platform.Endpoints.PlatformAuthController.Logout(System.Threading.CancellationToken)">
+            <summary>
+            Revokes the caller's own token server-side (HMS Security Hardening: previously a
+            leaked or "logged out" Platform token stayed valid until natural JWT expiry — see
+            JwtConfiguration's OnTokenValidated for the other half of this). Idempotent: logging
+            out twice with the same token succeeds both times.
+            </summary>
+            <response code="204">The token was revoked (or already was).</response>
+            <response code="401">No token, or the token was missing/invalid/expired.</response>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.PlatformDbContext">
+            <summary>
+            Owns the "platform" schema inside the hms_platform database (ConnectionStrings:Platform)
+            — see docs/DatabaseArchitecture.md's SaaS provisioning ADR. A real hospital tenant's own
+            schemas live in a separate physical database; local dev/the Windows installer happen to
+            point ConnectionStrings:Default at this same hms_platform database too (for Branding's
+            pre-login schema only, when Bootstrap:SeedLegacyTenant is false — see Program.cs), but
+            that's a connection-string choice, not something this context itself depends on. Only
+            this module's own code constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.PlatformJwtTokenGenerator">
+            <summary>
+            Issues signed (HMAC-SHA256) JWTs for Platform Admins. Reads the same Jwt:Issuer/Audience/
+            SigningKey/ExpiresInMinutes config HMS.Modules.Identity's JwtTokenGenerator already uses —
+            one bearer scheme for the whole host, not a second auth pipeline — but issues a distinct
+            claim shape (PlatformUserId/Email/FullName/PlatformRole/LoginType="platform", no
+            RoleId/RoleName) so a platform token can never be mistaken for a hospital one. HMS.Api's
+            JwtConfiguration enforces LoginType=="platform" on Platform-only endpoints, and
+            PlatformRole=="SuperAdmin" on the subset of those that are destructive, via authorization
+            policies.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.PlatformMfaSecretProtector">
+            <summary>
+            Wraps ASP.NET Core's built-in Data Protection API (already part of the
+            Microsoft.AspNetCore.App shared framework — no new infrastructure or dependency) with a
+            purpose string scoped to this one use, so a key compromise elsewhere in the app can't be
+            reused to decrypt MFA secrets and vice versa.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.PlatformPasswordHasher">
+            <summary>
+            Wraps ASP.NET Core Identity's own <see cref="T:Microsoft.AspNetCore.Identity.PasswordHasher`1"/> (PBKDF2, already
+            available via the Microsoft.AspNetCore.App shared framework) — the same approach
+            HMS.Modules.Identity.Infrastructure.PasswordHasher uses. A separate copy, not a shared
+            reference: Identity's implementation is internal to its own assembly by design (every
+            module in this codebase is a fully isolated vertical slice), so Platform gets its own
+            ~10-line wrapper around the same underlying library rather than reaching into Identity's
+            internals or weakening that boundary.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.Seed.LegacyTenantSeedOptions">
+            <summary>
+            Bound from the "LegacyTenantSeed" configuration section — HMS Multi-Tenancy Phase C's
+            Phase 6 requirement: the pre-existing single dev database (ConnectionStrings:Default)
+            predates tenant-aware JWTs and needs a real platform.tenants row so its existing users
+            can still log in (via HospitalCode) and receive a valid TenantId claim. Unlike
+            PlatformAdminSeedOptions, every field has a working default — this seed must succeed for
+            the legacy database to remain reachable at all, so it can't silently no-op on missing
+            config the way the optional Platform Admin seed does.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.Seed.PlatformAdminSeedOptions">
+            <summary>
+            Bound from the "PlatformAdminSeed" configuration section (appsettings.json /
+            appsettings.Development.json) — the same configuration-driven pattern
+            HMS.Modules.Identity's SuperAdminSeedOptions already uses. Used only to create the
+            initial Platform Admin account; never read again afterwards.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Platform.Infrastructure.Seed.PlatformAdminSeedOptions.Password">
+            <summary>
+            Plaintext, read once at startup and immediately discarded — only
+            <see cref="T:HMS.Modules.Platform.Infrastructure.Seed.PlatformDataSeeder"/> touches this property, and only to pass it straight
+            into <c>IPlatformPasswordHasher.HashPassword</c>. Never persisted as-is.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.Seed.PlatformDataSeeder">
+            <summary>
+            Idempotent startup data seeder: ensures the one default Platform Admin account exists,
+            and (HMS Multi-Tenancy Phase C) that the pre-existing single dev database
+            (ConnectionStrings:Default) has a corresponding platform.tenants row — see
+            LegacyTenantSeedOptions's own doc comment. Runs once per startup, after
+            PlatformDbContext.Database.Migrate() — see Program.cs.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.TenantDirectory">
+            <summary>
+            Implements <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantDirectory"/> against this module's own Tenant aggregate.
+            Builds each tenant's connection string from ConnectionStrings:Default (the same
+            Postgres user/host/port every hospital request already used pre-Phase-C — no new
+            credentials, per the "keep current PostgreSQL deployment" constraint) with only the
+            Database swapped to the tenant's own — the same technique
+            HMS.Api.Provisioning.TenantProvisioningService.BuildTenantConnectionString already uses
+            against ConnectionStrings:PlatformAdmin for CREATE/DROP DATABASE.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.Infrastructure.TotpService">
+            <summary>
+            Thin wrapper around Otp.NET — RFC 6238 TOTP generation/verification for Platform Admin
+            MFA, rather than hand-rolling HMAC-based one-time-code math for a security primitive.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Platform.PlatformModule">
+            <summary>
+            Single composition entry point for this module, called once from HMS.Api/Configuration —
+            mirrors HMS.Modules.HR.HRModule. Points at ConnectionStrings:Platform (a separate physical
+            database, hms_platform) rather than the ConnectionStrings:Default every other module
+            shares — see docs/DatabaseArchitecture.md's SaaS provisioning ADR.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Platform.PlatformModule.SeedAsync(System.IServiceProvider,System.Threading.CancellationToken,System.Boolean)">
+            <summary>
+            Startup data seeding entry point, called once from Program.cs after
+            PlatformDbContext.Database.Migrate() — the same "single public seam per module"
+            shape as HMS.Modules.Identity.IdentityModule.SeedAsync.
+            </summary>
+            <param name="seedLegacyTenant">
+            Whether to also seed the platform.tenants row for the pre-existing legacy dev
+            database (see LegacyTenantSeedOptions) — true everywhere except a from-scratch
+            "Platform DB only" reset (Bootstrap:SeedLegacyTenant=false), where nothing should
+            exist yet for every hospital to be registered through the real flow instead.
+            </param>
+        </member>
+    </members>
+</doc>

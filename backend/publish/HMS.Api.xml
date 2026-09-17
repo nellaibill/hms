@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Api</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Api.Configuration.CorsConfiguration">
+            <summary>
+            CORS for the whole host, via a single named policy read from configuration
+            (<c>Cors:AllowedOrigins</c> in appsettings). Registered here (not ModuleRegistration)
+            since it's host-level pipeline configuration, not a business module. This is the
+            reference implementation every future module's browser-facing endpoints should rely on
+            — modules must not register their own CORS policies.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Configuration.JwtConfiguration">
+            <summary>
+            JWT bearer authentication for the whole host. Reads the same Jwt:Issuer/Audience/
+            SigningKey keys that HMS.Modules.Identity's JwtTokenGenerator uses to issue tokens, so
+            issuing and validating always agree. Registered here (not ModuleRegistration): it's
+            host-level pipeline configuration, like CorsConfiguration/SwaggerConfiguration.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Configuration.ModuleRegistration">
+            <summary>
+            Single composition root for every module. Adding a new module means adding one
+            line here — HMS.Api is the only project allowed to know every module exists.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Configuration.RateLimitingConfiguration">
+            <summary>
+            Rate limiting for the whole host (HMS Security Hardening: "no rate limiting anywhere on
+            the API host"). Three layers, all partitioned per client IP:
+              - A global limiter applied to every request by default — generous enough not to
+                interfere with normal UI usage (dashboard polling, React Query refetches), but stops
+                a flood.
+              - A stricter named "Login" policy, applied explicitly via
+                <c>[EnableRateLimiting(LoginPolicyName)]</c> to both login actions — brute-force
+                throttling (ADR-015) is per-account, this is the complementary per-IP layer that
+                still applies even across many different usernames/emails.
+              - A "Write" policy (ADR-076) for sensitive-but-not-login write endpoints the global
+                200/min limit doesn't specifically protect — message-send, notification broadcast,
+                file uploads.
+            Registered here (not ModuleRegistration), same reasoning as CorsConfiguration/
+            JwtConfiguration: host-level pipeline configuration, not a business module.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Configuration.SecurityHeadersConfiguration">
+            <summary>
+            A small set of response headers with no request-time configuration to speak of — no
+            corresponding <c>AddHmsSecurityHeaders</c> is needed, unlike CorsConfiguration/
+            RateLimitingConfiguration. Registered before <c>UseStaticFiles()</c> in Program.cs so the
+            headers also land on the raster/SVG uploads served from that pipeline stage (Branding
+            logos, product images, patient photos under wwwroot/uploads) — Documents' own uploads are
+            deliberately stored outside wwwroot and never reach UseStaticFiles at all (see
+            DocumentFileStorage's own doc comment), so this is defense-in-depth for the uploads that
+            genuinely do get served as static files, not a substitute for that isolation.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Configuration.SwaggerConfiguration">
+            <summary>
+            Swagger/OpenAPI generation for the whole host, via Swashbuckle. Registered here (not
+            ModuleRegistration) since it's host-level API documentation, not a business module.
+            The JWT Bearer scheme wires up the Swagger UI "Authorize" button so it's ready the
+            moment real authentication ships — no auth is enforced yet.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.HealthChecks.DatabaseHealthCheck">
+            <summary>
+            Confirms the platform database is reachable — used by the container orchestrator
+            (Docker Compose healthcheck) to gate readiness, not application business logic. Checks
+            PlatformDbContext specifically because it's the one DbContext always resolvable outside
+            a request (no ITenantContext needed), unlike every tenant-aware hospital DbContext.
+            </summary>
+        </member>
+        <member name="M:HMS.Api.HealthChecks.DatabaseHealthCheck.#ctor(HMS.Modules.Platform.Infrastructure.PlatformDbContext)">
+            <summary>
+            Confirms the platform database is reachable — used by the container orchestrator
+            (Docker Compose healthcheck) to gate readiness, not application business logic. Checks
+            PlatformDbContext specifically because it's the one DbContext always resolvable outside
+            a request (no ITenantContext needed), unlike every tenant-aware hospital DbContext.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Middleware.GlobalExceptionHandler">
+            <summary>
+            The single global exception handler for the whole host, per docs/ErrorHandling.md —
+            no module implements its own try/catch-to-HTTP translation. Expected business
+            failures never reach here; they're returned as <see cref="T:HMS.Shared.Kernel.Result"/> failures and
+            mapped to a response directly by the controller (see UsersController.MapFailure).
+            This handler only sees genuinely unexpected exceptions.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Middleware.TenantResolutionMiddleware">
+             <summary>
+             HMS Multi-Tenancy Phase C's single runtime tenant-resolution seam. Runs after
+             UseAuthentication() and before MapControllers() (see Program.cs). Handles two cases:
+            
+             1. Every request carrying a Hospital JWT (identified the same way JwtConfiguration's
+                "Hospital" policy does: a "UserId" claim, which only hospital tokens carry — Platform
+                tokens carry "PlatformUserId" instead) — reads the "TenantId" claim and resolves it.
+            
+             2. The hospital login request itself (POST /api/v1/auth/login), which is unauthenticated
+                by definition — no JWT/TenantId claim can exist yet. The caller identifies its tenant
+                via the X-Hospital-Code header instead. This has to happen here, in middleware, and
+                not inside AuthenticationService/AuthenticationController: ASP.NET Core constructs an
+                MVC controller's entire constructor-injection graph (controller → IAuthenticationService
+                → IUserRepository → IdentityDbContext) *before* any action-method code runs, so by the
+                time a controller method's body could call something like ITenantDirectory, the
+                tenant-aware IdentityDbContext has already been constructed — too late. Resolving
+                here, before _next(context) reaches MapControllers(), guarantees ITenantContext is
+                populated before that constructor graph is ever built.
+            
+             Both branches populate the same request-scoped ITenantContext that every tenant-aware
+             hospital DbContext reads from. Requests that are neither of the above (Platform tokens,
+             other anonymous requests) pass through untouched — existing [Authorize]/
+             [Authorize(Policy=...)] attributes are still what decides whether the request is allowed
+             at all; this middleware only ever narrows an otherwise-permitted request further, never
+             widens access.
+             </summary>
+        </member>
+        <member name="T:HMS.Api.Provisioning.TenantMigrationService">
+            <summary>
+            Implements HMS.Modules.Platform's <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantMigrationService"/> seam — see that
+            interface's own doc comment for why this lives in HMS.Api. Selective per Tenant
+            Feature/Module Management: each of the 11 real modules only migrates when its
+            FeatureCatalog key is present in the resolved (Mandatory-unioned) feature set, so a
+            tenant that never enabled e.g. "hr" never gets an hr schema (Pharmacy moved from
+            FeatureCatalog.UiOnly to .SchemaBacked earlier; Billing was added — as Mandatory, always
+            resolved regardless of any toggle — only after being found entirely missing here during
+            Pharmacy billing's live regression test, see ADR-028). The exact same module list and
+            order this always used to apply unconditionally — moved here so a brand-new tenant
+            (provisioning), an existing tenant's operator-triggered re-migrate, and a feature being
+            toggled on all go through one code path instead of duplicated migration lists drifting
+            apart.
+            </summary>
+        </member>
+        <member name="T:HMS.Api.Provisioning.TenantProvisioningService">
+            <summary>
+            Implements HMS.Modules.Platform's <see cref="T:HMS.Modules.Platform.Application.Abstractions.ITenantProvisioner"/> seam — see that
+            interface's own doc comment for why this lives in HMS.Api rather than inside the
+            Platform module itself. Registered in HMS.Api/Configuration/ModuleRegistration.cs.
+            </summary>
+        </member>
+        <member name="M:HMS.Api.Provisioning.TenantProvisioningService.SizeImportedPatientSequencesAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Sizes the Patients module's two UHID sequences to the requested boundary — safe to run
+            unconditionally right after a fresh migration, before any patient exists in this
+            database, so neither ALTER can ever fail against an already-consumed value.
+            importedUhidCapacity is a validated .NET int (CreateHospitalRequestValidator), never a
+            caller-supplied string, so interpolating it directly into this DDL carries no
+            injection risk — Postgres doesn't support bind parameters for ALTER SEQUENCE literals
+            at all, so this is the only way to express it.
+            </summary>
+        </member>
+        <member name="M:HMS.Api.Provisioning.TenantProvisioningService.GenerateUniqueDatabaseNameAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Sanitizes the hospital name into a Postgres-safe database name (lowercase,
+            non-alphanumeric runs collapsed to a single underscore, "hms_" prefixed), then
+            appends a numeric suffix until it doesn't collide with an existing physical database.
+            </summary>
+        </member>
+    </members>
+</doc>

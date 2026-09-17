@@ -1,0 +1,451 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Documents</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Documents.Application.Abstractions.IDocumentFileStorage">
+            <summary>
+            Persists an uploaded file's bytes and returns a server-issued storage key — mirrors
+            HMS.Modules.Patients.Application.Abstractions.IPatientFileStorage's local-disk approach
+            (see docs/DecisionLog.md's file-upload ADR: no blob storage/CDN until there's a real
+            need). Unlike Patients' uploads, the stored key returned here is <em>never</em> served via
+            `app.UseStaticFiles()` — Documents' content is only reachable through the authenticated
+            GET /api/v1/documents/{id}/content endpoint (see docs/ApiStandards.md §10 and
+            docs/modules/Documents/DocumentManagement.md for why).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Application.Abstractions.IDocumentFileStorage.SaveAsync(System.Guid,System.String,System.IO.Stream,System.Threading.CancellationToken)">
+            <summary>Persists <paramref name="content"/> to disk in a single pass, computing its
+            SHA-256 checksum as it copies rather than re-reading the stream a second time.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Abstractions.IDocumentOwnerExistenceChecker">
+             <summary>
+             Public: implemented by the module that actually owns a given <see cref="T:HMS.Modules.Documents.Contracts.DocumentOwnerType"/>
+             (e.g. HMS.Modules.Patients implements one for <see cref="F:HMS.Modules.Documents.Contracts.DocumentOwnerType.Patient"/>) and
+             registered into DI from that module's own <c>Add&lt;Module&gt;Module</c> extension — the
+             same "leaf module depends on this module's public seam" direction already used by
+             HMS.Modules.Products depending on HMS.Modules.Masters (see
+             HMS.Api.Configuration.ModuleRegistration's comment on registration order).
+            
+             US-1's acceptance criteria requires uploads to be rejected with 404 when the target
+             record doesn't exist — but only four of ten <see cref="T:HMS.Modules.Documents.Contracts.DocumentOwnerType"/> values have a
+             real backend module as of this module's creation (Patient, Staff, Appointment, Billing;
+             see docs/modules/Documents/DocumentManagement.md). DocumentService resolves all registered
+             checkers keyed by <see cref="P:HMS.Modules.Documents.Application.Abstractions.IDocumentOwnerExistenceChecker.OwnerType"/>; an owner type with no registered checker is not
+             existence-validated — DocumentService logs a warning and proceeds rather than silently
+             pretending to validate a module that doesn't exist yet.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Abstractions.IDocumentRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule mirrored from HMS.Modules.Patients — Application never references EF Core
+            types directly.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Application.Abstractions.IDocumentRepository.GetExpiringCountAsync(HMS.Modules.Documents.Contracts.DocumentOwnerType,System.DateOnly,System.DateOnly,System.Threading.CancellationToken)">
+            <summary>Count of non-deleted, Available-status documents of the given owner type
+            whose ExpiryDate falls within [fromDate, toDate] inclusive — backs
+            IDocumentService.GetExpiringDocumentCountAsync.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Abstractions.ScanQueueItem">
+            <summary>
+            One queued scan job — carries the tenant's connection info alongside the document id
+            because the background reader (Infrastructure.DocumentScanBackgroundService) has no HTTP
+            request of its own to resolve a tenant from (see ITenantContext's remarks: it's populated
+            per-request by TenantResolutionMiddleware, which never runs for a background service's own
+            DI scope). Without this, every dequeue would resolve DocumentsDbContext with an
+            unestablished tenant and throw, leaving every document stuck Pending forever regardless of
+            how quickly it's drained — not merely an in-memory-queue-loses-work-on-restart risk (see
+            this queue's own doc comment on that), but every single scan, always.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Application.Abstractions.ScanQueueItem.#ctor(System.Guid,System.Guid,System.String)">
+            <summary>
+            One queued scan job — carries the tenant's connection info alongside the document id
+            because the background reader (Infrastructure.DocumentScanBackgroundService) has no HTTP
+            request of its own to resolve a tenant from (see ITenantContext's remarks: it's populated
+            per-request by TenantResolutionMiddleware, which never runs for a background service's own
+            DI scope). Without this, every dequeue would resolve DocumentsDbContext with an
+            unestablished tenant and throw, leaving every document stuck Pending forever regardless of
+            how quickly it's drained — not merely an in-memory-queue-loses-work-on-restart risk (see
+            this queue's own doc comment on that), but every single scan, always.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Abstractions.IDocumentScanQueue">
+             <summary>
+             A single-process, in-memory work queue of newly-uploaded documents awaiting a virus scan —
+             the platform's first background-job mechanism (see
+             docs/modules/Documents/DocumentManagement.md; nothing like Hangfire/Quartz exists
+             elsewhere in this codebase yet, and introducing one is out of proportion to this one
+             pipeline). Backed by a bounded <c>System.Threading.Channels.Channel&lt;ScanQueueItem&gt;</c>
+             in Infrastructure.DocumentScanQueue, drained by Infrastructure.DocumentScanBackgroundService.
+            
+             Being in-memory means a queued item is lost if the process restarts before it's drained —
+             acceptable for an MVP virus-scan pipeline (the document stays
+             <see cref="F:HMS.Modules.Documents.Contracts.DocumentStatus.Pending"/> forever rather than being silently marked
+             Available), but not a substitute for a durable queue if this pipeline grows
+             higher-stakes responsibilities later.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Abstractions.IVirusScanner">
+            <summary>
+            Scans a stored file's content for malicious content before it can be marked
+            <see cref="F:HMS.Modules.Documents.Contracts.DocumentStatus.Available"/> — see US-9. No real antivirus engine
+            (e.g. ClamAV) is wired into this codebase yet; the registered implementation is
+            Infrastructure.NullVirusScanner, a clearly-labeled stub. Swapping in a real engine later
+            means implementing this interface again — nothing above it changes.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.DocumentActor">
+             <summary>
+             The authenticated caller, as read from the validated JWT's "UserId"/"LoginType" claims
+             (HMS.Modules.Identity.Infrastructure.JwtTokenGenerator). "LoginType" — not the freeform,
+             admin-creatable "RoleName" claim — is used here because it's the closed, stable set
+             (superAdmin/admin/receptionist/doctor/nurse/labTechnician/radiologist/pharmacist/hr/
+             accounts, see HMS.Modules.Identity.Application.LoginTypes) that
+             Application.Security.DocumentAccessPolicy's role-to-owner-type map is keyed against;
+             "RoleName" can be any hospital-specific string an admin typed in and can't drive a
+             hardcoded policy table safely.
+            
+             Documents is the first module to derive a real actor from claims rather than passing
+             <c>actorId: null</c> the way every other module's controllers currently do — see
+             docs/modules/Documents/DocumentManagement.md for why RBAC couldn't be deferred here.
+             </summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Application.DocumentActor.#ctor(System.Nullable{System.Guid},System.String)">
+             <summary>
+             The authenticated caller, as read from the validated JWT's "UserId"/"LoginType" claims
+             (HMS.Modules.Identity.Infrastructure.JwtTokenGenerator). "LoginType" — not the freeform,
+             admin-creatable "RoleName" claim — is used here because it's the closed, stable set
+             (superAdmin/admin/receptionist/doctor/nurse/labTechnician/radiologist/pharmacist/hr/
+             accounts, see HMS.Modules.Identity.Application.LoginTypes) that
+             Application.Security.DocumentAccessPolicy's role-to-owner-type map is keyed against;
+             "RoleName" can be any hospital-specific string an admin typed in and can't drive a
+             hardcoded policy table safely.
+            
+             Documents is the first module to derive a real actor from claims rather than passing
+             <c>actorId: null</c> the way every other module's controllers currently do — see
+             docs/modules/Documents/DocumentManagement.md for why RBAC couldn't be deferred here.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.DocumentErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Documents-module failures, per
+            docs/ApiStandards.md §5 — the caller branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.DocumentService">
+            <summary>
+            Orchestrates every Documents use case (US-1, US-3 through US-8). Mirrors
+            HMS.Modules.Patients.Application.PatientService's shape: file constraints are checked
+            directly here rather than via FluentValidation (matching PatientService.UploadPhotoAsync),
+            since IFormFile-derived stream/length/content-type inputs aren't naturally expressed as
+            FluentValidation rules on a DTO.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.IDocumentService">
+            <summary>
+            Public (not internal): DocumentsController — which ASP.NET Core requires to be public,
+            with a public constructor, for controller discovery and DI activation — takes this as a
+            constructor dependency. A public constructor cannot have an internal parameter type
+            (CS0051), so this interface is the module's deliberate, narrow seam between its public
+            HTTP boundary and its otherwise-internal Application/Domain/Infrastructure layers,
+            mirroring HMS.Modules.Patients.Application.IPatientService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Application.IDocumentService.GetContentAsync(System.Guid,HMS.Modules.Documents.Application.DocumentActor,System.Threading.CancellationToken)">
+            <summary>Resolves the readable content stream for a document, after the same access
+            check as every other read — or a failure (not found, forbidden, or not yet available
+            because it's still pending/quarantined scan).</summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Application.IDocumentService.GetExpiringDocumentCountAsync(HMS.Modules.Documents.Contracts.DocumentOwnerType,System.Int32,System.Threading.CancellationToken)">
+            <summary>Counts non-deleted, Available-status documents of the given owner type whose
+            ExpiryDate falls within the next <paramref name="withinDays"/> days (inclusive of
+            today) — added for the Hospital HR Management MVP's HR dashboard "expiring documents"
+            tile (DocumentOwnerType.Staff), but generic across every owner type. Deliberately
+            unfiltered by any access policy (a cross-module count, not a per-caller document list)
+            — mirrors GetSummaryAsync's own "repository-wide" framing.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.DocumentContent">
+            <summary>A resolved, readable document stream plus the metadata a controller needs to
+            build the HTTP response (content type, download file name).</summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Application.DocumentContent.#ctor(System.IO.Stream,System.String,System.String)">
+            <summary>A resolved, readable document stream plus the metadata a controller needs to
+            build the HTTP response (content type, download file name).</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Mapping.DocumentMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping — mirrors
+            HMS.Modules.Patients.Application.Mapping.PatientMappingExtensions; two entities don't yet
+            justify a mapping library (see docs/DecisionLog.md ADR-003).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Security.DocumentAccessPolicy">
+             <summary>
+             US-2's access check. There is no ASP.NET Core policy-based authorization infrastructure
+             anywhere in this codebase yet — <c>AddAuthorization()</c> is called with defaults and the
+             only existing <c>[Authorize]</c> usage (AuthenticationController.Me()) is a bare
+             authentication-only gate, per docs/modules/Documents/DocumentManagement.md's backend
+             survey. Standing up the full dynamic Permission/RolePermission-driven policy provider
+             described in docs/ApiStandards.md §9 is a platform-wide undertaking, not something this
+             module should do unilaterally. This class is the pragmatic, explicitly-scoped middle
+             ground: a real, enforced, per-owner-type-and-classification check today, expressed as an
+             in-code table keyed by the stable LoginType claim (see DocumentActor) — swappable for a
+             database-backed policy once Authorization.md's dynamic model is wired in for every module,
+             not just this one.
+            
+             superAdmin/admin bypass every check, mirroring
+             frontend/web/src/config/navigation.ts's filterNavigationForRole treatment of those two
+             roles as seeing everything regardless of a leaf's own roles list.
+             </summary>
+        </member>
+        <member name="F:HMS.Modules.Documents.Application.Security.DocumentAccessPolicy.OwnerTypesByRole">
+            <summary>Which owner types each LoginType may read/write documents for. Deliberately
+            coarser than a full classification matrix — see class remarks.</summary>
+        </member>
+        <member name="F:HMS.Modules.Documents.Application.Security.DocumentAccessPolicy.RestrictedAccessRoles">
+            <summary>Roles allowed to read/write Restricted-classification documents, regardless
+            of their normal owner-type access above — the one piece of classification-driven
+            gating this iteration implements (see Domain.DocumentClassification).</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Validation.FileSignatureValidator">
+             <summary>
+             Server-side content-sniffing per docs/ApiStandards.md §10 ("every upload validates
+             content type and the actual file signature, not just the filename extension") — the
+             client-declared <c>IFormFile.ContentType</c> is never trusted on its own (it's a textbook
+             OWASP file-upload bypass; see docs/modules/Documents/DocumentManagement.md's security
+             review), so this checks the file's actual leading bytes against the declared type.
+            
+             Limitation, stated plainly rather than silently: DOCX/XLSX are both ZIP containers (OOXML),
+             so this only confirms the upload is a well-formed ZIP, not specifically a Word or Excel
+             file — fully distinguishing them requires inspecting the archive's internal entries (e.g.
+             a `word/` vs `xl/` folder), which is a reasonable future enhancement, not an MVP blocker.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Application.Validators.UploadDocumentRequestValidator">
+            <summary>Validates the form-field portion of an upload; the file itself is validated
+            directly in DocumentService.UploadAsync (size/content-type/signature — see that class's
+            remarks for why FluentValidation isn't a natural fit for stream-shaped input).</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Contracts.DocumentOwnerType">
+            <summary>
+            The record kind a document is attached to. Kept as a closed enum (stored as its string
+            name, matching the rest of the platform's enum convention) rather than a lookup table —
+            see docs/modules/Documents/DocumentManagement.md for why, and for which of these values
+            have a real backend module to existence-check uploads against.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Contracts.DocumentType">
+            <summary>The kind of document within its owner's record, mirroring the frontend's
+            DOCUMENT_TYPES constant (frontend/web/src/features/documents/constants.ts).</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Contracts.DocumentClassification">
+            <summary>
+            Sensitivity of a document's content, independent of <see cref="T:HMS.Modules.Documents.Contracts.DocumentOwnerType"/> or
+            <see cref="T:HMS.Modules.Documents.Contracts.DocumentType"/> — it is what actually should drive access control (see
+            Application.Security.DocumentAccessPolicy), since a Vendor invoice and a patient consent
+            form have very different exposure even though neither is inherently more or less
+            "Patient-shaped" than the other.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Contracts.DocumentStatus">
+            <summary>
+            Lifecycle state driven by the asynchronous scan pipeline (US-9). A document's content is
+            never downloadable until it reaches <see cref="F:HMS.Modules.Documents.Contracts.DocumentStatus.Available"/>.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Documents.Contracts.DocumentStatus.Pending">
+            <summary>Uploaded and stored; queued for virus scanning. Not downloadable yet.</summary>
+        </member>
+        <member name="F:HMS.Modules.Documents.Contracts.DocumentStatus.Available">
+            <summary>Scanned clean. Downloadable, subject to <see cref="T:HMS.Modules.Documents.Application.Security.IDocumentAccessPolicy"/>.</summary>
+        </member>
+        <member name="F:HMS.Modules.Documents.Contracts.DocumentStatus.Quarantined">
+            <summary>Scan flagged the content. Never downloadable; visible to administrators only for audit purposes.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Contracts.DocumentListQuery">
+            <summary>
+            Query shape for GET /api/v1/documents — mirrors every filter already implemented in the
+            existing frontend mock (frontend/web/src/features/documents/components/FilterBar.tsx), so
+            wiring the real API to that UI later is a drop-in swap rather than a redesign. Inherits
+            Page/PageSize/Sort/Search from <see cref="T:HMS.Shared.Kernel.PagedRequest"/> per docs/ApiStandards.md §6.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Contracts.DocumentSummaryResponse">
+            <summary>Server-side aggregate backing the KPI cards — computed via a database query
+            (see Infrastructure.Repositories.DocumentRepository.GetSummaryAsync), not by scanning
+            every row in application code the way the original frontend mock did.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Contracts.UploadDocumentRequest">
+            <summary>
+            The form-field portion of a POST /api/v1/documents request — the file itself arrives as a
+            separate <c>IFormFile</c> controller-action parameter, mirroring
+            HMS.Modules.Patients.Endpoints.PatientsController.UploadIdProof's
+            <c>(IFormFile file, [FromForm] IdProofType idProofType)</c> shape.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Documents.Contracts.UploadDocumentRequest.Classification">
+            <summary>Defaults to <see cref="F:HMS.Modules.Documents.Contracts.DocumentClassification.Internal"/> when not supplied —
+            see <see cref="T:HMS.Modules.Documents.Contracts.DocumentClassification"/> for why this is independent of owner type.</summary>
+        </member>
+        <member name="P:HMS.Modules.Documents.Contracts.UploadDocumentRequest.ExpiryDate">
+            <summary>Optional — when the document itself has a renewal/expiry date (e.g. a Staff
+            ID proof or certification). Null for every owner type with no notion of expiry; see
+            Domain.Document.ExpiryDate's own remarks.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.DocumentsModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration — mirrors HMS.Modules.Patients.PatientsModule.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Domain.Document">
+            <summary>
+            A single uploaded file attached to any HMS record via <see cref="P:HMS.Modules.Documents.Domain.Document.OwnerType"/> +
+            <see cref="P:HMS.Modules.Documents.Domain.Document.OwnerId"/> — the generic cross-module document repository described in
+            docs/modules/Documents/DocumentManagement.md. Deliberately carries no version history or
+            dynamic per-role permission grants in this iteration (see that doc's Future Enhancements).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Documents.Domain.Document.StorageKey">
+            <summary>Server-issued relative storage path — never a client-supplied path (see
+            Infrastructure.DocumentFileStorage). Never exposed directly over the API; content is
+            only reachable through the authenticated GET /{id}/content endpoint.</summary>
+        </member>
+        <member name="P:HMS.Modules.Documents.Domain.Document.ExpiryDate">
+            <summary>Null for every owner type that has no notion of expiry — added for the
+            Hospital HR Management MVP's Staff document tracking (e.g. an ID proof or
+            certification with a renewal date), per docs/DecisionLog.md ADR-036. A small,
+            backward-compatible nullable-column addition: every other owner type just leaves it
+            null, unchanged from before this column existed.</summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Domain.Document.MarkAvailable">
+            <summary>Called by the scan pipeline (US-9) once content passes an AV scan.</summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Domain.Document.MarkQuarantined">
+            <summary>Called by the scan pipeline (US-9) when content fails an AV scan. Quarantined
+            documents are never served by GET /{id}/content regardless of caller permissions.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Endpoints.DocumentsController">
+            <summary>
+            The Documents module's HTTP surface — a generic, cross-module document repository keyed
+            by owner type + owner id (US-1 through US-8; see
+            docs/modules/Documents/DocumentManagement.md). Unlike every other module's controller in
+            this codebase, this one requires authentication and derives a real
+            <see cref="T:HMS.Modules.Documents.Application.DocumentActor"/> from the caller's JWT claims rather than passing
+            <c>actorId: null</c> — Documents aggregates the most sensitive artifact of every other
+            module in one place, so RBAC could not be deferred the way it has been elsewhere (US-2).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.Upload(Microsoft.AspNetCore.Http.IFormFile,HMS.Modules.Documents.Contracts.UploadDocumentRequest,System.Threading.CancellationToken)">
+            <summary>Uploads a file and attaches it to a specific owner record (US-1).</summary>
+            <response code="201">The document was uploaded and queued for a virus scan.</response>
+            <response code="400">The request or file failed validation.</response>
+            <response code="403">The caller may not upload documents for this owner type.</response>
+            <response code="404">No record of the given owner type/id was found.</response>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.GetPaged(HMS.Modules.Documents.Contracts.DocumentListQuery,System.Threading.CancellationToken)">
+            <summary>Lists documents with paging, filtering, and search (US-3).</summary>
+            <response code="200">A page of documents visible to the caller.</response>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.GetSummary(System.Threading.CancellationToken)">
+            <summary>Server-side KPI aggregate — total, uploaded today, archived, storage used (US-7).</summary>
+            <response code="200">The current repository-wide summary.</response>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single document's metadata by id.</summary>
+            <response code="200">The document was found and is visible to the caller.</response>
+            <response code="404">No document was found, or it exists but the caller can't see it.</response>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.GetContent(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Streams a document's bytes after the same access check as every other read (US-4).
+            This is the <em>only</em> way to retrieve a document's content — it is never served via
+            static file middleware (see docs/modules/Documents/DocumentManagement.md's security
+            review).
+            </summary>
+            <response code="200">The file content.</response>
+            <response code="404">No document was found, or it exists but the caller can't see it.</response>
+            <response code="409">The document exists but its content isn't available yet (still
+            being scanned, or quarantined).</response>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.Archive(System.Guid,System.Threading.CancellationToken)">
+            <summary>Archives a document — hidden from active searches, not deleted (US-5, idempotent).</summary>
+            <response code="200">The document is archived.</response>
+            <response code="403">The caller may not archive documents for this owner type.</response>
+            <response code="404">No document was found, or it exists but the caller can't see it.</response>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a document — the row and its file on disk are retained for audit
+            purposes, only <c>IsDeleted</c> is set (US-6).</summary>
+            <response code="204">The document was soft-deleted.</response>
+            <response code="403">The caller may not delete documents for this owner type.</response>
+            <response code="404">No document was found, or it exists but the caller can't see it.</response>
+        </member>
+        <member name="M:HMS.Modules.Documents.Endpoints.DocumentsController.GetActor">
+            <summary>Reads the authenticated caller's identity off the validated JWT (US-2) — see
+            DocumentActor's remarks for why "LoginType," not the freeform "RoleName," is the claim
+            used to drive access decisions.</summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Infrastructure.Configurations.DocumentConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.Documents.Domain.Document"/> to documents.documents, following the naming/PK/audit-column/
+            soft-delete standards mirrored from HMS.Modules.Patients.Infrastructure.Configurations.
+            PatientConfiguration. Internal (not public): Document is an internal domain type, so a
+            public Configure(EntityTypeBuilder&lt;Document&gt;) member would be a CS0051 accessibility
+            violation — EF Core's ApplyConfigurationsFromAssembly discovers and invokes this via
+            reflection regardless of the type's own visibility.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Infrastructure.DocumentFileStorage">
+            <summary>
+            Local-disk file storage, mirroring HMS.Modules.Patients.Infrastructure.PatientFileStorage
+            (same "no premature complexity" rationale — no blob storage/CDN until there's a real
+            need). The one deliberate difference: this is stored under
+            <c>App_Data/documents</c>, <em>outside</em> <c>wwwroot</c>, so it is structurally
+            impossible for `app.UseStaticFiles()` to ever serve a document's bytes directly — content
+            only ever leaves this module through DocumentsController's authenticated
+            GET /{id}/content action (see docs/ApiStandards.md §10's "served through a controlled
+            download endpoint rather than direct static file serving").
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Infrastructure.DocumentScanBackgroundService">
+            <summary>
+            Drains IDocumentScanQueue and moves each document from Pending to Available/Quarantined
+            (US-9). Registered as a hosted service (singleton), so it resolves the scoped repository/
+            file storage/scanner through a fresh DI scope per item — the same pattern ASP.NET Core's
+            own background-task samples use for a singleton service that needs scoped dependencies.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Infrastructure.DocumentScanQueue">
+            <summary>
+            Bounded in-memory queue backing IDocumentScanQueue — see that interface's remarks for why
+            this is the platform's first background-job mechanism and why an in-memory queue is an
+            acceptable MVP trade for this specific pipeline. Registered as a singleton (one queue for
+            the process's lifetime); DocumentScanBackgroundService is the sole reader.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Infrastructure.DocumentsDbContext">
+            <summary>
+            Owns the "documents" PostgreSQL schema. Per the pattern established by
+            HMS.Modules.Patients.Infrastructure.PatientsDbContext, only this module's own code
+            constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Documents.Infrastructure.NullVirusScanner">
+            <summary>
+            Stub scan engine — always reports <see cref="F:HMS.Modules.Documents.Application.Abstractions.ScanOutcome.Clean"/>. No real antivirus
+            engine (ClamAV or otherwise) is integrated anywhere in this codebase; this exists so the
+            rest of the pipeline (queueing, status transitions, the Pending/Available/Quarantined
+            state machine — US-9) is real and testable today, with a single, clearly-labeled seam to
+            replace once a real engine is wired in. Do not treat a document reaching
+            <see cref="F:HMS.Modules.Documents.Application.Abstractions.ScanOutcome.Clean"/> as evidence it was actually scanned
+            for malware while this implementation is registered — see
+            docs/modules/Documents/DocumentManagement.md's Risks section.
+            </summary>
+        </member>
+    </members>
+</doc>

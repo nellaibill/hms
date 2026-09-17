@@ -1,0 +1,532 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Notifications</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Notifications.Application.Abstractions.IEmailSender">
+            <summary>Implemented in Infrastructure by SmtpEmailSender.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.Abstractions.NotificationDeliveryQueueItem">
+            <summary>
+            One queued delivery job — carries the tenant's connection info alongside the delivery id
+            because the background reader (Infrastructure.NotificationDeliveryBackgroundService) has
+            no HTTP request of its own to resolve a tenant from. Mirrors
+            HMS.Modules.Documents.Application.Abstractions.ScanQueueItem exactly, including the same
+            reasoning: without this, every dequeue would resolve NotificationsDbContext with an
+            unestablished tenant and throw, leaving every Email/Sms delivery stuck Pending forever.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.Abstractions.NotificationDeliveryQueueItem.#ctor(System.Guid,System.Guid,System.String)">
+            <summary>
+            One queued delivery job — carries the tenant's connection info alongside the delivery id
+            because the background reader (Infrastructure.NotificationDeliveryBackgroundService) has
+            no HTTP request of its own to resolve a tenant from. Mirrors
+            HMS.Modules.Documents.Application.Abstractions.ScanQueueItem exactly, including the same
+            reasoning: without this, every dequeue would resolve NotificationsDbContext with an
+            unestablished tenant and throw, leaving every Email/Sms delivery stuck Pending forever.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.Abstractions.INotificationDeliveryQueue">
+             <summary>
+             A single-process, in-memory work queue of Email/Sms deliveries awaiting send — reuses the
+             exact mechanism HMS.Modules.Documents built for its virus-scan pipeline
+             (Infrastructure.NotificationDeliveryQueue, a bounded
+             <c>System.Threading.Channels.Channel&lt;NotificationDeliveryQueueItem&gt;</c>) rather than
+             introducing a second background-job mechanism, per docs/DecisionLog.md ADR-029.
+            
+             Being in-memory means a queued item is lost if the process restarts before it's drained —
+             the delivery row simply stays <see cref="F:HMS.Modules.Notifications.Contracts.DeliveryStatus.Pending"/> forever
+             rather than being silently marked Sent; acceptable at MVP scale (in-app delivery, the
+             guaranteed channel, already succeeded by the time anything is queued here — see
+             NotificationService.NotifyAsync).
+             </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.Abstractions.INotificationDeliveryRepository.GetPendingAsync(System.Int32,System.Threading.CancellationToken)">
+            <summary>The background delivery worker's (added in a later phase) work queue — the
+            oldest <paramref name="batchSize"/> deliveries still <see cref="F:HMS.Modules.Notifications.Contracts.DeliveryStatus.Pending"/>.</summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.Abstractions.INotificationRecipientRepository.GetByUserAsync(System.Guid,System.Nullable{System.Boolean},System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Backs "my notifications" — <paramref name="isRead"/> null means no filter.</summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.Abstractions.INotificationRecipientRepository.GetUnreadByUserAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Every unread row for this user — "mark all as read" loads exactly this set.</summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.Abstractions.INotificationRepository.GetManyByIdsAsync(System.Collections.Generic.IEnumerable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Batched lookup for GetMyNotificationsAsync's page of NotificationRecipient
+            rows — one query per page instead of one per row (mirrors HMS.Modules.Identity's
+            UserService.GetPagedAsync/IRoleRepository.GetManyByIdsAsync).</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.Abstractions.INotificationTemplateRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/Architecture.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.Abstractions.ISmsSender">
+            <summary>Implemented in Infrastructure by HttpSmsSender.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.INotificationPreferenceService">
+            <summary>Public for the same CS0051 reason as <see cref="T:HMS.Modules.Notifications.Application.INotificationService"/> —
+            NotificationPreferencesController's public constructor takes this as a dependency.</summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.INotificationPreferenceService.GetMyPreferencesAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Only rows the caller has actually saved — a category with no row means "use
+            the default" (see NotificationPreference's own doc comment), not "explicitly
+            disabled," so callers should treat a missing category that way rather than reading
+            its absence from this list as an opt-out.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.INotificationService">
+            <summary>
+            Public (not internal): this module's one deliberate, narrow seam — the same CS0051
+            reasoning as HMS.Modules.Identity.IUserService (NotificationsController, which ASP.NET
+            Core requires to be public with a public constructor, takes this as a dependency).
+            It is also, deliberately, the single method every other HMS module will call in-process
+            to raise a notification (a later phase wires the real call sites in Appointments/
+            Patients/Billing/Pharmacy/IPD) — the same in-process pattern HMS.Modules.Pharmacy
+            already uses for HMS.Modules.Billing's IInvoiceService, not an event bus (see
+            docs/DecisionLog.md, ADR-029).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.INotificationService.GetMyNotificationsAsync(System.Guid,System.Nullable{System.Boolean},System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Always scoped to <paramref name="userId"/> — there is no way to fetch
+            another user's notifications through this method, by design.</summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.INotificationService.MarkAsReadAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Fails with <see cref="F:HMS.Modules.Notifications.Application.NotificationErrorCodes.NotFound"/> if
+            <paramref name="notificationRecipientId"/> doesn't exist or doesn't belong to
+            <paramref name="userId"/> — see that error code's own doc comment.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.INotificationTemplateService">
+            <summary>Public for the same CS0051 reason as <see cref="T:HMS.Modules.Notifications.Application.INotificationService"/> —
+            NotificationTemplatesController's public constructor takes this as a dependency.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.Mapping.NotificationMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single pair of entities doesn't justify a mapping
+            library (Mapster/AutoMapper) at MVP scale — see docs/DecisionLog.md, ADR-003.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.Mapping.NotificationMappingExtensions.ToResponse(HMS.Modules.Notifications.Domain.NotificationRecipient,HMS.Modules.Notifications.Domain.Notification)">
+            <summary>Combines a NotificationRecipient (the "my notifications" row — Id, IsRead,
+            ReadAt) with its owning Notification (the rendered content) into one API-facing
+            shape. The caller is responsible for having already loaded the matching
+            <paramref name="notification"/> (see NotificationService.GetMyNotificationsAsync's
+            batched lookup) — passed in rather than navigated to, since NotificationRecipient
+            carries no EF navigation property to Notification (see that entity's own doc
+            comment on why this codebase's cross-entity FKs skip navigation properties here).</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.NotificationErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Notifications-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Notifications.Application.NotificationErrorCodes.NotFound">
+            <summary>Covers both "no such NotificationRecipient row" and "the row exists but
+            belongs to someone else" — deliberately not distinguished (no separate Forbidden
+            code) so a caller can't use this endpoint to probe whether a given id belongs to
+            another user, same reasoning as AuthenticationService's generic login-failure
+            message.</summary>
+        </member>
+        <member name="F:HMS.Modules.Notifications.Application.NotificationErrorCodes.TemplateNotFound">
+            <summary>NotifyAsync's Body was omitted but no active InApp template exists for the
+            given TemplateKey — see NotifyRequest.Body's own doc comment.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.NotificationService">
+            <summary>
+            Orchestrates Notifications use cases: expected failures (not found / not yours) are
+            returned as <see cref="T:HMS.Shared.Kernel.Result"/> failures, never thrown — see docs/Architecture.md's
+            exception handling strategy. NotifyAsync writes the in-app channel synchronously
+            (Notification + NotificationRecipient rows) and queues Email/Sms as best-effort
+            NotificationDelivery rows for NotificationDeliveryBackgroundService to actually send —
+            see that type's own doc comment for why a request never waits on an outbound
+            email/SMS call.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.NotificationService.ResolveChannelsAsync(System.Guid,System.String,HMS.Modules.Notifications.Contracts.NotificationSeverity,System.Threading.CancellationToken)">
+            <summary>Email/Sms opt-in for one recipient — Emergency severity bypasses
+            NotificationPreferences entirely (every channel, always), per the design doc.
+            A missing preference row uses the same defaults NotificationPreference.Create
+            itself would set (email on, sms off) rather than auto-creating a row just to read
+            them.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.TemplateRenderer">
+            <summary>
+            Substitutes <c>{{Key}}</c> tokens in a NotificationTemplate's BodyTemplate/Subject
+            against a caller-supplied data dictionary. Deliberately minimal — no conditionals, no
+            loops, no nested paths; just flat key lookup, matching the placeholder examples in the
+            design doc ("Hello {{PatientName}}"). An unmatched token is left as literal text rather
+            than throwing or silently blanking it, so a typo'd placeholder is visible in the
+            rendered output instead of producing a confusing gap.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Application.TemplateRenderer.PlaceholderPattern">
+            <remarks>
+            Pattern:<br/>
+            <code>\\{\\{(\\w+)\\}\\}</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match the string "{{".<br/>
+            ○ 1st capture group.<br/>
+                ○ Match a word character atomically at least once.<br/>
+            ○ Match the string "}}".<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Application.Validators.NotifyRequestValidator">
+            <summary>
+            Server-side validation for POST /api/v1/notifications (the admin manual-send endpoint) —
+            the same request shape a later phase's cross-module callers use in-process, so this is
+            the one place these rules need to live.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.NotificationChannel">
+            <summary>Entity-owned enum kept in Contracts (not Domain) because it's also referenced
+            by DTOs added in a later phase — mirrors HMS.Modules.Pharmacy's Contracts/
+            PharmacyEnums.cs convention (e.g. TransactionType).</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.NotificationSeverity">
+            <summary>Emergency notifications bypass NotificationPreferences entirely (every channel,
+            always) — see NotificationPreference's own doc comment.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.DeliveryStatus">
+            <summary>Tracks one NotificationDelivery row's lifecycle. In-app delivery has no
+            corresponding row (see NotificationDelivery's doc comment) — this status only ever
+            applies to Email/Sms, which is why Pending/Failed/Skipped matter: those channels can
+            fail or be skipped by preference in a way "the row exists" never captures.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.NotificationListQuery">
+            <summary>
+            Query parameters for GET /api/v1/notifications — pagination comes from
+            <see cref="T:HMS.Shared.Kernel.PagedRequest"/>; <see cref="P:HMS.Modules.Notifications.Contracts.NotificationListQuery.IsRead"/> is this endpoint's own filter. Always
+            implicitly scoped to the caller's own UserId (from the JWT) — there is no UserId
+            parameter here, by design (see NotificationsController's doc comment).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.UpdateNotificationPreferenceRequest">
+            <summary>Upserts the caller's preference for one category — if no row exists yet for
+            (caller, Category), one is created with these values rather than requiring a separate
+            "initialize my preferences" step.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.NotificationResponse">
+            <summary>One recipient's view of a notification — the Id here is the
+            NotificationRecipient's Id (what "mark as read" targets), not the underlying
+            Notification's Id, which is carried separately as <see cref="P:HMS.Modules.Notifications.Contracts.NotificationResponse.NotificationId"/>.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.NotificationBroadcastResponse">
+            <summary>Result of raising a notification — deliberately not a
+            <see cref="T:HMS.Modules.Notifications.Contracts.NotificationResponse"/>: a single Notify call fans out to N recipient rows,
+            so there's no one "recipient view" to return.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.UpdateNotificationTemplateRequest">
+            <summary>Content and active-state are edited together in one action — a separate
+            activate/deactivate endpoint would be one more route for a toggle this form already
+            carries.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Contracts.NotifyRequest">
+            <summary>
+            The one shape every notification is created from — whether the call comes from another
+            module's in-process <see cref="T:HMS.Modules.Notifications.Application.INotificationService"/> call (a later phase
+            wires the real trigger points in Appointments/Patients/Billing/Pharmacy/IPD) or from the
+            admin "manual send" HTTP endpoint.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Contracts.NotifyRequest.TemplateKey">
+            <summary>Looked up against the InApp-channel NotificationTemplate whenever
+            <see cref="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Body"/> is omitted — see that resolution in NotificationService.NotifyAsync.
+            Always required (even when <see cref="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Body"/> is supplied directly) so every
+            notification is traceable to the event that raised it.</summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Title">
+            <summary>Always literal — short enough that templating it wasn't worth a second
+            placeholder-substitution pass (see <see cref="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Body"/> for the templated field).</summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Body">
+            <summary>Literal body text. Omit (null/empty) to render the InApp template named by
+            <see cref="P:HMS.Modules.Notifications.Contracts.NotifyRequest.TemplateKey"/> against <see cref="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Placeholders"/> instead — the admin
+            manual-send endpoint typically supplies this directly, while a template-driven
+            trigger (a later phase's Appointments/Patients/etc. call sites) typically omits it.</summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Placeholders">
+            <summary>Substituted into the template's <c>{{Key}}</c> tokens when <see cref="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Body"/>
+            is omitted — see Application.TemplateRenderer. Ignored when <see cref="P:HMS.Modules.Notifications.Contracts.NotifyRequest.Body"/> is
+            supplied directly.</summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Contracts.NotifyRequest.RecipientUserIds">
+            <summary>Explicit recipient list — resolving "everyone with role X" or reading
+            NotificationPreferences to filter channels is a later phase; every recipient in this
+            list gets the in-app notification unconditionally today.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Domain.Notification">
+            <summary>
+            The event itself — immutable once written (no Update method), regardless of how many
+            people receive it; see NotificationRecipient for the per-user fan-out. Written once per
+            call to INotificationService.NotifyAsync (added in a later phase), already rendered —
+            Title/Body are the resolved text, not the template's raw placeholders.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Domain.Notification.SourceModule">
+            <summary>Which HMS module raised this (e.g. "Appointments") — informational, for
+            admin/debugging screens, not used for authorization.</summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Domain.Notification.SourceEntityType">
+            <summary>Nullable pair identifying the record this notification is about (e.g.
+            ("Appointment", the Appointment's Id)), so the frontend can deep-link back to it.
+            Both null or both set — never one without the other.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Domain.NotificationDelivery">
+            <summary>
+            Per-channel delivery attempt tracking for Email/Sms only — see NotificationRecipient's
+            doc comment for why InApp has no row here. Written by the background delivery worker
+            (added in a later phase), which is also the only writer of every state transition below.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Domain.NotificationDelivery.MarkSkipped(System.String)">
+            <summary>The recipient's NotificationPreferences opted this channel out — recorded
+            (rather than simply never creating the row) so an admin auditing "why didn't this
+            person get an SMS" sees an explicit answer instead of an absence.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Domain.NotificationPreference">
+            <summary>
+            Per user, per category (e.g. "appointment", "billing", "diagnostics"), which channels
+            they've opted into — coarse-grained by category rather than per exact event key, since
+            nobody needs dozens of individual toggles. In-app is always delivered regardless of this
+            row (it's the low-cost default — see NotificationRecipient); this only governs Email/Sms.
+            A missing row for a (user, category) pair means "use the default" (in-app + email on,
+            sms off) rather than "no preference recorded" — callers that need the default should
+            treat a null lookup that way instead of writing a row for every user up front.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Domain.NotificationPreference.Create(System.Guid,System.String,System.Nullable{System.Guid})">
+            <summary>Defaults mirror the "missing row" default described in this type's own doc
+            comment (in-app + email on, sms off), so explicitly creating a row and never creating
+            one behave the same until the user actually changes something.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Domain.NotificationRecipient">
+            <summary>
+            Fan-out — one row per (notification, user). This *is* the in-app channel: no separate
+            NotificationDelivery row is written for InApp, because this row existing already means
+            "delivered" (a database insert can't partially fail the way an outbound email/SMS call
+            can, so there's nothing to retry). Backs "my notifications", the unread-count badge, and
+            mark-as-read.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Domain.NotificationRecipient.MarkAsRead(System.DateTime)">
+            <summary>Idempotent — marking an already-read notification read again is a no-op, not
+            an error, so "mark all as read" can call this on every unread row without checking
+            state first.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Domain.NotificationTemplate">
+            <summary>
+            What gets rendered and sent for one (event, channel) pair — e.g.
+            ("appointment.booked", Email). One row per channel a given event actually uses, not one
+            row per event, since the subject/body genuinely differ per channel (an SMS body has no
+            subject and needs to be short; an email body doesn't). Editable by hospital admins
+            (engagement.edit) without a redeploy.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Domain.NotificationTemplate.Subject">
+            <summary>Email-only. Null for InApp/Sms, which have no subject line.</summary>
+        </member>
+        <member name="P:HMS.Modules.Notifications.Domain.NotificationTemplate.BodyTemplate">
+            <summary>Placeholders like <c>{{PatientName}}</c>, substituted by the template
+            renderer (added in a later phase) against the data the triggering module supplied.</summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Endpoints.NotificationPreferencesController">
+            <summary>
+            The caller's own channel preferences by category. Self-service only — scoped to the
+            caller's own UserId from the JWT, same reasoning as NotificationsController's "my
+            notifications" actions, so no RequirePermission gate beyond [Authorize].
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationPreferencesController.GetMine(System.Threading.CancellationToken)">
+            <summary>The caller's saved preferences. A category with no row here uses the
+            default (in-app + email on, sms off) — see NotificationPreference's own doc
+            comment.</summary>
+            <response code="200">The caller's saved preferences.</response>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationPreferencesController.Upsert(HMS.Modules.Notifications.Contracts.UpdateNotificationPreferenceRequest,System.Threading.CancellationToken)">
+            <summary>Upserts the caller's preference for one category.</summary>
+            <response code="200">The preference was saved.</response>
+            <response code="400">The request failed validation.</response>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Endpoints.NotificationsController">
+            <summary>
+            The Notifications module's HTTP surface for this phase: "my notifications" (list,
+            unread-count, mark-read/mark-all-read) plus one admin manual-send action. Every
+            "my notifications" action is scoped to the caller's own UserId, read from the JWT via
+            ClaimsPrincipalExtensions.GetUserId — there is no way to pass another user's id to any
+            of them, so no separate RequirePermission gate is needed beyond [Authorize] (mirrors
+            AuthenticationService's self-service ChangePasswordAsync reasoning). Every action
+            requires the tenant to have the "messages-and-notifications" feature enabled.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationsController.GetMine(HMS.Modules.Notifications.Contracts.NotificationListQuery,System.Threading.CancellationToken)">
+            <summary>Lists the caller's own notifications, newest first — optionally filtered to
+            only unread (<c>?isRead=false</c>).</summary>
+            <response code="200">A page of the caller's notifications.</response>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationsController.GetUnreadCount(System.Threading.CancellationToken)">
+            <summary>The caller's unread-notification count, for the notification bell badge.</summary>
+            <response code="200">The unread count.</response>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationsController.MarkAsRead(System.Guid,System.Threading.CancellationToken)">
+            <summary>Marks one of the caller's own notifications as read. Idempotent — marking an
+            already-read notification succeeds without error.</summary>
+            <response code="204">The notification was marked read.</response>
+            <response code="404">No such notification exists for the caller.</response>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationsController.MarkAllAsRead(System.Threading.CancellationToken)">
+            <summary>Marks every one of the caller's unread notifications as read.</summary>
+            <response code="204">All of the caller's notifications are now read.</response>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationsController.Notify(HMS.Modules.Notifications.Contracts.NotifyRequest,System.Threading.CancellationToken)">
+            <summary>Manually raises a notification to an explicit list of recipients (e.g. an
+            emergency broadcast). Most notifications are created by another module calling
+            <see cref="M:HMS.Modules.Notifications.Application.INotificationService.NotifyAsync(HMS.Modules.Notifications.Contracts.NotifyRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)"/> in-process, not through this endpoint —
+            see that method's own doc comment.</summary>
+            <response code="201">The notification was created.</response>
+            <response code="400">The request failed validation.</response>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Endpoints.NotificationTemplatesController">
+            <summary>
+            Admin screen for authoring notification content without a redeploy — every action
+            requires "engagement.*" (reused, not a new permission-catalog entry, per
+            docs/DecisionLog.md ADR-029) and the tenant to have "messages-and-notifications" enabled.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationTemplatesController.GetAll(System.Nullable{System.Boolean},System.Threading.CancellationToken)">
+            <summary>Lists templates — optionally filtered to only active/inactive.</summary>
+            <response code="200">The template list.</response>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationTemplatesController.Create(HMS.Modules.Notifications.Contracts.CreateNotificationTemplateRequest,System.Threading.CancellationToken)">
+            <summary>Creates a template for one (event, channel) pair.</summary>
+            <response code="201">The template was created.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="409">A template already exists for this TemplateKey/Channel pair.</response>
+        </member>
+        <member name="M:HMS.Modules.Notifications.Endpoints.NotificationTemplatesController.Update(System.Guid,HMS.Modules.Notifications.Contracts.UpdateNotificationTemplateRequest,System.Threading.CancellationToken)">
+            <summary>Updates a template's content and active state.</summary>
+            <response code="200">The template was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No template was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Infrastructure.HttpSmsSender">
+             <summary>
+             Sends real SMS via a generic HTTP gateway, config-driven under
+             <c>Notifications:Sms:*</c>. No specific SMS vendor SDK (Twilio, MSG91, etc.) is
+             referenced — which gateway a hospital actually uses is a real infra decision the design
+             doc deliberately left to whoever configures a tenant's deployment, not something to bake
+             into this codebase's dependencies. This posts a JSON body
+             (<c>{ to, from, message }</c> with a Bearer <c>ApiKey</c>) to a configured
+             <c>BaseUrl</c> — a shape common enough to front most REST-based SMS gateways directly or
+             via a thin adapter; a gateway with a genuinely different contract needs its own
+             ISmsSender implementation, not a change to this one's shape.
+            
+             Missing configuration logs a warning and no-ops rather than throwing — same reasoning as
+             SmtpEmailSender: Sms is a best-effort channel, and a tenant that hasn't configured a
+             gateway yet should not have every notification delivery attempt throw.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Infrastructure.NotificationDeliveryBackgroundService">
+            <summary>
+            Drains INotificationDeliveryQueue and sends each Email/Sms delivery, updating its
+            NotificationDelivery row's status. Registered as a hosted service (singleton), so it
+            resolves every scoped dependency — including Identity's public IUserService, used to
+            resolve a recipient's actual email/phone number — through a fresh DI scope per item, the
+            same pattern HMS.Modules.Documents.Infrastructure.DocumentScanBackgroundService already
+            uses for a singleton service that needs scoped dependencies.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Infrastructure.NotificationDeliveryQueue">
+            <summary>
+            Bounded in-memory queue backing INotificationDeliveryQueue — mirrors
+            HMS.Modules.Documents.Infrastructure.DocumentScanQueue exactly (same bounded-500,
+            wait-not-drop backpressure reasoning). Registered as a singleton (one queue for the
+            process's lifetime); NotificationDeliveryBackgroundService is the sole reader.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Infrastructure.NotificationsDbContext">
+            <summary>
+            Owns the "notifications" PostgreSQL schema. Per docs/DatabaseArchitecture.md §1, only
+            this module's own code constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.Infrastructure.SmtpEmailSender">
+             <summary>
+             Sends real email via SMTP, config-driven under <c>Notifications:Smtp:*</c> — reads
+             IConfiguration directly in the constructor, matching
+             HMS.Modules.Identity.Infrastructure.JwtTokenGenerator's identical pattern (no
+             IOptions&lt;T&gt; wrapper; nothing else in this codebase uses that). Uses the .NET runtime's
+             built-in <see cref="T:System.Net.Mail.SmtpClient"/> rather than adding a new NuGet dependency (e.g.
+             MailKit) for a single send-a-message operation.
+            
+             Unlike HMS.Modules.Identity's Jwt:* configuration (missing values throw at startup,
+             since auth cannot function without them), missing SMTP configuration here logs a warning
+             and no-ops instead — Email is a best-effort channel (see NotificationDeliveryBackgroundService's
+             own doc comment); a hospital that hasn't configured SMTP yet should not have every
+             notification delivery attempt throw.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Notifications.NotificationsModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration/ModuleRegistration.cs — mirrors every other module's AddXModule.
+            </summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.PlaceholderPattern_0">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the PlaceholderPattern method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PlaceholderPattern_0.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.Utilities">
+            <summary>Helper methods used by generated <see cref="T:System.Text.RegularExpressions.Regex"/>-derived implementations.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout">
+            <summary>Default timeout value set in <see cref="T:System.AppContext"/>, or <see cref="F:System.Text.RegularExpressions.Regex.InfiniteMatchTimeout"/> if none was set.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_hasTimeout">
+            <summary>Whether <see cref="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout"/> is non-infinite.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.IsWordChar(System.Char)">
+            <summary>Determines whether the character is part of the [\w] set.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.WordCategoriesMask">
+            <summary>Provides a mask of Unicode categories that combine to form [\w].</summary>
+        </member>
+        <member name="P:System.Text.RegularExpressions.Generated.Utilities.WordCharBitmap">
+            <summary>Gets a bitmap for whether each character 0 through 127 is in [\w]</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_indexOfString_BB1C8D594CD963F65D3EAF61D3D969FEE92730B1764726818716F84676CA8389">
+            <summary>Supports searching for the string "{{".</summary>
+        </member>
+    </members>
+</doc>

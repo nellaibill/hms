@@ -1,0 +1,317 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Pharmacy</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Pharmacy.Application.Abstractions.IPharmacyStockBalanceRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            The "primary" repository for stock mutations: StockReceiptService/DispenseService call
+            SaveChangesAsync through this one (both repositories share the same PharmacyDbContext
+            instance, so a single SaveChangesAsync call commits changes tracked via either) — mirrors
+            IPD's IAdmissionRepository/IAdmissionBedStayRepository split.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Application.Abstractions.IPharmacyStockTransactionRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            No SaveChangesAsync — ledger rows are always written inside StockReceiptService/
+            DispenseService alongside a PharmacyStockBalance mutation, persisted via
+            IPharmacyStockBalanceRepository.SaveChangesAsync on the same DbContext (mirrors IPD's
+            IAdmissionBedStayRepository).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Application.Abstractions.IPharmacyStockTransactionRepository.Detach(HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction)">
+            <summary>
+            Stops tracking a transaction previously passed to AddAsync without persisting it.
+            DispenseService's concurrency retry loop needs this: it adds a candidate transaction,
+            then attempts one SaveChangesAsync alongside the balance decrement so both commit
+            atomically; if that throws DbUpdateConcurrencyException, the candidate must be detached
+            before the next attempt builds and adds a fresh one — otherwise the abandoned instance
+            would still be tracked as Added and get inserted twice.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Application.Abstractions.IPharmacyStockTransactionRepository.GetPagedAsync(HMS.Modules.Pharmacy.Contracts.StockLedgerListQuery,System.Threading.CancellationToken)">
+            <summary>
+            Shared paged/filtered query backing StockLedgerService directly, and reused by
+            StockReceiptService/DispenseService (which each build a StockLedgerListQuery scoped to
+            their own TransactionType before calling this) so the filtering logic lives in one
+            place instead of three.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Application.IDispenseService">
+            <summary>
+            Public (not internal): DispensesController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051). Mirrors HMS.Modules.IPD.Application.IAdmissionService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Application.IDispenseService.CreateCartAsync(HMS.Modules.Pharmacy.Contracts.CreateDispenseCartRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Dispenses several product/batch/quantity lines for one patient in a single
+            checkout, billed as ONE invoice with N line items — see DispenseService.CreateCartAsync.</summary>
+        </member>
+        <member name="F:HMS.Modules.Pharmacy.Application.DispenseService.MaxDispenseAttempts">
+            <summary>
+            The lost-update race this guards against: two concurrent dispenses read the same
+            QuantityOnHand, both pass the "enough stock" check, then both try to decrement — the
+            loser's SaveChangesAsync throws DbUpdateConcurrencyException (the xmin token it read
+            no longer matches). Instead of surfacing that as a raw 500, the loser re-fetches the
+            now-fresh balance, re-validates quantity is no more than QuantityOnHand against it, and either
+            succeeds against the winner's updated total or correctly fails InsufficientStock —
+            bounded at 3 attempts so a pathological hot-batch can't retry forever.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Application.DispenseService.DispenseLinesAsync(System.Collections.Generic.IReadOnlyList{HMS.Modules.Pharmacy.Contracts.DispenseCartLineRequest},System.Guid,System.Nullable{System.Guid},System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>
+            Shared by CreateAsync (a 1-line cart) and CreateCartAsync (N lines): validates every
+            line's product/batch/expiry once up front, then — within each concurrency-retry
+            attempt — re-checks every line's stock (pass 1) before mutating ANY line (pass 2), so a
+            mid-attempt insufficient-stock failure never leaves part of the cart dispensed. One
+            SaveChangesAsync commits the whole attempt's balance decrements and ledger rows
+            together — genuinely all-or-nothing for stock, since EF wraps each SaveChangesAsync call
+            in its own implicit DB transaction.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Application.DispenseService.BillAsync(HMS.Modules.Patients.Contracts.PatientResponse,System.Guid,System.Collections.Generic.IReadOnlyList{HMS.Modules.Pharmacy.Application.DispenseService.DispensedLine},System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>
+            Best-effort, deliberately separate from DispenseLinesAsync's SaveChangesAsync (ADR-028):
+            the dispense — medicine has physically left the pharmacy, stock is already correctly
+            decremented — is the authoritative fact and must not be rolled back just because the
+            separate Billing module's write failed or Billing itself is unreachable. A failure here
+            is surfaced to the caller (BillingFailed/BillingError) so staff can post the charge
+            manually via the existing OPD Billing Entry screen; it never fails or reverts the
+            dispense itself. One invoice covers every line passed in — a single dispense's 1-line
+            cart, or a real cart's N lines — since Billing's CreateInvoiceRequest.Items already
+            supports multiple line items in one call.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Application.Mapping.PharmacyMappingExtensions">
+            <summary>
+            Manual entity-to-Contracts-DTO mapping (no AutoMapper/Mapster — docs/DeveloperHandbook.md
+            §19's "avoid a mapping library for one or two DTOs" guidance). Unlike most modules'
+            mapping extensions, these all take extra denormalized display fields (product name, batch
+            number, patient name) as parameters, because that data lives in other modules
+            (Products/Patients) and is resolved by the caller via their public service seams — see
+            each *Service's BuildResponseAsync helper.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Application.IStockBalanceService">
+            <summary>
+            Public (not internal): StockBalancesController takes this as a constructor dependency —
+            same CS0051 reason as IStockReceiptService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Application.IStockLedgerService">
+            <summary>
+            Public (not internal): StockLedgerController takes this as a constructor dependency —
+            same CS0051 reason as IStockReceiptService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Application.IStockReceiptService">
+            <summary>
+            Public (not internal): StockReceiptsController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051). Mirrors HMS.Modules.IPD.Application.IAdmissionService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Contracts.DispenseResponse">
+            <summary>
+            Denormalizes ProductName/BatchNo/PatientName (resolved once per request in DispenseService
+            via IProductService/IProductBatchService/IPatientService, not stored) — same pattern as
+            IPD's AdmissionResponse.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Pharmacy.Contracts.DispenseResponse.InvoiceId">
+            <summary>Set when this dispense was successfully billed — see DispenseService's
+            best-effort billing step (ADR-028). Null on a Dispense that hasn't been billed, either
+            because billing hasn't been attempted (never the case for GetById/GetPaged results,
+            which reflect only what's actually persisted) or because the attempt at creation time
+            failed — see BillingFailed/BillingError below for that one-time detail.</summary>
+        </member>
+        <member name="P:HMS.Modules.Pharmacy.Contracts.DispenseResponse.InvoiceNumber">
+            <summary>Populated only on the response returned immediately by CreateAsync (a live
+            cross-module lookup at the moment of billing success) — always null on GetById/
+            GetPagedAsync results, to avoid an extra Billing round-trip per row on every list read
+            for a field the InvoiceId already lets the frontend link to (/finance/accounts/{id}).</summary>
+        </member>
+        <member name="P:HMS.Modules.Pharmacy.Contracts.DispenseResponse.BillingFailed">
+            <summary>True only on the immediate CreateAsync response when the dispense itself
+            succeeded but the follow-up billing attempt did not — the dispense is NOT rolled back
+            in that case (see ADR-028's reasoning). Always false on GetById/GetPagedAsync results;
+            InvoiceId being null there is the persistent signal that a dispense was never billed.</summary>
+        </member>
+        <member name="P:HMS.Modules.Pharmacy.Contracts.DispenseResponse.BillingError">
+            <summary>The billing failure's message, when BillingFailed is true — surfaced to staff
+            so they know to bill it manually via the OPD Billing Entry screen.</summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Contracts.CreateDispenseCartRequest">
+            <summary>
+            Checks out several products/batches for one patient in a single call, dispensing all of
+            them and billing them as ONE invoice with N line items — see DispenseService.CreateCartAsync.
+            AdmissionId stays cart-level (one optional IPD link for the whole checkout), same as the
+            single-item CreateDispenseRequest.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Contracts.DispenseCartResponse">
+            <summary>
+            One DispenseResponse per cart line (each is its own PharmacyStockTransaction row), plus the
+            billing outcome for the whole cart — unlike the single-item DispenseResponse, billing here
+            applies once to the entire checkout, not per line, so it lives only at this top level.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Contracts.TransactionType">
+            <summary>Entity-owned enum kept in Contracts (not Domain) because it's also referenced by
+            DTOs (StockTransactionResponse, StockLedgerListQuery) — mirrors HMS.Modules.IPD's
+            Contracts/IPDEnums.cs convention (e.g. BedStatus).</summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Contracts.StockBalanceResponse">
+            <summary>
+            Denormalizes ProductName/BatchNo/ExpiryDate (resolved once per request in
+            StockBalanceService via IProductService/IProductBatchService, not stored) — same pattern
+            as IPD's AdmissionResponse.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Contracts.StockTransactionResponse">
+            <summary>
+            Denormalizes ProductName/BatchNo/PatientName (resolved once per request in
+            StockLedgerService via IProductService/IProductBatchService/IPatientService, not stored)
+            — same pattern as IPD's AdmissionResponse. One row per PharmacyStockTransaction, covering
+            both Receipt and Dispense entries.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Contracts.StockReceiptResponse">
+            <summary>
+            Denormalizes ProductName/BatchNo (resolved once per request in StockReceiptService via
+            IProductService/IProductBatchService, not stored) so list/detail consumers don't need an
+            extra round-trip per row — same pattern as IPD's AdmissionResponse.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Domain.PharmacyStockBalance">
+            <summary>
+            Current on-hand quantity for one (ProductId, ProductBatchId) pair — one row per
+            product/batch, mutated in place by Receive/Dispense. The authoritative running total;
+            PharmacyStockTransaction is the append-only ledger of how it got there.
+            ProductId/ProductBatchId reference the Products module's own aggregates — validated via
+            IProductService/IProductBatchService in Application (docs/DeveloperHandbook.md's
+            module-boundary rule: depend only on another module's public Contracts/Application seam,
+            never its Domain/Infrastructure) — so there is no local FK, same as Admission's
+            PatientId/DepartmentId/ConsultantId in the IPD module.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Domain.PharmacyStockBalance.Dispense(System.Decimal,System.Nullable{System.Guid})">
+            <summary>
+            Defense-in-depth: DispenseService is expected to have already validated
+            <c>quantity &lt;= QuantityOnHand</c> against a freshly-read balance (and to retry on a
+            concurrency conflict — see DispenseService.CreateAsync) before ever calling this, so
+            this guard should never actually fire in normal operation. It exists so the
+            "never negative" invariant can't be violated even by a future caller that skips that
+            check.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction">
+            <summary>
+            Append-only ledger row — one per Receive/Dispense action, snapshotting BalanceAfter at
+            commit time so the running balance's history is reconstructable without replaying every
+            mutation against PharmacyStockBalance. Never updated or soft-deleted once written: no
+            Update method here, and no IsDeleted query filter in PharmacyStockTransactionConfiguration
+            (unlike most entities in this codebase — see that configuration's own doc comment).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction.InvoiceId">
+            <summary>Set once, after the fact, by a successful best-effort billing attempt — see
+            DispenseService.CreateAsync. Null means either this is a Receipt (never billed) or a
+            Dispense whose billing attempt hasn't succeeded (not yet tried, or tried and failed;
+            the two aren't distinguished here since nothing is retried automatically — the
+            immediate create response's BillingFailed/BillingError carry that one-time detail).</summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction.SetInvoiceId(System.Guid,System.Nullable{System.Guid})">
+            <summary>
+            The one narrow, deliberate exception to "no Update method on PharmacyStockTransaction"
+            (see the class doc comment): every stock/financial fact about the dispense itself
+            (Quantity, BalanceAfter, TransactionType, ...) stays immutable, but which invoice ended
+            up covering it is discovered strictly after the fact, only once billing has actually
+            succeeded — see DispenseService.CreateAsync's two-phase dispense-then-bill flow. Guards
+            against calling it on a Receipt (never billed) or twice on the same transaction (each
+            dispense generates exactly one invoice, at most once).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Endpoints.DispensesController">
+            <summary>Direct-dispense stock issues to a patient — decreasing a product/batch's on-hand
+            balance. No PUT/DELETE: the stock ledger is append-only.</summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.DispensesController.Create(HMS.Modules.Pharmacy.Contracts.CreateDispenseRequest,System.Threading.CancellationToken)">
+            <summary>Dispenses stock from a product/batch to a patient, decreasing its on-hand balance.</summary>
+            <response code="201">The dispense was recorded.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="409">The product/batch/patient reference is invalid, the batch has expired, or there is not enough stock on hand.</response>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.DispensesController.CreateCart(HMS.Modules.Pharmacy.Contracts.CreateDispenseCartRequest,System.Threading.CancellationToken)">
+            <summary>Checks out several product/batch/quantity lines for one patient in a single
+            call, dispensing all of them and billing them as ONE invoice with N line items.</summary>
+            <response code="201">The cart was dispensed.</response>
+            <response code="400">The request failed validation (including an empty cart or a duplicate product/batch line).</response>
+            <response code="409">A line's product/batch/patient reference is invalid, a batch has expired, or there is not enough stock on hand — nothing in the cart is dispensed.</response>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.DispensesController.GetPaged(HMS.Modules.Pharmacy.Contracts.DispenseListQuery,System.Threading.CancellationToken)">
+            <summary>Lists dispenses, newest first, optionally filtered by patient and/or product.</summary>
+            <response code="200">The page of dispenses.</response>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.DispensesController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single dispense by id.</summary>
+            <response code="200">The dispense.</response>
+            <response code="404">No dispense with that id exists.</response>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Endpoints.StockBalancesController">
+            <summary>Read-only current on-hand stock balances per product/batch.</summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.StockBalancesController.GetPaged(HMS.Modules.Pharmacy.Contracts.StockBalanceListQuery,System.Threading.CancellationToken)">
+            <summary>Lists current stock balances, optionally filtered by product.</summary>
+            <response code="200">The page of stock balances.</response>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.StockBalancesController.Get(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets the current stock balance for a single product/batch pair.</summary>
+            <response code="200">The stock balance.</response>
+            <response code="404">No stock balance exists for that product/batch.</response>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Endpoints.StockLedgerController">
+            <summary>Read-only combined stock ledger (receipts + dispenses), filterable across every
+            PharmacyStockTransaction field.</summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.StockLedgerController.GetPaged(HMS.Modules.Pharmacy.Contracts.StockLedgerListQuery,System.Threading.CancellationToken)">
+            <summary>Lists ledger entries, newest first, filterable by product, batch, transaction
+            type, patient, and/or a transaction-date range.</summary>
+            <response code="200">The page of ledger entries.</response>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Endpoints.StockReceiptsController">
+            <summary>Direct-dispense stock receipts — recording new stock received against a
+            product/batch. No PUT/DELETE: the stock ledger is append-only.</summary>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.StockReceiptsController.Create(HMS.Modules.Pharmacy.Contracts.CreateStockReceiptRequest,System.Threading.CancellationToken)">
+            <summary>Records a new stock receipt against a product/batch, increasing its on-hand balance.</summary>
+            <response code="201">The stock receipt was recorded.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="409">The product or batch reference is invalid.</response>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.StockReceiptsController.GetPaged(HMS.Modules.Pharmacy.Contracts.StockReceiptListQuery,System.Threading.CancellationToken)">
+            <summary>Lists stock receipts, newest first, optionally filtered by product.</summary>
+            <response code="200">The page of stock receipts.</response>
+        </member>
+        <member name="M:HMS.Modules.Pharmacy.Endpoints.StockReceiptsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single stock receipt by id.</summary>
+            <response code="200">The stock receipt.</response>
+            <response code="404">No stock receipt with that id exists.</response>
+        </member>
+        <member name="T:HMS.Modules.Pharmacy.Infrastructure.PharmacyDbContext">
+            <summary>
+            Public (not internal): resolved by type from HMS.Api's Program.cs for the startup-time
+            migration call — same reason IPDDbContext/ProductsDbContext stay public. Everything else
+            in this module is internal.
+            </summary>
+        </member>
+    </members>
+</doc>

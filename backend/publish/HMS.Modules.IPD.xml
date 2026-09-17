@@ -1,0 +1,647 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.IPD</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IAdmissionAdvanceRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IAdmissionBedStayRepository">
+            <summary>
+            No SaveChangesAsync — stays are always written inside AdmissionService's admit/transfer/
+            discharge methods, persisted via IAdmissionRepository.SaveChangesAsync on the same DbContext.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IAdmissionChargeRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IAdmissionIdentifierGenerator">
+            <summary>
+            Generates the short, human-readable AdmissionNumber business identifier — distinct from
+            the entity's internal <c>Guid.CreateVersion7()</c> primary key. Implemented in
+            Infrastructure via a Postgres sequence, mirroring Patients' IPatientIdentifierGenerator.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IAdmissionRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IBedRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            Consumed directly by AdmissionService too (same-module FK/availability checks go through
+            the repository, not a public service interface — mirrors HR's ShiftAssignmentService
+            using IShiftRepository directly).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Application.Abstractions.IBedRepository.GetIcuOccupancyAsync(System.Threading.CancellationToken)">
+            <summary>Bed counts restricted to wards of type ICU — for the dashboard's ICU
+            occupancy metric.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IBedTransferHistoryRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            No SaveChangesAsync: history rows are always written inside AdmissionService.TransferBedAsync,
+            which persists them via IAdmissionRepository.SaveChangesAsync on the same DbContext instance.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IDoctorOrderRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IMedicationAdministrationRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IMedicationOrderRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.INursingAssessmentRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.INursingNoteRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IProgressNoteRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IVitalsReadingRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.Abstractions.IWardRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IAdmissionAdvanceService">
+            <summary>
+            Public (not internal): AdmissionAdvancesController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes this
+            as a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IAdmissionChargeService">
+            <summary>
+            Public (not internal): AdmissionChargesController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IAdmissionService">
+            <summary>
+            Public (not internal): AdmissionsController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as
+            a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Application.IAdmissionService.RequestAdmissionAsync(HMS.Modules.IPD.Contracts.RequestAdmissionRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Raises a Requested admission — no ward/bed chosen yet, so none of CreateAsync's
+            Ward/Bed existence/availability checks apply here. Typically filed from OPD once a
+            consultant decides a patient needs to be admitted; IPD later fulfils it via
+            AssignBedAsync.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Application.IAdmissionService.AssignBedAsync(System.Guid,HMS.Modules.IPD.Contracts.AssignBedRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Fulfils a Requested admission by picking its ward/bed — the same Ward/Bed
+            existence/availability checks and bed-occupied/bed-stay side effects CreateAsync already
+            runs for a direct admission, just triggered here instead once IPD has a bed to offer.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Application.AdmissionService.GenerateBedChargesAsync(System.Guid,System.DateTime,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>
+            Highest Room Per Day: groups every AdmissionBedStay by calendar date, charges the
+            highest DailyCharge occupied that day, and posts one BedCharge line item per date.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IBedService">
+            <summary>
+            Public (not internal): BedsController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as
+            a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IDoctorOrderService">
+            <summary>
+            Public (not internal): DoctorOrdersController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Application.DoctorOrderService.PostChargeAsync(System.Guid,HMS.Modules.IPD.Contracts.DoctorOrderType,System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Resolves a price by OrderType from the matching Masters catalog and posts one
+            AdmissionCharge (ChargeType.DoctorOrderCharge). Only Radiology/Procedure/Consultation
+            have a priced catalog to resolve against — this is only ever called when
+            order.CatalogItemId is set, which itself is only possible for those three types (the
+            frontend only shows a catalog picker for them). Diet/Nursing/Blood/Referral orders never
+            reach here. See ADR-065.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IIPDBillingService">
+            <summary>
+            Public (not internal): IPDBillingController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051). Converts a discharged admission's AdmissionCharge ledger into a real
+            HMS.Modules.Billing Invoice via IInvoiceService.CreateAsync — the actual payment-collection
+            point IPD has never had. See ADR-066.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IIPDDashboardService">
+            <summary>
+            Public (not internal): IPDDashboardController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IIPDLabOrderService">
+            <summary>
+            Public (not internal): IPDLabOrdersController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051). Orchestrates a real HMS.Modules.Laboratory.LabOrder directly from an IPD
+            admission (ILabOrderService.CreateFromAdmissionAsync — no invoice required, see ADR-064)
+            plus one AdmissionCharge per line so the cost is visible on the Charges tab even though IPD
+            has no real billing/invoicing yet (same category of deferral as ADR-062/063).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IMedicationAdministrationService">
+            <summary>
+            Public (not internal): MedicationOrdersController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IMedicationOrderService">
+            <summary>
+            Public (not internal): MedicationOrdersController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.INursingAssessmentService">
+            <summary>
+            Public (not internal): NursingAssessmentsController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes
+            this as a constructor dependency; a public constructor cannot have an internal parameter
+            type (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.INursingNoteService">
+            <summary>
+            Public (not internal): NursingNotesController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes this
+            as a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IProgressNoteService">
+            <summary>
+            Public (not internal): ProgressNotesController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation — takes this
+            as a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IVitalsReadingService">
+            <summary>
+            Public (not internal): VitalsController — which ASP.NET Core requires to be a public class
+            with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Application.IWardService">
+            <summary>
+            Public (not internal): WardsController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as
+            a constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.AdmissionBedStayResponse">
+            <summary>Denormalizes bed number + ward name — resolved once per request in AdmissionService.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.RequestAdmissionRequest">
+            <summary>Raises a Requested admission — no ward/bed chosen yet (see Admission.CreateRequest).
+            Typically filed from OPD once a consultant decides a patient needs to be admitted.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.AssignBedRequest">
+            <summary>Fulfils a Requested admission once IPD has picked a ward/bed for the patient — see
+            Admission.AssignBed.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.AdmissionResponse">
+            <summary>
+            Denormalizes a handful of Patients/Masters/Ward/Bed display fields (Uhid, PatientName,
+            Age, Gender, WardName, BedNumber, ConsultantName) so admission-list/dashboard consumers
+            don't need N extra round-trips per row — resolved once per request in AdmissionService,
+            not stored.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Contracts.AdmissionResponse.WardId">
+            <summary>Null while Status is Requested — no ward/bed has been chosen yet.
+            WardName/BedNumber stay empty strings (not null) in that case, matching every other
+            "resolved display name" field in this response.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Contracts.AdmissionResponse.FinalInvoiceId">
+            <summary>Set once IPDBillingService.GenerateFinalBillAsync has generated a real
+            HMS.Modules.Billing Invoice for this admission — the frontend uses this to decide
+            whether to show "Generate Final Bill" or "View Final Bill". See ADR-066.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.BedTransferHistoryResponse">
+            <summary>
+            Denormalizes old/new ward name + bed number so the frontend doesn't need extra
+            round-trips per row — resolved once per request in AdmissionService, not stored.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Contracts.IPDDashboardResponse.IcuOccupancyRate">
+            <summary>Percentage, 0-100. 0 when the hospital has no ICU beds configured.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Contracts.CreateDoctorOrderRequest.CatalogItemId">
+            <summary>Optional reference to a priced Masters catalog item (DiagnosticService for
+            Radiology, DiagnosticTest for Procedure, ConsultationType for Consultation) — when set,
+            DoctorOrderService auto-posts an AdmissionCharge for the resolved price. Left null for
+            Diet/Nursing/Blood/Referral (no priced catalog exists) or for any free-text-only order
+            where the doctor didn't pick a catalog item. See ADR-065.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.GenerateFinalBillResponse">
+            <summary>Returned by IPDBillingService.GenerateFinalBillAsync — just enough for the
+            frontend to link straight to the real Invoice (/finance/accounts/{invoiceId}) without a
+            second round trip. The full invoice content lives in HMS.Modules.Billing, fetched by that
+            page itself. See ADR-066.</summary>
+        </member>
+        <member name="F:HMS.Modules.IPD.Contracts.AdmissionStatus.Requested">
+            <summary>Raised from OPD before a ward/bed has been assigned — WardId/BedId are null
+            in this state. See Admission.CreateRequest/AssignBed.</summary>
+        </member>
+        <member name="F:HMS.Modules.IPD.Contracts.AdmissionStatus.Cancelled">
+            <summary>A Requested admission that was withdrawn or declined before a bed was ever
+            assigned. Terminal, like Discharged — never reachable from Admitted.</summary>
+        </member>
+        <member name="F:HMS.Modules.IPD.Contracts.ChargeType.LabCharge">
+            <summary>Auto-posted by IPDLabOrderService when a ward doctor places a lab order
+            directly on an admission (see Application/IPDLabOrderService.cs) — the price is
+            resolved from Masters at order-placement time; Remarks carries the test/package name
+            since AdmissionCharge has no FK back to the LabOrder/LabOrderItem that generated it.</summary>
+        </member>
+        <member name="F:HMS.Modules.IPD.Contracts.ChargeType.DoctorOrderCharge">
+            <summary>Auto-posted by DoctorOrderService.CreateAsync when a DoctorOrder is placed
+            against a priced Masters catalog item (Radiology/Procedure/Consultation only — see
+            DoctorOrder.CatalogItemId) — one generic type covers all three rather than one enum
+            value per OrderType, Remarks distinguishes which (e.g. "Radiology: Chest X-ray").
+            See ADR-065.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.NursingShift">
+            <summary>Named `NursingShift` (not `Shift`) to avoid any confusion with HR's unrelated
+            `Shift`/`ShiftAssignment` entities — different module, different concept.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.DoctorOrderType">
+            <summary>
+            Deliberately excludes Laboratory (HMS.Modules.Laboratory already has a full LabOrder
+            workflow — a generic entry here would be a disconnected duplicate) and Medication (belongs
+            to the not-yet-built MAR slice, which needs a real structured prescription entity, not a
+            free-text order description here that MAR would immediately have to replace). See
+            docs/DecisionLog.md.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.DoctorOrderStatus">
+            <summary>Fixed linear sequence Ordered -> Accepted -> InProgress -> Completed, with
+            Cancelled reachable from any non-terminal state. See Domain/DoctorOrder.cs's
+            Advance/Cancel methods for the exact legal transitions.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.MedicationOrderStatus">
+            <summary>Only two states — a one-way Active -> Discontinued transition. "Past its end
+            date" is a displayed, not stored, fact the frontend derives by comparing EndDate to now;
+            there's no auto-transition to a "Completed" status, avoiding a background job. See
+            Domain/MedicationOrder.cs's Discontinue method.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.PaymentMethod">
+            <summary>How an AdmissionAdvance was collected — a small local mirror of
+            HMS.Modules.Billing.Contracts.PaymentMethod's four values (kept as IPD's own type rather
+            than a cross-module reference in IPD's public contracts, same as every other small fixed
+            vocabulary in this module), not admin-editable reference data. See ADR-067.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.PlaceLabOrderLineRequest">
+            <summary>One test/package a ward doctor is placing on an admission. Exactly one of
+            ServiceId/PackageId is expected (validated by CreatePlaceLabOrderRequestValidator) — mirrors
+            HMS.Modules.Laboratory.Contracts.CreateLabOrderLineFromAdmissionRequest, which this maps
+            onto in IPDLabOrderService.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Contracts.CreatePlaceLabOrderRequest">
+            <summary>Placed via IPDLabOrdersController — orchestrates a real
+            HMS.Modules.Laboratory.LabOrder (no invoice required) plus one AdmissionCharge per line so
+            the cost is visible on the Charges tab even though IPD has no real billing/invoicing yet.
+            See Application/IPDLabOrderService.cs.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.Admission">
+            <summary>
+            An inpatient stay — converts an existing Patients-module patient into an admitted
+            inpatient occupying a specific Ward/Bed. PatientId/DepartmentId/ConsultantId reference
+            Patients/Masters respectively; WardId/BedId reference this module's own Ward/Bed
+            aggregates. Bed occupancy side effects (Available/Occupied) are orchestrated by
+            AdmissionService, not by this entity, since they mutate a different aggregate (Bed).
+            WardId/BedId are nullable to accommodate <see cref="M:HMS.Modules.IPD.Domain.Admission.CreateRequest(System.String,System.Guid,System.Guid,System.Guid,System.DateTime,HMS.Modules.IPD.Contracts.AdmissionType,System.String,System.Nullable{System.Guid})"/> — a Requested
+            admission raised from OPD before any ward/bed has actually been chosen (see AssignBed).
+            Every row created via the original <see cref="M:HMS.Modules.IPD.Domain.Admission.Create(System.String,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.DateTime,HMS.Modules.IPD.Contracts.AdmissionType,System.String,System.Nullable{System.Guid})"/> factory still gets both set
+            immediately, exactly as before.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.Admission.FinalInvoiceId">
+            <summary>App-level reference to HMS.Modules.Billing.Invoice, no DB FK — set once
+            IPDBillingService.GenerateFinalBillAsync succeeds. Null means no final bill has been
+            generated yet (only possible once Discharged) — see ADR-066.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.Admission.CreateRequest(System.String,System.Guid,System.Guid,System.Guid,System.DateTime,HMS.Modules.IPD.Contracts.AdmissionType,System.String,System.Nullable{System.Guid})">
+            <summary>Raised from OPD before any ward/bed has been chosen — WardId/BedId stay null
+            (AssignBed sets them once IPD picks a bed) and Status starts at Requested rather than
+            Admitted. AdmissionNumber is still generated by the same
+            IAdmissionIdentifierGenerator/service-layer convention Create's callers already use —
+            this factory doesn't generate its own.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.Admission.TransferBed(System.Guid,System.Guid,System.Nullable{System.Guid})">
+            <summary>Caller (AdmissionService) is responsible for flipping the old/new beds'
+            Available/Occupied status and for rejecting the call while not Admitted.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.Admission.AssignBed(System.Guid,System.Guid,System.DateTime,System.Nullable{System.Guid})">
+            <summary>Fulfils a Requested admission once IPD has picked a ward/bed — the other half
+            of CreateRequest. Caller (AdmissionService) is responsible for the same Ward/Bed
+            existence/availability checks CreateAsync already runs for a direct admission, plus the
+            matching Bed.SetStatus(Occupied)/AdmissionBedStay.Create side effects.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.Admission.CancelRequest(System.Nullable{System.Guid})">
+            <summary>Withdraws or declines a Requested admission before any bed was ever assigned —
+            no bed side effects, since none were ever occupied.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.Admission.Discharge(System.DateTime,HMS.Modules.IPD.Contracts.DischargeType,System.String,System.String,System.String,System.Nullable{System.Guid})">
+            <summary>Caller (AdmissionService) is responsible for validating the discharge date
+            against AdmissionDateTime and for freeing the bed.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.Admission.SetFinalInvoiceId(System.Guid,System.Nullable{System.Guid})">
+            <summary>Caller (IPDBillingService) is responsible for rejecting this call with a
+            proper Result.Failure when not Discharged or when FinalInvoiceId is already set — see
+            GenerateFinalBillAsync.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.AdmissionAdvance">
+            <summary>
+            A single advance/deposit payment collected from the patient's family during an inpatient
+            stay (typically at admission, sometimes topped up later) — posted against an Admission.
+            Append-only, same convention as every log-shaped IPD entity (no update/delete). Deliberately
+            NOT reconciled against HMS.Modules.Billing's Invoice/Payment model: that model is
+            all-or-nothing per invoice with no partial-payment or credit/refund concept, so this ledger
+            only tracks collection and lets staff see the computed balance — see ADR-067.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.AdmissionBedStay">
+            <summary>
+            One continuous occupancy period of an Admission in a single Bed, with the DailyCharge
+            that applied during that period — written on admit/transfer, closed on transfer/discharge.
+            Distinct from BedTransferHistory (an audit log of transfer events): this is the billing
+            source of truth DischargeAsync reads to compute per-day highest-tariff bed charges.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.AdmissionCharge">
+            <summary>
+            A single inpatient charge line item (admission/bed/nursing) posted against an
+            Admission. This is IPD's own minimal ledger — the Billing module has no
+            implementation yet to post charges into (it is currently an empty placeholder;
+            see docs/DecisionLog.md), so this table is the seam Billing will eventually read
+            from/replace, mirroring how Consultant/Department were free text on Patients before
+            Masters existed.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.Bed">
+            <summary>
+            A physical inpatient bed inside a Ward. BedNumber is unique within its ward (not
+            globally) — see BedConfiguration's composite unique index. Status is normally driven by
+            the admission workflow (Occupied on admission, Available on discharge/transfer-out —
+            see AdmissionService), but can also be set directly here (e.g. Maintenance).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.Bed.SetStatus(HMS.Modules.IPD.Contracts.BedStatus,System.Nullable{System.Guid})">
+            <summary>Driven by AdmissionService on admit/transfer/discharge — see docs/DecisionLog.md.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.BedTransferHistory">
+            <summary>
+            One record of an Admission's ward/bed move, written alongside the mutation in
+            AdmissionService.TransferBedAsync — TransferBed() on Admission itself only overwrites
+            the current WardId/BedId, so this is the only place prior moves are recoverable from.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.DoctorOrder">
+            <summary>
+            A clinical order (Radiology/Procedure/Diet/Nursing/Blood/Consultation/Referral — see
+            DoctorOrderType's own doc comment for what's deliberately excluded and why) placed against
+            an Admission. Unlike VitalsReading/ProgressNote/NursingAssessment/NursingNote (append-only
+            logs), this is a genuinely mutable entity with a real lifecycle — Advance/Cancel mirror
+            LabOrder.GenerateReport/ReleaseReport's precondition-guard style: the caller
+            (DoctorOrderService) pre-checks the same condition to return a proper Result.Failure, this
+            method re-checks it as a genuine domain invariant. No navigation collection on Admission
+            itself, same convention as every other IPD child entity.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.DoctorOrder.CatalogItemId">
+            <summary>App-level reference to a priced Masters catalog item, no DB FK — set only when
+            the order was placed against a real catalog entry (DiagnosticService for Radiology,
+            DiagnosticTest for Procedure, ConsultationType for Consultation; always null for
+            Diet/Nursing/Blood/Referral, which have no priced catalog). Null means "no charge to
+            auto-post," not an error — DoctorOrderService.CreateAsync only attempts a charge when
+            this is set. See ADR-065.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.DoctorOrder.Advance(System.Nullable{System.Guid})">
+            <summary>Moves to the next state in the fixed Ordered -> Accepted -> InProgress ->
+            Completed sequence. Caller (DoctorOrderService) is responsible for rejecting this call
+            with a proper Result.Failure when already Completed/Cancelled.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.DoctorOrder.Cancel(System.String,System.Nullable{System.Guid})">
+            <summary>Cancellable from any non-terminal state. Caller (DoctorOrderService) is
+            responsible for rejecting this call with a proper Result.Failure when already
+            Completed/Cancelled.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.MedicationAdministration">
+            <summary>
+            A single recorded MAR (Medication Administration Record) event against a
+            MedicationOrder — one entry per actual administration check, not an auto-generated
+            schedule slot (see MedicationOrder's own doc comment on the deliberate no-auto-schedule
+            decision). Append-only, same convention as VitalsReading/ProgressNote/NursingNote: a
+            correction is a new entry, not an edit to clinical history. No navigation collection on
+            MedicationOrder itself, mirroring how Admission's own child entities are queried by
+            AdmissionId rather than loaded as a navigation collection.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.MedicationAdministration.ScheduledTime">
+            <summary>The due time this record is for.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.MedicationAdministration.AdministeredAt">
+            <summary>Only set when WasGiven — may differ slightly from ScheduledTime.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.MedicationAdministration.Reason">
+            <summary>Expected (soft, not DB-enforced) when !WasGiven — why the dose was withheld.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.MedicationAdministration.RecordedByUserId">
+            <summary>Opaque reference into identity.users — same no-FK convention as every other
+            "recorded by" field across the IPD-expansion slices.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.MedicationOrder">
+            <summary>
+            A doctor's medication order (prescription) placed against an Admission. DrugName/Dose/
+            Route/Frequency stay free text — Pharmacy is direct-dispense only with no structured
+            Prescription entity to reference (same reasoning HMS.Modules.DischargeSummary.Domain.
+            DischargeMedication already documented; real Pharmacy integration — catalog-driven drug
+            selection, stock deduction on administration — remains an open gap, not solved here). A
+            simpler one-way lifecycle than DoctorOrder's (Active -> Discontinued only): Discontinue
+            mirrors DoctorOrder.Cancel's precondition-guard style. No navigation collection on
+            Admission itself, same convention as every other IPD child entity.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Domain.MedicationOrder.Discontinue(System.String,System.Nullable{System.Guid})">
+            <summary>One-way, from Active only. Caller (MedicationOrderService) is responsible for
+            rejecting this call with a proper Result.Failure when already Discontinued.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.NursingAssessment">
+            <summary>
+            A single timestamped nursing assessment recorded against an Admission. Append-only —
+            mirrors VitalsReading/AdmissionCharge's own precedent (no Update/Delete): a correction is
+            a new assessment, not an edit to clinical history. No navigation collection on Admission
+            itself.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.NursingAssessment.AssessedAt">
+            <summary>When the assessment was performed — distinct from CreatedAt.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.NursingAssessment.AssessedByUserId">
+            <summary>Opaque reference into identity.users — same no-FK convention as Discharge
+            Summary's sign-off fields.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.NursingNote">
+            <summary>
+            A single timestamped nursing note recorded against an Admission — chronological nursing
+            log. Append-only, same convention as NursingAssessment/VitalsReading/AdmissionCharge: a
+            correction is a new note, not an edit to clinical history. No navigation collection on
+            Admission itself.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.NursingNote.NoteDateTime">
+            <summary>When the note pertains to — distinct from CreatedAt.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.NursingNote.RecordedByUserId">
+            <summary>Opaque reference into identity.users — same no-FK convention as Discharge
+            Summary's sign-off fields.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.ProgressNote">
+            <summary>
+            A single timestamped doctor clinical note recorded against an Admission — chronological
+            progress-note log. Append-only, same convention as VitalsReading/AdmissionCharge: a
+            correction is a new note, not an edit to clinical history. No navigation collection on
+            Admission itself.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.ProgressNote.NoteDateTime">
+            <summary>When the note pertains to — distinct from CreatedAt.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.ProgressNote.AuthorUserId">
+            <summary>Opaque reference into identity.users — same no-FK convention as Discharge
+            Summary's sign-off fields.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.VitalsReading">
+            <summary>
+            A single timestamped set of vital-sign observations recorded against an Admission.
+            Append-only — mirrors AdmissionCharge's own precedent (no Update/Delete): a correction is
+            a new reading, not an edit to clinical history. No navigation collection on Admission
+            itself, same convention as AdmissionCharge/BedTransferHistory.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.VitalsReading.RecordedAt">
+            <summary>When the reading was taken — distinct from CreatedAt, since a nurse may log
+            it slightly after the fact.</summary>
+        </member>
+        <member name="P:HMS.Modules.IPD.Domain.VitalsReading.RecordedByUserId">
+            <summary>Opaque reference into identity.users — same no-FK convention as Discharge
+            Summary's sign-off fields.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Domain.Ward">
+            <summary>
+            A hospital ward that inpatient beds belong to (e.g. "General Medicine Ward A").
+            DepartmentId references Masters' Department — Masters is the single source of truth
+            for departments, IPD only stores the foreign key (see docs/DecisionLog.md).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Endpoints.AdmissionAdvancesController">
+            <summary>
+            Records money collected from the patient's family as an advance/deposit during the stay.
+            Gated by "finance-billing.*" (Billing's own permission), not "clinical-care.*" — this
+            records real money received, same reasoning as IPDBillingController. See
+            Application/AdmissionAdvanceService.cs and ADR-067.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Endpoints.AdmissionsController.RequestAdmission(HMS.Modules.IPD.Contracts.RequestAdmissionRequest,System.Threading.CancellationToken)">
+            <summary>Raises a Requested admission — no ward/bed chosen yet. Typically filed from
+            OPD once a consultant decides a patient needs to be admitted; see AssignBed for how IPD
+            later fulfils it.</summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Endpoints.AdmissionsController.AssignBed(System.Guid,HMS.Modules.IPD.Contracts.AssignBedRequest,System.Threading.CancellationToken)">
+            <summary>Fulfils a Requested admission by picking its ward/bed.</summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Endpoints.IPDBillingController">
+            <summary>
+            Generates a real HMS.Modules.Billing Invoice from a discharged admission's AdmissionCharge
+            ledger. Gated by "finance-billing.create" (Billing's own permission), not
+            "clinical-care.*" — this creates a real financial document, so it sits behind the same
+            permission as InvoicesController.Create rather than IPD's clinical permissions. See
+            Application/IPDBillingService.cs and ADR-066.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Endpoints.IPDLabOrdersController">
+            <summary>
+            Places/lists real HMS.Modules.Laboratory LabOrders directly against an admission — no
+            invoice required. See Application/IPDLabOrderService.cs and ADR-064.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.IPD.Infrastructure.AdmissionIdentifierGenerator">
+            <summary>
+            Formats a short, human-readable AdmissionNumber from a real Postgres sequence —
+            coordination-free under concurrent admissions, unlike a MAX(...)+1 query. Mirrors
+            Patients' PatientIdentifierGenerator.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.IPD.Infrastructure.Repositories.AdmissionRepository.GetActiveByPatientIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>"Active" means Admitted or Requested — a patient shouldn't be able to have a
+            second live admission (whether already admitted or still awaiting a bed) at once.
+            Discharged/Cancelled are both terminal and therefore excluded.</summary>
+        </member>
+    </members>
+</doc>

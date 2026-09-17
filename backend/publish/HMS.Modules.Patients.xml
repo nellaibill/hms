@@ -1,0 +1,1065 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Patients</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Patients.Application.Abstractions.IPatientIdentifierGenerator">
+            <summary>
+            Generates the short, human-readable UHID business identifier — distinct from the
+            entity's internal <c>Guid.CreateVersion7()</c> primary key. Implemented in Infrastructure
+            via a Postgres sequence.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientIdentifierGenerator.NextImportedUhidAsync(System.Threading.CancellationToken)">
+            <summary>Draws from the dedicated 1-40000 range reserved for bulk-imported patients
+            (PatientsDbContext.ImportedUhidSequenceName) — never overlaps with NextUhidAsync's
+            40001+ range. Returns null once that range is exhausted: the database itself refuses
+            (the sequence's own MAXVALUE), not an application-level count, so the 40,000 cap holds
+            even against a bug or a direct SQL insert bypassing this class entirely.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Abstractions.PatientImportValidationQueueItem">
+            <summary>Carries the tenant identity through to a background scope that has no HTTP request
+            of its own — see PatientImportValidationBackgroundService's remarks (mirrors Documents'
+            ScanQueueItem).</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.PatientImportValidationQueueItem.#ctor(System.Guid,System.Byte[],System.Guid,System.String)">
+            <summary>Carries the tenant identity through to a background scope that has no HTTP request
+            of its own — see PatientImportValidationBackgroundService's remarks (mirrors Documents'
+            ScanQueueItem).</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Abstractions.IPatientImportQueue">
+            <summary>
+            A single-process, in-memory work queue for bulk patient import — the validate and commit
+            passes each get their own queue/background-service pair, following the same pattern as
+            Documents' IDocumentScanQueue (the platform's first background-job mechanism; nothing like
+            Hangfire/Quartz exists elsewhere in this codebase). Being in-memory means a queued item is
+            lost if the process restarts before it's drained — the batch is left stuck in Validating or
+            Committing rather than silently marked done; acceptable for the same reason it was
+            acceptable for the Documents scan pipeline.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Abstractions.IPatientImportRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — mirrors IPatientRepository.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientImportRepository.GetAllRowsByStatusAsync(System.Guid,HMS.Modules.Patients.Contracts.ImportRowStatus,System.Threading.CancellationToken)">
+            <summary>Every row for a batch matching the given status, ordered by RowNumber —
+            used to build the full error report (unlike GetRowsPagedAsync, not paginated, since the
+            report needs every matching row).</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientImportRepository.GetValidRowIdsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Row ids only, for the commit pass to iterate — each row is then re-fetched
+            individually (GetRowByIdAsync) inside its own DI scope, so this must not return tracked
+            entities that would leak across scopes.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientImportRepository.MarkRowsCommitFailedAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.String,System.Threading.CancellationToken)">
+            <summary>Bulk-marks every listed row CommitFailed with the same reason in one
+            statement, bypassing entity tracking entirely — used when the imported-patient capacity
+            is exhausted mid-batch, so the remaining (potentially thousands of) rows don't need one
+            nextval() attempt each to discover the same outcome.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientImportRepository.ClearTracking">
+            <summary>Detaches every tracked entity — called between chunks of a large validate pass
+            so the change tracker doesn't hold tens of thousands of rows in memory for the whole
+            file.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Abstractions.IPatientRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientRepository.GetByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Loads the full aggregate (Address, Allergies, EmergencyContacts included).</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientRepository.ExistsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lighter-weight than GetByIdAsync for callers that only need to know a patient
+            exists — used by PatientDocumentOwnerExistenceChecker.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientRepository.GetReportSummaryAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Total/new/visit counts for Patient Reports' summary cards — see the
+            implementation's own doc comment for exactly what each number means.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientRepository.GetLastVisitsAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.Threading.CancellationToken)">
+            <summary>The most recent visit (with Consultations) for each given patient id — backs
+            Patient Reports' table Last Visit/Department columns.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientRepository.GetExportRowsAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Int32,System.Threading.CancellationToken)">
+            <summary>Same filters as GetPagedAsync, sorted, but capped at maxRows with no further
+            pagination — backs the Excel export, which needs every matching row (up to the cap),
+            not one page.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientRepository.FindDuplicateAsync(System.String,System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>Finds an existing, non-deleted patient matching on primary phone + name
+            (case-insensitive) always, and additionally on IdProofNumber when one is supplied —
+            used by PatientService.CreateAsync to catch the same person being registered twice.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientRepository.GetRowVersion(HMS.Modules.Patients.Domain.Patient)">
+            <summary>Reads the row's current optimistic-concurrency token (Postgres xmin) as
+            tracked by this DbContext instance. See PatientService.UpdateAsync.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository.GetByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Loads one visit with its Consultations included.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository.GetByPatientIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Every visit for a patient, newest first, each with its Consultations included.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository.GetPagedAsync(HMS.Modules.Patients.Contracts.PatientVisitListQuery,System.Threading.CancellationToken)">
+            <summary>Cross-patient, paged, optionally date-range-filtered on CreatedAt — backs the
+            Patient Reports "visits" breakdown, unlike GetByPatientIdAsync above which is scoped to
+            one patient.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository.GetByConsultationIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Loads the owning visit (with its Consultations included) for one consultation
+            line — used by OpdQueryService.TransitionAsync, which needs the aggregate root to call
+            a domain transition method on one of its children.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository.GetOpdPatientListPagedAsync(HMS.Modules.Patients.Contracts.OpdPatientListQuery,System.Threading.CancellationToken)">
+            <summary>The OPD Patient List's backing query — one row per PatientVisitConsultation,
+            joined with its owning PatientVisit and Patient, paged/filtered per OpdPatientListQuery.
+            Returns a plain projection (OpdPatientListRow), not domain entities, since callers only
+            ever read this data. See OpdQueryService.GetPatientListAsync.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository.GetOpdConsultationSummaryRowsAsync(HMS.Modules.Patients.Contracts.OpdConsultationSummaryQuery,System.Threading.CancellationToken)">
+            <summary>The same joined rows GetOpdPatientListPagedAsync produces, unpaged and without
+            the Status filter — backs the Consultation List tab's per-consultant summary counts.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.IPatientVisitRepository.GetOpdConsultationDetailAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>The same joined row shape GetOpdPatientListPagedAsync produces, for exactly one
+            consultation — backs the OPD Consultation form's read-only header (patient/appointment/
+            consultant/department), which needs the same denormalized fields the list already
+            resolves but for a single id rather than a page. Null if the consultation doesn't
+            exist.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Abstractions.OpdPatientListRow">
+            <summary>
+            One joined PatientVisitConsultation+PatientVisit+Patient row, as returned by
+            IPatientVisitRepository.GetOpdPatientListPagedAsync — the repository's own shape (plain
+            scalar fields, not the domain entities themselves) since the query behind it is a
+            SelectMany/join projection, not an aggregate load. OpdQueryService maps this into the
+            public OpdPatientListItem, resolving Department/Consultant/AppointmentType display names
+            along the way.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Abstractions.OpdPatientListRow.#ctor(System.Guid,System.Guid,System.Guid,System.String,System.String,System.String,System.String,System.DateOnly,HMS.Modules.Patients.Contracts.Gender,System.DateTime,System.Nullable{System.Guid},System.Guid,System.Guid,HMS.Modules.Patients.Contracts.OpdConsultationStatus)">
+            <summary>
+            One joined PatientVisitConsultation+PatientVisit+Patient row, as returned by
+            IPatientVisitRepository.GetOpdPatientListPagedAsync — the repository's own shape (plain
+            scalar fields, not the domain entities themselves) since the query behind it is a
+            SelectMany/join projection, not an aggregate load. OpdQueryService maps this into the
+            public OpdPatientListItem, resolving Department/Consultant/AppointmentType display names
+            along the way.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Excel.ExcelCellSafety">
+            <summary>
+            Neutralizes CSV/Excel formula-injection payloads (OWASP) before writing untrusted text into
+            a ClosedXML cell — a value beginning with =, +, -, or @ can be interpreted as a formula by
+            some spreadsheet applications/configurations when the file is later opened, even though
+            ClosedXML itself writes a plain string <c>.Value</c> assignment as a text-typed cell, not a
+            formula. Prefixing with a leading apostrophe is the standard mitigation regardless of the
+            underlying cell type — it's what Excel's own UI does when a user types a leading-apostrophe
+            value to force literal text, and costs nothing for values that were never at risk.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.Excel.ExcelCellSafety.Sanitize(System.String)">
+            <summary>Returns <paramref name="value"/> unchanged unless its first character could be
+            interpreted as a formula trigger, in which case a leading apostrophe is prepended.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Excel.PatientImportColumns">
+            <summary>
+            Single source of truth for the bulk-import Excel column list — the template generator, the
+            row parser, and the report generator all read from this list, so they can never drift apart
+            from each other. Required flags are kept in sync by hand with
+            CreatePatientRequestValidator's NotEmpty rules and the NOT NULL columns in
+            PatientConfiguration/AddressConfiguration (see the "Required Fields" callout this drives on
+            the template's Instructions sheet).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Excel.PatientImportFileException">
+            <summary>Thrown when the uploaded file isn't a workbook ClosedXML can open, or is missing
+            the expected "Patients" sheet/header row — distinct from an individual row being invalid,
+            which is a normal outcome recorded per-row instead.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Excel.PatientImportExcelParser">
+            <summary>
+            Reads the "Patients" sheet of an uploaded import file into raw string values, keyed by the
+            column headers defined in PatientImportColumns (the " *" required-marker suffix on a header
+            is stripped before matching, so the template's own required-column styling round-trips).
+            Values are not yet validated or mapped to domain types here — that's PatientImportRowMapper.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Excel.PatientImportReportGenerator">
+            <summary>
+            Builds the downloadable .xlsx error report (GET /api/v1/patients/import/{batchId}/report) —
+            every skipped row's original data plus why it was skipped, in the same column layout as the
+            upload template, so a client can fix the flagged cells and re-upload as a fresh batch.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Excel.PatientImportTemplateGenerator">
+            <summary>
+            Builds the downloadable .xlsx template for bulk patient import (GET
+            /api/v1/patients/import/template). Required columns (see PatientImportColumns) are visually
+            distinct on the sheet itself — not just documented separately — and enum/lookup columns get
+            a real dropdown, so the client can only enter values the import pipeline actually accepts.
+            This is the direct fix for the free-text/garbage-data problems found analyzing a real
+            legacy export earlier: force valid values at entry time instead of guessing them at import
+            time.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Excel.PatientReportExportGenerator">
+            <summary>Builds the Patient Reports Excel export (GET .../report/export) — mirrors
+            PatientImportTemplateGenerator's static, pure-formatting style (no DB access in here; the
+            caller resolves department names first, since Patients has no bulk-by-ids lookup on
+            IDepartmentService and the set of distinct departments in an export is small).</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.IOpdQueryService">
+            <summary>
+            Public (not internal): OpdController — which ASP.NET Core requires to be public, with a
+            public constructor, for controller discovery and DI activation — takes this as a
+            constructor dependency. A public constructor cannot have an internal parameter type
+            (CS0051), so this interface is the module's deliberate, narrow seam between its public
+            HTTP boundary and its otherwise-internal Application/Domain/Infrastructure layers, same
+            reasoning as IPatientVisitService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IOpdQueryService.GetPatientListAsync(HMS.Modules.Patients.Contracts.OpdPatientListQuery,System.Threading.CancellationToken)">
+            <summary>The OPD Patient List — one row per PatientVisitConsultation matching the
+            query's filters, paged, ordered by AppointmentTime ascending (earliest appointment
+            first, matching how a front desk actually works a queue).</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IOpdQueryService.GetConsultationSummaryAsync(HMS.Modules.Patients.Contracts.OpdConsultationSummaryQuery,System.Threading.CancellationToken)">
+            <summary>The OPD Consultation List — one row per consultant, counting how many of
+            their matching consultations are Waiting/InConsultation/Completed.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IOpdQueryService.GetConsultationDetailAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>The same denormalized shape GetPatientListAsync's rows have, for exactly one
+            consultation — backs the OPD Consultation form's read-only header. Used by
+            HMS.Modules.OpdConsultation (a different module) as its one seam into Patients' OPD read
+            side, so that module never needs its own Patient/Department/Consultant lookups.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IOpdQueryService.TransitionAsync(System.Guid,System.String,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Advances one consultation's queue status. transitionAction is one of
+            "check-in", "start-consultation", "complete", "cancel", "no-show" — matching
+            OpdController's route segments exactly.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.IPatientImportService">
+            <summary>
+            Public (not internal): PatientImportController — which ASP.NET Core requires to be public,
+            with a public constructor, for controller discovery and DI activation — takes this as a
+            constructor dependency. A public constructor cannot have an internal parameter type
+            (CS0051), so this interface is the module's deliberate, narrow seam between its public HTTP
+            boundary and its otherwise-internal Application/Domain/Infrastructure layers — mirrors
+            IPatientService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientImportService.GetReportAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>An .xlsx of every Invalid/CommitFailed row in the batch, in the template's own
+            column layout plus a reasons column — empty (header row only) if nothing was skipped.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientImportService.CommitAsync(System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Only valid when the batch is ReadyForReview — writes nothing itself, just flips
+            the batch to Committing and enqueues the background pass that actually creates patients.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.IPatientService">
+            <summary>
+            Public (not internal): PatientsController — which ASP.NET Core requires to be public,
+            with a public constructor, for controller discovery and DI activation — takes this as a
+            constructor dependency. A public constructor cannot have an internal parameter type
+            (CS0051), so this interface is the module's deliberate, narrow seam between its public
+            HTTP boundary and its otherwise-internal Application/Domain/Infrastructure layers.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientService.CreateAsync(HMS.Modules.Patients.Contracts.CreatePatientRequest,System.Nullable{System.Guid},System.Threading.CancellationToken,System.String,System.Boolean)">
+            <summary>uhidOverride: normally left null so the standard sequence (40001+) assigns the
+            UHID, exactly as manual registration always has. Bulk import supplies a pre-generated
+            one instead (drawn from the reserved 1-40000 imported-patient range) — see
+            PatientImportCommitBackgroundService — so every other invariant this method enforces
+            (duplicate detection, the transaction, address/allergy/emergency-contact creation)
+            still applies identically regardless of where the patient came from.
+            requiresDataVerification: true only for bulk-imported rows that used placeholder values
+            for required fields — see Patient.RequiresDataVerification's own doc comment.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientService.GetReportPagedAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Patient Reports' table — same filters as GetPagedAsync, enriched with last
+            visit/department per row.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientService.GetReportSummaryAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Patient Reports' summary cards (Total/New/Returning Patients, Total Visits).</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientService.GetReportExportRowsAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Int32,System.Threading.CancellationToken)">
+            <summary>Every row matching the report's filters (up to maxRows), for the Excel export.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientService.AddAllergyAsync(System.Guid,HMS.Modules.Patients.Contracts.AddAllergyRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Adds one allergy row ("Add another Allergy") and returns the updated patient.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientService.AddEmergencyContactAsync(System.Guid,HMS.Modules.Patients.Contracts.AddEmergencyContactRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Adds one emergency contact ("Add another Emergency Contact") and returns the
+            updated patient.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientService.RemoveEmergencyContactAsync(System.Guid,System.Guid,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Fails with PatientErrorCodes.CannotRemoveLastEmergencyContact if this would
+            leave the patient with zero — every patient must have at least one.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.IPatientVisitService">
+            <summary>
+            Public (not internal): PatientVisitsController — which ASP.NET Core requires to be public,
+            with a public constructor, for controller discovery and DI activation — takes this as a
+            constructor dependency. A public constructor cannot have an internal parameter type
+            (CS0051), so this interface is the module's deliberate, narrow seam between its public
+            HTTP boundary and its otherwise-internal Application/Domain/Infrastructure layers.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientVisitService.CreateAsync(System.Guid,HMS.Modules.Patients.Contracts.CreatePatientVisitRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Records one registration/encounter event for an existing patient. All
+            consultation lines supplied together share the returned VisitId.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientVisitService.GetByPatientIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Every visit for the patient, newest first.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.IPatientVisitService.GetAllAsync(HMS.Modules.Patients.Contracts.PatientVisitListQuery,System.Threading.CancellationToken)">
+            <summary>Cross-patient, paged, optionally date-range-filtered — backs Patient Reports.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Mapping.PatientMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping — the aggregate isn't big enough yet to justify a mapping
+            library (Mapster/AutoMapper).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.OpdQueryService">
+            <summary>
+            Read/transition surface for the OPD (Out Patient Department) queue — a thin layer over
+            PatientVisitConsultation's AppointmentTime/Status (see that entity's own doc comment).
+            Kept separate from PatientVisitService: that service owns *creating* visits/consultations,
+            this one owns *querying the queue* and *advancing its status*, a different use-case shape
+            (paged/grouped reads, transition-by-action-name) that would otherwise crowd an already
+            sizeable service.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.OpdQueryService.CalculateAge(System.DateOnly,System.DateOnly)">
+            <summary>Mirrors Patient.CalculateAge exactly (that one is private to the Patient
+            aggregate) — OpdPatientListRow carries DateOfBirth rather than a pre-computed Age since
+            it's a plain repository projection, not the Patient entity itself.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.PatientErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Patients-module failures — the UI
+            branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.PatientImportReferenceData">
+            <summary>
+            Loads Masters' State list once per batch and caches District lookups per State as rows ask
+            for them — avoids re-querying Masters for every one of a batch's (potentially tens of
+            thousands of) rows when most rows share only a handful of distinct State/District values.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.PatientImportRowMapper">
+            <summary>
+            Maps one parsed Excel row into a CreatePatientRequest, the exact same contract type manual
+            registration builds — everything downstream (CreatePatientRequestValidator,
+            PatientService.CreateAsync) is then shared with the manual-registration path, so business
+            rules can never drift between the two. Parsing failures here (an enum column that isn't one
+            of the dropdown's values, an unparseable date, a State/District name that doesn't resolve)
+            are collected as ImportRowErrors alongside whatever CreatePatientRequestValidator later adds
+            — a row can report several problems at once instead of the client fixing one, re-uploading,
+            and finding the next.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.PatientImportService">
+            <summary>
+            The front door for bulk patient import — upload/status/history/report/commit-trigger. The
+            actual row-by-row parsing/validation and patient creation happen off the request thread, in
+            PatientImportValidationBackgroundService/PatientImportCommitBackgroundService; this service
+            only ever creates the batch record and enqueues work, or reads back what those background
+            passes have recorded.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.PatientService">
+            <summary>
+            Orchestrates Patients use cases. Registration is a single combined transaction (patient +
+            address + any allergies/emergency contacts supplied up front). Encounter/visit
+            registration (department, consultant, admission type) is out of scope for this iteration.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.PatientService.GetReportPagedAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Patient Reports' table — same paging/filtering as GetPagedAsync, enriched with
+            each row's last visit/department (see PatientRepository.GetLastVisitsAsync).</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.PatientService.GetReportExportRowsAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Int32,System.Threading.CancellationToken)">
+            <summary>Every matching row (up to a safety cap), for the Excel export — see
+            PatientRepository.GetExportRowsAsync's own doc comment for why this isn't paginated.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Application.PatientService.GetReportSummaryAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Patient Reports' summary cards.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.PatientVisitService">
+            <summary>
+            Orchestrates recording a patient visit (Registration Details). Department/Consultant/
+            AppointmentType/ConsultationType are cross-module references into HMS.Modules.Masters'
+            reference data — each is checked to actually exist before the visit is created, the same
+            pattern PatientService.ValidateAddressReferencesAsync already uses for State/District.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Validators.CreatePatientRequestValidator">
+            <summary>
+            Server-side validation — the authoritative check. Client-side validation
+            (frontend/shared/validation) is a UX convenience only.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Application.Validators.CreatePatientVisitRequestValidator">
+            <summary>
+            Server-side validation — the authoritative check. Existence of the referenced
+            Department/Consultant/AppointmentType/ConsultationType ids is checked in
+            PatientVisitService (a cross-module lookup, not something FluentValidation alone can do),
+            not here.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.AddAllergyRequest">
+            <summary>Adds one allergy row to an existing patient — the "Add another Allergy" endpoint.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.AddEmergencyContactRequest">
+            <summary>Adds one emergency contact to an existing patient — the "Add another Emergency
+            Contact" endpoint.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.CreatePatientRequest">
+            <summary>
+            One combined submit for a New Patient Registration — creates the patient, their address,
+            and any allergies/emergency contacts supplied up front, all in a single transaction.
+            Encounter/visit registration (department, consultant, admission type) is out of scope
+            for this iteration.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.OpdPatientListItem">
+            <summary>
+            One row of the OPD Patient List — one per PatientVisitConsultation, denormalized with
+            Patient/Department/Consultant/AppointmentType display fields the same way
+            HMS.Modules.IPD.Contracts.AdmissionResponse denormalizes Patient/Ward/Bed, resolved once per
+            request in OpdQueryService, not stored.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.OpdConsultationSummaryItem">
+            <summary>One row per consultant, for the OPD Consultation List tab — counts across every
+            consultation of theirs matching the query's date range/department, broken down by queue
+            status.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.OpdConsultationSummaryItem.AvailableDays">
+            <summary>Denormalized from Masters' Consultant.AvailableDays/VisitStartTime/VisitEndTime
+            (see that entity's own doc comment) so the receptionist can see at a glance when this
+            consultant is normally available, without a separate lookup. Empty/null when the
+            consultant hasn't had this set yet.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.Title">
+            <summary>
+            Shared vocabulary for the Patients module — public because these values cross the
+            HTTP boundary (request/response fields) and Swagger needs to describe them, but also
+            used directly by Domain/Application within this same assembly.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.MaritalStatus">
+            <summary>Matches the frontend's MARITAL_STATUSES exactly.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.AllergyType">
+            <summary>Matches the frontend's ALLERGY_CATEGORIES exactly.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.Relationship">
+            <summary>Matches the frontend's RELATIONSHIPS list exactly (used for Emergency Contacts).</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.ModeOfArrivalSource">
+            <summary>Matches the frontend's ARRIVAL_SOURCE_CATEGORIES exactly.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.VisitType">
+            <summary>Matches the frontend's ENCOUNTER_TYPES_UI exactly.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.OpdConsultationStatus">
+            <summary>The OPD queue status of one consultation line — set at Create (Waiting) and
+            advanced via PatientVisitConsultation's transition methods as the patient moves through
+            the front desk (CheckedIn), a consultant's room (InConsultation), and out
+            (Completed/Cancelled/NoShow).</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.ImportRowError">
+            <summary>One field-level validation/commit failure attached to an import row.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.ImportBatchStatus">
+            <summary>Lifecycle of one uploaded import file. Validating/ReadyForReview cover the
+            dry-run pass (no patients/addresses written yet); Committing/Completed cover the pass
+            triggered by the Super Admin's explicit confirmation. Failed means the file itself
+            couldn't be parsed at all (wrong format, corrupt file) — distinct from individual rows
+            being Invalid, which is a normal, expected outcome of a validate pass.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.ImportRowStatus">
+            <summary>Per-row outcome. Valid/Invalid are set by the validate pass; Created/CommitFailed
+            are set by the commit pass (only Valid rows are ever committed).</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.PatientListQuery">
+            <summary>
+            Query parameters for GET /api/v1/patients — pagination/sort come from
+            <see cref="T:HMS.Shared.Kernel.PagedRequest"/>. <see cref="P:HMS.Shared.Kernel.PagedRequest.Search"/> is a single free-text term
+            matched against Name/UHID/Phone together; the properties below are dedicated per-field
+            filters, AND'd together with each other and with Search when more than one is present.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientListQuery.RequiresDataVerification">
+            <summary>When true, narrows the list to patients still flagged with placeholder data
+            (e.g. from bulk import) — see Patient.RequiresDataVerification.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientListQuery.RegisteredToday">
+            <summary>When true, narrows the list to patients with at least one PatientVisit
+            (patients.patient_visits) created or last updated today (UTC) — used by OPD Billing's
+            "pick a patient" screen to surface today's visits before any search is entered.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientListQuery.From">
+            <summary>Filters to patients who were either registered, or had at least one visit,
+            within this inclusive range — an "activity" scope, not pure registration date, so
+            Patient Reports' New-vs-Returning split is meaningful (see PatientReportSummaryResponse's
+            own doc comment). Added for Patient Reports; the plain Patients list/Enquiry page never
+            sends these, so existing callers are unaffected.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientListQuery.DepartmentId">
+            <summary>Narrows to patients with at least one visit whose consultation lines name this
+            department — Department lives on PatientVisitConsultation, not Patient itself, so this
+            is an EXISTS filter, not a direct column match.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientListQuery.IncludeLastVisit">
+            <summary>When true, GetPagedAsync additionally resolves each patient's most recent visit
+            (Department/Consultant/AppointmentTime) onto the response — see PatientResponse's
+            LastVisit* fields. Opt-in (defaults false/unset) so the plain Patients List/Enquiry pages
+            don't pay for a lookup they don't use; set by OPD Billing's "pick a patient" screen,
+            which shows this alongside each row.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.PatientReportRowResponse">
+            <summary>One row of the Patient Reports table — the base PatientResponse plus report-only
+            enrichment (last visit / department) that would otherwise bloat that response for every
+            other caller (registration, edit, enquiry). See PatientRepository.GetLastVisitsAsync for
+            how these two fields are resolved.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.PatientReportSummaryResponse">
+            <summary>Patient Reports' four summary-card numbers — see
+            PatientRepository.GetReportSummaryAsync's own doc comment for exactly what each counts.
+            All four are null-safe zeros (not omitted) when the query's own From/To aren't both
+            supplied, matching PatientListQuery.From's "activity scope" semantics.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientResponse.RequiresDataVerification">
+            <summary>True when this patient still has placeholder values (from bulk import) sitting
+            in required fields — the frontend shows a "please verify this patient's details" prompt
+            while true. Cleared automatically the next time this patient is edited and saved.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientResponse.RowVersion">
+            <summary>Opaque optimistic-concurrency token (the row's Postgres xmin at read time) —
+            echo this back on UpdatePatientRequest.RowVersion so a save made against stale data is
+            rejected with a clear conflict instead of silently overwriting someone else's edit.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.PatientResponse.LastVisitDepartmentId">
+            <summary>Department/Consultant/AppointmentTime of this patient's most recent visit —
+            only populated when PatientListQuery.IncludeLastVisit was set on the list request that
+            produced this response (see PatientService.GetPagedAsync); null otherwise, including on
+            every non-list response (GetByIdAsync, create/update, etc).</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.CreatePatientVisitRequest">
+            <summary>
+            Records one registration/encounter event for an existing patient — Encounter Type +
+            (for OP) Appointment Type, plus one or more consultation lines (primary consultant + any
+            "Add another Consultant" rows). All consultation lines created together share one VisitId;
+            a later, separate visit is a new POST with its own VisitId.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.VisitConsultationRequest.AppointmentTime">
+            <summary>Optional — the service defaults to DateTime.UtcNow when omitted, matching
+            today's walk-in-registration behavior unchanged.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.PatientVisitListQuery">
+            <summary>Query shape for the cross-patient visits list (reporting) — unlike
+            PatientVisitsController's per-patient GET, this spans every patient, so it's paged and
+            date-range-filterable on CreatedAt rather than returning everything at once.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Contracts.UpdatePatientRequest">
+            <summary>
+            Updates a patient's core demographic/contact/address/mode-of-arrival fields. Allergies
+            and Emergency Contacts have their own add/remove endpoints (AddAllergyRequest,
+            AddEmergencyContactRequest) rather than being replaced wholesale here — editing one entry
+            shouldn't require resending the whole patient or risk an optimistic-concurrency conflict
+            on unrelated fields.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Contracts.UpdatePatientRequest.RowVersion">
+            <summary>Must echo back the RowVersion from the PatientResponse this edit was loaded
+            from — lets the server detect and reject a save made against data someone else has
+            since changed, rather than silently overwriting it. See PatientService.UpdateAsync.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.Address">
+            <summary>
+            A patient's address — a true 1:1 extension of <see cref="T:HMS.Modules.Patients.Domain.Patient"/>: PatientId is both
+            this entity's primary key and its foreign key (see Infrastructure/Configurations/
+            AddressConfiguration.cs), so a patient can never have more than one address row and an
+            address can never exist without its patient. StateId/DistrictId are references into
+            Masters' own State/District tables (validated in PatientService, not here — Domain never
+            depends on another module).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.Allergy">
+            <summary>
+            One allergy entry — a patient can have several ("Add another Allergy" on the frontend),
+            so this is a genuine 1:many child of <see cref="T:HMS.Modules.Patients.Domain.Patient"/>, not a flattened field.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.EmergencyContact">
+            <summary>
+            One emergency contact — a patient can have more than one ("Add another Emergency
+            Contact" on the frontend), so this is a genuine 1:many child of <see cref="T:HMS.Modules.Patients.Domain.Patient"/>.
+            Every patient must have at least one (enforced by CreatePatientRequestValidator and, on
+            removal, by PatientService — a patient is never left with zero).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.Patient">
+            <summary>
+            A patient's master/demographic record — the aggregate root for this module. Address is a
+            true 1:1 child (always present, created together with the patient); Allergies and
+            EmergencyContacts are 1:many children ("Add another ..." on the frontend). All three are
+            only ever loaded/saved through this aggregate — see Infrastructure/Repositories/
+            PatientRepository.cs. Encounter/visit data (department, consultant, admission type) is
+            deliberately out of scope for this iteration — see the rebuild plan's Context section.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Domain.Patient.RequiresDataVerification">
+            <summary>True when this patient was created with placeholder/default values for
+            required fields (currently: bulk import — see PatientImportCommitBackgroundService),
+            which are technically valid but not real data (e.g. a synthetic phone number, a
+            sentinel date of birth). Front-end surfaces a "verify this patient's details" banner
+            while true, cleared automatically the next time anyone saves an edit through
+            UpdateAsync — matches how a receptionist naturally re-confirms details with the patient
+            once they're back in front of them.</summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Domain.Patient.Age">
+            <summary>Age is always derived from <see cref="P:HMS.Modules.Patients.Domain.Patient.DateOfBirth"/>, never stored.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.Patient.ClearDataVerificationFlag(System.Nullable{System.Guid})">
+            <summary>Called once per PatientService.UpdateAsync call, after every field update —
+            any full save through the Edit Patient screen counts as the receptionist having
+            re-confirmed the patient's details, regardless of which specific fields they touched.
+            A no-op (cheap) when the flag was already false.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.Patient.SetAddress(HMS.Modules.Patients.Domain.Address)">
+            <summary>Set once, at creation — see PatientService.CreateAsync. Address always exists
+            for a patient, so there's no separate "add" step the way Allergies/EmergencyContacts have.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.Patient.RemoveAllergy(System.Guid,System.Nullable{System.Guid})">
+            <returns>false if no allergy with that id exists on this patient.</returns>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.Patient.RemoveEmergencyContact(System.Guid,System.Nullable{System.Guid})">
+            <returns>false if no contact with that id exists on this patient, or if it's the
+            patient's only remaining emergency contact (every patient must have at least one —
+            same rule CreatePatientRequestValidator enforces at registration time).</returns>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.PatientImportBatch">
+            <summary>
+            One uploaded Excel file's import run. Tracks aggregate row counts rather than a navigation
+            collection of its <see cref="T:HMS.Modules.Patients.Domain.PatientImportRow"/>s — a batch can have tens of thousands of
+            rows, and every operation on the batch itself (status, counters) only needs the totals, not
+            every row loaded into memory. Rows are queried directly by BatchId for the review UI — see
+            PatientImportRowConfiguration.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.PatientImportBatch.MarkReadyForReview(System.Int32,System.Int32,System.Int32)">
+            <summary>Called once the validate pass has parsed and checked every row. No
+            patients/addresses exist yet at this point — that only happens after StartCommit.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.PatientImportBatch.MarkValidationFailed">
+            <summary>The file itself couldn't be processed (bad format, corrupt, empty) — distinct
+            from individual rows being Invalid, which is an expected ReadyForReview outcome.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.PatientImportRow">
+            <summary>
+            One row from an uploaded import file. RawDataJson/ErrorsJson/MappedRequestJson are opaque,
+            pre-serialized JSON as far as this entity is concerned — the Application layer owns their
+            shape and serializes/deserializes them; keeping that shape out of Domain avoids coupling
+            this entity to the report/review/commit DTOs.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Patients.Domain.PatientImportRow.MappedRequestJson">
+            <summary>The fully mapped, already-validated CreatePatientRequest (serialized) for a
+            Valid row — set once at validate time so the commit pass, which processes each row in
+            its own DI scope for isolation (see PatientImportCommitBackgroundService), doesn't need
+            to redo State/District name resolution against Masters for every single row.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.PatientVisit">
+            <summary>
+            One registration/encounter event for a patient — the aggregate root for "Registration
+            Details". Consultations is a genuine 1:many child ("Add another Consultant" on the
+            frontend): when several consultants are added in the same registration, their rows all
+            share this visit's Id; a later, separate encounter is a brand new PatientVisit with its
+            own Id. Not a child of Patient's own aggregate (unlike Allergy/EmergencyContact) — it's
+            looked up/created independently via its own repository, just FK-bound to a patient.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Domain.PatientVisitConsultation">
+            <summary>
+            One consultant line on a <see cref="T:HMS.Modules.Patients.Domain.PatientVisit"/> — a patient can see several
+            consultants in the same visit ("Add another Consultant" on the frontend), so this is a
+            genuine 1:many child, not a flattened field. DepartmentId/ConsultantId/ConsultationTypeId
+            are app-level references into HMS.Modules.Masters' reference data (Department, Consultant,
+            ConsultationType) — validated by PatientVisitService before this is created, not enforced
+            by a database foreign key (cross-module references stay app-level-only per
+            docs/Architecture.md §4). AppointmentTime/Status turn this line into the OPD queue's unit of
+            work: AppointmentTime defaults to "now" for today's walk-in-registration callers (Create's
+            appointmentTime parameter is optional), and Status walks the front-desk -> consultant-room ->
+            out lifecycle via the transition methods below — see Contracts/OpdContracts.cs for the read
+            side of this queue.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.PatientVisitConsultation.CheckIn">
+            <summary>Front desk marks the patient as physically present. Legal only from Waiting —
+            once a consultation is underway or over, "checking in" no longer means anything.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.PatientVisitConsultation.StartConsultation">
+            <summary>The "Consult" action — a patient can be pulled straight from Waiting (front
+            desk never checked them in) or from CheckedIn.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.PatientVisitConsultation.Reopen">
+            <summary>The inverse of Complete — used when a completed consultation's clinical note is
+            reopened for editing (HMS.Modules.OpdConsultation's ReopenAsync), so the queue's own
+            status stays in sync with the note's Draft/Completed state the same way Complete already
+            keeps them in sync going the other direction. Legal only from Completed.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.PatientVisitConsultation.Cancel">
+            <summary>Legal from any non-terminal state — a patient can be pulled off the queue at
+            any point before their consultation is actually finished.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Domain.PatientVisitConsultation.MarkNoShow">
+            <summary>The patient never arrived — only meaningful before a consultation actually
+            started.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Endpoints.OpdController">
+            <summary>
+            The Out Patient Department (OPD) queue — read/transition endpoints over
+            PatientVisitConsultation's AppointmentTime/Status (see that entity's own doc comment for
+            why this rides on the existing Registration Details data rather than a new Appointment
+            concept). A separate controller from PatientVisitsController: that one owns creating
+            visits/consultations, this one owns querying and advancing the queue built from them.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.OpdController.GetPatientList(HMS.Modules.Patients.Contracts.OpdPatientListQuery,System.Threading.CancellationToken)">
+            <summary>The OPD Patient List — one row per consultation matching the filters, paged.</summary>
+            <response code="200">A page of OPD patient rows.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.OpdController.GetConsultationSummary(HMS.Modules.Patients.Contracts.OpdConsultationSummaryQuery,System.Threading.CancellationToken)">
+            <summary>The OPD Consultation List — one row per consultant with Waiting/InConsultation/
+            Completed counts across their matching consultations.</summary>
+            <response code="200">The per-consultant summary rows.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.OpdController.CheckIn(System.Guid,System.Threading.CancellationToken)">
+            <summary>Front desk marks the patient as physically present.</summary>
+            <response code="200">The consultation is now CheckedIn.</response>
+            <response code="404">No matching consultation was found.</response>
+            <response code="409">The consultation isn't in a state this transition allows.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.OpdController.StartConsultation(System.Guid,System.Threading.CancellationToken)">
+            <summary>The "Consult" action — pulls the patient into the consultant's room.</summary>
+            <response code="200">The consultation is now InConsultation.</response>
+            <response code="404">No matching consultation was found.</response>
+            <response code="409">The consultation isn't in a state this transition allows.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.OpdController.Complete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Marks the consultation finished.</summary>
+            <response code="200">The consultation is now Completed.</response>
+            <response code="404">No matching consultation was found.</response>
+            <response code="409">The consultation isn't in a state this transition allows.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.OpdController.Cancel(System.Guid,System.Threading.CancellationToken)">
+            <summary>Pulls a patient off the queue before their consultation happens.</summary>
+            <response code="200">The consultation is now Cancelled.</response>
+            <response code="404">No matching consultation was found.</response>
+            <response code="409">The consultation isn't in a state this transition allows.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.OpdController.NoShow(System.Guid,System.Threading.CancellationToken)">
+            <summary>Marks that the patient never arrived.</summary>
+            <response code="200">The consultation is now NoShow.</response>
+            <response code="404">No matching consultation was found.</response>
+            <response code="409">The consultation isn't in a state this transition allows.</response>
+        </member>
+        <member name="T:HMS.Modules.Patients.Endpoints.PatientImportController">
+            <summary>
+            Bulk patient import — Super Admin only (see PermissionSeedData's
+            "patient-management.import" entry). Every action here either hands back a generated .xlsx
+            or drives PatientImportService; the actual parsing/validation/patient-creation work happens
+            off the request thread — see Infrastructure/PatientImportValidationBackgroundService and
+            PatientImportCommitBackgroundService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientImportController.GetTemplate(System.Threading.CancellationToken)">
+            <summary>Downloads the blank Excel template — column layout, dropdowns, and the
+            Instructions/Required Fields sheet.</summary>
+            <response code="200">The template file.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientImportController.Upload(Microsoft.AspNetCore.Http.IFormFile,System.Threading.CancellationToken)">
+            <summary>Uploads a filled-in template. Queues the validate pass; nothing is written to
+            patients/addresses by this call.</summary>
+            <response code="202">The file was accepted and queued for validation.</response>
+            <response code="400">The file is missing, empty, not an .xlsx, or too large.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientImportController.GetBatch(System.Guid,System.Threading.CancellationToken)">
+            <summary>Batch status and row counters — poll this while Validating/Committing.</summary>
+            <response code="200">The batch.</response>
+            <response code="404">No import batch was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientImportController.GetBatches(HMS.Modules.Patients.Contracts.ImportBatchListQuery,System.Threading.CancellationToken)">
+            <summary>Import History — every past and in-progress batch, newest first.</summary>
+            <response code="200">A page of import batches.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientImportController.GetRows(System.Guid,HMS.Modules.Patients.Contracts.ImportRowListQuery,System.Threading.CancellationToken)">
+            <summary>Paginated row detail for the review screen — filter by Status (e.g. Invalid) to
+            show only what was skipped.</summary>
+            <response code="200">A page of rows.</response>
+            <response code="404">No import batch was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientImportController.GetReport(System.Guid,System.Threading.CancellationToken)">
+            <summary>Downloads every skipped row (Invalid + CommitFailed) with its original data and
+            the reason(s) it was skipped, in the template's own column layout — fix and re-upload as
+            a fresh batch.</summary>
+            <response code="200">The report file.</response>
+            <response code="404">No import batch was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientImportController.Commit(System.Guid,System.Threading.CancellationToken)">
+            <summary>Confirms the import — only valid once the batch is ReadyForReview. Writes
+            nothing itself; queues the commit pass that actually creates the patients.</summary>
+            <response code="202">The batch was confirmed and queued for commit.</response>
+            <response code="404">No import batch was found for the given id.</response>
+            <response code="409">The batch isn't ReadyForReview (already committed, still
+            validating, or failed to parse).</response>
+        </member>
+        <member name="T:HMS.Modules.Patients.Endpoints.PatientsController">
+            <summary>
+            The Patients module's HTTP surface — registration, demographic/address update, soft
+            delete, paged/search listing, and per-row Allergy/Emergency Contact add-remove. File
+            uploads (photo, ID proof) go through the Documents module's own generic endpoints
+            (ownerType=Patient), not through this controller. "Actor" (created/updated-by) is read
+            from the caller's JWT via ClaimsPrincipalExtensions.GetUserId.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.Create(HMS.Modules.Patients.Contracts.CreatePatientRequest,System.Threading.CancellationToken)">
+            <summary>Registers a new patient — Patient Info + Address + any Allergies/Emergency
+            Contacts supplied up front, in one transaction.</summary>
+            <response code="201">The patient was registered.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="409">A matching patient (name + phone [+ ID number]) is already registered.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.Update(System.Guid,HMS.Modules.Patients.Contracts.UpdatePatientRequest,System.Threading.CancellationToken)">
+            <summary>Updates a patient's demographic/contact/address/mode-of-arrival fields.</summary>
+            <response code="200">The patient was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No patient was found for the given id.</response>
+            <response code="409">The patient was changed by someone else since it was loaded.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes a patient.</summary>
+            <response code="204">The patient was deleted.</response>
+            <response code="404">No patient was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single patient by id — Patient Info + Address + Allergies + Emergency
+            Contacts. Documents are fetched separately from the Documents module.</summary>
+            <response code="200">The patient was found.</response>
+            <response code="404">No patient was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.GetPaged(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Lists patients with paging and search by Name, UHID, or Phone.</summary>
+            <response code="200">A page of patients.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.GetReportPaged(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Patient Reports' table — same filters/pagination/sort as the plain list above,
+            enriched with each row's last visit and department.</summary>
+            <response code="200">A page of report rows.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.GetReportSummary(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Patient Reports' four summary-card numbers for the same filters.</summary>
+            <response code="200">The summary.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.ExportReport(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Excel export of every row matching the current filters (capped at 5,000 rows,
+            same rate-limit/connection concerns as the frontend's own report page — see
+            docs/DecisionLog.md's Patient Reports ADR), generated server-side rather than assembled
+            from whatever the browser already has paginated in memory.</summary>
+            <response code="200">The .xlsx file.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.AddAllergy(System.Guid,HMS.Modules.Patients.Contracts.AddAllergyRequest,System.Threading.CancellationToken)">
+            <summary>Adds one allergy row ("Add another Allergy").</summary>
+            <response code="200">The allergy was added; returns the updated patient.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No patient was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.RemoveAllergy(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Removes one allergy row.</summary>
+            <response code="200">The allergy was removed; returns the updated patient.</response>
+            <response code="404">No patient, or no matching allergy, was found.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.AddEmergencyContact(System.Guid,HMS.Modules.Patients.Contracts.AddEmergencyContactRequest,System.Threading.CancellationToken)">
+            <summary>Adds one emergency contact ("Add another Emergency Contact").</summary>
+            <response code="200">The contact was added; returns the updated patient.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No patient was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientsController.RemoveEmergencyContact(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Removes one emergency contact — rejected if it's the patient's last one.</summary>
+            <response code="200">The contact was removed; returns the updated patient.</response>
+            <response code="404">No patient, or no matching contact, was found.</response>
+            <response code="409">This is the patient's only emergency contact.</response>
+        </member>
+        <member name="T:HMS.Modules.Patients.Endpoints.PatientVisitsController">
+            <summary>
+            Records a patient's registration/encounter events ("Registration Details" on the
+            frontend). A separate controller from PatientsController: PatientVisit is its own
+            aggregate root with its own repository/service, not a child collection off Patient the
+            way Allergies/EmergencyContacts are.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientVisitsController.Create(System.Guid,HMS.Modules.Patients.Contracts.CreatePatientVisitRequest,System.Threading.CancellationToken)">
+            <summary>Records one visit — Encounter Type + (for OP) Appointment Type, plus one or
+            more consultation lines (primary + any "Add another Consultant" rows). All lines share
+            the returned VisitId.</summary>
+            <response code="201">The visit was recorded.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="404">No patient was found for the given id, or a referenced
+            Department/Consultant/AppointmentType/ConsultationType id doesn't exist.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientVisitsController.GetById(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets one visit by id.</summary>
+            <response code="200">The visit was found.</response>
+            <response code="404">No matching visit was found for this patient.</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientVisitsController.GetByPatientId(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists every visit recorded for this patient, newest first.</summary>
+            <response code="200">The patient's visits (possibly empty).</response>
+        </member>
+        <member name="M:HMS.Modules.Patients.Endpoints.PatientVisitsController.GetAll(HMS.Modules.Patients.Contracts.PatientVisitListQuery,System.Threading.CancellationToken)">
+            <summary>Lists visits across every patient, paged and optionally date-range-filtered on
+            CreatedAt — for Patient Reports. A separate, absolute route (not nested under a
+            patientId) since this is deliberately cross-patient, unlike every other action on this
+            controller.</summary>
+            <response code="200">A page of visits.</response>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.Configurations.AddressConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.Patients.Domain.Address"/> to patients.addresses. PatientId is both the primary key and
+            the foreign key back to Patient — there is no separate surrogate address_id, enforcing a
+            true 1:1 at the database level (a patient can never have more than one address row).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.Configurations.AllergyConfiguration">
+            <summary>Maps <see cref="T:HMS.Modules.Patients.Domain.Allergy"/> to patients.allergies — a 1:many child of Patient.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.Configurations.EmergencyContactConfiguration">
+            <summary>Maps <see cref="T:HMS.Modules.Patients.Domain.EmergencyContact"/> to patients.emergency_contacts — a 1:many
+            child of Patient.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.Configurations.PatientConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.Patients.Domain.Patient"/> to patients.patients. Internal (not public): Patient is an
+            internal domain type, so a public Configure(EntityTypeBuilder&lt;Patient&gt;) member would be
+            a CS0051 accessibility violation. EF Core's ApplyConfigurationsFromAssembly discovers and
+            invokes this via reflection regardless of the type's own visibility.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.Configurations.PatientVisitConfiguration">
+            <summary>Maps <see cref="T:HMS.Modules.Patients.Domain.PatientVisit"/> to patients.patient_visits — an aggregate root
+            (own audit trail), not a child of Patient's own aggregate.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.Configurations.PatientVisitConsultationConfiguration">
+            <summary>Maps <see cref="T:HMS.Modules.Patients.Domain.PatientVisitConsultation"/> to patients.patient_visit_consultations
+            — a 1:many child of PatientVisit.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.PatientDocumentOwnerExistenceChecker">
+            <summary>
+            Lets HMS.Modules.Documents validate that a Patient owner id actually exists before
+            accepting an upload against it — see IDocumentOwnerExistenceChecker's remarks for why
+            this is a one-directional dependency (Patients → Documents) rather than the other way
+            around.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.PatientIdentifierGenerator">
+            <summary>
+            Formats the short, human-readable UHID from a real Postgres sequence —
+            coordination-free under concurrent registrations, unlike a MAX(...)+1 query.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.PatientImportCommitBackgroundService">
+            <summary>
+            Drains IPatientImportQueue's commit queue — the pass triggered only by the Super Admin's
+            explicit confirmation (PatientImportService.CommitAsync). For each Valid row, calls
+            IPatientService.CreateAsync — the exact method manual registration uses, so UHID
+            assignment, the transaction, and the duplicate re-check all come for free. Each row is
+            processed in its own fresh DI scope (its own DbContext), not shared across the batch: if one
+            row's creation throws, that scope's DbContext is simply discarded rather than needing
+            recovery, and every other row's own scope is unaffected. Registered as a hosted service
+            (singleton) — mirrors PatientImportValidationBackgroundService/DocumentScanBackgroundService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.PatientImportQueue">
+            <summary>
+            Bounded in-memory queues backing IPatientImportQueue — see that interface's remarks.
+            Registered as a singleton (one pair of queues for the process's lifetime); the two
+            background services are each the sole reader of their own queue.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.PatientImportValidationBackgroundService">
+            <summary>
+            Drains IPatientImportQueue's validation queue. Parses the uploaded workbook, maps and
+            validates every row through the same CreatePatientRequestValidator manual registration
+            uses, and records a Valid/Invalid outcome per row — nothing is written to patients/addresses
+            here, only to patient_import_rows/patient_import_batches. Registered as a hosted service
+            (singleton), so it resolves scoped dependencies through a fresh DI scope per batch — mirrors
+            DocumentScanBackgroundService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.Infrastructure.PatientsDbContext">
+            <summary>
+            Owns the "patients" PostgreSQL schema. Only this module's own code constructs/migrates
+            this context — no other module references it.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Patients.Infrastructure.PatientsDbContext.ImportedUhidSequenceName">
+            <summary>Reserved exclusively for bulk-imported patients (1-40000) — see
+            PatientImportCommitBackgroundService and IPatientIdentifierGenerator.NextImportedUhidAsync.
+            Never overlaps with UhidSequenceName's 40001+ range.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Infrastructure.Repositories.PatientRepository.GetReportSummaryAsync(HMS.Modules.Patients.Contracts.PatientListQuery,System.Threading.CancellationToken)">
+            <summary>Total/new/returning/visit counts for Patient Reports' summary cards — reuses
+            the exact same filters GetPagedAsync applies (via BuildFilteredQuery), so the numbers
+            always agree with what the table below them actually shows. "New" is the subset of the
+            activity-scoped population (see PatientListQuery.From's own doc comment) whose
+            registration itself falls in range; "Returning" is simply Total minus New.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Infrastructure.Repositories.PatientRepository.GetLastVisitsAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.Threading.CancellationToken)">
+            <summary>The most recent visit (with its Consultations, for the report table's
+            Department column) for each of the given patients — deliberately fetched as a second,
+            bounded query against just this page's ids (≤ PagedRequest.MaxPageSize) rather than a
+            correlated subquery per row in GetPagedAsync's main query, so that query stays a plain
+            indexable filter/sort/page. In-memory grouping (not EF GroupBy+Include, which doesn't
+            compose cleanly) — bounded by how many visits this small id set can have, not by the
+            tenant's total visit count.</summary>
+        </member>
+        <member name="M:HMS.Modules.Patients.Infrastructure.Repositories.PatientRepository.ApplyLastVisitSort(System.Linq.IQueryable{HMS.Modules.Patients.Domain.Patient},System.Boolean)">
+            <summary>Orders by each patient's most recent visit (a correlated MAX subquery — an
+            intentional exception to GetLastVisitsAsync's "no correlated subquery" note above, which
+            is about avoiding one that fetches a full row-with-Includes per patient; this is a single
+            scalar per row, the ordinary shape for "sort by last activity" and index-friendly given
+            patient_visits(patient_id, created_at)). Falls back to the patient's own registration
+            timestamp when they have zero visits yet, so a patient registered moments ago still sorts
+            sensibly near the top of "recently active" rather than dropping to the very end on a null
+            last-visit date — used by Billing's patient picker (see PatientPicker.tsx) to default to
+            the most recently active patients instead of an empty "today only" list overnight.</summary>
+        </member>
+        <member name="T:HMS.Modules.Patients.PatientsModule">
+            <summary>
+            Single composition entry point for this module, called once from HMS.Api/Configuration.
+            </summary>
+        </member>
+    </members>
+</doc>

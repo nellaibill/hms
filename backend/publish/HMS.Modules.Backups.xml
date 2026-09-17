@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Backups</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Backups.Application.Abstractions.IBackupStorage">
+            <summary>
+            Where backup files live and how they're found — a plain "&lt;root&gt;/yyyy-MM-dd/&lt;key&gt;.dump"
+            directory layout, deliberately with no database of its own recording backup metadata (see
+            BackupsModule's own doc comment for why). <c>key</c> is <c>"masters"</c> for the Platform
+            database or a tenant's <c>Guid</c> (as a string) for a hospital database.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Backups.Application.Abstractions.IBackupStorage.ResolveOutputPath(System.String,System.DateOnly)">
+            <summary>The path a backup for <paramref name="key"/> on <paramref name="date"/> should
+            be written to. Does not create the file or its parent directory — the caller (the
+            pg_dump runner) does that as part of writing to it.</summary>
+        </member>
+        <member name="M:HMS.Modules.Backups.Application.Abstractions.IBackupStorage.GetLatestAsync(System.String,System.Threading.CancellationToken)">
+            <summary>The most recent successfully-written backup for <paramref name="key"/>, if any —
+            searches date folders newest-first and returns the first one that actually contains this
+            key's file (a day where only some databases dumped successfully still lets every other
+            key fall back to its own most recent success, rather than "the newest folder or nothing").</summary>
+        </member>
+        <member name="M:HMS.Modules.Backups.Application.Abstractions.IBackupStorage.CleanupOldBackupsAsync(System.Threading.CancellationToken)">
+            <summary>Deletes entire date folders older than the configured retention window.</summary>
+        </member>
+        <member name="T:HMS.Modules.Backups.Application.Abstractions.IPgDumpRunner">
+            <summary>Runs pg_dump against one database and writes its output to disk.</summary>
+        </member>
+        <member name="T:HMS.Modules.Backups.BackupsModule">
+            <summary>
+            Single composition entry point for this module — mirrors every other module's
+            Add&lt;X&gt;Module convention (see BrandingModule). Deliberately has no DbContext/migration
+            of its own: a backup is a pg_dump file on disk (see IBackupStorage), not a row in any
+            database, so there is nothing here for EF Core to own. IPgDumpRunner/IBackupStorage are
+            singletons (they hold no per-request state, only IOptions&lt;BackupOptions&gt; plus filesystem/
+            process calls) — safe both for the background scheduler and for the two controllers to share.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Backups.Configuration.BackupOptions">
+            <summary>
+            Bound from the "Backups" configuration section. <see cref="P:HMS.Modules.Backups.Configuration.BackupOptions.PgDumpExecutablePath"/> is a
+            real deployment prerequisite this module cannot verify on its own — it must point at a
+            pg_dump matching the target Postgres server's major version, installed on whatever host
+            actually runs the API process; there is no repo-wide evidence pg_dump is present there
+            today, so this needs to be confirmed (or installed) as part of standing this feature up.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Backups.Configuration.BackupOptions.PgDumpExecutablePath">
+            <summary>Full path to pg_dump(.exe). Defaults to "pg_dump", i.e. "resolve it from PATH" —
+            override with an absolute path if it isn't on PATH for the service account running the API.</summary>
+        </member>
+        <member name="P:HMS.Modules.Backups.Configuration.BackupOptions.BackupRootDirectory">
+            <summary>Root directory backups are written under — one "yyyy-MM-dd" subfolder per day,
+            one "&lt;key&gt;.dump" file per masters/tenant inside it. Must be writable by the API's
+            service account and, ideally, on a different physical disk/volume than the database
+            itself (a backup that lives only on the same disk as what it backs up protects against
+            far fewer failure modes).</summary>
+        </member>
+        <member name="P:HMS.Modules.Backups.Configuration.BackupOptions.RetentionDays">
+            <summary>How many days of dated folders the daily job keeps before deleting older ones.</summary>
+        </member>
+        <member name="T:HMS.Modules.Backups.Contracts.BackupSummaryResponse">
+            <summary>One row in a backup list — either "masters" or one tenant. <see cref="P:HMS.Modules.Backups.Contracts.BackupSummaryResponse.IsAvailable"/>
+            distinguishes "never backed up yet" from a zero-length/missing file, since the latter never
+            occurs (GetLatestAsync only returns a result for a file that actually exists).</summary>
+        </member>
+        <member name="T:HMS.Modules.Backups.Endpoints.PlatformBackupsController">
+            <summary>
+            Platform Admin surface for every backup this instance produces — masters plus every active
+            tenant. Gated behind PlatformSuperAdmin specifically, not the weaker Platform policy:
+            downloading a raw multi-tenant database dump is the single most sensitive read in the app.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Backups.Endpoints.PlatformBackupsController.GetAll(System.Threading.CancellationToken)">
+            <summary>Lists the latest available backup for masters plus every active tenant.</summary>
+            <response code="200">The list, one entry per masters/active tenant.</response>
+        </member>
+        <member name="M:HMS.Modules.Backups.Endpoints.PlatformBackupsController.Download(System.String,System.Threading.CancellationToken)">
+            <summary>Streams the latest backup for the given key ("masters" or a tenant id).</summary>
+            <response code="200">The backup file.</response>
+            <response code="404">No backup is available yet for this key.</response>
+        </member>
+        <member name="T:HMS.Modules.Backups.Endpoints.TenantBackupsController">
+            <summary>
+            Each hospital's own view of its own backup — never any other tenant's, and never masters.
+            "Which tenant" comes entirely from the caller's own Hospital JWT via ITenantContext, the
+            same tenant-resolution seam every other per-tenant module already relies on — there is no
+            request parameter naming a tenant, so there is nothing here for a caller to manipulate to
+            reach another hospital's data. Reuses the existing identity-administration.view permission
+            (already gates the whole Settings area) rather than adding a new one.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Backups.Endpoints.TenantBackupsController.GetMine(System.Threading.CancellationToken)">
+            <summary>The current tenant's own latest backup, if any.</summary>
+            <response code="200">The backup's metadata (possibly unavailable).</response>
+        </member>
+        <member name="M:HMS.Modules.Backups.Endpoints.TenantBackupsController.DownloadMine(System.Threading.CancellationToken)">
+            <summary>Streams the current tenant's own latest backup.</summary>
+            <response code="200">The backup file.</response>
+            <response code="404">No backup is available yet for this hospital.</response>
+        </member>
+        <member name="T:HMS.Modules.Backups.Infrastructure.DailyBackupSchedulerService">
+            <summary>
+            Runs the daily backup at 1:00 AM India Standard Time — masters first, then every active
+            tenant, then retention cleanup. An in-process timer rather than an OS-level scheduler (the
+            alternative this codebase's existing "migrate" one-shot command would otherwise suggest),
+            chosen so the whole feature is self-contained in the app with nothing extra to configure on
+            the host — the tradeoff is that an app restart right around 1 AM could skip a day, which
+            the startup catch-up check below exists specifically to cover.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Backups.Infrastructure.PgDumpRunner">
+            <summary>
+            Shells out to pg_dump as a real OS process rather than reimplementing a Postgres dump —
+            the same custom-format (-Fc) output `pg_restore` (and every standard Postgres tool)
+            already knows how to read. The connection string is decomposed into individual -h/-p/-U/-d
+            arguments with the password passed through the child process's environment
+            (PGPASSWORD), never on the command line — a command line is visible to every other process
+            on the same machine (Task Manager, `ps`, process-launch audit logs); an environment
+            variable set only on this one child process is not.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Backups.Infrastructure.PgDumpRunner.BuildStartInfo(Npgsql.NpgsqlConnectionStringBuilder,System.String,System.String)">
+            <summary>Pure construction, split out from <see cref="M:HMS.Modules.Backups.Infrastructure.PgDumpRunner.RunAsync(System.String,System.String,System.Threading.CancellationToken)"/> specifically so a unit
+            test can assert the exact args/environment pg_dump receives without actually starting a
+            process — most importantly, that the password only ever ends up in
+            <see cref="P:System.Diagnostics.ProcessStartInfo.Environment"/>, never <see cref="P:System.Diagnostics.ProcessStartInfo.ArgumentList"/>.</summary>
+        </member>
+    </members>
+</doc>

@@ -1,0 +1,197 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Branding</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Branding.Application.Abstractions.IBrandingLogoStorage">
+            <summary>
+            Persists an uploaded hospital logo and returns its stored relative path. Implemented in
+            Infrastructure as local disk storage under HMS.Api's wwwroot, mirroring
+            HMS.Modules.Patients.Infrastructure.PatientFileStorage — this app's established
+            file-upload pattern. Unlike patient files, there is only ever one logo (single-tenant
+            deployment), so no owning-entity id is threaded through.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Application.Abstractions.IBrandingRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/Architecture.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Application.Abstractions.IBrandingRepository.GetAsync(System.Threading.CancellationToken)">
+            <summary>Returns the singleton row, or null if it hasn't been created yet (fresh DB, seed skipped).</summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Application.BrandingDefaults">
+            <summary>
+            The hospital identity + token values the app shipped with before this feature existed
+            (frontend/web/src/config/branding.ts + index.css). Used to seed the singleton row on
+            first read (see BrandingService.GetOrCreateAsync) so the very first GET a client ever
+            makes returns exactly what the static config already produced — introducing real
+            persistence is a zero-visual-diff change until an admin actually edits the theme.
+            Kept in exact sync with frontend/web/src/features/branding/mockBrandingStore.ts's
+            DEFAULT_TOKENS_LIGHT/DARK — if one changes, the other should too.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Application.BrandingErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Branding-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Application.BrandingService">
+            <summary>
+            Orchestrates the Branding use cases against the single settings row (see
+            BrandingSettings.SingletonId) — there is no "not found" failure path here, unlike other
+            modules' by-id lookups, since GetOrCreateAsync always has a row to work with.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Application.BrandingService.ValidateRasterImage(System.IO.MemoryStream)">
+            <summary>Decodes the buffer as a real image (rejecting anything that isn't, regardless
+            of what its extension claimed) and enforces the pixel-dimension bounds the header's
+            fixed logo box is designed around. Leaves <paramref name="buffer"/> rewound to 0.</summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Application.BrandingService.ResizeIfOversized(System.IO.MemoryStream)">
+            <summary>Downscales a raster logo whose longer edge exceeds StoredLogoDimensionPx,
+            preserving aspect ratio and the original format (so a transparent PNG stays PNG, etc.).
+            Returns null when the upload is already small enough — nothing to do, caller stores the
+            original bytes. Assumes ValidateRasterImage has already confirmed this decodes cleanly.
+            Leaves <paramref name="buffer"/> rewound to 0 either way.</summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Application.BrandingService.ValidateSvg(System.IO.MemoryStream)">
+            <summary>SVG is vector, not decodable by an image library — this validates it as real
+            markup instead, walking the parsed element/attribute tree rather than string-matching a
+            single literal ("&lt;script"), which a payload using an event-handler attribute
+            (onload=, onerror=, ...) or a javascript:/data: URI never contained in the first place.
+            Parsed with DTD processing and external-entity resolution explicitly disabled (SVG has
+            no legitimate need for either, and allowing them would open an XXE hole on top of the
+            script-injection risk this method exists to close) — a DOCTYPE or malformed markup fails
+            closed as "not valid SVG" rather than being silently skipped. Dimension bounds don't
+            apply: the frontend's fixed logo box already clamps a vector image's rendered size
+            regardless of whatever intrinsic width/height it declares. Leaves
+            <paramref name="buffer"/> rewound to 0. Uploaded SVGs are still only ever rendered via
+            an &lt;img src&gt; (browsers don't execute embedded script for that element), so this is
+            defense-in-depth against the file being opened by direct navigation, not the only thing
+            standing between an uploaded SVG and script execution.</summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Application.BrandingService.GetOrCreateAsync(System.Threading.CancellationToken)">
+            <summary>
+            Defense in depth alongside idempotent creation-on-read: a fresh database (or one
+            where the row was somehow deleted) still gets a working default row on the very
+            next read, matching the app's pre-feature static config defaults exactly.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Application.IBrandingService">
+            <summary>
+            Public (not internal): this is the one Application-layer type BrandingController — which
+            ASP.NET Core requires to be public, with a public constructor, for controller discovery
+            and DI activation — takes as a constructor dependency. A public constructor cannot have
+            an internal parameter type (CS0051), so this interface is the module's deliberate,
+            narrow seam between its public HTTP boundary and its otherwise-internal
+            Application/Domain/Infrastructure layers, mirroring HMS.Modules.Identity.IUserService.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Application.IBrandingService.GetAsync(System.Threading.CancellationToken)">
+            <summary>Gets the current theme/branding configuration, creating the default row on first call if none exists yet.</summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.BrandingModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration — mirrors HMS.Modules.Patients.PatientsModule.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Branding.Contracts.BrandingResponse.Address">
+            <summary>Shown alongside HospitalName on printed/exported clinical documents — optional.</summary>
+        </member>
+        <member name="P:HMS.Modules.Branding.Contracts.BrandingResponse.LogoUrl">
+            <summary>Relative static-file URL (served via app.UseStaticFiles()) — null when no custom logo has been uploaded.</summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Domain.BrandingSettings">
+            <summary>
+            The hospital's current theme/branding configuration. Single-tenant-per-deployment
+            (see the Theme &amp; Branding plan) — this table holds exactly one row, identified by
+            <see cref="F:HMS.Modules.Branding.Domain.BrandingSettings.SingletonId"/>, rather than one row per hospital/tenant.
+            </summary>
+        </member>
+        <member name="F:HMS.Modules.Branding.Domain.BrandingSettings.SingletonId">
+            <summary>
+            Fixed, well-known id for the single row this table ever holds. Not a per-insert
+            <c>Guid.CreateVersion7()</c> like every other module's entities — there is
+            intentionally only ever one row, so <see cref="T:HMS.Modules.Branding.Application.BrandingService"/>
+            always queries/creates by this exact id (see its GetOrCreateAsync).
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Branding.Domain.BrandingSettings.Address">
+            <summary>Shown alongside HospitalName on printed/exported clinical documents (e.g. the
+            OPD Consultation report) — optional, unlike HospitalName/AppTitle.</summary>
+        </member>
+        <member name="P:HMS.Modules.Branding.Domain.BrandingSettings.TokensLightJson">
+            <summary>Flat "--css-var-name": "H S% L%" map, serialized as JSON — see docs on the token-map storage decision.</summary>
+        </member>
+        <member name="P:HMS.Modules.Branding.Domain.BrandingSettings.TokensDarkJson">
+            <summary>Same shape as <see cref="P:HMS.Modules.Branding.Domain.BrandingSettings.TokensLightJson"/>, applied when the UI is in dark mode.</summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Domain.BrandingSettings.CreateDefault(System.String,System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Creates the one-and-only row, seeded from <see cref="T:HMS.Modules.Branding.Application.BrandingDefaults"/>
+            so the app looks byte-identical to its pre-feature static config until an admin
+            actually edits the theme.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Endpoints.BrandingController">
+            <summary>
+            The Branding module's HTTP surface — get/update the current theme configuration and
+            upload a hospital logo, per the Theme &amp; Branding settings feature. Every action
+            requires a Hospital JWT (the default FallbackPolicy) so the tenant-aware BrandingDbContext
+            can resolve which hospital's own branding row to read/write — see docs/DecisionLog.md.
+            The pre-login screen no longer calls this endpoint at all; it themes itself with the
+            static frontend defaults instead (no tenant is known yet at that point). "Actor"
+            (updated-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId.
+            <c>Get</c> is deliberately left at bare <c>[Authorize]</c> — every authenticated user of
+            any role needs it to theme the app after login, not just Settings admins. <c>Update</c>/
+            <c>UploadLogo</c> additionally require <c>identity-administration.edit</c> (reusing the
+            existing "Roles, Users &amp; Settings" category — see ModuleCatalog/ROLE_MODULES rather than
+            adding a new one, matching Masters' own reuse of this module for its Settings-adjacent
+            pages) so a non-admin authenticated user can no longer rewrite tenant-wide branding by
+            calling the API directly — see docs/DecisionLog.md ADR-074.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Branding.Endpoints.BrandingController.Get(System.Threading.CancellationToken)">
+            <summary>Gets the current tenant's theme/branding configuration.</summary>
+            <response code="200">The current branding configuration.</response>
+        </member>
+        <member name="M:HMS.Modules.Branding.Endpoints.BrandingController.Update(HMS.Modules.Branding.Contracts.UpdateBrandingRequest,System.Threading.CancellationToken)">
+            <summary>Updates the theme/branding configuration (colors, fonts, hospital identity).</summary>
+            <response code="200">The branding configuration was updated.</response>
+            <response code="400">The request failed validation.</response>
+            <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
+        </member>
+        <member name="M:HMS.Modules.Branding.Endpoints.BrandingController.UploadLogo(Microsoft.AspNetCore.Http.IFormFile,System.Threading.CancellationToken)">
+            <summary>Uploads/replaces the hospital logo (PNG/JPG/WEBP/SVG, max 500KB, 16-2000px per side for raster formats — content is decoded/sanity-checked, not just trusted by extension).</summary>
+            <response code="200">The logo was uploaded and set.</response>
+            <response code="400">The file is missing or failed validation.</response>
+            <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
+        </member>
+        <member name="T:HMS.Modules.Branding.Infrastructure.BrandingDbContext">
+            <summary>
+            Owns the "branding" PostgreSQL schema. Per docs/DatabaseArchitecture.md §1, only this
+            module's own code constructs/migrates this context — no other module references it.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Infrastructure.BrandingLogoStorage">
+            <summary>
+            Local-disk file storage under HMS.Api's wwwroot, mirroring
+            HMS.Modules.Patients.Infrastructure.PatientFileStorage — this app's established
+            file-upload pattern (see docs/DecisionLog.md's file-upload ADR). Single well-known slot
+            (no owning-entity id) since there is only ever one hospital logo per deployment.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Branding.Infrastructure.Configurations.BrandingSettingsConfiguration">
+            <summary>
+            Maps <see cref="T:HMS.Modules.Branding.Domain.BrandingSettings"/> to branding.branding_settings, following the
+            naming/PK/audit-column/soft-delete standards in docs/DatabaseArchitecture.md.
+            Internal (not public): mirrors HMS.Modules.Identity.Infrastructure.Configurations.UserConfiguration.
+            </summary>
+        </member>
+    </members>
+</doc>

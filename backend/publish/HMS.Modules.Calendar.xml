@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Calendar</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Calendar.Application.Abstractions.IEventRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule — same split as every other module's repository interface.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Application.CalendarErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Calendar-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Application.IEventService">
+            <summary>
+            Public (not internal): EventsController — which ASP.NET Core requires to be a
+            public class with a public constructor for controller discovery/DI activation —
+            takes this as a constructor dependency; a public constructor cannot have an
+            internal parameter type (CS0051). Mirrors HR's IShiftService.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Application.EventService">
+             <summary>
+             Orchestrates Event use cases. Two business rules from the Phase 1 spec are enforced
+             here (they need a database query, so they can't live in FluentValidation):
+             Department existence (cross-module, via Masters' IDepartmentService — the same seam
+             HR's own WeeklyRosterService/ShiftAssignmentService use for the same check) and Holiday
+             date uniqueness (same-module, via IEventRepository).
+            
+             A third rule from the spec — "Doctor Leave cannot overlap another approved leave for
+             the same doctor" — is intentionally NOT implemented. The Event table (per the
+             approved Phase 1 field list) has no field identifying which doctor a Doctor Leave
+             event belongs to, and no approval-status field. Without either, there is nothing to
+             compare "the same doctor" or "approved" against — the rule cannot be evaluated, let
+             alone enforced. Per explicit instruction, this gap is documented here rather than
+             resolved by adding an unrequested StaffId/DoctorId or Status column to the schema.
+             If this rule needs to become real, the schema will need to grow — there is no way
+             around it — and that decision belongs to whoever owns this module's next phase.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Application.Mapping.EventMappingExtensions">
+            <summary>
+            Manual entity-to-DTO mapping. A single entity doesn't justify a mapping library
+            (Mapster/AutoMapper) at this scale — see docs/DecisionLog.md.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Application.Validators.CreateEventRequestValidator">
+            <summary>
+            Structural validation only — Title required, EventType required, StartDate not
+            after EndDate. Business-rule checks that need a database query (Holiday date
+            uniqueness, Department existence) live in EventService instead, per the
+            malformed-request-vs-business-rule split used everywhere else in this codebase.
+            The "Doctor Leave cannot overlap another approved leave" rule is not implemented
+            here or in EventService — see CalendarErrorCodes' doc comment for why.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Application.Validators.MonthlyEventQueryValidator">
+            <summary>GET /events/month's query. Year/Month bounds are DateOnly's own supported
+            range and the calendar's actual month count — a structural fact, not an invented
+            business rule. Mirrors HR's MonthlyWeeklyRosterQueryValidator.</summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Application.Validators.BulkCreateEventsRequestValidator">
+            <summary>
+            Validates only the envelope (non-empty, under the batch cap). Each individual item
+            is validated with the same CreateEventRequestValidator POST /events already uses,
+            applied per-item by the controller so a bad row can be reported by index instead of
+            failing the whole batch.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.CalendarModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration — mirrors HMS.Modules.HR.HRModule. Registrations stay inline
+            in one file (not split into Service/Validator/Repository registration files like
+            HMS.Modules.Masters) since this module has one entity so far; split out if/when
+            future phases make this file as large as Masters'.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Contracts.EventType">
+            <summary>
+            The fixed set of calendar event categories, per the Calendar Phase 1 spec.
+            "Hospital Event" and "Doctor Leave" become HospitalEvent/DoctorLeave — enum members
+            cannot contain spaces; the JSON wire format still serializes as the member's own name
+            via the global JsonStringEnumConverter (see HMS.Api/Program.cs), not the ordinal.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Contracts.MonthlyEventQuery">
+            <summary>GET /events/month's query — a read-only view over the existing Event
+            aggregate (events whose date range intersects the given month), not a new entity.
+            Mirrors HR's MonthlyWeeklyRosterQuery.</summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Contracts.BulkCreateEventsRequest">
+            <summary>
+            POST /events/bulk's body — for loading a batch of events in one request (e.g. a
+            year's national holiday list) instead of one HTTP call per event. Not a new entity
+            or a new business rule: each item runs through the exact same validation and
+            creation logic POST /events already applies, one at a time, so a bad item in the
+            batch doesn't need to invalidate the whole request.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Contracts.BulkCreateEventResult">
+            <summary>One item's outcome within a bulk create — Index matches its position in
+            the original request so the caller can tell which input row a failure belongs to.</summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Domain.Event">
+             <summary>
+             A single calendar entry — a holiday, a hospital-wide event, a doctor's leave, a
+             meeting, training, or maintenance window — the aggregate root for Calendar Phase 1.
+             DepartmentId is a plain Guid reference with no navigation property, validated for
+             existence (when supplied) at the Application layer against HR's Department directory
+             — the same ID-reference convention every other cross-aggregate reference in this
+             codebase already uses (mirrors ShiftAssignment.DepartmentId).
+            
+             Deliberately has no field identifying *which* doctor a "Doctor Leave" event belongs
+             to. The originating spec's "Doctor Leave cannot overlap another approved leave for
+             the same doctor" rule cannot be implemented without one — per explicit instruction,
+             this is documented as a known limitation (see EventService) rather than resolved by
+             adding an unrequested field to this table.
+             </summary>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Endpoints.EventsController">
+            <summary>
+            Event CRUD + monthly view, per the Calendar Phase 1/Phase 2 spec. "Actor" (created/
+            updated/deleted-by) is read from the caller's JWT via ClaimsPrincipalExtensions.GetUserId.
+            Every action requires "engagement.*" (see docs/DecisionLog.md's permission-granularity
+            ADR).
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Calendar.Endpoints.EventsController.Create(HMS.Modules.Calendar.Contracts.CreateEventRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new calendar event.</summary>
+            <response code="201">The event was created.</response>
+            <response code="400">The request failed validation, the department doesn't exist, or a holiday already exists on that date.</response>
+        </member>
+        <member name="M:HMS.Modules.Calendar.Endpoints.EventsController.BulkCreate(HMS.Modules.Calendar.Contracts.BulkCreateEventsRequest,System.Threading.CancellationToken)">
+            <summary>
+            Creates a batch of events in one request (e.g. loading a year's national holiday
+            list) instead of one HTTP call per event. Each item goes through the same
+            validation and creation path as POST /events, one at a time in array order, so
+            one bad row doesn't fail the whole batch — the response reports success/failure
+            per item by index. Because items are processed sequentially and each is saved
+            before the next runs, business rules that depend on prior rows (e.g. two
+            Holidays on the same date) are still caught even within the same batch.
+            </summary>
+            <response code="200">The batch was processed; check each item's Success flag.</response>
+            <response code="400">The batch itself was malformed (empty, or over the size cap).</response>
+        </member>
+        <member name="M:HMS.Modules.Calendar.Endpoints.EventsController.GetPaged(HMS.Modules.Calendar.Contracts.EventListQuery,System.Threading.CancellationToken)">
+            <summary>Lists events with paging, search, sorting, and EventType/Department filtering.</summary>
+            <response code="200">A page of events.</response>
+        </member>
+        <member name="M:HMS.Modules.Calendar.Endpoints.EventsController.GetForMonth(HMS.Modules.Calendar.Contracts.MonthlyEventQuery,System.Threading.CancellationToken)">
+            <summary>Lists events whose date range intersects the given calendar month, with optional EventType/Department filtering.</summary>
+            <response code="200">A page of events for the month.</response>
+            <response code="400">The request failed validation.</response>
+        </member>
+        <member name="M:HMS.Modules.Calendar.Endpoints.EventsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single event by id.</summary>
+            <response code="200">The event was found.</response>
+            <response code="404">No event was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Calendar.Endpoints.EventsController.Update(System.Guid,HMS.Modules.Calendar.Contracts.UpdateEventRequest,System.Threading.CancellationToken)">
+            <summary>Updates an event.</summary>
+            <response code="200">The event was updated.</response>
+            <response code="400">The request failed validation, the department doesn't exist, or a holiday already exists on that date.</response>
+            <response code="404">No event was found for the given id.</response>
+        </member>
+        <member name="M:HMS.Modules.Calendar.Endpoints.EventsController.Delete(System.Guid,System.Threading.CancellationToken)">
+            <summary>Soft-deletes an event.</summary>
+            <response code="204">The event was deleted.</response>
+            <response code="404">No event was found for the given id.</response>
+        </member>
+        <member name="T:HMS.Modules.Calendar.Infrastructure.CalendarDbContext">
+            <summary>
+            Owns the "calendar" PostgreSQL schema. Per docs/DatabaseArchitecture.md §1, only
+            this module's own code constructs/migrates this context — no other module
+            references it.
+            </summary>
+        </member>
+    </members>
+</doc>

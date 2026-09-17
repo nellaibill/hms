@@ -1,0 +1,442 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Laboratory</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Laboratory.Application.Abstractions.ILabOrderNumberGenerator">
+            <summary>
+            Generates the short, human-readable LabOrderNumber business identifier (e.g.
+            "LAB-2026-000001") — distinct from the entity's internal Guid.CreateVersion7() primary
+            key. Implemented in Infrastructure via its own Postgres sequence, mirroring Billing's
+            IInvoiceNumberGenerator.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Application.Abstractions.ILabOrderRepository">
+            <summary>
+            Defined here (Application) and implemented in Infrastructure, per the dependency
+            inversion rule in docs/DeveloperHandbook.md — Application never references EF Core types.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.Abstractions.ILabOrderRepository.GetByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Always includes Items -> Parameters and Items -> Events — a LabOrder is never
+            meaningfully read without its full graph, mirroring Billing's IInvoiceRepository.GetByIdAsync
+            "always Include Items" precedent.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.Abstractions.ILabOrderRepository.GetByInvoiceIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>For the idempotency check in LabOrderService.CreateFromInvoiceAsync — a retried
+            call for the same InvoiceId must return the existing order, never duplicate.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.Abstractions.ILabOrderRepository.GetByItemIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Loads the full order (same graph as GetByIdAsync) that owns the given item —
+            every one of LabOrderService's per-item mutator methods needs the whole aggregate to
+            mutate the one item and return a consistent, fully up-to-date LabOrderResponse.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.Abstractions.ILabOrderRepository.GetByAdmissionIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>For IPD's Laboratory tab — every order placed directly from a given admission
+            (LabOrder.CreateForAdmission), newest first, mirroring GetByPatientIdAsync.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.Abstractions.ILabOrderRepository.GetDashboardCountsAsync(System.Threading.CancellationToken)">
+            <summary>Aggregated worklist dashboard counts for the current tenant — see
+            Contracts/LabOrderContracts.cs's LabDashboardSummaryResponse for what each tile means.</summary>
+        </member>
+        <member name="F:HMS.Modules.Laboratory.Application.LaboratoryErrorCodes.InvalidStatusTransition">
+            <summary>One shared code for every mutator's precondition failure (an illegal status
+            transition) — the message string explains the specifics, mirroring how
+            Invoice.Void/InvoiceService's own InvalidOperationException catch blocks work.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Application.ILabOrderService">
+            <summary>
+            Public (not internal): LabOrdersController — which ASP.NET Core requires to be a public
+            class with a public constructor for controller discovery/DI activation — takes this as a
+            constructor dependency; a public constructor cannot have an internal parameter type
+            (CS0051). It's also the cross-module seam Billing's InvoiceService calls into (in-process,
+            best-effort) via CreateFromInvoiceAsync — see that method's own doc comment for why there's
+            deliberately no public HTTP endpoint for it.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.ILabOrderService.CreateFromInvoiceAsync(HMS.Modules.Laboratory.Contracts.CreateLabOrderFromInvoiceRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>The one entry point Billing calls, right after an invoice containing at least
+            one BillingType.Laboratory line item is persisted. Idempotent: a retried call for the
+            same InvoiceId returns the existing order (Result.Success) rather than duplicating —
+            see the unique index on LabOrder.InvoiceId, which backstops this at the database level
+            too. Not exposed as a controller action: lab staff never manually create a patient
+            billing request, only Billing does, in-process (see LabOrdersController's own doc
+            comment).</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.ILabOrderService.CreateFromAdmissionAsync(HMS.Modules.Laboratory.Contracts.CreateLabOrderFromAdmissionRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>The IPD counterpart to CreateFromInvoiceAsync — called by
+            IPD.Application.IPDLabOrderService when a ward doctor places a lab order directly on an
+            admission, no invoice required (see Domain/LabOrder.cs's CreateForAdmission for why
+            InvoiceId/VisitId are null on the resulting order). Not idempotent by design — unlike
+            invoices, each call is a genuinely new order the doctor placed, mirroring
+            IPD.DoctorOrder's each-placement-is-a-new-row semantics.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.LabOrderService.CreateFromAdmissionAsync(HMS.Modules.Laboratory.Contracts.CreateLabOrderFromAdmissionRequest,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Mirrors CreateFromInvoiceAsync's service/package resolution, with one
+            deliberate difference: an unresolvable service or package fails the whole call
+            immediately (Result.Failure) rather than being logged and skipped. Invoice-originated
+            lines are trusted (Billing already validated the line before calling here) and best-
+            effort by design (must never fail the invoice); this is a doctor directly placing an
+            order through IPD's UI, so surfacing a bad selection immediately is better UX than
+            silently dropping it.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.LabOrderService.MutateItemAsync(System.Guid,System.Action{HMS.Modules.Laboratory.Domain.LabOrderItem},System.Threading.CancellationToken)">
+            <summary>Shared shape for every per-item mutator: load the owning order (full graph),
+            find the item, apply the mutation, translate an InvalidOperationException (an illegal
+            status transition) into a proper Result.Failure, save, and return the whole parent
+            LabOrderResponse — never just the item — so the frontend always gets a consistent,
+            fully up-to-date order view after any single-item action. Mirrors InvoiceService.
+            RecordPaymentAsync/VoidAsync's own try/catch shape around Invoice's guard exceptions.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Application.LabOrderService.ToOrderResponseAsync(HMS.Modules.Laboratory.Domain.LabOrder,System.Threading.CancellationToken)">
+            <summary>LabOrderMappingExtensions.ToResponse is a plain synchronous mapper — it can't
+            resolve each item's ServiceType (Laboratory/Radiology), which lives on Masters'
+            DiagnosticService, not on LabOrderItem itself. This wraps that mapper and patches every
+            item's ServiceType in afterward via one GetByIdAsync lookup per item — the same N+1-per-
+            row pattern already accepted elsewhere in this codebase (see
+            HMS.Modules.IPD.Application.AdmissionService.BuildResponseAsync). Every LabOrderItem
+            always carries a real ServiceId (package lines are expanded into one item per resolved
+            service before LabOrder.Create is ever called — see CreateFromInvoiceAsync/
+            CreateFromAdmissionAsync above), so there's no PackageId special case to resolve
+            ServiceType a different way.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Application.Validators.CollectSampleRequestValidator">
+            <summary>
+            Request-shape validation only (docs/DeveloperHandbook.md §8/§11 — explicit registration in
+            LaboratoryModule.cs, never AddValidatorsFromAssemblyContaining). Exists specifically so the
+            two request shapes whose fields flow into a Domain Guard clause (LabOrderItem.
+            RejectForCorrection's reason, LabResultParameter.Create's ParameterName/ResultValue) never
+            reach the domain empty/whitespace — LabOrderService's per-item mutator catch block only
+            translates InvalidOperationException (an illegal status transition) into a Result.Failure,
+            not ArgumentException, so an unvalidated blank string would otherwise surface as an
+            unhandled 500 instead of a clean 400.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabOrderPriority">
+            <summary>How urgently a LabOrder's samples/results should be handled. Defaults to Routine —
+            no endpoint sets this at order-creation time yet (see Domain/LabOrder.cs's UpdatePriority),
+            it exists for the worklist's own triage use later.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabOrderItemStatus">
+            <summary>Per-item state machine — see Domain/LabOrderItem.cs's mutators for the exact legal
+            transitions between these. LabOrder's own OverallStatus (see LabOrderStatus below) is
+            derived from every item's Status, not stored separately.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabOrderStatus">
+            <summary>The computed, order-level status shown on the worklist — never stored, always
+            derived from every LabOrderItem's own Status plus the order's ReportGeneratedAt/
+            ReportReleasedAt timestamps. See Domain/LabOrder.cs's OverallStatus getter for the exact
+            precedence ladder. Shares most value names with LabOrderItemStatus (same underlying
+            vocabulary at both granularities) plus two order-only states for the reporting milestones.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabSampleType">
+            <summary>Set/confirmed by the technician during sample collection — unset until then.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabSampleRejectionReason">
+            <summary>Why a collected sample was rejected — set only by RejectSample.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabResultFlag">
+            <summary>A result parameter's abnormality flag — only ever set by explicit human/API input
+            (see Domain/LabResultParameter.cs), never auto-computed: this system has no reference-range
+            configuration data to compute it safely from.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabOrderItemEventType">
+            <summary>One append-only audit/history entry on a LabOrderItem — see
+            Domain/LabOrderItemEvent.cs. Doubles as both sample-status history and general audit trail.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.CreateLabOrderLineRequest">
+            <summary>One line Billing supplies per BillingType.Laboratory invoice line item — either
+            ServiceId (a standalone test) or PackageId (a package this module expands into its own
+            items via IDiagnosticPackageService) is set, never both/neither (validated by
+            LabOrderService, not a request validator, since the check depends on resolving the
+            referenced Masters record — see LabOrderService.CreateFromInvoiceAsync).</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.CreateLabOrderFromInvoiceRequest">
+            <summary>The one public entry point Billing calls, in-process, right after an invoice
+            containing at least one Laboratory line item is persisted — see
+            Application/LabOrderService.cs's CreateFromInvoiceAsync for the idempotency/expansion
+            logic. There is deliberately no HTTP endpoint for this — lab staff never manually create a
+            patient billing request, only Billing does, in-process.</summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Contracts.CreateLabOrderFromInvoiceRequest.Source">
+            <summary>Snapshot of the visit's own VisitType (as a plain string, e.g. "OP"/"IP") at
+            order-creation time — see Domain/LabOrder.cs's Source field. Null when the visit type
+            could not be resolved.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.CreateLabOrderLineFromAdmissionRequest">
+            <summary>One line IPD's IPDLabOrderService supplies per test/package a ward doctor placed
+            on an admission — no InvoiceLineItemId, since there is no invoice. Exactly one of
+            ServiceId/PackageId is set, never both/neither, resolved the same way as
+            CreateLabOrderLineRequest (see LabOrderService.CreateFromAdmissionAsync).</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.CreateLabOrderFromAdmissionRequest">
+            <summary>The IPD counterpart to CreateLabOrderFromInvoiceRequest — called by
+            IPD.Application.IPDLabOrderService when a ward doctor places a lab order directly on an
+            admission, no invoice required. See Domain/LabOrder.cs's CreateForAdmission.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.SaveResultDraftRequest">
+            <summary>Replaces the item's full parameter set — see Domain/LabOrderItem.cs's
+            SaveResultDraft for why a full replace (not incremental add/edit/remove) matches how a
+            technician actually fills out a result form in one sitting.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabOrderListQuery">
+            <summary>Standard paging/sort/search shape (docs/ApiStandards.md §6), plus the worklist's
+            own status/priority/date-range filters — mirrors Billing's InvoiceListQuery.</summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Contracts.LabOrderListQuery.Source">
+            <summary>Matches LabOrder.Source exactly (e.g. "OP"/"IP"/"IPD") — lets the OPD
+            Investigations List tab ask for only orders raised from an OP visit.</summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Contracts.LabOrderListQuery.DepartmentId">
+            <summary>Filters via Items.Any(...) — Department/Consultant live on each LabOrderItem,
+            not on the order itself (a single invoice-originated order can carry items billed
+            against more than one department/consultant).</summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Contracts.LabOrderItemResponse.ServiceType">
+            <summary>Resolved from Masters' DiagnosticService.ServiceType (Laboratory/Radiology) at
+            response-mapping time — LabOrderItem doesn't store this itself, see
+            LabOrderService.ToOrderResponseAsync. Null only if the referenced service could no
+            longer be resolved (e.g. deleted after the order was placed).</summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Contracts.LabOrderResponse.AdmissionId">
+            <summary>Set only for orders placed directly from an IPD admission (see
+            LabOrder.CreateForAdmission) — app-level reference, no DB FK.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Contracts.LabDashboardSummaryResponse">
+            <summary>Backs the lab worklist dashboard's summary tiles — computed server-side over the
+            current tenant's LabOrder/LabOrderItem rows. "Today" = CreatedAt's date matches server UTC
+            today, matching this repo's existing UTC convention.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Domain.LabOrderItemSpec">
+            <summary>One item to add, passed into <see cref="M:HMS.Modules.Laboratory.Domain.LabOrder.Create(System.String,System.Guid,System.Guid,System.String,System.String,System.Guid,System.String,System.Collections.Generic.IReadOnlyList{HMS.Modules.Laboratory.Domain.LabOrderItemSpec},System.Nullable{System.Guid})"/> — the Application
+            layer's shape for a not-yet-persisted <see cref="T:HMS.Modules.Laboratory.Domain.LabOrderItem"/>. Internal like the rest of
+            Domain/Application: Contracts' own CreateLabOrderLineRequest is the public-facing shape
+            LabOrderService maps from (expanding a package into one LabOrderItemSpec per resolved
+            service first). InvoiceLineItemId isn't part of the spec shape the handbook's Invoice.cs
+            precedent names explicitly, but LabOrderItem's own InvoiceLineItemId field requires it —
+            it's carried here since LabOrder.Create/LabOrderItem.Create is the only place items are
+            ever constructed.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItemSpec.#ctor(System.Guid,System.Nullable{System.Guid},System.String,System.Nullable{System.Guid},System.Nullable{System.Guid},System.Nullable{System.Guid},System.Nullable{HMS.Modules.Laboratory.Contracts.LabSampleType})">
+            <summary>One item to add, passed into <see cref="M:HMS.Modules.Laboratory.Domain.LabOrder.Create(System.String,System.Guid,System.Guid,System.String,System.String,System.Guid,System.String,System.Collections.Generic.IReadOnlyList{HMS.Modules.Laboratory.Domain.LabOrderItemSpec},System.Nullable{System.Guid})"/> — the Application
+            layer's shape for a not-yet-persisted <see cref="T:HMS.Modules.Laboratory.Domain.LabOrderItem"/>. Internal like the rest of
+            Domain/Application: Contracts' own CreateLabOrderLineRequest is the public-facing shape
+            LabOrderService maps from (expanding a package into one LabOrderItemSpec per resolved
+            service first). InvoiceLineItemId isn't part of the spec shape the handbook's Invoice.cs
+            precedent names explicitly, but LabOrderItem's own InvoiceLineItemId field requires it —
+            it's carried here since LabOrder.Create/LabOrderItem.Create is the only place items are
+            ever constructed.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Domain.LabOrder">
+            <summary>
+            The lab request for one Invoice OR one IPD Admission — two creation paths funnel into the
+            same aggregate/state machine (see Create vs CreateForAdmission). Invoice-originated orders
+            are created once, in-process, when Billing's InvoiceService.CreateAsync successfully
+            persists an invoice containing at least one BillingType.Laboratory line item (see
+            LabOrderService.CreateFromInvoiceAsync's idempotency check: a retried call for the same
+            InvoiceId returns the existing order rather than duplicating). Admission-originated orders
+            are created directly by a ward doctor via IPD's IPDLabOrderService — no invoice required —
+            closing the gap ADR-062 flagged when IPD's DoctorOrder deliberately excluded Laboratory.
+            InvoiceId/VisitId are therefore nullable: exactly one of InvoiceId/AdmissionId is set,
+            never both, never neither. PatientName/PatientUhid/Source are snapshotted at creation
+            rather than a live join, same rationale as Billing's own Invoice.PatientName/PatientUhid
+            (an order should keep showing who/what it was raised for even if the patient record or
+            visit is edited later). OverallStatus is computed, not stored — see its own doc comment for
+            the precedence ladder.
+            </summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Domain.LabOrder.AdmissionId">
+            <summary>App-level reference to HMS.Modules.IPD.Admission, no DB FK — same convention
+            as every other cross-module reference in this codebase. Set only for orders created via
+            CreateForAdmission; null for invoice-originated orders.</summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Domain.LabOrder.Source">
+            <summary>Plain-string snapshot of whatever VisitType Billing resolved at order-creation
+            time (e.g. "OP"/"IP") — not a separate Source enum; null when the visit lookup failed.</summary>
+        </member>
+        <member name="P:HMS.Modules.Laboratory.Domain.LabOrder.OverallStatus">
+            <summary>Derived, never stored — see the precedence ladder below. Every branch is
+            evaluated top-to-bottom, first match wins.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrder.Create(System.String,System.Guid,System.Guid,System.String,System.String,System.Guid,System.String,System.Collections.Generic.IReadOnlyList{HMS.Modules.Laboratory.Domain.LabOrderItemSpec},System.Nullable{System.Guid})">
+            <summary>Builds the order and every one of its items in one call — mirrors Invoice.Create.
+            Rejects an empty item list (LabOrderService is responsible for returning a proper
+            Result.Failure(EmptyOrder) before ever calling this, same split as Invoice/
+            CreateInvoiceRequestValidator's "reject empty invoice" precedent).</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrder.CreateForAdmission(System.String,System.Guid,System.Guid,System.String,System.String,System.Collections.Generic.IReadOnlyList{HMS.Modules.Laboratory.Domain.LabOrderItemSpec},System.Nullable{System.Guid})">
+            <summary>The IPD counterpart to Create — no InvoiceId/VisitId (a ward doctor's order
+            doesn't go through Billing first), Source is always the fixed literal "IPD" rather than
+            a resolved VisitType snapshot. See this class's own doc comment for why both paths
+            funnel into the same aggregate.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrder.UpdatePriority(HMS.Modules.Laboratory.Contracts.LabOrderPriority,System.Nullable{System.Guid})">
+            <summary>No endpoint sets this at creation time yet — added for the worklist's own
+            triage use later.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrder.GenerateReport(System.Nullable{System.Guid})">
+            <summary>Caller (LabOrderService) pre-checks the same precondition to return a proper
+            Result.Failure(NotAllItemsVerified) with a clear message; repeated here since it's a
+            genuine invariant of a report-generated LabOrder, not just an HTTP-layer concern —
+            same split as Invoice.Void's own doc comment.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrder.ReleaseReport(System.Nullable{System.Guid})">
+            <summary>See GenerateReport's doc comment on the pre-check/domain-guard split.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Domain.LabResultParameterSpec">
+            <summary>One result-parameter row to save, passed into <see cref="M:HMS.Modules.Laboratory.Domain.LabOrderItem.SaveResultDraft(System.Collections.Generic.IReadOnlyList{HMS.Modules.Laboratory.Domain.LabResultParameterSpec},System.Nullable{System.Guid})"/>
+            — the Application layer's shape for a not-yet-persisted <see cref="T:HMS.Modules.Laboratory.Domain.LabResultParameter"/>.
+            Mirrors LabOrderItemSpec/InvoiceLineItemSpec's own role.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabResultParameterSpec.#ctor(System.String,System.String,System.String,System.String,System.Nullable{HMS.Modules.Laboratory.Contracts.LabResultFlag},System.String)">
+            <summary>One result-parameter row to save, passed into <see cref="M:HMS.Modules.Laboratory.Domain.LabOrderItem.SaveResultDraft(System.Collections.Generic.IReadOnlyList{HMS.Modules.Laboratory.Domain.LabResultParameterSpec},System.Nullable{System.Guid})"/>
+            — the Application layer's shape for a not-yet-persisted <see cref="T:HMS.Modules.Laboratory.Domain.LabResultParameter"/>.
+            Mirrors LabOrderItemSpec/InvoiceLineItemSpec's own role.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Domain.LabOrderItem">
+            <summary>
+            One ordered test on a LabOrder — whether billed standalone or expanded from a billed
+            package (in which case several items share the same PackageId and InvoiceLineItemId).
+            ServiceId/DepartmentId/ConsultantId are app-level references into Masters/Patients, no DB
+            FK, same convention as every other cross-module reference in this codebase. TestName is
+            snapshotted from DiagnosticService.Name at creation so this row keeps reading correctly
+            even if the master catalog entry is renamed later. InvoiceLineItemId is null for items on
+            an admission-originated order (LabOrder.CreateForAdmission) — there is no invoice line to
+            trace back to.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.CollectSample(HMS.Modules.Laboratory.Contracts.LabSampleType,System.String,System.String,System.String,System.Nullable{System.Guid})">
+            <summary>Valid only from PendingCollection or RecollectionRequired. Clears any prior
+            rejection fields — a fresh collection attempt supersedes the earlier rejection.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.RejectSample(HMS.Modules.Laboratory.Contracts.LabSampleRejectionReason,System.String,System.Nullable{System.Guid})">
+            <summary>Valid only from Collected.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.RequestRecollection(System.Nullable{System.Guid})">
+            <summary>Valid only from Rejected.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.ReceiveSample(System.Nullable{System.Guid})">
+            <summary>Valid only from Collected.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.StartProcessing(System.Nullable{System.Guid})">
+            <summary>Valid only from Received or CorrectionRequired (the correction-flow re-entry
+            point back into processing).</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.SaveResultDraft(System.Collections.Generic.IReadOnlyList{HMS.Modules.Laboratory.Domain.LabResultParameterSpec},System.Nullable{System.Guid})">
+            <summary>Valid from Processing, ResultEntryInProgress, or CorrectionRequired. Replaces
+            the full parameter set (clear + re-add) each time — matches how a technician actually
+            fills out a result form in one sitting, mirroring how Invoice.Create builds all its
+            InvoiceLineItems in one call rather than incrementally.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.SubmitForVerification(System.Nullable{System.Guid})">
+            <summary>Valid only from ResultEntryInProgress; requires at least one saved parameter.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.Verify(System.Nullable{System.Guid})">
+            <summary>Valid only from PendingVerification.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Domain.LabOrderItem.RejectForCorrection(System.String,System.Nullable{System.Guid})">
+            <summary>Valid only from PendingVerification.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Domain.LabOrderItemEvent">
+            <summary>
+            One append-only audit/history entry on a LabOrderItem — doubles as both "sample status
+            history" and general audit trail, avoiding two parallel history mechanisms. Every one of
+            LabOrderItem's mutators appends exactly one matching event; this is what backs the "Audit
+            History" tab and the "rejection history" requirement. No mutators here beyond the static
+            factory — append-only, no edits, no deletes.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Domain.LabResultParameter">
+            <summary>
+            One analyte result row on a LabOrderItem — a single-parameter test (e.g. "Blood Grouping")
+            has exactly one row, a panel (e.g. CBC) has one row per analyte. ResultValue is
+            deliberately a string, not a typed numeric column — it needs to cover numeric/text/
+            positive-negative results uniformly, the same "flexibility over strict typing" trade-off
+            InvoiceLineItem's own free-text DepartmentId/ConsultantId already makes in this codebase.
+            ReferenceRange/Unit/Flag only ever hold whatever a human enters — this system has no
+            reference-range configuration data to populate or compute them from, so nothing here ever
+            defaults or auto-computes those three. No standalone mutators: the parent LabOrderItem's
+            SaveResultDraft replaces the whole set each time, mirroring how Invoice.Create builds all
+            of its InvoiceLineItems in one call.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Endpoints.LabOrdersController">
+             <summary>
+             The lab worklist: sample collection through result entry, verification, and report
+             generation/release. Gated by the existing "diagnostics.*" permissions (seeded once for
+             Masters' diagnostics-admin screens, reused here rather than adding a new permission
+             group) — which human role gets which permission is a tenant admin's own Roles
+             configuration, not something this controller decides. Also gated by
+             [RequireFeature("laboratory")] — every other optional module's controller has this
+             (see e.g. Pharmacy's StockReceiptsController); a tenant that hasn't enabled the
+             "laboratory" feature must not be able to reach this API even if they hold "diagnostics.*"
+             permissions from the unrelated, always-available Masters diagnostics-admin catalog.
+            
+             Deliberately has no POST /orders action: ILabOrderService.CreateFromInvoiceAsync is only
+             ever called in-process by Billing's InvoiceService right after an invoice with a
+             Laboratory line item is persisted — lab staff never manually create a patient billing
+             request, only Reception/Billing does.
+             </summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.GetPaged(HMS.Modules.Laboratory.Contracts.LabOrderListQuery,System.Threading.CancellationToken)">
+            <summary>Lists lab orders with paging, search, sorting, and status/priority/date-range filtering — the lab worklist.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.GetDashboardSummary(System.Threading.CancellationToken)">
+            <summary>Aggregated worklist dashboard tiles (pending collection, in progress, pending verification, reports ready, etc.) for the current tenant.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single lab order by id, with every item, its result parameters, and its audit event history.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.GetByPatientId(System.Guid,System.Threading.CancellationToken)">
+            <summary>Lists every lab order for one patient, newest first.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.CollectSample(System.Guid,HMS.Modules.Laboratory.Contracts.CollectSampleRequest,System.Threading.CancellationToken)">
+            <summary>Records sample collection for one item — valid from PendingCollection or RecollectionRequired.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.RejectSample(System.Guid,HMS.Modules.Laboratory.Contracts.RejectSampleRequest,System.Threading.CancellationToken)">
+            <summary>Rejects a collected sample — valid only from Collected.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.RequestRecollection(System.Guid,System.Threading.CancellationToken)">
+            <summary>Requests a recollection for a rejected sample — valid only from Rejected.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.ReceiveSample(System.Guid,System.Threading.CancellationToken)">
+            <summary>Marks a collected sample as received by the lab — valid only from Collected.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.StartProcessing(System.Guid,System.Threading.CancellationToken)">
+            <summary>Starts processing a received sample — valid from Received or CorrectionRequired.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.SaveResultDraft(System.Guid,HMS.Modules.Laboratory.Contracts.SaveResultDraftRequest,System.Threading.CancellationToken)">
+            <summary>Saves (replaces) the full set of result parameters for one item — valid from Processing, ResultEntryInProgress, or CorrectionRequired.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.SubmitForVerification(System.Guid,System.Threading.CancellationToken)">
+            <summary>Submits the drafted result for verification — valid only from ResultEntryInProgress, requires at least one saved parameter.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.Verify(System.Guid,System.Threading.CancellationToken)">
+            <summary>Verifies a submitted result — valid only from PendingVerification. Requires the more sensitive "edit" permission, not "create".</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.RejectForCorrection(System.Guid,HMS.Modules.Laboratory.Contracts.RejectForCorrectionRequest,System.Threading.CancellationToken)">
+            <summary>Sends a submitted result back for correction — valid only from PendingVerification. Requires "edit", same as Verify.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.GenerateReport(System.Guid,System.Threading.CancellationToken)">
+            <summary>Generates the order's report — requires every item to be Verified first.</summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Endpoints.LabOrdersController.ReleaseReport(System.Guid,System.Threading.CancellationToken)">
+            <summary>Releases a generated report — requires GenerateReport to have run first, and can only happen once.</summary>
+        </member>
+        <member name="T:HMS.Modules.Laboratory.Infrastructure.LabOrderNumberGenerator">
+            <summary>
+            Formats a short, human-readable LabOrderNumber from a real Postgres sequence —
+            coordination-free under concurrent order creation, unlike a MAX(...)+1 query. Mirrors
+            Billing's InvoiceNumberGenerator.
+            </summary>
+        </member>
+        <member name="M:HMS.Modules.Laboratory.Infrastructure.Repositories.LabOrderRepository.ApplyStatusFilter(System.Linq.IQueryable{HMS.Modules.Laboratory.Domain.LabOrder},HMS.Modules.Laboratory.Contracts.LabOrderStatus)">
+            <summary>Reproduces Domain/LabOrder.cs's OverallStatus precedence ladder as a query
+            predicate (first-match-wins over Items, so each case must also exclude every
+            higher-precedence condition) — a computed C# property can't be translated by EF Core
+            directly, so filtering by the worklist's Status query param needs its own expression,
+            kept in exact lock-step with the entity's own getter.</summary>
+        </member>
+    </members>
+</doc>

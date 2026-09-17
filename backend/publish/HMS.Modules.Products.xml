@@ -1,0 +1,273 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HMS.Modules.Products</name>
+    </assembly>
+    <members>
+        <member name="T:HMS.Modules.Products.Application.Abstractions.IProductAttributeRepository">
+            <summary>Global attribute-definition catalog — not product-scoped, unlike the other repositories in this module.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Application.Abstractions.IProductImageStorage">
+            <summary>
+            Persists an uploaded product image and returns its stored relative path. Implemented in
+            Infrastructure as local disk storage under HMS.Api's wwwroot, mirroring
+            HMS.Modules.Patients.Infrastructure.PatientFileStorage's per-entity-folder shape (a
+            product has many images, unlike Branding's single logo slot).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Application.IProductAttributeService">
+            <summary>Global attribute-definition catalog — not product-scoped (contrast with the other services in this module, which take a productId).</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Application.IProductImageService.UploadAsync(System.Guid,System.IO.Stream,System.String,System.Int64,System.String,System.Boolean,System.Int32,System.Boolean,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>Validates, stores (via IProductImageStorage), and persists an uploaded product image in one step — the only way an image's URL is ever set.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Application.ProductsErrorCodes">
+            <summary>
+            Stable, machine-readable error codes for expected Products-module failures, per
+            docs/ApiStandards.md §5 — the UI branches on these, not on the message text. One shared
+            class for all 8 entities (mirrors HMS.Modules.Masters.MastersErrorCodes) since every
+            entity only ever fails for the same handful of reasons: not found, a duplicate business
+            key, or a reference (own-schema or into masters.*) that doesn't exist.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Application.ProductService">
+            <summary>
+            Validates classification/unit references (<see cref="P:HMS.Modules.Products.Contracts.CreateProductRequest.BrandId"/>,
+            CategoryId, UomId, ...) against the Masters module's public service seam before writing —
+            the cross-module analog of ProductCategoryService's own-schema ParentId check. Masters is
+            treated as already-committed data per docs/DatabaseArchitecture.md §10 (no cross-module
+            transaction), so this is a pre-flight existence check, not a distributed transaction.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Application.ProductsServiceRegistration">
+            <summary>Service DI registrations — see <see cref="T:HMS.Modules.Products.Infrastructure.ProductsRepositoryRegistration"/> for why this is split out.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Application.ProductsValidatorRegistration">
+            <summary>
+            Validator DI registrations — see <see cref="T:HMS.Modules.Products.Infrastructure.ProductsRepositoryRegistration"/>
+            for why this is split out. Registered explicitly rather than via
+            AddValidatorsFromAssemblyContaining: that scanner only finds *public* IValidator&lt;T&gt;
+            implementations, and this module's validators are internal by design.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Contracts.UpdateProductImageRequest">
+            <summary>
+            No CreateProductImageRequest exists — ImageUrl is only ever set by the upload endpoint
+            (multipart form fields, see ProductImagesController.Upload), never accepted as an
+            arbitrary client-supplied URL. Update covers everything else.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.Product">
+            <summary>
+            The product/item master (docs/04_Product_Management_ERD, "Core Product") — the aggregate
+            root every other entity in this module (barcodes, batches, prices, images, attribute
+            values, tax mappings) belongs to via a plain <c>product_id</c> FK. Classification and unit
+            fields (<see cref="P:HMS.Modules.Products.Domain.Product.CategoryId"/>, <see cref="P:HMS.Modules.Products.Domain.Product.BrandId"/>, <see cref="P:HMS.Modules.Products.Domain.Product.UomId"/>, ...) are
+            FK-only references into the Masters module's schema — modeled as plain <see cref="T:System.Guid"/>
+            columns (no EF navigation) since the target types live in a different module/assembly.
+            Referential validity against Masters is checked at the Application layer via Masters'
+            public I{Entity}Service seam, not via a database-level cross-schema constraint alone.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.ProductAttribute">
+            <summary>
+            A dynamic attribute definition (docs/04_Product_Management_ERD, business rule 5:
+            "Attributes are dynamic and configurable") — the global catalog entities reference by id
+            from <see cref="T:HMS.Modules.Products.Domain.ProductAttributeValue"/>. Not product-scoped itself.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.ProductAttributeValue">
+            <summary>The EAV value row linking a <see cref="T:HMS.Modules.Products.Domain.Product"/> to a <see cref="T:HMS.Modules.Products.Domain.ProductAttribute"/> definition and its value for that product.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.ProductBarcode">
+            <summary>
+            A scannable code for a product (docs/04_Product_Management_ERD, business rule 2:
+            "Barcode_value must be unique across all products" — hence the global, not
+            per-product-scoped, unique index in <see cref="T:HMS.Modules.Products.Infrastructure.Configurations.ProductBarcodeConfiguration"/>).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.ProductBatch">
+            <summary>Batch/expiry tracking for a batch-tracked product (docs/04_Product_Management_ERD, business rule 3: "Batch_no must be unique for a product").</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.ProductImage">
+            <summary>A product image slot (Main/Side/Label, per docs/04_Product_Management_ERD). <see cref="P:HMS.Modules.Products.Domain.ProductImage.ImageUrl"/> is populated by the upload endpoint (see IProductImageStorage), not entered directly by callers of Create/Update.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.ProductPrice">
+            <summary>Time-bounded price entry for a product (docs/04_Product_Management_ERD, business rule 4: "Price is maintained with validity period"). <see cref="P:HMS.Modules.Products.Domain.ProductPrice.CurrencyId"/> is a cross-schema reference into masters.currencies — see ProductPriceConfiguration.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Domain.ProductTaxMapping">
+            <summary>Maps a product to an applicable tax (docs/04_Product_Management_ERD, business rule 6: "Tax can vary by tax type (e.g. GST, VAT)"). <see cref="P:HMS.Modules.Products.Domain.ProductTaxMapping.TaxId"/> is a cross-schema reference into masters.taxes — see ProductTaxMappingConfiguration.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductAttributesController">
+            <summary>Global product-attribute definition catalog CRUD (not product-scoped — contrast with the nested child controllers in this module).</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributesController.Create(HMS.Modules.Products.Contracts.CreateProductAttributeRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new attribute definition.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributesController.Update(System.Guid,HMS.Modules.Products.Contracts.UpdateProductAttributeRequest,System.Threading.CancellationToken)">
+            <summary>Updates an attribute definition.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributesController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single attribute definition by id.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributesController.GetPaged(HMS.Modules.Products.Contracts.ProductAttributeListQuery,System.Threading.CancellationToken)">
+            <summary>Lists attribute definitions with paging, search, and active-status filtering.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductAttributeValuesController">
+            <summary>Attribute-value (EAV) CRUD, scoped to a parent product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributeValuesController.Create(System.Guid,HMS.Modules.Products.Contracts.CreateProductAttributeValueRequest,System.Threading.CancellationToken)">
+            <summary>Sets an attribute value on a product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributeValuesController.Update(System.Guid,System.Guid,HMS.Modules.Products.Contracts.UpdateProductAttributeValueRequest,System.Threading.CancellationToken)">
+            <summary>Updates a product attribute value.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributeValuesController.GetById(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single attribute value by id.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductAttributeValuesController.GetPaged(System.Guid,HMS.Modules.Products.Contracts.ProductAttributeValueListQuery,System.Threading.CancellationToken)">
+            <summary>Lists a product's attribute values with paging and active-status filtering.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductBarcodesController">
+            <summary>Barcode CRUD, scoped to a parent product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBarcodesController.Create(System.Guid,HMS.Modules.Products.Contracts.CreateProductBarcodeRequest,System.Threading.CancellationToken)">
+            <summary>Adds a barcode to a product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBarcodesController.Update(System.Guid,System.Guid,HMS.Modules.Products.Contracts.UpdateProductBarcodeRequest,System.Threading.CancellationToken)">
+            <summary>Updates a product barcode.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBarcodesController.GetById(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single barcode by id.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBarcodesController.GetPaged(System.Guid,HMS.Modules.Products.Contracts.ProductBarcodeListQuery,System.Threading.CancellationToken)">
+            <summary>Lists a product's barcodes with paging and active-status filtering.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductBatchesController">
+            <summary>Batch/expiry CRUD, scoped to a parent product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBatchesController.Create(System.Guid,HMS.Modules.Products.Contracts.CreateProductBatchRequest,System.Threading.CancellationToken)">
+            <summary>Adds a batch to a product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBatchesController.Update(System.Guid,System.Guid,HMS.Modules.Products.Contracts.UpdateProductBatchRequest,System.Threading.CancellationToken)">
+            <summary>Updates a product batch.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBatchesController.GetById(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single batch by id.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductBatchesController.GetPaged(System.Guid,HMS.Modules.Products.Contracts.ProductBatchListQuery,System.Threading.CancellationToken)">
+            <summary>Lists a product's batches with paging and active-status filtering.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductImagesController">
+            <summary>Image CRUD, scoped to a parent product. Creation only happens via <see cref="M:HMS.Modules.Products.Endpoints.ProductImagesController.Upload(System.Guid,Microsoft.AspNetCore.Http.IFormFile,System.String,System.Boolean,System.Int32,System.Boolean,System.Threading.CancellationToken)"/> — there is no plain JSON create endpoint, since image_url must come from the storage layer (see IProductImageStorage), never an arbitrary client-supplied URL.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductImagesController.Upload(System.Guid,Microsoft.AspNetCore.Http.IFormFile,System.String,System.Boolean,System.Int32,System.Boolean,System.Threading.CancellationToken)">
+            <summary>Uploads a new image for a product (PNG/JPG/WEBP, max 5MB).</summary>
+            <response code="201">The image was uploaded and its metadata created.</response>
+            <response code="400">The file is missing, failed validation, or the type/order slot is already taken.</response>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductImagesController.Update(System.Guid,System.Guid,HMS.Modules.Products.Contracts.UpdateProductImageRequest,System.Threading.CancellationToken)">
+            <summary>Updates a product image's metadata (type, order, primary flag, active status) — does not replace the file itself.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductImagesController.GetById(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single image by id.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductImagesController.GetPaged(System.Guid,HMS.Modules.Products.Contracts.ProductImageListQuery,System.Threading.CancellationToken)">
+            <summary>Lists a product's images with paging and active-status filtering.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductPricesController">
+            <summary>Price CRUD, scoped to a parent product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductPricesController.Create(System.Guid,HMS.Modules.Products.Contracts.CreateProductPriceRequest,System.Threading.CancellationToken)">
+            <summary>Adds a price entry to a product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductPricesController.Update(System.Guid,System.Guid,HMS.Modules.Products.Contracts.UpdateProductPriceRequest,System.Threading.CancellationToken)">
+            <summary>Updates a product price entry.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductPricesController.GetById(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single price entry by id.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductPricesController.GetPaged(System.Guid,HMS.Modules.Products.Contracts.ProductPriceListQuery,System.Threading.CancellationToken)">
+            <summary>Lists a product's price history with paging, price-type, and active-status filtering.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductsController">
+            <summary>Product/item master CRUD — the aggregate root every child entity in this module (barcodes, batches, prices, images, attribute values, tax mappings) hangs off of.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductsController.Create(HMS.Modules.Products.Contracts.CreateProductRequest,System.Threading.CancellationToken)">
+            <summary>Creates a new product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductsController.Update(System.Guid,HMS.Modules.Products.Contracts.UpdateProductRequest,System.Threading.CancellationToken)">
+            <summary>Updates a product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single product by id.</summary>
+            <remarks><c>costPrice</c> is redacted to 0 unless the caller also holds
+            <c>pharmacy.view-cost</c> — see <see cref="M:HMS.Modules.Products.Endpoints.ProductsController.RedactCostPrice(HMS.Modules.Products.Contracts.ProductResponse)"/>.</remarks>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductsController.GetPaged(HMS.Modules.Products.Contracts.ProductListQuery,System.Threading.CancellationToken)">
+            <summary>Lists products with paging, search, and category/brand/active-status filtering.</summary>
+            <remarks><c>costPrice</c> is redacted to 0 unless the caller also holds
+            <c>pharmacy.view-cost</c> — see <see cref="M:HMS.Modules.Products.Endpoints.ProductsController.RedactCostPrice(HMS.Modules.Products.Contracts.ProductResponse)"/>.</remarks>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductsController.RedactCostPrice(HMS.Modules.Products.Contracts.ProductResponse)">
+            <summary><c>pharmacy.view</c> alone (the gate on both actions above) grants list/detail
+            visibility to every day-to-day dispensing user — <c>CostPrice</c> (procurement cost) is
+            commercially sensitive margin data on top of that, so it's zeroed out here unless the
+            caller separately holds <c>pharmacy.view-cost</c> (ADR-077). A plain 0 rather than a
+            nullable field: <c>ProductResponse.CostPrice</c> is a non-nullable <c>decimal</c> used
+            identically by both create/edit forms (which always have the real value) and this
+            read path, and changing its nullability would be a wider contract change than this fix
+            warrants — 0 is already how an uncosted product reads elsewhere in this codebase (see
+            <c>update-diagnostic-cost-prices.ps1</c>'s identical "not yet costed" convention).</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Endpoints.ProductTaxMappingsController">
+            <summary>Tax mapping CRUD, scoped to a parent product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductTaxMappingsController.Create(System.Guid,HMS.Modules.Products.Contracts.CreateProductTaxMappingRequest,System.Threading.CancellationToken)">
+            <summary>Maps a tax to a product.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductTaxMappingsController.Update(System.Guid,System.Guid,HMS.Modules.Products.Contracts.UpdateProductTaxMappingRequest,System.Threading.CancellationToken)">
+            <summary>Updates a product tax mapping.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductTaxMappingsController.GetById(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Gets a single tax mapping by id.</summary>
+        </member>
+        <member name="M:HMS.Modules.Products.Endpoints.ProductTaxMappingsController.GetPaged(System.Guid,HMS.Modules.Products.Contracts.ProductTaxMappingListQuery,System.Threading.CancellationToken)">
+            <summary>Lists a product's tax mappings with paging and active-status filtering.</summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Infrastructure.ProductImageStorage">
+            <summary>
+            Local-disk file storage under HMS.Api's wwwroot, mirroring
+            HMS.Modules.Patients.Infrastructure.PatientFileStorage — this app's established
+            file-upload pattern (see docs/DecisionLog.md's file-upload ADR).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Infrastructure.ProductsDbContext">
+            <summary>
+            Owns the "products" PostgreSQL schema — the product/item catalog and its child records
+            (barcodes, batches, prices, images, dynamic attributes, tax mappings), per
+            docs/04_Product_Management_ERD. Per docs/DatabaseArchitecture.md §1, only this module's
+            own code constructs/migrates this context — no other module references it. Some of this
+            module's own tables carry foreign keys into the Masters module's schema (see
+            ProductConfiguration); those are modeled as plain columns, never as EF navigations into
+            Masters' internal domain types.
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.Infrastructure.ProductsRepositoryRegistration">
+            <summary>
+            Repository DI registrations, split out of <see cref="T:HMS.Modules.Products.ProductsModule"/> — mirrors
+            HMS.Modules.Masters.Infrastructure.MastersRepositoryRegistration (this module has 8
+            entities, enough to keep ProductsModule.AddProductsModule itself short).
+            </summary>
+        </member>
+        <member name="T:HMS.Modules.Products.ProductsModule">
+            <summary>
+            Single composition entry point for this module, called once from
+            HMS.Api/Configuration — mirrors HMS.Modules.Masters.MastersModule. Product Management
+            depends on the Masters module's public service seam (registered by AddMastersModule) for
+            classification/unit reference validation — HMS.Api's ModuleRegistration must call
+            AddMastersModule before AddProductsModule.
+            </summary>
+        </member>
+    </members>
+</doc>
