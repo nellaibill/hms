@@ -69,12 +69,60 @@ public class InvoicesControllerTests
         result.Should().BeOfType<CreatedAtActionResult>();
     }
 
+    // The scoping under test here needs a ConsultantId/RoleName claim, which no existing
+    // Create test cares about — a separate helper from SetCaller(bool) rather than adding
+    // unused parameters to it.
+    [Fact]
+    public async Task GetProcedures_OverridesConsultantIdFilter_WhenCallerIsAScopedConsultant()
+    {
+        var ownConsultantId = Guid.NewGuid();
+        var otherConsultantId = Guid.NewGuid();
+        SetCallerConsultant(ownConsultantId, "Doctor / Consultant");
+        _service.GetProcedureLineItemsAsync(Arg.Any<ProcedureListQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedResult<ProcedureListItem>([], 1, 20, 0));
+
+        await _sut.GetProcedures(new ProcedureListQuery { ConsultantId = otherConsultantId.ToString() }, CancellationToken.None);
+
+        await _service.Received(1).GetProcedureLineItemsAsync(
+            Arg.Is<ProcedureListQuery>(q => q.ConsultantId == ownConsultantId.ToString()),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetProcedures_LeavesConsultantIdFilterAlone_WhenCallerIsNotAScopedConsultant()
+    {
+        SetCallerConsultant(Guid.NewGuid(), "Hospital Administrator");
+        _service.GetProcedureLineItemsAsync(Arg.Any<ProcedureListQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedResult<ProcedureListItem>([], 1, 20, 0));
+
+        var requestedConsultantId = Guid.NewGuid().ToString();
+        await _sut.GetProcedures(new ProcedureListQuery { ConsultantId = requestedConsultantId }, CancellationToken.None);
+
+        await _service.Received(1).GetProcedureLineItemsAsync(
+            Arg.Is<ProcedureListQuery>(q => q.ConsultantId == requestedConsultantId),
+            Arg.Any<CancellationToken>());
+    }
+
     private void SetCaller(bool includingDiscountApprove)
     {
         var claims = new List<Claim> { new("UserId", Guid.NewGuid().ToString()) };
         if (includingDiscountApprove)
         {
             claims.Add(new Claim("Permission", "finance-billing.discount-approve"));
+        }
+
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) },
+        };
+    }
+
+    private void SetCallerConsultant(Guid? consultantId, string roleName)
+    {
+        var claims = new List<Claim> { new("UserId", Guid.NewGuid().ToString()), new("RoleName", roleName) };
+        if (consultantId.HasValue)
+        {
+            claims.Add(new Claim("ConsultantId", consultantId.Value.ToString()));
         }
 
         _sut.ControllerContext = new ControllerContext
