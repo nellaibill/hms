@@ -14,5 +14,14 @@ export default defineConfig({
   },
   server: {
     port: Number(process.env.PORT) || 5173,
+    warmup: {
+      clientFiles: ['./src/main.tsx', './src/app/App.tsx'],
+    },
+  },
+  optimizeDeps: {
+    // @hms/shared is a linked workspace package built by tsc into a mirrored dist/
+    // tree (hundreds of small files), so Vite's dep scanner otherwise skips
+    // pre-bundling it and serves each file as its own request on cold start.
+    include: ['@hms/shared'],
   },
 });
