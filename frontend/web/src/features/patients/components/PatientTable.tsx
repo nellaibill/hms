@@ -3,6 +3,8 @@ import { ArrowDown, ArrowUp, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConsultantName } from '@/components/ConsultantName';
+import { DepartmentName } from '@/components/DepartmentName';
 import { useAuth } from '../../auth/AuthContext';
 
 interface PatientTableProps {
@@ -17,6 +19,12 @@ const columns: Array<{ field: string; label: string }> = [
   { field: 'lastName', label: 'Name' },
   { field: 'createdAt', label: 'Registered' },
 ];
+
+// Same format OPD Billing Entry's PatientPicker already uses for this field.
+function formatAppointmentTime(iso?: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }: PatientTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
@@ -47,7 +55,11 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
                 </button>
               </th>
             ))}
+            <th className="px-4 py-2.5">Age / Gender</th>
             <th className="px-4 py-2.5">Phone</th>
+            <th className="px-4 py-2.5">Consultant</th>
+            <th className="px-4 py-2.5">Department</th>
+            <th className="px-4 py-2.5">Appointment Time</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
         </thead>
@@ -78,7 +90,17 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                 {new Date(patient.createdAt).toLocaleDateString('en-IN')}
               </td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                {patient.age} Yrs · {patient.gender}
+              </td>
               <td className="px-4 py-3 text-muted-foreground">{patient.primaryPhone}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                {patient.lastVisitConsultantId ? <ConsultantName consultantId={patient.lastVisitConsultantId} /> : '—'}
+              </td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                {patient.lastVisitDepartmentId ? <DepartmentName departmentId={patient.lastVisitDepartmentId} /> : '—'}
+              </td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAppointmentTime(patient.lastVisitAppointmentTime)}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1.5">
                   {canEdit && (

@@ -48,6 +48,9 @@ export default function PatientsListPage() {
     uhid: appliedFilters.uhid.trim() || undefined,
     phone: appliedFilters.phone.trim() || undefined,
     requiresDataVerification: appliedFilters.needsVerification || undefined,
+    // Populates lastVisit*/Consultant/Department/AppointmentTime — same OPD Billing Entry's
+    // PatientPicker already turns on, so this list can show the same at-a-glance visit context.
+    includeLastVisit: true,
   });
 
   const isFiltered =
