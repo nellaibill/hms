@@ -14,12 +14,6 @@ interface PatientTableProps {
   onDeleteRequested: (patient: Patient) => void;
 }
 
-const columns: Array<{ field: string; label: string }> = [
-  { field: 'uhid', label: 'UHID' },
-  { field: 'lastName', label: 'Name' },
-  { field: 'createdAt', label: 'Registered' },
-];
-
 // Same format OPD Billing Entry's PatientPicker already uses for this field.
 function formatAppointmentTime(iso?: string | null): string {
   if (!iso) return '—';
@@ -41,32 +35,38 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
     onSortChange(isDescending ? field : `-${field}`);
   }
 
+  function SortHeader({ field, label }: { field: string; label: string }) {
+    return (
+      <th className="px-4 py-2.5">
+        <button type="button" onClick={() => toggleSort(field)} className="inline-flex items-center gap-1 hover:text-foreground">
+          {label}
+          {currentField === field && (isDescending ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />)}
+        </button>
+      </th>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">
+        {/* Same column set/order as OPD Billing Entry's PatientPicker table (Patient, Age/
+            Gender, UHID, Phone, Consultant, Department, Appointment Time, Action) — this page
+            additionally keeps Patient/UHID sortable, since that's this table's own convention. */}
         <thead className="sticky top-0 z-10 bg-muted/95 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/80">
           <tr>
-            {columns.map((column) => (
-              <th key={column.field} className="px-4 py-2.5">
-                <button type="button" onClick={() => toggleSort(column.field)} className="inline-flex items-center gap-1 hover:text-foreground">
-                  {column.label}
-                  {currentField === column.field &&
-                    (isDescending ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />)}
-                </button>
-              </th>
-            ))}
+            <SortHeader field="lastName" label="Patient" />
             <th className="px-4 py-2.5">Age / Gender</th>
+            <SortHeader field="uhid" label="UHID" />
             <th className="px-4 py-2.5">Phone</th>
             <th className="px-4 py-2.5">Consultant</th>
             <th className="px-4 py-2.5">Department</th>
             <th className="px-4 py-2.5">Appointment Time</th>
-            <th className="px-4 py-2.5 text-right">Actions</th>
+            <th className="px-4 py-2.5 text-right">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {patients.map((patient) => (
             <tr key={patient.id} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{patient.uhid}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <Link
@@ -87,12 +87,10 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
                   )}
                 </div>
               </td>
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                {new Date(patient.createdAt).toLocaleDateString('en-IN')}
-              </td>
               <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                 {patient.age} Yrs · {patient.gender}
               </td>
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{patient.uhid}</td>
               <td className="px-4 py-3 text-muted-foreground">{patient.primaryPhone}</td>
               <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                 {patient.lastVisitConsultantId ? <ConsultantName consultantId={patient.lastVisitConsultantId} /> : '—'}
