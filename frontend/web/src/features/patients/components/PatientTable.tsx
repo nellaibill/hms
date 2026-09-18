@@ -12,6 +12,11 @@ interface PatientTableProps {
   sort: string;
   onSortChange: (sort: string) => void;
   onDeleteRequested: (patient: Patient) => void;
+  /** False while showing the default "Last 100 visits" list (sorted server-side by most
+   * recent visit, same as OPD Billing Entry's PatientPicker) — that list ignores `sort`
+   * entirely, so a clickable header there would silently do nothing. Sortable again once a
+   * search narrows the list to something `sort` actually applies to. Defaults to true. */
+  sortable?: boolean;
 }
 
 // Same format OPD Billing Entry's PatientPicker already uses for this field.
@@ -20,7 +25,7 @@ function formatAppointmentTime(iso?: string | null): string {
   return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }: PatientTableProps) {
+export function PatientTable({ patients, sort, onSortChange, onDeleteRequested, sortable = true }: PatientTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
   const { hasPermission } = useAuth();
@@ -36,6 +41,9 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested }
   }
 
   function SortHeader({ field, label }: { field: string; label: string }) {
+    if (!sortable) {
+      return <th className="px-4 py-2.5">{label}</th>;
+    }
     return (
       <th className="px-4 py-2.5">
         <button type="button" onClick={() => toggleSort(field)} className="inline-flex items-center gap-1 hover:text-foreground">
