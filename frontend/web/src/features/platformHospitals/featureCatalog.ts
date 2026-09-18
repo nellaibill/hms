@@ -32,6 +32,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   'messages-and-notifications': 'Messages and Notifications',
   reports: 'Reports',
   'e-mrd': 'E-MRD',
+  'opd-ambient-notes': 'OPD Ambient Note Generation (AI)',
 };
 
 export function featureLabel(key: string): string {
@@ -67,4 +68,5 @@ export const OPTIONAL_FEATURE_KEYS = [
   'messages-and-notifications',
   'reports',
   'e-mrd',
+  'opd-ambient-notes',
 ];

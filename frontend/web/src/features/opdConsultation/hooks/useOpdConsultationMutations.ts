@@ -1,4 +1,4 @@
-import type { SaveOpdConsultationRequest } from '@hms/shared';
+import type { SaveOpdConsultationRequest, StructureConsultationNoteRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { opdConsultationApi } from '@/services/apiClient';
 
@@ -47,5 +47,14 @@ export function useReopenOpdConsultationMutation(consultationId: string | undefi
       queryClient.invalidateQueries({ queryKey: ['opd', 'patients'] });
       queryClient.invalidateQueries({ queryKey: ['opd', 'consultations'] });
     },
+  });
+}
+
+/** Structures a dictated/typed transcript into the note's narrative fields — no query
+ * invalidation, since the result isn't persisted (the caller merges it into the form's own
+ * state and still saves through useSaveOpdConsultationDraftMutation/useCompleteOpdConsultationMutation). */
+export function useStructureOpdConsultationNoteMutation(consultationId: string | undefined) {
+  return useMutation({
+    mutationFn: (request: StructureConsultationNoteRequest) => opdConsultationApi.structureNote(consultationId as string, request),
   });
 }

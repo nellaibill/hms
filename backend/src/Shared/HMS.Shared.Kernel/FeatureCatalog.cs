@@ -97,6 +97,16 @@ public static class FeatureCatalog
         "activity-log",
         "reports",
         "e-mrd",
+
+        // Gates HMS.Modules.OpdConsultation's "ai/structure-note" endpoint and the OPD
+        // Consultation form's AI dictation panel — turning a transcript into draft narrative
+        // note fields via the Anthropic API. UiOnly (not SchemaBacked): nothing is persisted
+        // by this feature itself, so there's no schema for ITenantMigrationService to
+        // provision — only the endpoint/UI need gating. Optional (not Mandatory) despite
+        // living inside the Mandatory "opd-consultation" module: unlike that module's own
+        // core note-taking, sending a transcript to a third-party AI provider is a distinct,
+        // separately-consentable capability a hospital may not want on by default.
+        "opd-ambient-notes",
     ];
 
     public static readonly IReadOnlyList<string> All = [.. SchemaBacked, .. UiOnly];

@@ -42,10 +42,15 @@ public static class OpdConsultationModule
         services.AddScoped<IOpdConsultationRepository, OpdConsultationRepository>();
         services.AddScoped<IOpdConsultationService, OpdConsultationService>();
 
+        // Config-driven under Ai:Anthropic:* — see AnthropicClinicalNoteAiClient's own doc
+        // comment for why, unlike Notifications' senders, this never silently no-ops.
+        services.AddHttpClient<IClinicalNoteAiClient, AnthropicClinicalNoteAiClient>();
+
         // Registered explicitly, not AddValidatorsFromAssemblyContaining — that scanner only
         // finds *public* IValidator<T> implementations, and this module's validators are
         // internal by design (docs/DeveloperHandbook.md §8/§20).
         services.AddScoped<IValidator<SaveOpdConsultationRequest>, SaveOpdConsultationRequestValidator>();
+        services.AddScoped<IValidator<StructureConsultationNoteRequest>, StructureConsultationNoteRequestValidator>();
 
         return services;
     }

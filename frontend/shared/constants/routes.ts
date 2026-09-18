@@ -333,6 +333,7 @@ export const API_ROUTES = {
     saveDraft: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/draft`,
     complete: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/complete`,
     reopen: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/reopen`,
+    structureNote: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/ai/structure-note`,
   },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
   pharmacy: {

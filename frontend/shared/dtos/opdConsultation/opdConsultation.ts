@@ -95,3 +95,22 @@ export interface OpdConsultationDetail {
   header: OpdConsultationHeader;
   note: OpdConsultationNote;
 }
+
+/** Mirrors HMS.Modules.OpdConsultation.Contracts.StructureConsultationNoteRequest — a raw
+ * dictation/typed transcript, never persisted by itself. */
+export interface StructureConsultationNoteRequest {
+  transcript: string;
+}
+
+/** Mirrors HMS.Modules.OpdConsultation.Contracts.StructuredConsultationNoteResponse — the
+ * narrative fields the AI extracted from a transcript. The caller merges these into its own
+ * form state and still submits through the normal saveDraft/complete calls; nothing here is
+ * saved directly. */
+export interface StructuredConsultationNoteFields {
+  presentingComplaints?: string | null;
+  clinicalHistory?: string | null;
+  examinationFindings?: string | null;
+  planOfManagement?: string | null;
+  followUpInstructions?: string | null;
+  emergencyReviewInstructions?: string | null;
+}
