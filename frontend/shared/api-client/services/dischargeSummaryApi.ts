@@ -1,5 +1,10 @@
 import { API_ROUTES } from '../../constants';
-import type { DischargeSummary, FinalizeDischargeSummaryRequest, UpdateDischargeSummaryRequest } from '../../dtos';
+import type {
+  DischargeSummary,
+  DischargeSummaryDraftSuggestion,
+  FinalizeDischargeSummaryRequest,
+  UpdateDischargeSummaryRequest,
+} from '../../dtos';
 import type { HttpClient } from '../httpClient';
 
 /**
@@ -32,6 +37,13 @@ export class DischargeSummaryApi {
   /** Only succeeds while Status is Draft; rejected once Finalized. */
   async update(id: string, request: UpdateDischargeSummaryRequest): Promise<DischargeSummary> {
     const response = await this.client.put<DischargeSummary>(API_ROUTES.dischargeSummaries.byId(id), request);
+    return response.data;
+  }
+
+  /** AI-drafts narrative fields (plus vitals from the last IPD reading) for a Draft summary. A
+   * suggestion only — nothing is saved; the caller merges it into the form and saves via update. */
+  async aiDraft(id: string): Promise<DischargeSummaryDraftSuggestion> {
+    const response = await this.client.post<DischargeSummaryDraftSuggestion>(API_ROUTES.dischargeSummaries.aiDraft(id), {});
     return response.data;
   }
 

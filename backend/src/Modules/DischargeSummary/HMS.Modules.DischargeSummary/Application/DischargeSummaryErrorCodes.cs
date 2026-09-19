@@ -29,4 +29,11 @@ internal static class DischargeSummaryErrorCodes
 
     /// <summary>Finalize was attempted while Status is already Finalized.</summary>
     public const string AlreadyFinalized = "DISCHARGE_SUMMARY.ALREADY_FINALIZED";
+
+    /// <summary>AI drafting was attempted but no API key is configured for the selected
+    /// Ai:Provider — surfaced as a real error (the clinician is waiting), never a silent no-op.</summary>
+    public const string AiNotConfigured = "DISCHARGE_SUMMARY.AI_NOT_CONFIGURED";
+
+    /// <summary>The AI provider call failed (network, non-success status, or unparseable reply).</summary>
+    public const string AiRequestFailed = "DISCHARGE_SUMMARY.AI_REQUEST_FAILED";
 }

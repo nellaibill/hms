@@ -1,3 +1,4 @@
+export * from './components/AiDraftPanel';
 export * from './components/AdmissionHeaderCard';
 export * from './components/DischargeMedicationsTable';
 export * from './components/DischargeSummaryDetails';

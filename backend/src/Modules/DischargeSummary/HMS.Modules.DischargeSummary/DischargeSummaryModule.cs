@@ -5,6 +5,7 @@ using HMS.Modules.DischargeSummary.Application.Validators;
 using HMS.Modules.DischargeSummary.Contracts;
 using HMS.Modules.DischargeSummary.Infrastructure;
 using HMS.Modules.DischargeSummary.Infrastructure.Repositories;
+using HMS.Shared.Infrastructure.Ai;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -41,6 +42,10 @@ public static class DischargeSummaryModule
 
         services.AddScoped<IDischargeSummaryRepository, DischargeSummaryRepository>();
         services.AddScoped<IDischargeSummaryService, DischargeSummaryService>();
+
+        // Provider (Claude/OpenAI) is chosen once at startup from Ai:Provider — see AddHmsAiExtractor.
+        services.AddHmsAiExtractor(configuration);
+        services.AddScoped<IDischargeSummaryAiDraftService, DischargeSummaryAiDraftService>();
 
         // Registered explicitly, not AddValidatorsFromAssemblyContaining — that scanner only
         // finds *public* IValidator<T> implementations, and this module's validators are

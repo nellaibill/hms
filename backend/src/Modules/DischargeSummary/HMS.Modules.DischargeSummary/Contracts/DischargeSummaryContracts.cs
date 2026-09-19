@@ -192,3 +192,32 @@ public record DischargeSummaryResponse
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }
+
+/// <summary>
+/// AI-suggested values for a Draft discharge summary — never persisted by the call that produces
+/// it; the form merges these into its own state and still saves through Update. Narrative fields
+/// come from the AI provider; the vitals fields are copied verbatim from the admission's most
+/// recent IPD vitals reading (no AI involved). Discharge medications are deliberately absent:
+/// inpatient orders are not discharge prescriptions.
+/// </summary>
+public record DischargeSummaryDraftSuggestion
+{
+    public string? ChiefComplaints { get; init; }
+    public string? HistoryOfPresentingIllness { get; init; }
+    public string? CourseInHospital { get; init; }
+    public string? ConditionAtDischarge { get; init; }
+    public string? Diet { get; init; }
+    public string? WoundCare { get; init; }
+    public string? Activity { get; init; }
+    public string? Physiotherapy { get; init; }
+    public string? ReviewInstructions { get; init; }
+    public string? EmergencyInstructions { get; init; }
+
+    public decimal? HeightCm { get; init; }
+    public decimal? WeightKg { get; init; }
+    public int? PulseRate { get; init; }
+    public int? RespiratoryRate { get; init; }
+    public decimal? TemperatureF { get; init; }
+    public int? SpO2Percent { get; init; }
+    public string? BloodPressure { get; init; }
+}

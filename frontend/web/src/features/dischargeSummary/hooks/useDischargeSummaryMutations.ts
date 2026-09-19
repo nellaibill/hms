@@ -28,6 +28,14 @@ export function useUpdateDischargeSummaryMutation() {
   });
 }
 
+/** No cache invalidation: the suggestion isn't persisted — the form merges it into its own state
+ * and saves through useUpdateDischargeSummaryMutation like any other edit. */
+export function useAiDraftDischargeSummaryMutation() {
+  return useMutation({
+    mutationFn: (id: string) => dischargeSummaryApi.aiDraft(id),
+  });
+}
+
 /** Locks the record — irreversible, gated behind a confirmation dialog in the UI. */
 export function useFinalizeDischargeSummaryMutation() {
   const invalidate = useInvalidateDischargeSummary();
