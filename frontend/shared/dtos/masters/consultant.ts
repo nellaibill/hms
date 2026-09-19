@@ -15,6 +15,9 @@ export interface Consultant {
   /** TimeOnly serializes as "HH:mm:ss". */
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  /** Optional second visiting session on the same days. */
+  visitStartTime2?: string | null;
+  visitEndTime2?: string | null;
   /** Masters ConsultationType ids this consultant offers, paired with what the hospital pays
    * them for each (nullable — a rate not yet decided). */
   consultationTypeCharges: ConsultationTypeCharge[];
@@ -38,6 +41,9 @@ export interface CreateConsultantRequest {
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  /** Optional second visiting session on the same days. */
+  visitStartTime2?: string | null;
+  visitEndTime2?: string | null;
   consultationTypeCharges: ConsultationTypeCharge[];
 }
 
@@ -51,6 +57,9 @@ export interface UpdateConsultantRequest {
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  /** Optional second visiting session on the same days. */
+  visitStartTime2?: string | null;
+  visitEndTime2?: string | null;
   consultationTypeCharges: ConsultationTypeCharge[];
 }
 

@@ -15,6 +15,9 @@ public record CreateConsultantRequest
     public IReadOnlyList<string> AvailableDays { get; init; } = [];
     public TimeOnly? VisitStartTime { get; init; }
     public TimeOnly? VisitEndTime { get; init; }
+    /// <summary>Optional second visiting session on the same AvailableDays — both or neither.</summary>
+    public TimeOnly? VisitStartTime2 { get; init; }
+    public TimeOnly? VisitEndTime2 { get; init; }
     /// <summary>Which Masters ConsultationType records this consultant offers, and what the
     /// hospital pays them for each — see Domain/Consultant.cs's ConsultationTypes doc comment.</summary>
     public IReadOnlyList<ConsultationTypeChargeDto> ConsultationTypeCharges { get; init; } = [];
@@ -31,6 +34,8 @@ public record UpdateConsultantRequest
     public IReadOnlyList<string> AvailableDays { get; init; } = [];
     public TimeOnly? VisitStartTime { get; init; }
     public TimeOnly? VisitEndTime { get; init; }
+    public TimeOnly? VisitStartTime2 { get; init; }
+    public TimeOnly? VisitEndTime2 { get; init; }
     public IReadOnlyList<ConsultationTypeChargeDto> ConsultationTypeCharges { get; init; } = [];
 }
 
@@ -55,6 +60,8 @@ public record ConsultantResponse
     public IReadOnlyList<string> AvailableDays { get; init; } = [];
     public TimeOnly? VisitStartTime { get; init; }
     public TimeOnly? VisitEndTime { get; init; }
+    public TimeOnly? VisitStartTime2 { get; init; }
+    public TimeOnly? VisitEndTime2 { get; init; }
     public IReadOnlyList<ConsultationTypeChargeDto> ConsultationTypeCharges { get; init; } = [];
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }

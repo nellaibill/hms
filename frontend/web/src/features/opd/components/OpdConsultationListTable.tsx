@@ -78,6 +78,8 @@ export function OpdConsultationListTable({ filters, onViewPatients }: OpdConsult
                     availableDays: row.availableDays ?? [],
                     visitStartTime: row.visitStartTime,
                     visitEndTime: row.visitEndTime,
+                    visitStartTime2: row.visitStartTime2,
+                    visitEndTime2: row.visitEndTime2,
                   }) ?? '—'}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.totalPatients}</td>

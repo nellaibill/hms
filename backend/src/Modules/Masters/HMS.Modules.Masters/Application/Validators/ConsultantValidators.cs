@@ -21,6 +21,14 @@ internal class CreateConsultantRequestValidator : AbstractValidator<CreateConsul
             .When(x => x.VisitStartTime.HasValue && x.VisitEndTime.HasValue)
             .WithMessage("Visit end time must be after the start time.");
 
+        // Optional second session — both or neither, end after start.
+        RuleFor(x => x.VisitEndTime2).NotNull().When(x => x.VisitStartTime2.HasValue).WithMessage("Second visit end time is required.");
+        RuleFor(x => x.VisitStartTime2).NotNull().When(x => x.VisitEndTime2.HasValue).WithMessage("Second visit start time is required.");
+        RuleFor(x => x.VisitEndTime2)
+            .GreaterThan(x => x.VisitStartTime2)
+            .When(x => x.VisitStartTime2.HasValue && x.VisitEndTime2.HasValue)
+            .WithMessage("Second visit end time must be after its start time.");
+
         RuleFor(x => x.ConsultationTypeCharges).NotEmpty().WithMessage("Select at least one consultation type.");
         RuleForEach(x => x.ConsultationTypeCharges)
             .ChildRules(charge => charge.RuleFor(c => c.ConsultantCharge).GreaterThanOrEqualTo(0).When(c => c.ConsultantCharge.HasValue)
@@ -47,6 +55,13 @@ internal class UpdateConsultantRequestValidator : AbstractValidator<UpdateConsul
             .GreaterThan(x => x.VisitStartTime)
             .When(x => x.VisitStartTime.HasValue && x.VisitEndTime.HasValue)
             .WithMessage("Visit end time must be after the start time.");
+
+        RuleFor(x => x.VisitEndTime2).NotNull().When(x => x.VisitStartTime2.HasValue).WithMessage("Second visit end time is required.");
+        RuleFor(x => x.VisitStartTime2).NotNull().When(x => x.VisitEndTime2.HasValue).WithMessage("Second visit start time is required.");
+        RuleFor(x => x.VisitEndTime2)
+            .GreaterThan(x => x.VisitStartTime2)
+            .When(x => x.VisitStartTime2.HasValue && x.VisitEndTime2.HasValue)
+            .WithMessage("Second visit end time must be after its start time.");
 
         RuleFor(x => x.ConsultationTypeCharges).NotEmpty().WithMessage("Select at least one consultation type.");
         RuleForEach(x => x.ConsultationTypeCharges)

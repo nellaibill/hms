@@ -5,6 +5,8 @@ export interface ConsultantAvailability {
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  visitStartTime2?: string | null;
+  visitEndTime2?: string | null;
 }
 
 function formatTime(time?: string | null): string | undefined {
@@ -14,13 +16,23 @@ function formatTime(time?: string | null): string | undefined {
   return new Date(`1970-01-01T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-/** "Mon, Wed, Fri · 4:00 PM – 6:00 PM" — undefined until the consultant's Masters record has
- * this set (see Consultant Type/Availability on the Masters > Consultant form). */
+function formatRange(start?: string | null, end?: string | null): string | undefined {
+  const from = formatTime(start);
+  const to = formatTime(end);
+  return from && to ? `${from} – ${to}` : undefined;
+}
+
+/** "Mon, Wed, Fri · 10:00 AM – 1:00 PM, 4:00 PM – 6:00 PM" — undefined until the consultant's
+ * Masters record has this set (see Consultant Type/Availability on the Masters > Consultant
+ * form). The second session is only appended when it's actually set. */
 export function formatConsultantAvailability(availability: ConsultantAvailability): string | undefined {
   const days = availability.availableDays.map((day) => day.slice(0, 3)).join(', ');
-  const start = formatTime(availability.visitStartTime);
-  const end = formatTime(availability.visitEndTime);
-  const timeRange = start && end ? `${start} – ${end}` : undefined;
-  const text = [days, timeRange].filter(Boolean).join(' · ');
+  const timeRanges = [
+    formatRange(availability.visitStartTime, availability.visitEndTime),
+    formatRange(availability.visitStartTime2, availability.visitEndTime2),
+  ]
+    .filter(Boolean)
+    .join(', ');
+  const text = [days, timeRanges].filter(Boolean).join(' · ');
   return text || undefined;
 }

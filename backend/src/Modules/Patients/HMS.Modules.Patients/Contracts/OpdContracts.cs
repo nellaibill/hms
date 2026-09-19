@@ -58,6 +58,8 @@ public record OpdConsultationSummaryItem
     public IReadOnlyList<string> AvailableDays { get; init; } = [];
     public TimeOnly? VisitStartTime { get; init; }
     public TimeOnly? VisitEndTime { get; init; }
+    public TimeOnly? VisitStartTime2 { get; init; }
+    public TimeOnly? VisitEndTime2 { get; init; }
 }
 
 public record OpdConsultationSummaryQuery

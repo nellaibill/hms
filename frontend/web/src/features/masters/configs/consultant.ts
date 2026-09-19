@@ -16,6 +16,8 @@ export const consultantConfig: MasterEntityConfig = {
       availableDays: (record.availableDays as string[] | undefined) ?? [],
       visitStartTime: record.visitStartTime as string | null | undefined,
       visitEndTime: record.visitEndTime as string | null | undefined,
+      visitStartTime2: record.visitStartTime2 as string | null | undefined,
+      visitEndTime2: record.visitEndTime2 as string | null | undefined,
     }),
   photo: { urlField: 'photoUrl', helpText: 'JPG, PNG (Max 2MB)' },
   fields: [
@@ -63,6 +65,15 @@ export const consultantConfig: MasterEntityConfig = {
       helpText: "Doctor's availability/visit timing at the hospital.",
     },
     { key: 'visitEndTime', label: 'End Time', type: 'time', required: true, showInTable: false },
+    {
+      key: 'visitStartTime2',
+      label: 'Second Session Start Time',
+      type: 'time',
+      showInTable: false,
+      rangeLabel: 'Second Visiting Hours',
+      helpText: 'Optional — e.g. an evening clinic on the same days. Leave both blank if there is no second session.',
+    },
+    { key: 'visitEndTime2', label: 'Second Session End Time', type: 'time', showInTable: false },
   ],
   fieldGroups: [
     { key: 'info', label: 'Consultant Information', icon: User, fieldKeys: ['name', 'departmentId', 'specialization', 'priority'] },
@@ -77,7 +88,7 @@ export const consultantConfig: MasterEntityConfig = {
       key: 'availability',
       label: 'Doctor Availability',
       icon: Calendar,
-      fieldKeys: ['availableDays', 'visitStartTime', 'visitEndTime'],
+      fieldKeys: ['availableDays', 'visitStartTime', 'visitEndTime', 'visitStartTime2', 'visitEndTime2'],
       dividedColumns: true,
       infoText: 'This schedule will be shown to receptionists when selecting a consultant (for appointment registration, OPD, etc.).',
     },
