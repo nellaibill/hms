@@ -19,10 +19,15 @@ export function HospitalFeaturesDialog({ hospital, onClose }: HospitalFeaturesDi
   const [enabledFeatures, setEnabledFeatures] = useState<Set<string>>(new Set());
 
   // Seeds local editable state once the current features load — a ref-less "sync once"
-  // since the dialog only ever mounts for one hospital at a time.
+  // since the dialog only ever mounts for one hospital at a time. Always unions in
+  // mandatoryFeatures: a tenant provisioned before a key became Mandatory may have no row
+  // for it at all, so it wouldn't be in enabledFeatures — but the checkboxes below render
+  // every mandatory key as checked-and-disabled regardless, so the submitted payload must
+  // actually contain it too or the backend's "mandatory features cannot be disabled"
+  // validator rejects the save outright.
   useEffect(() => {
     if (featuresQuery.data) {
-      setEnabledFeatures(new Set(featuresQuery.data.enabledFeatures));
+      setEnabledFeatures(new Set([...featuresQuery.data.enabledFeatures, ...featuresQuery.data.mandatoryFeatures]));
     }
   }, [featuresQuery.data]);
 
@@ -71,7 +76,7 @@ export function HospitalFeaturesDialog({ hospital, onClose }: HospitalFeaturesDi
                     <label key={key} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
-                        checked={isMandatory || enabledFeatures.has(key)}
+                        checked={enabledFeatures.has(key)}
                         disabled={isMandatory}
                         onChange={() => toggleFeature(key)}
                         className="h-3.5 w-3.5 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
