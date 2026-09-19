@@ -36,4 +36,14 @@ internal static class OpdConsultationErrorCodes
 
     /// <summary>Reopen was attempted on a note that isn't currently Completed.</summary>
     public const string NotCompleted = "OPD_CONSULTATION.NOT_COMPLETED";
+
+    /// <summary>StructureNoteFromTranscriptAsync was attempted but Ai:Anthropic:ApiKey isn't
+    /// configured — unlike Notifications' Sms/Email channels, this isn't best-effort: the
+    /// caller is actively waiting on a result, so this must surface as a real error rather than
+    /// a silent no-op.</summary>
+    public const string AiNotConfigured = "OPD_CONSULTATION.AI_NOT_CONFIGURED";
+
+    /// <summary>The call to the AI provider failed (network error, non-success response, or an
+    /// unparseable/incomplete tool-use result).</summary>
+    public const string AiRequestFailed = "OPD_CONSULTATION.AI_REQUEST_FAILED";
 }

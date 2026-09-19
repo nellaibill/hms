@@ -20,11 +20,12 @@ public class OpdConsultationServiceTests
     private readonly IDiagnosisService _diagnosisService = Substitute.For<IDiagnosisService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
+    private readonly IClinicalNoteAiClient _clinicalNoteAiClient = Substitute.For<IClinicalNoteAiClient>();
     private readonly IOpdConsultationService _sut;
 
     public OpdConsultationServiceTests()
     {
-        _sut = new OpdConsultationService(_repository, _opdQueryService, _diagnosisService, _departmentService, _consultantService);
+        _sut = new OpdConsultationService(_repository, _opdQueryService, _diagnosisService, _departmentService, _consultantService, _clinicalNoteAiClient);
     }
 
     private static OpdPatientListItem NewListItem(Guid consultationId, Guid patientId, Guid visitId) => new()
@@ -288,5 +289,64 @@ public class OpdConsultationServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PatientErrorCodes.InvalidStatusTransition);
         await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task StructureNoteFromTranscriptAsync_WhenNoNoteExists_ReturnsNotFound()
+    {
+        var consultationId = Guid.NewGuid();
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns((OpdConsultationNote?)null);
+
+        var result = await _sut.StructureNoteFromTranscriptAsync(consultationId, "Patient reports knee pain.", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(OpdConsultationErrorCodes.NotFound);
+        await _clinicalNoteAiClient.DidNotReceive().StructureAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task StructureNoteFromTranscriptAsync_WhenAlreadyCompleted_ReturnsNotDraft()
+    {
+        var consultationId = Guid.NewGuid();
+        var note = OpdConsultationNote.Create(consultationId, Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.Complete(updatedBy: null);
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.StructureNoteFromTranscriptAsync(consultationId, "Patient reports knee pain.", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(OpdConsultationErrorCodes.NotDraft);
+        await _clinicalNoteAiClient.DidNotReceive().StructureAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task StructureNoteFromTranscriptAsync_WhenDraft_DelegatesToTheAiClientAndReturnsItsResult()
+    {
+        var consultationId = Guid.NewGuid();
+        var note = OpdConsultationNote.Create(consultationId, Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns(note);
+        var structured = new StructuredConsultationNoteResponse { PresentingComplaints = "Knee pain since 2 weeks." };
+        _clinicalNoteAiClient.StructureAsync("Patient reports knee pain.", Arg.Any<CancellationToken>())
+            .Returns(Result<StructuredConsultationNoteResponse>.Success(structured));
+
+        var result = await _sut.StructureNoteFromTranscriptAsync(consultationId, "Patient reports knee pain.", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PresentingComplaints.Should().Be("Knee pain since 2 weeks.");
+    }
+
+    [Fact]
+    public async Task StructureNoteFromTranscriptAsync_WhenTheAiClientFails_ReturnsThatFailure()
+    {
+        var consultationId = Guid.NewGuid();
+        var note = OpdConsultationNote.Create(consultationId, Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns(note);
+        _clinicalNoteAiClient.StructureAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<StructuredConsultationNoteResponse>.Failure(OpdConsultationErrorCodes.AiNotConfigured, "not configured"));
+
+        var result = await _sut.StructureNoteFromTranscriptAsync(consultationId, "Patient reports knee pain.", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(OpdConsultationErrorCodes.AiNotConfigured);
     }
 }

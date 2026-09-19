@@ -1,5 +1,11 @@
 import { API_ROUTES } from '../../constants';
-import type { OpdConsultationDetail, OpdConsultationNote, SaveOpdConsultationRequest } from '../../dtos';
+import type {
+  OpdConsultationDetail,
+  OpdConsultationNote,
+  SaveOpdConsultationRequest,
+  StructureConsultationNoteRequest,
+  StructuredConsultationNoteFields,
+} from '../../dtos';
 import type { HttpClient } from '../httpClient';
 
 /**
@@ -31,6 +37,14 @@ export class OpdConsultationApi {
   /** Moves a Completed note back to Draft so it can be edited again. */
   async reopen(consultationId: string): Promise<OpdConsultationNote> {
     const response = await this.client.post<OpdConsultationNote>(API_ROUTES.opdConsultations.reopen(consultationId), {});
+    return response.data;
+  }
+
+  /** Structures a dictated/typed transcript into the note's narrative fields — the result isn't
+   * persisted by this call; the caller merges it into the form and still submits through
+   * saveDraft/complete as normal. */
+  async structureNote(consultationId: string, request: StructureConsultationNoteRequest): Promise<StructuredConsultationNoteFields> {
+    const response = await this.client.post<StructuredConsultationNoteFields>(API_ROUTES.opdConsultations.structureNote(consultationId), request);
     return response.data;
   }
 }

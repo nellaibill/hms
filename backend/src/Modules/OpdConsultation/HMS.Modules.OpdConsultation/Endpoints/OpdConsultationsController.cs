@@ -22,11 +22,16 @@ public class OpdConsultationsController : ControllerBase
 {
     private readonly IOpdConsultationService _service;
     private readonly IValidator<SaveOpdConsultationRequest> _saveValidator;
+    private readonly IValidator<StructureConsultationNoteRequest> _structureNoteValidator;
 
-    public OpdConsultationsController(IOpdConsultationService service, IValidator<SaveOpdConsultationRequest> saveValidator)
+    public OpdConsultationsController(
+        IOpdConsultationService service,
+        IValidator<SaveOpdConsultationRequest> saveValidator,
+        IValidator<StructureConsultationNoteRequest> structureNoteValidator)
     {
         _service = service;
         _saveValidator = saveValidator;
+        _structureNoteValidator = structureNoteValidator;
     }
 
     /// <summary>Fetches (auto-creating on first call) the consultation note plus its read-only
@@ -96,6 +101,30 @@ public class OpdConsultationsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapNoteFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Structures a dictated/typed transcript into the note's narrative fields — the
+    /// result isn't saved by this call; the client merges it into the form and still submits
+    /// through SaveDraft/Complete as normal.</summary>
+    /// <response code="200">The structured note fields.</response>
+    /// <response code="400">The request failed validation, or the AI provider rejected the
+    /// call.</response>
+    /// <response code="404">No consultation note exists for this consultation yet — GET first.</response>
+    /// <response code="409">The consultation has already been completed.</response>
+    /// <response code="503">AI note generation isn't configured for this environment.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
+    [RequireFeature("opd-ambient-notes")]
+    [HttpPost("{consultationId:guid}/ai/structure-note")]
+    public async Task<IActionResult> StructureNote(Guid consultationId, [FromBody] StructureConsultationNoteRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _structureNoteValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.StructureNoteFromTranscriptAsync(consultationId, request.Transcript, cancellationToken);
+        return result.IsSuccess ? Ok(new ApiResponse<StructuredConsultationNoteResponse> { Data = result.Value }) : MapStructureNoteFailure(result.ErrorCode!, result.Error!);
+    }
+
     private static ApiResponse<OpdConsultationDetailResponse> Envelope(OpdConsultationDetailResponse? data) => new() { Data = data };
 
     private static ApiResponse<OpdConsultationNoteResponse> Envelope(OpdConsultationNoteResponse? data) => new() { Data = data };
@@ -120,6 +149,21 @@ public class OpdConsultationsController : ControllerBase
             OpdConsultationErrorCodes.AlreadyCompleted => StatusCodes.Status409Conflict,
             OpdConsultationErrorCodes.NotCompleted => StatusCodes.Status409Conflict,
             OpdConsultationErrorCodes.NotDraft => StatusCodes.Status403Forbidden,
+            _ => StatusCodes.Status400BadRequest,
+        };
+
+        var error = new ApiErrorResponse { ErrorCode = errorCode, Message = message, CorrelationId = HttpContext.GetCorrelationId(), Timestamp = DateTime.UtcNow };
+        return StatusCode(status, error);
+    }
+
+    private IActionResult MapStructureNoteFailure(string errorCode, string message)
+    {
+        var status = errorCode switch
+        {
+            OpdConsultationErrorCodes.NotFound => StatusCodes.Status404NotFound,
+            OpdConsultationErrorCodes.NotDraft => StatusCodes.Status409Conflict,
+            OpdConsultationErrorCodes.AiNotConfigured => StatusCodes.Status503ServiceUnavailable,
+            OpdConsultationErrorCodes.AiRequestFailed => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest,
         };
 

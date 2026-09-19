@@ -148,3 +148,23 @@ public record OpdConsultationDetailResponse
     public OpdConsultationHeader Header { get; init; } = new();
     public OpdConsultationNoteResponse Note { get; init; } = new();
 }
+
+/// <summary>A raw dictation/typed transcript to structure into note fields — never persisted by
+/// itself, only ever the input to IClinicalNoteAiClient.StructureAsync.</summary>
+public record StructureConsultationNoteRequest
+{
+    public string Transcript { get; init; } = string.Empty;
+}
+
+/// <summary>The narrative fields IClinicalNoteAiClient extracted from a transcript — the caller
+/// (the OPD Consultation form) merges these into its own draft state and still submits them
+/// through the normal SaveDraft/Complete calls; nothing here is saved directly.</summary>
+public record StructuredConsultationNoteResponse
+{
+    public string? PresentingComplaints { get; init; }
+    public string? ClinicalHistory { get; init; }
+    public string? ExaminationFindings { get; init; }
+    public string? PlanOfManagement { get; init; }
+    public string? FollowUpInstructions { get; init; }
+    public string? EmergencyReviewInstructions { get; init; }
+}

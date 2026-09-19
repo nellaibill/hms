@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Save,
   Send,
+  Sparkles,
   Stethoscope,
   Trash2,
 } from 'lucide-react';
@@ -33,10 +34,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
+import { useAuth } from '@/features/auth/AuthContext';
 import { getDisplayLabel, getMasterConfig, resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
-
-const textareaClassName =
-  'flex w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+import { AiNoteDictationPanel } from './AiNoteDictationPanel';
+import { textareaClassName } from './textareaClassName';
 
 function SectionCard({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
   return (
@@ -393,6 +394,7 @@ export function OpdConsultationForm({
     register,
     handleSubmit,
     getValues,
+    setValue,
     setError,
     clearErrors,
     watch,
@@ -402,6 +404,7 @@ export function OpdConsultationForm({
     defaultValues: toFormValues(note),
   });
 
+  const { hasFeature } = useAuth();
   const readOnly = note.status === 'Completed';
   const heightCm = watch('heightCm');
   const weightKg = watch('weightKg');
@@ -440,6 +443,12 @@ export function OpdConsultationForm({
 
       <fieldset disabled={readOnly} className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         <div className="flex flex-col gap-6">
+          {hasFeature('opd-ambient-notes') && (
+            <SectionCard icon={Sparkles} title="Ambient Note (AI)">
+              <AiNoteDictationPanel consultationId={note.consultationId} setValue={setValue} disabled={readOnly} />
+            </SectionCard>
+          )}
+
           <SectionCard icon={Activity} title="Vitals">
             <div className="flex flex-wrap gap-4">
               <TextField id="heightCm" label="Height (cm)" registration={register('heightCm')} error={errors.heightCm?.message} required type="number" step="0.1" />

@@ -33,3 +33,11 @@ internal class SaveOpdConsultationRequestValidator : AbstractValidator<SaveOpdCo
         });
     }
 }
+
+internal class StructureConsultationNoteRequestValidator : AbstractValidator<StructureConsultationNoteRequest>
+{
+    public StructureConsultationNoteRequestValidator()
+    {
+        RuleFor(x => x.Transcript).NotEmpty().MaximumLength(20_000);
+    }
+}

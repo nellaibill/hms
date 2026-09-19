@@ -41,6 +41,14 @@ public interface IOpdConsultationService
     /// currently Completed. Permission-gated at the controller to clinical-care.edit — the same
     /// gate SaveDraft/Complete already use.</summary>
     Task<Result<OpdConsultationNoteResponse>> ReopenAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Structures a dictated/typed transcript into the note's narrative fields via
+    /// IClinicalNoteAiClient — the result is returned for the form to merge into its own draft
+    /// state, never saved by this call itself (the existing SaveDraft/Complete calls remain the
+    /// only persistence path). Fails with NotFound if no note exists yet (GET first, same as
+    /// SaveDraft/Complete), or NotDraft once Completed — matches SaveDraft's guard, since there's
+    /// no reason to keep dictating into a note that can no longer be edited.</summary>
+    Task<Result<StructuredConsultationNoteResponse>> StructureNoteFromTranscriptAsync(Guid consultationId, string transcript, CancellationToken cancellationToken);
 }
 
 internal class OpdConsultationService : IOpdConsultationService
@@ -50,19 +58,22 @@ internal class OpdConsultationService : IOpdConsultationService
     private readonly IDiagnosisService _diagnosisService;
     private readonly IDepartmentService _departmentService;
     private readonly IConsultantService _consultantService;
+    private readonly IClinicalNoteAiClient _clinicalNoteAiClient;
 
     public OpdConsultationService(
         IOpdConsultationRepository repository,
         IOpdQueryService opdQueryService,
         IDiagnosisService diagnosisService,
         IDepartmentService departmentService,
-        IConsultantService consultantService)
+        IConsultantService consultantService,
+        IClinicalNoteAiClient clinicalNoteAiClient)
     {
         _repository = repository;
         _opdQueryService = opdQueryService;
         _diagnosisService = diagnosisService;
         _departmentService = departmentService;
         _consultantService = consultantService;
+        _clinicalNoteAiClient = clinicalNoteAiClient;
     }
 
     public async Task<Result<OpdConsultationDetailResponse>> GetOrCreateByConsultationIdAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken)
@@ -197,6 +208,22 @@ internal class OpdConsultationService : IOpdConsultationService
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<OpdConsultationNoteResponse>.Success(note.ToResponse());
+    }
+
+    public async Task<Result<StructuredConsultationNoteResponse>> StructureNoteFromTranscriptAsync(Guid consultationId, string transcript, CancellationToken cancellationToken)
+    {
+        var note = await _repository.GetByConsultationIdAsync(consultationId, cancellationToken);
+        if (note is null)
+        {
+            return Result<StructuredConsultationNoteResponse>.Failure(OpdConsultationErrorCodes.NotFound, $"No consultation note exists for consultation '{consultationId}'.");
+        }
+
+        if (note.Status != OpdConsultationNoteStatus.Draft)
+        {
+            return Result<StructuredConsultationNoteResponse>.Failure(OpdConsultationErrorCodes.NotDraft, "This consultation has already been completed and can no longer be edited.");
+        }
+
+        return await _clinicalNoteAiClient.StructureAsync(transcript, cancellationToken);
     }
 
     private void ApplyRequest(OpdConsultationNote note, SaveOpdConsultationRequest request, Guid? actorId)
