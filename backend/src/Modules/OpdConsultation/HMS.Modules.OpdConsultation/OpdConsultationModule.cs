@@ -42,9 +42,20 @@ public static class OpdConsultationModule
         services.AddScoped<IOpdConsultationRepository, OpdConsultationRepository>();
         services.AddScoped<IOpdConsultationService, OpdConsultationService>();
 
-        // Config-driven under Ai:Anthropic:* — see AnthropicClinicalNoteAiClient's own doc
-        // comment for why, unlike Notifications' senders, this never silently no-ops.
-        services.AddHttpClient<IClinicalNoteAiClient, AnthropicClinicalNoteAiClient>();
+        // Which AI provider structures transcripts is a per-deployment choice, not a per-request
+        // one — so it's picked once here at startup from Ai:Provider, not behind a runtime
+        // factory. Defaults to Anthropic (this feature's original/primary provider) when unset,
+        // so existing deployments/tests that only ever configured Ai:Anthropic:* keep working
+        // unchanged. See AnthropicClinicalNoteAiClient/OpenAiClinicalNoteAiClient's own doc
+        // comments for why a missing key never silently no-ops, unlike Notifications' senders.
+        if (string.Equals(configuration["Ai:Provider"], "OpenAI", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<IClinicalNoteAiClient, OpenAiClinicalNoteAiClient>();
+        }
+        else
+        {
+            services.AddHttpClient<IClinicalNoteAiClient, AnthropicClinicalNoteAiClient>();
+        }
 
         // Registered explicitly, not AddValidatorsFromAssemblyContaining — that scanner only
         // finds *public* IValidator<T> implementations, and this module's validators are
