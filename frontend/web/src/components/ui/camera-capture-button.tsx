@@ -10,6 +10,23 @@ interface CameraCaptureButtonProps {
   onCapture: (file: File) => void;
 }
 
+function describeCameraError(err: unknown): string {
+  const name = err instanceof DOMException ? err.name : '';
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Camera permission was blocked. Allow camera access for this site in your browser (address-bar camera icon) and try again — or upload a photo instead.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No camera was found on this device — upload a photo instead.';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'The camera is in use by another app or tab. Close it and try again — or upload a photo instead.';
+    default:
+      return `Camera not available${name ? ` (${name})` : ''} — upload a photo instead.`;
+  }
+}
+
 /**
  * Opens a live camera preview in a dialog and lets the user snap a photo instead of picking a
  * file — sits next to FileChooserButton wherever a photo upload accepts either source (see
@@ -40,13 +57,19 @@ export function CameraCaptureButton({ disabled, fileNamePrefix, onCapture }: Cam
     setError(null);
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError('Camera not available — upload a photo instead.');
+      // Browsers only expose the camera API on secure origins (HTTPS or localhost) — opening the
+      // app over plain http:// on a LAN IP/hostname leaves mediaDevices undefined.
+      setError(
+        window.isSecureContext
+          ? 'This browser does not support camera capture — upload a photo instead.'
+          : 'Camera access needs a secure connection. Open the app over https:// (or http://localhost) — or upload a photo instead.',
+      );
       return;
     }
 
     let cancelled = false;
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'user' } })
+      .getUserMedia({ video: true })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((track) => track.stop());
@@ -57,8 +80,8 @@ export function CameraCaptureButton({ disabled, fileNamePrefix, onCapture }: Cam
           videoRef.current.srcObject = stream;
         }
       })
-      .catch(() => {
-        if (!cancelled) setError('Camera not available — upload a photo instead.');
+      .catch((err: unknown) => {
+        if (!cancelled) setError(describeCameraError(err));
       });
 
     return () => {
