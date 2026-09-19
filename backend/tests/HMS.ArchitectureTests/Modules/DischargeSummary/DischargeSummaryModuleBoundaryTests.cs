@@ -21,7 +21,7 @@ public class DischargeSummaryModuleBoundaryTests
 {
     private static readonly Assembly DischargeSummaryAssembly = typeof(DischargeSummariesController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^(DischargeSummaryDbContext|IDischargeSummaryService)$";
+    private const string AllowedPublicTypeNamePattern = "^(DischargeSummaryDbContext|IDischargeSummaryService|IDischargeSummaryAiDraftService)$";
 
     [Theory]
     [InlineData("HMS.Modules.DischargeSummary.Domain")]

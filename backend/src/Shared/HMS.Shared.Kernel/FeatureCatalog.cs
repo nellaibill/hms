@@ -107,6 +107,12 @@ public static class FeatureCatalog
         // core note-taking, sending a transcript to a third-party AI provider is a distinct,
         // separately-consentable capability a hospital may not want on by default.
         "opd-ambient-notes",
+
+        // Gates HMS.Modules.DischargeSummary's "ai/draft" endpoint and the Discharge Summary
+        // form's "Draft with AI" action — same UiOnly/Optional reasoning as "opd-ambient-notes"
+        // above (nothing persisted, sends admission data to a third-party AI provider). Requires
+        // "discharge-summary" itself (see Dependencies).
+        "discharge-summary-ai-draft",
     ];
 
     public static readonly IReadOnlyList<string> All = [.. SchemaBacked, .. UiOnly];
@@ -153,5 +159,6 @@ public static class FeatureCatalog
         new Dictionary<string, IReadOnlyList<string>>
         {
             ["pharmacy"] = ["products"],
+            ["discharge-summary-ai-draft"] = ["discharge-summary"],
         };
 }

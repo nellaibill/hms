@@ -381,5 +381,6 @@ export const API_ROUTES = {
     byId: (id: string) => `/api/v1/discharge-summaries/${id}`,
     finalize: (id: string) => `/api/v1/discharge-summaries/${id}/finalize`,
     byAdmissionId: (admissionId: string) => `/api/v1/admissions/${admissionId}/discharge-summary`,
+    aiDraft: (id: string) => `/api/v1/discharge-summaries/${id}/ai/draft`,
   },
 } as const;

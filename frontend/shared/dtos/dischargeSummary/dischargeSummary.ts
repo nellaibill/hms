@@ -173,3 +173,30 @@ export interface DischargeSummary {
   createdAt: string;
   updatedAt?: string | null;
 }
+
+/**
+ * Mirrors HMS.Modules.DischargeSummary.Contracts.DischargeSummaryDraftSuggestion — AI-drafted
+ * narrative fields plus vitals copied from the last IPD reading. A suggestion only: the form
+ * merges it into its own state and still saves through update; nothing is persisted by the call
+ * that returns it. Discharge medications are deliberately absent.
+ */
+export interface DischargeSummaryDraftSuggestion {
+  chiefComplaints?: string | null;
+  historyOfPresentingIllness?: string | null;
+  courseInHospital?: string | null;
+  conditionAtDischarge?: string | null;
+  diet?: string | null;
+  woundCare?: string | null;
+  activity?: string | null;
+  physiotherapy?: string | null;
+  reviewInstructions?: string | null;
+  emergencyInstructions?: string | null;
+
+  heightCm?: number | null;
+  weightKg?: number | null;
+  pulseRate?: number | null;
+  respiratoryRate?: number | null;
+  temperatureF?: number | null;
+  spO2Percent?: number | null;
+  bloodPressure?: string | null;
+}

@@ -33,6 +33,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   reports: 'Reports',
   'e-mrd': 'E-MRD',
   'opd-ambient-notes': 'OPD Ambient Note Generation (AI)',
+  'discharge-summary-ai-draft': 'Discharge Summary AI Draft',
 };
 
 export function featureLabel(key: string): string {
@@ -69,4 +70,5 @@ export const OPTIONAL_FEATURE_KEYS = [
   'reports',
   'e-mrd',
   'opd-ambient-notes',
+  'discharge-summary-ai-draft',
 ];

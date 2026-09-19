@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/features/auth/AuthContext';
 import { toFormValues } from '../mapDischargeSummaryForm';
+import { AiDraftPanel } from './AiDraftPanel';
 import { DischargeMedicationsTable } from './DischargeMedicationsTable';
 
 const textareaClassName =
@@ -84,10 +86,13 @@ interface DischargeSummaryFormProps {
  * neither is submitted via PUT.
  */
 export function DischargeSummaryForm({ summary, isSubmitting, apiError, onSave }: DischargeSummaryFormProps) {
+  const { hasFeature } = useAuth();
   const {
     control,
     register,
     handleSubmit,
+    getValues,
+    setValue,
     setError,
     formState: { errors },
   } = useForm<DischargeSummaryFormValues>({
@@ -116,6 +121,8 @@ export function DischargeSummaryForm({ summary, isSubmitting, apiError, onSave }
           {generalError}
         </p>
       )}
+
+      {hasFeature('discharge-summary-ai-draft') && <AiDraftPanel summaryId={summary.id} getValues={getValues} setValue={setValue} />}
 
       <Card>
         <CardHeader>

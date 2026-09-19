@@ -9,4 +9,9 @@
     <ProjectReference Include="..\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The provider extractors under Ai/ are internal; unit tests exercise them directly. -->
+    <InternalsVisibleTo Include="HMS.UnitTests" />
+  </ItemGroup>
+
 </Project>

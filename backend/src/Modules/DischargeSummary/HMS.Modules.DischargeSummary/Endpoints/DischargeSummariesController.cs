@@ -22,15 +22,18 @@ namespace HMS.Modules.DischargeSummary.Endpoints;
 public class DischargeSummariesController : ControllerBase
 {
     private readonly IDischargeSummaryService _service;
+    private readonly IDischargeSummaryAiDraftService _aiDraftService;
     private readonly IValidator<UpdateDischargeSummaryRequest> _updateValidator;
     private readonly IValidator<FinalizeDischargeSummaryRequest> _finalizeValidator;
 
     public DischargeSummariesController(
         IDischargeSummaryService service,
+        IDischargeSummaryAiDraftService aiDraftService,
         IValidator<UpdateDischargeSummaryRequest> updateValidator,
         IValidator<FinalizeDischargeSummaryRequest> finalizeValidator)
     {
         _service = service;
+        _aiDraftService = aiDraftService;
         _updateValidator = updateValidator;
         _finalizeValidator = finalizeValidator;
     }
@@ -92,6 +95,26 @@ public class DischargeSummariesController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Drafts narrative fields (and vitals from the last IPD reading) from the admission's
+    /// IPD data via the configured AI provider. The result is a suggestion only — nothing is saved;
+    /// the client merges it into the form and still submits through Update.</summary>
+    /// <response code="200">The drafted suggestion.</response>
+    /// <response code="403">The summary has already been finalized.</response>
+    /// <response code="404">No such discharge summary exists.</response>
+    /// <response code="502">The AI provider call failed.</response>
+    /// <response code="503">AI drafting isn't configured for this environment.</response>
+    [Authorize]
+    [RequirePermission("discharge-summary.edit")]
+    [RequireFeature("discharge-summary-ai-draft")]
+    [HttpPost("{id:guid}/ai/draft")]
+    public async Task<IActionResult> AiDraft(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _aiDraftService.DraftAsync(id, cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<DischargeSummaryDraftSuggestion> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     private static ApiResponse<DischargeSummaryResponse> Envelope(DischargeSummaryResponse? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)
@@ -102,6 +125,8 @@ public class DischargeSummariesController : ControllerBase
             DischargeSummaryErrorCodes.AlreadyExists => StatusCodes.Status409Conflict,
             DischargeSummaryErrorCodes.AlreadyFinalized => StatusCodes.Status409Conflict,
             DischargeSummaryErrorCodes.NotDraft => StatusCodes.Status403Forbidden,
+            DischargeSummaryErrorCodes.AiNotConfigured => StatusCodes.Status503ServiceUnavailable,
+            DischargeSummaryErrorCodes.AiRequestFailed => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest,
         };
 
