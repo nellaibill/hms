@@ -134,6 +134,11 @@ function fromFormValues(config: MasterEntityConfig, values: Record<string, unkno
     if ((field.type === 'number' || field.type === 'decimal') && typeof result[field.key] === 'string') {
       result[field.key] = result[field.key] === '' ? undefined : Number(result[field.key]);
     }
+    // An optional time left blank comes through as '' — which a nullable TimeOnly on the API
+    // can't deserialize (a 400 before validation even runs). Send it as absent instead.
+    if (field.type === 'time' && result[field.key] === '') {
+      result[field.key] = undefined;
+    }
   }
   return result;
 }

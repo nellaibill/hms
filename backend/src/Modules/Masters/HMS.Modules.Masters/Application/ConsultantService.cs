@@ -82,7 +82,9 @@ internal class ConsultantService : IConsultantService
             request.VisitStartTime,
             request.VisitEndTime,
             ToSelections(request.ConsultationTypeCharges),
-            actorId);
+            actorId,
+            request.VisitStartTime2,
+            request.VisitEndTime2);
 
         await _repository.AddAsync(consultant, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -119,7 +121,9 @@ internal class ConsultantService : IConsultantService
             request.VisitStartTime,
             request.VisitEndTime,
             ToSelections(request.ConsultationTypeCharges),
-            actorId);
+            actorId,
+            request.VisitStartTime2,
+            request.VisitEndTime2);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<ConsultantResponse>.Success(consultant.ToResponse());

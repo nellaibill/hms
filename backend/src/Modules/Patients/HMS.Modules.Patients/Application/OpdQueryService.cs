@@ -78,6 +78,8 @@ internal class OpdQueryService : IOpdQueryService
                 AvailableDays = consultant.Value?.AvailableDays ?? [],
                 VisitStartTime = consultant.Value?.VisitStartTime,
                 VisitEndTime = consultant.Value?.VisitEndTime,
+                VisitStartTime2 = consultant.Value?.VisitStartTime2,
+                VisitEndTime2 = consultant.Value?.VisitEndTime2,
             });
         }
 

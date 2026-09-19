@@ -42,6 +42,12 @@ internal class Consultant : Entity
     public TimeOnly? VisitStartTime { get; private set; }
     public TimeOnly? VisitEndTime { get; private set; }
 
+    /// <summary>Optional second visiting session (e.g. an evening clinic) — same days as the
+    /// first (AvailableDays is shared), a separate time range. Both null until set; both must be
+    /// set together, and the end must be after the start. Slot 1 stays the required one.</summary>
+    public TimeOnly? VisitStartTime2 { get; private set; }
+    public TimeOnly? VisitEndTime2 { get; private set; }
+
     /// <summary>Which consultation types (billing categories, e.g. "Doctor's Consultation
     /// (In-house) - Regular") this consultant offers, and what the hospital pays them for each
     /// (ConsultantConsultationType.ConsultantCharge) — a many-to-many replaced wholesale on
@@ -65,9 +71,13 @@ internal class Consultant : Entity
         IReadOnlyList<string> availableDays,
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
+        TimeOnly? visitStartTime2,
+        TimeOnly? visitEndTime2,
         Guid? createdBy)
         : base(id, createdBy)
     {
+        VisitStartTime2 = visitStartTime2;
+        VisitEndTime2 = visitEndTime2;
         Name = name;
         DepartmentId = departmentId;
         Specialization = specialization;
@@ -88,10 +98,12 @@ internal class Consultant : Entity
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
         IReadOnlyList<ConsultationTypeSelection> consultationTypes,
-        Guid? createdBy)
+        Guid? createdBy,
+        TimeOnly? visitStartTime2 = null,
+        TimeOnly? visitEndTime2 = null)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
-        GuardAvailability(availableDays, visitStartTime, visitEndTime);
+        GuardAvailability(availableDays, visitStartTime, visitEndTime, visitStartTime2, visitEndTime2);
 
         var consultant = new Consultant(
             Guid.CreateVersion7(),
@@ -103,6 +115,8 @@ internal class Consultant : Entity
             availableDays,
             visitStartTime,
             visitEndTime,
+            visitStartTime2,
+            visitEndTime2,
             createdBy);
 
         consultant.SetConsultationTypes(consultationTypes);
@@ -120,10 +134,12 @@ internal class Consultant : Entity
         TimeOnly? visitStartTime,
         TimeOnly? visitEndTime,
         IReadOnlyList<ConsultationTypeSelection> consultationTypes,
-        Guid? updatedBy)
+        Guid? updatedBy,
+        TimeOnly? visitStartTime2 = null,
+        TimeOnly? visitEndTime2 = null)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
-        GuardAvailability(availableDays, visitStartTime, visitEndTime);
+        GuardAvailability(availableDays, visitStartTime, visitEndTime, visitStartTime2, visitEndTime2);
 
         Name = name.Trim();
         DepartmentId = departmentId;
@@ -133,6 +149,8 @@ internal class Consultant : Entity
         AvailableDays = availableDays;
         VisitStartTime = visitStartTime;
         VisitEndTime = visitEndTime;
+        VisitStartTime2 = visitStartTime2;
+        VisitEndTime2 = visitEndTime2;
         SetConsultationTypes(consultationTypes);
         MarkUpdated(updatedBy);
     }
@@ -158,8 +176,23 @@ internal class Consultant : Entity
     /// (same split as every other entity in this codebase, e.g. LabOrder.GenerateReport) —
     /// VisitStartTime/VisitEndTime must both be set or both be unset, and the end must be after
     /// the start.</summary>
-    private static void GuardAvailability(IReadOnlyList<string> availableDays, TimeOnly? visitStartTime, TimeOnly? visitEndTime)
+    private static void GuardAvailability(
+        IReadOnlyList<string> availableDays,
+        TimeOnly? visitStartTime,
+        TimeOnly? visitEndTime,
+        TimeOnly? visitStartTime2,
+        TimeOnly? visitEndTime2)
     {
+        if (visitStartTime2.HasValue != visitEndTime2.HasValue)
+        {
+            throw new ArgumentException("Second visit start time and end time must both be set, or both left blank.");
+        }
+
+        if (visitStartTime2.HasValue && visitEndTime2.HasValue && visitEndTime2.Value <= visitStartTime2.Value)
+        {
+            throw new ArgumentException("Second visit end time must be after its start time.");
+        }
+
         if (visitStartTime.HasValue != visitEndTime.HasValue)
         {
             throw new ArgumentException("Visit start time and end time must both be set, or both left blank.");

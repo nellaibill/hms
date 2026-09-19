@@ -17,6 +17,8 @@ internal static class ConsultantMappingExtensions
         AvailableDays = consultant.AvailableDays,
         VisitStartTime = consultant.VisitStartTime,
         VisitEndTime = consultant.VisitEndTime,
+        VisitStartTime2 = consultant.VisitStartTime2,
+        VisitEndTime2 = consultant.VisitEndTime2,
         ConsultationTypeCharges = consultant.ConsultationTypes
             .Select(ct => new ConsultationTypeChargeDto(ct.ConsultationTypeId, ct.ConsultantCharge))
             .ToList(),

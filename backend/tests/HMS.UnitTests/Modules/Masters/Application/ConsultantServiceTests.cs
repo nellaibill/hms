@@ -236,4 +236,54 @@ public class ConsultantServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(MastersErrorCodes.InvalidFile);
     }
+
+    [Fact]
+    public async Task CreateAsync_WithASecondVisitingSlot_PersistsBothSlots()
+    {
+        var request = NewCreateRequest() with
+        {
+            VisitStartTime = new TimeOnly(10, 0),
+            VisitEndTime = new TimeOnly(13, 0),
+            VisitStartTime2 = new TimeOnly(16, 0),
+            VisitEndTime2 = new TimeOnly(19, 0),
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitStartTime2.Should().Be(new TimeOnly(16, 0));
+        result.Value!.VisitEndTime2.Should().Be(new TimeOnly(19, 0));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutASecondVisitingSlot_LeavesItNull()
+    {
+        var result = await _sut.CreateAsync(NewCreateRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitStartTime2.Should().BeNull();
+        result.Value!.VisitEndTime2.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_WithOnlyHalfOfTheSecondSlot_Throws()
+    {
+        var act = () => Consultant.Create(
+            "Dr. Karthikeyan", null, null, true, null, [],
+            new TimeOnly(10, 0), new TimeOnly(13, 0), [], null,
+            visitStartTime2: new TimeOnly(16, 0), visitEndTime2: null);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Second visit*");
+    }
+
+    [Fact]
+    public void Create_WithASecondSlotEndingBeforeItStarts_Throws()
+    {
+        var act = () => Consultant.Create(
+            "Dr. Karthikeyan", null, null, true, null, [],
+            new TimeOnly(10, 0), new TimeOnly(13, 0), [], null,
+            visitStartTime2: new TimeOnly(19, 0), visitEndTime2: new TimeOnly(16, 0));
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Second visit*");
+    }
 }

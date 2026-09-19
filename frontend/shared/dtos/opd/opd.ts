@@ -59,6 +59,9 @@ export interface OpdConsultationSummaryItem {
   availableDays: string[];
   visitStartTime?: string | null;
   visitEndTime?: string | null;
+  /** Optional second visiting session on the same days. */
+  visitStartTime2?: string | null;
+  visitEndTime2?: string | null;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.OpdConsultationSummaryQuery. */
