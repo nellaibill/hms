@@ -4,14 +4,11 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageBanner } from '@/components/PageBanner';
-import { useToast } from '@/components/ui/toast-context';
 import {
-  DeletePatientDialog,
   emptyPatientSearchFilters,
   Pagination,
   PatientListToolbar,
   PatientTable,
-  useDeletePatientMutation,
   usePatientsQuery,
   type PatientSearchFilters,
 } from '../../features/patients';
@@ -42,7 +39,6 @@ export default function PatientsListPage() {
   const [resultsPage, setResultsPage] = useState(1);
   const [recentPage, setRecentPage] = useState(1);
   const [sort, setSort] = useState('-createdAt');
-  const [patientPendingDelete, setPatientPendingDelete] = useState<Patient | null>(null);
 
   const isFiltered =
     appliedFilters.needsVerification || [appliedFilters.name, appliedFilters.age, appliedFilters.uhid, appliedFilters.phone].some((v) => v.trim() !== '');
@@ -84,9 +80,6 @@ export default function PatientsListPage() {
       }
     : undefined;
 
-  const deleteMutation = useDeletePatientMutation();
-  const { toast } = useToast();
-
   function handleFilterChange(field: keyof PatientSearchFilters, value: string | boolean) {
     setFilters((prev) => ({ ...prev, [field]: value }));
   }
@@ -107,23 +100,8 @@ export default function PatientsListPage() {
     setResultsPage(1);
   }
 
-  function handleConfirmDelete() {
-    if (!patientPendingDelete) {
-      return;
-    }
-    const { firstName, lastName, uhid } = patientPendingDelete;
-    deleteMutation.mutate(patientPendingDelete.id, {
-      onSuccess: () => setPatientPendingDelete(null),
-      // Deletion previously had no failure feedback at all — the dialog just sat there
-      // with no explanation. Keep it open (rather than dismissing as if it worked) so the
-      // user can see the reason and retry or cancel.
-      onError: (err) =>
-        toast({
-          title: 'Delete failed',
-          description: `Could not delete ${firstName} ${lastName} (UHID ${uhid}): ${err.message}`,
-          variant: 'error',
-        }),
-    });
+  function handleSelect(patient: Patient) {
+    navigate(`/patients/registration/${patient.id}`);
   }
 
   return (
@@ -141,13 +119,11 @@ export default function PatientsListPage() {
         onFilterChange={handleFilterChange}
         onSearch={handleSearch}
         onClear={handleClear}
-        onSuggestionSelect={(patient) => navigate(`/patients/registration/${patient.id}`)}
+        onSuggestionSelect={handleSelect}
       />
 
       {!isFiltered && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium text-foreground">Last 100 visits</p>
-
           {isRecentPending && (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -172,13 +148,7 @@ export default function PatientsListPage() {
           {!isRecentPending && !isRecentError && recentData && recentData.items.length > 0 && (
             <>
               <div className="max-h-[65vh] overflow-y-auto rounded-lg">
-                <PatientTable
-                  patients={recentData.items}
-                  sort={sort}
-                  onSortChange={handleSortChange}
-                  onDeleteRequested={setPatientPendingDelete}
-                  sortable={false}
-                />
+                <PatientTable patients={recentData.items} sort={sort} onSortChange={handleSortChange} onSelect={handleSelect} sortable={false} />
               </div>
               {recentMeta && <Pagination meta={recentMeta} onPageChange={setRecentPage} />}
             </>
@@ -211,19 +181,10 @@ export default function PatientsListPage() {
       {isFiltered && !isPending && !isError && data && data.items.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="max-h-[65vh] overflow-y-auto rounded-lg">
-            <PatientTable patients={data.items} sort={sort} onSortChange={handleSortChange} onDeleteRequested={setPatientPendingDelete} />
+            <PatientTable patients={data.items} sort={sort} onSortChange={handleSortChange} onSelect={handleSelect} />
           </div>
           <Pagination meta={data.meta} onPageChange={setResultsPage} />
         </div>
-      )}
-
-      {patientPendingDelete && (
-        <DeletePatientDialog
-          patient={patientPendingDelete}
-          isDeleting={deleteMutation.isPending}
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setPatientPendingDelete(null)}
-        />
       )}
       </div>
     </div>

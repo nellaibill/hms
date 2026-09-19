@@ -5,13 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
-import { useAuth } from '../../auth/AuthContext';
 
 interface PatientTableProps {
   patients: Patient[];
   sort: string;
   onSortChange: (sort: string) => void;
-  onDeleteRequested: (patient: Patient) => void;
+  /** Same "Select" action as OPD Billing Entry's PatientPicker — opens the chosen patient. Edit/
+   * Add Visit/Delete are all still reachable from that patient's own record page. */
+  onSelect: (patient: Patient) => void;
   /** False while showing the default "Last 100 visits" list (sorted server-side by most
    * recent visit, same as OPD Billing Entry's PatientPicker) — that list ignores `sort`
    * entirely, so a clickable header there would silently do nothing. Sortable again once a
@@ -25,12 +26,9 @@ function formatAppointmentTime(iso?: string | null): string {
   return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-export function PatientTable({ patients, sort, onSortChange, onDeleteRequested, sortable = true }: PatientTableProps) {
+export function PatientTable({ patients, sort, onSortChange, onSelect, sortable = true }: PatientTableProps) {
   const currentField = sort.startsWith('-') ? sort.slice(1) : sort;
   const isDescending = sort.startsWith('-');
-  const { hasPermission } = useAuth();
-  const canEdit = hasPermission('patient-management.edit');
-  const canDelete = hasPermission('patient-management.delete');
 
   function toggleSort(field: string) {
     if (currentField !== field) {
@@ -107,29 +105,10 @@ export function PatientTable({ patients, sort, onSortChange, onDeleteRequested, 
                 {patient.lastVisitDepartmentId ? <DepartmentName departmentId={patient.lastVisitDepartmentId} /> : '—'}
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAppointmentTime(patient.lastVisitAppointmentTime)}</td>
-              <td className="px-4 py-3">
-                <div className="flex justify-end gap-1.5">
-                  {canEdit && (
-                    <Button asChild variant="ghost" size="sm">
-                      <Link to={`/patients/registration/${patient.id}/edit`}>Edit</Link>
-                    </Button>
-                  )}
-                  {canEdit && (
-                    <Button asChild variant="ghost" size="sm">
-                      <Link to={`/patients/registration/${patient.id}/visits/new`}>Add Visit</Link>
-                    </Button>
-                  )}
-                  {canDelete && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => onDeleteRequested(patient)}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                </div>
+              <td className="px-4 py-3 text-right">
+                <Button size="sm" onClick={() => onSelect(patient)}>
+                  Select
+                </Button>
               </td>
             </tr>
           ))}
