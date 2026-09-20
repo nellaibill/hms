@@ -1,4 +1,6 @@
 using FluentAssertions;
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Identity.Application;
 using HMS.Modules.Identity.Application.Abstractions;
 using HMS.Modules.Identity.Contracts;
@@ -22,12 +24,13 @@ public class UserServiceTests
     private readonly IRoleRepository _roleRepository = Substitute.For<IRoleRepository>();
     private readonly IUserFileStorage _fileStorage = Substitute.For<IUserFileStorage>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
+    private readonly IActivityLogService _activityLog = Substitute.For<IActivityLogService>();
     private readonly UserService _sut;
     private readonly Guid _roleId = Guid.NewGuid();
 
     public UserServiceTests()
     {
-        _sut = new UserService(_repository, _roleRepository, _fileStorage, _passwordHasher, NullLogger<UserService>.Instance);
+        _sut = new UserService(_repository, _roleRepository, _fileStorage, _passwordHasher, _activityLog, NullLogger<UserService>.Instance);
 
         // Happy-path default: a valid role exists. Tests for the "role not found" failure
         // path override this per-test.
@@ -76,6 +79,35 @@ public class UserServiceTests
         result.Value.IsActive.Should().BeTrue();
         await _repository.Received(1).AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNewUsernameAndEmail_WritesACreateActivityLogEntryWithoutSecrets()
+    {
+        _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        _repository.GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        var actorId = Guid.NewGuid();
+        var request = new CreateUserRequest
+        {
+            Username = "jdoe",
+            FirstName = "Jane",
+            LastName = "Doe",
+            Email = "jane@example.com",
+            RoleId = _roleId,
+        };
+
+        var result = await _sut.CreateAsync(request, actorId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _activityLog.Received(1).LogAsync(
+            Arg.Is<ActivityLogRequest>(r =>
+                r.Action == ActivityLogActions.Create
+                && r.Module == ActivityLogModules.Identity
+                && r.EntityType == "User"
+                && r.EntityId == result.Value!.Id.ToString()
+                && r.UserId == actorId
+                && !r.NewValues!.ToString()!.Contains("Hash")),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

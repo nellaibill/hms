@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\src\Modules\DischargeSummary\HMS.Modules.DischargeSummary\HMS.Modules.DischargeSummary.csproj" />
     <ProjectReference Include="..\..\src\Modules\OpdConsultation\HMS.Modules.OpdConsultation\HMS.Modules.OpdConsultation.csproj" />
     <ProjectReference Include="..\..\src\Modules\Backups\HMS.Modules.Backups\HMS.Modules.Backups.csproj" />
+    <ProjectReference Include="..\..\src\Modules\ActivityLog\HMS.Modules.ActivityLog\HMS.Modules.ActivityLog.csproj" />
   </ItemGroup>
 
 </Project>

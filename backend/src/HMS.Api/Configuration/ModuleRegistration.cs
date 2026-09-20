@@ -1,4 +1,5 @@
 using HMS.Api.Provisioning;
+using HMS.Modules.ActivityLog;
 using HMS.Modules.Backups;
 using HMS.Modules.Billing;
 using HMS.Modules.Branding;
@@ -37,6 +38,10 @@ public static class ModuleRegistration
         // via sp.GetRequiredService<ITenantContext>()). Scoped, not singleton: a fresh
         // instance per request/DI-scope is what keeps tenant selection request-safe.
         services.AddScoped<ITenantContext, TenantContext>();
+
+        // ActivityLog is the audit sink Identity/Patients/Billing call into (IActivityLogService),
+        // so it reads naturally first — DI registration order doesn't itself affect resolution.
+        services.AddActivityLogModule(configuration);
 
         services.AddIdentityModule(configuration);
         // Documents registers before Patients only for readability here — DI registration
