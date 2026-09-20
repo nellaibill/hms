@@ -16,6 +16,7 @@ const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
 const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage'));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'));
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'));
+const ActivityLogPage = lazy(() => import('../pages/activityLog/ActivityLogPage'));
 const UsersListPage = lazy(() => import('../pages/users/UsersListPage'));
 const UserCreatePage = lazy(() => import('../pages/users/UserCreatePage'));
 const UserViewPage = lazy(() => import('../pages/users/UserViewPage'));
@@ -162,7 +163,7 @@ const specialPages: Record<string, React.ReactNode> = {
 // previously relied on nav-level filtering alone, and '/reports' specifically exposed a full
 // patient PII export (Excel/PDF) with zero permission gate at all. See documentsRoutes/
 // patientReportsRoutes below.
-const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/documents', '/reports']);
+const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/documents', '/reports', '/admin/activity-log']);
 
 // Document Management, reachable from the '/documents' nav leaf. Route-gated via
 // RequirePermissionRoute using the nav leaf's own permission ('records-compliance',
@@ -189,6 +190,15 @@ const patientReportsRoutes = [
   {
     element: <RequirePermissionRoute permission="patient-management.view" />,
     children: [{ path: 'reports', element: withSuspense(<PatientReportsPage />) }],
+  },
+];
+
+// Activity Log (HMS.Modules.ActivityLog) — read-only audit trail. Route-gated at
+// 'identity-administration.view', matching ActivityLogsController's actual server-side check.
+const activityLogRoutes = [
+  {
+    element: <RequirePermissionRoute permission="identity-administration.view" />,
+    children: [{ path: 'admin/activity-log', element: withSuspense(<ActivityLogPage />) }],
   },
 ];
 
@@ -556,6 +566,7 @@ export const router = createBrowserRouter(
             ...dischargeSummaryRoutes,
             ...opdConsultationRoutes,
             ...documentsRoutes,
+            ...activityLogRoutes,
             ...patientReportsRoutes,
           ],
         },
