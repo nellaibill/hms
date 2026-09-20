@@ -65,7 +65,6 @@ export const OPTIONAL_FEATURE_KEYS = [
   'ambulance',
   'finance',
   'records-and-certificates',
-  'activity-log',
   'messages-and-notifications',
   'reports',
   'e-mrd',

@@ -1,4 +1,6 @@
 using FluentAssertions;
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Modules.Patients.Application;
@@ -20,11 +22,12 @@ public class PatientServiceTests
     private readonly IPatientIdentifierGenerator _identifierGenerator = Substitute.For<IPatientIdentifierGenerator>();
     private readonly IStateService _stateService = Substitute.For<IStateService>();
     private readonly IDistrictService _districtService = Substitute.For<IDistrictService>();
+    private readonly IActivityLogService _activityLog = Substitute.For<IActivityLogService>();
     private readonly PatientService _sut;
 
     public PatientServiceTests()
     {
-        _sut = new PatientService(_repository, _identifierGenerator, _stateService, _districtService, NullLogger<PatientService>.Instance);
+        _sut = new PatientService(_repository, _identifierGenerator, _stateService, _districtService, _activityLog, NullLogger<PatientService>.Instance);
 
         _identifierGenerator.NextUhidAsync(Arg.Any<CancellationToken>()).Returns("P-2026-000001");
 
@@ -81,6 +84,38 @@ public class PatientServiceTests
         result.Value.EmergencyContacts.Should().ContainSingle(c => c.Name == "Jane Doe");
         await _repository.Received(1).AddAsync(Arg.Any<Patient>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithValidRequest_WritesACreateActivityLogEntry()
+    {
+        var actorId = Guid.NewGuid();
+
+        var result = await _sut.CreateAsync(NewCreateRequest(), actorId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _activityLog.Received(1).LogAsync(
+            Arg.Is<ActivityLogRequest>(r =>
+                r.Action == ActivityLogActions.Create
+                && r.Module == ActivityLogModules.Patients
+                && r.EntityType == "Patient"
+                && r.EntityId == result.Value!.Id.ToString()
+                && r.UserId == actorId
+                && r.OldValues == null
+                && r.NewValues != null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenDuplicate_DoesNotWriteAnActivityLogEntry()
+    {
+        var existing = NewPersistedPatient();
+        _repository.FindDuplicateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(existing);
+
+        var result = await _sut.CreateAsync(NewCreateRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        await _activityLog.DidNotReceive().LogAsync(Arg.Any<ActivityLogRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -1,4 +1,6 @@
 using FluentAssertions;
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Billing.Application;
 using HMS.Modules.Billing.Application.Abstractions;
 using HMS.Modules.Billing.Contracts;
@@ -27,6 +29,7 @@ public class InvoiceServiceTests
     private readonly IDiagnosticTestService _diagnosticTestService = Substitute.For<IDiagnosticTestService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
+    private readonly IActivityLogService _activityLog = Substitute.For<IActivityLogService>();
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
     private readonly InvoiceService _sut;
     private readonly Guid _patientId = Guid.NewGuid();
@@ -43,6 +46,7 @@ public class InvoiceServiceTests
             _diagnosticTestService,
             _consultantService,
             _departmentService,
+            _activityLog,
             _logger);
 
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
@@ -329,6 +333,41 @@ public class InvoiceServiceTests
         result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
         await _paymentRepository.Received(1).AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordPaymentAsync_WithValidLineItem_WritesAPaymentActivityLogEntry()
+    {
+        var invoice = Invoice.Create(
+            "INV-2026-000001",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 0m, false, null)],
+            createdBy: null);
+        var itemId = invoice.Items.Single().Id;
+        _repository.GetByIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+
+        await _sut.RecordPaymentAsync(invoice.Id, itemId, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        await _activityLog.Received(1).LogAsync(
+            Arg.Is<ActivityLogRequest>(r =>
+                r.Action == ActivityLogActions.Payment
+                && r.Module == ActivityLogModules.Billing
+                && r.EntityType == "Invoice"
+                && r.EntityId == invoice.Id.ToString()),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordPaymentAsync_WhenInvoiceDoesNotExist_DoesNotWriteAnActivityLogEntry()
+    {
+        _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Invoice?)null);
+
+        await _sut.RecordPaymentAsync(Guid.NewGuid(), Guid.NewGuid(), new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        await _activityLog.DidNotReceive().LogAsync(Arg.Any<ActivityLogRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Identity.Application.Abstractions;
 using HMS.Modules.Identity.Application.Mapping;
 using HMS.Modules.Identity.Contracts;
@@ -22,6 +24,7 @@ internal class UserService : IUserService
     private readonly IRoleRepository _roleRepository;
     private readonly IUserFileStorage _fileStorage;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IActivityLogService _activityLog;
     private readonly ILogger<UserService> _logger;
 
     public UserService(
@@ -29,14 +32,45 @@ internal class UserService : IUserService
         IRoleRepository roleRepository,
         IUserFileStorage fileStorage,
         IPasswordHasher passwordHasher,
+        IActivityLogService activityLog,
         ILogger<UserService> logger)
     {
         _repository = repository;
         _roleRepository = roleRepository;
         _fileStorage = fileStorage;
         _passwordHasher = passwordHasher;
+        _activityLog = activityLog;
         _logger = logger;
     }
+
+    // Explicit field list (not the User entity): PasswordHash and anything credential-like
+    // must never reach the audit log.
+    private static object Snapshot(User user) => new
+    {
+        user.Username,
+        user.FirstName,
+        user.LastName,
+        user.Email,
+        user.PhoneNumber,
+        user.RoleId,
+        user.ConsultantId,
+        user.IsActive,
+    };
+
+    // Best-effort audit write (never throws - see IActivityLogService); runs only after the
+    // user change itself has been saved.
+    private Task LogAsync(string action, User user, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
+        => _activityLog.LogAsync(new ActivityLogRequest
+        {
+            Action = action,
+            Module = ActivityLogModules.Identity,
+            EntityType = "User",
+            EntityId = user.Id.ToString(),
+            Description = description,
+            OldValues = oldValues,
+            NewValues = newValues,
+            UserId = actorId,
+        }, cancellationToken);
 
     public async Task<Result<UserResponse>> CreateAsync(CreateUserRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
@@ -79,6 +113,8 @@ internal class UserService : IUserService
 
         _logger.LogInformation("Created user {UserId}", user.Id);
 
+        await LogAsync(ActivityLogActions.Create, user, $"Created user '{user.Username}'", null, Snapshot(user), actorId, cancellationToken);
+
         return Result<UserResponse>.Success(user.ToResponse(role.Name));
     }
 
@@ -89,6 +125,8 @@ internal class UserService : IUserService
         {
             return Result<UserResponse>.Failure(UserErrorCodes.NotFound, $"User '{id}' was not found.");
         }
+
+        var before = Snapshot(user);
 
         if (!string.Equals(user.Username, request.Username.Trim(), StringComparison.OrdinalIgnoreCase))
         {
@@ -140,6 +178,8 @@ internal class UserService : IUserService
 
         _logger.LogInformation("Updated user {UserId}", user.Id);
 
+        await LogAsync(ActivityLogActions.Update, user, $"Updated user '{user.Username}'", before, Snapshot(user), actorId, cancellationToken);
+
         return Result<UserResponse>.Success(user.ToResponse(role!.Name));
     }
 
@@ -151,10 +191,14 @@ internal class UserService : IUserService
             return Result.Failure(UserErrorCodes.NotFound, $"User '{id}' was not found.");
         }
 
+        var deleted = Snapshot(user);
+
         user.SoftDelete(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Soft-deleted user {UserId}", user.Id);
+
+        await LogAsync(ActivityLogActions.Delete, user, $"Deleted user '{user.Username}'", deleted, null, actorId, cancellationToken);
 
         return Result.Success();
     }

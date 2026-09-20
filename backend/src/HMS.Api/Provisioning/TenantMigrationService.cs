@@ -1,3 +1,4 @@
+using HMS.Modules.ActivityLog.Infrastructure;
 using HMS.Modules.Billing.Infrastructure;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.Calendar.Infrastructure;
@@ -143,6 +144,13 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("discharge-summary"))
         {
             await using var db = new DischargeSummaryDbContext(BuildOptions<DischargeSummaryDbContext>(tenantConnectionString, DischargeSummaryDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // Mandatory: the audit trail must exist for every tenant regardless of any toggle.
+        if (resolved.Contains("activity-log"))
+        {
+            await using var db = new ActivityLogDbContext(BuildOptions<ActivityLogDbContext>(tenantConnectionString, ActivityLogDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
 

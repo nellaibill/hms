@@ -37,6 +37,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\ActivityLog\HMS.Modules.ActivityLog\HMS.Modules.ActivityLog.csproj" />
   </ItemGroup>
 
 </Project>

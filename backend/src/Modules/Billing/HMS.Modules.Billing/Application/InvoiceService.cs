@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Billing.Application.Abstractions;
 using HMS.Modules.Billing.Application.Mapping;
 using HMS.Modules.Billing.Contracts;
@@ -56,6 +58,7 @@ internal class InvoiceService : IInvoiceService
     private readonly IDiagnosticTestService _diagnosticTestService;
     private readonly IConsultantService _consultantService;
     private readonly IDepartmentService _departmentService;
+    private readonly IActivityLogService _activityLog;
     private readonly ILogger<InvoiceService> _logger;
 
     public InvoiceService(
@@ -68,6 +71,7 @@ internal class InvoiceService : IInvoiceService
         IDiagnosticTestService diagnosticTestService,
         IConsultantService consultantService,
         IDepartmentService departmentService,
+        IActivityLogService activityLog,
         ILogger<InvoiceService> logger)
     {
         _repository = repository;
@@ -79,8 +83,24 @@ internal class InvoiceService : IInvoiceService
         _diagnosticTestService = diagnosticTestService;
         _consultantService = consultantService;
         _departmentService = departmentService;
+        _activityLog = activityLog;
         _logger = logger;
     }
+
+    // Best-effort audit write (never throws - see IActivityLogService); runs only after the
+    // billing change itself has been committed.
+    private Task LogAsync(string action, Invoice invoice, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
+        => _activityLog.LogAsync(new ActivityLogRequest
+        {
+            Action = action,
+            Module = ActivityLogModules.Billing,
+            EntityType = "Invoice",
+            EntityId = invoice.Id.ToString(),
+            Description = description,
+            OldValues = oldValues,
+            NewValues = newValues,
+            UserId = actorId,
+        }, cancellationToken);
 
     public async Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
@@ -189,6 +209,8 @@ internal class InvoiceService : IInvoiceService
         }
 
         await _repository.SaveChangesAsync(cancellationToken);
+
+        await LogAsync(ActivityLogActions.Create, invoice, $"Created invoice {invoice.InvoiceNumber}", null, invoice.ToResponse(), actorId, cancellationToken);
 
         // Best-effort, not part of this invoice's atomic commit — mirrors ADR-028's Pharmacy
         // dispense billing precedent (stock/ledger commits first, billing is attempted only
@@ -373,13 +395,18 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.LineItemAlreadyPaid, $"Line item '{itemId}' is already paid.");
         }
 
+        var before = invoice.ToResponse();
+
         var paidItem = invoice.MarkItemPaid(itemId, actorId);
         var payment = Payment.Create(invoice.Id, paidItem.Id, paidItem.Total, request.Method, null, actorId);
 
         await _paymentRepository.AddAsync(payment, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<InvoiceResponse>.Success(invoice.ToResponse());
+        var after = invoice.ToResponse();
+        await LogAsync(ActivityLogActions.Payment, invoice, $"Recorded {request.Method} payment of {paidItem.Total} on invoice {invoice.InvoiceNumber}", before, after, actorId, cancellationToken);
+
+        return Result<InvoiceResponse>.Success(after);
     }
 
     public async Task<Result<InvoiceResponse>> VoidAsync(Guid id, VoidInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -400,10 +427,15 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.HasPayments, "An invoice with a recorded payment cannot be voided. Record a refund or contact accounts first.");
         }
 
+        var before = invoice.ToResponse();
+
         invoice.Void(request.Reason, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<InvoiceResponse>.Success(invoice.ToResponse());
+        var after = invoice.ToResponse();
+        await LogAsync(ActivityLogActions.Void, invoice, $"Voided invoice {invoice.InvoiceNumber}", before, after, actorId, cancellationToken);
+
+        return Result<InvoiceResponse>.Success(after);
     }
 
     public async Task<PagedResult<ProcedureListItem>> GetProcedureLineItemsAsync(ProcedureListQuery query, CancellationToken cancellationToken)

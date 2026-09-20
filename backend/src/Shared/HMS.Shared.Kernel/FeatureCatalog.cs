@@ -72,6 +72,12 @@ public static class FeatureCatalog
         // enabled but not this, breaking that button outright unless an admin also separately
         // remembered to toggle this on.
         "opd-consultation",
+
+        // HMS.Modules.ActivityLog, schema "activity_log" — the centralized audit trail.
+        // Formerly a UiOnly key (nav visibility only); now backed by a real schema and
+        // Mandatory (below), since an audit trail a tenant could switch off would defeat its
+        // purpose and IActivityLogService is called unconditionally by Patients/Identity/Billing.
+        "activity-log",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate
@@ -94,7 +100,6 @@ public static class FeatureCatalog
         "ambulance",
         "finance",
         "records-and-certificates",
-        "activity-log",
         "reports",
         "e-mrd",
 
@@ -133,6 +138,7 @@ public static class FeatureCatalog
         "branding",
         "billing",
         "opd-consultation",
+        "activity-log",
     ];
 
     /// <summary>Platform-admin toggleable per tenant — every catalog key that isn't mandatory,

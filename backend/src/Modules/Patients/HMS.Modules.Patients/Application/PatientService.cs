@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Application.Mapping;
@@ -19,6 +21,7 @@ internal class PatientService : IPatientService
     private readonly IPatientIdentifierGenerator _identifierGenerator;
     private readonly IStateService _stateService;
     private readonly IDistrictService _districtService;
+    private readonly IActivityLogService _activityLog;
     private readonly ILogger<PatientService> _logger;
 
     public PatientService(
@@ -26,12 +29,14 @@ internal class PatientService : IPatientService
         IPatientIdentifierGenerator identifierGenerator,
         IStateService stateService,
         IDistrictService districtService,
+        IActivityLogService activityLog,
         ILogger<PatientService> logger)
     {
         _repository = repository;
         _identifierGenerator = identifierGenerator;
         _stateService = stateService;
         _districtService = districtService;
+        _activityLog = activityLog;
         _logger = logger;
     }
 
@@ -54,6 +59,21 @@ internal class PatientService : IPatientService
 
         return null;
     }
+
+    // Best-effort audit write (never throws — see IActivityLogService); runs only after the
+    // patient change itself has been saved.
+    private Task LogAsync(string action, Patient patient, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
+        => _activityLog.LogAsync(new ActivityLogRequest
+        {
+            Action = action,
+            Module = ActivityLogModules.Patients,
+            EntityType = "Patient",
+            EntityId = patient.Id.ToString(),
+            Description = description,
+            OldValues = oldValues,
+            NewValues = newValues,
+            UserId = actorId,
+        }, cancellationToken);
 
     public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request, Guid? actorId, CancellationToken cancellationToken, string? uhidOverride = null, bool requiresDataVerification = false)
     {
@@ -119,7 +139,10 @@ internal class PatientService : IPatientService
 
         _logger.LogInformation("Registered patient {PatientId} with UHID {Uhid}", patient.Id, patient.Uhid);
 
-        return Result<PatientResponse>.Success(patient.ToResponse(_repository.GetRowVersion(patient)));
+        var created = patient.ToResponse(_repository.GetRowVersion(patient));
+        await LogAsync(ActivityLogActions.Create, patient, $"Registered patient {patient.Uhid}", null, created, actorId, cancellationToken);
+
+        return Result<PatientResponse>.Success(created);
     }
 
     public async Task<Result<PatientResponse>> UpdateAsync(Guid id, UpdatePatientRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -145,6 +168,8 @@ internal class PatientService : IPatientService
             return Result<PatientResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
         }
 
+        var before = patient.ToResponse(loadedRowVersion);
+
         patient.UpdateDemographics(request.Title, request.FirstName, request.LastName, request.DateOfBirth, request.Gender, request.BloodGroup, request.MaritalStatus, actorId);
         patient.UpdateContact(request.PrimaryPhone, request.SecondaryPhone, request.Email, request.Profession, actorId);
         patient.UpdateIdProof(request.IdProofType, request.IdProofNumber, actorId);
@@ -159,7 +184,10 @@ internal class PatientService : IPatientService
 
         _logger.LogInformation("Updated patient {PatientId}", patient.Id);
 
-        return Result<PatientResponse>.Success(patient.ToResponse(_repository.GetRowVersion(patient)));
+        var updated = patient.ToResponse(_repository.GetRowVersion(patient));
+        await LogAsync(ActivityLogActions.Update, patient, $"Updated patient {patient.Uhid}", before, updated, actorId, cancellationToken);
+
+        return Result<PatientResponse>.Success(updated);
     }
 
     public async Task<Result> DeleteAsync(Guid id, Guid? actorId, CancellationToken cancellationToken)
@@ -170,10 +198,14 @@ internal class PatientService : IPatientService
             return Result.Failure(PatientErrorCodes.NotFound, $"Patient '{id}' was not found.");
         }
 
+        var deleted = patient.ToResponse(_repository.GetRowVersion(patient));
+
         patient.SoftDelete(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Soft-deleted patient {PatientId}", patient.Id);
+
+        await LogAsync(ActivityLogActions.Delete, patient, $"Deleted patient {patient.Uhid}", deleted, null, actorId, cancellationToken);
 
         return Result.Success();
     }

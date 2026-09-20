@@ -34,6 +34,7 @@
     <!-- Resolves Service/Consultant/Department display names for the Procedures List — see
          InvoiceService.GetProcedureLineItemsAsync's own comment. -->
     <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
+    <ProjectReference Include="..\..\ActivityLog\HMS.Modules.ActivityLog\HMS.Modules.ActivityLog.csproj" />
   </ItemGroup>
 
 </Project>

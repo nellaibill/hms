@@ -40,6 +40,7 @@
     <!-- Only for IDepartmentService/IConsultantService (Masters' public seam) — Registration's
          Department/Consultant fields are validated against Masters' reference data. -->
     <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
+    <ProjectReference Include="..\..\ActivityLog\HMS.Modules.ActivityLog\HMS.Modules.ActivityLog.csproj" />
   </ItemGroup>
 
 </Project>
