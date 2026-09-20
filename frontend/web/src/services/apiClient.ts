@@ -1,4 +1,5 @@
 import {
+  ActivityLogApi,
   AdmissionsApi,
   AppointmentTypesApi,
   AttendanceApi,
@@ -103,6 +104,7 @@ export const platformBackupsApi = new PlatformBackupsApi(platformHttpClient);
 
 export const authApi = new AuthApi(httpClient);
 export const usersApi = new UsersApi(httpClient);
+export const activityLogApi = new ActivityLogApi(httpClient);
 export const rolesApi = new RolesApi(httpClient);
 export const patientsApi = new PatientsApi(httpClient);
 export const patientImportApi = new PatientImportApi(httpClient);

@@ -62,3 +62,4 @@ export * from './notifications/notificationPreference';
 export * from './messaging/conversation';
 export * from './messaging/message';
 export * from './dischargeSummary/dischargeSummary';
+export * from './activityLog/activityLog';

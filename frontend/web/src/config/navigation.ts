@@ -232,7 +232,7 @@ export const navigationTree: NavNode[] = [
     icon: History,
     iconColor: 'text-slate-500',
     description: 'System-wide, read-only audit trail of every module\'s write transactions.',
-    permission: 'workforce-admin',
+    permission: 'identity-administration',
     feature: 'activity-log',
     section: 'Administrative',
   },

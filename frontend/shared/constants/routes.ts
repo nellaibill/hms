@@ -352,6 +352,11 @@ export const API_ROUTES = {
     },
     stockLedger: '/api/v1/pharmacy/stock-ledger',
   },
+  /** Mirrors HMS.Modules.ActivityLog.Endpoints.ActivityLogsController (read-only). */
+  activityLogs: {
+    base: '/api/v1/activity-logs',
+    byId: (id: string) => `/api/v1/activity-logs/${id}`,
+  },
   /** Mirrors HMS.Modules.Notifications.Endpoints.*Controller. */
   notifications: {
     base: '/api/v1/notifications',
