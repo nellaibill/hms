@@ -5,6 +5,7 @@ import { Pagination } from '@/components/Pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ConsultantName } from '@/components/ConsultantName';
 import { LabStatusBadge } from '@/features/laboratory';
 import { useOpdInvestigationsQuery } from '../hooks/useOpdInvestigationsQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
@@ -88,9 +89,11 @@ export function OpdInvestigationsListTable({ filters, page, onPageChange }: OpdI
                   </td>
                   {/* LabOrderItemResponse only carries consultantId (a Guid), not a display
                       name — unlike OpdPatientListItem/ProcedureListItem, Laboratory doesn't
-                      denormalize the consultant's name onto its order items. Shown raw rather
-                      than silently hidden; see this task's final report for the gap. */}
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{item.consultantId ?? '—'}</td>
+                      denormalize the consultant's name onto its order items, so it's resolved
+                      here from the cached consultants list instead of showing the raw Guid. */}
+                  <td className="whitespace-nowrap px-4 py-3 text-foreground">
+                    {item.consultantId ? <ConsultantName consultantId={item.consultantId} /> : <span className="text-muted-foreground">—</span>}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
                     {new Date(order.createdAt).toLocaleString('en-IN')}
                   </td>

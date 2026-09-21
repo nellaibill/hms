@@ -568,6 +568,36 @@ public class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PaidInSameRequest_StillCarriesTheBilledConsultantOntoTheLabOrder()
+    {
+        // ConsultantId is cleared as soon as a line is paid (ADR-048), so a fully-paid invoice
+        // reaches the lab-order hook with ConsultantId == null — the lab order must fall back to
+        // BilledConsultantId or the OPD Investigations List shows no consultant.
+        var serviceId = Guid.NewGuid();
+        var consultantId = Guid.NewGuid();
+        var request = ValidRequest() with
+        {
+            Items =
+            [
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ConsultantId = consultantId.ToString(), ServiceId = serviceId.ToString(), Quantity = 1, UnitPrice = 300m },
+            ],
+            Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 300m }],
+        };
+        _patientVisitService.GetByIdAsync(_patientId, request.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitType = VisitType.OP }));
+        _labOrderService.CreateFromInvoiceAsync(Arg.Any<CreateLabOrderFromInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<LabOrderResponse>.Success(new LabOrderResponse()));
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _labOrderService.Received(1).CreateFromInvoiceAsync(
+            Arg.Is<CreateLabOrderFromInvoiceRequest>(r => r.Lines.Count == 1 && r.Lines[0].ConsultantId == consultantId),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateAsync_WithBothLaboratoryAndRadiologyLines_RaisesOneLabOrderCoveringBoth()
     {
         var labServiceId = Guid.NewGuid();
