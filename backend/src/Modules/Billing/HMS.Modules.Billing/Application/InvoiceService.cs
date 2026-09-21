@@ -243,7 +243,10 @@ internal class InvoiceService : IInvoiceService
                     {
                         Guid.TryParse(i.ServiceId, out var serviceId);
                         Guid.TryParse(i.DepartmentId, out var departmentId);
-                        Guid.TryParse(i.ConsultantId, out var consultantId);
+                        // ConsultantId is cleared once the line is paid (and the invoice is paid
+                        // in this same request), so fall back to BilledConsultantId — otherwise
+                        // every lab/radiology order raised from a paid invoice loses its consultant.
+                        Guid.TryParse(i.ConsultantId ?? i.BilledConsultantId, out var consultantId);
 
                         return new CreateLabOrderLineRequest
                         {
@@ -468,7 +471,7 @@ internal class InvoiceService : IInvoiceService
                 ConsultantId = r.ConsultantId,
                 ConsultantName = await ResolveConsultantNameAsync(r.ConsultantId, cancellationToken),
                 DepartmentId = r.DepartmentId,
-                DepartmentName = await ResolveDepartmentNameAsync(r.DepartmentId, cancellationToken),
+                DepartmentName = await ResolveProcedureDepartmentNameAsync(r.DepartmentId, r.ConsultantId, cancellationToken),
                 CreatedAt = r.CreatedAt,
                 PaymentStatus = r.PaymentStatus,
                 Total = r.Total,
@@ -490,6 +493,22 @@ internal class InvoiceService : IInvoiceService
         if (!Guid.TryParse(consultantId, out var id)) return consultantId;
         var consultant = await _consultantService.GetByIdAsync(id, cancellationToken);
         return consultant.Value?.Name ?? consultantId;
+    }
+
+    /// <summary>Procedure Billing rows don't capture a department (only Consultation rows do), so
+    /// DepartmentId is normally empty here — fall back to the billed consultant's own department
+    /// so the Procedures List's Department column isn't blank.</summary>
+    private async Task<string?> ResolveProcedureDepartmentNameAsync(string? departmentId, string? consultantId, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(departmentId)) return await ResolveDepartmentNameAsync(departmentId, cancellationToken);
+        if (!Guid.TryParse(consultantId, out var id)) return null;
+
+        var consultant = await _consultantService.GetByIdAsync(id, cancellationToken);
+        var consultantDepartmentId = consultant.Value?.DepartmentId;
+        if (consultantDepartmentId is null) return null;
+
+        var department = await _departmentService.GetByIdAsync(consultantDepartmentId.Value, cancellationToken);
+        return department.Value?.Name;
     }
 
     private async Task<string?> ResolveDepartmentNameAsync(string? departmentId, CancellationToken cancellationToken)
