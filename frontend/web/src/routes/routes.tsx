@@ -114,6 +114,7 @@ const LabPackageDetailPage = lazy(() => import('../pages/diagnostics/LabPackageD
 const LabDashboardPage = lazy(() => import('../pages/diagnostics/LabDashboardPage'));
 const LabWorklistPage = lazy(() => import('../pages/diagnostics/LabWorklistPage'));
 const LabOrderDetailPage = lazy(() => import('../pages/diagnostics/LabOrderDetailPage'));
+const RadiologyPage = lazy(() => import('../pages/diagnostics/RadiologyPage'));
 const DischargeSummaryEditPage = lazy(() => import('../pages/dischargeSummary/DischargeSummaryEditPage'));
 const DischargeSummaryViewPage = lazy(() => import('../pages/dischargeSummary/DischargeSummaryViewPage'));
 
@@ -163,7 +164,7 @@ const specialPages: Record<string, React.ReactNode> = {
 // previously relied on nav-level filtering alone, and '/reports' specifically exposed a full
 // patient PII export (Excel/PDF) with zero permission gate at all. See documentsRoutes/
 // patientReportsRoutes below.
-const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/documents', '/reports', '/admin/activity-log']);
+const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/diagnostics/radiology', '/documents', '/reports', '/admin/activity-log']);
 
 // Document Management, reachable from the '/documents' nav leaf. Route-gated via
 // RequirePermissionRoute using the nav leaf's own permission ('records-compliance',
@@ -486,6 +487,21 @@ const labWorkflowRoutes = [
   },
 ];
 
+// Radiology (HMS.Modules.Radiology) — patient X-ray images with an AI-drafted read, reached from
+// the '/diagnostics/radiology' nav leaf. Guarded like labWorkflowRoutes: the 'radiology' tenant
+// feature, then 'diagnostics.view' matching RadiologyAiController's server-side check.
+const radiologyRoutes = [
+  {
+    element: <RequireFeatureRoute feature="radiology" />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="diagnostics.view" />,
+        children: [{ path: 'diagnostics/radiology', element: withSuspense(<RadiologyPage />) }],
+      },
+    ],
+  },
+];
+
 // Discharge Summary (HMS.Modules.DischargeSummary) — reached from the Admission page's
 // "Discharge Summary" action once Admission.Status is Discharged (AdmissionViewPage.tsx), not
 // from a top-level nav item (no nav leaf exists for this MVP — see config/navigation.ts).
@@ -563,6 +579,7 @@ export const router = createBrowserRouter(
             ...pharmacyRoutes,
             ...diagnosticsRoutes,
             ...labWorkflowRoutes,
+            ...radiologyRoutes,
             ...dischargeSummaryRoutes,
             ...opdConsultationRoutes,
             ...documentsRoutes,

@@ -7,6 +7,7 @@ export * from './services/rolesApi';
 export * from './services/patientsApi';
 export * from './services/patientImportApi';
 export * from './services/documentsApi';
+export * from './services/radiologyApi';
 export * from './services/brandingApi';
 export * from './services/backupsApi';
 export * from './services/platformBackupsApi';
