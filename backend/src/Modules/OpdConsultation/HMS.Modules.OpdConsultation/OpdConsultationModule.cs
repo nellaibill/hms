@@ -5,6 +5,7 @@ using HMS.Modules.OpdConsultation.Application.Validators;
 using HMS.Modules.OpdConsultation.Contracts;
 using HMS.Modules.OpdConsultation.Infrastructure;
 using HMS.Modules.OpdConsultation.Infrastructure.Repositories;
+using HMS.Shared.Infrastructure.Ai;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -48,13 +49,19 @@ public static class OpdConsultationModule
         // so existing deployments/tests that only ever configured Ai:Anthropic:* keep working
         // unchanged. See AnthropicClinicalNoteAiClient/OpenAiClinicalNoteAiClient's own doc
         // comments for why a missing key never silently no-ops, unlike Notifications' senders.
-        if (string.Equals(configuration["Ai:Provider"], "OpenAI", StringComparison.OrdinalIgnoreCase))
+        switch (configuration.GetAiProvider())
         {
-            services.AddHttpClient<IClinicalNoteAiClient, OpenAiClinicalNoteAiClient>();
-        }
-        else
-        {
-            services.AddHttpClient<IClinicalNoteAiClient, AnthropicClinicalNoteAiClient>();
+            case AiProvider.OpenAI:
+                services.AddHttpClient<IClinicalNoteAiClient, OpenAiClinicalNoteAiClient>();
+                break;
+            case AiProvider.AzureOpenAI:
+                // Only implemented in the shared extractor — see ExtractorBackedClinicalNoteAiClient.
+                services.AddHmsAiExtractor(configuration);
+                services.AddScoped<IClinicalNoteAiClient, ExtractorBackedClinicalNoteAiClient>();
+                break;
+            default:
+                services.AddHttpClient<IClinicalNoteAiClient, AnthropicClinicalNoteAiClient>();
+                break;
         }
 
         // Registered explicitly, not AddValidatorsFromAssemblyContaining — that scanner only
