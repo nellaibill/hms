@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\Modules\Pharmacy\HMS.Modules.Pharmacy\HMS.Modules.Pharmacy.csproj" />
     <ProjectReference Include="..\..\Modules\Messaging\HMS.Modules.Messaging\HMS.Modules.Messaging.csproj" />
     <ProjectReference Include="..\..\Modules\DischargeSummary\HMS.Modules.DischargeSummary\HMS.Modules.DischargeSummary.csproj" />
+    <ProjectReference Include="..\..\Modules\Radiology\HMS.Modules.Radiology\HMS.Modules.Radiology.csproj" />
     <ProjectReference Include="..\..\Modules\OpdConsultation\HMS.Modules.OpdConsultation\HMS.Modules.OpdConsultation.csproj" />
     <ProjectReference Include="..\..\Modules\ActivityLog\HMS.Modules.ActivityLog\HMS.Modules.ActivityLog.csproj" />
   </ItemGroup>

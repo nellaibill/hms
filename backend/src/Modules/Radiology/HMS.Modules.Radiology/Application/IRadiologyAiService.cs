@@ -10,7 +10,14 @@ namespace HMS.Modules.Radiology.Application;
 /// </summary>
 public interface IRadiologyAiService
 {
-    /// <summary>Reads the stored image document (after the usual document access check) and asks the
-    /// configured vision model for a structured, unreviewed X-ray read.</summary>
+    /// <summary>Reads a patient's stored image (after the usual document access check), asks the
+    /// configured vision model for a structured X-ray read, and saves it to the patient's record as
+    /// an unreviewed draft.</summary>
     Task<Result<XrayAiAnalysisResponse>> AnalyzeDocumentAsync(Guid documentId, DocumentActor actor, CancellationToken cancellationToken);
+
+    /// <summary>Every saved analysis of the images this caller can see for the patient, newest first.</summary>
+    Task<Result<IReadOnlyList<XrayAiAnalysisResponse>>> GetPatientAnalysesAsync(Guid patientId, DocumentActor actor, CancellationToken cancellationToken);
+
+    /// <summary>A doctor/radiologist confirms they have read a saved AI draft. Idempotent.</summary>
+    Task<Result<XrayAiAnalysisResponse>> MarkReviewedAsync(Guid analysisId, DocumentActor actor, CancellationToken cancellationToken);
 }

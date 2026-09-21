@@ -12,11 +12,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
     <!-- IDocumentService (public seam): the stored X-ray image is read through it so the same
-         per-owner-type/classification access check as every other document read applies. No
-         database of its own in this module. -->
+         per-owner-type/classification access check as every other document read applies. -->
     <ProjectReference Include="..\..\Documents\HMS.Modules.Documents\HMS.Modules.Documents.csproj" />
   </ItemGroup>
 

@@ -294,6 +294,8 @@ export const API_ROUTES = {
   /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */
   radiology: {
     aiAnalysis: (documentId: string) => `/api/v1/radiology/ai-analysis/documents/${documentId}`,
+    patientAnalyses: (patientId: string) => `/api/v1/radiology/ai-analysis/patients/${patientId}`,
+    review: (analysisId: string) => `/api/v1/radiology/ai-analysis/${analysisId}/review`,
   },
   /** Mirrors HMS.Modules.Laboratory.Endpoints.LabOrdersController — the lab worklist: sample
    * collection through result entry, verification, and report generation/release. Deliberately

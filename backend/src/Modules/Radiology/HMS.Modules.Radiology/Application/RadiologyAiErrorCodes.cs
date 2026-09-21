@@ -9,6 +9,9 @@ internal static class RadiologyAiErrorCodes
     public const string UnsupportedImage = "RADIOLOGY.UNSUPPORTED_IMAGE";
     public const string ImageTooLarge = "RADIOLOGY.IMAGE_TOO_LARGE";
     public const string RequestFailed = "RADIOLOGY.AI_REQUEST_FAILED";
+    public const string NotPatientDocument = "RADIOLOGY.NOT_A_PATIENT_DOCUMENT";
+    public const string AnalysisNotFound = "RADIOLOGY.ANALYSIS_NOT_FOUND";
+    public const string ReviewForbidden = "RADIOLOGY.REVIEW_FORBIDDEN";
 
     // Mirrors HMS.Modules.Documents.Application.DocumentErrorCodes (internal there).
     public const string DocumentNotFound = "DOCUMENTS.DOCUMENT_NOT_FOUND";
