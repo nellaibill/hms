@@ -106,6 +106,8 @@ export interface TenantFeaturesResponse {
   enabledFeatures: string[];
   allFeatures: string[];
   mandatoryFeatures: string[];
+  /** Mirrors FeatureCatalog.Dependencies: feature key -> the keys it requires to be enabled too. */
+  dependencies: Record<string, string[]>;
 }
 
 /** Mirrors HMS.Modules.Platform.Contracts.UpdateTenantFeaturesRequest. */

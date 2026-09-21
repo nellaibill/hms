@@ -137,5 +137,6 @@ internal sealed class TenantFeatureService : ITenantFeatureService
         EnabledFeatures = enabledFeatures,
         AllFeatures = FeatureCatalog.All,
         MandatoryFeatures = FeatureCatalog.Mandatory,
+        Dependencies = FeatureCatalog.Dependencies,
     };
 }

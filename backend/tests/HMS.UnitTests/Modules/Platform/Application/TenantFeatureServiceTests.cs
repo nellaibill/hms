@@ -49,6 +49,19 @@ public class TenantFeatureServiceTests
     }
 
     [Fact]
+    public async Task GetAsync_ExposesTheCatalogDependenciesSoTheUiNeedsNoCopyOfThem()
+    {
+        var tenant = NewTenant();
+        SeedTenant(tenant);
+        _featureRepository.GetByTenantIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(new List<TenantFeature>());
+
+        var result = await _sut.GetAsync(tenant.Id, CancellationToken.None);
+
+        result.Value!.Dependencies.Should().BeEquivalentTo(FeatureCatalog.Dependencies);
+        result.Value.Dependencies["pharmacy"].Should().Contain("products");
+    }
+
+    [Fact]
     public async Task GetAsync_WhenTenantNotFound_ReturnsNotFoundFailure()
     {
         _tenantRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Tenant?)null);
