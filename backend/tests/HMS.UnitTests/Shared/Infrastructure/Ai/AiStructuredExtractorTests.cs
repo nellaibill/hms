@@ -187,6 +187,32 @@ public class AiStructuredExtractorTests
         handler.Body.Should().Contain("\"model\":\"gpt-4o-mini\"");
     }
 
+    private static HuggingFaceStructuredExtractor HuggingFace(HttpMessageHandler handler, string? apiKey = "hf_key", string? model = null) =>
+        new(new HttpClient(handler), Config(("Ai:HuggingFace:ApiKey", apiKey ?? string.Empty), ("Ai:HuggingFace:Model", model ?? string.Empty)), NullLogger<HuggingFaceStructuredExtractor>.Instance);
+
+    [Fact]
+    public async Task HuggingFace_WithoutApiKey_ReturnsNotConfiguredWithoutCallingOut()
+    {
+        var result = await HuggingFace(new StubHandler(HttpStatusCode.OK, "{}"), apiKey: null).ExtractAsync(Request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(AiErrorCodes.NotConfigured);
+    }
+
+    [Fact]
+    public async Task HuggingFace_SendsToTheRouterWithBearerTokenAndConfiguredModel()
+    {
+        var handler = new CapturingHandler(OpenAiToolCallBody);
+
+        var result = await HuggingFace(handler, model: "org/some-model").ExtractAsync(Request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.GetProperty("a").GetString().Should().Be("hello");
+        handler.Uri!.ToString().Should().Be("https://router.huggingface.co/v1/chat/completions");
+        handler.Request!.Headers.Authorization!.Parameter.Should().Be("hf_key");
+        handler.Body.Should().Contain("\"model\":\"org/some-model\"");
+    }
+
     [Theory]
     [InlineData(null, "AnthropicStructuredExtractor")]
     [InlineData("Anthropic", "AnthropicStructuredExtractor")]
@@ -194,6 +220,8 @@ public class AiStructuredExtractorTests
     [InlineData("openai", "OpenAiStructuredExtractor")]
     [InlineData("AzureOpenAI", "AzureOpenAiStructuredExtractor")]
     [InlineData("azureopenai", "AzureOpenAiStructuredExtractor")]
+    [InlineData("HuggingFace", "HuggingFaceStructuredExtractor")]
+    [InlineData("huggingface", "HuggingFaceStructuredExtractor")]
     [InlineData("SomethingElse", "AnthropicStructuredExtractor")]
     public void AddHmsAiExtractor_RegistersTheProviderChosenByConfig(string? provider, string expectedType)
     {

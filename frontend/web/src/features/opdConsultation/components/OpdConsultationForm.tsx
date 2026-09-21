@@ -394,7 +394,6 @@ export function OpdConsultationForm({
     register,
     handleSubmit,
     getValues,
-    setValue,
     setError,
     clearErrors,
     watch,
@@ -445,7 +444,7 @@ export function OpdConsultationForm({
         <div className="flex flex-col gap-6">
           {hasFeature('opd-ambient-notes') && (
             <SectionCard icon={Sparkles} title="Ambient Note (AI)">
-              <AiNoteDictationPanel consultationId={note.consultationId} setValue={setValue} disabled={readOnly} />
+              <AiNoteDictationPanel consultationId={note.consultationId} disabled={readOnly} />
             </SectionCard>
           )}
 

@@ -55,6 +55,7 @@ public static class OpdConsultationModule
                 services.AddHttpClient<IClinicalNoteAiClient, OpenAiClinicalNoteAiClient>();
                 break;
             case AiProvider.AzureOpenAI:
+            case AiProvider.HuggingFace:
                 // Only implemented in the shared extractor — see ExtractorBackedClinicalNoteAiClient.
                 services.AddHmsAiExtractor(configuration);
                 services.AddScoped<IClinicalNoteAiClient, ExtractorBackedClinicalNoteAiClient>();
