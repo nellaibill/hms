@@ -205,7 +205,14 @@ export default function InvoiceCreatePage() {
     setSaveErrorDetails([]);
 
     const valid = await billingRef.current.validate();
-    if (!valid) return;
+    if (!valid) {
+      // The Collect Payment button sits at the very bottom, so a required-field error on a
+      // Consultation/Lab row further up is otherwise off-screen and the click looks like a no-op.
+      window.setTimeout(() => {
+        document.querySelector('main p.text-destructive')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+      return;
+    }
 
     const values = billingRef.current.getValues();
     const addsAnotherConsultationCharge = consultationAlreadyBilledForVisit && (values.consultation ?? []).some(isConsultationEntryActive);

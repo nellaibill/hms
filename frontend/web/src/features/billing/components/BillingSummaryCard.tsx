@@ -202,10 +202,14 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                           value={amountField.value === 0 ? '' : amountField.value}
                           onChange={(e) => {
                             paymentsManuallyEditedRef.current = true;
-                            // Hard-capped at Net Payable — there's no "tender more, get change
-                            // back" flow, so nothing entered here should ever exceed the bill.
+                            // Hard-capped at what's still owed after the *other* rows — there's no
+                            // "tender more, get change back" flow, so the rows together should
+                            // never exceed the bill (200 + 300 against a 400 bill caps the
+                            // second row at 200, not just each row at 400 individually).
                             const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                            amountField.onChange(Number.isNaN(raw) ? 0 : Math.min(raw, summary.netTotal));
+                            const otherRowsTotal = totalTendered - amountField.value;
+                            const remaining = Math.max(summary.netTotal - otherRowsTotal, 0);
+                            amountField.onChange(Number.isNaN(raw) ? 0 : Math.min(raw, remaining));
                           }}
                         />
                       )}
@@ -293,7 +297,7 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
               {paymentFields.length > 1 && (
                 <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-muted-foreground">Total entered</span>
-                  <span className={totalTendered >= summary.netTotal ? 'font-medium text-success' : 'font-medium text-destructive'}>
+                  <span className={totalTendered === summary.netTotal ? 'font-medium text-success' : 'font-medium text-destructive'}>
                     {formatCurrency(totalTendered)} of {formatCurrency(summary.netTotal)}
                   </span>
                 </div>
