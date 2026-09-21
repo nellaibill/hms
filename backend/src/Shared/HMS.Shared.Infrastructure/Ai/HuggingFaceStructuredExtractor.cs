@@ -9,12 +9,12 @@ namespace HMS.Shared.Infrastructure.Ai;
 /// <summary>
 /// Hugging Face Inference Providers via its OpenAI-compatible router; config under
 /// <c>Ai:HuggingFace:*</c> — <c>ApiKey</c> (a HF access token) and <c>Model</c> (a repo id such as
-/// "meta-llama/Llama-3.3-70B-Instruct"; it must be served by a provider that supports function
+/// "openai/gpt-oss-120b"; it must be served by a provider that supports function
 /// calling). Same wire format as OpenAI, so it reuses <see cref="OpenAiChatProtocol"/>.
 /// </summary>
 internal sealed class HuggingFaceStructuredExtractor : IAiStructuredExtractor
 {
-    internal const string DefaultModel = "meta-llama/Llama-3.3-70B-Instruct";
+    internal const string DefaultModel = "openai/gpt-oss-120b";
     private const string ApiUrl = "https://router.huggingface.co/v1/chat/completions";
 
     private readonly HttpClient _httpClient;
