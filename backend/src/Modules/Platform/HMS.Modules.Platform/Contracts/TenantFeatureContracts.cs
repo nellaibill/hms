@@ -18,6 +18,11 @@ public record TenantFeaturesResponse
     /// <summary>Always enabled, never toggleable — the frontend shows these checked and
     /// disabled rather than omitting them entirely.</summary>
     public IReadOnlyList<string> MandatoryFeatures { get; init; } = [];
+
+    /// <summary>FeatureCatalog.Dependencies — feature key to the Optional keys it requires — so
+    /// the frontend can auto-enable/disable them instead of hardcoding (and drifting from) its
+    /// own copy; the validators still enforce it server-side.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> Dependencies { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 }
 
 public record UpdateTenantFeaturesRequest
