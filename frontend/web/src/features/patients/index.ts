@@ -12,6 +12,7 @@ export * from './components/PatientSummaryCard';
 export * from './components/PatientTable';
 export * from './components/RecordVisitForm';
 export * from './components/RegistrationsTrendChart';
+export * from './components/VerifyPatientDialog';
 export * from './hooks/usePatientDocumentsQuery';
 export * from './hooks/usePatientMutations';
 export * from './hooks/usePatientQuery';

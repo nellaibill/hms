@@ -30,6 +30,7 @@ import { useDeletePatientMutation } from '../hooks/usePatientMutations';
 import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
 import { DeletePatientDialog } from './DeletePatientDialog';
+import { VerifyPatientDialog } from './VerifyPatientDialog';
 
 interface PatientSummaryCardProps {
   patient: Patient;
@@ -68,6 +69,7 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
   const navigate = useNavigate();
   const deleteMutation = useDeletePatientMutation();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
 
   const lastVisit = visits?.[0];
 
@@ -186,13 +188,24 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
         </div>
         {/* Primary color + default (not sm) size — same treatment as Edit Patient above, since
             this is just as consequential an action and was getting lost visually as a small
-            outline button. */}
+            outline button. Only a verified patient (requiresDataVerification === false) can
+            have a visit added — an unverified one still has placeholder demographics/contact
+            data from bulk import, which must not flow into a new visit. Rather than a Link that
+            always navigates, this is a plain Button that gates on the flag and, when blocked,
+            opens VerifyPatientDialog instead of the Add Visit page. */}
         {hasPermission('patient-management.edit') && (
-          <Button asChild className="gap-1.5">
-            <Link to={`/patients/registration/${patient.id}/visits/new`}>
-              <CalendarPlus className="h-4 w-4" />
-              Add Visit
-            </Link>
+          <Button
+            className="gap-1.5"
+            onClick={() => {
+              if (patient.requiresDataVerification) {
+                setShowVerifyPrompt(true);
+              } else {
+                navigate(`/patients/registration/${patient.id}/visits/new`);
+              }
+            }}
+          >
+            <CalendarPlus className="h-4 w-4" />
+            Add Visit
           </Button>
         )}
       </div>
@@ -205,6 +218,8 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
           onCancel={() => setConfirmingDelete(false)}
         />
       )}
+
+      {showVerifyPrompt && <VerifyPatientDialog patient={patient} onCancel={() => setShowVerifyPrompt(false)} />}
     </div>
   );
 }
