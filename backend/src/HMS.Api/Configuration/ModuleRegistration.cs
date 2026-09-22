@@ -19,6 +19,7 @@ using HMS.Modules.Pharmacy;
 using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products;
+using HMS.Modules.Radiology;
 using HMS.Shared.Kernel;
 
 namespace HMS.Api.Configuration;
@@ -74,6 +75,11 @@ public static class ModuleRegistration
         // same collection), but this ordering reads naturally as "the thing Billing depends on
         // registers first."
         services.AddLaboratoryModule(configuration);
+
+        // Radiology (AI X-ray analysis) reads stored images through Documents' public
+        // IDocumentService seam and owns no database, so it only needs to register after
+        // AddDocumentsModule (satisfied above).
+        services.AddRadiologyModule(configuration);
 
         // Billing depends on Patients' (PatientId existence) and Masters' (Department/
         // Consultant existence) public service seams for invoice-creation validation, so it

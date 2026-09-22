@@ -291,6 +291,10 @@ export const API_ROUTES = {
       procedures: '/api/v1/billing/invoices/procedures',
     },
   },
+  /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */
+  radiology: {
+    aiAnalysis: (documentId: string) => `/api/v1/radiology/ai-analysis/documents/${documentId}`,
+  },
   /** Mirrors HMS.Modules.Laboratory.Endpoints.LabOrdersController — the lab worklist: sample
    * collection through result entry, verification, and report generation/release. Deliberately
    * has no `base` POST — orders are only ever created in-process by Billing, never via HTTP. */

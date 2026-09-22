@@ -7,6 +7,7 @@ export * from './patients/patient';
 export * from './patients/patientVisit';
 export * from './patients/patientImport';
 export * from './documents/document';
+export * from './radiology/xrayAiAnalysis';
 export * from './branding/branding';
 export * from './backups/backup';
 export * from './products/product';

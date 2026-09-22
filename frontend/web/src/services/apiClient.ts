@@ -18,6 +18,7 @@ import {
   DiagnosticServicesApi,
   DischargeSummaryApi,
   DocumentsApi,
+  RadiologyApi,
   EmployeesApi,
   EventsApi,
   HrDashboardApi,
@@ -109,6 +110,7 @@ export const rolesApi = new RolesApi(httpClient);
 export const patientsApi = new PatientsApi(httpClient);
 export const patientImportApi = new PatientImportApi(httpClient);
 export const documentsApi = new DocumentsApi(httpClient);
+export const radiologyApi = new RadiologyApi(httpClient);
 export const brandingApi = new BrandingApi(httpClient);
 export const backupsApi = new BackupsApi(httpClient);
 export const mastersApi = new MastersApi(httpClient);
