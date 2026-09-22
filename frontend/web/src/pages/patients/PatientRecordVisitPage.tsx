@@ -1,13 +1,13 @@
 import type { RecordVisitUiFormValues } from '@hms/shared';
 import { ClipboardList, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
 import { PageBanner } from '@/components/PageBanner';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
-import { DataVerificationBanner, RecordVisitForm, useCreatePatientVisitMutation, usePatientQuery } from '../../features/patients';
+import { RecordVisitForm, useCreatePatientVisitMutation, usePatientQuery } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
 import { toCreatePatientVisitRequest } from '../../features/patients/bridging';
 
@@ -25,7 +25,22 @@ export default function PatientRecordVisitPage() {
   const [isDirty, setIsDirty] = useState(false);
   const { showUnsavedDialog, confirmDiscard, cancelDiscard, markSaved } = useUnsavedChangesGuard(isDirty);
 
-  if (isPending) {
+  // Reached by typing/bookmarking this URL directly for a patient still flagged
+  // Patient.requiresDataVerification — PatientSummaryCard's Add Visit button already blocks
+  // this case with VerifyPatientDialog, but this page must refuse the flow too rather than
+  // trust that every entry point stayed gated. Bounces back to the patient page immediately.
+  useEffect(() => {
+    if (patient?.requiresDataVerification) {
+      toast({
+        title: 'Verify patient details first',
+        description: `${patient.firstName} ${patient.lastName} (UHID ${patient.uhid}) still has placeholder data — edit and verify before adding a visit.`,
+        variant: 'warning',
+      });
+      navigate(`/patients/registration/${id}`, { replace: true });
+    }
+  }, [patient, id, navigate, toast]);
+
+  if (isPending || patient?.requiresDataVerification) {
     return (
       <div className="flex flex-1 items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -76,7 +91,6 @@ export default function PatientRecordVisitPage() {
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        {patient.requiresDataVerification && <DataVerificationBanner />}
         <RequirePermission permission="patient-management.edit">
           <RecordVisitForm
             isSubmitting={mutation.isPending}
