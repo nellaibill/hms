@@ -151,6 +151,17 @@ API's port — substitute your own.
   Every API call already resolves against this base plus a `/api/...`-prefixed path (see
   [frontend/shared/constants/routes.ts](../frontend/shared/constants/routes.ts)), so no
   frontend code hardcodes `localhost` beyond that one fallback default.
+  **The same requirement applies to `npm run dev`/`npx vite --host`, not just `npm run
+  build`** — Vite resolves `VITE_API_BASE_URL` from the shell env at dev-server-start time
+  too. Forgetting it doesn't just point the app at the wrong host; a browser on a real
+  machine, loaded from the VM's public IP, treats a plain-HTTP request back to
+  `localhost:<port>` as crossing into a more-private address space and blocks it outright
+  under Chrome's Private Network Access policy (`... has been blocked by CORS policy: The
+  request client is not a secure context and the resource is in more-private address space
+  'loopback'`) — this looks like a CORS/network problem but is actually just the missing env
+  var, same fix either way: set `VITE_API_BASE_URL` to the VM's public IP/origin before
+  starting the dev server, then restart it (not just reload the page — Vite doesn't pick up
+  a changed shell env on its own).
 - **PostgreSQL** — a native install (e.g. via `scripts/setup/windows/install-hms-prereqs.ps1`)
   defaults `listen_addresses` and `pg_hba.conf` to localhost-only connections. As long as no
   firewall rule for 5432 is ever added, it's already private by default — confirmed, not
