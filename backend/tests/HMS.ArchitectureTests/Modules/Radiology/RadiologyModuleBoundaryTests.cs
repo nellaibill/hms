@@ -11,14 +11,17 @@ namespace HMS.ArchitectureTests.Modules.Radiology;
 /// everything outside Contracts is internal. IRadiologyAiService is the one deliberate exception —
 /// RadiologyAiController must be public with a public constructor for ASP.NET Core controller
 /// discovery/DI activation, and a public constructor can't take an internal parameter type (CS0051).
+/// RadiologyDbContext is the other: HMS.Api's TenantMigrationService resolves it by type for the
+/// tenant migration call.
 /// </summary>
 public class RadiologyModuleBoundaryTests
 {
     private static readonly Assembly RadiologyAssembly = typeof(RadiologyAiController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^IRadiologyAiService$";
+    private const string AllowedPublicTypeNamePattern = "^(IRadiologyAiService|RadiologyDbContext)$";
 
     [Theory]
+    [InlineData("HMS.Modules.Radiology.Domain")]
     [InlineData("HMS.Modules.Radiology.Application")]
     [InlineData("HMS.Modules.Radiology.Infrastructure")]
     public void InternalLayers_ShouldNotExposePublicTypes(string layerNamespace)

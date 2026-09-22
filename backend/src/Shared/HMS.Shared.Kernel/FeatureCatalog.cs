@@ -78,6 +78,12 @@ public static class FeatureCatalog
         // Mandatory (below), since an audit trail a tenant could switch off would defeat its
         // purpose and IActivityLogService is called unconditionally by Patients/Identity/Billing.
         "activity-log",
+
+        // HMS.Modules.Radiology, schema "radiology" — saved AI-assisted reads of a patient's stored
+        // X-ray images. Formerly a UiOnly key (sidebar/route visibility only); now backed by a real
+        // schema, so toggling it on provisions that schema. Optional, not Mandatory: nothing else
+        // depends on it.
+        "radiology",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate
@@ -95,7 +101,6 @@ public static class FeatureCatalog
         // catalog management) — a separate concern from the new workflow module, so it stays
         // here rather than being renamed or removed.
         "central-laboratory",
-        "radiology",
         "blood-bank",
         "ambulance",
         "finance",
