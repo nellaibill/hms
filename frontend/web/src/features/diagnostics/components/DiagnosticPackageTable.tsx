@@ -31,13 +31,18 @@ export function DiagnosticPackageTable({ packages, onDeleteRequested }: Diagnost
           {packages.map((pkg) => (
             <tr key={pkg.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{pkg.code}</td>
-              <td className="px-4 py-3 font-medium text-foreground">
+              <td className="min-w-[11rem] px-4 py-3 font-medium text-foreground">
                 <Link to={`/diagnostics/lab/packages/${pkg.id}`} className="hover:underline">
                   {pkg.name}
                 </Link>
               </td>
-              <td className="px-4 py-3 text-muted-foreground">{pkg.description || '—'}</td>
-              <td className="px-4 py-3 text-muted-foreground">₹{pkg.totalPrice.toLocaleString('en-IN')}</td>
+              <td className="min-w-[14rem] px-4 py-3 text-muted-foreground">
+                {/* Clamped: a long test list here otherwise stretched rows to 200px+ on narrow screens. */}
+                <span className="line-clamp-2" title={pkg.description ?? undefined}>
+                  {pkg.description || '—'}
+                </span>
+              </td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">₹{pkg.totalPrice.toLocaleString('en-IN')}</td>
               <td className="px-4 py-3 text-muted-foreground">{pkg.items.length}</td>
               <td className="px-4 py-3">
                 <Badge variant={pkg.isActive ? 'success' : 'secondary'}>{pkg.isActive ? 'Active' : 'Inactive'}</Badge>

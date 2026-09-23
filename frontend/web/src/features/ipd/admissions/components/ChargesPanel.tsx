@@ -149,7 +149,9 @@ export function ChargesPanel({ admissionId }: ChargesPanelProps) {
           {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
         </div>
 
-        <div className="flex flex-1 flex-col gap-1.5">
+        {/* min-w so this wraps to its own line instead of flex-1 shrinking it to a sliver
+            beside the other fields when the panel is narrow. */}
+        <div className="flex min-w-[12rem] flex-1 flex-col gap-1.5">
           <Label htmlFor="remarks">Remarks (optional)</Label>
           <Input id="remarks" {...register('remarks')} />
         </div>
