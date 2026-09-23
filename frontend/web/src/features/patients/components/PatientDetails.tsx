@@ -693,7 +693,7 @@ function billingContext(billing: Billing, visits: PatientVisit[] | undefined): {
 
 /** Billing is its own bounded context (see features/billing) — this reads it read-only for display via the real Billing API, the same way it reads DocumentUpload's storage elsewhere. A patient can have zero billing records (every category is optional at registration) — that's shown explicitly rather than hiding the section, so "no charges were entered" reads as a fact, not a missing feature. */
 function PatientBillingTab({ patientId }: { patientId: string }) {
-  const { data: billings, isPending } = usePatientInvoicesQuery(patientId);
+  const { data: billings, isPending, isError } = usePatientInvoicesQuery(patientId);
   const { data: visits } = usePatientVisitsQuery(patientId);
   // Primes the Masters reference cache describeBillingItem reads from in BillingLineItem
   // below, so every line item resolves to its real name instead of a raw id.
@@ -713,6 +713,16 @@ function PatientBillingTab({ patientId }: { patientId: string }) {
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading billing…
       </div>
+    );
+  }
+
+  // Checked before the empty state — a failed request (e.g. a 403 for a role without
+  // finance-billing.view) used to fall through to "No billing recorded", which misreads as fact.
+  if (isError) {
+    return (
+      <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        Couldn't load billing for this patient — please try again.
+      </p>
     );
   }
 

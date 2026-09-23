@@ -41,7 +41,7 @@ export default function PatientViewPage() {
 
       <div className="flex flex-1 flex-col gap-3 p-3 pt-2 lg:p-4 lg:pt-2">
         <div className="flex w-full flex-col gap-3">
-          <PatientSummaryCard patient={patient} onAddDocument={() => setActiveTab('documents')} />
+          <PatientSummaryCard patient={patient} />
           <PatientDetails patient={patient} activeTab={activeTab} onActiveTabChange={setActiveTab} />
         </div>
       </div>

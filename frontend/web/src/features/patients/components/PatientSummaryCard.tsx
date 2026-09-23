@@ -2,7 +2,6 @@ import type { Gender, Patient } from '@hms/shared';
 import {
   CalendarPlus,
   Droplet,
-  FileUp,
   Mars,
   MoreHorizontal,
   Pencil,
@@ -34,8 +33,6 @@ import { VerifyPatientDialog } from './VerifyPatientDialog';
 
 interface PatientSummaryCardProps {
   patient: Patient;
-  /** Jumps the tab strip below to Documents — see PatientViewPage, which owns the controlled tab state. */
-  onAddDocument: () => void;
 }
 
 function MetaItem({ children }: { children: React.ReactNode }) {
@@ -62,7 +59,7 @@ function GenderIcon({ gender, className }: { gender: Gender; className?: string 
  * left-rail card. Shows only fields that exist on the Patient record (plus Last Visit, sourced
  * from the real visits list); there's deliberately no Patient Type / Primary Doctor / Next
  * Appointment / Status row here since none of those are tracked in the schema yet. */
-export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCardProps) {
+export function PatientSummaryCard({ patient }: PatientSummaryCardProps) {
   const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
   const { data: visits } = usePatientVisitsQuery(patient.id);
   const { hasPermission } = useAuth();
@@ -148,7 +145,7 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
       </div>
 
       {/* Add Visit sits in its own centered row under the main action row, rather than
-          alongside it — this page's main actions (Edit/Add Document/Print/…) are all about
+          alongside it — this page's main actions (Edit/Print/…) are all about
           the patient record itself, where Add Visit starts a whole separate flow (a new
           registration/encounter) that deserves its own visual weight, not to compete for
           space in an already-full row. */}
@@ -162,10 +159,6 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
               </Link>
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onAddDocument}>
-            <FileUp className="h-4 w-4" />
-            Add Document
-          </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
             Print
