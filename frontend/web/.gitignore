@@ -1,0 +1,6 @@
+# Playwright E2E — local credentials, saved sessions and run output
+.env.e2e
+e2e/.auth/
+e2e-results/
+playwright-report/
+blob-report/
