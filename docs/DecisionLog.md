@@ -37,6 +37,29 @@ _To be documented._
 
 ## Decisions
 
+### ADR-084: Rate limits are per authenticated user (with a per-IP ceiling) and configurable; authentication now runs before the rate limiter
+**Date:** 2026-09-23
+**Status:** Accepted (revises the per-IP-only partitioning of ADR-076 and the limiter-before-authentication ordering noted under ADR-018)
+
+**Context**
+A live read-only load test against staging aborted after about 200 requests/minute. Every failure was a `429 RATE_LIMIT.TOO_MANY_REQUESTS` from the global limiter, which allowed 200 requests/minute **per client IP**, hard-coded. The server itself showed no strain: median latency moved from 894ms to 924ms going from 1 to 6 concurrent workers, with no 5xx responses. A hospital's workstations normally reach the API through one NAT'd public IP, so every staff member shared that one budget. A dashboard load fires roughly 10–15 API calls, so about 15 people navigating in the same minute would start getting 429s. The same limits also made it impossible to load-test the server past about 3 req/s from one machine.
+
+**Decision**
+1. `UseAuthentication()` now runs before `UseHmsRateLimiting()`, so the limiter can see the verified caller. For hospital tokens, JWT validation is a local signature check with no DB access. Platform tokens also get a revoked-token lookup (`OnTokenValidated`), but only after the signature validates, so anonymous traffic can't trigger it. Tenant resolution, which does hit the database, still runs after the limiter, so floods are still rejected before any per-request database work.
+2. The global limiter chains two fixed one-minute windows:
+   - **Per caller** (`RateLimitPartitionKeys.Caller`): `user:{UserId}` or `platform:{PlatformUserId}` when a valid token is present (default 300/min), otherwise `ip:{address}` (default 200/min, the old limit). A forged or expired token leaves the request anonymous, so it cannot be used to mint fresh partitions.
+   - **Per IP ceiling** on every request (default 3000/min), so one address still can't flood the host by spreading across many valid tokens.
+3. The `Write` policy is now per caller instead of per IP, for the same NAT reason. The `Login` policy stays per IP, since there is no identity at login time.
+4. All limits are bound from the `RateLimiting` configuration section (`RateLimitingOptions`), so a staging host can be loosened for load testing through environment variables (`RateLimiting__PerUserPermitLimit`, etc.) without a code change.
+5. CORS now sends `Access-Control-Max-Age: 3600`. Without it, Chromium caches a preflight for only 5s, so almost every Bearer-authenticated call paid an extra OPTIONS round trip, about 250ms each to the remote staging host.
+
+**Consequences**
+- Staff behind one NAT no longer compete for a single rate-limit budget. The per-IP ceiling of 3000/min assumes about 10 concurrently busy users per IP at the per-user rate. A larger single-site deployment may need to raise it in config.
+- Requests carrying a Bearer token now pay for signature validation before they can be rate-limited. This is accepted as negligible next to the tenant-resolution DB lookup, which still happens after the limiter.
+- `scripts/load-test/` holds a read-only k6 script and README for repeatable runs against a staging host.
+
+---
+
 ### ADR-083: Uploaded files (documents, consultant/user photos, product images, branding logo) are now scoped under the tenant's own folder on disk — plus a separate, explicit `migrate-tenant-files` command to fix up files already saved at the old shared paths
 **Date:** 2026-09-15
 **Status:** Accepted
