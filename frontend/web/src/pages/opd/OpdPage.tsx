@@ -1,5 +1,5 @@
 import type { AdmissionStatus, InvoicePaymentStatus, LabOrderItemStatus, OpdConsultationStatus } from '@hms/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, BedDouble, FlaskConical, Stethoscope, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
@@ -31,6 +31,8 @@ export default function OpdPage() {
   const [tab, setTab] = useState<OpdTab>('patients');
   const [filters, setFilters] = useState<OpdFilterValues>(emptyOpdFilters);
   const [page, setPage] = useState(1);
+  // Same key prefixes handleRefresh invalidates — drives the Refresh button's spinner.
+  const isRefreshing = useIsFetching({ queryKey: tab === 'admissions' ? ['ipd', 'admissions'] : ['opd'] }) > 0;
 
   // A Consultant/Doctor user only ever sees their own queue here — the backend forces this
   // regardless (see OpdController.GetPatientList's own comment), this just locks the
@@ -227,6 +229,7 @@ export default function OpdPage() {
           filters={filters}
           onChange={handleFiltersChange}
           onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
           onExport={handleExport}
           lockDepartmentAndConsultant={Boolean(scopedConsultantId)}
         />
