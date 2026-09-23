@@ -92,7 +92,14 @@ export function PageBanner({ icon: Icon, leading, title, subtitle, titleExtra, r
 
       {centerBlock}
 
-      <div className="flex flex-wrap items-center justify-end gap-2 justify-self-end">{rightActions}</div>
+      {/* Below lg, right-side actions drop to their own centered row under the title: sharing
+          the title row there (a phone, or a tablet with the sidebar open) squeezes the title
+          into a sliver beside a wide button like "View Patient History". */}
+      {rightActions && (
+        <div className="col-span-3 row-start-2 mt-3 flex flex-wrap items-center justify-center gap-2 lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:mt-0 lg:justify-end lg:justify-self-end">
+          {rightActions}
+        </div>
+      )}
     </div>
   );
 }
