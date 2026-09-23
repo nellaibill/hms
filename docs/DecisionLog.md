@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-085: Patient Date of Birth capped at 100 years old (was 130) on both registration and edit
+**Date:** 2026-09-23
+**Status:** Accepted
+
+**Context**
+User request: DOB should only allow ages up to 100. The previous 130-year floor (ADR-042) let legacy-import placeholder DOBs like `1900-01-01` (age 126) pass validation on the Edit form.
+
+**Decision**
+- `CreatePatientRequestValidator.MaxAgeYears = 100`; `MinDateOfBirth` is now a computed property (was a `static readonly` field frozen at process start) and both Create/Update validators pass it as a lambda so it's evaluated per request.
+- Shared Zod `demographicsUiSchema.dateOfBirth` (used by both the Registration and Edit schemas) and `dateOfBirthInputBounds()` (the native picker's `min`, used by both forms) moved to the same 100-year cap.
+
+**Consequences**
+- Editing a legacy patient whose DOB is a >100-year placeholder now requires correcting the DOB before saving — intended, matching the legacy-data banner's prompt.
+- A genuine patient older than 100 cannot be registered.
+
+---
+
 ### ADR-084: Rate limits are per authenticated user (with a per-IP ceiling) and configurable; authentication now runs before the rate limiter
 **Date:** 2026-09-23
 **Status:** Accepted (revises the per-IP-only partitioning of ADR-076 and the limiter-before-authentication ordering noted under ADR-018)
