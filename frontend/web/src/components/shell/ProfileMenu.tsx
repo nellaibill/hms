@@ -36,7 +36,7 @@ export function ProfileMenu() {
             <AvatarFallback>{user ? initialsOf(user.name) : <UserRound className="h-4 w-4" />}</AvatarFallback>
           </Avatar>
           {user && (
-            <span className="hidden flex-col items-start leading-tight sm:flex">
+            <span className="hidden flex-col items-start leading-tight xl:flex">
               <span className="text-xs font-medium text-header-foreground">{user.name}</span>
               <span className="text-[11px] text-header-foreground/70">{roleLabel}</span>
             </span>

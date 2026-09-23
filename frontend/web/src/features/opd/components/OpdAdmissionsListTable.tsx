@@ -105,7 +105,7 @@ export function OpdAdmissionsListTable({ filters, page, onPageChange }: OpdAdmis
 
       {!isPending && !isError && data && data.items.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">

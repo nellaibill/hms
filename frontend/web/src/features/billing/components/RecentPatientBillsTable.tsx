@@ -81,7 +81,7 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                 <td className="whitespace-nowrap px-4 py-3 text-foreground">
                   {primaryDepartmentId ? <DepartmentName departmentId={primaryDepartmentId} /> : <span className="text-muted-foreground">—</span>}
                 </td>
-                <td className="px-4 py-3 text-foreground">
+                <td className="min-w-[16rem] px-4 py-3 text-foreground">
                   <ConsultantsCell consultants={bill.consultants} />
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
