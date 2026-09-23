@@ -19,6 +19,7 @@ import { bloodGroupLabel } from '@/features/patients/bloodGroupLabel';
 import { Pagination } from '@/features/patients';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import { departmentsApi, patientsApi } from '@/services/apiClient';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
@@ -398,8 +399,10 @@ export default function PatientReportsPage() {
                     {rows.map((row: PatientReportRow) => (
                       <tr key={row.patient.id} className="hover:bg-muted/30">
                         <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.patient.uhid}</td>
-                        <td className="px-4 py-3 font-medium text-foreground">
-                          {row.patient.firstName} {row.patient.lastName}
+                        <td className="px-4 py-3">
+                          <PatientNameLink patientId={row.patient.id}>
+                            {row.patient.firstName} {row.patient.lastName}
+                          </PatientNameLink>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{row.patient.age}</td>
                         <td className="px-4 py-3 text-muted-foreground">{row.patient.gender === 'NA' ? 'N/A' : row.patient.gender}</td>

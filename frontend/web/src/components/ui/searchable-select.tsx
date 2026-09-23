@@ -133,7 +133,8 @@ export function SearchableSelect({
               onMouseEnter={() => setHighlighted(index)}
               className={cn(
                 'flex w-full items-start gap-2 rounded-sm px-2 py-1.5 text-left text-sm',
-                index === highlighted ? 'bg-accent text-accent-foreground' : 'text-foreground',
+                // Same Hospital Settings left-nav active pair as SelectItem (see select.tsx).
+                index === highlighted ? 'bg-sidebar-active text-sidebar-active-foreground' : option.value === value ? 'font-medium text-sidebar-active-foreground' : 'text-foreground',
               )}
             >
               <span className="mt-px flex h-3.5 w-3.5 shrink-0 items-center justify-center">

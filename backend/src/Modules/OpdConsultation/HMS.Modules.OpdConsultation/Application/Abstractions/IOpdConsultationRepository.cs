@@ -10,5 +10,8 @@ internal interface IOpdConsultationRepository
 
     Task<Domain.OpdConsultationNote?> GetByConsultationIdAsync(Guid consultationId, CancellationToken cancellationToken);
 
+    /// <summary>Every note already on file for one patient (read-only, untracked), newest first.</summary>
+    Task<IReadOnlyList<Domain.OpdConsultationNote>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

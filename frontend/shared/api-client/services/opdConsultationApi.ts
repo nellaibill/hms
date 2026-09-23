@@ -24,6 +24,14 @@ export class OpdConsultationApi {
     return response.data;
   }
 
+  /** Every consultation note already recorded for a patient (newest first), each with its
+   * header — read-only, unlike getOrCreate it never creates a note. Backs Patient Details'
+   * Medical Information tab. */
+  async listByPatient(patientId: string): Promise<OpdConsultationDetail[]> {
+    const response = await this.client.get<OpdConsultationDetail[]>(API_ROUTES.opdConsultations.base, { query: { patientId } });
+    return response.data;
+  }
+
   async saveDraft(consultationId: string, request: SaveOpdConsultationRequest): Promise<OpdConsultationNote> {
     const response = await this.client.post<OpdConsultationNote>(API_ROUTES.opdConsultations.saveDraft(consultationId), request);
     return response.data;

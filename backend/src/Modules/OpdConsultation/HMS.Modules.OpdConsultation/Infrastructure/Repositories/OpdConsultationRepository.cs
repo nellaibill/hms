@@ -26,6 +26,15 @@ internal class OpdConsultationRepository : IOpdConsultationRepository
             .Include(x => x.Investigations)
             .FirstOrDefaultAsync(x => x.ConsultationId == consultationId, cancellationToken);
 
+    public async Task<IReadOnlyList<OpdConsultationNote>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
+        => await _dbContext.OpdConsultationNotes
+            .AsNoTracking()
+            .Include(x => x.Diagnoses)
+            .Include(x => x.Investigations)
+            .Where(x => x.PatientId == patientId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 }

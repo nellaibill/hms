@@ -10,6 +10,7 @@ import { ConsultantName } from '@/components/ConsultantName';
 import { LabStatusBadge } from '@/features/laboratory';
 import { useOpdInvestigationsQuery } from '../hooks/useOpdInvestigationsQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 const PAGE_SIZE = 10;
 
@@ -85,7 +86,9 @@ export function OpdInvestigationsListTable({ filters, page, onPageChange }: OpdI
               <tbody className="divide-y divide-border">
                 {data.rows.map(({ order, item }) => (
                   <tr key={item.id} className="hover:bg-muted/30">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{order.patientName}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <PatientNameLink patientId={order.patientId}>{order.patientName}</PatientNameLink>
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{order.patientUhid}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.testName}</td>
                     <td className="whitespace-nowrap px-4 py-3">
