@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules'] },
+  { ignores: ['dist', 'node_modules', 'playwright-report', 'e2e-results'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -18,6 +18,12 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': 'warn',
     },
+  },
+  // Playwright fixtures call a function named `use`, which the React hooks rule mistakes for
+  // React's use() hook.
+  {
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
   },
   prettierConfig,
 );
