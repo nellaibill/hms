@@ -80,10 +80,10 @@ export class PatientRegistrationPage {
     await this.field('Aadhaar number').fill(patient.aadhaarNumber);
   }
 
-  /** Picks the first department and its first consultant — any valid pair will do. */
-  async fillRegistrationDetails(): Promise<{ department: string; consultant: string }> {
-    const department = await this.pick('Department');
-    const consultant = await this.pick('Consultant');
+  /** Picks the given department/consultant, or the first of each when omitted. */
+  async fillRegistrationDetails(choice: VisitChoice = {}): Promise<{ department: string; consultant: string }> {
+    const department = await this.pick('Department', choice.department);
+    const consultant = await this.pick('Consultant', choice.consultant);
     return { department, consultant };
   }
 
@@ -99,10 +99,10 @@ export class PatientRegistrationPage {
   }
 
   /**
-   * Runs the whole wizard: registers `patient` and records today's OP visit with the first
-   * department/consultant. Ends on the new patient's page.
+   * Runs the whole wizard: registers `patient` and records today's OP visit with the given
+   * department/consultant (default: the first of each). Ends on the new patient's page.
    */
-  async registerWithOpVisit(patient: NewPatient): Promise<RegisteredPatient> {
+  async registerWithOpVisit(patient: NewPatient, choice: VisitChoice = {}): Promise<RegisteredPatient> {
     await this.navigate();
     await this.completeUpToMedicalInformation(patient);
 
@@ -113,7 +113,7 @@ export class PatientRegistrationPage {
     const { id, uhid } = (await createdResponse.json()).data as { id: string; uhid: string };
 
     await expect(this.tab('Registration Details')).toHaveAttribute('aria-selected', 'true');
-    const { department, consultant } = await this.fillRegistrationDetails();
+    const { department, consultant } = await this.fillRegistrationDetails(choice);
     const visit = this.page.waitForResponse((r) => r.request().method() === 'POST' && /\/api\/v1\/patients\/[^/]+\/visits$/.test(r.url()));
     await this.registerButton.click();
     expect((await visit).status(), 'create OP visit').toBe(201);
@@ -129,6 +129,12 @@ export class PatientRegistrationPage {
       fullName: `${patient.firstName} ${patient.lastName}`,
     };
   }
+}
+
+/** Exact option labels as the Department/Consultant pickers show them. */
+export interface VisitChoice {
+  department?: string;
+  consultant?: string;
 }
 
 export interface RegisteredPatient extends NewPatient {
