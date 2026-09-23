@@ -50,6 +50,11 @@ interface PatientDetailsProps {
   patient: Patient;
   activeTab: string;
   onActiveTabChange: (value: string) => void;
+  /** The patient-locked document upload dialog's open state — owned by the page so the
+   * summary card's "Add Document" button can open it too, not just the Documents tab's own
+   * "Upload document" button. */
+  isUploadOpen: boolean;
+  onUploadOpenChange: (open: boolean) => void;
 }
 
 /** Label-left/value-right row, consistent across every section: an uppercase label in the
@@ -759,13 +764,11 @@ function PatientBillingTab({ patientId }: { patientId: string }) {
 
 /* -------------------------------------------------------------------------- Documents */
 
-function PatientDocumentsTab({ patient }: { patient: Patient }) {
+function PatientDocumentsTab({ patient, onUpload }: { patient: Patient; onUpload: () => void }) {
   const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
   const idProofUrl = usePatientDocumentUrl(patient.id, 'IdProof');
   const { data: documents, isPending } = usePatientDocumentsQuery(patient.id);
   const sorted = [...(documents ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const queryClient = useQueryClient();
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -805,7 +808,7 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">All documents</h2>
-          <Button type="button" size="sm" className="gap-1.5" onClick={() => setIsUploadOpen(true)}>
+          <Button type="button" size="sm" className="gap-1.5" onClick={onUpload}>
             <Upload className="h-4 w-4" />
             Upload document
           </Button>
@@ -825,25 +828,15 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
           </div>
         )}
       </div>
-
-      {/* The Document Management module's own upload dialog, locked to this patient — the
-          document is stored with ownerType=Patient/ownerId=patient.id, the same keys the list
-          above reads, so it can only ever show up under this patient. */}
-      <UploadDocumentModal
-        open={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
-        onUploaded={() => queryClient.invalidateQueries({ queryKey: patientDocumentsQueryKey(patient.id) })}
-        defaultEntityType="Patient"
-        defaultEntityId={patient.id}
-        lockedEntityLabel={`${patient.title} ${patient.firstName} ${patient.lastName} (${patient.uhid})`}
-      />
     </div>
   );
 }
 
 /* ------------------------------------------------------------------------------- Root */
 
-export function PatientDetails({ patient, activeTab, onActiveTabChange }: PatientDetailsProps) {
+export function PatientDetails({ patient, activeTab, onActiveTabChange, isUploadOpen, onUploadOpenChange }: PatientDetailsProps) {
+  const queryClient = useQueryClient();
+
   return (
     <div className="flex flex-col gap-3">
       {patient.requiresDataVerification && <DataVerificationBanner />}
@@ -870,7 +863,7 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       </TabsContent>
 
       <TabsContent value="documents" className="pt-2.5">
-        <PatientDocumentsTab patient={patient} />
+        <PatientDocumentsTab patient={patient} onUpload={() => onUploadOpenChange(true)} />
       </TabsContent>
 
       <TabsContent value="billing" className="pt-2.5">
@@ -881,6 +874,18 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
         <EmptyState icon={ClipboardList} message="No timeline activity has been recorded for this patient yet." />
       </TabsContent>
       </Tabs>
+
+      {/* The Document Management module's own upload dialog, locked to this patient — the
+          document is stored with ownerType=Patient/ownerId=patient.id, the same keys the
+          Documents tab's list reads, so it can only ever show up under this patient. */}
+      <UploadDocumentModal
+        open={isUploadOpen}
+        onClose={() => onUploadOpenChange(false)}
+        onUploaded={() => queryClient.invalidateQueries({ queryKey: patientDocumentsQueryKey(patient.id) })}
+        defaultEntityType="Patient"
+        defaultEntityId={patient.id}
+        lockedEntityLabel={`${patient.title} ${patient.firstName} ${patient.lastName} (${patient.uhid})`}
+      />
     </div>
   );
 }
