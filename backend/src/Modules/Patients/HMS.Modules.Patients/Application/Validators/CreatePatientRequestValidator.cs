@@ -45,9 +45,12 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
     internal const string DrivingLicensePattern = @"^[A-Za-z0-9\s-]{10,20}$";
     internal const string DrivingLicensePatternMessage = "Driving License number must be 10–20 letters/digits.";
 
-    // Generous enough to never reject a real patient (oldest verified humans are ~120) while
-    // still catching an obvious data-entry slip like typing "1023" instead of "2023".
-    internal static readonly DateOnly MinDateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-130);
+    // Patients are capped at 100 years old — catches data-entry slips like typing "1023" instead
+    // of "2023" and legacy-import placeholder DOBs (e.g. 1900-01-01) that need correcting.
+    // A property (not a static readonly field) so the bound moves with the date instead of
+    // freezing at process start.
+    internal const int MaxAgeYears = 100;
+    internal static DateOnly MinDateOfBirth => DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-MaxAgeYears);
 
     internal static int CalculateAge(DateOnly dateOfBirth, DateOnly asOf)
     {
@@ -115,7 +118,7 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
         RuleFor(x => x.DateOfBirth)
             .NotEmpty()
             .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth cannot be in the future.")
-            .GreaterThanOrEqualTo(MinDateOfBirth).WithMessage("Date of birth is too far in the past — please check the year.");
+            .GreaterThanOrEqualTo(_ => MinDateOfBirth).WithMessage("Patient age cannot exceed 100 years — please check the date of birth.");
         RuleFor(x => x)
             .Must(x => IsTitleConsistentWithAge(x.Title, x.DateOfBirth))
             .WithName("Title")
