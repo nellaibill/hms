@@ -99,7 +99,8 @@ app.UseHmsCors();
 // Authentication runs before rate limiting (ADR-084, revising ADR-018's ordering) so the
 // global limiter can partition by the verified user instead of only by client IP — a whole
 // hospital behind one NAT'd IP otherwise shares a single budget. JWT validation is a cheap
-// signature check; tenant resolution (a DB lookup) still runs after the limiter, and a
+// signature check (plus a revoked-token lookup, but only for validly signed Platform
+// tokens); tenant resolution (a DB lookup) still runs after the limiter, and a
 // per-IP ceiling plus the per-IP Login policy keep unauthenticated floods throttled.
 // Authorization stays after TenantResolutionMiddleware below.
 app.UseAuthentication();
