@@ -53,7 +53,7 @@ export function PatientTable({ patients, sort, onSortChange, onSelect, sortable 
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         {/* Same column set/order as OPD Billing Entry's PatientPicker table (Patient, Age/
             Gender, UHID, Phone, Consultant, Department, Appointment Time, Action) — this page

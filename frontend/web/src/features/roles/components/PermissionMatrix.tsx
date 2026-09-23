@@ -18,7 +18,7 @@ export function PermissionMatrix({ permissions, onChange, readOnly }: Permission
         <CardDescription>Toggle what this role can view, create, edit, or delete in each module.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
               <tr>

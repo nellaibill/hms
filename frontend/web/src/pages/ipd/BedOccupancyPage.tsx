@@ -122,8 +122,8 @@ export default function BedOccupancyPage() {
                                 to={`/clinical/ipd/admissions/${admission.id}`}
                                 className="mt-1 flex flex-col gap-0.5 border-t border-border/60 pt-1.5 hover:opacity-80"
                               >
-                                <span className="truncate text-xs font-medium text-foreground">{admission.patientName}</span>
-                                <span className="truncate text-[11px] text-muted-foreground">{admission.consultantName}</span>
+                                <span className="truncate text-xs font-medium text-foreground" title={admission.patientName}>{admission.patientName}</span>
+                                <span className="truncate text-[11px] text-muted-foreground" title={admission.consultantName ?? undefined}>{admission.consultantName}</span>
                               </Link>
                             )}
                           </div>

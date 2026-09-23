@@ -159,7 +159,7 @@ function DiagnosisSection({
       {listError && <p className="text-sm text-destructive">{listError}</p>}
 
       {fields.length > 0 && (
-        <div className="overflow-hidden rounded-md border border-border">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -274,7 +274,7 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
       </div>
 
       {fields.length > 0 && (
-        <div className="overflow-hidden rounded-md border border-border">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
               <tr>

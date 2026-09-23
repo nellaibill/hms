@@ -30,7 +30,7 @@ export function BedStayHistoryPanel({ admissionId }: BedStayHistoryPanelProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <tr>

@@ -41,7 +41,7 @@ export function TopHeader() {
   return (
     // No left padding: the wider logo box (see HospitalLogo below) reads better sitting flush
     // against the header's left edge than with the same 1.5rem gap the right side keeps.
-    <header className="sticky top-0 z-[1000] flex h-16 items-center gap-6 border-b border-header-foreground/15 bg-header pr-6 text-header-foreground shadow-soft-md">
+    <header className="sticky top-0 z-[1000] flex h-16 items-center gap-3 border-b border-header-foreground/15 bg-header pr-3 text-header-foreground lg:gap-6 lg:pr-6 shadow-soft-md">
       {/* Mobile nav trigger — sidebar collapses to a drawer below md, per docs/LayoutFramework.md §14 */}
       <Button variant="ghost" size="icon" className="shrink-0 md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation">
         <Menu className="h-5 w-5" />
@@ -61,26 +61,30 @@ export function TopHeader() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex shrink-0 items-center gap-3">
+      {/* The long app title only shows from 2xl (below that it squeezes the search box to ~80px);
+          below 2xl this block is just the logo, which keeps its size so it never overlaps the
+          icon row — the logo itself steps down in size instead (imageClassName). */}
+      <div className="flex shrink-0 items-center gap-3 2xl:min-w-0 2xl:shrink">
         {/* Bigger than HospitalLogo's own default box (h-10 max-w-32) — a wordmark-style logo
             (wide, short — the bundled default is 699x138px) barely reads at that size. Sized to
             reach the header's own height for a typical wordmark logo; object-contain still
             protects a differently-shaped upload from ever being stretched or cropped. */}
-        <HospitalLogo invert showName={false} imageClassName="h-16 max-w-80" />
-        <span className="hidden truncate text-base font-bold leading-tight tracking-tight text-header-foreground sm:inline lg:text-lg">
+        <HospitalLogo invert showName={false} imageClassName="h-10 max-w-32 sm:h-12 sm:max-w-48 xl:h-16 xl:max-w-80" />
+        <span className="hidden min-w-0 truncate text-base font-bold leading-tight tracking-tight text-header-foreground 2xl:inline 2xl:text-lg">
           {appTitle}
         </span>
       </div>
 
-      <div className="hidden flex-1 justify-center sm:flex">
+      <div className="hidden min-w-0 flex-1 justify-center sm:flex">
         <div className="w-full max-w-2xl">
           <HeaderSearchBox />
         </div>
       </div>
 
-      {/* Icon actions — icon-over-label, vertically centered; the row itself (not its icons)
-          shrinks and scrolls horizontally rather than clipping on narrow viewports. */}
-      <div className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto py-1 [&>*]:shrink-0">
+      {/* Icon actions — icon-over-label, vertically centered. Doesn't shrink from md up (the
+          logo/title/search give way first), so the icons are never hidden behind a scroll
+          strip; only on phones, where they genuinely can't all fit, does the row scroll. */}
+      <div className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto py-1 md:shrink-0 [&>*]:shrink-0">
         <LanguageMenu />
         <NotificationsMenu />
         {hasPermission('engagement.view') && hasFeature('calendar') && (

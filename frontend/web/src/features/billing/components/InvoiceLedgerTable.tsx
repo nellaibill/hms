@@ -34,7 +34,7 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <tr>
@@ -50,14 +50,14 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
         <tbody className="divide-y divide-border">
           {billings.map((billing) => (
             <tr key={billing.id} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{billing.invoiceNumber ?? billing.id}</td>
+              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{billing.invoiceNumber ?? billing.id}</td>
               <td className="px-4 py-3">
                 <Link to={`/finance/accounts/${billing.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
                   {billing.patientName}
                 </Link>
                 <div className="text-xs text-muted-foreground">{billing.patientUhid}</div>
               </td>
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(billing.createdAt).toLocaleDateString('en-IN')}</td>
+              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(billing.createdAt).toLocaleDateString('en-IN')}</td>
               <td className="px-4 py-3 text-muted-foreground">
                 {billing.items.length} item{billing.items.length === 1 ? '' : 's'}
               </td>

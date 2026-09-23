@@ -906,11 +906,11 @@ export function PatientEditForm({
         </TabsContent>
       </Tabs>
 
-        <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <div className="flex gap-3">
+          <div className="ml-auto flex flex-wrap justify-end gap-3">
             {!isFirstTab && (
               <Button type="button" variant="outline" onClick={goToPreviousTab}>
                 <ChevronLeft className="h-4 w-4" />
