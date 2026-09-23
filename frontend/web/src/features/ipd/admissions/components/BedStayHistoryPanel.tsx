@@ -46,11 +46,11 @@ export function BedStayHistoryPanel({ admissionId }: BedStayHistoryPanelProps) {
             <tr key={stay.id}>
               <td className="px-4 py-3 text-sm text-foreground">{stay.bedNumber}</td>
               <td className="px-4 py-3 text-sm text-foreground">{stay.wardName}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(stay.fromDateTime).toLocaleString('en-IN')}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">{new Date(stay.fromDateTime).toLocaleString('en-IN')}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                 {stay.toDateTime ? new Date(stay.toDateTime).toLocaleString('en-IN') : '—'}
               </td>
-              <td className="px-4 py-3 text-right font-mono text-sm text-foreground">₹{stay.dailyCharge.toLocaleString('en-IN')}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-sm text-foreground">₹{stay.dailyCharge.toLocaleString('en-IN')}</td>
             </tr>
           ))}
         </tbody>

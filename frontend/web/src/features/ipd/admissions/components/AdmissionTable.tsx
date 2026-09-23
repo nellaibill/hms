@@ -38,7 +38,7 @@ export function AdmissionTable({ admissions, onAssignBed }: AdmissionTableProps)
         <tbody className="divide-y divide-border">
           {admissions.map((admission) => (
             <tr key={admission.id} className="hover:bg-muted/30">
-              <td className="px-4 py-3">
+              <td className="whitespace-nowrap px-4 py-3">
                 <Link
                   to={`/clinical/ipd/admissions/${admission.id}`}
                   className="font-mono text-xs font-medium text-foreground hover:text-primary hover:underline"
@@ -46,16 +46,16 @@ export function AdmissionTable({ admissions, onAssignBed }: AdmissionTableProps)
                   {admission.admissionNumber}
                 </Link>
               </td>
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{admission.uhid}</td>
+              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{admission.uhid}</td>
               <td className="px-4 py-3 font-medium text-foreground">{admission.patientName}</td>
-              <td className="px-4 py-3 text-sm text-foreground">
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
                 {admission.age} / {admission.gender}
               </td>
-              <td className="px-4 py-3 text-sm text-foreground">
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
                 {admission.wardId && admission.bedId ? `${admission.wardName} / ${admission.bedNumber}` : '—'}
               </td>
-              <td className="px-4 py-3 text-sm text-foreground">{admission.consultantName}</td>
-              <td className="px-4 py-3 text-sm text-foreground">{new Date(admission.admissionDateTime).toLocaleString('en-IN')}</td>
+              <td className="min-w-[12rem] px-4 py-3 text-sm text-foreground">{admission.consultantName}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">{new Date(admission.admissionDateTime).toLocaleString('en-IN')}</td>
               <td className="px-4 py-3">
                 <Badge variant={STATUS_VARIANTS[admission.status]}>{admission.status}</Badge>
               </td>

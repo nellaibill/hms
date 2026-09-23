@@ -31,7 +31,7 @@ export function DiagnosticCategoryTable({ categories, onEditRequested, onDeleteR
             <tr key={category.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{category.code}</td>
               <td className="px-4 py-3 font-medium text-foreground">{category.name}</td>
-              <td className="px-4 py-3 text-muted-foreground">{category.description || '—'}</td>
+              <td className="min-w-[14rem] px-4 py-3 text-muted-foreground">{category.description || '—'}</td>
               <td className="px-4 py-3">
                 <Badge variant={category.isActive ? 'success' : 'secondary'}>{category.isActive ? 'Active' : 'Inactive'}</Badge>
               </td>

@@ -142,7 +142,9 @@ export function AdvancePanel({ admissionId }: AdvancePanelProps) {
           <Input id="advanceReference" className="w-40" {...register('referenceNumber')} />
         </div>
 
-        <div className="flex flex-1 flex-col gap-1.5">
+        {/* min-w so this wraps to its own line instead of flex-1 shrinking it to a sliver
+            beside the other fields when the panel is narrow. */}
+        <div className="flex min-w-[12rem] flex-1 flex-col gap-1.5">
           <Label htmlFor="advanceRemarks">Remarks (optional)</Label>
           <Input id="advanceRemarks" {...register('remarks')} />
         </div>
