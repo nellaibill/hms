@@ -566,7 +566,13 @@ export function OpdConsultationForm({
             </Button>
             <Button type="button" disabled={isCompleting} className="gap-1.5" onClick={handleCompleteClick}>
               <Stethoscope className="h-4 w-4" />
-              {isCompleting ? 'Completing…' : 'Complete Consultation'}
+              {isCompleting ? (
+                'Completing…'
+              ) : (
+                <>
+                  Complete<span className="hidden sm:inline"> Consultation</span>
+                </>
+              )}
             </Button>
           </>
         )}
@@ -576,13 +582,15 @@ export function OpdConsultationForm({
             {isReopening ? 'Reopening…' : 'Reopen'}
           </Button>
         )}
-        <Button type="button" variant="outline" className="gap-1.5" onClick={onPrint}>
+        {/* Icon-only below sm (label kept for screen readers/tooltip) so the whole bar fits on
+            one row on a phone instead of wrapping into a two-row bar over the form. */}
+        <Button type="button" variant="outline" className="gap-1.5" onClick={onPrint} aria-label="Print" title="Print">
           <Printer className="h-4 w-4" />
-          Print
+          <span className="hidden sm:inline">Print</span>
         </Button>
-        <Button type="button" variant="outline" className="gap-1.5" onClick={onDownloadPdf}>
+        <Button type="button" variant="outline" className="gap-1.5" onClick={onDownloadPdf} aria-label="Download PDF" title="Download PDF">
           <Download className="h-4 w-4" />
-          Download PDF
+          <span className="hidden sm:inline">Download PDF</span>
         </Button>
       </div>
     </form>
