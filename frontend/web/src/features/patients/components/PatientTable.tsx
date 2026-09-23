@@ -13,7 +13,7 @@ interface PatientTableProps {
   /** Same "Select" action as OPD Billing Entry's PatientPicker — opens the chosen patient. Edit/
    * Add Visit/Delete are all still reachable from that patient's own record page. */
   onSelect: (patient: Patient) => void;
-  /** False while showing the default "Last 100 visits" list (sorted server-side by most
+  /** False while showing the default "Recent visits" list (sorted server-side by most
    * recent visit, same as OPD Billing Entry's PatientPicker) — that list ignores `sort`
    * entirely, so a clickable header there would silently do nothing. Sortable again once a
    * search narrows the list to something `sort` actually applies to. Defaults to true. */
