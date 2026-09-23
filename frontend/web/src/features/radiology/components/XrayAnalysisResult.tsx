@@ -93,11 +93,13 @@ export function XrayAnalysisResult({ analysis, canReview, reviewing, onReview, c
           {fractureDetails.length > 0 && (
             <div>
               <SectionLabel>Fracture details</SectionLabel>
-              <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+              {/* auto-fill against the panel's own width — viewport sm: ignored the sidebar and
+                  forced two ~100px columns, pushing each value past the card edge. */}
+              <dl className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-x-6 gap-y-1.5 text-sm">
                 {fractureDetails.map((detail) => (
                   <div key={detail.label} className="flex gap-2">
                     <dt className="w-24 shrink-0 text-muted-foreground">{detail.label}</dt>
-                    <dd className="text-foreground">{detail.value}</dd>
+                    <dd className="min-w-0 break-words text-foreground">{detail.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -116,7 +118,7 @@ export function XrayAnalysisResult({ analysis, canReview, reviewing, onReview, c
           )}
 
           {prose.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4">
               {prose.map((item) => (
                 <div key={item.title}>
                   <SectionLabel>{item.title}</SectionLabel>

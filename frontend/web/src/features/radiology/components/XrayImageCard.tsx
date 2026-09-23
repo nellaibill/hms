@@ -48,7 +48,9 @@ export function XrayImageCard({ document, analyses, runState, busy, canReview, r
 
   return (
     <Card>
-      <CardContent className="grid gap-5 p-4 md:grid-cols-[300px_1fr]">
+      {/* Image beside the AI read only from xl: below that (a tablet or laptop with the sidebar
+          open) the 1fr column was ~230px and the fracture-details list overflowed the page. */}
+      <CardContent className="grid gap-5 p-4 xl:grid-cols-[300px_1fr]">
         <button
           type="button"
           onClick={() => url && setViewerOpen(true)}
