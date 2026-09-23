@@ -1,6 +1,7 @@
-import { AlertTriangle, ArrowLeft, FileCheck2, Loader2, PackageSearch, Printer, RotateCcw, SendToBack } from 'lucide-react';
+import { AlertTriangle, FileCheck2, FlaskConical, Loader2, PackageSearch, Printer, RotateCcw, SendToBack } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { PageBanner } from '@/components/PageBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -165,23 +166,20 @@ export default function LabOrderDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 pt-4 lg:px-8">
-        <Link to="/diagnostics/lab/worklist" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Lab Worklist
-        </Link>
-      </div>
+      <PageBanner
+        icon={FlaskConical}
+        title={<span className="whitespace-nowrap font-mono">{order.labOrderNumber}</span>}
+        titleExtra={<LabStatusBadge status={order.overallStatus} className="whitespace-nowrap" />}
+        subtitle={
+          <>
+            {order.patientName} · <span className="font-mono">{order.patientUhid}</span>
+          </>
+        }
+        backTo="/diagnostics/lab/worklist"
+        backLabel="Back to Lab Worklist"
+      />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <h1 className="font-mono text-lg font-semibold text-foreground">{order.labOrderNumber}</h1>
-            <p className="text-sm text-muted-foreground">
-              {order.patientName} · {order.patientUhid}
-            </p>
-          </div>
-          <LabStatusBadge status={order.overallStatus} />
-        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>

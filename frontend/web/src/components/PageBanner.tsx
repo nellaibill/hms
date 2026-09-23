@@ -44,7 +44,7 @@ export function PageBanner({ icon: Icon, leading, title, subtitle, titleExtra, r
 
   const centerBlock = (
     <div className="flex min-w-0 flex-col items-center gap-1 text-center">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
         {leading ??
           (Icon && (
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-page-banner-foreground/15 text-page-banner-foreground">
