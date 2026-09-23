@@ -1,8 +1,8 @@
 # HMS web — Playwright E2E regression suite
 
 Browser-level regression tests for the hospital web app (`frontend/web`), using
-[Playwright Test](https://playwright.dev) (Chromium). Milestone 1 covers
-**login → dashboard → basic navigation → logout** only.
+[Playwright Test](https://playwright.dev) (Chromium). Covered so far:
+**login → dashboard → basic navigation → logout**, and **patient registration**.
 
 ## One-time setup
 
@@ -50,8 +50,9 @@ report (`playwright-report/`). Open a trace with `npx playwright show-trace <zip
 e2e/
   auth.setup.ts            one real sign-in per run; saves the session
   fixtures/auth.fixture.ts restores that session for authenticated specs
-  pages/                   LoginPage, DashboardPage page objects
+  pages/                   LoginPage, DashboardPage, PatientRegistrationPage page objects
   support/env.ts           reads TEST_* variables
+  support/testData.ts      unique test records (names start with "Etoe")
   auth/
     login.spec.ts          sign-in form, validation, invalid + valid login (always a real login)
     unauthenticated.spec.ts  protected routes redirect to /login when signed out
@@ -59,6 +60,8 @@ e2e/
   dashboard/
     dashboard.spec.ts      dashboard content and app shell
     navigation.spec.ts     sidebar → module pages
+  patients/
+    registration.spec.ts   hub, wizard validation per tab, full register → search → view → edit, Patient Enquiry
 ```
 
 Projects in `playwright.config.ts`:
@@ -79,5 +82,12 @@ Projects in `playwright.config.ts`:
 - **Account lockout.** Repeated wrong passwords lock the real account, so invalid-login tests
   only ever use a made-up username or hospital code. Never add a wrong-password test against
   the shared test user.
+- **Test data.** The patient end-to-end test creates a real patient plus an OP visit in
+  whichever tenant `.env.e2e` points at (currently the `lhs` dev tenant) on every run. Names
+  start with `Etoe` and have the last name `Regression`, so they're easy to find. The
+  backend only allows letters in names, so an "E2E-123" style name isn't possible.
+- **Known bugs** are pinned with `test.fail(...)` and a comment explaining the cause. Such a
+  test counts as passing while the bug exists. Once someone fixes the bug, Playwright reports
+  "expected to fail, but passed", which is your cue to remove the `test.fail` line.
 - **Selectors.** Use roles and labels first (`getByRole`, `getByLabel`). The app has no
   `data-testid`s, and so far none have been needed.
