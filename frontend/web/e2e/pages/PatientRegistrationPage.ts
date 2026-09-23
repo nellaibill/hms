@@ -41,17 +41,20 @@ export class PatientRegistrationPage {
     await this.page.getByRole('option', { name: option, exact: true }).click();
   }
 
-  /** The searchable pop-over pickers (State, District, Department, Consultant): a button that opens a dialog with a search box. */
-  async pick(buttonName: string, option?: string) {
+  /**
+   * The searchable pop-over pickers (State, District, Department, Consultant): a button that
+   * opens a dialog with a search box. Picks `option`, or the first option when omitted, and
+   * returns the picked option's label.
+   */
+  async pick(buttonName: string, option?: string): Promise<string> {
     await this.page.getByRole('button', { name: buttonName, exact: true }).click();
     const popover = this.page.getByRole('dialog');
-    if (option) {
-      await popover.getByRole('textbox').fill(option);
-      await popover.getByRole('option', { name: option, exact: true }).click();
-    } else {
-      await popover.getByRole('option').first().click();
-    }
+    if (option) await popover.getByRole('textbox').fill(option);
+    const choice = option ? popover.getByRole('option', { name: option, exact: true }) : popover.getByRole('option').first();
+    const label = (await choice.textContent())!.trim();
+    await choice.click();
     await expect(popover).toBeHidden();
+    return label;
   }
 
   async fillPatientInformation(patient: NewPatient) {
@@ -78,9 +81,10 @@ export class PatientRegistrationPage {
   }
 
   /** Picks the first department and its first consultant — any valid pair will do. */
-  async fillRegistrationDetails() {
-    await this.pick('Department');
-    await this.pick('Consultant');
+  async fillRegistrationDetails(): Promise<{ department: string; consultant: string }> {
+    const department = await this.pick('Department');
+    const consultant = await this.pick('Consultant');
+    return { department, consultant };
   }
 
   /** Tabs 1–3 filled and advanced through; ends on Medical Information, not yet saved. */
@@ -93,4 +97,45 @@ export class PatientRegistrationPage {
     await expect(this.tab('Medical Information')).toHaveAttribute('aria-selected', 'true');
     await this.fillMedicalInformation(patient);
   }
+
+  /**
+   * Runs the whole wizard: registers `patient` and records today's OP visit with the first
+   * department/consultant. Ends on the new patient's page.
+   */
+  async registerWithOpVisit(patient: NewPatient): Promise<RegisteredPatient> {
+    await this.navigate();
+    await this.completeUpToMedicalInformation(patient);
+
+    const created = this.page.waitForResponse((r) => r.request().method() === 'POST' && /\/api\/v1\/patients$/.test(r.url()));
+    await this.saveAndProceedButton.click();
+    const createdResponse = await created;
+    expect(createdResponse.status(), 'create patient').toBe(201);
+    const { id, uhid } = (await createdResponse.json()).data as { id: string; uhid: string };
+
+    await expect(this.tab('Registration Details')).toHaveAttribute('aria-selected', 'true');
+    const { department, consultant } = await this.fillRegistrationDetails();
+    const visit = this.page.waitForResponse((r) => r.request().method() === 'POST' && /\/api\/v1\/patients\/[^/]+\/visits$/.test(r.url()));
+    await this.registerButton.click();
+    expect((await visit).status(), 'create OP visit').toBe(201);
+    await expect(this.page).toHaveURL(new RegExp(`/patients/registration/${id}$`));
+
+    return {
+      ...patient,
+      id,
+      uhid,
+      // The picker shows "Cardiology (CARDIO)"; lists elsewhere show just "Cardiology".
+      department: department.replace(/\s*\([^()]*\)$/, ''),
+      consultant,
+      fullName: `${patient.firstName} ${patient.lastName}`,
+    };
+  }
+}
+
+export interface RegisteredPatient extends NewPatient {
+  id: string;
+  uhid: string;
+  fullName: string;
+  /** Department name without its code suffix. */
+  department: string;
+  consultant: string;
 }

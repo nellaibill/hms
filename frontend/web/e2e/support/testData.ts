@@ -55,9 +55,10 @@ export function newPatient(): NewPatient {
   };
 }
 
-/** Today's date plus `days`, as yyyy-mm-dd. */
-export function isoDateFromToday(days: number): string {
+/** Today's local date plus `days`, as yyyy-mm-dd (local, not UTC — the app filters by local day). */
+export function isoDateFromToday(days = 0): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
