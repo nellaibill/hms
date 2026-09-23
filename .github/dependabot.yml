@@ -1,5 +1,10 @@
 version: 2
 
+# Minor/patch bumps are grouped into one PR per ecosystem per week so they can be reviewed and
+# merged in a single pass. Major bumps are ignored — they carry breaking changes (Tailwind 4,
+# React Router 7, Expo/React Native, ...) and are done as deliberate migrations on their own
+# branch, not merged straight from a Dependabot PR.
+
 updates:
   # HMS.sln and every module's .csproj — Directory.Packages.props centralizes actual version
   # numbers, so Dependabot's PRs land there regardless of which module first pulled a package.
@@ -7,6 +12,12 @@ updates:
     directory: "/backend"
     schedule:
       interval: "weekly"
+    groups:
+      nuget-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Three independent npm workspaces (frontend/web, frontend/mobile, frontend/shared) — each
   # has its own package.json/package-lock.json, so each needs its own entry; there is no
@@ -15,18 +26,40 @@ updates:
     directory: "/frontend/web"
     schedule:
       interval: "weekly"
+    groups:
+      web-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "npm"
     directory: "/frontend/mobile"
     schedule:
       interval: "weekly"
+    groups:
+      mobile-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "npm"
     directory: "/frontend/shared"
     schedule:
       interval: "weekly"
+    groups:
+      shared-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Keeps actions/checkout, actions/setup-dotnet, etc. (.github/workflows/*.yml) current too —
   # an outdated Action can itself be a supply-chain risk, not just application dependencies.
+  # Major bumps stay enabled here: Action majors are usually low-risk (e.g. setup-dotnet v4 → v6).
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]
