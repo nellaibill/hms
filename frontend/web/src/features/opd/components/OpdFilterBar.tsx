@@ -33,6 +33,8 @@ interface OpdFilterBarProps {
   filters: OpdFilterValues;
   onChange: (filters: OpdFilterValues) => void;
   onRefresh: () => void;
+  /** True while the active tab's data is being (re)fetched — spins the Refresh icon. */
+  isRefreshing?: boolean;
   onExport: () => void;
   /** True when the signed-in user is a Consultant/Doctor linked to their own consultant
    * record (AuthContextValue.scopedConsultantId) — locks Department/Consultant to their own
@@ -44,7 +46,7 @@ interface OpdFilterBarProps {
 /** Shared filter toolbar for every OPD tab — mirrors LabWorklistFilters' exact layout shape
  * (rounded card, flex-wrap row of labeled fields), plus the Refresh/Export actions the OPD
  * list page's screenshot shows pinned to the row's right edge. */
-export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
+export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
   const statusOptions = statusOptionsForTab(tab);
 
   return (
@@ -132,8 +134,8 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport, lock
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Button type="button" variant="outline" onClick={onRefresh} className="gap-1.5">
-          <RefreshCw className="h-4 w-4" />
+        <Button type="button" variant="outline" onClick={onRefresh} disabled={isRefreshing} className="gap-1.5">
+          <RefreshCw className={isRefreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           Refresh
         </Button>
         <Button type="button" onClick={onExport} className="gap-1.5">
