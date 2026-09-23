@@ -20,7 +20,7 @@ const RECENT_VISITS_LIMIT = 100;
 const RECENT_VISITS_MAX_PAGE = RECENT_VISITS_LIMIT / RECENT_VISITS_PAGE_SIZE;
 
 /** "Old Patient Registration" — the Reception & Registration hub's existing-patient search + list (docs/ScreenInventory.md).
- * Loads the same default "Last 100 visits" list OPD Billing Entry's PatientPicker shows before
+ * Loads the same default "Recent visits" list OPD Billing Entry's PatientPicker shows before
  * any search — the 100 most recently active patients by last visit (not registration date),
  * 20 per page — rather than gating every row behind an explicit Search click first. Search/
  * Clear still narrow to (or reset from) the broader, precisely-filtered query below it. */
@@ -60,7 +60,7 @@ export default function PatientsListPage() {
     { enabled: isFiltered },
   );
 
-  // Default (no filters applied) — same query PatientPicker's own "Last 100 visits" list uses:
+  // Default (no filters applied) — same query PatientPicker's own "Recent visits" list uses:
   // sorted by most recent visit activity, not registration date, capped at 100 total even
   // though the server's own count reflects the whole patient list.
   const {

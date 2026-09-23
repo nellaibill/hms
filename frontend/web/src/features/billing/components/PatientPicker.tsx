@@ -26,7 +26,7 @@ function formatAppointmentTime(iso?: string | null): string {
 /** A real `<table>` (header + aligned columns) rather than a flex row list — the previous
  * flex layout let each field's own content width push everything else out of vertical
  * alignment (a longer name shifted its row's UHID/Select out of line with the row above).
- * Shared by both the "Last 100 visits" default list and the search results below. Department/
+ * Shared by both the "Recent visits" default list and the search results below. Department/
  * Consultant/Appointment Time come from the patient's most recent visit (see
  * Patient.lastVisit* — populated because both queries below pass includeLastVisit: true), so
  * reception can tell at a glance which visit they're about to bill without opening it first. */
@@ -178,7 +178,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
 
       {!hasSearched && (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-foreground">Last 100 visits</p>
+          <p className="text-sm font-medium text-foreground">Recent visits</p>
 
           {isRecentPending && (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
