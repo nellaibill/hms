@@ -298,7 +298,7 @@ export default function PatientReportsPage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Card>
             <CardContent className="flex flex-col gap-1 py-4">
               <span className="text-xs text-muted-foreground">Total Patients</span>
@@ -397,7 +397,7 @@ export default function PatientReportsPage() {
                   <tbody className="divide-y divide-border">
                     {rows.map((row: PatientReportRow) => (
                       <tr key={row.patient.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.patient.uhid}</td>
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.patient.uhid}</td>
                         <td className="px-4 py-3 font-medium text-foreground">
                           {row.patient.firstName} {row.patient.lastName}
                         </td>
