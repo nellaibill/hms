@@ -10,9 +10,11 @@ import {
   MapPin,
   Plus,
   Stethoscope,
+  Upload,
   User,
   X,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
@@ -26,6 +28,7 @@ import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
 import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type Billing, type BillingItem } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
+import { UploadDocumentModal } from '@/features/documents';
 import { useMasterOptionsQuery } from '@/features/masters';
 import { documentsApi } from '../../../services/apiClient';
 import { useAuth } from '../../auth/AuthContext';
@@ -35,7 +38,7 @@ import { maritalStatusLabel } from '../maritalStatusLabel';
 import { maskIdNumber } from '../maskIdNumber';
 import { useAddPatientAllergyMutation, useRemovePatientAllergyMutation } from '../hooks/usePatientMutations';
 import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
-import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
+import { patientDocumentsQueryKey, usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
 import { encounterTypeShortLabel } from '../encounterTypeLabel';
 import { DataVerificationBanner } from './DataVerificationBanner';
@@ -761,6 +764,8 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
   const idProofUrl = usePatientDocumentUrl(patient.id, 'IdProof');
   const { data: documents, isPending } = usePatientDocumentsQuery(patient.id);
   const sorted = [...(documents ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const queryClient = useQueryClient();
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -798,7 +803,13 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
       </div>
 
       <div className="rounded-lg border border-border bg-card p-3">
-        <h2 className="mb-2 text-sm font-semibold text-foreground">All documents</h2>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-foreground">All documents</h2>
+          <Button type="button" size="sm" className="gap-1.5" onClick={() => setIsUploadOpen(true)}>
+            <Upload className="h-4 w-4" />
+            Upload document
+          </Button>
+        </div>
         {isPending ? (
           <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -814,6 +825,18 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
           </div>
         )}
       </div>
+
+      {/* The Document Management module's own upload dialog, locked to this patient — the
+          document is stored with ownerType=Patient/ownerId=patient.id, the same keys the list
+          above reads, so it can only ever show up under this patient. */}
+      <UploadDocumentModal
+        open={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUploaded={() => queryClient.invalidateQueries({ queryKey: patientDocumentsQueryKey(patient.id) })}
+        defaultEntityType="Patient"
+        defaultEntityId={patient.id}
+        lockedEntityLabel={`${patient.title} ${patient.firstName} ${patient.lastName} (${patient.uhid})`}
+      />
     </div>
   );
 }
