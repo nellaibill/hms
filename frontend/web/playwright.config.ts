@@ -24,6 +24,12 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   forbidOnly: !!process.env.CI,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  // Starts the web app (npm run dev) when testing locally and it isn't already running; an
+  // already-running dev server is reused. Skipped for remote TEST_BASE_URLs. The API must be
+  // running separately.
+  webServer: /^https?:\/\/localhost[:/]/.test(baseURL)
+    ? { command: 'npm run dev', url: baseURL, reuseExistingServer: true, timeout: 120_000 }
+    : undefined,
   use: {
     baseURL,
     trace: 'on-first-retry',

@@ -62,3 +62,14 @@ export function isoDateFromToday(days = 0): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
+
+/**
+ * A consultant who can actually be billed for a consultation. Billing requires a consultation
+ * type, and in the `lhs` dev tenant most consultants have none configured, so their
+ * consultations can't be billed at all. Override for another tenant with TEST_BILLING_DEPARTMENT
+ * and TEST_BILLING_CONSULTANT (exact picker labels).
+ */
+export const billableConsultant = {
+  department: process.env.TEST_BILLING_DEPARTMENT || 'E.N.T (ENT)',
+  consultant: process.env.TEST_BILLING_CONSULTANT || 'Dr. C. Ravikumar, M.S (ENT)',
+};

@@ -17,6 +17,12 @@ export default defineConfig({
     warmup: {
       clientFiles: ['./src/main.tsx', './src/app/App.tsx'],
     },
+    // Playwright writes traces/videos/reports inside this folder while tests run. Watching them
+    // is pointless, and on Windows a still-being-written video makes the watcher throw EBUSY,
+    // which kills the dev server mid-run.
+    watch: {
+      ignored: ['**/e2e-results/**', '**/playwright-report/**', '**/e2e/.auth/**'],
+    },
   },
   optimizeDeps: {
     // @hms/shared is a linked workspace package built by tsc into a mirrored dist/

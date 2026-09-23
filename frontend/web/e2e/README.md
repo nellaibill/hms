@@ -2,8 +2,8 @@
 
 Browser-level regression tests for the hospital web app (`frontend/web`), using
 [Playwright Test](https://playwright.dev) (Chromium). Covered so far:
-**login → dashboard → basic navigation → logout**, **patient registration**, and **OPD**
-(work-list + consultation).
+**login → dashboard → basic navigation → logout**, **patient registration**, **OPD**
+(work-list + consultation), and **billing** (OPD Billing Entry, invoices, reports).
 
 ## One-time setup
 
@@ -31,7 +31,8 @@ secrets or environment variables instead of using a file.
 
 ## Running
 
-Start the API (`hms-api-dev`) and the web app (`npm run dev`) first, then:
+Start the API (`hms-api-dev`) first. The web app is started automatically if it isn't already
+running (Playwright `webServer`). Then:
 
 ```bash
 npm run test:e2e            # headless, every project
@@ -52,7 +53,7 @@ e2e/
   auth.setup.ts            one real sign-in per run; saves the session
   fixtures/auth.fixture.ts restores that session for authenticated specs
   pages/                   page objects: LoginPage, DashboardPage, PatientRegistrationPage,
-                           OpdPage, OpdConsultationPage
+                           OpdPage, OpdConsultationPage, BillingPage
   support/env.ts           reads TEST_* variables
   support/testData.ts      unique test records (names start with "Etoe")
   auth/
@@ -66,6 +67,9 @@ e2e/
     registration.spec.ts   hub, wizard validation per tab, full register → search → view → edit, Patient Enquiry
   opd/
     opd.spec.ts            OPD filters/tabs/export; new OP visit → Consult → draft → complete → reopen
+  billing/
+    billing.spec.ts        Accounts tabs/reports/All Invoices; bill a visit (validation, split payment,
+                           ledger, detail, consultant report, double-billing guard)
 ```
 
 Projects in `playwright.config.ts`:
@@ -86,7 +90,11 @@ Projects in `playwright.config.ts`:
 - **Account lockout.** Repeated wrong passwords lock the real account, so invalid-login tests
   only ever use a made-up username or hospital code. Never add a wrong-password test against
   the shared test user.
-- **Test data.** The patient and OPD end-to-end tests (3 per run) each create a real patient plus an OP visit in
+- **Billing needs a consultant with a consultation type.** Most `lhs` consultants have none, so
+  their consultations can't be billed. The billing test uses E.N.T / Dr. C. Ravikumar (see
+  `billableConsultant` in `support/testData.ts`). Override it with `TEST_BILLING_DEPARTMENT` and
+  `TEST_BILLING_CONSULTANT`.
+- **Test data.** The patient, OPD and billing end-to-end tests (4 per run) each create a real patient plus an OP visit in
   whichever tenant `.env.e2e` points at (currently the `lhs` dev tenant) on every run. Names
   start with `Etoe` and have the last name `Regression`, so they're easy to find. The
   backend only allows letters in names, so an "E2E-123" style name isn't possible.
