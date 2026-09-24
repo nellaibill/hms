@@ -161,7 +161,7 @@ function DiagnosisSection({
       {fields.length > 0 && (
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+            <thead className="bg-sidebar-active text-left text-xs uppercase text-sidebar-active-foreground">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">Diagnosis</th>
@@ -276,7 +276,7 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
       {fields.length > 0 && (
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+            <thead className="bg-sidebar-active text-left text-xs uppercase text-sidebar-active-foreground">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">Investigation</th>

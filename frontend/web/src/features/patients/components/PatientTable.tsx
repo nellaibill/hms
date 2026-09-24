@@ -58,7 +58,7 @@ export function PatientTable({ patients, sort, onSortChange, onSelect, sortable 
         {/* Same column set/order as OPD Billing Entry's PatientPicker table (Patient, Age/
             Gender, UHID, Phone, Consultant, Department, Appointment Time, Action) — this page
             additionally keeps Patient/UHID sortable, since that's this table's own convention. */}
-        <thead className="sticky top-0 z-10 bg-muted/95 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/80">
+        <thead className="bg-sidebar-active sticky top-0 z-10 text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground backdrop-blur">
           <tr>
             <SortHeader field="lastName" label="Patient" />
             <th className="px-4 py-2.5">Age / Gender</th>

@@ -18,7 +18,7 @@ export function ActivityLogTable({ entries, userName, onView, selectedId }: Acti
   return (
     <div className="overflow-x-auto rounded-md border border-border">
       <table className="w-full min-w-[860px] text-sm">
-        <thead className="bg-muted/50">
+        <thead className="bg-sidebar-active text-sidebar-active-foreground">
           <tr>
             <th className={HEAD}>Date &amp; Time</th>
             <th className={HEAD}>User</th>

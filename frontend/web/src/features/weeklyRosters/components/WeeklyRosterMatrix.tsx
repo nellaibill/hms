@@ -55,7 +55,7 @@ export function WeeklyRosterMatrix({ weekStartDate, shifts, assignments }: Weekl
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[800px] border-collapse text-sm">
         <thead>
-          <tr className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <tr className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
             <th className="w-32 px-4 py-2.5">Shift</th>
             {weekDates.map((date, index) => (
               <th key={date} className="px-4 py-2.5">

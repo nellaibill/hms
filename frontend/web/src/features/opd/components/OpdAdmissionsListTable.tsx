@@ -111,7 +111,7 @@ export function OpdAdmissionsListTable({ filters, page, onPageChange }: OpdAdmis
             <div className="overflow-x-auto rounded-lg border border-border">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
                     <tr>
                       <th className="px-4 py-2.5">Patient</th>
                       <th className="px-4 py-2.5">UHID</th>
