@@ -8,11 +8,12 @@ public enum AiProvider
     Anthropic,
     OpenAI,
     AzureOpenAI,
+    HuggingFace,
 }
 
 public static class AiServiceCollectionExtensions
 {
-    /// <summary>The provider named by <c>Ai:Provider</c> (case-insensitive: "OpenAI", "AzureOpenAI");
+    /// <summary>The provider named by <c>Ai:Provider</c> (case-insensitive: "OpenAI", "AzureOpenAI", "HuggingFace");
     /// anything else, including unset, means Anthropic so existing deployments keep working.</summary>
     public static AiProvider GetAiProvider(this IConfiguration configuration) =>
         Enum.TryParse<AiProvider>(configuration["Ai:Provider"], ignoreCase: true, out var provider) ? provider : AiProvider.Anthropic;
@@ -36,6 +37,9 @@ public static class AiServiceCollectionExtensions
                 break;
             case AiProvider.AzureOpenAI:
                 services.AddHttpClient<IAiStructuredExtractor, AzureOpenAiStructuredExtractor>();
+                break;
+            case AiProvider.HuggingFace:
+                services.AddHttpClient<IAiStructuredExtractor, HuggingFaceStructuredExtractor>();
                 break;
             default:
                 services.AddHttpClient<IAiStructuredExtractor, AnthropicStructuredExtractor>();
