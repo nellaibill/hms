@@ -10,6 +10,7 @@ import {
   MapPin,
   Plus,
   Stethoscope,
+  Trash2,
   Upload,
   User,
   X,
@@ -19,6 +20,7 @@ import { type ReactNode, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,7 +38,7 @@ import { modeOfArrivalChannelLabel } from '../arrivalChannelLabel';
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
 import { maskIdNumber } from '../maskIdNumber';
-import { useAddPatientAllergyMutation, useRemovePatientAllergyMutation } from '../hooks/usePatientMutations';
+import { useAddPatientAllergyMutation, useDeletePatientDocumentMutation, useRemovePatientAllergyMutation } from '../hooks/usePatientMutations';
 import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
 import { patientDocumentsQueryKey, usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
@@ -539,7 +541,10 @@ async function openDocument(document: DocumentResponse, mode: 'view' | 'download
   URL.revokeObjectURL(url);
 }
 
-function DocumentRow({ document }: { document: DocumentResponse }) {
+/** `onDelete` is only passed where deleting is offered (the Documents tab, gated on
+ * records-compliance.delete) — the Overview's Recent Documents card stays read-only. Delete is
+ * offered for every status, so a Quarantined upload can be cleared too. */
+function DocumentRow({ document, onDelete }: { document: DocumentResponse; onDelete?: (document: DocumentResponse) => void }) {
   return (
     <div className="flex items-center justify-between gap-2 py-1.5 text-sm">
       <div className="min-w-0">
@@ -568,6 +573,18 @@ function DocumentRow({ document }: { document: DocumentResponse }) {
               <Download className="h-3.5 w-3.5" />
             </Button>
           </>
+        )}
+        {onDelete && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            aria-label={`Delete ${document.originalFileName}`}
+            onClick={() => onDelete(document)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
         )}
       </div>
     </div>
@@ -781,6 +798,15 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
   const sorted = [...(documents ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const queryClient = useQueryClient();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission('records-compliance.delete');
+  const deleteMutation = useDeletePatientDocumentMutation(patient.id);
+  const [pendingDelete, setPendingDelete] = useState<DocumentResponse | null>(null);
+
+  const closeDeleteDialog = () => {
+    setPendingDelete(null);
+    deleteMutation.reset();
+  };
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -835,11 +861,42 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
         ) : (
           <div className="flex flex-col divide-y divide-border">
             {sorted.map((document) => (
-              <DocumentRow key={document.id} document={document} />
+              <DocumentRow key={document.id} document={document} onDelete={canDelete ? setPendingDelete : undefined} />
             ))}
           </div>
         )}
       </div>
+
+      {pendingDelete && (
+        <Dialog open onOpenChange={(open) => !open && !deleteMutation.isPending && closeDeleteDialog()}>
+          <DialogContent role="alertdialog" aria-labelledby="delete-patient-document-title">
+            <DialogHeader>
+              <DialogTitle id="delete-patient-document-title">Delete document?</DialogTitle>
+              <DialogDescription>
+                <strong className="text-foreground">{pendingDelete.originalFileName}</strong> will be removed from this patient's
+                documents.
+              </DialogDescription>
+            </DialogHeader>
+            {deleteMutation.isError && (
+              <p className="text-sm text-destructive">
+                {deleteMutation.error instanceof Error ? deleteMutation.error.message : 'Failed to delete document.'}
+              </p>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={closeDeleteDialog} disabled={deleteMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate(pendingDelete.id, { onSuccess: closeDeleteDialog })}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* The Document Management module's own upload dialog, locked to this patient — the
           document is stored with ownerType=Patient/ownerId=patient.id, the same keys the list

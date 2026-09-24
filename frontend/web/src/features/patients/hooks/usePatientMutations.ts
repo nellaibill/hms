@@ -56,6 +56,17 @@ export function useUploadPatientIdProofMutation() {
   });
 }
 
+// Soft delete (DocumentsController.Delete) — the row drops out of the list query via the
+// backend's IsDeleted query filter, and invalidating the shared prefix also clears a deleted
+// photo/ID proof from usePatientDocumentUrl.
+export function useDeletePatientDocumentMutation(patientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: string) => documentsApi.deleteDocument(documentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: patientDocumentsQueryKey(patientId) }),
+  });
+}
+
 export function useAddPatientAllergyMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
