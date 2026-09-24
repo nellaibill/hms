@@ -1,8 +1,8 @@
 import { ApiError, type OpdConsultationFormValues } from '@hms/shared';
 import { Loader2, Mic, Sparkles, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import type { UseFormSetValue } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast-context';
 import { useStructureOpdConsultationNoteMutation } from '../hooks/useOpdConsultationMutations';
@@ -40,19 +40,18 @@ declare global {
 
 const AI_NOT_CONFIGURED_ERROR_CODE = 'OPD_CONSULTATION.AI_NOT_CONFIGURED';
 
-const NARRATIVE_FIELDS = [
-  { key: 'presentingComplaints', label: 'Presenting Complaints' },
-  { key: 'clinicalHistory', label: 'Clinical History' },
-  { key: 'examinationFindings', label: 'Examination Findings' },
-  { key: 'planOfManagement', label: 'Plan of Management' },
-  { key: 'followUpInstructions', label: 'Follow-up Instructions' },
-  { key: 'emergencyReviewInstructions', label: 'Emergency Review Instructions' },
-] as const satisfies readonly { key: keyof OpdConsultationFormValues; label: string }[];
-
-type GeneratedNote = Partial<Record<(typeof NARRATIVE_FIELDS)[number]['key'], string | null>>;
+const NARRATIVE_FIELD_KEYS = [
+  'presentingComplaints',
+  'clinicalHistory',
+  'examinationFindings',
+  'planOfManagement',
+  'followUpInstructions',
+  'emergencyReviewInstructions',
+] as const satisfies readonly (keyof OpdConsultationFormValues)[];
 
 interface AiNoteDictationPanelProps {
   consultationId: string;
+  setValue: UseFormSetValue<OpdConsultationFormValues>;
   disabled?: boolean;
 }
 
@@ -64,13 +63,12 @@ interface AiNoteDictationPanelProps {
  * buttons remain the only persistence path; the consultant is expected to review the populated
  * fields before saving, same as if they'd typed them directly.
  */
-export function AiNoteDictationPanel({ consultationId, disabled }: AiNoteDictationPanelProps) {
+export function AiNoteDictationPanel({ consultationId, setValue, disabled }: AiNoteDictationPanelProps) {
   const { toast } = useToast();
   const [transcript, setTranscript] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
   const baseTranscriptRef = useRef('');
-  const [generatedNote, setGeneratedNote] = useState<GeneratedNote | null>(null);
   const mutation = useStructureOpdConsultationNoteMutation(consultationId);
 
   const speechRecognitionSupported = typeof window !== 'undefined' && Boolean(window.SpeechRecognition ?? window.webkitSpeechRecognition);
@@ -120,7 +118,12 @@ export function AiNoteDictationPanel({ consultationId, disabled }: AiNoteDictati
     mutation.mutate(
       { transcript },
       {
-        onSuccess: (fields) => setGeneratedNote(fields),
+        onSuccess: (fields) => {
+          for (const key of NARRATIVE_FIELD_KEYS) {
+            setValue(key, fields[key] ?? '', { shouldDirty: true });
+          }
+          toast({ title: 'Note generated', description: 'Review the populated fields before saving.', variant: 'success' });
+        },
         onError: (error) => {
           const isNotConfigured = error instanceof ApiError && error.errorCode === AI_NOT_CONFIGURED_ERROR_CODE;
           toast({
@@ -172,28 +175,6 @@ export function AiNoteDictationPanel({ consultationId, disabled }: AiNoteDictati
           {mutation.isPending ? 'Generatingâ€¦' : 'Generate Note'}
         </Button>
       </div>
-
-      <Dialog open={generatedNote !== null} onOpenChange={(open) => !open && setGeneratedNote(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>AI-generated note</DialogTitle>
-            <DialogDescription>Generated from the transcript. This is a preview only — nothing has been added to the consultation.</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            {NARRATIVE_FIELDS.map(({ key, label }) => (
-              <div key={key} className="flex flex-col gap-1">
-                <span className="text-sm font-medium">{label}</span>
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{generatedNote?.[key]?.trim() || '—'}</p>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setGeneratedNote(null)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
