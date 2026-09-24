@@ -34,7 +34,7 @@ export function PreferencesPanel() {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[480px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <tr className="bg-sidebar-active border-b border-border text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
             <th className="py-2 pr-4">Category</th>
             <th className="w-20 py-2 text-center">In-app</th>
             <th className="w-20 py-2 text-center">Email</th>

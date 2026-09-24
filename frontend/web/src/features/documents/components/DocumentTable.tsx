@@ -33,7 +33,7 @@ export function DocumentTable({
       <div className="hidden overflow-x-auto rounded-lg border border-border bg-card shadow-soft md:block">
         <table className="w-full min-w-[960px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr className="bg-sidebar-active border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-sidebar-active-foreground">
               <th scope="col" className="w-10 px-3 py-3"></th>
               <th scope="col" className="px-3 py-3">File Name</th>
               <th scope="col" className="px-3 py-3">Original File Name</th>
