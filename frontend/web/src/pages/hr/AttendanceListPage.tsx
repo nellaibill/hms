@@ -11,17 +11,15 @@ import {
   CheckInOutModal,
   useAttendanceQuery,
 } from '../../features/attendance';
+import { defaultReportDateRange, todayDateInputValue } from '@/lib/reportDateRange';
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function AttendanceListPage() {
   const [employeeId, setEmployeeId] = useState<string | undefined>(undefined);
   const [departmentId, setDepartmentId] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<string | undefined>(undefined);
-  const [dateFrom, setDateFrom] = useState(todayIso());
-  const [dateTo, setDateTo] = useState(todayIso());
+  const [dateFrom, setDateFrom] = useState(() => defaultReportDateRange().from);
+  const [dateTo, setDateTo] = useState(() => defaultReportDateRange().to);
   const [page, setPage] = useState(1);
 
   const [checkModal, setCheckModal] = useState<{ mode: 'check-in' | 'check-out'; employeeId?: string } | null>(null);
@@ -39,7 +37,7 @@ export default function AttendanceListPage() {
   });
 
   function resetToToday() {
-    const today = todayIso();
+    const today = todayDateInputValue();
     setDateFrom(today);
     setDateTo(today);
     setPage(1);
