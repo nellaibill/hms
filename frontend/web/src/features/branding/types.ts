@@ -92,6 +92,10 @@ export const TOKEN_GROUPS = {
   // Flat list (no pairedForeground nesting) — every row stands on its own per the Left nav
   // tab's own redesigned layout (BrandingForm.tsx), unlike every other group here.
   leftNav: [
+    // The whole panel (AppSidebar's bg-sidebar, incl. the empty area below the menu). Changing
+    // it also sets the odd/even item colors below to match (BrandingForm's handleTokenChange),
+    // so one pick recolors the full navbar; those two can still be set afterwards for stripes.
+    { key: '--sidebar', label: 'Left nav background (full panel)' },
     { key: '--sidebar-odd-bg', label: 'Left nav background (odd items)' },
     { key: '--sidebar-even-bg', label: 'Left nav background (even items)' },
     { key: '--sidebar-foreground', label: 'Left nav text (default)' },

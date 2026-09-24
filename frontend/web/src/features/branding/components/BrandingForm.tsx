@@ -196,7 +196,11 @@ export function BrandingForm() {
   const setActiveTokens = editingTheme === 'light' ? setDraftTokensLight : setDraftTokensDark;
 
   const handleTokenChange = (tokenKey: string, hex: string) => {
-    setActiveTokens((prev) => ({ ...prev, [tokenKey]: hexToHslTriple(hex) }));
+    const value = hexToHslTriple(hex);
+    // The full-panel background also repaints the odd/even item rows, which otherwise cover
+    // most of the panel with their own colors — so picking it recolors the whole navbar.
+    const linked = tokenKey === '--sidebar' ? { '--sidebar-odd-bg': value, '--sidebar-even-bg': value } : {};
+    setActiveTokens((prev) => ({ ...prev, ...linked, [tokenKey]: value }));
     setSavedMessage(false);
   };
 
@@ -328,7 +332,7 @@ export function BrandingForm() {
           <TabsContent value="nav">
             <div className="flex flex-col gap-1 pb-3">
               <h3 className="text-sm font-semibold text-foreground">Left Navigation Menu</h3>
-              <p className="text-xs text-muted-foreground">Configure the appearance of the left navigation menu. Use alternating colors for better readability.</p>
+              <p className="text-xs text-muted-foreground">Configure the appearance of the left navigation menu. The full-panel background recolors the whole menu; set the odd/even item colors afterwards if you want alternating stripes.</p>
             </div>
             <TokenGroupFields items={TOKEN_GROUPS.leftNav} tokens={activeTokens} onChange={handleTokenChange} onResetField={handleTokenReset} />
           </TabsContent>
