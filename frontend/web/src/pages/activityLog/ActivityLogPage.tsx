@@ -11,7 +11,7 @@ import { ActivityLogPagination } from '../../features/activityLog/components/Act
 import { ActivityLogTable } from '../../features/activityLog/components/ActivityLogTable';
 import {
   actionLabel,
-  EMPTY_FILTERS,
+  defaultActivityLogFilters,
   entityLabel,
   formatDateTime,
   type ActivityLogFilterValues,
@@ -44,8 +44,8 @@ function toQuery(filters: ActivityLogFilterValues, page: number, pageSize: numbe
 
 export default function ActivityLogPage() {
   const { toast } = useToast();
-  const [draft, setDraft] = useState<ActivityLogFilterValues>(EMPTY_FILTERS);
-  const [applied, setApplied] = useState<ActivityLogFilterValues>(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<ActivityLogFilterValues>(defaultActivityLogFilters);
+  const [applied, setApplied] = useState<ActivityLogFilterValues>(defaultActivityLogFilters);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ActivityLogEntry | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -75,8 +75,8 @@ export default function ActivityLogPage() {
   }
 
   function handleReset() {
-    setDraft(EMPTY_FILTERS);
-    setApplied(EMPTY_FILTERS);
+    setDraft(defaultActivityLogFilters());
+    setApplied(defaultActivityLogFilters());
     setPage(1);
   }
 
