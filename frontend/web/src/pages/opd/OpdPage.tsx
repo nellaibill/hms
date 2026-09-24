@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { exportReportToCsv, type ReportSection } from '@/features/reports';
+import { exportReportToCsv, exportReportToExcel, exportReportToPdf, type ExportFormatOption, type ReportSection } from '@/features/reports';
 import {
   OpdAdmissionsListTable,
   OpdConsultationListTable,
@@ -14,7 +14,6 @@ import {
   OpdPatientListTable,
   OpdProceduresListTable,
   emptyOpdFilters,
-  todayIsoDate,
   toRangeEnd,
   toRangeStart,
   type OpdFilterValues,
@@ -87,7 +86,7 @@ export default function OpdPage() {
    * not just the visible page) and downloads them as CSV. Each tab's table component owns its
    * own on-screen query; this is a separate, one-off fetch rather than lifting that state up
    * to the page just for this. */
-  async function handleExport() {
+  async function handleExport(format: ExportFormatOption) {
     const commonFrom = toRangeStart(filters.from);
     const commonTo = toRangeEnd(filters.to);
     let section: ReportSection;
@@ -212,7 +211,10 @@ export default function OpdPage() {
       }
     }
 
-    exportReportToCsv(`opd-${tab}-${todayIsoDate()}.csv`, [section]);
+    const filenameBase = `opd-${tab}_${filters.from}_to_${filters.to}`;
+    if (format === 'csv') exportReportToCsv(`${filenameBase}.csv`, [section]);
+    else if (format === 'excel') await exportReportToExcel(`${filenameBase}.xlsx`, [section]);
+    else exportReportToPdf(`${filenameBase}.pdf`, `${section.heading} (${filters.from} to ${filters.to})`, [section]);
   }
 
   return (
