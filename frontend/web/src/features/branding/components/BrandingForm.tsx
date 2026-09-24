@@ -199,7 +199,7 @@ export function BrandingForm() {
     const value = hexToHslTriple(hex);
     // The full-panel background also repaints the odd/even item rows, which otherwise cover
     // most of the panel with their own colors — so picking it recolors the whole navbar.
-    const linked = tokenKey === '--sidebar' ? { '--sidebar-odd-bg': value, '--sidebar-even-bg': value } : {};
+    const linked: Record<string, string> = tokenKey === '--sidebar' ? { '--sidebar-odd-bg': value, '--sidebar-even-bg': value } : {};
     setActiveTokens((prev) => ({ ...prev, ...linked, [tokenKey]: value }));
     setSavedMessage(false);
   };
