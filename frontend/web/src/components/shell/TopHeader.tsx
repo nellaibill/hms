@@ -47,7 +47,7 @@ export function TopHeader() {
         <Menu className="h-5 w-5" />
       </Button>
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="flex flex-col p-0">
+        <SheetContent side="left" className="flex flex-col bg-sidebar p-0">
           <div className="flex h-16 items-center border-b border-border px-4">
             <HospitalLogo />
           </div>
