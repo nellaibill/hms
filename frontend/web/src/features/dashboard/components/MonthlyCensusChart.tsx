@@ -2,6 +2,8 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { ChartCard } from './ChartCard';
 import { monthlyPatientCensus } from '../mockData';
 
+const compactNumber = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 });
+
 const legend = (
   <div className="flex items-center gap-4 text-xs text-muted-foreground">
     <span className="flex items-center gap-1.5">
@@ -19,7 +21,7 @@ export function MonthlyCensusChart() {
   return (
     <ChartCard title="Monthly Patient OP/IP Census" description="Last 6 months" legend={legend}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={monthlyPatientCensus} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+        <AreaChart data={monthlyPatientCensus} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="opGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
@@ -32,7 +34,15 @@ export function MonthlyCensusChart() {
           </defs>
           <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
           <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-          <YAxis tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} width={36} />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+            // Census counts run to 5 digits; at 36px (plus the old -12px left margin) the leading
+            // digits were clipped ("000", "500"). Compact labels ("8k") fit the axis at any width.
+            tickFormatter={(value: number) => compactNumber.format(value)}
+            width={40}
+          />
           <Tooltip
             contentStyle={{
               background: 'hsl(var(--popover))',

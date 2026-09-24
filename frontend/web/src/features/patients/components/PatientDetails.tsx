@@ -58,9 +58,12 @@ interface PatientDetailsProps {
  * own (some previously stacked label-over-value, others didn't align at all). */
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0">
+    // Values wrap rather than truncate: at laptop widths the half-width cards cut values like
+    // 'Doctor Referral' or a masked ID number to 'Doctor Ref…', with no way to read the rest
+    // on a touch screen (no hover tooltip).
+    <div className="flex items-baseline justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0">
       <dt className="shrink-0 text-xs font-semibold uppercase tracking-wide text-primary">{label}</dt>
-      <dd className="min-w-0 truncate text-right text-sm text-foreground">{value}</dd>
+      <dd className="min-w-0 break-words text-right text-sm text-foreground">{value}</dd>
     </div>
   );
 }
