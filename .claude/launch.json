@@ -9,6 +9,12 @@
       "autoPort": true
     },
     {
+      "name": "hms-web-prod-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend/web", "run", "preview", "--", "--port", "4173", "--strictPort"],
+      "port": 4173
+    },
+    {
       "name": "hms-api-dev",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "backend/src/HMS.Api", "--urls", "http://localhost:58158"],

@@ -236,7 +236,15 @@ $env:VITE_API_BASE_URL = "http://162.35.105.234"
 npm install
 npm run build
 ```
+Or run [scripts/deploy/windows/build-frontend.ps1](../scripts/deploy/windows/build-frontend.ps1)
+`-ApiBaseUrl "http://162.35.105.234"`, which does the same in the right order (shared before
+web) and also clears Vite's dev pre-bundle cache.
+
 This produces `frontend/web/dist`, which is what nginx (step 1) serves as static files.
+**Don't serve the app with `npm run dev` on a server.** The Vite dev server compiles every
+module per request (measured on staging: 75 requests / 4.4 MB for the login page alone,
+8–19 s page loads, vs 20 requests / 0.8 MB for the production build), exposes the
+TypeScript source, and serves a stale `@hms/shared` pre-bundle after shared changes.
 **Every** subsequent change to the public IP/domain requires re-running this build — it's
 baked in, not read at runtime.
 
