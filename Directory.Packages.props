@@ -21,11 +21,11 @@
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
 
     <!-- Data access -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.4" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
     <!-- Npgsql's EF Core provider version tracks the EF Core major version; confirm the
          published 10.x version when restoring for real — see backend/README.md. -->
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
 
     <!-- Validation -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
