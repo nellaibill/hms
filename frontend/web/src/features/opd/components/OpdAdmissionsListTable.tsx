@@ -13,6 +13,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { departmentsApi } from '@/services/apiClient';
 import { RequestAdmissionDialog } from './RequestAdmissionDialog';
 import type { OpdFilterValues } from '../types';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 const PAGE_SIZE = 10;
 
@@ -126,7 +127,9 @@ export function OpdAdmissionsListTable({ filters, page, onPageChange }: OpdAdmis
                   <tbody className="divide-y divide-border">
                     {data.items.map((admission) => (
                       <tr key={admission.id} className="hover:bg-muted/30">
-                        <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{admission.patientName}</td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <PatientNameLink patientId={admission.patientId}>{admission.patientName}</PatientNameLink>
+                        </td>
                         <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{admission.uhid}</td>
                         <td className="whitespace-nowrap px-4 py-3 text-foreground">
                           {admission.age} / {admission.gender}

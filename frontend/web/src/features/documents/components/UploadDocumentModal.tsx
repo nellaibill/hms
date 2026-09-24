@@ -26,9 +26,14 @@ interface UploadDocumentModalProps {
   onUploaded: (doc: HmsDocument) => void;
   defaultEntityType?: EntityType;
   defaultEntityId?: string;
+  /** Locks Entity Type/Entity to the defaults and shows this label instead of the pickers —
+   * for uploads started from a record's own page (e.g. Patient Details), where the document
+   * must belong to that record and choosing another one would be a mistake. */
+  lockedEntityLabel?: string;
 }
 
-export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityType, defaultEntityId }: UploadDocumentModalProps) {
+export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityType, defaultEntityId, lockedEntityLabel }: UploadDocumentModalProps) {
+  const entityLocked = Boolean(lockedEntityLabel && defaultEntityType && defaultEntityId);
   const [values, setValues] = useState<DocumentUploadFormValues>({
     ...EMPTY_VALUES,
     entityType: defaultEntityType ?? '',
@@ -102,7 +107,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityTy
               </Label>
               <Select
                 value={values.entityType}
-                disabled={busy}
+                disabled={busy || entityLocked}
                 onValueChange={(value) => setValues((prev) => ({ ...prev, entityType: value as EntityType, entityId: '' }))}
               >
                 <SelectTrigger id="upload-entity-type" aria-invalid={!!errors.entityType}>
@@ -127,7 +132,9 @@ export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityTy
               <Label htmlFor="upload-entity">
                 Entity <span className="font-normal text-muted-foreground">(required)</span>
               </Label>
-              {entityPickerSupported ? (
+              {entityLocked ? (
+                <Input id="upload-entity" value={lockedEntityLabel} disabled readOnly />
+              ) : entityPickerSupported ? (
                 <SearchableSelect
                   id="upload-entity"
                   value={values.entityId}

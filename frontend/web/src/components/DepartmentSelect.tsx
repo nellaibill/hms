@@ -8,11 +8,15 @@ interface DepartmentSelectProps {
   onValueChange: (value: string) => void;
   ariaLabel?: string;
   disabled?: boolean;
+  /** Filter-toolbar mode: prepends an "All departments"-style option whose value is '' — the
+   * caller maps '' to an unset filter, so choosing it doesn't restrict results. Omit on forms,
+   * where a real department is required. */
+  allOptionLabel?: string;
 }
 
 /** Department picker shared across every HR form that references a DepartmentId
  * (Weekly Roster, Shift Assignment), backed by the real GET /api/v1/masters/departments list. */
-export function DepartmentSelect({ id, value, onValueChange, ariaLabel = 'Department', disabled }: DepartmentSelectProps) {
+export function DepartmentSelect({ id, value, onValueChange, ariaLabel = 'Department', disabled, allOptionLabel }: DepartmentSelectProps) {
   const { data } = useQuery({
     queryKey: ['departments', 'select-list'],
     queryFn: () => departmentsApi.getDepartments({ pageSize: 100, isActive: true }),
@@ -23,11 +27,14 @@ export function DepartmentSelect({ id, value, onValueChange, ariaLabel = 'Depart
   // label that reliably tells two same-named departments apart (e.g. two "Intensive Care
   // Unit" wards with different codes) rather than only disambiguating when duplicates
   // happen to be noticed.
-  const options = (data?.items ?? []).map((department) => ({
-    value: department.id,
-    label: `${department.name} (${department.code})`,
-    keywords: department.code,
-  }));
+  const options = [
+    ...(allOptionLabel ? [{ value: '', label: allOptionLabel }] : []),
+    ...(data?.items ?? []).map((department) => ({
+      value: department.id,
+      label: `${department.name} (${department.code})`,
+      keywords: department.code,
+    })),
+  ];
 
   return (
     <SearchableSelect
@@ -35,7 +42,7 @@ export function DepartmentSelect({ id, value, onValueChange, ariaLabel = 'Depart
       value={value}
       onValueChange={onValueChange}
       options={options}
-      placeholder="Select department…"
+      placeholder={allOptionLabel ?? 'Select department…'}
       searchPlaceholder="Search by name or code…"
       ariaLabel={ariaLabel}
       disabled={disabled}

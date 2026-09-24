@@ -28,6 +28,7 @@ import {
   useVerifyMutation,
   type LabOrderItem,
 } from '@/features/laboratory';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -172,7 +173,10 @@ export default function LabOrderDetailPage() {
         titleExtra={<LabStatusBadge status={order.overallStatus} className="whitespace-nowrap" />}
         subtitle={
           <>
-            {order.patientName} · <span className="font-mono">{order.patientUhid}</span>
+            <PatientNameLink patientId={order.patientId} className="font-normal text-inherit hover:text-inherit">
+              {order.patientName}
+            </PatientNameLink>{' '}
+            · <span className="font-mono">{order.patientUhid}</span>
           </>
         }
         backTo="/diagnostics/lab/worklist"
@@ -196,7 +200,7 @@ export default function LabOrderDetailPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <SectionCard title="Patient">
                 <dl className="grid grid-cols-1 gap-x-3">
-                  <Field label="Name" value={order.patientName} />
+                  <Field label="Name" value={<PatientNameLink patientId={order.patientId}>{order.patientName}</PatientNameLink>} />
                   <Field label="UHID" value={order.patientUhid} />
                 </dl>
               </SectionCard>

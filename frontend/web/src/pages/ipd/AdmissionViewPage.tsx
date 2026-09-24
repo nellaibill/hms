@@ -29,6 +29,7 @@ import {
   useTransferBedMutation,
 } from '../../features/ipd/admissions';
 import { DischargeSummaryEntryCard } from '../../features/dischargeSummary';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -98,7 +99,11 @@ export default function AdmissionViewPage() {
     <div className="flex flex-1 flex-col">
       <PageBanner
         icon={ClipboardList}
-        title={admission.patientName}
+        title={
+          <PatientNameLink patientId={admission.patientId} className="font-[inherit] text-inherit hover:text-inherit">
+            {admission.patientName}
+          </PatientNameLink>
+        }
         titleExtra={<Badge variant={isAdmitted ? 'success' : 'secondary'}>{admission.status}</Badge>}
         subtitle={<span className="font-mono">{admission.admissionNumber}</span>}
         backTo="/clinical/ipd/admissions"

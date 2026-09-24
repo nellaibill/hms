@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { formatCurrency, PaymentStatusBadge } from '@/features/billing';
 import type { IncomeReportRow } from '../types';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface IncomeTableProps {
   rows: IncomeReportRow[];
@@ -30,7 +31,7 @@ export function IncomeTable({ rows }: IncomeTableProps) {
                 </Link>
               </td>
               <td className="px-4 py-3">
-                <span className="font-medium text-foreground">{row.patientName}</span>
+                <PatientNameLink patientId={row.patientId}>{row.patientName}</PatientNameLink>
                 <div className="text-xs text-muted-foreground">{row.patientUhid}</div>
               </td>
               <td className="px-4 py-3 text-muted-foreground">{row.billingTypes}</td>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DownloadDischargeSummaryButton } from './DownloadDischargeSummaryButton';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 const STATUS_VARIANTS: Record<Admission['status'], BadgeProps['variant']> = {
   Requested: 'warning',
@@ -47,7 +48,9 @@ export function AdmissionTable({ admissions, onAssignBed }: AdmissionTableProps)
                 </Link>
               </td>
               <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{admission.uhid}</td>
-              <td className="px-4 py-3 font-medium text-foreground">{admission.patientName}</td>
+              <td className="px-4 py-3">
+                <PatientNameLink patientId={admission.patientId}>{admission.patientName}</PatientNameLink>
+              </td>
               <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
                 {admission.age} / {admission.gender}
               </td>

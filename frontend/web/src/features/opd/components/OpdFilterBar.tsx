@@ -82,6 +82,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
           value={filters.departmentId ?? ''}
           onValueChange={(value) => onChange({ ...filters, departmentId: value || undefined, consultantId: undefined })}
           ariaLabel="Filter by department"
+          allOptionLabel="All departments"
           disabled={lockDepartmentAndConsultant}
         />
       </div>
@@ -94,6 +95,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
           onValueChange={(value) => onChange({ ...filters, consultantId: value || undefined })}
           departmentId={filters.departmentId}
           ariaLabel="Filter by consultant"
+          allOptionLabel="All consultants"
           disabled={lockDepartmentAndConsultant}
         />
       </div>

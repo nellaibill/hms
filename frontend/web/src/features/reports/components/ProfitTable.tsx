@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
 import type { ProfitReportRow } from '../profitReport';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface ProfitTableProps {
   rows: ProfitReportRow[];
@@ -42,7 +43,11 @@ export function ProfitTable({ rows }: ProfitTableProps) {
                   {row.invoiceNumber ?? row.invoiceId}
                 </Link>
               </td>
-              <td className="px-4 py-3 text-foreground">{row.patientName}</td>
+              <td className="px-4 py-3">
+                <PatientNameLink patientId={row.patientId} className="font-normal">
+                  {row.patientName}
+                </PatientNameLink>
+              </td>
               <td className="px-4 py-3 text-muted-foreground">{row.billingType}</td>
               <td className="px-4 py-3 text-muted-foreground">{row.serviceLabel}</td>
               <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('department', row.departmentId)}</td>

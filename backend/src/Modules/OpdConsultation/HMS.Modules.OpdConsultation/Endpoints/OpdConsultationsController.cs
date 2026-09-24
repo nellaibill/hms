@@ -47,6 +47,30 @@ public class OpdConsultationsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapDetailFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Lists every consultation note already recorded for one patient (newest first),
+    /// each with its header — read-only, never auto-creates a note (unlike GET by consultation).</summary>
+    /// <response code="200">The patient's consultation notes (empty when none exist).</response>
+    /// <response code="400">patientId is missing.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
+    [HttpGet]
+    public async Task<IActionResult> GetByPatient([FromQuery] Guid patientId, CancellationToken cancellationToken)
+    {
+        if (patientId == Guid.Empty)
+        {
+            return BadRequest(new ApiErrorResponse
+            {
+                ErrorCode = "VALIDATION.FAILED",
+                Message = "patientId is required.",
+                CorrelationId = HttpContext.GetCorrelationId(),
+                Timestamp = DateTime.UtcNow,
+            });
+        }
+
+        var result = await _service.GetByPatientIdAsync(patientId, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<OpdConsultationDetailResponse>> { Data = result.Value });
+    }
+
     /// <summary>Saves the current form state with no required fields.</summary>
     /// <response code="200">The consultation note was saved.</response>
     /// <response code="400">The request failed validation.</response>

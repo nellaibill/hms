@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, PaymentStatusBadge } from '@/features/billing';
 import { useOpdProceduresQuery } from '../hooks/useOpdProceduresQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 const PAGE_SIZE = 10;
 
@@ -92,7 +93,9 @@ export function OpdProceduresListTable({ filters, page, onPageChange }: OpdProce
               <tbody className="divide-y divide-border">
                 {data.items.map((item) => (
                   <tr key={item.invoiceLineItemId} className="hover:bg-muted/30">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.patientName}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <PatientNameLink patientId={item.patientId}>{item.patientName}</PatientNameLink>
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{item.patientUhid}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.serviceName ?? '—'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-foreground">{item.consultantName ?? '—'}</td>

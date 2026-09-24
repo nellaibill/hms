@@ -1,5 +1,6 @@
 import type { StockTransactionResponse } from '@hms/shared';
 import { Badge } from '@/components/ui/badge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface StockLedgerTableProps {
   transactions: StockTransactionResponse[];
@@ -29,7 +30,15 @@ export function StockLedgerTable({ transactions }: StockLedgerTableProps) {
               </td>
               <td className="px-4 py-3 font-medium text-foreground">{txn.productName}</td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{txn.batchNo}</td>
-              <td className="px-4 py-3 text-sm text-foreground">{txn.patientName || '—'}</td>
+              <td className="px-4 py-3 text-sm text-foreground">
+                {txn.patientName && txn.patientId ? (
+                  <PatientNameLink patientId={txn.patientId} className="font-normal">
+                    {txn.patientName}
+                  </PatientNameLink>
+                ) : (
+                  txn.patientName || '—'
+                )}
+              </td>
               <td className="px-4 py-3 tabular-nums text-foreground">{txn.quantity}</td>
               <td className="px-4 py-3 tabular-nums text-foreground">{txn.balanceAfter}</td>
               <td className="px-4 py-3 text-sm text-foreground">{new Date(txn.transactionDate).toLocaleString('en-IN')}</td>

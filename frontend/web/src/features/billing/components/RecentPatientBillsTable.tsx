@@ -5,6 +5,7 @@ import { DepartmentName } from '@/components/DepartmentName';
 import { formatCurrency } from '../billingCalculations';
 import type { RecentBill, RecentBillConsultant } from '../types';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface RecentPatientBillsTableProps {
   bills: RecentBill[];
@@ -59,9 +60,7 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                   </Link>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
-                  <Link to={`/finance/accounts/${bill.invoiceId}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                    {bill.patientName}
-                  </Link>
+                  <PatientNameLink patientId={bill.patientId}>{bill.patientName}</PatientNameLink>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                   {bill.age ?? '—'}

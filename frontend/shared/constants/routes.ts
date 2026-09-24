@@ -335,6 +335,8 @@ export const API_ROUTES = {
    * action, keyed by consultationId (the same id `opd.consultationComplete` above operates
    * on — this is a different module's own record for that same consultation). */
   opdConsultations: {
+    /** GET ?patientId= — every note already on file for one patient; never auto-creates. */
+    base: '/api/v1/opd-consultations',
     byConsultationId: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}`,
     saveDraft: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/draft`,
     complete: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/complete`,

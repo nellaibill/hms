@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency, getOverallPaymentStatus } from '../billingCalculations';
 import type { Billing } from '../types';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface InvoiceLedgerTableProps {
   billings: Billing[];
@@ -50,11 +51,15 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
         <tbody className="divide-y divide-border">
           {billings.map((billing) => (
             <tr key={billing.id} className="hover:bg-muted/30">
-              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{billing.invoiceNumber ?? billing.id}</td>
-              <td className="px-4 py-3">
-                <Link to={`/finance/accounts/${billing.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                  {billing.patientName}
+              {/* The invoice number opens the invoice (the patient name used to, before it became the
+                  link to Patient Details) — same pattern as RecentPatientBillsTable/IncomeTable. */}
+              <td className="whitespace-nowrap px-4 py-3">
+                <Link to={`/finance/accounts/${billing.id}`} className="font-mono text-xs text-primary hover:underline">
+                  {billing.invoiceNumber ?? billing.id}
                 </Link>
+              </td>
+              <td className="px-4 py-3">
+                <PatientNameLink patientId={billing.patientId}>{billing.patientName}</PatientNameLink>
                 <div className="text-xs text-muted-foreground">{billing.patientUhid}</div>
               </td>
               <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(billing.createdAt).toLocaleDateString('en-IN')}</td>

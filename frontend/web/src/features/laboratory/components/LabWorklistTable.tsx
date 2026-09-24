@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { LabOrder } from '../types';
 import { LabStatusBadge } from './LabStatusBadge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface LabWorklistTableProps {
   orders: LabOrder[];
@@ -45,7 +46,7 @@ export function LabWorklistTable({ orders }: LabWorklistTableProps) {
                   </Link>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
-                  <div className="font-medium text-foreground">{order.patientName}</div>
+                  <PatientNameLink patientId={order.patientId}>{order.patientName}</PatientNameLink>
                   <div className="font-mono text-xs text-muted-foreground">{order.patientUhid}</div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">

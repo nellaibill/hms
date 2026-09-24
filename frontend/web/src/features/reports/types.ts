@@ -4,6 +4,7 @@ export interface IncomeReportRow {
   id: string;
   invoiceNumber?: string;
   date: string;
+  patientId: string;
   patientName: string;
   patientUhid: string;
   billingTypes: string;

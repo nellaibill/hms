@@ -109,7 +109,7 @@ export function HeaderSearchBox() {
                       // click below ever registers, so nothing would ever get selected.
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => goToPatient(patient)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-sidebar-active hover:text-sidebar-active-foreground"
                     >
                       <span className="font-medium text-foreground">
                         {patient.title} {patient.firstName} {patient.lastName}

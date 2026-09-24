@@ -44,7 +44,10 @@ export class DocumentsApi {
    * caller so far only needs "the handful of documents for this one owner+type." */
   async listDocuments(query: DocumentListQuery): Promise<DocumentResponse[]> {
     const response = await this.client.get<DocumentResponse[]>(API_ROUTES.documents.base, {
-      query: { ownerType: query.ownerType, ownerId: query.ownerId, documentType: query.documentType },
+      // Same paged GET as getDocuments below — without an explicit pageSize the server's
+      // default (PagedRequest.DefaultPageSize = 20) silently truncated a patient/employee's
+      // "all documents" list, so ask for the server's max page instead.
+      query: { ownerType: query.ownerType, ownerId: query.ownerId, documentType: query.documentType, pageSize: 100 },
     });
     return response.data;
   }

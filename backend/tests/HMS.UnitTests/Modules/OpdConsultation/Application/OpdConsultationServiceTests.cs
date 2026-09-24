@@ -349,4 +349,44 @@ public class OpdConsultationServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(OpdConsultationErrorCodes.AiNotConfigured);
     }
+
+    [Fact]
+    public async Task GetByPatientIdAsync_ReturnsEachExistingNoteWithItsHeader_AndNeverCreatesOne()
+    {
+        var patientId = Guid.NewGuid();
+        var visitId = Guid.NewGuid();
+        var first = OpdConsultationNote.Create(Guid.NewGuid(), patientId, visitId, createdBy: null);
+        var second = OpdConsultationNote.Create(Guid.NewGuid(), patientId, visitId, createdBy: null);
+        _repository.GetByPatientIdAsync(patientId, Arg.Any<CancellationToken>()).Returns(new[] { first, second });
+        _opdQueryService.GetConsultationDetailAsync(first.ConsultationId, Arg.Any<CancellationToken>())
+            .Returns(Result<OpdPatientListItem>.Success(NewListItem(first.ConsultationId, patientId, visitId)));
+        _opdQueryService.GetConsultationDetailAsync(second.ConsultationId, Arg.Any<CancellationToken>())
+            .Returns(Result<OpdPatientListItem>.Success(NewListItem(second.ConsultationId, patientId, visitId)));
+
+        var result = await _sut.GetByPatientIdAsync(patientId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Select(d => d.Header.ConsultationId).Should().Equal(first.ConsultationId, second.ConsultationId);
+        result.Value!.Should().OnlyContain(d => d.Header.PatientId == patientId && d.Header.ConsultantName == "Dr. Test");
+        await _repository.DidNotReceive().AddAsync(Arg.Any<OpdConsultationNote>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetByPatientIdAsync_SkipsANoteWhoseConsultationCanNoLongerBeResolved()
+    {
+        var patientId = Guid.NewGuid();
+        var resolvable = OpdConsultationNote.Create(Guid.NewGuid(), patientId, Guid.NewGuid(), createdBy: null);
+        var orphaned = OpdConsultationNote.Create(Guid.NewGuid(), patientId, Guid.NewGuid(), createdBy: null);
+        _repository.GetByPatientIdAsync(patientId, Arg.Any<CancellationToken>()).Returns(new[] { resolvable, orphaned });
+        _opdQueryService.GetConsultationDetailAsync(resolvable.ConsultationId, Arg.Any<CancellationToken>())
+            .Returns(Result<OpdPatientListItem>.Success(NewListItem(resolvable.ConsultationId, patientId, resolvable.VisitId)));
+        _opdQueryService.GetConsultationDetailAsync(orphaned.ConsultationId, Arg.Any<CancellationToken>())
+            .Returns(Result<OpdPatientListItem>.Failure(PatientErrorCodes.ConsultationNotFound, "not found"));
+
+        var result = await _sut.GetByPatientIdAsync(patientId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Should().ContainSingle().Which.Header.ConsultationId.Should().Be(resolvable.ConsultationId);
+    }
 }

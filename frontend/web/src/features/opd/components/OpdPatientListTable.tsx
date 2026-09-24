@@ -12,6 +12,7 @@ import { useVisitPaymentStatusesQuery } from '../hooks/useVisitPaymentStatusesQu
 import { OpdPaymentStatusBadge } from './OpdPaymentStatusBadge';
 import { OpdStatusBadge } from './OpdStatusBadge';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 // A consultation still Waiting or already CheckedIn hasn't started yet — "Consult" starts it.
 const CONSULTABLE_STATUSES: OpdConsultationStatus[] = ['Waiting', 'CheckedIn'];
@@ -142,7 +143,9 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                     {data.items.map((row, index) => (
                       <tr key={row.consultationId} className="hover:bg-muted/30">
                         <td className="px-4 py-3 text-muted-foreground">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                        <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{row.patientName}</td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <PatientNameLink patientId={row.patientId}>{row.patientName}</PatientNameLink>
+                        </td>
                         <td className="whitespace-nowrap px-4 py-3 text-foreground">
                           {row.age} Years / {row.gender[0]}
                         </td>

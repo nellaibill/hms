@@ -23,6 +23,13 @@ public interface IOpdConsultationService
     /// InvalidConsultation if the consultation doesn't exist.</summary>
     Task<Result<OpdConsultationDetailResponse>> GetOrCreateByConsultationIdAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken);
 
+    /// <summary>Every consultation note already recorded for a patient, each with the same
+    /// header GetOrCreate returns — the Patient Details page's Medical Information tab. Strictly
+    /// read-only: unlike GetOrCreate it never creates a note, so browsing a patient's history
+    /// can't leave empty drafts behind. A note whose consultation can no longer be resolved is
+    /// skipped rather than failing the whole list.</summary>
+    Task<Result<IReadOnlyList<OpdConsultationDetailResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
+
     /// <summary>Full-record save with no required fields. Fails with NotDraft once
     /// Completed.</summary>
     Task<Result<OpdConsultationNoteResponse>> SaveDraftAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken);
@@ -94,25 +101,28 @@ internal class OpdConsultationService : IOpdConsultationService
             await _repository.SaveChangesAsync(cancellationToken);
         }
 
-        var header = new OpdConsultationHeader
-        {
-            ConsultationId = item.ConsultationId,
-            VisitId = item.VisitId,
-            PatientId = item.PatientId,
-            Uhid = item.Uhid,
-            PatientName = item.PatientName,
-            PhoneNumber = item.PhoneNumber,
-            Age = item.Age,
-            Gender = item.Gender.ToString(),
-            AppointmentTime = item.AppointmentTime,
-            DepartmentId = item.DepartmentId,
-            DepartmentName = item.DepartmentName,
-            ConsultantId = item.ConsultantId,
-            ConsultantName = item.ConsultantName,
-            ConsultationStatus = item.Status.ToString(),
-        };
+        var header = ToHeader(item);
 
         return Result<OpdConsultationDetailResponse>.Success(new OpdConsultationDetailResponse { Header = header, Note = note.ToResponse() });
+    }
+
+    public async Task<Result<IReadOnlyList<OpdConsultationDetailResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
+    {
+        var notes = await _repository.GetByPatientIdAsync(patientId, cancellationToken);
+
+        var details = new List<OpdConsultationDetailResponse>(notes.Count);
+        foreach (var note in notes)
+        {
+            var detailResult = await _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, cancellationToken);
+            if (!detailResult.IsSuccess)
+            {
+                continue;
+            }
+
+            details.Add(new OpdConsultationDetailResponse { Header = ToHeader(detailResult.Value!), Note = note.ToResponse() });
+        }
+
+        return Result<IReadOnlyList<OpdConsultationDetailResponse>>.Success(details);
     }
 
     public async Task<Result<OpdConsultationNoteResponse>> SaveDraftAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -225,6 +235,24 @@ internal class OpdConsultationService : IOpdConsultationService
 
         return await _clinicalNoteAiClient.StructureAsync(transcript, cancellationToken);
     }
+
+    private static OpdConsultationHeader ToHeader(OpdPatientListItem item) => new()
+    {
+        ConsultationId = item.ConsultationId,
+        VisitId = item.VisitId,
+        PatientId = item.PatientId,
+        Uhid = item.Uhid,
+        PatientName = item.PatientName,
+        PhoneNumber = item.PhoneNumber,
+        Age = item.Age,
+        Gender = item.Gender.ToString(),
+        AppointmentTime = item.AppointmentTime,
+        DepartmentId = item.DepartmentId,
+        DepartmentName = item.DepartmentName,
+        ConsultantId = item.ConsultantId,
+        ConsultantName = item.ConsultantName,
+        ConsultationStatus = item.Status.ToString(),
+    };
 
     private void ApplyRequest(OpdConsultationNote note, SaveOpdConsultationRequest request, Guid? actorId)
     {

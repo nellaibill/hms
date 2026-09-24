@@ -1,6 +1,7 @@
 import type { DispenseResponse } from '@hms/shared';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface DispenseTableProps {
   dispenses: DispenseResponse[];
@@ -26,7 +27,11 @@ export function DispenseTable({ dispenses }: DispenseTableProps) {
             <tr key={dispense.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-medium text-foreground">{dispense.productName}</td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{dispense.batchNo}</td>
-              <td className="px-4 py-3 text-sm text-foreground">{dispense.patientName}</td>
+              <td className="px-4 py-3 text-sm">
+                <PatientNameLink patientId={dispense.patientId} className="font-normal">
+                  {dispense.patientName}
+                </PatientNameLink>
+              </td>
               <td className="px-4 py-3 tabular-nums text-foreground">{dispense.quantity}</td>
               <td className="px-4 py-3 tabular-nums text-foreground">{dispense.balanceAfter}</td>
               <td className="px-4 py-3 text-sm text-foreground">{new Date(dispense.transactionDate).toLocaleString('en-IN')}</td>
