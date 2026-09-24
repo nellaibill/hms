@@ -15,17 +15,7 @@ import {
   type ProfitReportFilterState,
   type ReportDateRange,
 } from '@/features/reports';
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function defaultRange(): ReportDateRange {
-  const today = new Date();
-  const from = new Date(today);
-  from.setDate(from.getDate() - 30);
-  return { from: toDateInputValue(from), to: toDateInputValue(today) };
-}
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 /**
  * Consultant Profit Report — revenue/cost/profit attributed to each consultant. Scoped to
@@ -42,9 +32,9 @@ function defaultRange(): ReportDateRange {
  * consultant, so filtering it down to a single one has no real use.
  */
 export default function ConsultantReportPage() {
-  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultRange);
+  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
-  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultRange);
+  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -74,7 +64,7 @@ export default function ConsultantReportPage() {
   }
 
   function handleReset() {
-    const fresh = defaultRange();
+    const fresh = defaultReportDateRange();
     setDraftRange(fresh);
     setDraftFilters({});
     setAppliedRange(fresh);
