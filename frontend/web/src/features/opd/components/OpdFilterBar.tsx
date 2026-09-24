@@ -1,5 +1,5 @@
 import { ADMISSION_STATUSES, INVOICE_PAYMENT_STATUSES, LAB_ORDER_ITEM_STATUSES, OPD_CONSULTATION_STATUSES } from '@hms/shared';
-import { Download, RefreshCw, Search } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { humanize } from '@/features/patients/humanize';
+import { ExportMenu, type ExportFormatOption } from '@/features/reports';
 import type { OpdFilterValues, OpdTab } from '../types';
 
 /** Per-tab option list for the shared Status dropdown — each tab's list endpoint filters on
@@ -35,7 +36,7 @@ interface OpdFilterBarProps {
   onRefresh: () => void;
   /** True while the active tab's data is being (re)fetched — spins the Refresh icon. */
   isRefreshing?: boolean;
-  onExport: () => void;
+  onExport: (format: ExportFormatOption) => void | Promise<void>;
   /** True when the signed-in user is a Consultant/Doctor linked to their own consultant
    * record (AuthContextValue.scopedConsultantId) — locks Department/Consultant to their own
    * so they can't browse another consultant's queue. UI convenience only: the backend forces
@@ -140,10 +141,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
           <RefreshCw className={isRefreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           Refresh
         </Button>
-        <Button type="button" onClick={onExport} className="gap-1.5">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        <ExportMenu onExport={onExport} variant="default" size="default" />
       </div>
     </div>
   );

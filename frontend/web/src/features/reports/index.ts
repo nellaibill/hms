@@ -3,6 +3,7 @@ export * from './components/CategoryProfitReportPage';
 export * from './components/ConsultantProfitTable';
 export * from './components/ExpenseTable';
 export * from './components/ExportButtons';
+export * from './components/ExportMenu';
 export * from './components/IncomeTable';
 export * from './components/Pagination';
 export * from './components/ProfitExportButtons';
