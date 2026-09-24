@@ -1,3 +1,5 @@
+import { defaultReportDateRange, todayDateInputValue } from '@/lib/reportDateRange';
+
 export type OpdTab = 'patients' | 'consultations' | 'investigations' | 'procedures' | 'admissions';
 
 /** Shared filter values driven by OpdFilterBar and consumed by every tab's own query hook —
@@ -11,7 +13,8 @@ export interface OpdFilterValues {
   search: string;
 }
 
-export const todayIsoDate = () => new Date().toISOString().slice(0, 10);
+/** Local calendar day, not the UTC one — see lib/reportDateRange. */
+export const todayIsoDate = todayDateInputValue;
 
 // A plain `type="date"` value (e.g. "2026-09-11") has no time component — sending it to the
 // backend as-is binds to midnight for BOTH From and To, so a same-day range like
@@ -40,8 +43,7 @@ export const toRangeEnd = (date: string | undefined): string | undefined => {
 };
 
 export const emptyOpdFilters = (): OpdFilterValues => ({
-  from: todayIsoDate(),
-  to: todayIsoDate(),
+  ...defaultReportDateRange(),
   departmentId: undefined,
   consultantId: undefined,
   status: undefined,

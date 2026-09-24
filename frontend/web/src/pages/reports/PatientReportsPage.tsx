@@ -20,20 +20,9 @@ import { Pagination } from '@/features/patients';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import { departmentsApi, patientsApi } from '@/services/apiClient';
 import { PatientNameLink } from '@/components/PatientNameLink';
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 const PAGE_SIZES = [25, 50, 100] as const;
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-// Default range mirrors this app's other reports (Finance, the Patient Analytics charts page
-// this replaces) — a rolling 90-day window, "To" defaulting to today.
-function defaultFrom(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 90);
-  return toDateInputValue(d);
-}
 
 interface Filters {
   from: string;
@@ -45,7 +34,8 @@ interface Filters {
 }
 
 function defaultFilters(): Filters {
-  return { from: defaultFrom(), to: toDateInputValue(new Date()), search: '', gender: '', bloodGroup: '', departmentId: '' };
+  // Same From = yesterday / To = today default as every other report (lib/reportDateRange).
+  return { ...defaultReportDateRange(), search: '', gender: '', bloodGroup: '', departmentId: '' };
 }
 
 function toQuery(filters: Filters, page: number, pageSize: number, sort: string): PatientListQuery {

@@ -25,17 +25,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PageBanner } from '@/components/PageBanner';
 import { ReportDateRangeFilter } from '@/features/reports';
 import type { MaritalStatus, ModeOfArrivalSource, VisitType } from '@hms/shared';
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function defaultRange(): ReportDateRange {
-  const today = new Date();
-  const from = new Date(today);
-  from.setDate(from.getDate() - 90);
-  return { from: toDateInputValue(from), to: toDateInputValue(today) };
-}
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 /**
  * Patient Reports — the "Reports" nav item's first real content (was a bare PlaceholderPage).
@@ -51,7 +41,7 @@ function defaultRange(): ReportDateRange {
  * at all, only one-patient-at-a-time).
  */
 export default function PatientAnalyticsChartsPage() {
-  const [range, setRange] = useState<ReportDateRange>(defaultRange);
+  const [range, setRange] = useState<ReportDateRange>(defaultReportDateRange);
 
   const { data: patientData, isPending: isPatientsPending } = usePatientsForReportQuery(range.from, range.to);
   const { data: visits, isPending: isVisitsPending } = usePatientVisitsForReportQuery(range.from, range.to);
