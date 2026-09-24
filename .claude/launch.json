@@ -4,59 +4,16 @@
     {
       "name": "hms-web-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "frontend/web",
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["--prefix", "frontend/web", "run", "dev"],
       "port": 5173,
       "autoPort": true
     },
     {
       "name": "hms-api-dev",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": [
-        "run",
-        "--project",
-        "backend/src/HMS.Api",
-        "--urls",
-        "http://localhost:58158"
-      ],
+      "runtimeArgs": ["run", "--project", "backend/src/HMS.Api", "--urls", "http://localhost:58158"],
       "port": 58158,
       "url": "http://localhost:58158"
-    },
-    {
-      "name": "hms-api-verify",
-      "runtimeExecutable": "dotnet",
-      "runtimeArgs": [
-        "run",
-        "-c",
-        "Release",
-        "--project",
-        "backend/src/HMS.Api",
-        "--urls",
-        "http://localhost:58160"
-      ],
-      "port": 58160,
-      "url": "http://localhost:58160"
-    },
-    {
-      "name": "hms-web-verify",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "frontend/web",
-        "run",
-        "dev",
-        "--",
-        "--port",
-        "5174",
-        "--strictPort",
-        "--mode",
-        "verify"
-      ],
-      "port": 5174
     }
   ]
 }
