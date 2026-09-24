@@ -30,6 +30,7 @@ import {
   type PaymentMethod,
 } from '../../features/billing';
 import { usePatientVisitsQuery } from '../../features/patients';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 /**
  * Turns a thrown createInvoiceMutation error into what a receptionist actually needs to see —
@@ -313,7 +314,9 @@ export default function InvoiceCreatePage() {
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs text-muted-foreground">Billing for</span>
                     <span className="text-base font-semibold text-foreground">
-                      {patient.title} {patient.firstName} {patient.lastName}{' '}
+                      <PatientNameLink patientId={patient.id} newTab className="font-semibold">
+                        {patient.title} {patient.firstName} {patient.lastName}
+                      </PatientNameLink>{' '}
                       <span className="font-normal text-muted-foreground">· {patient.uhid}</span>
                     </span>
                   </div>

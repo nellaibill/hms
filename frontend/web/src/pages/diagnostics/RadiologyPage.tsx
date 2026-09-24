@@ -5,6 +5,7 @@ import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
 import { PatientPicker } from '@/features/billing';
 import { PatientXrayImages } from '@/features/radiology';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 /** Radiology ('/diagnostics/radiology'): pick a patient, see their stored images, and get an
  * AI-drafted read of each — saved to the patient's record — for the clinician to review. */
@@ -24,9 +25,9 @@ export default function RadiologyPage() {
                   {`${patient.firstName[0] ?? ''}${patient.lastName[0] ?? ''}`.toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">
+                  <PatientNameLink patientId={patient.id}>
                     {patient.title} {patient.firstName} {patient.lastName}
-                  </p>
+                  </PatientNameLink>
                   <p className="text-xs text-muted-foreground">
                     UHID {patient.uhid} · {patient.age} Yrs · {patient.gender}
                   </p>

@@ -12,6 +12,7 @@ import { ProductSelect } from '@/components/ProductSelect';
 import { ProductBatchSelect } from '@/components/ProductBatchSelect';
 import { useProductsQuery } from '@/features/pharmacy/product-lookup';
 import { QuickPickPanel } from './QuickPickPanel';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface DispenseCartFormProps {
   patient: Patient;
@@ -231,9 +232,9 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
                   <UserRound className="h-4 w-4" />
                 </span>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">
+                  <PatientNameLink patientId={patient.id} newTab className="text-sm">
                     {patient.title} {patient.firstName} {patient.lastName}
-                  </span>
+                  </PatientNameLink>
                   <span className="text-xs text-muted-foreground">
                     {patient.uhid} · {patient.primaryPhone}
                   </span>

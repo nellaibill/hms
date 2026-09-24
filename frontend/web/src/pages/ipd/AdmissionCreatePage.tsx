@@ -8,6 +8,7 @@ import { PageBanner } from '@/components/PageBanner';
 import { PatientPicker } from '@/features/billing';
 import { AdmissionForm, useCreateAdmissionMutation } from '../../features/ipd/admissions';
 import { RequirePermission } from '../../features/auth/RequirePermission';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 export default function AdmissionCreatePage() {
   const navigate = useNavigate();
@@ -61,9 +62,9 @@ export default function AdmissionCreatePage() {
                     <UserRound className="h-5 w-5" />
                   </span>
                   <div className="flex flex-col">
-                    <span className="font-medium text-foreground">
+                    <PatientNameLink patientId={patient.id} newTab>
                       {patient.title} {patient.firstName} {patient.lastName}
-                    </span>
+                    </PatientNameLink>
                     <span className="text-xs text-muted-foreground">
                       {patient.uhid} · {patient.age} yrs · {patient.gender} · {patient.primaryPhone}
                     </span>

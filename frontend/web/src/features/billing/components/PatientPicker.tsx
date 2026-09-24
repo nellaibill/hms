@@ -8,6 +8,7 @@ import { DepartmentName } from '@/components/DepartmentName';
 import { PatientListToolbar, emptyPatientSearchFilters, usePatientsQuery, type PatientSearchFilters } from '@/features/patients';
 import { cn } from '@/lib/utils';
 import { Pagination } from './Pagination';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface PatientPickerProps {
   onSelect: (patient: Patient) => void;
@@ -50,8 +51,10 @@ function PatientPickerTable({ items, onSelect }: { items: Patient[]; onSelect: (
           <tbody className="divide-y divide-border">
             {items.map((patient, index) => (
               <tr key={patient.id} className={cn('hover:bg-accent/60', index % 2 === 1 && 'bg-muted/40')}>
-                <td className="whitespace-nowrap px-4 py-2.5 font-medium text-foreground">
-                  {patient.title} {patient.firstName} {patient.lastName}
+                <td className="whitespace-nowrap px-4 py-2.5">
+                  <PatientNameLink patientId={patient.id}>
+                    {patient.title} {patient.firstName} {patient.lastName}
+                  </PatientNameLink>
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                   {patient.age} Yrs · {patient.gender}
