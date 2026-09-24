@@ -113,6 +113,13 @@ internal class PatientVisitService : IPatientVisitService
         return Result<IReadOnlyList<PatientVisitResponse>>.Success(visits.Select(v => v.ToResponse()).ToList());
     }
 
+    public async Task<IReadOnlyList<MonthlyTotal>> GetMonthlyCountsAsync(VisitType visitType, int months, CancellationToken cancellationToken)
+    {
+        var utcNow = DateTime.UtcNow;
+        var timestamps = await _repository.GetCreatedAtSinceAsync(visitType, MonthlySeries.StartUtc(months, utcNow), cancellationToken);
+        return MonthlySeries.Build(timestamps.Select(t => (t, 1m)), months, utcNow);
+    }
+
     public async Task<PagedResult<PatientVisitResponse>> GetAllAsync(PatientVisitListQuery query, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);

@@ -1,5 +1,6 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  BillingDashboardSummary,
   CreateInvoiceRequest,
   InvoiceListQuery,
   InvoiceResponse,
@@ -54,6 +55,12 @@ export class BillingApi {
   /** The latest `count` bills across every patient, composed with age/gender/contact/
    * registration-type/consultant(s) — backs the Patient Billing page's "Recent Patient Bills"
    * table. */
+  /** Billed revenue per month (last `months`) and this month's revenue by billing type. */
+  async getDashboardSummary(months = 6): Promise<BillingDashboardSummary> {
+    const response = await this.client.get<BillingDashboardSummary>(API_ROUTES.billing.invoices.dashboardSummary, { query: { months } });
+    return response.data;
+  }
+
   async getRecentBills(count = 10): Promise<RecentPatientBill[]> {
     const response = await this.client.get<RecentPatientBill[]>(API_ROUTES.billing.invoices.recent, { query: { count } });
     return response.data;

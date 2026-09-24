@@ -1,7 +1,12 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  BillableInvestigation,
+  CreateOpdDiagnosisRequest,
   OpdConsultationDetail,
   OpdConsultationNote,
+  OpdDiagnosisOption,
+  OpdInvestigationDepartment,
+  OpdInvestigationServiceOption,
   SaveOpdConsultationRequest,
   StructureConsultationNoteRequest,
   StructuredConsultationNoteFields,
@@ -27,6 +32,31 @@ export class OpdConsultationApi {
   /** Every consultation note already recorded for a patient (newest first), each with its
    * header — read-only, unlike getOrCreate it never creates a note. Backs Patient Details'
    * Medical Information tab. */
+  /** Active Diagnosis catalog entries (by name or ICD code) for the consultation form's picker. */
+  async searchDiagnoses(search?: string): Promise<OpdDiagnosisOption[]> {
+    const response = await this.client.get<OpdDiagnosisOption[]>(API_ROUTES.opdConsultations.diagnoses, { query: search ? { search } : undefined });
+    return response.data;
+  }
+
+  /** Adds a diagnosis to the catalog from the consultation form (returns the existing entry if the
+   * name is already there). */
+  async createDiagnosis(request: CreateOpdDiagnosisRequest): Promise<OpdDiagnosisOption> {
+    const response = await this.client.post<OpdDiagnosisOption>(API_ROUTES.opdConsultations.diagnoses, request);
+    return response.data;
+  }
+
+  /** Every active Laboratory or Radiology catalog service, for the investigation picker. */
+  async listInvestigationServices(department: OpdInvestigationDepartment): Promise<OpdInvestigationServiceOption[]> {
+    const response = await this.client.get<OpdInvestigationServiceOption[]>(API_ROUTES.opdConsultations.investigationServices, { query: { department } });
+    return response.data;
+  }
+
+  /** Catalog-linked investigations ordered on one visit — OPD Billing Entry pre-adds these. */
+  async listBillableInvestigations(visitId: string): Promise<BillableInvestigation[]> {
+    const response = await this.client.get<BillableInvestigation[]>(API_ROUTES.opdConsultations.billableInvestigations, { query: { visitId } });
+    return response.data;
+  }
+
   async listByPatient(patientId: string): Promise<OpdConsultationDetail[]> {
     const response = await this.client.get<OpdConsultationDetail[]>(API_ROUTES.opdConsultations.base, { query: { patientId } });
     return response.data;

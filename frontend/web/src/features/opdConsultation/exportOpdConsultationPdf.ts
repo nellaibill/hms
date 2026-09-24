@@ -2,6 +2,7 @@ import type { OpdConsultationHeader, OpdConsultationNote } from '@hms/shared';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { resolveRecordLabel } from '@/features/masters';
+import { formatDiagnosisLabel, formatPrescriptionDetails } from './consultationLabels';
 
 /** jspdf-autotable sets this on the doc at runtime (see its source) but doesn't type it — https://github.com/simonbengtsson/jsPDF-AutoTable */
 interface DocWithLastAutoTable extends jsPDF {
@@ -110,7 +111,7 @@ export function exportOpdConsultationPdf(header: OpdConsultationHeader, note: Op
   doc.setFont('helvetica', 'normal');
   const diagnosisRows =
     note.diagnoses.length > 0
-      ? note.diagnoses.map((d) => [resolveRecordLabel('diagnosis', d.diagnosisId), d.type])
+      ? note.diagnoses.map((d) => [formatDiagnosisLabel(d), d.type])
       : [['No diagnosis recorded.', '']];
   autoTable(doc, {
     startY: cursorY + 3,
@@ -133,6 +134,23 @@ export function exportOpdConsultationPdf(header: OpdConsultationHeader, note: Op
     startY: cursorY + 3,
     head: [['Investigation', 'Department', 'Priority']],
     body: investigationRows,
+    styles: { fontSize: 8 },
+    margin: { left: marginLeft, right: marginRight },
+  });
+  cursorY = (doc.lastAutoTable?.finalY ?? cursorY) + 8;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Prescription', marginLeft, cursorY);
+  doc.setFont('helvetica', 'normal');
+  const prescriptionRows =
+    (note.prescriptions ?? []).length > 0
+      ? note.prescriptions.map((p) => [p.drugName, formatPrescriptionDetails(p) || '—', p.instructions || '—'])
+      : [['No medicines prescribed.', '', '']];
+  autoTable(doc, {
+    startY: cursorY + 3,
+    head: [['Medicine', 'Dose · Route · Frequency · Duration', 'Instructions']],
+    body: prescriptionRows,
     styles: { fontSize: 8 },
     margin: { left: marginLeft, right: marginRight },
   });

@@ -11,4 +11,5 @@ internal static class BillingErrorCodes
     public const string InvoiceVoided = "BILLING.INVOICE_VOIDED";
     public const string HasPayments = "BILLING.HAS_PAYMENTS";
     public const string PaymentAmountMismatch = "BILLING.PAYMENT_AMOUNT_MISMATCH";
+    public const string ConsultationChargeMismatch = "BILLING.CONSULTATION_CHARGE_MISMATCH";
 }

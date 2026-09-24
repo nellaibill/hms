@@ -29,6 +29,13 @@ internal class PatientVisitRepository : IPatientVisitRepository
             .OrderByDescending(v => v.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<DateTime>> GetCreatedAtSinceAsync(VisitType visitType, DateTime fromUtc, CancellationToken cancellationToken)
+        => await _dbContext.PatientVisits
+            .AsNoTracking()
+            .Where(v => v.VisitType == visitType && v.CreatedAt >= fromUtc)
+            .Select(v => v.CreatedAt)
+            .ToListAsync(cancellationToken);
+
     public async Task<(IReadOnlyList<PatientVisit> Items, int TotalCount)> GetPagedAsync(PatientVisitListQuery query, CancellationToken cancellationToken)
     {
         var visits = _dbContext.PatientVisits.Include(v => v.Consultations).AsQueryable();

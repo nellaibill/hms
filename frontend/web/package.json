@@ -5,6 +5,7 @@
   "description": "HMS web application (React)",
   "type": "module",
   "scripts": {
+    "predev": "npm --prefix ../shared run build",
     "dev": "vite --force",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",

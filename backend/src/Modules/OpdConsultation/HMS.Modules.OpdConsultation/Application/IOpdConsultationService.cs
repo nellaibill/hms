@@ -1,4 +1,5 @@
 using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
 using HMS.Modules.OpdConsultation.Application.Abstractions;
 using HMS.Modules.OpdConsultation.Application.Mapping;
 using HMS.Modules.OpdConsultation.Contracts;
@@ -56,6 +57,23 @@ public interface IOpdConsultationService
     /// SaveDraft/Complete), or NotDraft once Completed — matches SaveDraft's guard, since there's
     /// no reason to keep dictating into a note that can no longer be edited.</summary>
     Task<Result<StructuredConsultationNoteResponse>> StructureNoteFromTranscriptAsync(Guid consultationId, string transcript, CancellationToken cancellationToken);
+
+    /// <summary>Active Diagnosis-catalog entries matching a name or ICD code (all active entries,
+    /// up to 100, when search is empty) — the consultation form's diagnosis picker (OPD-03).</summary>
+    Task<IReadOnlyList<OpdDiagnosisOptionResponse>> SearchDiagnosesAsync(string? search, CancellationToken cancellationToken);
+
+    /// <summary>Adds a diagnosis to the catalog from the consultation form. Returns the existing
+    /// entry instead when one with the same name (case-insensitive) already exists, so two doctors
+    /// adding the same diagnosis never fail or duplicate it (OPD-03).</summary>
+    Task<Result<OpdDiagnosisOptionResponse>> CreateDiagnosisAsync(CreateOpdDiagnosisRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Every active Laboratory or Radiology catalog service — the consultation form's
+    /// investigation picker (OPD-01).</summary>
+    Task<IReadOnlyList<OpdInvestigationServiceOptionResponse>> GetInvestigationServicesAsync(OpdInvestigationDepartment department, CancellationToken cancellationToken);
+
+    /// <summary>The catalog-linked investigations ordered on one visit's consultation notes, for
+    /// OPD Billing Entry to pre-add (OPD-01). One entry per distinct service per visit.</summary>
+    Task<IReadOnlyList<BillableInvestigationResponse>> GetBillableInvestigationsAsync(Guid visitId, CancellationToken cancellationToken);
 }
 
 internal class OpdConsultationService : IOpdConsultationService
@@ -63,6 +81,7 @@ internal class OpdConsultationService : IOpdConsultationService
     private readonly IOpdConsultationRepository _repository;
     private readonly IOpdQueryService _opdQueryService;
     private readonly IDiagnosisService _diagnosisService;
+    private readonly IDiagnosticServiceService _diagnosticServiceService;
     private readonly IDepartmentService _departmentService;
     private readonly IConsultantService _consultantService;
     private readonly IClinicalNoteAiClient _clinicalNoteAiClient;
@@ -71,6 +90,7 @@ internal class OpdConsultationService : IOpdConsultationService
         IOpdConsultationRepository repository,
         IOpdQueryService opdQueryService,
         IDiagnosisService diagnosisService,
+        IDiagnosticServiceService diagnosticServiceService,
         IDepartmentService departmentService,
         IConsultantService consultantService,
         IClinicalNoteAiClient clinicalNoteAiClient)
@@ -78,6 +98,7 @@ internal class OpdConsultationService : IOpdConsultationService
         _repository = repository;
         _opdQueryService = opdQueryService;
         _diagnosisService = diagnosisService;
+        _diagnosticServiceService = diagnosticServiceService;
         _departmentService = departmentService;
         _consultantService = consultantService;
         _clinicalNoteAiClient = clinicalNoteAiClient;
@@ -103,7 +124,7 @@ internal class OpdConsultationService : IOpdConsultationService
 
         var header = ToHeader(item);
 
-        return Result<OpdConsultationDetailResponse>.Success(new OpdConsultationDetailResponse { Header = header, Note = note.ToResponse() });
+        return Result<OpdConsultationDetailResponse>.Success(new OpdConsultationDetailResponse { Header = header, Note = await ToResponseAsync(note, cancellationToken) });
     }
 
     public async Task<Result<IReadOnlyList<OpdConsultationDetailResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
@@ -119,7 +140,7 @@ internal class OpdConsultationService : IOpdConsultationService
                 continue;
             }
 
-            details.Add(new OpdConsultationDetailResponse { Header = ToHeader(detailResult.Value!), Note = note.ToResponse() });
+            details.Add(new OpdConsultationDetailResponse { Header = ToHeader(detailResult.Value!), Note = await ToResponseAsync(note, cancellationToken) });
         }
 
         return Result<IReadOnlyList<OpdConsultationDetailResponse>>.Success(details);
@@ -147,7 +168,7 @@ internal class OpdConsultationService : IOpdConsultationService
         ApplyRequest(note, request, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<OpdConsultationNoteResponse>.Success(note.ToResponse());
+        return Result<OpdConsultationNoteResponse>.Success(await ToResponseAsync(note, cancellationToken));
     }
 
     public async Task<Result<OpdConsultationNoteResponse>> CompleteAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -190,7 +211,7 @@ internal class OpdConsultationService : IOpdConsultationService
 
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<OpdConsultationNoteResponse>.Success(note.ToResponse());
+        return Result<OpdConsultationNoteResponse>.Success(await ToResponseAsync(note, cancellationToken));
     }
 
     public async Task<Result<OpdConsultationNoteResponse>> ReopenAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken)
@@ -217,7 +238,7 @@ internal class OpdConsultationService : IOpdConsultationService
         note.Reopen(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<OpdConsultationNoteResponse>.Success(note.ToResponse());
+        return Result<OpdConsultationNoteResponse>.Success(await ToResponseAsync(note, cancellationToken));
     }
 
     public async Task<Result<StructuredConsultationNoteResponse>> StructureNoteFromTranscriptAsync(Guid consultationId, string transcript, CancellationToken cancellationToken)
@@ -278,9 +299,132 @@ internal class OpdConsultationService : IOpdConsultationService
         var diagnoses = request.Diagnoses.Select(d => OpdConsultationDiagnosis.Create(note.Id, d.DiagnosisId, d.Type));
         note.ReplaceDiagnoses(diagnoses, actorId);
 
-        var investigations = request.Investigations.Select(i => OpdConsultationInvestigation.Create(note.Id, i.Name, i.Department, i.Priority));
+        var investigations = request.Investigations.Select(i => OpdConsultationInvestigation.Create(note.Id, i.Name, i.Department, i.Priority, i.ServiceId));
         note.ReplaceInvestigations(investigations, actorId);
+
+        var prescriptions = request.Prescriptions.Select(p => OpdConsultationPrescription.Create(note.Id, p.DrugName, p.Dose, p.Route, p.Frequency, p.DurationDays, p.Instructions));
+        note.ReplacePrescriptions(prescriptions, actorId);
     }
+
+    /// <summary>Maps a note to its response with each diagnosis line's catalog name/ICD code
+    /// resolved from Masters — the form, print-out and Medical Information tab show names from
+    /// here rather than from the admin-only Masters endpoints (OPD-03).</summary>
+    private async Task<OpdConsultationNoteResponse> ToResponseAsync(OpdConsultationNote note, CancellationToken cancellationToken)
+    {
+        var labels = new Dictionary<Guid, (string Name, string? IcdCode)>();
+        foreach (var diagnosisId in note.Diagnoses.Select(d => d.DiagnosisId).Distinct())
+        {
+            var diagnosis = await _diagnosisService.GetByIdAsync(diagnosisId, cancellationToken);
+            if (diagnosis is { IsSuccess: true, Value: not null })
+            {
+                labels[diagnosisId] = (diagnosis.Value.Name, diagnosis.Value.IcdCode);
+            }
+        }
+
+        return note.ToResponse(labels);
+    }
+
+    public async Task<IReadOnlyList<OpdDiagnosisOptionResponse>> SearchDiagnosesAsync(string? search, CancellationToken cancellationToken)
+    {
+        var page = await _diagnosisService.GetPagedAsync(
+            new DiagnosisListQuery { IsActive = true, Search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(), PageSize = PagedRequest.MaxPageSize },
+            cancellationToken);
+
+        return page.Items.Select(d => new OpdDiagnosisOptionResponse { Id = d.Id, Name = d.Name, IcdCode = d.IcdCode }).ToList();
+    }
+
+    public async Task<Result<OpdDiagnosisOptionResponse>> CreateDiagnosisAsync(CreateOpdDiagnosisRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var name = request.Name.Trim();
+
+        var existing = await _diagnosisService.GetPagedAsync(new DiagnosisListQuery { Search = name, PageSize = PagedRequest.MaxPageSize }, cancellationToken);
+        var match = existing.Items.FirstOrDefault(d => string.Equals(d.Name.Trim(), name, StringComparison.OrdinalIgnoreCase));
+        if (match is not null)
+        {
+            return Result<OpdDiagnosisOptionResponse>.Success(new OpdDiagnosisOptionResponse { Id = match.Id, Name = match.Name, IcdCode = match.IcdCode });
+        }
+
+        var icdCode = string.IsNullOrWhiteSpace(request.IcdCode) ? null : request.IcdCode.Trim();
+        var created = await _diagnosisService.CreateAsync(new CreateDiagnosisRequest { Name = name, IcdCode = icdCode, IsActive = true }, actorId, cancellationToken);
+        if (!created.IsSuccess || created.Value is null)
+        {
+            return Result<OpdDiagnosisOptionResponse>.Failure(OpdConsultationErrorCodes.InvalidDiagnosis, created.Error ?? "The diagnosis could not be added.");
+        }
+
+        return Result<OpdDiagnosisOptionResponse>.Success(new OpdDiagnosisOptionResponse { Id = created.Value.Id, Name = created.Value.Name, IcdCode = created.Value.IcdCode });
+    }
+
+    public async Task<IReadOnlyList<OpdInvestigationServiceOptionResponse>> GetInvestigationServicesAsync(OpdInvestigationDepartment department, CancellationToken cancellationToken)
+    {
+        var serviceType = ToServiceType(department);
+        var options = new List<OpdInvestigationServiceOptionResponse>();
+
+        // The catalog runs to a few hundred services, beyond one page (MaxPageSize) — page through
+        // it so the picker's client-side search sees every test.
+        for (var pageNumber = 1; ; pageNumber++)
+        {
+            var page = await _diagnosticServiceService.GetPagedAsync(
+                new DiagnosticServiceListQuery { ServiceType = serviceType, IsActive = true, Page = pageNumber, PageSize = PagedRequest.MaxPageSize },
+                cancellationToken);
+
+            options.AddRange(page.Items.Select(s => new OpdInvestigationServiceOptionResponse { Id = s.Id, Code = s.Code, Name = s.Name, Department = department }));
+
+            if (page.Items.Count < PagedRequest.MaxPageSize || options.Count >= page.TotalCount)
+            {
+                break;
+            }
+        }
+
+        return options.OrderBy(o => o.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    public async Task<IReadOnlyList<BillableInvestigationResponse>> GetBillableInvestigationsAsync(Guid visitId, CancellationToken cancellationToken)
+    {
+        var notes = await _repository.GetByVisitIdAsync(visitId, cancellationToken);
+        var billable = new List<BillableInvestigationResponse>();
+
+        foreach (var note in notes)
+        {
+            var linked = note.Investigations.Where(i => i.ServiceId.HasValue).ToList();
+            if (linked.Count == 0)
+            {
+                continue;
+            }
+
+            var detail = await _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, cancellationToken);
+            if (!detail.IsSuccess || detail.Value is null)
+            {
+                continue;
+            }
+
+            foreach (var investigation in linked)
+            {
+                var serviceId = investigation.ServiceId!.Value;
+                if (billable.Any(b => b.ServiceId == serviceId))
+                {
+                    continue;
+                }
+
+                billable.Add(new BillableInvestigationResponse
+                {
+                    ConsultationId = note.ConsultationId,
+                    ConsultantId = detail.Value.ConsultantId,
+                    ServiceId = serviceId,
+                    Name = investigation.Name,
+                    Department = investigation.Department,
+                    Priority = investigation.Priority,
+                });
+            }
+        }
+
+        return billable;
+    }
+
+    private static DiagnosticTestServiceType ToServiceType(OpdInvestigationDepartment department) => department switch
+    {
+        OpdInvestigationDepartment.Radiology => DiagnosticTestServiceType.Radiology,
+        _ => DiagnosticTestServiceType.Laboratory,
+    };
 
     /// <summary>Validates every cross-module reference the request carries — each Diagnosis
     /// line's DiagnosisId (Masters), and ReferralDepartmentId/ReferralConsultantId if set
@@ -292,6 +436,17 @@ internal class OpdConsultationService : IOpdConsultationService
             if (!(await _diagnosisService.GetByIdAsync(diagnosisId, cancellationToken)).IsSuccess)
             {
                 return (OpdConsultationErrorCodes.InvalidDiagnosis, $"Diagnosis '{diagnosisId}' was not found.");
+            }
+        }
+
+        // Catalog-linked investigations must point at a real, active service of the line's own
+        // department — OPD Billing Entry bills exactly these ids (OPD-01).
+        foreach (var investigation in request.Investigations.Where(i => i.ServiceId.HasValue))
+        {
+            var service = await _diagnosticServiceService.GetByIdAsync(investigation.ServiceId!.Value, cancellationToken);
+            if (service is not { IsSuccess: true, Value: not null } || !service.Value.IsActive || service.Value.ServiceType != ToServiceType(investigation.Department))
+            {
+                return (OpdConsultationErrorCodes.InvalidInvestigation, $"Investigation '{investigation.Name}' does not match an active {investigation.Department} service.");
             }
         }
 

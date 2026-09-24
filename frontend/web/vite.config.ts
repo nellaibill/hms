@@ -38,7 +38,10 @@ export default defineConfig({
     // after adding a new shared API method, then again as a silently-undefined method
     // (no console error, no network request, a query that just never resolves) after a
     // pull. package.json's "dev" script passes --force so this rescan always happens,
-    // rather than relying on everyone remembering to `rm -rf node_modules/.vite`.
+    // rather than relying on everyone remembering to `rm -rf node_modules/.vite`. Its
+    // "predev" script also rebuilds frontend/shared first: --force only re-bundles whatever
+    // dist/ is on disk, so a `git pull` without a shared rebuild still served old methods
+    // (staging's broken Medical Information tab, regression report ENV-01).
     include: ['@hms/shared'],
   },
 });

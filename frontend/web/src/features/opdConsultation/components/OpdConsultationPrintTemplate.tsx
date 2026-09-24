@@ -3,6 +3,7 @@ import defaultLogoUrl from '@/assets/logo.png';
 import { branding } from '@/config/branding';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { resolveRecordLabel } from '@/features/masters';
+import { formatDiagnosisLabel, formatPrescriptionDetails } from '../consultationLabels';
 
 interface OpdConsultationPrintTemplateProps {
   header: OpdConsultationHeader;
@@ -120,7 +121,7 @@ export function OpdConsultationPrintTemplate({ header, note }: OpdConsultationPr
             <tbody>
               {note.diagnoses.map((d) => (
                 <tr key={d.id ?? d.diagnosisId} className="border-b border-gray-300">
-                  <td className="py-1 pr-2">{resolveRecordLabel('diagnosis', d.diagnosisId)}</td>
+                  <td className="py-1 pr-2">{formatDiagnosisLabel(d)}</td>
                   <td className="py-1">{d.type}</td>
                 </tr>
               ))}
@@ -147,6 +148,31 @@ export function OpdConsultationPrintTemplate({ header, note }: OpdConsultationPr
                   <td className="py-1 pr-2">{i.name}</td>
                   <td className="py-1 pr-2">{i.department}</td>
                   <td className="py-1">{i.priority}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Section>
+
+      <Section title="Prescription">
+        {(note.prescriptions ?? []).length === 0 ? (
+          <p className="text-sm text-gray-600">No medicines prescribed.</p>
+        ) : (
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b-2 border-black">
+                <th className="py-1 pr-2 text-left font-semibold">Medicine</th>
+                <th className="py-1 pr-2 text-left font-semibold">Dose · Route · Frequency · Duration</th>
+                <th className="py-1 text-left font-semibold">Instructions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {note.prescriptions.map((p, index) => (
+                <tr key={p.id ?? index} className="border-b border-gray-300">
+                  <td className="py-1 pr-2 font-medium">{p.drugName}</td>
+                  <td className="py-1 pr-2">{formatPrescriptionDetails(p) || '—'}</td>
+                  <td className="py-1">{p.instructions || '—'}</td>
                 </tr>
               ))}
             </tbody>

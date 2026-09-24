@@ -8,7 +8,8 @@ internal class AddAllergyRequestValidator : AbstractValidator<AddAllergyRequest>
     public AddAllergyRequestValidator()
     {
         RuleFor(x => x.AllergyType).IsInEnum();
-        RuleFor(x => x.Specify).MaximumLength(200);
+        // The allergen is what clinicians act on (regression report REG-01).
+        RuleFor(x => x.Specify).NotEmpty().WithMessage("Specify what the patient is allergic to (e.g. Penicillin).").MaximumLength(200);
         RuleFor(x => x.Severity).IsInEnum();
     }
 }

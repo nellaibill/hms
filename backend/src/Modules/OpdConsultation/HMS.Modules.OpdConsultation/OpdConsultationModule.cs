@@ -69,6 +69,7 @@ public static class OpdConsultationModule
         // internal by design (docs/DeveloperHandbook.md §8/§20).
         services.AddScoped<IValidator<SaveOpdConsultationRequest>, SaveOpdConsultationRequestValidator>();
         services.AddScoped<IValidator<StructureConsultationNoteRequest>, StructureConsultationNoteRequestValidator>();
+        services.AddScoped<IValidator<CreateOpdDiagnosisRequest>, CreateOpdDiagnosisRequestValidator>();
 
         return services;
     }

@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Search } from 'lucide-react';
+import { Check, ChevronDown, Plus, Search } from 'lucide-react';
 import * as React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,14 @@ interface SearchableSelectProps {
   ariaLabel?: string;
   disabled?: boolean;
   className?: string;
+  /** Reports the typed search text (e.g. to drive a server-side search that replaces `options`). */
+  onSearchChange?: (query: string) => void;
+  /** Shows "Searching…" instead of "No matches" while the caller is still fetching options. */
+  isLoading?: boolean;
+  /** Offers an "add new" action when the typed text doesn't exactly match an option — the
+   * catalog-grows-as-you-use-it pattern (e.g. the OPD consultation's diagnosis picker). */
+  onCreate?: (query: string) => void;
+  createLabel?: (query: string) => string;
 }
 
 /**
@@ -38,6 +46,10 @@ export function SearchableSelect({
   ariaLabel,
   disabled,
   className,
+  onSearchChange,
+  isLoading,
+  onCreate,
+  createLabel = (q) => `Add "${q}"`,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -51,12 +63,27 @@ export function SearchableSelect({
   }, [options, query]);
 
   const selected = options.find((o) => o.value === value);
+  const trimmedQuery = query.trim();
+  const canCreate = Boolean(onCreate) && trimmedQuery.length > 0 && !isLoading && !options.some((o) => o.label.trim().toLowerCase() === trimmedQuery.toLowerCase());
+
+  function updateQuery(next: string) {
+    setQuery(next);
+    setHighlighted(0);
+    onSearchChange?.(next);
+  }
+
+  function handleCreate() {
+    if (!onCreate || !trimmedQuery) return;
+    onCreate(trimmedQuery);
+    setOpen(false);
+  }
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (next) {
       setQuery('');
       setHighlighted(0);
+      onSearchChange?.('');
       // Popover content mounts on the next tick — focus once it's actually in the DOM.
       requestAnimationFrame(() => inputRef.current?.focus());
     }
@@ -78,6 +105,7 @@ export function SearchableSelect({
       e.preventDefault();
       const option = filtered[highlighted];
       if (option) selectOption(option);
+      else if (canCreate) handleCreate();
     }
   }
 
@@ -111,10 +139,7 @@ export function SearchableSelect({
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setHighlighted(0);
-            }}
+            onChange={(e) => updateQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={searchPlaceholder}
             aria-label={searchPlaceholder}
@@ -122,7 +147,9 @@ export function SearchableSelect({
           />
         </div>
         <div className="max-h-64 overflow-y-auto p-1" role="listbox">
-          {filtered.length === 0 && <p className="px-2 py-3 text-center text-sm text-muted-foreground">No matches</p>}
+          {filtered.length === 0 && !canCreate && (
+            <p className="px-2 py-3 text-center text-sm text-muted-foreground">{isLoading ? 'Searching…' : 'No matches'}</p>
+          )}
           {filtered.map((option, index) => (
             <button
               key={option.value}
@@ -147,6 +174,16 @@ export function SearchableSelect({
               <span className="whitespace-normal break-words">{option.label}</span>
             </button>
           ))}
+          {canCreate && (
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="mt-1 flex w-full items-center gap-2 rounded-sm border-t border-border px-2 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent/50"
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span className="whitespace-normal break-words">{createLabel(trimmedQuery)}</span>
+            </button>
+          )}
         </div>
       </PopoverContent>
     </Popover>

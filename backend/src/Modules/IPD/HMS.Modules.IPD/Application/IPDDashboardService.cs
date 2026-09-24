@@ -1,5 +1,6 @@
 using HMS.Modules.IPD.Application.Abstractions;
 using HMS.Modules.IPD.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.IPD.Application;
 
@@ -12,6 +13,11 @@ namespace HMS.Modules.IPD.Application;
 public interface IIPDDashboardService
 {
     Task<IPDDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken);
+
+    /// <summary>Admissions per calendar month (hospital local time) for the last
+    /// <paramref name="months"/> months, oldest first, zero-filled — the Executive Dashboard's IP
+    /// census (DASH-01).</summary>
+    Task<IReadOnlyList<MonthlyTotal>> GetMonthlyAdmissionsAsync(int months, CancellationToken cancellationToken);
 }
 
 internal class IPDDashboardService : IIPDDashboardService
@@ -23,6 +29,13 @@ internal class IPDDashboardService : IIPDDashboardService
     {
         _admissionRepository = admissionRepository;
         _bedRepository = bedRepository;
+    }
+
+    public async Task<IReadOnlyList<MonthlyTotal>> GetMonthlyAdmissionsAsync(int months, CancellationToken cancellationToken)
+    {
+        var utcNow = DateTime.UtcNow;
+        var times = await _admissionRepository.GetAdmissionTimesAsync(MonthlySeries.StartUtc(months, utcNow), utcNow, cancellationToken);
+        return MonthlySeries.Build(times.Select(t => (t, 1m)), months, utcNow);
     }
 
     public async Task<IPDDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken)

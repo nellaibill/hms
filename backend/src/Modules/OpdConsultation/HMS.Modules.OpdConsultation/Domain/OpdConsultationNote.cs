@@ -58,6 +58,9 @@ internal class OpdConsultationNote : Entity
     private readonly List<OpdConsultationInvestigation> _investigations = [];
     public IReadOnlyCollection<OpdConsultationInvestigation> Investigations => _investigations.AsReadOnly();
 
+    private readonly List<OpdConsultationPrescription> _prescriptions = [];
+    public IReadOnlyCollection<OpdConsultationPrescription> Prescriptions => _prescriptions.AsReadOnly();
+
     // Required by EF Core materialization.
     private OpdConsultationNote()
     {
@@ -142,6 +145,15 @@ internal class OpdConsultationNote : Entity
     {
         _investigations.Clear();
         _investigations.AddRange(investigations);
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Fully replaces the prescription list — same delete-then-reinsert list-sync as
+    /// diagnoses/investigations.</summary>
+    public void ReplacePrescriptions(IEnumerable<OpdConsultationPrescription> prescriptions, Guid? updatedBy)
+    {
+        _prescriptions.Clear();
+        _prescriptions.AddRange(prescriptions);
         MarkUpdated(updatedBy);
     }
 

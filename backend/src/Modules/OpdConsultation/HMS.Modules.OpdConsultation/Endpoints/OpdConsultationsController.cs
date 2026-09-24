@@ -23,15 +23,18 @@ public class OpdConsultationsController : ControllerBase
     private readonly IOpdConsultationService _service;
     private readonly IValidator<SaveOpdConsultationRequest> _saveValidator;
     private readonly IValidator<StructureConsultationNoteRequest> _structureNoteValidator;
+    private readonly IValidator<CreateOpdDiagnosisRequest> _createDiagnosisValidator;
 
     public OpdConsultationsController(
         IOpdConsultationService service,
         IValidator<SaveOpdConsultationRequest> saveValidator,
-        IValidator<StructureConsultationNoteRequest> structureNoteValidator)
+        IValidator<StructureConsultationNoteRequest> structureNoteValidator,
+        IValidator<CreateOpdDiagnosisRequest> createDiagnosisValidator)
     {
         _service = service;
         _saveValidator = saveValidator;
         _structureNoteValidator = structureNoteValidator;
+        _createDiagnosisValidator = createDiagnosisValidator;
     }
 
     /// <summary>Fetches (auto-creating on first call) the consultation note plus its read-only
@@ -147,6 +150,80 @@ public class OpdConsultationsController : ControllerBase
 
         var result = await _service.StructureNoteFromTranscriptAsync(consultationId, request.Transcript, cancellationToken);
         return result.IsSuccess ? Ok(new ApiResponse<StructuredConsultationNoteResponse> { Data = result.Value }) : MapStructureNoteFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Active Diagnosis-catalog entries for the consultation form's picker, matching a
+    /// name or ICD code. Served here under clinical-care.view because the Masters diagnosis
+    /// endpoints require identity-administration, which a doctor doesn't have (OPD-03).</summary>
+    /// <response code="200">Matching diagnoses (up to 100).</response>
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
+    [HttpGet("diagnoses")]
+    public async Task<IActionResult> SearchDiagnoses([FromQuery] string? search, CancellationToken cancellationToken)
+    {
+        var result = await _service.SearchDiagnosesAsync(search, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<OpdDiagnosisOptionResponse>> { Data = result });
+    }
+
+    /// <summary>Adds a diagnosis to the catalog from the consultation form when the search finds
+    /// no match (OPD-03). Returns the existing entry if one with the same name already exists.</summary>
+    /// <response code="200">The created (or already existing) diagnosis.</response>
+    /// <response code="400">The request failed validation.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
+    [HttpPost("diagnoses")]
+    public async Task<IActionResult> CreateDiagnosis([FromBody] CreateOpdDiagnosisRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _createDiagnosisValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.CreateDiagnosisAsync(request, actorId: User.GetUserId(), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new ApiErrorResponse { ErrorCode = result.ErrorCode!, Message = result.Error!, CorrelationId = HttpContext.GetCorrelationId(), Timestamp = DateTime.UtcNow });
+        }
+
+        return Ok(new ApiResponse<OpdDiagnosisOptionResponse> { Data = result.Value });
+    }
+
+    /// <summary>Every active Laboratory or Radiology catalog service, for the consultation form's
+    /// investigation picker (OPD-01) — the Masters catalog endpoints require diagnostics.view.</summary>
+    /// <response code="200">The department's active services, by name.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
+    [HttpGet("investigation-services")]
+    public async Task<IActionResult> GetInvestigationServices([FromQuery] OpdInvestigationDepartment department, CancellationToken cancellationToken)
+    {
+        var result = await _service.GetInvestigationServicesAsync(department, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<OpdInvestigationServiceOptionResponse>> { Data = result });
+    }
+
+    /// <summary>The catalog-linked investigations the doctor ordered on one visit — OPD Billing
+    /// Entry pre-adds these as Laboratory/Radiology lines (OPD-01). Gated on finance-billing.view,
+    /// not clinical-care: it's the billing counter that reads this, and it exposes only test
+    /// names, never the clinical note itself.</summary>
+    /// <response code="200">The visit's billable investigations (empty when none).</response>
+    /// <response code="400">visitId is missing.</response>
+    [Authorize]
+    [RequirePermission("finance-billing.view")]
+    [HttpGet("billable-investigations")]
+    public async Task<IActionResult> GetBillableInvestigations([FromQuery] Guid visitId, CancellationToken cancellationToken)
+    {
+        if (visitId == Guid.Empty)
+        {
+            return BadRequest(new ApiErrorResponse
+            {
+                ErrorCode = "VALIDATION.FAILED",
+                Message = "visitId is required.",
+                CorrelationId = HttpContext.GetCorrelationId(),
+                Timestamp = DateTime.UtcNow,
+            });
+        }
+
+        var result = await _service.GetBillableInvestigationsAsync(visitId, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<BillableInvestigationResponse>> { Data = result });
     }
 
     private static ApiResponse<OpdConsultationDetailResponse> Envelope(OpdConsultationDetailResponse? data) => new() { Data = data };

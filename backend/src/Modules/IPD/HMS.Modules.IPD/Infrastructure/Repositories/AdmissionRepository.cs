@@ -69,6 +69,13 @@ internal class AdmissionRepository : IAdmissionRepository
     public Task<int> CountByStatusAsync(AdmissionStatus status, CancellationToken cancellationToken)
         => _dbContext.Admissions.CountAsync(a => a.Status == status, cancellationToken);
 
+    public async Task<IReadOnlyList<DateTime>> GetAdmissionTimesAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        => await _dbContext.Admissions
+            .AsNoTracking()
+            .Where(a => a.AdmissionDateTime >= fromUtc && a.AdmissionDateTime <= toUtc)
+            .Select(a => a.AdmissionDateTime)
+            .ToListAsync(cancellationToken);
+
     public Task<int> CountAdmittedTodayAsync(CancellationToken cancellationToken)
     {
         var today = DateTime.UtcNow.Date;

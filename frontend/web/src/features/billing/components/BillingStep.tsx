@@ -77,14 +77,14 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
     formState: { errors, isDirty },
   } = methods;
 
-  // Consultation starts expanded when its rows were prefilled from the patient's visit (see
-  // InvoiceCreatePage's billingDefaultValues) — reception should see those already-registered
-  // charges right away rather than having to click to reveal them. The other categories are
-  // never prefilled on this page, so they stay collapsed until opened.
+  // A category starts expanded when its rows were prefilled (see InvoiceCreatePage's
+  // billingDefaultValues) — Consultation from the patient's visit, Laboratory/Radiology from the
+  // doctor's catalog investigations on that visit's consultation (OPD-01) — so reception sees
+  // those charges right away rather than having to click to reveal them.
   const [expanded, setExpanded] = useState<Record<BillingType, boolean>>(() => ({
     Consultation: (defaultValues?.consultation ?? []).some(isConsultationEntryActive),
-    Radiology: false,
-    Laboratory: false,
+    Radiology: (defaultValues?.radiology ?? []).some((row) => Boolean(row.serviceId)),
+    Laboratory: (defaultValues?.laboratory ?? []).some((row) => Boolean(row.itemId)),
     Procedure: false,
     Injection: false,
     File: false,

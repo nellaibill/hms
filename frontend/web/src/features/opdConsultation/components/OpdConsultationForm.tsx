@@ -4,6 +4,7 @@ import {
   type ApiError,
   type OpdConsultationFormValues,
   type OpdConsultationNote,
+  type OpdDiagnosisOption,
   type SaveOpdConsultationRequest,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +17,7 @@ import {
   FlaskConical,
   ListChecks,
   Plus,
+  Pill,
   Printer,
   RotateCcw,
   Save,
@@ -35,7 +37,9 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { useAuth } from '@/features/auth/AuthContext';
-import { getDisplayLabel, getMasterConfig, resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
+import { resolveRecordLabel } from '@/features/masters';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useConsultationDiagnosesQuery, useCreateConsultationDiagnosisMutation, useInvestigationServicesQuery } from '../hooks/useConsultationCatalogQueries';
 import { AiNoteDictationPanel } from './AiNoteDictationPanel';
 import { textareaClassName } from './textareaClassName';
 
@@ -122,17 +126,41 @@ function DiagnosisSection({
 }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'diagnoses' });
   const [selectedDiagnosisId, setSelectedDiagnosisId] = useState('');
-  const { data: diagnosisOptions } = useMasterOptionsQuery('diagnosis');
-  const diagnosisConfig = getMasterConfig('diagnosis');
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim(), 250);
+  // Served by the OPD consultation API under clinical-care (not the admin-only Masters
+  // endpoints), searching name OR ICD code server-side — regression report OPD-03.
+  const { data: diagnosisOptions, isFetching } = useConsultationDiagnosesQuery(debouncedSearch);
+  const createDiagnosis = useCreateConsultationDiagnosisMutation();
+  const [createError, setCreateError] = useState<string | null>(null);
 
+  const optionLabel = (option: OpdDiagnosisOption) => (option.icdCode ? `${option.name} (${option.icdCode})` : option.name);
   const availableOptions = (diagnosisOptions ?? [])
-    .filter((option) => option.isActive && !fields.some((line) => line.diagnosisId === option.id))
-    .map((option) => ({ value: option.id, label: diagnosisConfig ? getDisplayLabel(diagnosisConfig, option) : option.id }));
+    .filter((option) => !fields.some((line) => line.diagnosisId === option.id))
+    .map((option) => ({ value: option.id, label: optionLabel(option), keywords: option.icdCode ?? undefined }));
+
+  function appendDiagnosis(option: OpdDiagnosisOption) {
+    if (fields.some((line) => line.diagnosisId === option.id)) return;
+    append({ diagnosisId: option.id, type: fields.length === 0 ? 'Primary' : 'Secondary', diagnosisName: option.name, icdCode: option.icdCode ?? null });
+  }
 
   function handleAdd() {
-    if (!selectedDiagnosisId) return;
-    append({ diagnosisId: selectedDiagnosisId, type: fields.length === 0 ? 'Primary' : 'Secondary' });
+    const option = diagnosisOptions?.find((o) => o.id === selectedDiagnosisId);
+    if (!option) return;
+    appendDiagnosis(option);
     setSelectedDiagnosisId('');
+  }
+
+  // Nothing matched — add it to the catalog and straight onto this consultation.
+  function handleCreate(name: string) {
+    setCreateError(null);
+    createDiagnosis.mutate(
+      { name },
+      {
+        onSuccess: (created) => appendDiagnosis(created),
+        onError: () => setCreateError(`Couldn't add "${name}" — please try again.`),
+      },
+    );
   }
 
   const listError = typeof errors.diagnoses?.message === 'string' ? errors.diagnoses.message : undefined;
@@ -149,6 +177,10 @@ function DiagnosisSection({
             options={availableOptions}
             placeholder="Search diagnosis…"
             searchPlaceholder="Search by name or ICD code…"
+            onSearchChange={setSearch}
+            isLoading={isFetching}
+            onCreate={handleCreate}
+            createLabel={(q) => `Add "${q}" as a new diagnosis`}
           />
         </div>
         <Button type="button" onClick={handleAdd} disabled={!selectedDiagnosisId} className="gap-1.5">
@@ -156,6 +188,8 @@ function DiagnosisSection({
           Add
         </Button>
       </div>
+      {createDiagnosis.isPending && <p className="text-sm text-muted-foreground">Adding diagnosis…</p>}
+      {createError && <p className="text-sm text-destructive">{createError}</p>}
       {listError && <p className="text-sm text-destructive">{listError}</p>}
 
       {fields.length > 0 && (
@@ -173,7 +207,7 @@ function DiagnosisSection({
               {fields.map((field, index) => (
                 <tr key={field.id}>
                   <td className="px-3 py-2 text-muted-foreground">{index + 1}</td>
-                  <td className="px-3 py-2 text-foreground">{resolveRecordLabel('diagnosis', field.diagnosisId)}</td>
+                  <td className="px-3 py-2 text-foreground">{diagnosisLineLabel(field)}</td>
                   <td className="px-3 py-2">
                     <Controller
                       control={control}
@@ -206,40 +240,61 @@ function DiagnosisSection({
   );
 }
 
+/** Name (ICD) from the line itself (the server resolves it on every response), falling back to
+ * the Masters reference cache for anything older. */
+function diagnosisLineLabel(line: { diagnosisId: string; diagnosisName?: string | null; icdCode?: string | null }) {
+  if (line.diagnosisName) return line.icdCode ? `${line.diagnosisName} (${line.icdCode})` : line.diagnosisName;
+  return resolveRecordLabel('diagnosis', line.diagnosisId);
+}
+
 const INVESTIGATION_DEPARTMENTS = ['Laboratory', 'Radiology'] as const;
 const INVESTIGATION_PRIORITIES = ['Routine', 'Urgent', 'Stat'] as const;
 
 function InvestigationsSection({ control, register }: { control: Control<OpdConsultationFormValues>; register: UseFormRegister<OpdConsultationFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'investigations' });
-  const [draftName, setDraftName] = useState('');
   const [draftDepartment, setDraftDepartment] = useState<(typeof INVESTIGATION_DEPARTMENTS)[number]>('Laboratory');
   const [draftPriority, setDraftPriority] = useState<(typeof INVESTIGATION_PRIORITIES)[number]>('Routine');
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [freeTextName, setFreeTextName] = useState('');
+  // OPD-01: picking from the Laboratory/Radiology catalog links the line to a real service, so
+  // OPD Billing Entry pre-adds it and billing creates the lab order. A test that isn't in the
+  // catalog can still be written as free text (documentation only).
+  const { data: services, isLoading } = useInvestigationServicesQuery(draftDepartment);
+
+  const serviceOptions = (services ?? [])
+    .filter((service) => !fields.some((line) => line.serviceId === service.id))
+    .map((service) => ({ value: service.id, label: service.name, keywords: service.code }));
+
+  function reset() {
+    setSelectedServiceId('');
+    setFreeTextName('');
+    setDraftPriority('Routine');
+  }
 
   function handleAdd() {
-    if (!draftName.trim()) return;
-    append({ name: draftName.trim(), department: draftDepartment, priority: draftPriority });
-    setDraftName('');
-    setDraftDepartment('Laboratory');
-    setDraftPriority('Routine');
+    const service = services?.find((s) => s.id === selectedServiceId);
+    if (service) {
+      append({ name: service.name, department: draftDepartment, priority: draftPriority, serviceId: service.id });
+    } else if (freeTextName.trim()) {
+      append({ name: freeTextName.trim(), department: draftDepartment, priority: draftPriority, serviceId: null });
+    } else {
+      return;
+    }
+    reset();
   }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-[220px] flex-1">
-          <Label htmlFor="opd-investigation-name" className="mb-1.5 block">
-            Investigation
-          </Label>
-          <Input
-            id="opd-investigation-name"
-            placeholder="e.g. CBC, X-Ray Knee (Right)"
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-          />
-        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="opd-investigation-department">Department</Label>
-          <Select value={draftDepartment} onValueChange={(value) => setDraftDepartment(value as typeof draftDepartment)}>
+          <Select
+            value={draftDepartment}
+            onValueChange={(value) => {
+              setDraftDepartment(value as typeof draftDepartment);
+              setSelectedServiceId('');
+            }}
+          >
             <SelectTrigger id="opd-investigation-department" className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -251,6 +306,33 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="min-w-[220px] flex-1">
+          <Label htmlFor="opd-investigation-service" className="mb-1.5 block">
+            Investigation
+          </Label>
+          <SearchableSelect
+            id="opd-investigation-service"
+            value={selectedServiceId}
+            onValueChange={(value) => {
+              setSelectedServiceId(value);
+              setFreeTextName('');
+            }}
+            options={serviceOptions}
+            placeholder={isLoading ? 'Loading tests…' : `Search ${draftDepartment.toLowerCase()} tests…`}
+            searchPlaceholder="Search by test name or code…"
+            isLoading={isLoading}
+            onCreate={(q) => {
+              setSelectedServiceId('');
+              setFreeTextName(q);
+            }}
+            createLabel={(q) => `Use "${q}" (not in catalog — won't be billed automatically)`}
+          />
+          {freeTextName && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Free text: <span className="font-medium text-foreground">{freeTextName}</span> — billing staff will need to add this test by hand.
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="opd-investigation-priority">Priority</Label>
@@ -267,7 +349,7 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
             </SelectContent>
           </Select>
         </div>
-        <Button type="button" onClick={handleAdd} disabled={!draftName.trim()} className="gap-1.5">
+        <Button type="button" onClick={handleAdd} disabled={!selectedServiceId && !freeTextName.trim()} className="gap-1.5">
           <Plus className="h-4 w-4" />
           Add Investigation
         </Button>
@@ -292,6 +374,7 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
                   <td className="px-3 py-2 text-foreground">
                     <input type="hidden" {...register(`investigations.${index}.name`)} />
                     {field.name}
+                    {!field.serviceId && <span className="ml-2 text-xs text-muted-foreground">(free text — not auto-billed)</span>}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{field.department}</td>
                   <td className="px-3 py-2">
@@ -299,6 +382,120 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Button type="button" variant="ghost" size="icon" aria-label="Remove investigation" onClick={() => remove(index)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const EMPTY_PRESCRIPTION = { drugName: '', dose: '', route: '', frequency: '', durationDays: '', instructions: '' };
+
+/** OPD-02: structured prescription — drug, dose, route, frequency, duration, instructions. Only
+ * the drug name is required, so a doctor can write it as briefly as on paper. */
+function PrescriptionsSection({ control, errors }: { control: Control<OpdConsultationFormValues>; errors: FieldErrors<OpdConsultationFormValues> }) {
+  const { fields, append, remove } = useFieldArray({ control, name: 'prescriptions' });
+  const [draft, setDraft] = useState(EMPTY_PRESCRIPTION);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  function update(key: keyof typeof EMPTY_PRESCRIPTION, value: string) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleAdd() {
+    if (!draft.drugName.trim()) {
+      setDraftError('Enter the drug name.');
+      return;
+    }
+    const duration = draft.durationDays.trim() ? Number(draft.durationDays) : undefined;
+    if (duration !== undefined && (!Number.isInteger(duration) || duration < 1 || duration > 365)) {
+      setDraftError('Duration must be a whole number of days between 1 and 365.');
+      return;
+    }
+    setDraftError(null);
+    append({
+      drugName: draft.drugName.trim(),
+      dose: draft.dose.trim(),
+      route: draft.route.trim(),
+      frequency: draft.frequency.trim(),
+      durationDays: duration,
+      instructions: draft.instructions.trim(),
+    });
+    setDraft(EMPTY_PRESCRIPTION);
+  }
+
+  const rowErrors = Array.isArray(errors.prescriptions) ? errors.prescriptions : [];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-6 sm:items-end">
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor="opd-rx-drug">Drug</Label>
+          <Input id="opd-rx-drug" placeholder="e.g. Amoxicillin 500 mg" value={draft.drugName} onChange={(e) => update('drugName', e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="opd-rx-dose">Dose</Label>
+          <Input id="opd-rx-dose" placeholder="1 tab" value={draft.dose} onChange={(e) => update('dose', e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="opd-rx-route">Route</Label>
+          <Input id="opd-rx-route" placeholder="Oral" value={draft.route} onChange={(e) => update('route', e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="opd-rx-frequency">Frequency</Label>
+          <Input id="opd-rx-frequency" placeholder="1-0-1" value={draft.frequency} onChange={(e) => update('frequency', e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="opd-rx-duration">Days</Label>
+          <Input id="opd-rx-duration" type="number" min={1} max={365} step={1} placeholder="5" value={draft.durationDays} onChange={(e) => update('durationDays', e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5 sm:col-span-5">
+          <Label htmlFor="opd-rx-instructions">Instructions</Label>
+          <Input id="opd-rx-instructions" placeholder="e.g. After food" value={draft.instructions} onChange={(e) => update('instructions', e.target.value)} />
+        </div>
+        <Button type="button" onClick={handleAdd} className="gap-1.5">
+          <Plus className="h-4 w-4" />
+          Add Medicine
+        </Button>
+      </div>
+      {draftError && <p className="text-sm text-destructive">{draftError}</p>}
+
+      {fields.length > 0 && (
+        <div className="overflow-x-auto rounded-md border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-sidebar-active text-left text-xs uppercase text-sidebar-active-foreground">
+              <tr>
+                <th className="px-3 py-2">#</th>
+                <th className="px-3 py-2">Drug</th>
+                <th className="px-3 py-2">Dose</th>
+                <th className="px-3 py-2">Route</th>
+                <th className="px-3 py-2">Frequency</th>
+                <th className="px-3 py-2">Days</th>
+                <th className="px-3 py-2">Instructions</th>
+                <th className="w-12 px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {fields.map((field, index) => (
+                <tr key={field.id}>
+                  <td className="px-3 py-2 text-muted-foreground">{index + 1}</td>
+                  <td className="px-3 py-2 font-medium text-foreground">
+                    {field.drugName}
+                    {rowErrors[index]?.drugName?.message && <p className="text-xs text-destructive">{rowErrors[index]?.drugName?.message}</p>}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">{field.dose || '—'}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{field.route || '—'}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{field.frequency || '—'}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{field.durationDays ?? '—'}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{field.instructions || '—'}</td>
+                  <td className="px-3 py-2 text-right">
+                    <Button type="button" variant="ghost" size="icon" aria-label="Remove medicine" onClick={() => remove(index)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </td>
@@ -320,6 +517,15 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
 function toSaveRequest(values: OpdConsultationFormValues): SaveOpdConsultationRequest {
   return {
     ...values,
+    investigations: values.investigations.map((i) => ({ ...i, serviceId: i.serviceId || null })),
+    prescriptions: values.prescriptions.map((p) => ({
+      drugName: p.drugName,
+      dose: p.dose || null,
+      route: p.route || null,
+      frequency: p.frequency || null,
+      durationDays: p.durationDays ?? null,
+      instructions: p.instructions || null,
+    })),
     reviewDate: values.reviewDate || null,
     referralDepartmentId: values.referralDepartmentId || null,
     referralConsultantId: values.referralConsultantId || null,
@@ -337,8 +543,16 @@ function toFormValues(note: OpdConsultationNote): OpdConsultationFormValues {
     presentingComplaints: note.presentingComplaints ?? '',
     clinicalHistory: note.clinicalHistory ?? '',
     examinationFindings: note.examinationFindings ?? '',
-    diagnoses: note.diagnoses.map((d) => ({ diagnosisId: d.diagnosisId, type: d.type })),
-    investigations: note.investigations.map((i) => ({ name: i.name, department: i.department, priority: i.priority })),
+    diagnoses: note.diagnoses.map((d) => ({ diagnosisId: d.diagnosisId, type: d.type, diagnosisName: d.diagnosisName ?? null, icdCode: d.icdCode ?? null })),
+    investigations: note.investigations.map((i) => ({ name: i.name, department: i.department, priority: i.priority, serviceId: i.serviceId ?? null })),
+    prescriptions: (note.prescriptions ?? []).map((p) => ({
+      drugName: p.drugName,
+      dose: p.dose ?? '',
+      route: p.route ?? '',
+      frequency: p.frequency ?? '',
+      durationDays: p.durationDays ?? undefined,
+      instructions: p.instructions ?? '',
+    })),
     planOfManagement: note.planOfManagement ?? '',
     reviewDate: note.reviewDate ?? '',
     followUpInstructions: note.followUpInstructions ?? '',
@@ -491,6 +705,10 @@ export function OpdConsultationForm({
         <div className="flex flex-col gap-6">
           <SectionCard icon={FlaskConical} title="Investigations">
             <InvestigationsSection control={control} register={register} />
+          </SectionCard>
+
+          <SectionCard icon={Pill} title="Prescription">
+            <PrescriptionsSection control={control} errors={errors} />
           </SectionCard>
 
           <SectionCard icon={ListChecks} title="Plan of Management">

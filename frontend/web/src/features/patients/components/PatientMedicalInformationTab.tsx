@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
+import { formatDiagnosisLabel, formatPrescriptionDetails } from '@/features/opdConsultation/consultationLabels';
 import { useOpdConsultationsByPatientQuery } from '@/features/opdConsultation';
 import { useAuth } from '../../auth/AuthContext';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
@@ -52,6 +53,7 @@ function ConsultationCard({ detail, consultationTypeId }: { detail: OpdConsultat
     Boolean(note.presentingComplaints || note.clinicalHistory || note.examinationFindings || note.planOfManagement) ||
     note.diagnoses.length > 0 ||
     note.investigations.length > 0 ||
+    (note.prescriptions ?? []).length > 0 ||
     hasFollowUp ||
     hasReferral;
 
@@ -108,7 +110,7 @@ function ConsultationCard({ detail, consultationTypeId }: { detail: OpdConsultat
             <ul className="flex flex-col gap-0.5">
               {note.diagnoses.map((d) => (
                 <li key={d.id ?? d.diagnosisId}>
-                  {resolveRecordLabel('diagnosis', d.diagnosisId)} <span className="text-xs text-muted-foreground">({d.type})</span>
+                  {formatDiagnosisLabel(d)} <span className="text-xs text-muted-foreground">({d.type})</span>
                 </li>
               ))}
             </ul>
@@ -123,6 +125,19 @@ function ConsultationCard({ detail, consultationTypeId }: { detail: OpdConsultat
                   <span className="text-xs text-muted-foreground">
                     ({i.department} · {i.priority})
                   </span>
+                </li>
+              ))}
+            </ul>
+          </Block>
+        )}
+        {(note.prescriptions ?? []).length > 0 && (
+          <Block label="Prescription">
+            <ul className="flex flex-col gap-0.5">
+              {note.prescriptions.map((p, index) => (
+                <li key={p.id ?? index}>
+                  <span className="font-medium">{p.drugName}</span>
+                  {formatPrescriptionDetails(p) && <span className="text-muted-foreground"> — {formatPrescriptionDetails(p)}</span>}
+                  {p.instructions && <span className="text-xs text-muted-foreground"> ({p.instructions})</span>}
                 </li>
               ))}
             </ul>

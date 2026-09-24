@@ -14,6 +14,13 @@ public record OpdConsultationDiagnosisResponse
     public Guid Id { get; init; }
     public Guid DiagnosisId { get; init; }
     public OpdDiagnosisType Type { get; init; }
+
+    /// <summary>Resolved server-side from Masters' Diagnosis catalog so the form, print-out and
+    /// Patient Details' Medical Information tab can show the name without reading the Masters
+    /// endpoints (which require an admin permission a doctor doesn't have). Null if the
+    /// diagnosis has since been deleted.</summary>
+    public string? DiagnosisName { get; init; }
+    public string? IcdCode { get; init; }
 }
 
 /// <summary>One investigation line, as submitted on SaveDraft/Complete. The full list is
@@ -23,6 +30,11 @@ public record OpdConsultationInvestigationRequest
     public string Name { get; init; } = string.Empty;
     public OpdInvestigationDepartment Department { get; init; }
     public OpdInvestigationPriority Priority { get; init; }
+
+    /// <summary>Optional Masters DiagnosticService id — set when the doctor picked the test from
+    /// the catalog, so OPD Billing Entry can pre-add it (regression report OPD-01). Null for a
+    /// free-text line.</summary>
+    public Guid? ServiceId { get; init; }
 }
 
 public record OpdConsultationInvestigationResponse
@@ -31,6 +43,31 @@ public record OpdConsultationInvestigationResponse
     public string Name { get; init; } = string.Empty;
     public OpdInvestigationDepartment Department { get; init; }
     public OpdInvestigationPriority Priority { get; init; }
+    public Guid? ServiceId { get; init; }
+}
+
+/// <summary>One prescribed medicine, as submitted on SaveDraft/Complete — the full list is
+/// replaced wholesale each time, same convention as diagnoses/investigations (regression report
+/// OPD-02).</summary>
+public record OpdConsultationPrescriptionRequest
+{
+    public string DrugName { get; init; } = string.Empty;
+    public string? Dose { get; init; }
+    public string? Route { get; init; }
+    public string? Frequency { get; init; }
+    public int? DurationDays { get; init; }
+    public string? Instructions { get; init; }
+}
+
+public record OpdConsultationPrescriptionResponse
+{
+    public Guid Id { get; init; }
+    public string DrugName { get; init; } = string.Empty;
+    public string? Dose { get; init; }
+    public string? Route { get; init; }
+    public string? Frequency { get; init; }
+    public int? DurationDays { get; init; }
+    public string? Instructions { get; init; }
 }
 
 /// <summary>
@@ -60,6 +97,7 @@ public record SaveOpdConsultationRequest
 
     public IReadOnlyList<OpdConsultationDiagnosisRequest> Diagnoses { get; init; } = [];
     public IReadOnlyList<OpdConsultationInvestigationRequest> Investigations { get; init; } = [];
+    public IReadOnlyList<OpdConsultationPrescriptionRequest> Prescriptions { get; init; } = [];
 
     public string? PlanOfManagement { get; init; }
 
@@ -101,6 +139,7 @@ public record OpdConsultationNoteResponse
 
     public IReadOnlyList<OpdConsultationDiagnosisResponse> Diagnoses { get; init; } = [];
     public IReadOnlyList<OpdConsultationInvestigationResponse> Investigations { get; init; } = [];
+    public IReadOnlyList<OpdConsultationPrescriptionResponse> Prescriptions { get; init; } = [];
 
     public string? PlanOfManagement { get; init; }
 
@@ -167,4 +206,45 @@ public record StructuredConsultationNoteResponse
     public string? PlanOfManagement { get; init; }
     public string? FollowUpInstructions { get; init; }
     public string? EmergencyReviewInstructions { get; init; }
+}
+
+/// <summary>One Diagnosis-catalog entry as the OPD Consultation form's picker shows it — served
+/// under the clinical-care permission (regression report OPD-03), since the Masters endpoints
+/// require identity-administration, which a doctor doesn't have.</summary>
+public record OpdDiagnosisOptionResponse
+{
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string? IcdCode { get; init; }
+}
+
+/// <summary>Adds a diagnosis to the catalog straight from the consultation when the search finds
+/// no match — the catalog "grows as staff use it" (regression report OPD-03).</summary>
+public record CreateOpdDiagnosisRequest
+{
+    public string Name { get; init; } = string.Empty;
+    public string? IcdCode { get; init; }
+}
+
+/// <summary>One Laboratory/Radiology catalog service as the consultation's investigation picker
+/// shows it — no price (not the doctor's concern; billing prices it).</summary>
+public record OpdInvestigationServiceOptionResponse
+{
+    public Guid Id { get; init; }
+    public string Code { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public OpdInvestigationDepartment Department { get; init; }
+}
+
+/// <summary>A catalog-linked investigation the doctor ordered on one visit, as OPD Billing Entry
+/// pre-adds it (regression report OPD-01). ConsultantId is the ordering doctor, used as the bill
+/// line's referring consultant.</summary>
+public record BillableInvestigationResponse
+{
+    public Guid ConsultationId { get; init; }
+    public Guid ConsultantId { get; init; }
+    public Guid ServiceId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public OpdInvestigationDepartment Department { get; init; }
+    public OpdInvestigationPriority Priority { get; init; }
 }

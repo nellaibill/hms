@@ -96,6 +96,18 @@ public class InvoicesController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Billed revenue per month for the last N months (default 6, max 24) and this
+    /// month's revenue by billing type — backs the Executive Dashboard's finance charts (DASH-01).</summary>
+    [Authorize]
+    [RequirePermission("finance-billing.view")]
+    [HttpGet("dashboard-summary")]
+    [ProducesResponseType(typeof(ApiResponse<BillingDashboardSummaryResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDashboardSummary([FromQuery] int months = 6, CancellationToken cancellationToken = default)
+    {
+        var summary = await _service.GetDashboardSummaryAsync(months, cancellationToken);
+        return Ok(new ApiResponse<BillingDashboardSummaryResponse> { Data = summary });
+    }
+
     /// <summary>Lists every invoice for one patient, newest first — used by the patient detail page's Billing tab.</summary>
     [Authorize]
     [RequirePermission("finance-billing.view")]

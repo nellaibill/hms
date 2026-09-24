@@ -30,7 +30,33 @@ internal class SaveOpdConsultationRequestValidator : AbstractValidator<SaveOpdCo
         RuleForEach(x => x.Investigations).ChildRules(investigation =>
         {
             investigation.RuleFor(i => i.Name).NotEmpty().MaximumLength(200);
+            investigation.RuleFor(i => i.Department).IsInEnum();
+            investigation.RuleFor(i => i.Priority).IsInEnum();
         });
+
+        // OPD-02: a prescribed medicine must at least name the drug; the rest is optional so a
+        // doctor can write "Paracetamol 500 mg SOS" as briefly as they would on paper.
+        RuleForEach(x => x.Prescriptions).ChildRules(prescription =>
+        {
+            prescription.RuleFor(p => p.DrugName).NotEmpty().WithMessage("Drug name is required.").MaximumLength(200);
+            prescription.RuleFor(p => p.Dose).MaximumLength(100);
+            prescription.RuleFor(p => p.Route).MaximumLength(50);
+            prescription.RuleFor(p => p.Frequency).MaximumLength(100);
+            prescription.RuleFor(p => p.DurationDays).InclusiveBetween(1, 365).When(p => p.DurationDays.HasValue).WithMessage("Duration must be between 1 and 365 days.");
+            prescription.RuleFor(p => p.Instructions).MaximumLength(500);
+        });
+        RuleFor(x => x.Prescriptions).Must(p => p.Count <= 30).WithMessage("A consultation can have at most 30 prescribed medicines.");
+    }
+}
+
+/// <summary>OPD-03: adding a diagnosis from the consultation form — same limits as Masters'
+/// own Diagnosis validator (name required, 200 chars; ICD code 20 chars).</summary>
+internal class CreateOpdDiagnosisRequestValidator : AbstractValidator<CreateOpdDiagnosisRequest>
+{
+    public CreateOpdDiagnosisRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().WithMessage("Diagnosis name is required.").MaximumLength(200);
+        RuleFor(x => x.IcdCode).MaximumLength(20);
     }
 }
 

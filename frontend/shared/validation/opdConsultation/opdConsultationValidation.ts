@@ -26,12 +26,31 @@ function optionalBoundedNumber(min: number, max: number) {
 export const opdConsultationDiagnosisSchema = z.object({
   diagnosisId: z.string().trim().min(1, 'Select a diagnosis'),
   type: z.enum(OPD_DIAGNOSIS_TYPES),
+  /** Display-only (the server resolves it on every response) — kept on the line so a diagnosis
+   * added from the picker shows its name before the next save round-trip. Ignored server-side. */
+  diagnosisName: z.string().optional().nullable(),
+  icdCode: z.string().optional().nullable(),
 });
 
 export const opdConsultationInvestigationSchema = z.object({
   name: z.string().trim().min(1, 'Investigation name is required').max(200),
   department: z.enum(OPD_INVESTIGATION_DEPARTMENTS),
   priority: z.enum(OPD_INVESTIGATION_PRIORITIES),
+  /** Catalog DiagnosticService id when picked from the list (OPD-01) — null for free text. */
+  serviceId: z.string().optional().nullable(),
+});
+
+/** Mirrors the backend's prescription rules (OPD-02): only the drug name is required. */
+export const opdConsultationPrescriptionSchema = z.object({
+  drugName: z.string().trim().min(1, 'Drug name is required').max(200),
+  dose: optionalTrimmedString(100),
+  route: optionalTrimmedString(50),
+  frequency: optionalTrimmedString(100),
+  durationDays: z.preprocess(
+    (value) => (value === '' || value === undefined || value === null || (typeof value === 'number' && Number.isNaN(value)) ? undefined : value),
+    z.coerce.number().int('Whole days only').min(1, 'Must be between 1 and 365').max(365, 'Must be between 1 and 365').optional(),
+  ),
+  instructions: optionalTrimmedString(500),
 });
 
 export const saveOpdConsultationSchema = z.object({
@@ -48,6 +67,7 @@ export const saveOpdConsultationSchema = z.object({
 
   diagnoses: z.array(opdConsultationDiagnosisSchema),
   investigations: z.array(opdConsultationInvestigationSchema),
+  prescriptions: z.array(opdConsultationPrescriptionSchema).max(30, 'At most 30 medicines per consultation'),
 
   planOfManagement: optionalTrimmedString(4000),
 

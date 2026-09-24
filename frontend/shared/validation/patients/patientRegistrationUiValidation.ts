@@ -105,6 +105,9 @@ const additionalAllergySchema = z
     if (!row.allergyCategory) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergyCategory'], message: 'Allergy type is required for this row.' });
     }
+    if (!row.allergySpecify?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySpecify'], message: 'Specify what the patient is allergic to (e.g. Penicillin).' });
+    }
     if (!row.allergySeverity) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySeverity'], message: 'Allergy severity is required for this row.' });
     }
@@ -299,6 +302,11 @@ const allergyRefinement = (
 ) => {
   if (data.hasKnownAllergy && !data.allergyCategory) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergyCategory'], message: 'Allergy category is required' });
+  }
+  // The allergen itself is what clinicians act on — 'Drug / Severe' with no substance named
+  // was being saved and shown as 'Drug / Drug' (regression report REG-01).
+  if (data.hasKnownAllergy && !data.allergySpecify?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySpecify'], message: 'Specify what the patient is allergic to (e.g. Penicillin)' });
   }
   if (data.hasKnownAllergy && !data.allergySeverity) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySeverity'], message: 'Allergy severity is required' });

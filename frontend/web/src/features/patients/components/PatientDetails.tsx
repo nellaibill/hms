@@ -40,6 +40,7 @@ import { useAddPatientAllergyMutation, useRemovePatientAllergyMutation } from '.
 import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
 import { patientDocumentsQueryKey, usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { PatientTimelineTab } from './PatientTimelineTab';
 import { encounterTypeShortLabel } from '../encounterTypeLabel';
 import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientMedicalInformationTab } from './PatientMedicalInformationTab';
@@ -251,13 +252,13 @@ function AddAllergyForm({ patientId, onDone }: { patientId: string; onDone: () =
   const [error, setError] = useState<string | null>(null);
 
   function handleAdd() {
-    if (!draft.allergyType || !draft.severity) {
-      setError('Type and severity are required.');
+    if (!draft.allergyType || !draft.specify.trim() || !draft.severity) {
+      setError('Type, allergen and severity are required.');
       return;
     }
     setError(null);
     addAllergyMutation.mutate(
-      { id: patientId, request: { allergyType: draft.allergyType, specify: draft.specify.trim() || undefined, severity: draft.severity } },
+      { id: patientId, request: { allergyType: draft.allergyType, specify: draft.specify.trim(), severity: draft.severity } },
       { onSuccess: onDone },
     );
   }
@@ -278,6 +279,7 @@ function AddAllergyForm({ patientId, onDone }: { patientId: string; onDone: () =
           </SelectContent>
         </Select>
         <Input
+          aria-label="Allergen"
           placeholder="Specify (e.g. Penicillin)"
           value={draft.specify}
           onChange={(event) => setDraft((prev) => ({ ...prev, specify: event.target.value }))}
@@ -891,7 +893,7 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       </TabsContent>
 
       <TabsContent value="timeline" className="pt-2.5">
-        <EmptyState icon={ClipboardList} message="No timeline activity has been recorded for this patient yet." />
+        <PatientTimelineTab patient={patient} />
       </TabsContent>
       </Tabs>
     </div>

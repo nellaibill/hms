@@ -3,6 +3,7 @@ using System;
 using HMS.Modules.OpdConsultation.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HMS.Database.Migrations.OpdConsultation.Migrations
 {
     [DbContext(typeof(OpdConsultationDbContext))]
-    partial class OpdConsultationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924074916_AddOpdPrescriptionsAndInvestigationService")]
+    partial class AddOpdPrescriptionsAndInvestigationService
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

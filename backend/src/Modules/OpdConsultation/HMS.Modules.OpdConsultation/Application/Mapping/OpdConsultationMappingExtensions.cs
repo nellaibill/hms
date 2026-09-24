@@ -5,7 +5,9 @@ namespace HMS.Modules.OpdConsultation.Application.Mapping;
 
 internal static class OpdConsultationMappingExtensions
 {
-    public static OpdConsultationNoteResponse ToResponse(this OpdConsultationNote note) => new()
+    /// <param name="diagnosisLabels">Diagnosis id -> (Name, IcdCode), resolved from Masters by
+    /// OpdConsultationService. Optional: a missing entry just leaves DiagnosisName/IcdCode null.</param>
+    public static OpdConsultationNoteResponse ToResponse(this OpdConsultationNote note, IReadOnlyDictionary<Guid, (string Name, string? IcdCode)>? diagnosisLabels = null) => new()
     {
         Id = note.Id,
         ConsultationId = note.ConsultationId,
@@ -19,9 +21,27 @@ internal static class OpdConsultationMappingExtensions
         PresentingComplaints = note.PresentingComplaints,
         ClinicalHistory = note.ClinicalHistory,
         ExaminationFindings = note.ExaminationFindings,
-        Diagnoses = note.Diagnoses.Select(d => new OpdConsultationDiagnosisResponse { Id = d.Id, DiagnosisId = d.DiagnosisId, Type = d.Type }).ToList(),
+        Diagnoses = note.Diagnoses
+            .Select(d =>
+            {
+                var label = diagnosisLabels is not null && diagnosisLabels.TryGetValue(d.DiagnosisId, out var found) ? found : ((string Name, string? IcdCode)?)null;
+                return new OpdConsultationDiagnosisResponse { Id = d.Id, DiagnosisId = d.DiagnosisId, Type = d.Type, DiagnosisName = label?.Name, IcdCode = label?.IcdCode };
+            })
+            .ToList(),
         Investigations = note.Investigations
-            .Select(i => new OpdConsultationInvestigationResponse { Id = i.Id, Name = i.Name, Department = i.Department, Priority = i.Priority })
+            .Select(i => new OpdConsultationInvestigationResponse { Id = i.Id, Name = i.Name, Department = i.Department, Priority = i.Priority, ServiceId = i.ServiceId })
+            .ToList(),
+        Prescriptions = note.Prescriptions
+            .Select(p => new OpdConsultationPrescriptionResponse
+            {
+                Id = p.Id,
+                DrugName = p.DrugName,
+                Dose = p.Dose,
+                Route = p.Route,
+                Frequency = p.Frequency,
+                DurationDays = p.DurationDays,
+                Instructions = p.Instructions,
+            })
             .ToList(),
         PlanOfManagement = note.PlanOfManagement,
         ReviewDate = note.ReviewDate,

@@ -61,6 +61,17 @@ internal class InvoiceRepository : IInvoiceRepository
         return (items, totalCount);
     }
 
+    public async Task<IReadOnlyList<(DateTime CreatedAt, BillingType BillingType, decimal Total)>> GetLineTotalsSinceAsync(DateTime fromUtc, CancellationToken cancellationToken)
+    {
+        var rows = await _dbContext.Invoices
+            .AsNoTracking()
+            .Where(i => !i.IsVoided && i.CreatedAt >= fromUtc)
+            .SelectMany(i => i.Items.Select(li => new { i.CreatedAt, li.BillingType, li.Total }))
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(r => (r.CreatedAt, r.BillingType, r.Total)).ToList();
+    }
+
     public async Task<IReadOnlyList<Invoice>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
         => await _dbContext.Invoices
             .Include(i => i.Items)

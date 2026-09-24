@@ -21,6 +21,10 @@ internal interface IAdmissionRepository
 
     Task<int> CountAdmittedTodayAsync(CancellationToken cancellationToken);
 
+    /// <summary>AdmissionDateTime of every admission since a UTC instant (up to now — a
+    /// future-dated admission isn't counted yet) — the Executive Dashboard's IP census (DASH-01).</summary>
+    Task<IReadOnlyList<DateTime>> GetAdmissionTimesAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken);
+
     Task<int> CountDischargedTodayAsync(CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
