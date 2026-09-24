@@ -582,15 +582,16 @@ export function OpdConsultationForm({
             {isReopening ? 'Reopening…' : 'Reopen'}
           </Button>
         )}
-        {/* Icon-only below sm (label kept for screen readers/tooltip) so the whole bar fits on
-            one row on a phone instead of wrapping into a two-row bar over the form. */}
+        {/* Icon-only below lg (label kept for screen readers/tooltip) so the whole bar fits on
+            one row instead of wrapping into a two-row bar over the form — on a phone, and also
+            on laptop/split-screen widths where the pinned sidebar leaves the form ~530px. */}
         <Button type="button" variant="outline" className="gap-1.5" onClick={onPrint} aria-label="Print" title="Print">
           <Printer className="h-4 w-4" />
-          <span className="hidden sm:inline">Print</span>
+          <span className="hidden lg:inline">Print</span>
         </Button>
         <Button type="button" variant="outline" className="gap-1.5" onClick={onDownloadPdf} aria-label="Download PDF" title="Download PDF">
           <Download className="h-4 w-4" />
-          <span className="hidden sm:inline">Download PDF</span>
+          <span className="hidden lg:inline">Download PDF</span>
         </Button>
       </div>
     </form>

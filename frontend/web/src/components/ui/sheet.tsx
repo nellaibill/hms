@@ -26,6 +26,7 @@ const sheetVariants = cva('fixed z-[1200] gap-4 bg-background p-6 shadow-lg', {
     side: {
       left: 'inset-y-0 left-0 h-full w-72 border-r border-border',
       right: 'inset-y-0 right-0 h-full w-72 border-l border-border',
+      top: 'inset-x-0 top-0 w-full border-b border-border',
     },
   },
   defaultVariants: { side: 'left' },
@@ -51,4 +52,9 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Co
 );
 SheetContent.displayName = DialogPrimitive.Content.displayName;
 
-export { Sheet, SheetTrigger, SheetClose, SheetContent };
+const SheetTitle = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Title>, React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>>(
+  ({ className, ...props }, ref) => <DialogPrimitive.Title ref={ref} className={cn('text-base font-semibold', className)} {...props} />,
+);
+SheetTitle.displayName = DialogPrimitive.Title.displayName;
+
+export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetTitle };
