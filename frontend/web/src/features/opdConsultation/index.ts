@@ -3,5 +3,7 @@ export * from './components/OpdConsultationHeader';
 export * from './components/OpdConsultationPrintTemplate';
 export * from './components/ReopenConsultationDialog';
 export * from './hooks/useOpdConsultationQuery';
+export * from './hooks/useOpdConsultationsByPatientQuery';
 export * from './hooks/useOpdConsultationMutations';
+export * from './hooks/useConsultationCatalogQueries';
 export * from './exportOpdConsultationPdf';

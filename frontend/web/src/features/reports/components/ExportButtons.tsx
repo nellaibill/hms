@@ -1,7 +1,4 @@
-import { ChevronDown, FileSpreadsheet, FileText, Sheet } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ExportMenu, type ExportFormatOption } from './ExportMenu';
 import { exportReportToCsv, exportReportToExcel, exportReportToPdf, type ReportSection } from '../exportUtils';
 import type { ExpenseReportRow, IncomeReportRow, ReportDateRange } from '../types';
 
@@ -28,49 +25,13 @@ function buildSections(income: IncomeReportRow[], expense: ExpenseReportRow[]): 
 }
 
 export function ExportButtons({ range, income, expense }: ExportButtonsProps) {
-  const [isExportingExcel, setIsExportingExcel] = useState(false);
   const filenameBase = `income-expense-report_${range.from}_to_${range.to}`;
 
-  function handleExportCsv() {
-    exportReportToCsv(`${filenameBase}.csv`, buildSections(income, expense));
+  async function handleExport(format: ExportFormatOption) {
+    if (format === 'csv') exportReportToCsv(`${filenameBase}.csv`, buildSections(income, expense));
+    else if (format === 'excel') await exportReportToExcel(`${filenameBase}.xlsx`, buildSections(income, expense));
+    else exportReportToPdf(`${filenameBase}.pdf`, `Income & Expense Report (${range.from} to ${range.to})`, buildSections(income, expense));
   }
 
-  async function handleExportExcel() {
-    setIsExportingExcel(true);
-    try {
-      await exportReportToExcel(`${filenameBase}.xlsx`, buildSections(income, expense));
-    } finally {
-      setIsExportingExcel(false);
-    }
-  }
-
-  function handleExportPdf() {
-    exportReportToPdf(`${filenameBase}.pdf`, `Income & Expense Report (${range.from} to ${range.to})`, buildSections(income, expense));
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={isExportingExcel}>
-          <FileText className="h-4 w-4" />
-          {isExportingExcel ? 'Exporting…' : 'Export'}
-          <ChevronDown className="h-3.5 w-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleExportPdf}>
-          <Sheet className="h-4 w-4 text-destructive" />
-          Export as PDF
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleExportExcel}>
-          <FileSpreadsheet className="h-4 w-4 text-success" />
-          Export as Excel
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleExportCsv}>
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          Export as CSV
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  return <ExportMenu onExport={handleExport} />;
 }

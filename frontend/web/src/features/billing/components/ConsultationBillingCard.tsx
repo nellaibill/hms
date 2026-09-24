@@ -138,7 +138,7 @@ function ConsultationFileCharges({ fileFields }: { fileFields: ReturnType<typeof
       <div className="overflow-hidden rounded-md border border-border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/60 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">File Type</th>
@@ -283,16 +283,23 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
   // pick the category rather than set the price.
   const hasFixedCharge = selectedType?.amount != null;
 
+  const fixedAmount = selectedType?.amount;
+
   useEffect(() => {
-    // Deliberately depends only on consultationTypeId, not `consultationTypes`/`selectedType`
-    // itself: the query object gets a new reference on every refetch (focus, cache invalidation
-    // from an unrelated mutation, etc.), and re-running this on that alone used to stomp
-    // whatever the user had just typed back to the master default on every such refetch.
-    if (selectedType?.amount != null) {
-      setValue(`${basePath}.charge`, selectedType.amount, { shouldValidate: true });
+    // Keyed on the type id and its master amount (a primitive), not `consultationTypes`/
+    // `selectedType` themselves: those get a new object reference on every refetch (focus,
+    // cache invalidation from an unrelated mutation, etc.), and re-running on that alone used
+    // to stomp whatever the user had just typed back to the master default.
+    //
+    // The amount has to be a dependency too. When the row is prefilled from a visit,
+    // consultationTypeId is set before the consultation-types query has loaded, so on that
+    // first run selectedType is still undefined. Without re-running once the amount arrives,
+    // the charge stayed at ₹0 — and hasFixedCharge then locked the field, so the consultation
+    // was billed free (regression report BIL-01, INV-2026-000019).
+    if (fixedAmount != null) {
+      setValue(`${basePath}.charge`, fixedAmount, { shouldValidate: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consultationTypeId, setValue]);
+  }, [basePath, consultationTypeId, fixedAmount, setValue]);
 
   const rowErrors = errors.consultation?.[index];
 

@@ -115,7 +115,7 @@ export function ActivityDetailsDrawer({ entry, userName, onClose }: ActivityDeta
               {changes.length > 0 && (
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/50 text-left text-xs font-semibold">
+                    <thead className="bg-sidebar-active text-left text-xs font-semibold text-sidebar-active-foreground">
                       <tr>
                         <th className="px-3 py-1.5">Field</th>
                         <th className="px-3 py-1.5">Before</th>

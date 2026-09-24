@@ -29,6 +29,7 @@ public class InvoiceServiceTests
     private readonly IDiagnosticTestService _diagnosticTestService = Substitute.For<IDiagnosticTestService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
+    private readonly IConsultationTypeService _consultationTypeService = Substitute.For<IConsultationTypeService>();
     private readonly IActivityLogService _activityLog = Substitute.For<IActivityLogService>();
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
     private readonly InvoiceService _sut;
@@ -46,6 +47,7 @@ public class InvoiceServiceTests
             _diagnosticTestService,
             _consultantService,
             _departmentService,
+            _consultationTypeService,
             _activityLog,
             _logger);
 
@@ -77,6 +79,57 @@ public class InvoiceServiceTests
         result.Value.Items.Single().DepartmentId.Should().Be("cardiology");
         await _repository.Received(1).AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    private CreateInvoiceRequest ConsultationRequest(Guid consultationTypeId, decimal unitPrice) => ValidRequest() with
+    {
+        Items =
+        [
+            new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "ent", ConsultantId = "dr-ravikumar", ServiceId = consultationTypeId.ToString(), Quantity = 1, UnitPrice = unitPrice },
+        ],
+    };
+
+    private void GivenConsultationType(Guid id, decimal? amount) =>
+        _consultationTypeService.GetByIdAsync(id, Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultationTypeResponse>.Success(new ConsultationTypeResponse { Id = id, Name = "Visiting - Regular", Amount = amount }));
+
+    // BIL-01: a prefill race in the billing form sent ₹0 for a fixed-fee consultation type and
+    // the invoice was saved (and marked Paid) with a free consultation.
+    [Fact]
+    public async Task CreateAsync_WithConsultationChargeBelowTheTypesFixedFee_ReturnsMismatchFailureAndSavesNothing()
+    {
+        var typeId = Guid.NewGuid();
+        GivenConsultationType(typeId, 250m);
+
+        var result = await _sut.CreateAsync(ConsultationRequest(typeId, 0m), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.ConsultationChargeMismatch);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithConsultationChargeEqualToTheTypesFixedFee_Succeeds()
+    {
+        var typeId = Guid.NewGuid();
+        GivenConsultationType(typeId, 250m);
+
+        var result = await _sut.CreateAsync(ConsultationRequest(typeId, 250m), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(250m);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithConsultationTypeWithoutAFixedFee_AcceptsAnyCharge()
+    {
+        var typeId = Guid.NewGuid();
+        GivenConsultationType(typeId, amount: null);
+
+        var result = await _sut.CreateAsync(ConsultationRequest(typeId, 480m), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(480m);
     }
 
     [Fact]
@@ -568,6 +621,36 @@ public class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PaidInSameRequest_StillCarriesTheBilledConsultantOntoTheLabOrder()
+    {
+        // ConsultantId is cleared as soon as a line is paid (ADR-048), so a fully-paid invoice
+        // reaches the lab-order hook with ConsultantId == null — the lab order must fall back to
+        // BilledConsultantId or the OPD Investigations List shows no consultant.
+        var serviceId = Guid.NewGuid();
+        var consultantId = Guid.NewGuid();
+        var request = ValidRequest() with
+        {
+            Items =
+            [
+                new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ConsultantId = consultantId.ToString(), ServiceId = serviceId.ToString(), Quantity = 1, UnitPrice = 300m },
+            ],
+            Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 300m }],
+        };
+        _patientVisitService.GetByIdAsync(_patientId, request.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitType = VisitType.OP }));
+        _labOrderService.CreateFromInvoiceAsync(Arg.Any<CreateLabOrderFromInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<LabOrderResponse>.Success(new LabOrderResponse()));
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _labOrderService.Received(1).CreateFromInvoiceAsync(
+            Arg.Is<CreateLabOrderFromInvoiceRequest>(r => r.Lines.Count == 1 && r.Lines[0].ConsultantId == consultantId),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateAsync_WithBothLaboratoryAndRadiologyLines_RaisesOneLabOrderCoveringBoth()
     {
         var labServiceId = Guid.NewGuid();
@@ -676,5 +759,34 @@ public class InvoiceServiceTests
         item.ConsultantName.Should().Be("Dr. Revathi");
         item.DepartmentId.Should().Be(departmentId.ToString());
         item.DepartmentName.Should().Be("Cardiology");
+    }
+
+    // DASH-01: the Executive Dashboard shows real billed revenue instead of mock numbers.
+    [Fact]
+    public async Task GetDashboardSummaryAsync_SumsRevenuePerMonthAndThisMonthByBillingType()
+    {
+        var now = DateTime.UtcNow;
+        var thisMonth = MonthlySeries.StartUtc(1, now).AddMinutes(1);
+        var threeMonthsAgo = now.AddMonths(-3);
+        _repository.GetLineTotalsSinceAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(new List<(DateTime, BillingType, decimal)>
+            {
+                (thisMonth, BillingType.Consultation, 250m),
+                (thisMonth, BillingType.Laboratory, 50m),
+                (thisMonth, BillingType.Laboratory, 70m),
+                (threeMonthsAgo, BillingType.Radiology, 900m),
+            });
+
+        var summary = await _sut.GetDashboardSummaryAsync(6, CancellationToken.None);
+
+        summary.MonthlyRevenue.Should().HaveCount(6);
+        summary.MonthlyRevenue.Last().Value.Should().Be(370m);
+        summary.MonthlyRevenue.Sum(m => m.Value).Should().Be(1270m);
+        summary.CurrentMonthByType.Should().BeEquivalentTo(
+            new[]
+            {
+                new RevenueByBillingTypeResponse { BillingType = BillingType.Consultation, Amount = 250m },
+                new RevenueByBillingTypeResponse { BillingType = BillingType.Laboratory, Amount = 120m },
+            });
     }
 }

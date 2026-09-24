@@ -8,57 +8,53 @@ namespace HMS.Api.Configuration;
 
 /// <summary>
 /// Rate limiting for the whole host (HMS Security Hardening: "no rate limiting anywhere on
-/// the API host"). Three layers, all partitioned per client IP:
-///   - A global limiter applied to every request by default — generous enough not to
-///     interfere with normal UI usage (dashboard polling, React Query refetches), but stops
-///     a flood.
+/// the API host"). Limits come from the <c>RateLimiting</c> configuration section
+/// (<see cref="RateLimitingOptions"/>) so staging can be loosened for load testing without a
+/// code change. Layers:
+///   - A global limiter on every request, chaining two fixed windows (ADR-084):
+///       * per caller — the authenticated user, or the client IP for anonymous requests
+///         (<see cref="RateLimitPartitionKeys.Caller"/>). Per-user rather than per-IP because
+///         a hospital's workstations usually share one NAT'd public IP, which made every
+///         staff member draw from a single 200/min budget.
+///       * per IP ceiling — a much higher cap every request also counts against, so a single
+///         address still can't flood the host even when spread across many valid tokens.
 ///   - A stricter named "Login" policy, applied explicitly via
 ///     <c>[EnableRateLimiting(LoginPolicyName)]</c> to both login actions — brute-force
 ///     throttling (ADR-015) is per-account, this is the complementary per-IP layer that
 ///     still applies even across many different usernames/emails.
 ///   - A "Write" policy (ADR-076) for sensitive-but-not-login write endpoints the global
-///     200/min limit doesn't specifically protect — message-send, notification broadcast,
-///     file uploads.
+///     limit doesn't specifically protect — message-send, notification broadcast, file
+///     uploads. Per caller, same reasoning as the global per-caller window.
 /// Registered here (not ModuleRegistration), same reasoning as CorsConfiguration/
 /// JwtConfiguration: host-level pipeline configuration, not a business module.
 /// </summary>
 public static class RateLimitingConfiguration
 {
-    public static IServiceCollection AddHmsRateLimiting(this IServiceCollection services)
+    public static IServiceCollection AddHmsRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
+        var limits = configuration.GetSection(RateLimitingOptions.SectionName).Get<RateLimitingOptions>() ?? new RateLimitingOptions();
+
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    ClientKey(context),
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        Window = TimeSpan.FromMinutes(1),
-                        PermitLimit = 200,
-                        QueueLimit = 0,
-                    }));
+            options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+                PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                {
+                    var key = RateLimitPartitionKeys.Caller(context);
+                    var permitLimit = key.StartsWith("ip:", StringComparison.Ordinal)
+                        ? limits.AnonymousPermitLimit
+                        : limits.PerUserPermitLimit;
+                    return FixedWindow(key, permitLimit);
+                }),
+                PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                    FixedWindow(RateLimitPartitionKeys.ClientIp(context), limits.PerIpCeilingPermitLimit)));
 
             options.AddPolicy(RateLimitingPolicyNames.Login, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    ClientKey(context),
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        Window = TimeSpan.FromMinutes(1),
-                        PermitLimit = 10,
-                        QueueLimit = 0,
-                    }));
+                FixedWindow(RateLimitPartitionKeys.ClientIp(context), limits.LoginPermitLimit));
 
             options.AddPolicy(RateLimitingPolicyNames.Write, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    ClientKey(context),
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        Window = TimeSpan.FromMinutes(1),
-                        PermitLimit = 60,
-                        QueueLimit = 0,
-                    }));
+                FixedWindow(RateLimitPartitionKeys.Caller(context), limits.WritePermitLimit));
 
             options.OnRejected = async (rejectedContext, cancellationToken) =>
             {
@@ -83,16 +79,34 @@ public static class RateLimitingConfiguration
         return app;
     }
 
-    // RemoteIpAddress, not X-Forwarded-For directly — this method never reads that header
-    // itself. In the Docker Compose deployment (browser talks straight to the API container),
-    // RemoteIpAddress already is the real client. In the Windows/nginx reverse-proxy
-    // deployment, ForwardedHeadersMiddleware (Program.cs, registered as the very first
-    // middleware, ADR-076) rewrites RemoteIpAddress in place from X-Forwarded-For — but only
-    // when the immediate connection is a KnownProxy/KnownNetwork (defaults to loopback only,
-    // never overridden here), so a client can't spoof the header to claim a different address
-    // unless it's already relayed through the trusted local nginx. Before ADR-076, this
-    // deployment path collapsed every real client into nginx's own loopback address here,
-    // defeating per-client partitioning entirely (see ADR-076 for the full analysis).
-    private static string ClientKey(HttpContext context) =>
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    private static RateLimitPartition<string> FixedWindow(string key, int permitLimit) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            key,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = permitLimit,
+                QueueLimit = 0,
+            });
+}
+
+/// <summary>Per-minute permit limits, bound from the <c>RateLimiting</c> config section.</summary>
+public sealed class RateLimitingOptions
+{
+    public const string SectionName = "RateLimiting";
+
+    /// <summary>Per authenticated user (hospital or platform), across all endpoints.</summary>
+    public int PerUserPermitLimit { get; set; } = 300;
+
+    /// <summary>Per client IP for requests with no valid token.</summary>
+    public int AnonymousPermitLimit { get; set; } = 200;
+
+    /// <summary>Per client IP for every request — sized for a whole hospital behind one NAT.</summary>
+    public int PerIpCeilingPermitLimit { get; set; } = 3000;
+
+    /// <summary>Per client IP on the login actions.</summary>
+    public int LoginPermitLimit { get; set; } = 10;
+
+    /// <summary>Per caller on the "Write" policy's sensitive-write actions.</summary>
+    public int WritePermitLimit { get; set; } = 60;
 }

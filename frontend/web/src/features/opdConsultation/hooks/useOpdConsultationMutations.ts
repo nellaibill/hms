@@ -6,6 +6,9 @@ function useInvalidateOpdConsultation(consultationId: string | undefined) {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: ['opd-consultation', consultationId] });
+    // Patient Details' Medical Information tab (useOpdConsultationsByPatientQuery) lists this
+    // same note, keyed by patient rather than consultation.
+    queryClient.invalidateQueries({ queryKey: ['opd-consultation', 'by-patient'] });
   };
 }
 

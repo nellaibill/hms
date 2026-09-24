@@ -290,6 +290,14 @@ export const billingFormSchema = z
         path: data.payments.length > 1 ? ['payments'] : ['payments', 0, 'amount'],
         message: 'Full payment is required before this invoice can be saved',
       });
+    } else if (totalTendered > netTotal) {
+      // Each row is individually capped above, but several rows can still add up to more than
+      // the bill (e.g. 200 + 300 against 400) — there's no change-back flow, so reject it.
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: data.payments.length > 1 ? ['payments'] : ['payments', 0, 'amount'],
+        message: 'Total payment cannot exceed the Net Payable amount',
+      });
     }
   });
 

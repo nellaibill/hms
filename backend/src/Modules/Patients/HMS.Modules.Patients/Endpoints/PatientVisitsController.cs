@@ -110,6 +110,17 @@ public class PatientVisitsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<PatientVisitResponse>> { Data = paged.Items, Meta = meta });
     }
 
+    /// <summary>Visits of one type per month for the last N months (default 6, max 24) —
+    /// backs the Executive Dashboard's OP census chart (DASH-01).</summary>
+    [RequirePermission("patient-management.view")]
+    [HttpGet]
+    [Route("/api/v1/patient-visits/monthly-counts")]
+    public async Task<IActionResult> GetMonthlyCounts([FromQuery] VisitType visitType = VisitType.OP, [FromQuery] int months = 6, CancellationToken cancellationToken = default)
+    {
+        var series = await _visitService.GetMonthlyCountsAsync(visitType, months, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<MonthlyTotal>> { Data = series });
+    }
+
     private static ApiResponse<PatientVisitResponse> Envelope(PatientVisitResponse? data) => new() { Data = data };
 
     private IActionResult MapFailure(string errorCode, string message)

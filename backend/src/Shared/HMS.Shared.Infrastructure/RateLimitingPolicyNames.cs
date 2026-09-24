@@ -10,11 +10,10 @@ public static class RateLimitingPolicyNames
 {
     public const string Login = "Login";
 
-    /// <summary>Sensitive-write endpoints beyond login that the global 200/min limiter alone
-    /// doesn't specifically protect — message-send, notification broadcast, and file-upload
-    /// actions (ADR-076). Same per-IP partitioning as every other policy here, not per-user:
-    /// this limiter runs before UseAuthentication() in the pipeline (ADR-018's own reasoning —
-    /// an unauthenticated flood shouldn't spend JWT-validation work first), so no verified
-    /// user identity exists yet to partition by at this point.</summary>
+    /// <summary>Sensitive-write endpoints beyond login that the global limiter alone doesn't
+    /// specifically protect — message-send, notification broadcast, and file-upload actions
+    /// (ADR-076). Partitioned per caller (<see cref="RateLimitPartitionKeys.Caller"/>), not
+    /// per IP, since UseAuthentication() now runs before the limiter (ADR-084) and a hospital
+    /// behind one NAT'd IP would otherwise share a single write budget.</summary>
     public const string Write = "Write";
 }

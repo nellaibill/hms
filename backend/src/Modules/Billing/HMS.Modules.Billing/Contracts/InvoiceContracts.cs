@@ -190,3 +190,18 @@ public record RecentPatientBillResponse
     public PaymentStatus PaymentStatus { get; init; }
     public bool IsVoided { get; init; }
 }
+
+/// <summary>The Executive Dashboard's finance data (DASH-01): billed revenue per month (non-voided
+/// invoices, net of line discounts) and this month's revenue split by billing type. There is no
+/// expense ledger yet, so no expense figures are returned.</summary>
+public record BillingDashboardSummaryResponse
+{
+    public IReadOnlyList<HMS.Shared.Kernel.MonthlyTotal> MonthlyRevenue { get; init; } = [];
+    public IReadOnlyList<RevenueByBillingTypeResponse> CurrentMonthByType { get; init; } = [];
+}
+
+public record RevenueByBillingTypeResponse
+{
+    public BillingType BillingType { get; init; }
+    public decimal Amount { get; init; }
+}

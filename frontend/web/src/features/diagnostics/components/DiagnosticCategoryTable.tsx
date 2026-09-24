@@ -15,9 +15,9 @@ export function DiagnosticCategoryTable({ categories, onEditRequested, onDeleteR
   const canDelete = hasPermission('diagnostics.delete');
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">Code</th>
             <th className="px-4 py-2.5">Name</th>
@@ -31,7 +31,7 @@ export function DiagnosticCategoryTable({ categories, onEditRequested, onDeleteR
             <tr key={category.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{category.code}</td>
               <td className="px-4 py-3 font-medium text-foreground">{category.name}</td>
-              <td className="px-4 py-3 text-muted-foreground">{category.description || '—'}</td>
+              <td className="min-w-[14rem] px-4 py-3 text-muted-foreground">{category.description || '—'}</td>
               <td className="px-4 py-3">
                 <Badge variant={category.isActive ? 'success' : 'secondary'}>{category.isActive ? 'Active' : 'Inactive'}</Badge>
               </td>

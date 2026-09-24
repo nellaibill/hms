@@ -1,4 +1,5 @@
 import type { ActivityLogEntry } from '@hms/shared';
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 /** Module/Action values the backend writes today (HMS.Modules.ActivityLog.Contracts.
  * ActivityLogModules / ActivityLogActions) — the API has no "list distinct values" endpoint,
@@ -118,5 +119,8 @@ export interface ActivityLogFilterValues {
 }
 
 export const EMPTY_FILTERS: ActivityLogFilterValues = { from: '', to: '', userId: '', module: '', action: '', entity: '' };
+
+/** Initial/Reset state — EMPTY_FILTERS with the app-wide From = yesterday / To = today default. */
+export const defaultActivityLogFilters = (): ActivityLogFilterValues => ({ ...EMPTY_FILTERS, ...defaultReportDateRange() });
 
 export type ExportFormat = 'pdf' | 'excel' | 'csv';

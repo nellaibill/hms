@@ -5,6 +5,7 @@ import { DepartmentName } from '@/components/DepartmentName';
 import { formatCurrency } from '../billingCalculations';
 import type { RecentBill, RecentBillConsultant } from '../types';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface RecentPatientBillsTableProps {
   bills: RecentBill[];
@@ -34,7 +35,7 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">Invoice #</th>
             <th className="px-4 py-2.5">Patient Name</th>
@@ -59,9 +60,7 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                   </Link>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
-                  <Link to={`/finance/accounts/${bill.invoiceId}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                    {bill.patientName}
-                  </Link>
+                  <PatientNameLink patientId={bill.patientId}>{bill.patientName}</PatientNameLink>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                   {bill.age ?? '—'}
@@ -81,7 +80,7 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                 <td className="whitespace-nowrap px-4 py-3 text-foreground">
                   {primaryDepartmentId ? <DepartmentName departmentId={primaryDepartmentId} /> : <span className="text-muted-foreground">—</span>}
                 </td>
-                <td className="px-4 py-3 text-foreground">
+                <td className="min-w-[16rem] px-4 py-3 text-foreground">
                   <ConsultantsCell consultants={bill.consultants} />
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">

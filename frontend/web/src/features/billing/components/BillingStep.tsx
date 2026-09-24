@@ -77,14 +77,14 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
     formState: { errors, isDirty },
   } = methods;
 
-  // Consultation starts expanded when its rows were prefilled from the patient's visit (see
-  // InvoiceCreatePage's billingDefaultValues) — reception should see those already-registered
-  // charges right away rather than having to click to reveal them. The other categories are
-  // never prefilled on this page, so they stay collapsed until opened.
+  // A category starts expanded when its rows were prefilled (see InvoiceCreatePage's
+  // billingDefaultValues) — Consultation from the patient's visit, Laboratory/Radiology from the
+  // doctor's catalog investigations on that visit's consultation (OPD-01) — so reception sees
+  // those charges right away rather than having to click to reveal them.
   const [expanded, setExpanded] = useState<Record<BillingType, boolean>>(() => ({
     Consultation: (defaultValues?.consultation ?? []).some(isConsultationEntryActive),
-    Radiology: false,
-    Laboratory: false,
+    Radiology: (defaultValues?.radiology ?? []).some((row) => Boolean(row.serviceId)),
+    Laboratory: (defaultValues?.laboratory ?? []).some((row) => Boolean(row.itemId)),
     Procedure: false,
     Injection: false,
     File: false,
@@ -147,8 +147,10 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
       {/* 380px matches BrandingForm's own two-column sidebar (frontend/web/src/features/
           branding/components/BrandingForm.tsx) — the widest sidebar width already established
           in this codebase, needed here since Collect Payment now packs three fields (Amount/
-          Mode/Reference) per payment row plus the split-payment controls. */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+          Mode/Reference) per payment row plus the split-payment controls. Two columns only
+          from xl, not lg: with the 280px sidebar open, a 1024px viewport leaves ~680px of
+          content width, which would crush the billing cards to ~280px beside this column. */}
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
           <ConsultationBillingCard
             expanded={expanded.Consultation}

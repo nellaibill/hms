@@ -13,24 +13,33 @@ interface ConsultantSelectProps {
   departmentId: string | undefined;
   ariaLabel?: string;
   disabled?: boolean;
+  /** Filter-toolbar mode: prepends an "All consultants"-style option whose value is '' (the
+   * caller maps '' to an unset filter). Also lifts the department-first requirement — with no
+   * department chosen ("All departments"), every active consultant is listed, since a filter
+   * has no reason to force a department before narrowing by consultant. */
+  allOptionLabel?: string;
 }
 
 /** Consultant picker shared across every form that references a ConsultantId (Patient
  * Registration, IPD Admission), backed by the real GET /api/v1/masters/consultants list. */
-export function ConsultantSelect({ id, value, onValueChange, departmentId, ariaLabel = 'Consultant', disabled }: ConsultantSelectProps) {
+export function ConsultantSelect({ id, value, onValueChange, departmentId, ariaLabel = 'Consultant', disabled, allOptionLabel }: ConsultantSelectProps) {
+  const canList = Boolean(departmentId) || Boolean(allOptionLabel);
   const { data } = useQuery({
     queryKey: ['consultants', 'select-list', departmentId],
     queryFn: () => consultantsApi.getConsultants({ pageSize: 100, isActive: true, departmentId }),
-    enabled: Boolean(departmentId),
+    enabled: canList,
   });
 
   // Doctors especially can share a display name (two "Dr. Sharma"s) — Specialization is the
   // best available disambiguator now that Code is gone (there's no other guaranteed-unique,
   // human-readable field left on this entity).
-  const options = (data?.items ?? []).map((consultant) => ({
-    value: consultant.id,
-    label: consultant.specialization ? `${consultant.name} — ${consultant.specialization}` : consultant.name,
-  }));
+  const options = [
+    ...(allOptionLabel ? [{ value: '', label: allOptionLabel }] : []),
+    ...(data?.items ?? []).map((consultant) => ({
+      value: consultant.id,
+      label: consultant.specialization ? `${consultant.name} — ${consultant.specialization}` : consultant.name,
+    })),
+  ];
 
   return (
     <SearchableSelect
@@ -38,10 +47,10 @@ export function ConsultantSelect({ id, value, onValueChange, departmentId, ariaL
       value={value}
       onValueChange={onValueChange}
       options={options}
-      placeholder={departmentId ? 'Select consultant…' : 'Select a department first…'}
+      placeholder={allOptionLabel ?? (departmentId ? 'Select consultant…' : 'Select a department first…')}
       searchPlaceholder="Search by name…"
       ariaLabel={ariaLabel}
-      disabled={disabled || !departmentId}
+      disabled={disabled || !canList}
     />
   );
 }

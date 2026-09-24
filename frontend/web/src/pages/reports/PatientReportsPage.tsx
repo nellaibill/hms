@@ -19,20 +19,10 @@ import { bloodGroupLabel } from '@/features/patients/bloodGroupLabel';
 import { Pagination } from '@/features/patients';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import { departmentsApi, patientsApi } from '@/services/apiClient';
+import { PatientNameLink } from '@/components/PatientNameLink';
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 const PAGE_SIZES = [25, 50, 100] as const;
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-// Default range mirrors this app's other reports (Finance, the Patient Analytics charts page
-// this replaces) — a rolling 90-day window, "To" defaulting to today.
-function defaultFrom(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 90);
-  return toDateInputValue(d);
-}
 
 interface Filters {
   from: string;
@@ -44,7 +34,8 @@ interface Filters {
 }
 
 function defaultFilters(): Filters {
-  return { from: defaultFrom(), to: toDateInputValue(new Date()), search: '', gender: '', bloodGroup: '', departmentId: '' };
+  // Same From = yesterday / To = today default as every other report (lib/reportDateRange).
+  return { ...defaultReportDateRange(), search: '', gender: '', bloodGroup: '', departmentId: '' };
 }
 
 function toQuery(filters: Filters, page: number, pageSize: number, sort: string): PatientListQuery {
@@ -298,7 +289,7 @@ export default function PatientReportsPage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Card>
             <CardContent className="flex flex-col gap-1 py-4">
               <span className="text-xs text-muted-foreground">Total Patients</span>
@@ -374,7 +365,7 @@ export default function PatientReportsPage() {
             <>
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full min-w-[960px] text-sm">
-                  <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
                     <tr>
                       <th className="cursor-pointer select-none px-4 py-2.5" onClick={() => toggleSort('uhid')}>
                         UHID{sortIndicator('uhid')}
@@ -397,9 +388,11 @@ export default function PatientReportsPage() {
                   <tbody className="divide-y divide-border">
                     {rows.map((row: PatientReportRow) => (
                       <tr key={row.patient.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.patient.uhid}</td>
-                        <td className="px-4 py-3 font-medium text-foreground">
-                          {row.patient.firstName} {row.patient.lastName}
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.patient.uhid}</td>
+                        <td className="px-4 py-3">
+                          <PatientNameLink patientId={row.patient.id}>
+                            {row.patient.firstName} {row.patient.lastName}
+                          </PatientNameLink>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{row.patient.age}</td>
                         <td className="px-4 py-3 text-muted-foreground">{row.patient.gender === 'NA' ? 'N/A' : row.patient.gender}</td>

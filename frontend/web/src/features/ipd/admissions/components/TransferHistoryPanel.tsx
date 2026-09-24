@@ -30,9 +30,9 @@ export function TransferHistoryPanel({ admissionId }: TransferHistoryPanelProps)
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">From</th>
             <th className="px-4 py-2.5" />
@@ -44,17 +44,17 @@ export function TransferHistoryPanel({ admissionId }: TransferHistoryPanelProps)
         <tbody className="divide-y divide-border">
           {history.map((entry) => (
             <tr key={entry.id}>
-              <td className="px-4 py-3 text-sm text-foreground">
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
                 {entry.oldWardName} / {entry.oldBedNumber}
               </td>
               <td className="px-4 py-3 text-muted-foreground">
                 <ArrowRight className="h-4 w-4" />
               </td>
-              <td className="px-4 py-3 text-sm text-foreground">
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
                 {entry.newWardName} / {entry.newBedNumber}
               </td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{entry.transferReason || '—'}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(entry.transferredAt).toLocaleString('en-IN')}</td>
+              <td className="min-w-[10rem] px-4 py-3 text-sm text-muted-foreground">{entry.transferReason || '—'}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">{new Date(entry.transferredAt).toLocaleString('en-IN')}</td>
             </tr>
           ))}
         </tbody>

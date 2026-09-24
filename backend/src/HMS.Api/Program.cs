@@ -54,7 +54,7 @@ builder.Services.AddHmsModules(builder.Configuration);
 builder.Services.AddHmsSwagger();
 builder.Services.AddHmsCors(builder.Configuration);
 builder.Services.AddHmsJwtAuthentication(builder.Configuration);
-builder.Services.AddHmsRateLimiting();
+builder.Services.AddHmsRateLimiting(builder.Configuration);
 
 // Backs the Docker Compose healthcheck (and any future orchestrator) — see
 // DatabaseHealthCheck's own doc comment for why it targets PlatformDbContext.
@@ -96,9 +96,17 @@ app.UseExceptionHandler();
 // rejected request still gets a properly-shaped error response, not a raw failure.
 app.UseHmsCors();
 
-// Must run before MapControllers(), and deliberately before authentication/authorization
-// too — an unauthenticated request flood (e.g. login brute-forcing) should be throttled
-// before it spends any JWT-validation or tenant-resolution work, not after.
+// Authentication runs before rate limiting (ADR-084, revising ADR-018's ordering) so the
+// global limiter can partition by the verified user instead of only by client IP — a whole
+// hospital behind one NAT'd IP otherwise shares a single budget. JWT validation is a cheap
+// signature check (plus a revoked-token lookup, but only for validly signed Platform
+// tokens); tenant resolution (a DB lookup) still runs after the limiter, and a
+// per-IP ceiling plus the per-IP Login policy keep unauthenticated floods throttled.
+// Authorization stays after TenantResolutionMiddleware below.
+app.UseAuthentication();
+
+// Must run before MapControllers() and before tenant resolution, so a flood is rejected
+// before it spends any per-request database work.
 app.UseHmsRateLimiting();
 
 app.UseHmsSwagger();
@@ -111,10 +119,6 @@ app.UseHmsSecurityHeaders();
 // Serves patient photos/ID proofs saved by PatientFileStorage under wwwroot/uploads —
 // the app's first static-file surface (see docs/DecisionLog.md's file-upload ADR).
 app.UseStaticFiles();
-
-// Must run after CORS and before MapControllers, in that order: Authentication decides
-// who the caller is, Authorization then checks [Authorize] on the matched endpoint.
-app.UseAuthentication();
 
 // HMS Multi-Tenancy Phase C: must run after authentication (so it has a JWT's "UserId"/
 // "TenantId" claims to key off) but BEFORE authorization — Tenant Feature/Module

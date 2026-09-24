@@ -72,6 +72,8 @@ export const API_ROUTES = {
    * absolute-route GetAll action (deliberately not nested under a patientId). */
   patientVisits: {
     all: '/api/v1/patient-visits',
+    /** GET ?visitType=OP&months=6 — visits per month, for the Executive Dashboard (DASH-01). */
+    monthlyCounts: '/api/v1/patient-visits/monthly-counts',
   },
   /** Bulk patient import (Super Admin only) — mirrors HMS.Modules.Patients.Endpoints.PatientImportController. */
   patientImport: {
@@ -278,6 +280,8 @@ export const API_ROUTES = {
       finalBill: (id: string) => `/api/v1/ipd/admissions/${id}/final-bill`,
     },
     dashboard: '/api/v1/ipd/dashboard',
+    /** GET ?months=6 — admissions per month, for the Executive Dashboard (DASH-01). */
+    monthlyAdmissions: '/api/v1/ipd/dashboard/monthly-admissions',
   },
   /** Mirrors HMS.Modules.Billing.Endpoints.InvoicesController. */
   billing: {
@@ -289,7 +293,15 @@ export const API_ROUTES = {
       recordPayment: (invoiceId: string, itemId: string) => `/api/v1/billing/invoices/${invoiceId}/items/${itemId}/payments`,
       void: (id: string) => `/api/v1/billing/invoices/${id}/void`,
       procedures: '/api/v1/billing/invoices/procedures',
+      /** GET ?months=6 — revenue per month + this month by billing type (DASH-01). */
+      dashboardSummary: '/api/v1/billing/invoices/dashboard-summary',
     },
+  },
+  /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */
+  radiology: {
+    aiAnalysis: (documentId: string) => `/api/v1/radiology/ai-analysis/documents/${documentId}`,
+    patientAnalyses: (patientId: string) => `/api/v1/radiology/ai-analysis/patients/${patientId}`,
+    review: (analysisId: string) => `/api/v1/radiology/ai-analysis/${analysisId}/review`,
   },
   /** Mirrors HMS.Modules.Laboratory.Endpoints.LabOrdersController — the lab worklist: sample
    * collection through result entry, verification, and report generation/release. Deliberately
@@ -329,11 +341,20 @@ export const API_ROUTES = {
    * action, keyed by consultationId (the same id `opd.consultationComplete` above operates
    * on — this is a different module's own record for that same consultation). */
   opdConsultations: {
+    /** GET ?patientId= — every note already on file for one patient; never auto-creates. */
+    base: '/api/v1/opd-consultations',
     byConsultationId: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}`,
     saveDraft: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/draft`,
     complete: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/complete`,
     reopen: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/reopen`,
     structureNote: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/ai/structure-note`,
+    /** GET ?search= (clinical-care.view) / POST (clinical-care.edit) — the consultation form's
+     * own Diagnosis catalog access; the Masters endpoints require an admin permission. */
+    diagnoses: '/api/v1/opd-consultations/diagnoses',
+    /** GET ?department=Laboratory|Radiology — active catalog services for the investigation picker. */
+    investigationServices: '/api/v1/opd-consultations/investigation-services',
+    /** GET ?visitId= (finance-billing.view) — catalog-linked investigations to pre-add in OPD Billing Entry. */
+    billableInvestigations: '/api/v1/opd-consultations/billable-investigations',
   },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
   pharmacy: {

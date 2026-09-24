@@ -81,7 +81,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
         ) : (
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
                 <tr>
                   <th className="px-3 py-2">Parameter</th>
                   <th className="px-3 py-2">Result</th>
@@ -122,8 +122,8 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
         {rows.map((row) => (
-          <div key={row.key} className="grid grid-cols-1 gap-2 rounded-md border border-dashed border-border p-2.5 sm:grid-cols-12 sm:items-end">
-            <div className="flex flex-col gap-1 sm:col-span-3">
+          <div key={row.key} className="grid grid-cols-1 gap-2 rounded-md border border-dashed border-border p-2.5 sm:grid-cols-6 sm:items-end xl:grid-cols-12">
+            <div className="flex flex-col gap-1 sm:col-span-3 xl:col-span-3">
               <Label htmlFor={`param-name-${row.key}`} className="text-[11px]">
                 Parameter
               </Label>
@@ -134,7 +134,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
                 className="h-8 text-xs"
               />
             </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
+            <div className="flex flex-col gap-1 sm:col-span-3 xl:col-span-2">
               <Label htmlFor={`param-value-${row.key}`} className="text-[11px]">
                 Result
               </Label>
@@ -145,7 +145,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
                 className="h-8 text-xs"
               />
             </div>
-            <div className="flex flex-col gap-1 sm:col-span-1">
+            <div className="flex flex-col gap-1 sm:col-span-2 xl:col-span-1">
               <Label htmlFor={`param-unit-${row.key}`} className="text-[11px]">
                 Unit
               </Label>
@@ -156,7 +156,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
                 className="h-8 text-xs"
               />
             </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
+            <div className="flex flex-col gap-1 sm:col-span-2 xl:col-span-2">
               <Label htmlFor={`param-range-${row.key}`} className="text-[11px]">
                 Reference Range
               </Label>
@@ -167,7 +167,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
                 className="h-8 text-xs"
               />
             </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
+            <div className="flex flex-col gap-1 sm:col-span-2 xl:col-span-2">
               <Label htmlFor={`param-flag-${row.key}`} className="text-[11px]">
                 Flag
               </Label>
@@ -188,7 +188,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-1 sm:col-span-1">
+            <div className="flex flex-col gap-1 sm:col-span-5 xl:col-span-1">
               <Label htmlFor={`param-remarks-${row.key}`} className="text-[11px]">
                 Remarks
               </Label>
@@ -199,7 +199,7 @@ export function ResultEntryForm({ item, isSavingDraft, isSubmitting, onSaveDraft
                 className="h-8 text-xs"
               />
             </div>
-            <div className="flex sm:col-span-1 sm:justify-end">
+            <div className="flex sm:col-span-1 xl:col-span-1 sm:justify-end">
               <Button
                 type="button"
                 variant="ghost"

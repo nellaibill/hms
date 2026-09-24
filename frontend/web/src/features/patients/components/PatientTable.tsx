@@ -13,7 +13,7 @@ interface PatientTableProps {
   /** Same "Select" action as OPD Billing Entry's PatientPicker — opens the chosen patient. Edit/
    * Add Visit/Delete are all still reachable from that patient's own record page. */
   onSelect: (patient: Patient) => void;
-  /** False while showing the default "Last 100 visits" list (sorted server-side by most
+  /** False while showing the default "Recent visits" list (sorted server-side by most
    * recent visit, same as OPD Billing Entry's PatientPicker) — that list ignores `sort`
    * entirely, so a clickable header there would silently do nothing. Sortable again once a
    * search narrows the list to something `sort` actually applies to. Defaults to true. */
@@ -53,12 +53,12 @@ export function PatientTable({ patients, sort, onSortChange, onSelect, sortable 
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         {/* Same column set/order as OPD Billing Entry's PatientPicker table (Patient, Age/
             Gender, UHID, Phone, Consultant, Department, Appointment Time, Action) — this page
             additionally keeps Patient/UHID sortable, since that's this table's own convention. */}
-        <thead className="sticky top-0 z-10 bg-muted/95 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/80">
+        <thead className="bg-sidebar-active sticky top-0 z-10 text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground backdrop-blur">
           <tr>
             <SortHeader field="lastName" label="Patient" />
             <th className="px-4 py-2.5">Age / Gender</th>

@@ -88,6 +88,13 @@ internal class OpdConsultationNoteConfiguration : IEntityTypeConfiguration<OpdCo
             .HasConstraintName("fk_opd_consultation_investigations_note_id")
             .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(x => x.Investigations).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(x => x.Prescriptions)
+            .WithOne()
+            .HasForeignKey(p => p.OpdConsultationNoteId)
+            .HasConstraintName("fk_opd_consultation_prescriptions_note_id")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Prescriptions).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
 
@@ -126,6 +133,31 @@ internal class OpdConsultationInvestigationConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.Department).HasColumnName("department").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(x => x.Priority).HasColumnName("priority").HasConversion<string>().HasMaxLength(20).IsRequired();
 
+        // App-level reference into Masters' DiagnosticService catalog — no DB FK (see
+        // OpdConsultationInvestigation.ServiceId). Null for a free-text line.
+        builder.Property(x => x.ServiceId).HasColumnName("service_id");
+
         builder.HasIndex(x => x.OpdConsultationNoteId).HasDatabaseName("ix_opd_consultation_investigations_note_id");
+    }
+}
+
+internal class OpdConsultationPrescriptionConfiguration : IEntityTypeConfiguration<OpdConsultationPrescription>
+{
+    public void Configure(EntityTypeBuilder<OpdConsultationPrescription> builder)
+    {
+        builder.ToTable("opd_consultation_prescriptions");
+
+        builder.HasKey(x => x.Id).HasName("pk_opd_consultation_prescriptions");
+        builder.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+
+        builder.Property(x => x.OpdConsultationNoteId).HasColumnName("opd_consultation_note_id").IsRequired();
+        builder.Property(x => x.DrugName).HasColumnName("drug_name").HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Dose).HasColumnName("dose").HasMaxLength(100);
+        builder.Property(x => x.Route).HasColumnName("route").HasMaxLength(50);
+        builder.Property(x => x.Frequency).HasColumnName("frequency").HasMaxLength(100);
+        builder.Property(x => x.DurationDays).HasColumnName("duration_days");
+        builder.Property(x => x.Instructions).HasColumnName("instructions").HasMaxLength(500);
+
+        builder.HasIndex(x => x.OpdConsultationNoteId).HasDatabaseName("ix_opd_consultation_prescriptions_note_id");
     }
 }

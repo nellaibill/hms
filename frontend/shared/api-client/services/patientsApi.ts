@@ -3,6 +3,7 @@ import type {
   AddAllergyRequest,
   CreatePatientRequest,
   CreatePatientVisitRequest,
+  MonthlyTotal,
   Patient,
   PatientListQuery,
   PatientReportRow,
@@ -124,6 +125,12 @@ export class PatientsApi {
   /** Lists visits across every patient, paged, optionally date-range-filtered — mirrors
    * PatientVisitsController's cross-patient GET /api/v1/patient-visits. Backs Patient Reports,
    * unlike getVisits above which is scoped to one patient. */
+  /** Visits of one type per month for the last `months` months, oldest first (Executive Dashboard). */
+  async getMonthlyVisitCounts(visitType: 'OP' | 'IP' = 'OP', months = 6): Promise<MonthlyTotal[]> {
+    const response = await this.client.get<MonthlyTotal[]>(API_ROUTES.patientVisits.monthlyCounts, { query: { visitType, months } });
+    return response.data;
+  }
+
   async getAllVisits(query: PatientVisitListQuery = {}): Promise<PagedPatientVisits> {
     const response = await this.client.get<PatientVisit[]>(API_ROUTES.patientVisits.all, {
       query: { page: query.page, pageSize: query.pageSize, from: query.from, to: query.to },

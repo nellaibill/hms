@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
 import type { ProfitReportRow } from '../profitReport';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface ProfitTableProps {
   rows: ProfitReportRow[];
@@ -17,7 +18,7 @@ export function ProfitTable({ rows }: ProfitTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[1100px] text-sm">
-        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">Date</th>
             <th className="px-4 py-2.5">Invoice</th>
@@ -42,7 +43,11 @@ export function ProfitTable({ rows }: ProfitTableProps) {
                   {row.invoiceNumber ?? row.invoiceId}
                 </Link>
               </td>
-              <td className="px-4 py-3 text-foreground">{row.patientName}</td>
+              <td className="px-4 py-3">
+                <PatientNameLink patientId={row.patientId} className="font-normal">
+                  {row.patientName}
+                </PatientNameLink>
+              </td>
               <td className="px-4 py-3 text-muted-foreground">{row.billingType}</td>
               <td className="px-4 py-3 text-muted-foreground">{row.serviceLabel}</td>
               <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('department', row.departmentId)}</td>

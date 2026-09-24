@@ -11,5 +11,9 @@ export function usePatientDocumentsQuery(patientId: string | undefined) {
     queryKey: patientDocumentsQueryKey(patientId as string),
     queryFn: () => documentsApi.listDocuments({ ownerType: 'Patient', ownerId: patientId as string }),
     enabled: Boolean(patientId),
+    // A fresh upload sits at Pending until the background virus scan clears it — poll briefly
+    // so it flips to Available (and gets its View/Download actions) without a manual refresh,
+    // same as usePatientDocumentUrl.
+    refetchInterval: (query) => (query.state.data?.some((doc) => doc.status === 'Pending') ? 1000 : false),
   });
 }

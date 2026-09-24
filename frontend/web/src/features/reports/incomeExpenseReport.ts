@@ -16,6 +16,7 @@ function billingToIncomeRow(billing: Billing): IncomeReportRow {
     id: billing.id,
     invoiceNumber: billing.invoiceNumber,
     date: dateOnly(billing.createdAt),
+    patientId: billing.patientId,
     patientName: billing.patientName,
     patientUhid: billing.patientUhid,
     billingTypes,

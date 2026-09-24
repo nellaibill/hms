@@ -18,7 +18,7 @@ namespace HMS.Database.Migrations.OpdConsultation.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("opd_consultation")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -82,6 +82,10 @@ namespace HMS.Database.Migrations.OpdConsultation.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("priority");
+
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id");
 
                     b.HasKey("Id")
                         .HasName("pk_opd_consultation_investigations");
@@ -238,6 +242,55 @@ namespace HMS.Database.Migrations.OpdConsultation.Migrations
                     b.ToTable("opd_consultation_notes", "opd_consultation");
                 });
 
+            modelBuilder.Entity("HMS.Modules.OpdConsultation.Domain.OpdConsultationPrescription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Dose")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("dose");
+
+                    b.Property<string>("DrugName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("drug_name");
+
+                    b.Property<int?>("DurationDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_days");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("frequency");
+
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("instructions");
+
+                    b.Property<Guid>("OpdConsultationNoteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("opd_consultation_note_id");
+
+                    b.Property<string>("Route")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("route");
+
+                    b.HasKey("Id")
+                        .HasName("pk_opd_consultation_prescriptions");
+
+                    b.HasIndex("OpdConsultationNoteId")
+                        .HasDatabaseName("ix_opd_consultation_prescriptions_note_id");
+
+                    b.ToTable("opd_consultation_prescriptions", "opd_consultation");
+                });
+
             modelBuilder.Entity("HMS.Modules.OpdConsultation.Domain.OpdConsultationDiagnosis", b =>
                 {
                     b.HasOne("HMS.Modules.OpdConsultation.Domain.OpdConsultationNote", null)
@@ -258,11 +311,23 @@ namespace HMS.Database.Migrations.OpdConsultation.Migrations
                         .HasConstraintName("fk_opd_consultation_investigations_note_id");
                 });
 
+            modelBuilder.Entity("HMS.Modules.OpdConsultation.Domain.OpdConsultationPrescription", b =>
+                {
+                    b.HasOne("HMS.Modules.OpdConsultation.Domain.OpdConsultationNote", null)
+                        .WithMany("Prescriptions")
+                        .HasForeignKey("OpdConsultationNoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_opd_consultation_prescriptions_note_id");
+                });
+
             modelBuilder.Entity("HMS.Modules.OpdConsultation.Domain.OpdConsultationNote", b =>
                 {
                     b.Navigation("Diagnoses");
 
                     b.Navigation("Investigations");
+
+                    b.Navigation("Prescriptions");
                 });
 #pragma warning restore 612, 618
         }

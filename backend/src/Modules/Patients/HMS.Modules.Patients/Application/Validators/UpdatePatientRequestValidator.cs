@@ -13,7 +13,7 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x.DateOfBirth)
             .NotEmpty()
             .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth cannot be in the future.")
-            .GreaterThanOrEqualTo(CreatePatientRequestValidator.MinDateOfBirth).WithMessage("Date of birth is too far in the past — please check the year.");
+            .GreaterThanOrEqualTo(_ => CreatePatientRequestValidator.MinDateOfBirth).WithMessage("Patient age cannot exceed 100 years — please check the date of birth.");
         RuleFor(x => x)
             .Must(x => CreatePatientRequestValidator.IsTitleConsistentWithAge(x.Title, x.DateOfBirth))
             .WithName("Title")

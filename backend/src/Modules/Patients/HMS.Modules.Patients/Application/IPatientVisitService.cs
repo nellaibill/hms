@@ -23,4 +23,9 @@ public interface IPatientVisitService
 
     /// <summary>Cross-patient, paged, optionally date-range-filtered — backs Patient Reports.</summary>
     Task<PagedResult<PatientVisitResponse>> GetAllAsync(PatientVisitListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Visits of one type per calendar month (hospital local time) for the last
+    /// <paramref name="months"/> months, oldest first, zero-filled — the Executive Dashboard's
+    /// OP census (DASH-01).</summary>
+    Task<IReadOnlyList<MonthlyTotal>> GetMonthlyCountsAsync(VisitType visitType, int months, CancellationToken cancellationToken);
 }

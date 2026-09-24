@@ -18,6 +18,7 @@ export interface ProfitReportRow {
   invoiceId: string;
   invoiceNumber?: string;
   date: string;
+  patientId: string;
   patientName: string;
   billingType: BillingType;
   serviceLabel: string;
@@ -64,6 +65,7 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
         invoiceId: billing.id,
         invoiceNumber: billing.invoiceNumber,
         date,
+        patientId: billing.patientId,
         patientName: billing.patientName,
         billingType: item.billingType as BillingType,
         serviceLabel,

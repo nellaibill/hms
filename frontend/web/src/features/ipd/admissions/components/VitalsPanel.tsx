@@ -78,9 +78,9 @@ export function VitalsPanel({ admissionId }: VitalsPanelProps) {
       )}
 
       {!isPending && !isError && (
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
               <tr>
                 <th className="px-3 py-2.5">Recorded</th>
                 <th className="px-3 py-2.5">Temp (°F)</th>
@@ -130,8 +130,11 @@ export function VitalsPanel({ admissionId }: VitalsPanelProps) {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <div className="flex flex-col gap-1.5">
+        {/* auto-fill against the form's own width (not viewport breakpoints, which ignore the
+            sidebar) — a fixed sm:grid-cols-5 crushed the datetime and BP inputs to ~40px on
+            tablet widths. Recorded-at and the two-input BP cell each span two tracks. */}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
+          <div className="col-span-2 flex flex-col gap-1.5">
             <Label htmlFor="recordedAt">Recorded at</Label>
             <Input id="recordedAt" type="datetime-local" {...register('recordedAt')} />
             {errors.recordedAt && <p className="text-xs text-destructive">{errors.recordedAt.message}</p>}
@@ -151,7 +154,7 @@ export function VitalsPanel({ admissionId }: VitalsPanelProps) {
             <Input id="respiratoryRate" type="number" {...register('respiratoryRate')} />
             {errors.respiratoryRate && <p className="text-xs text-destructive">{errors.respiratoryRate.message}</p>}
           </div>
-          <div className="flex gap-2">
+          <div className="col-span-2 flex gap-2">
             <div className="flex flex-1 flex-col gap-1.5">
               <Label htmlFor="bloodPressureSystolic">BP systolic</Label>
               <Input id="bloodPressureSystolic" type="number" {...register('bloodPressureSystolic')} />

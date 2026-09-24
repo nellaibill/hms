@@ -44,5 +44,9 @@ internal interface IPatientVisitRepository
     /// exist.</summary>
     Task<OpdPatientListRow?> GetOpdConsultationDetailAsync(Guid consultationId, CancellationToken cancellationToken);
 
+    /// <summary>CreatedAt of every visit of one type since a UTC instant — the Executive
+    /// Dashboard's monthly census (DASH-01). Timestamps only, bucketed by the caller.</summary>
+    Task<IReadOnlyList<DateTime>> GetCreatedAtSinceAsync(VisitType visitType, DateTime fromUtc, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

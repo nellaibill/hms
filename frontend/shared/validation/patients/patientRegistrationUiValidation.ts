@@ -105,6 +105,9 @@ const additionalAllergySchema = z
     if (!row.allergyCategory) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergyCategory'], message: 'Allergy type is required for this row.' });
     }
+    if (!row.allergySpecify?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySpecify'], message: 'Specify what the patient is allergic to (e.g. Penicillin).' });
+    }
     if (!row.allergySeverity) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySeverity'], message: 'Allergy severity is required for this row.' });
     }
@@ -242,14 +245,13 @@ const demographicsUiSchema = {
     // rather than rejecting it outright.
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date with a 4-digit year.')
     .refine((value) => new Date(value) <= new Date(), 'Date of birth cannot be in the future')
-    // Kept in sync with backend's CreatePatientRequestValidator.MinDateOfBirth (130 years) —
-    // generous enough to never reject a real patient while catching an obvious data-entry
-    // slip like typing "1023" instead of "2023".
+    // Kept in sync with backend's CreatePatientRequestValidator.MaxAgeYears (100 years) —
+    // catches data-entry slips like "1023" for "2023" and legacy placeholder DOBs.
     .refine((value) => {
       const minDate = new Date();
-      minDate.setFullYear(minDate.getFullYear() - 130);
+      minDate.setFullYear(minDate.getFullYear() - 100);
       return new Date(value) >= minDate;
-    }, 'Date of birth is too far in the past — please check the year.'),
+    }, 'Patient age cannot exceed 100 years — please check the date of birth.'),
   gender: z.enum(PATIENT_GENDERS),
   // Required — not optional — so the field can't be silently skipped end-to-end; the
   // dropdown always defaults to and includes 'Unknown' as an explicit, deliberate choice
@@ -300,6 +302,11 @@ const allergyRefinement = (
 ) => {
   if (data.hasKnownAllergy && !data.allergyCategory) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergyCategory'], message: 'Allergy category is required' });
+  }
+  // The allergen itself is what clinicians act on — 'Drug / Severe' with no substance named
+  // was being saved and shown as 'Drug / Drug' (regression report REG-01).
+  if (data.hasKnownAllergy && !data.allergySpecify?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySpecify'], message: 'Specify what the patient is allergic to (e.g. Penicillin)' });
   }
   if (data.hasKnownAllergy && !data.allergySeverity) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allergySeverity'], message: 'Allergy severity is required' });

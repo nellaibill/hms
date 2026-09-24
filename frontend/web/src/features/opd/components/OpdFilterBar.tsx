@@ -1,5 +1,5 @@
 import { ADMISSION_STATUSES, INVOICE_PAYMENT_STATUSES, LAB_ORDER_ITEM_STATUSES, OPD_CONSULTATION_STATUSES } from '@hms/shared';
-import { Download, RefreshCw, Search } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { humanize } from '@/features/patients/humanize';
+import { ExportMenu, type ExportFormatOption } from '@/features/reports';
 import type { OpdFilterValues, OpdTab } from '../types';
 
 /** Per-tab option list for the shared Status dropdown — each tab's list endpoint filters on
@@ -33,7 +34,9 @@ interface OpdFilterBarProps {
   filters: OpdFilterValues;
   onChange: (filters: OpdFilterValues) => void;
   onRefresh: () => void;
-  onExport: () => void;
+  /** True while the active tab's data is being (re)fetched — spins the Refresh icon. */
+  isRefreshing?: boolean;
+  onExport: (format: ExportFormatOption) => void | Promise<void>;
   /** True when the signed-in user is a Consultant/Doctor linked to their own consultant
    * record (AuthContextValue.scopedConsultantId) — locks Department/Consultant to their own
    * so they can't browse another consultant's queue. UI convenience only: the backend forces
@@ -44,7 +47,7 @@ interface OpdFilterBarProps {
 /** Shared filter toolbar for every OPD tab — mirrors LabWorklistFilters' exact layout shape
  * (rounded card, flex-wrap row of labeled fields), plus the Refresh/Export actions the OPD
  * list page's screenshot shows pinned to the row's right edge. */
-export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
+export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
   const statusOptions = statusOptionsForTab(tab);
 
   return (
@@ -80,6 +83,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport, lock
           value={filters.departmentId ?? ''}
           onValueChange={(value) => onChange({ ...filters, departmentId: value || undefined, consultantId: undefined })}
           ariaLabel="Filter by department"
+          allOptionLabel="All departments"
           disabled={lockDepartmentAndConsultant}
         />
       </div>
@@ -92,6 +96,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport, lock
           onValueChange={(value) => onChange({ ...filters, consultantId: value || undefined })}
           departmentId={filters.departmentId}
           ariaLabel="Filter by consultant"
+          allOptionLabel="All consultants"
           disabled={lockDepartmentAndConsultant}
         />
       </div>
@@ -132,14 +137,11 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, onExport, lock
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Button type="button" variant="outline" onClick={onRefresh} className="gap-1.5">
-          <RefreshCw className="h-4 w-4" />
+        <Button type="button" variant="outline" onClick={onRefresh} disabled={isRefreshing} className="gap-1.5">
+          <RefreshCw className={isRefreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           Refresh
         </Button>
-        <Button type="button" onClick={onExport} className="gap-1.5">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        <ExportMenu onExport={onExport} variant="default" size="default" />
       </div>
     </div>
   );

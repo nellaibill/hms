@@ -16,6 +16,7 @@ using HMS.Modules.Patients.Infrastructure;
 using HMS.Modules.Pharmacy.Infrastructure;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products.Infrastructure;
+using HMS.Modules.Radiology.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -144,6 +145,15 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("discharge-summary"))
         {
             await using var db = new DischargeSummaryDbContext(BuildOptions<DischargeSummaryDbContext>(tenantConnectionString, DischargeSummaryDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // Saved AI X-ray analyses (HMS.Modules.Radiology, schema "radiology"). Optional: only tenants
+        // with the "radiology" feature get the schema. Its images live in the Documents schema
+        // (always present), linked by app-level Guids only.
+        if (resolved.Contains("radiology"))
+        {
+            await using var db = new RadiologyDbContext(BuildOptions<RadiologyDbContext>(tenantConnectionString, RadiologyDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
 

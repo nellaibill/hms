@@ -21,19 +21,9 @@ import {
   ReportSummaryCards,
 } from '@/features/reports';
 import type { ProfitReportFilterState, ReportDateRange } from '@/features/reports';
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 const ROWS_PER_PAGE = 10;
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function defaultRange(): ReportDateRange {
-  const today = new Date();
-  const from = new Date(today);
-  from.setDate(from.getDate() - 30);
-  return { from: toDateInputValue(from), to: toDateInputValue(today) };
-}
 
 /**
  * Finance & Billing's Income & Expense Report (docs/ScreenInventory.md "Reports" screen type).
@@ -47,9 +37,9 @@ function defaultRange(): ReportDateRange {
  * attribution yet, so only Date Range + Search apply.
  */
 export default function IncomeExpenseReportPage() {
-  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultRange);
+  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
-  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultRange);
+  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
   const [hasSearched, setHasSearched] = useState(false);
   const [incomePage, setIncomePage] = useState(1);
@@ -88,7 +78,7 @@ export default function IncomeExpenseReportPage() {
   }
 
   function handleReset() {
-    const fresh = defaultRange();
+    const fresh = defaultReportDateRange();
     setDraftRange(fresh);
     setDraftFilters({});
     setAppliedRange(fresh);

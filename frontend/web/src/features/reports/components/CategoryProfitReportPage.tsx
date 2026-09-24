@@ -15,19 +15,9 @@ import { CategoryBreakdownCard } from './CategoryBreakdownCard';
 import { ReportFilterBar } from './ReportFilterBar';
 import { AccountsNavTabs } from './AccountsNavTabs';
 import type { ReportDateRange } from '../types';
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 const ROWS_PER_PAGE = 10;
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function defaultRange(): ReportDateRange {
-  const today = new Date();
-  const from = new Date(today);
-  from.setDate(from.getDate() - 30);
-  return { from: toDateInputValue(from), to: toDateInputValue(today) };
-}
 
 interface CategoryProfitReportPageProps {
   billingType: BillingType;
@@ -49,9 +39,9 @@ interface CategoryProfitReportPageProps {
  * per test here).
  */
 export function CategoryProfitReportPage({ billingType, title, description, icon: Icon }: CategoryProfitReportPageProps) {
-  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultRange);
+  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
-  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultRange);
+  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
   const [hasSearched, setHasSearched] = useState(false);
   const [page, setPage] = useState(1);
@@ -98,7 +88,7 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
   }
 
   function handleReset() {
-    const fresh = defaultRange();
+    const fresh = defaultReportDateRange();
     setDraftRange(fresh);
     setDraftFilters({});
     setAppliedRange(fresh);

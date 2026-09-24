@@ -45,6 +45,11 @@ public interface IInvoiceService
     /// dedicated procedure-order entity to base a richer status on — see
     /// ProcedureListItem's own doc comment).</summary>
     Task<PagedResult<ProcedureListItem>> GetProcedureLineItemsAsync(ProcedureListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Billed revenue (non-voided invoices, net of line discounts) per month for the
+    /// last <paramref name="months"/> months, plus this month's revenue by billing type — the
+    /// Executive Dashboard's finance charts (DASH-01).</summary>
+    Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, CancellationToken cancellationToken);
 }
 
 internal class InvoiceService : IInvoiceService
@@ -58,6 +63,7 @@ internal class InvoiceService : IInvoiceService
     private readonly IDiagnosticTestService _diagnosticTestService;
     private readonly IConsultantService _consultantService;
     private readonly IDepartmentService _departmentService;
+    private readonly IConsultationTypeService _consultationTypeService;
     private readonly IActivityLogService _activityLog;
     private readonly ILogger<InvoiceService> _logger;
 
@@ -71,6 +77,7 @@ internal class InvoiceService : IInvoiceService
         IDiagnosticTestService diagnosticTestService,
         IConsultantService consultantService,
         IDepartmentService departmentService,
+        IConsultationTypeService consultationTypeService,
         IActivityLogService activityLog,
         ILogger<InvoiceService> logger)
     {
@@ -83,6 +90,7 @@ internal class InvoiceService : IInvoiceService
         _diagnosticTestService = diagnosticTestService;
         _consultantService = consultantService;
         _departmentService = departmentService;
+        _consultationTypeService = consultationTypeService;
         _activityLog = activityLog;
         _logger = logger;
     }
@@ -102,6 +110,55 @@ internal class InvoiceService : IInvoiceService
             UserId = actorId,
         }, cancellationToken);
 
+    /// <summary>
+    /// A Consultation line's ServiceId is its Masters ConsultationType id. When that type has a
+    /// fixed master fee, the line must be billed at exactly that fee — the UI locks the field to
+    /// it, so any other price means the client sent a stale or wrong value. This is the server-
+    /// side backstop for regression report BIL-01, where a prefill race sent ₹0 and the
+    /// consultation was saved (and marked Paid) for free. Types without a fixed fee ("Amount to
+    /// be filled") and ServiceIds that aren't a known type id are left to the client, as before.
+    /// </summary>
+    private async Task<Result> ValidateConsultationChargesAsync(IReadOnlyCollection<CreateInvoiceLineItemRequest> items, CancellationToken cancellationToken)
+    {
+        foreach (var item in items.Where(i => i.BillingType == BillingType.Consultation))
+        {
+            if (!Guid.TryParse(item.ServiceId, out var consultationTypeId))
+            {
+                continue;
+            }
+
+            var consultationType = await _consultationTypeService.GetByIdAsync(consultationTypeId, cancellationToken);
+            if (consultationType is not { IsSuccess: true, Value.Amount: decimal fee } || item.UnitPrice == fee)
+            {
+                continue;
+            }
+
+            return Result.Failure(
+                BillingErrorCodes.ConsultationChargeMismatch,
+                $"The consultation charge ({item.UnitPrice:C}) doesn't match the fee for '{consultationType.Value.Name}' ({fee:C}). Reload the bill and try again.");
+        }
+
+        return Result.Success();
+    }
+
+    public async Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, CancellationToken cancellationToken)
+    {
+        var utcNow = DateTime.UtcNow;
+        var lines = await _repository.GetLineTotalsSinceAsync(MonthlySeries.StartUtc(months, utcNow), cancellationToken);
+        var currentMonthStart = MonthlySeries.StartUtc(1, utcNow);
+
+        return new BillingDashboardSummaryResponse
+        {
+            MonthlyRevenue = MonthlySeries.Build(lines.Select(l => (l.CreatedAt, l.Total)), months, utcNow),
+            CurrentMonthByType = lines
+                .Where(l => l.CreatedAt >= currentMonthStart)
+                .GroupBy(l => l.BillingType)
+                .Select(g => new RevenueByBillingTypeResponse { BillingType = g.Key, Amount = g.Sum(l => l.Total) })
+                .OrderByDescending(r => r.Amount)
+                .ToList(),
+        };
+    }
+
     public async Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         if (request.Items.Count == 0)
@@ -112,6 +169,12 @@ internal class InvoiceService : IInvoiceService
         if (!(await _patientService.GetByIdAsync(request.PatientId, cancellationToken)).IsSuccess)
         {
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.InvalidPatient, $"Patient '{request.PatientId}' was not found.");
+        }
+
+        var chargeCheck = await ValidateConsultationChargesAsync(request.Items, cancellationToken);
+        if (!chargeCheck.IsSuccess)
+        {
+            return Result<InvoiceResponse>.Failure(chargeCheck.ErrorCode!, chargeCheck.Error!);
         }
 
         var invoiceNumber = await _numberGenerator.NextInvoiceNumberAsync(cancellationToken);
@@ -243,7 +306,10 @@ internal class InvoiceService : IInvoiceService
                     {
                         Guid.TryParse(i.ServiceId, out var serviceId);
                         Guid.TryParse(i.DepartmentId, out var departmentId);
-                        Guid.TryParse(i.ConsultantId, out var consultantId);
+                        // ConsultantId is cleared once the line is paid (and the invoice is paid
+                        // in this same request), so fall back to BilledConsultantId — otherwise
+                        // every lab/radiology order raised from a paid invoice loses its consultant.
+                        Guid.TryParse(i.ConsultantId ?? i.BilledConsultantId, out var consultantId);
 
                         return new CreateLabOrderLineRequest
                         {
@@ -468,7 +534,7 @@ internal class InvoiceService : IInvoiceService
                 ConsultantId = r.ConsultantId,
                 ConsultantName = await ResolveConsultantNameAsync(r.ConsultantId, cancellationToken),
                 DepartmentId = r.DepartmentId,
-                DepartmentName = await ResolveDepartmentNameAsync(r.DepartmentId, cancellationToken),
+                DepartmentName = await ResolveProcedureDepartmentNameAsync(r.DepartmentId, r.ConsultantId, cancellationToken),
                 CreatedAt = r.CreatedAt,
                 PaymentStatus = r.PaymentStatus,
                 Total = r.Total,
@@ -490,6 +556,22 @@ internal class InvoiceService : IInvoiceService
         if (!Guid.TryParse(consultantId, out var id)) return consultantId;
         var consultant = await _consultantService.GetByIdAsync(id, cancellationToken);
         return consultant.Value?.Name ?? consultantId;
+    }
+
+    /// <summary>Procedure Billing rows don't capture a department (only Consultation rows do), so
+    /// DepartmentId is normally empty here — fall back to the billed consultant's own department
+    /// so the Procedures List's Department column isn't blank.</summary>
+    private async Task<string?> ResolveProcedureDepartmentNameAsync(string? departmentId, string? consultantId, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(departmentId)) return await ResolveDepartmentNameAsync(departmentId, cancellationToken);
+        if (!Guid.TryParse(consultantId, out var id)) return null;
+
+        var consultant = await _consultantService.GetByIdAsync(id, cancellationToken);
+        var consultantDepartmentId = consultant.Value?.DepartmentId;
+        if (consultantDepartmentId is null) return null;
+
+        var department = await _departmentService.GetByIdAsync(consultantDepartmentId.Value, cancellationToken);
+        return department.Value?.Name;
     }
 
     private async Task<string?> ResolveDepartmentNameAsync(string? departmentId, CancellationToken cancellationToken)

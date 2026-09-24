@@ -18,6 +18,9 @@ import {
   defaultBillingFormValues,
   describeBillingItem,
   emptyConsultation,
+  emptyLaboratoryRow,
+  emptyServiceRow,
+  useBillableInvestigationsQuery,
   useCreateInvoiceMutation,
   usePatientInvoicesQuery,
   useRecordPaymentMutation,
@@ -30,6 +33,7 @@ import {
   type PaymentMethod,
 } from '../../features/billing';
 import { usePatientVisitsQuery } from '../../features/patients';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 /**
  * Turns a thrown createInvoiceMutation error into what a receptionist actually needs to see —
@@ -108,9 +112,41 @@ export default function InvoiceCreatePage() {
     );
   }, [patientInvoices, latestVisit]);
 
+  // OPD-01: tests the doctor picked from the Laboratory/Radiology catalog on this visit's
+  // consultation are pre-added as bill lines (billing them is what creates the lab order), each
+  // with the ordering doctor as the referring consultant. Anything already billed on this visit
+  // (a non-voided invoice line for the same service) is left out, so re-opening the page after
+  // billing the tests never suggests billing them twice.
+  const { data: billableInvestigations, isPending: billableInvestigationsPending } = useBillableInvestigationsQuery(latestVisit?.visitId);
+  const investigationRows = useMemo(() => {
+    if (!latestVisit || !billableInvestigations) return { laboratory: [], radiology: [] };
+    const alreadyBilled = new Set(
+      (patientInvoices ?? [])
+        .filter((invoice) => !invoice.isVoided && invoice.visitId === latestVisit.visitId)
+        .flatMap((invoice) => invoice.items)
+        .filter((item) => item.billingType === 'Laboratory' || item.billingType === 'Radiology')
+        .map((item) => item.serviceId)
+        .filter(Boolean),
+    );
+    const pending = billableInvestigations.filter((investigation) => !alreadyBilled.has(investigation.serviceId));
+    return {
+      laboratory: pending
+        .filter((investigation) => investigation.department === 'Laboratory')
+        .map((investigation) => ({ ...emptyLaboratoryRow, itemType: 'service' as const, itemId: investigation.serviceId, consultantId: investigation.consultantId })),
+      radiology: pending
+        .filter((investigation) => investigation.department === 'Radiology')
+        .map((investigation) => ({ ...emptyServiceRow, serviceId: investigation.serviceId, consultantId: investigation.consultantId })),
+    };
+  }, [latestVisit, billableInvestigations, patientInvoices]);
+
   const billingDefaultValues = useMemo<BillingFormValues>(() => {
+    const withInvestigations = (values: BillingFormValues): BillingFormValues => ({
+      ...values,
+      laboratory: investigationRows.laboratory.length > 0 ? investigationRows.laboratory : values.laboratory,
+      radiology: investigationRows.radiology.length > 0 ? investigationRows.radiology : values.radiology,
+    });
     if (consultationAlreadyBilledForVisit || !latestVisit || latestVisit.consultations.length === 0) {
-      return defaultBillingFormValues;
+      return withInvestigations(defaultBillingFormValues);
     }
     const consultation: ConsultationBillingFormValues[] = latestVisit.consultations.map((c) => ({
       ...emptyConsultation,
@@ -124,8 +160,8 @@ export default function InvoiceCreatePage() {
       // in billingValidation.ts for why Consultation Type isn't included in that lock.
       fromVisit: true,
     }));
-    return { ...defaultBillingFormValues, consultation };
-  }, [latestVisit, consultationAlreadyBilledForVisit]);
+    return withInvestigations({ ...defaultBillingFormValues, consultation });
+  }, [latestVisit, consultationAlreadyBilledForVisit, investigationRows]);
 
   // Guards against losing an in-progress, unsaved invoice — a receptionist part-way through
   // billing several items who accidentally hits back/closes the tab previously lost
@@ -205,7 +241,14 @@ export default function InvoiceCreatePage() {
     setSaveErrorDetails([]);
 
     const valid = await billingRef.current.validate();
-    if (!valid) return;
+    if (!valid) {
+      // The Collect Payment button sits at the very bottom, so a required-field error on a
+      // Consultation/Lab row further up is otherwise off-screen and the click looks like a no-op.
+      window.setTimeout(() => {
+        document.querySelector('main p.text-destructive')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+      return;
+    }
 
     const values = billingRef.current.getValues();
     const addsAnotherConsultationCharge = consultationAlreadyBilledForVisit && (values.consultation ?? []).some(isConsultationEntryActive);
@@ -306,7 +349,9 @@ export default function InvoiceCreatePage() {
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs text-muted-foreground">Billing for</span>
                     <span className="text-base font-semibold text-foreground">
-                      {patient.title} {patient.firstName} {patient.lastName}{' '}
+                      <PatientNameLink patientId={patient.id} newTab className="font-semibold">
+                        {patient.title} {patient.firstName} {patient.lastName}
+                      </PatientNameLink>{' '}
                       <span className="font-normal text-muted-foreground">· {patient.uhid}</span>
                     </span>
                   </div>
@@ -347,7 +392,7 @@ export default function InvoiceCreatePage() {
                 </>
               ) : (
                 <>
-                  {visitsPending || invoicesPending ? (
+                  {visitsPending || invoicesPending || (Boolean(latestVisit) && billableInvestigationsPending) ? (
                     <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading this patient's visit details…

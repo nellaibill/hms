@@ -8,6 +8,7 @@ import { DepartmentName } from '@/components/DepartmentName';
 import { PatientListToolbar, emptyPatientSearchFilters, usePatientsQuery, type PatientSearchFilters } from '@/features/patients';
 import { cn } from '@/lib/utils';
 import { Pagination } from './Pagination';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface PatientPickerProps {
   onSelect: (patient: Patient) => void;
@@ -26,7 +27,7 @@ function formatAppointmentTime(iso?: string | null): string {
 /** A real `<table>` (header + aligned columns) rather than a flex row list — the previous
  * flex layout let each field's own content width push everything else out of vertical
  * alignment (a longer name shifted its row's UHID/Select out of line with the row above).
- * Shared by both the "Last 100 visits" default list and the search results below. Department/
+ * Shared by both the "Recent visits" default list and the search results below. Department/
  * Consultant/Appointment Time come from the patient's most recent visit (see
  * Patient.lastVisit* — populated because both queries below pass includeLastVisit: true), so
  * reception can tell at a glance which visit they're about to bill without opening it first. */
@@ -35,7 +36,7 @@ function PatientPickerTable({ items, onSelect }: { items: Patient[]; onSelect: (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
             <tr>
               <th className="px-4 py-2">Patient</th>
               <th className="px-4 py-2">Age / Gender</th>
@@ -50,8 +51,10 @@ function PatientPickerTable({ items, onSelect }: { items: Patient[]; onSelect: (
           <tbody className="divide-y divide-border">
             {items.map((patient, index) => (
               <tr key={patient.id} className={cn('hover:bg-accent/60', index % 2 === 1 && 'bg-muted/40')}>
-                <td className="whitespace-nowrap px-4 py-2.5 font-medium text-foreground">
-                  {patient.title} {patient.firstName} {patient.lastName}
+                <td className="whitespace-nowrap px-4 py-2.5">
+                  <PatientNameLink patientId={patient.id}>
+                    {patient.title} {patient.firstName} {patient.lastName}
+                  </PatientNameLink>
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                   {patient.age} Yrs · {patient.gender}
@@ -178,7 +181,7 @@ export function PatientPicker({ onSelect }: PatientPickerProps) {
 
       {!hasSearched && (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-foreground">Last 100 visits</p>
+          <p className="text-sm font-medium text-foreground">Recent visits</p>
 
           {isRecentPending && (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">

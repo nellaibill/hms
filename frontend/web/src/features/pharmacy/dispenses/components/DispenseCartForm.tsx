@@ -12,6 +12,7 @@ import { ProductSelect } from '@/components/ProductSelect';
 import { ProductBatchSelect } from '@/components/ProductBatchSelect';
 import { useProductsQuery } from '@/features/pharmacy/product-lookup';
 import { QuickPickPanel } from './QuickPickPanel';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface DispenseCartFormProps {
   patient: Patient;
@@ -215,11 +216,6 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
             </CardContent>
           </Card>
 
-          <div className="flex flex-col gap-1.5 sm:w-64">
-            <Label htmlFor="admissionId">Admission reference (optional)</Label>
-            <Input id="admissionId" placeholder="Admission id, if this checkout is for an inpatient" {...register('admissionId')} />
-            {errors.admissionId && <p className="text-sm text-destructive">{errors.admissionId.message}</p>}
-          </div>
         </div>
 
         <Card className="lg:sticky lg:top-20">
@@ -236,9 +232,9 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
                   <UserRound className="h-4 w-4" />
                 </span>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">
+                  <PatientNameLink patientId={patient.id} newTab className="text-sm">
                     {patient.title} {patient.firstName} {patient.lastName}
-                  </span>
+                  </PatientNameLink>
                   <span className="text-xs text-muted-foreground">
                     {patient.uhid} · {patient.primaryPhone}
                   </span>
@@ -247,6 +243,14 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
               <Button type="button" variant="ghost" size="sm" onClick={onChangePatient}>
                 Change
               </Button>
+            </div>
+
+            {/* Checkout-level (not per-item), so it lives in the cart beside the patient rather
+                than floating loose under the Add Item card in a fixed-width box. */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="admissionId">Admission reference (optional)</Label>
+              <Input id="admissionId" placeholder="Admission ID, for inpatients" {...register('admissionId')} />
+              {errors.admissionId && <p className="text-sm text-destructive">{errors.admissionId.message}</p>}
             </div>
 
             <Separator />

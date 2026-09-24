@@ -9,6 +9,7 @@ import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import type { Billing, BillingItem } from '../types';
 import { InvoicePrintTemplate } from './InvoicePrintTemplate';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface InvoiceDetailCardProps {
   billing: Billing;
@@ -40,13 +41,13 @@ export function InvoiceDetailCard({
   return (
     <>
       <Card>
-        <CardHeader className="flex-row items-center gap-3 space-y-0">
+        <CardHeader className="flex-row flex-wrap items-center gap-3 space-y-0">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
             <Receipt className="h-5 w-5" />
           </span>
-          <div className="flex flex-1 flex-col gap-1">
+          <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
             <CardTitle className="text-lg">
-              {billing.patientName}{' '}
+              <PatientNameLink patientId={billing.patientId}>{billing.patientName}</PatientNameLink>{' '}
               <span className="font-normal text-muted-foreground">· {billing.patientUhid}</span>
             </CardTitle>
             <CardDescription>

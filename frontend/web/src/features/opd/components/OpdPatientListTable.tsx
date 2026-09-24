@@ -1,6 +1,7 @@
 import type { OpdConsultationStatus, OpdPatientListItem } from '@hms/shared';
 import { Eye, Loader2, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { useVisitPaymentStatusesQuery } from '../hooks/useVisitPaymentStatusesQu
 import { OpdPaymentStatusBadge } from './OpdPaymentStatusBadge';
 import { OpdStatusBadge } from './OpdStatusBadge';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 // A consultation still Waiting or already CheckedIn hasn't started yet — "Consult" starts it.
 const CONSULTABLE_STATUSES: OpdConsultationStatus[] = ['Waiting', 'CheckedIn'];
@@ -56,7 +58,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
   const navigate = useNavigate();
   const startConsultation = useStartConsultationMutation();
 
-  const { data, isPending, isError, error } = useOpdPatientListQuery({
+  const { data, isPending, isPlaceholderData, isError, error } = useOpdPatientListQuery({
     page,
     pageSize: PAGE_SIZE,
     from: toRangeStart(filters.from),
@@ -82,7 +84,15 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
           <h2 className="text-sm font-semibold text-foreground">
             OPD Patients {formatHeadingDate(filters.to || filters.from) && `(${formatHeadingDate(filters.to || filters.from)})`}
           </h2>
-          {data && <Badge variant="secondary">Total: {data.meta.totalCount} Patients</Badge>}
+          {data &&
+            (isPlaceholderData ? (
+              <Badge variant="secondary" className="gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Updating…
+              </Badge>
+            ) : (
+              <Badge variant="secondary">Total: {data.meta.totalCount} Patients</Badge>
+            ))}
         </CardContent>
       </Card>
 
@@ -99,86 +109,90 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
         </p>
       )}
 
-      {!isPending && !isError && data && data.items.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">No OPD patients found</p>
-            <p className="text-sm text-muted-foreground">Try a different date range or filter.</p>
-          </CardContent>
-        </Card>
-      )}
+      <LoadingOverlay active={isPlaceholderData} label="Loading OPD patients…" className="flex flex-col gap-3">
+        {!isPending && !isError && data && data.items.length === 0 && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+              <p className="text-sm font-medium text-foreground">No OPD patients found</p>
+              <p className="text-sm text-muted-foreground">Try a different date range or filter.</p>
+            </CardContent>
+          </Card>
+        )}
 
-      {!isPending && !isError && data && data.items.length > 0 && (
-        <>
-          <div className="overflow-hidden rounded-lg border border-border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2.5">#</th>
-                    <th className="px-4 py-2.5">Patient Name</th>
-                    <th className="px-4 py-2.5">Age/Gender</th>
-                    <th className="px-4 py-2.5">UHID</th>
-                    <th className="px-4 py-2.5">Phone Number</th>
-                    <th className="px-4 py-2.5">Consultant</th>
-                    <th className="px-4 py-2.5">Department</th>
-                    <th className="px-4 py-2.5">Appointment Date &amp; Time</th>
-                    <th className="px-4 py-2.5">Status</th>
-                    <th className="px-4 py-2.5">Payment Status</th>
-                    <th className="px-4 py-2.5">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data.items.map((row, index) => (
-                    <tr key={row.consultationId} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 text-muted-foreground">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{row.patientName}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">
-                        {row.age} Years / {row.gender[0]}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.uhid}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.phoneNumber}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.consultantName}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <OpdStatusBadge status={row.status} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <OpdPaymentStatusBadge status={getPaymentStatus(row.patientId, row.visitId)} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {CONSULTABLE_STATUSES.includes(row.status) ? (
-                          <Button size="sm" className="gap-1.5" disabled={startConsultation.isPending} onClick={() => handleConsult(row)}>
-                            <Stethoscope className="h-3.5 w-3.5" />
-                            Consult
-                          </Button>
-                        ) : CONSULTATION_VIEWABLE_STATUSES.includes(row.status) ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5"
-                            onClick={() => navigate(`/clinical/opd/consultations/${row.consultationId}`)}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            View
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/patients/registration/${row.patientId}`)}>
-                            <Eye className="h-3.5 w-3.5" />
-                            View
-                          </Button>
-                        )}
-                      </td>
+        {!isPending && !isError && data && data.items.length > 0 && (
+          <>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
+                    <tr>
+                      <th className="px-4 py-2.5">#</th>
+                      <th className="px-4 py-2.5">Patient Name</th>
+                      <th className="px-4 py-2.5">Age/Gender</th>
+                      <th className="px-4 py-2.5">UHID</th>
+                      <th className="px-4 py-2.5">Phone Number</th>
+                      <th className="px-4 py-2.5">Consultant</th>
+                      <th className="px-4 py-2.5">Department</th>
+                      <th className="px-4 py-2.5">Appointment Date &amp; Time</th>
+                      <th className="px-4 py-2.5">Status</th>
+                      <th className="px-4 py-2.5">Payment Status</th>
+                      <th className="px-4 py-2.5">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.items.map((row, index) => (
+                      <tr key={row.consultationId} className="hover:bg-muted/30">
+                        <td className="px-4 py-3 text-muted-foreground">{(page - 1) * PAGE_SIZE + index + 1}</td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <PatientNameLink patientId={row.patientId}>{row.patientName}</PatientNameLink>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">
+                          {row.age} Years / {row.gender[0]}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{row.uhid}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.phoneNumber}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.consultantName}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.departmentName}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <OpdStatusBadge status={row.status} />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <OpdPaymentStatusBadge status={getPaymentStatus(row.patientId, row.visitId)} />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {CONSULTABLE_STATUSES.includes(row.status) ? (
+                            <Button size="sm" className="gap-1.5" disabled={startConsultation.isPending} onClick={() => handleConsult(row)}>
+                              <Stethoscope className="h-3.5 w-3.5" />
+                              Consult
+                            </Button>
+                          ) : CONSULTATION_VIEWABLE_STATUSES.includes(row.status) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5"
+                              onClick={() => navigate(`/clinical/opd/consultations/${row.consultationId}`)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              View
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/patients/registration/${row.patientId}`)}>
+                              <Eye className="h-3.5 w-3.5" />
+                              View
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-          <Pagination meta={data.meta} onPageChange={onPageChange} />
-        </>
-      )}
+            <Pagination meta={data.meta} onPageChange={onPageChange} />
+          </>
+        )}
+      </LoadingOverlay>
     </div>
   );
 }

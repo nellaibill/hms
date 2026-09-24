@@ -38,7 +38,13 @@ public static class CorsConfiguration
                     // blocked the actual POST from ever reaching the server, since curl-based
                     // verification (which doesn't enforce CORS) never would have caught it.
                     .WithHeaders("Content-Type", "Authorization", "Accept", CorrelationIdMiddleware.HeaderName, "X-Hospital-Code", "Idempotency-Key")
-                    .WithExposedHeaders(CorrelationIdMiddleware.HeaderName);
+                    .WithExposedHeaders(CorrelationIdMiddleware.HeaderName)
+                    // Without Access-Control-Max-Age, Chromium caches a preflight for only
+                    // 5 seconds, so nearly every Bearer-authenticated call pays an extra
+                    // OPTIONS round trip — measured at ~250ms each against a remote staging
+                    // host. Chromium caps this at 2 hours; 1 hour keeps a policy change
+                    // (e.g. a new allowed header) from lingering in browsers too long.
+                    .SetPreflightMaxAge(TimeSpan.FromHours(1));
 
                 // Deliberately no AllowCredentials(): HttpClient.ts (frontend/shared)
                 // authenticates via an Authorization: Bearer header, not cookies, and never

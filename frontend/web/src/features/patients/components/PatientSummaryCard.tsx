@@ -2,7 +2,6 @@ import type { Gender, Patient } from '@hms/shared';
 import {
   CalendarPlus,
   Droplet,
-  FileUp,
   Mars,
   MoreHorizontal,
   Pencil,
@@ -30,11 +29,10 @@ import { useDeletePatientMutation } from '../hooks/usePatientMutations';
 import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
 import { DeletePatientDialog } from './DeletePatientDialog';
+import { VerifyPatientDialog } from './VerifyPatientDialog';
 
 interface PatientSummaryCardProps {
   patient: Patient;
-  /** Jumps the tab strip below to Documents — see PatientViewPage, which owns the controlled tab state. */
-  onAddDocument: () => void;
 }
 
 function MetaItem({ children }: { children: React.ReactNode }) {
@@ -61,13 +59,14 @@ function GenderIcon({ gender, className }: { gender: Gender; className?: string 
  * left-rail card. Shows only fields that exist on the Patient record (plus Last Visit, sourced
  * from the real visits list); there's deliberately no Patient Type / Primary Doctor / Next
  * Appointment / Status row here since none of those are tracked in the schema yet. */
-export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCardProps) {
+export function PatientSummaryCard({ patient }: PatientSummaryCardProps) {
   const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
   const { data: visits } = usePatientVisitsQuery(patient.id);
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const deleteMutation = useDeletePatientMutation();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
 
   const lastVisit = visits?.[0];
 
@@ -146,7 +145,7 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
       </div>
 
       {/* Add Visit sits in its own centered row under the main action row, rather than
-          alongside it — this page's main actions (Edit/Add Document/Print/…) are all about
+          alongside it — this page's main actions (Edit/Print/…) are all about
           the patient record itself, where Add Visit starts a whole separate flow (a new
           registration/encounter) that deserves its own visual weight, not to compete for
           space in an already-full row. */}
@@ -160,10 +159,6 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
               </Link>
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onAddDocument}>
-            <FileUp className="h-4 w-4" />
-            Add Document
-          </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
             Print
@@ -186,13 +181,24 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
         </div>
         {/* Primary color + default (not sm) size — same treatment as Edit Patient above, since
             this is just as consequential an action and was getting lost visually as a small
-            outline button. */}
+            outline button. Only a verified patient (requiresDataVerification === false) can
+            have a visit added — an unverified one still has placeholder demographics/contact
+            data from bulk import, which must not flow into a new visit. Rather than a Link that
+            always navigates, this is a plain Button that gates on the flag and, when blocked,
+            opens VerifyPatientDialog instead of the Add Visit page. */}
         {hasPermission('patient-management.edit') && (
-          <Button asChild className="gap-1.5">
-            <Link to={`/patients/registration/${patient.id}/visits/new`}>
-              <CalendarPlus className="h-4 w-4" />
-              Add Visit
-            </Link>
+          <Button
+            className="gap-1.5"
+            onClick={() => {
+              if (patient.requiresDataVerification) {
+                setShowVerifyPrompt(true);
+              } else {
+                navigate(`/patients/registration/${patient.id}/visits/new`);
+              }
+            }}
+          >
+            <CalendarPlus className="h-4 w-4" />
+            Add Visit
           </Button>
         )}
       </div>
@@ -205,6 +211,8 @@ export function PatientSummaryCard({ patient, onAddDocument }: PatientSummaryCar
           onCancel={() => setConfirmingDelete(false)}
         />
       )}
+
+      {showVerifyPrompt && <VerifyPatientDialog patient={patient} onCancel={() => setShowVerifyPrompt(false)} />}
     </div>
   );
 }

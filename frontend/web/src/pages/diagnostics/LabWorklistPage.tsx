@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Pagination } from '@/features/billing';
 import { LabWorklistFilters, LabWorklistTable, useLabOrdersQuery, type LabOrderPriority, type LabOrderStatus } from '@/features/laboratory';
+import { defaultReportDateRange, toRangeEnd, toRangeStart } from '@/lib/reportDateRange';
 
 const RESULTS_PAGE_SIZE = 20;
 
@@ -14,8 +15,8 @@ export default function LabWorklistPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<LabOrderStatus | undefined>(undefined);
   const [priority, setPriority] = useState<LabOrderPriority | undefined>(undefined);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => defaultReportDateRange().from);
+  const [dateTo, setDateTo] = useState(() => defaultReportDateRange().to);
   const [page, setPage] = useState(1);
 
   const debouncedSearch = useDebouncedValue(search);
@@ -27,8 +28,10 @@ export default function LabWorklistPage() {
     search: debouncedSearch || undefined,
     status,
     priority,
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
+    // Full-day bounds — the backend compares CreatedAt <= dateTo, so a bare date would stop at
+    // that day's midnight and hide everything created on the To day itself.
+    dateFrom: toRangeStart(dateFrom),
+    dateTo: toRangeEnd(dateTo),
   });
 
   return (

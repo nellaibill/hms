@@ -1,6 +1,7 @@
 import type { OpdConsultationHeader as OpdConsultationHeaderDto, OpdConsultationStatus } from '@hms/shared';
 import { Building2, CalendarClock, Phone, Stethoscope, UserRound } from 'lucide-react';
 import { OpdStatusBadge } from '@/features/opd/components/OpdStatusBadge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface OpdConsultationHeaderProps {
   header: OpdConsultationHeaderDto;
@@ -23,7 +24,11 @@ export function OpdConsultationHeader({ header }: OpdConsultationHeaderProps) {
         </span>
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-base font-semibold leading-none text-foreground">{header.patientName}</h1>
+            <h1 className="text-base font-semibold leading-none text-foreground">
+              <PatientNameLink patientId={header.patientId} className="font-semibold">
+                {header.patientName}
+              </PatientNameLink>
+            </h1>
             <span className="font-mono text-xs text-muted-foreground">{header.uhid}</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">

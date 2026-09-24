@@ -1,5 +1,6 @@
 import type { StockTransactionResponse } from '@hms/shared';
 import { Badge } from '@/components/ui/badge';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface StockLedgerTableProps {
   transactions: StockTransactionResponse[];
@@ -7,9 +8,9 @@ interface StockLedgerTableProps {
 
 export function StockLedgerTable({ transactions }: StockLedgerTableProps) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">Type</th>
             <th className="px-4 py-2.5">Product</th>
@@ -29,7 +30,15 @@ export function StockLedgerTable({ transactions }: StockLedgerTableProps) {
               </td>
               <td className="px-4 py-3 font-medium text-foreground">{txn.productName}</td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{txn.batchNo}</td>
-              <td className="px-4 py-3 text-sm text-foreground">{txn.patientName || '—'}</td>
+              <td className="px-4 py-3 text-sm text-foreground">
+                {txn.patientName && txn.patientId ? (
+                  <PatientNameLink patientId={txn.patientId} className="font-normal">
+                    {txn.patientName}
+                  </PatientNameLink>
+                ) : (
+                  txn.patientName || '—'
+                )}
+              </td>
               <td className="px-4 py-3 tabular-nums text-foreground">{txn.quantity}</td>
               <td className="px-4 py-3 tabular-nums text-foreground">{txn.balanceAfter}</td>
               <td className="px-4 py-3 text-sm text-foreground">{new Date(txn.transactionDate).toLocaleString('en-IN')}</td>

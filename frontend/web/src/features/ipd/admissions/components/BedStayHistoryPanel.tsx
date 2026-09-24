@@ -30,9 +30,9 @@ export function BedStayHistoryPanel({ admissionId }: BedStayHistoryPanelProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">Bed</th>
             <th className="px-4 py-2.5">Ward</th>
@@ -46,11 +46,11 @@ export function BedStayHistoryPanel({ admissionId }: BedStayHistoryPanelProps) {
             <tr key={stay.id}>
               <td className="px-4 py-3 text-sm text-foreground">{stay.bedNumber}</td>
               <td className="px-4 py-3 text-sm text-foreground">{stay.wardName}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(stay.fromDateTime).toLocaleString('en-IN')}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">{new Date(stay.fromDateTime).toLocaleString('en-IN')}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                 {stay.toDateTime ? new Date(stay.toDateTime).toLocaleString('en-IN') : '—'}
               </td>
-              <td className="px-4 py-3 text-right font-mono text-sm text-foreground">₹{stay.dailyCharge.toLocaleString('en-IN')}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-sm text-foreground">₹{stay.dailyCharge.toLocaleString('en-IN')}</td>
             </tr>
           ))}
         </tbody>

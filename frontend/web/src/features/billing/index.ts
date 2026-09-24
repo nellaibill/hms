@@ -13,6 +13,7 @@ export * from './components/VoidInvoiceDialog';
 export * from './billingActivity';
 export * from './billingCalculations';
 export * from './billingValidation';
+export * from './hooks/useBillableInvestigationsQuery';
 export * from './hooks/useBillingQuery';
 export * from './hooks/useBillingsQuery';
 export * from './hooks/useCreateInvoiceMutation';

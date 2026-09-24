@@ -1,20 +1,20 @@
 import { LayoutDashboard } from 'lucide-react';
 import { PageBanner } from '@/components/PageBanner';
-import { DepartmentFinanceChart } from '@/features/dashboard/components/DepartmentFinanceChart';
-import { DepartmentGoalsCard } from '@/features/dashboard/components/DepartmentGoalsCard';
 import { MiniCalendarCard } from '@/features/dashboard/components/MiniCalendarCard';
 import { MonthlyCensusChart } from '@/features/dashboard/components/MonthlyCensusChart';
 import { NotificationsCard } from '@/features/dashboard/components/NotificationsCard';
 import { PresentHrCard } from '@/features/dashboard/components/PresentHrCard';
-import { RevenueExpenseChart } from '@/features/dashboard/components/RevenueExpenseChart';
+import { MonthlyRevenueChart, RevenueByServiceChart } from '@/features/dashboard/components/RevenueCharts';
 import { SectionHeader } from '@/features/dashboard/components/SectionHeader';
 import { useAuth } from '@/features/auth/AuthContext';
 
 const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function DashboardPage() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasFeature } = useAuth();
   const canViewPatients = hasPermission('patient-management.view');
+  // IP admissions come from the IPD module — only shown to viewers who can see IPD.
+  const canViewIpd = hasPermission('clinical-care.view') && hasFeature('ipd');
   const canViewFinance = hasPermission('finance-billing.view');
   const canViewWorkforce = hasPermission('workforce-admin.view');
   return (
@@ -34,10 +34,10 @@ export default function DashboardPage() {
       {/* Section 1 — Statistical Data (patient census — hidden without patient-management.view) */}
       {canViewPatients && (
         <section>
-          <SectionHeader title="Statistical Data" description="Monthly patient OP/IP census" />
+          <SectionHeader title="Statistical Data" description={canViewIpd ? 'Monthly patient OP/IP census' : 'Monthly OP census'} />
           <div className="grid grid-cols-12 gap-5">
             <div className="col-span-12">
-              <MonthlyCensusChart />
+              <MonthlyCensusChart showIp={canViewIpd} />
             </div>
           </div>
         </section>
@@ -47,10 +47,10 @@ export default function DashboardPage() {
           shouldn't see hospital-wide revenue/expense figures on their landing page). */}
       {canViewFinance && (
         <section>
-          <SectionHeader title="Department-wise Income & Expenses" description="Revenue and expense by department, with chart" />
+          <SectionHeader title="Revenue by Service" description="This month's billed revenue by service" />
           <div className="grid grid-cols-12 gap-5">
             <div className="col-span-12">
-              <DepartmentFinanceChart />
+              <RevenueByServiceChart />
             </div>
           </div>
         </section>
@@ -58,10 +58,10 @@ export default function DashboardPage() {
 
       {canViewFinance && (
         <section>
-          <SectionHeader title="Month-wise Income & Expense" description="Hospital-wide financial trend" />
+          <SectionHeader title="Month-wise Revenue" description="Hospital-wide billed revenue trend" />
           <div className="grid grid-cols-12 gap-5">
             <div className="col-span-12">
-              <RevenueExpenseChart />
+              <MonthlyRevenueChart />
             </div>
           </div>
         </section>
@@ -92,15 +92,6 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Section 6 — Plans and Projects (always visible — general hospital-wide goals, no single owning permission) */}
-      <section>
-        <SectionHeader title="Plans and Projects – Status" description="Department goals and targets" />
-        <div className="grid grid-cols-12 gap-5">
-          <div className="col-span-12">
-            <DepartmentGoalsCard />
-          </div>
-        </div>
-      </section>
       </div>
     </div>
   );

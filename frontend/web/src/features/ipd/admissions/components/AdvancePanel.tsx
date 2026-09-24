@@ -59,9 +59,9 @@ export function AdvancePanel({ admissionId }: AdvancePanelProps) {
       )}
 
       {!isPending && !isError && (
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
               <tr>
                 <th className="px-4 py-2.5">Method</th>
                 <th className="px-4 py-2.5">Reference</th>
@@ -142,7 +142,9 @@ export function AdvancePanel({ admissionId }: AdvancePanelProps) {
           <Input id="advanceReference" className="w-40" {...register('referenceNumber')} />
         </div>
 
-        <div className="flex flex-1 flex-col gap-1.5">
+        {/* min-w so this wraps to its own line instead of flex-1 shrinking it to a sliver
+            beside the other fields when the panel is narrow. */}
+        <div className="flex min-w-[12rem] flex-1 flex-col gap-1.5">
           <Label htmlFor="advanceRemarks">Remarks (optional)</Label>
           <Input id="advanceRemarks" {...register('remarks')} />
         </div>

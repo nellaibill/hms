@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { Pagination } from '@/components/Pagination';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { departmentsApi } from '@/services/apiClient';
 import { RequestAdmissionDialog } from './RequestAdmissionDialog';
 import type { OpdFilterValues } from '../types';
+import { PatientNameLink } from '@/components/PatientNameLink';
 
 const PAGE_SIZE = 10;
 
@@ -38,7 +40,7 @@ export function OpdAdmissionsListTable({ filters, page, onPageChange }: OpdAdmis
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [assigningAdmission, setAssigningAdmission] = useState<Admission | null>(null);
 
-  const { data, isPending, isError, error } = useAdmissionsQuery({
+  const { data, isPending, isPlaceholderData, isError, error } = useAdmissionsQuery({
     page,
     pageSize: PAGE_SIZE,
     search: filters.search || undefined,
@@ -94,70 +96,74 @@ export function OpdAdmissionsListTable({ filters, page, onPageChange }: OpdAdmis
         </p>
       )}
 
-      {!isPending && !isError && data && data.items.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">No admission requests found</p>
-            <p className="text-sm text-muted-foreground">Try a different date range or filter.</p>
-          </CardContent>
-        </Card>
-      )}
+      <LoadingOverlay active={isPlaceholderData} label="Loading admissions…" className="flex flex-col gap-3">
+        {!isPending && !isError && data && data.items.length === 0 && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+              <p className="text-sm font-medium text-foreground">No admission requests found</p>
+              <p className="text-sm text-muted-foreground">Try a different date range or filter.</p>
+            </CardContent>
+          </Card>
+        )}
 
-      {!isPending && !isError && data && data.items.length > 0 && (
-        <>
-          <div className="overflow-hidden rounded-lg border border-border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2.5">Patient</th>
-                    <th className="px-4 py-2.5">UHID</th>
-                    <th className="px-4 py-2.5">Age/Gender</th>
-                    <th className="px-4 py-2.5">Consultant</th>
-                    <th className="px-4 py-2.5">Department</th>
-                    <th className="px-4 py-2.5">Admission Type</th>
-                    <th className="px-4 py-2.5">Requested Date/Time</th>
-                    <th className="px-4 py-2.5">Admission Status</th>
-                    <th className="px-4 py-2.5">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data.items.map((admission) => (
-                    <tr key={admission.id} className="hover:bg-muted/30">
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{admission.patientName}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{admission.uhid}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">
-                        {admission.age} / {admission.gender}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{admission.consultantName}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{departmentNameById.get(admission.departmentId) ?? '—'}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground">{admission.admissionType}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
-                        {new Date(admission.admissionDateTime).toLocaleString('en-IN')}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <Badge variant={STATUS_VARIANTS[admission.status]}>{admission.status}</Badge>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {admission.status === 'Requested' ? (
-                          <Button size="sm" onClick={() => setAssigningAdmission(admission)}>
-                            Assign Bed
-                          </Button>
-                        ) : (
-                          <Button asChild size="sm" variant="outline">
-                            <Link to={`/clinical/ipd/admissions/${admission.id}`}>View</Link>
-                          </Button>
-                        )}
-                      </td>
+        {!isPending && !isError && data && data.items.length > 0 && (
+          <>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
+                    <tr>
+                      <th className="px-4 py-2.5">Patient</th>
+                      <th className="px-4 py-2.5">UHID</th>
+                      <th className="px-4 py-2.5">Age/Gender</th>
+                      <th className="px-4 py-2.5">Consultant</th>
+                      <th className="px-4 py-2.5">Department</th>
+                      <th className="px-4 py-2.5">Admission Type</th>
+                      <th className="px-4 py-2.5">Requested Date/Time</th>
+                      <th className="px-4 py-2.5">Admission Status</th>
+                      <th className="px-4 py-2.5">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.items.map((admission) => (
+                      <tr key={admission.id} className="hover:bg-muted/30">
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <PatientNameLink patientId={admission.patientId}>{admission.patientName}</PatientNameLink>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{admission.uhid}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">
+                          {admission.age} / {admission.gender}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">{admission.consultantName}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">{departmentNameById.get(admission.departmentId) ?? '—'}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-foreground">{admission.admissionType}</td>
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
+                          {new Date(admission.admissionDateTime).toLocaleString('en-IN')}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <Badge variant={STATUS_VARIANTS[admission.status]}>{admission.status}</Badge>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {admission.status === 'Requested' ? (
+                            <Button size="sm" onClick={() => setAssigningAdmission(admission)}>
+                              Assign Bed
+                            </Button>
+                          ) : (
+                            <Button asChild size="sm" variant="outline">
+                              <Link to={`/clinical/ipd/admissions/${admission.id}`}>View</Link>
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-          <Pagination meta={data.meta} onPageChange={onPageChange} />
-        </>
-      )}
+            <Pagination meta={data.meta} onPageChange={onPageChange} />
+          </>
+        )}
+      </LoadingOverlay>
 
       {isRequestOpen && (
         <RequestAdmissionDialog

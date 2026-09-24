@@ -156,6 +156,17 @@ const defaultValues: PatientRegistrationUiFormValues = {
   },
 };
 
+/** Registration wizard step label: short form between sm and lg, full name from lg, hidden on
+ * phones (icon only — the trigger's aria-label carries the full name). */
+function StepLabel({ short, full }: { short: string; full: string }) {
+  return (
+    <>
+      <span className="hidden sm:inline lg:hidden">{short}</span>
+      <span className="hidden lg:inline">{full}</span>
+    </>
+  );
+}
+
 /**
  * New Patient Registration — matches LH Software.docx's Reception & Registration table
  * and the standalone Patient Mode of Arrival Form field-for-field. Grouped into four top
@@ -474,28 +485,31 @@ export function PatientRegistrationForm({
         )}
 
       <Tabs value={activeTab} onValueChange={(value) => isTabId(value) && void goToTab(value)}>
-        <TabsList>
-          <TabsTrigger value="patient-info" hasError={attemptedTabs.has('patient-info') && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
-            <User className="h-4 w-4" />
-            Patient Information
+        {/* Four equal columns rather than a sideways-scrolling strip — at laptop widths with the
+            sidebar open the full labels overflowed and hid the Registration Details step. Short
+            labels below lg, icons only on phones; aria-label keeps the full step name. */}
+        <TabsList className="grid grid-cols-4 overflow-visible">
+          <TabsTrigger value="patient-info" aria-label="Patient Information" className="justify-center px-1.5 sm:px-3" hasError={attemptedTabs.has('patient-info') && TAB_ERROR_FIELDS['patient-info'].some((f) => Boolean(errors[f]))}>
+            <User className="h-4 w-4 shrink-0" />
+            <StepLabel short="Patient" full="Patient Information" />
           </TabsTrigger>
-          <TabsTrigger value="contact-info" hasError={attemptedTabs.has('contact-info') && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
-            <MapPin className="h-4 w-4" />
-            Contact Information
+          <TabsTrigger value="contact-info" aria-label="Contact Information" className="justify-center px-1.5 sm:px-3" hasError={attemptedTabs.has('contact-info') && TAB_ERROR_FIELDS['contact-info'].some((f) => Boolean(errors[f]))}>
+            <MapPin className="h-4 w-4 shrink-0" />
+            <StepLabel short="Contact" full="Contact Information" />
           </TabsTrigger>
           <TabsTrigger
-            value="medical-info"
+            value="medical-info" aria-label="Medical Information" className="justify-center px-1.5 sm:px-3"
             hasError={(attemptedTabs.has('medical-info') && TAB_ERROR_FIELDS['medical-info'].some((f) => Boolean(errors[f]))) || Boolean(idProofNumberError)}
           >
-            <Stethoscope className="h-4 w-4" />
-            Medical Information
+            <Stethoscope className="h-4 w-4 shrink-0" />
+            <StepLabel short="Medical" full="Medical Information" />
           </TabsTrigger>
           <TabsTrigger
-            value="registration-details"
+            value="registration-details" aria-label="Registration Details" className="justify-center px-1.5 sm:px-3"
             hasError={attemptedTabs.has('registration-details') && TAB_ERROR_FIELDS['registration-details'].some((f) => Boolean(errors[f]))}
           >
-            <ClipboardList className="h-4 w-4" />
-            Registration Details
+            <ClipboardList className="h-4 w-4 shrink-0" />
+            <StepLabel short="Registration" full="Registration Details" />
           </TabsTrigger>
         </TabsList>
 
@@ -1374,11 +1388,11 @@ export function PatientRegistrationForm({
         </TabsContent>
       </Tabs>
 
-        <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <Button type="button" variant="outline" onClick={() => navigate('/patients/registration')}>
             Cancel
           </Button>
-          <div className="flex gap-3">
+          <div className="ml-auto flex flex-wrap justify-end gap-3">
             {!isFirstTab && (
               <Button type="button" variant="outline" onClick={goToPreviousTab}>
                 <ChevronLeft className="h-4 w-4" />

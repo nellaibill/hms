@@ -69,7 +69,7 @@ export default function PatientImportHistoryPage() {
             <div className="flex flex-col gap-3">
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <thead className="bg-sidebar-active text-xs uppercase text-sidebar-active-foreground">
                     <tr>
                       <th className="px-3 py-2">File</th>
                       <th className="px-3 py-2">Uploaded</th>

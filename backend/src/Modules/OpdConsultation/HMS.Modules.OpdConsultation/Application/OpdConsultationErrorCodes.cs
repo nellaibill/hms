@@ -20,6 +20,10 @@ internal static class OpdConsultationErrorCodes
     /// public services.</summary>
     public const string InvalidReferral = "OPD_CONSULTATION.INVALID_REFERRAL";
 
+    /// <summary>An investigation's ServiceId doesn't resolve to an active Masters
+    /// DiagnosticService of the line's own department (Laboratory/Radiology).</summary>
+    public const string InvalidInvestigation = "OPD_CONSULTATION.INVALID_INVESTIGATION";
+
     /// <summary>SaveDraft was attempted while Status is already Completed.</summary>
     public const string NotDraft = "OPD_CONSULTATION.NOT_DRAFT";
 

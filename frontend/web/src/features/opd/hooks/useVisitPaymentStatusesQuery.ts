@@ -4,6 +4,9 @@ import { getInvoicesByPatientId } from '@/features/billing/apiBillingRepository'
 
 export const OPD_PAYMENT_STATUSES = ['NotBilled', 'Pending', 'Paid'] as const;
 export type OpdVisitPaymentStatus = (typeof OPD_PAYMENT_STATUSES)[number];
+/** What the badge can show: a real status, or a placeholder while the invoice lookup is in
+ * flight ('Loading') or has failed ('Unavailable'). */
+export type OpdVisitPaymentStatusDisplay = OpdVisitPaymentStatus | 'Loading' | 'Unavailable';
 
 /**
  * Payment status has no direct link to a specific OPD consultation — Billing only tracks
@@ -32,9 +35,15 @@ export function useVisitPaymentStatusesQuery(patientIds: string[]) {
 
   const isLoading = results.some((result) => result.isLoading);
 
-  function getStatus(patientId: string, visitId: string): OpdVisitPaymentStatus {
+  function getStatus(patientId: string, visitId: string): OpdVisitPaymentStatusDisplay {
     const index = uniquePatientIds.indexOf(patientId);
-    const invoices = (index >= 0 ? results[index]?.data : undefined) ?? [];
+    const result = index >= 0 ? results[index] : undefined;
+    // Until this patient's invoices have actually arrived (or if the lookup failed), the real
+    // status is unknown — reporting 'NotBilled' here made already-paid visits briefly (or, on a
+    // failed request, permanently) read as unbilled.
+    if (!result || result.isPending) return 'Loading';
+    if (result.isError) return 'Unavailable';
+    const invoices = result.data ?? [];
     const visitInvoices = invoices.filter((invoice) => invoice.visitId === visitId && !invoice.isVoided);
     if (visitInvoices.length === 0) return 'NotBilled';
     return visitInvoices.every((invoice) => getOverallPaymentStatus(invoice.items) === 'Paid') ? 'Paid' : 'Pending';

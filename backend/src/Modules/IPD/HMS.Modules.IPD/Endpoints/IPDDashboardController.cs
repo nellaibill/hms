@@ -27,4 +27,15 @@ public class IPDDashboardController : ControllerBase
         var dashboard = await _service.GetDashboardAsync(cancellationToken);
         return Ok(new ApiResponse<IPDDashboardResponse> { Data = dashboard });
     }
+
+    /// <summary>Admissions per month for the last N months (default 6, max 24) — backs the
+    /// Executive Dashboard's IP census chart (DASH-01).</summary>
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
+    [HttpGet("monthly-admissions")]
+    public async Task<IActionResult> GetMonthlyAdmissions([FromQuery] int months = 6, CancellationToken cancellationToken = default)
+    {
+        var series = await _service.GetMonthlyAdmissionsAsync(months, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<MonthlyTotal>> { Data = series });
+    }
 }

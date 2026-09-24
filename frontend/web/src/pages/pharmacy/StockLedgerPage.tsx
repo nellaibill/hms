@@ -4,11 +4,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PageBanner } from '@/components/PageBanner';
 import { Pagination } from '@/components/Pagination';
 import { StockLedgerTable, StockLedgerToolbar, useStockLedgerQuery, type StockLedgerFilters } from '@/features/pharmacy/stock-ledger';
+import { defaultReportDateRange } from '@/lib/reportDateRange';
 
-const emptyFilters: StockLedgerFilters = { productId: '', transactionType: undefined, fromDate: '', toDate: '' };
+const defaultFilters = (): StockLedgerFilters => {
+  const { from, to } = defaultReportDateRange();
+  return { productId: '', transactionType: undefined, fromDate: from, toDate: to };
+};
 
 export default function StockLedgerPage() {
-  const [filters, setFilters] = useState<StockLedgerFilters>(emptyFilters);
+  const [filters, setFilters] = useState<StockLedgerFilters>(defaultFilters);
   const [page, setPage] = useState(1);
 
   const { data, isPending, isError, error } = useStockLedgerQuery({

@@ -58,7 +58,7 @@ export function HeaderSearchBox() {
       <Select value={scope} onValueChange={(next) => setScope(next as SearchScope)}>
         <SelectTrigger
           aria-label="Search scope"
-          className="w-[9.5rem] shrink-0 rounded-none border-0 border-r border-slate-200 bg-transparent text-slate-700 shadow-none focus:ring-0 focus:ring-offset-0"
+          className="w-[8.5rem] shrink-0 rounded-none lg:w-[9.5rem] border-0 border-r border-slate-200 bg-transparent text-slate-700 shadow-none focus:ring-0 focus:ring-offset-0"
         >
           <SelectValue />
         </SelectTrigger>
@@ -67,7 +67,7 @@ export function HeaderSearchBox() {
           <SelectItem value="doctor">Doctor Search</SelectItem>
         </SelectContent>
       </Select>
-      <div className="relative flex-1">
+      <div className="relative min-w-[6rem] flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Popover open={showSuggestions}>
           <PopoverAnchor asChild>
@@ -109,7 +109,7 @@ export function HeaderSearchBox() {
                       // click below ever registers, so nothing would ever get selected.
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => goToPatient(patient)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-sidebar-active hover:text-sidebar-active-foreground"
                     >
                       <span className="font-medium text-foreground">
                         {patient.title} {patient.firstName} {patient.lastName}
