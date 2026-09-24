@@ -21,12 +21,19 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$ApiBaseUrl,
-    [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path,
+    [string]$RepoRoot,
     # Skip `npm ci` when node_modules is already current - saves a few minutes per deploy.
     [switch]$SkipInstall
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Resolved here, not as a param() default: in Windows PowerShell 5.1 $PSScriptRoot is empty
+# inside param defaults, which made `Join-Path $PSScriptRoot ...` throw.
+if (-not $RepoRoot) {
+    $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $RepoRoot = (Resolve-Path (Join-Path $scriptDir "..\..\..")).Path
+}
 
 function Invoke-Npm {
     param([string]$Dir, [string[]]$NpmArgs)
