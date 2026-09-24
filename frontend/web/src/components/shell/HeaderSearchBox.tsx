@@ -19,15 +19,7 @@ const SEARCH_PLACEHOLDER = 'Search by Name, UHID, or Phone…';
  * jumps straight to that patient's record. Pressing Enter without picking one runs the same text
  * as a full search on the Patient Enquiry page. Doctor scope has no backing search API yet, so it
  * stays a plain input for now. */
-interface HeaderSearchBoxProps {
-  /** Called after a search navigates away (picked suggestion or Enter) — lets the mobile search
-   * sheet close itself. */
-  onNavigate?: () => void;
-  /** Focus the input on mount (the mobile search sheet opens straight into typing). */
-  autoFocus?: boolean;
-}
-
-export function HeaderSearchBox({ onNavigate, autoFocus }: HeaderSearchBoxProps = {}) {
+export function HeaderSearchBox() {
   const navigate = useNavigate();
   const [scope, setScope] = useState<SearchScope>('patient');
   const [query, setQuery] = useState('');
@@ -47,7 +39,6 @@ export function HeaderSearchBox({ onNavigate, autoFocus }: HeaderSearchBoxProps 
     setQuery('');
     setIsFocused(false);
     navigate(`/patients/registration/${patient.id}`);
-    onNavigate?.();
   }
 
   function handleSubmit(event: FormEvent) {
@@ -57,7 +48,6 @@ export function HeaderSearchBox({ onNavigate, autoFocus }: HeaderSearchBoxProps 
     if (!trimmed) return;
     setIsFocused(false);
     navigate('/patients/enquiry', { state: { name: trimmed } });
-    onNavigate?.();
   }
 
   return (
@@ -90,16 +80,12 @@ export function HeaderSearchBox({ onNavigate, autoFocus }: HeaderSearchBoxProps 
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               autoComplete="off"
-              autoFocus={autoFocus}
               className="h-full rounded-none border-0 bg-transparent pl-9 text-slate-900 shadow-none placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </PopoverAnchor>
           <PopoverContent
             align="start"
-            // At least 20rem even when the header squeezes the input itself (laptop widths with
-            // the sidebar open left it ~96px, wrapping every name one word per line), capped to
-            // the viewport so it never runs off a phone screen.
-            className="w-[max(var(--radix-popover-trigger-width),20rem)] max-w-[calc(100vw-1.5rem)] p-1"
+            className="w-[--radix-popover-trigger-width] p-1"
             // Both of these would otherwise steal keyboard focus away from the text input the
             // moment this popover opens/closes — the whole point here is that the input stays
             // focused and keeps receiving keystrokes the entire time this is open.

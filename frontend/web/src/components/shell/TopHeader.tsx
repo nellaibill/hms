@@ -1,11 +1,10 @@
-import { useEffect, useState, type ComponentType } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Calendar as CalendarIcon, FileText, Menu, MoreHorizontal, Search } from 'lucide-react';
+import { useState, type ComponentType } from 'react';
+import { Link } from 'react-router-dom';
+import { Calendar as CalendarIcon, FileText, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { HeaderCalculator } from '@/components/shell/HeaderCalculator';
 import { HeaderIconLabel } from '@/components/shell/HeaderIconLabel';
-import { HeaderLabelsVisibleContext } from '@/components/shell/headerLabelsContext';
 import { HeaderSearchBox } from '@/components/shell/HeaderSearchBox';
 import { HospitalLogo } from '@/components/shell/HospitalLogo';
 import { branding } from '@/config/branding';
@@ -35,42 +34,16 @@ function HeaderLinkIcon({ to, label, icon }: HeaderLinkIconProps) {
 
 export function TopHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const { data: brandingConfig } = useBrandingQuery();
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
   const { hasPermission, hasFeature } = useAuth();
-  const { pathname } = useLocation();
-
-  // Anything picked inside the mobile sheets (a menu link, a notification, a search result)
-  // navigates — close them so the new page isn't hidden behind an open sheet.
-  useEffect(() => {
-    setMobileSearchOpen(false);
-    setMobileMoreOpen(false);
-  }, [pathname]);
-
-  // Rendered in the desktop header row, and inside the mobile More sheet (below the `shell`
-  // breakpoint), where there isn't room for all of them next to the logo.
-  const secondaryActions = (
-    <>
-      <LanguageMenu />
-      <NotificationsMenu />
-      {hasPermission('engagement.view') && hasFeature('calendar') && (
-        <HeaderLinkIcon to="/engagement/programmes" label="Calendar" icon={CalendarIcon} />
-      )}
-      <HeaderCalculator />
-      <PendingTasksMenu />
-      {hasPermission('records-compliance.view') && <HeaderLinkIcon to="/documents" label="Documents" icon={FileText} />}
-    </>
-  );
 
   return (
     // No left padding: the wider logo box (see HospitalLogo below) reads better sitting flush
     // against the header's left edge than with the same 1.5rem gap the right side keeps.
     <header className="sticky top-0 z-[1000] flex h-16 items-center gap-3 border-b border-header-foreground/15 bg-header pr-3 text-header-foreground lg:gap-6 lg:pr-6 shadow-soft-md">
-      {/* Mobile nav trigger — the sidebar collapses to a drawer below the `shell` breakpoint
-          (narrow, or short like a phone in landscape), per docs/LayoutFramework.md §14 */}
-      <Button variant="ghost" size="icon" className="shrink-0 shell:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation">
+      {/* Mobile nav trigger — sidebar collapses to a drawer below md, per docs/LayoutFramework.md §14 */}
+      <Button variant="ghost" size="icon" className="shrink-0 md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation">
         <Menu className="h-5 w-5" />
       </Button>
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -102,45 +75,27 @@ export function TopHeader() {
         </span>
       </div>
 
-      <div className="hidden min-w-0 flex-1 justify-center shell:flex">
+      <div className="hidden min-w-0 flex-1 justify-center sm:flex">
         <div className="w-full max-w-2xl">
           <HeaderSearchBox />
         </div>
       </div>
 
-      {/* Icon actions — icon-over-label, vertically centered. In the desktop shell the whole row
-          shows and never shrinks (the logo/title/search give way first). Below it (phones, and
-          short landscape screens) only Search, More and Profile stay in the bar: the rest used
-          to sit in a sideways-scrolling strip that pushed Profile/Logout off-screen. */}
-      <div className="ml-auto flex shrink-0 items-center gap-1 py-1 [&>*]:shrink-0">
-        <div className="hidden items-center gap-1 shell:flex [&>*]:shrink-0">{secondaryActions}</div>
-
-        <Button variant="ghost" size="icon" className="shell:hidden" onClick={() => setMobileSearchOpen(true)} aria-label="Search patients">
-          <Search className="h-5 w-5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="shell:hidden" onClick={() => setMobileMoreOpen(true)} aria-label="More actions">
-          <MoreHorizontal className="h-5 w-5" />
-        </Button>
-
-        <div className="mx-1 hidden h-8 w-px bg-header-foreground/20 shell:block" aria-hidden="true" />
+      {/* Icon actions — icon-over-label, vertically centered. Doesn't shrink from md up (the
+          logo/title/search give way first), so the icons are never hidden behind a scroll
+          strip; only on phones, where they genuinely can't all fit, does the row scroll. */}
+      <div className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto py-1 md:shrink-0 [&>*]:shrink-0">
+        <LanguageMenu />
+        <NotificationsMenu />
+        {hasPermission('engagement.view') && hasFeature('calendar') && (
+          <HeaderLinkIcon to="/engagement/programmes" label="Calendar" icon={CalendarIcon} />
+        )}
+        <HeaderCalculator />
+        <PendingTasksMenu />
+        {hasPermission('records-compliance.view') && <HeaderLinkIcon to="/documents" label="Documents" icon={FileText} />}
+        <div className="mx-1 h-8 w-px shrink-0 bg-header-foreground/20" aria-hidden="true" />
         <ProfileMenu />
       </div>
-
-      <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
-        <SheetContent side="top" className="p-4 pr-12">
-          <SheetTitle className="sr-only">Search patients</SheetTitle>
-          <HeaderSearchBox autoFocus onNavigate={() => setMobileSearchOpen(false)} />
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
-        <SheetContent side="right" className="flex flex-col gap-4 p-4">
-          <SheetTitle>More</SheetTitle>
-          <HeaderLabelsVisibleContext.Provider value={true}>
-            <div className="grid grid-cols-3 gap-2 [&>*]:h-auto [&>*]:w-full [&>*]:py-2">{secondaryActions}</div>
-          </HeaderLabelsVisibleContext.Provider>
-        </SheetContent>
-      </Sheet>
     </header>
   );
 }

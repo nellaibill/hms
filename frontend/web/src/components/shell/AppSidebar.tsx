@@ -17,7 +17,7 @@ export function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-soft transition-[width] duration-200 shell:flex',
+        'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-soft transition-[width] duration-200 md:flex',
         collapsed ? 'w-20' : 'w-[280px]',
       )}
     >

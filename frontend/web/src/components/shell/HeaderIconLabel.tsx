@@ -1,6 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-import { useContext, type ComponentType, type ReactNode } from 'react';
-import { HeaderLabelsVisibleContext } from '@/components/shell/headerLabelsContext';
+import type { ComponentType, ReactNode } from 'react';
 
 interface HeaderIconLabelProps {
   icon: ComponentType<{ className?: string }>;
@@ -19,14 +18,13 @@ interface HeaderIconLabelProps {
  * plus the logo leaves no room for the header search box on laptop/tablet widths. Every
  * button using this already carries its own aria-label, so nothing is lost for screen readers. */
 export function HeaderIconLabel({ icon: Icon, label, showChevron, badge }: HeaderIconLabelProps) {
-  const labelsVisible = useContext(HeaderLabelsVisibleContext);
   return (
     <span className="flex flex-col items-center gap-0.5" title={label}>
       <span className="relative inline-flex">
         <Icon className="!h-[var(--header-icon-size)] !w-[var(--header-icon-size)]" />
         {badge}
       </span>
-      <span className={labelsVisible ? 'flex items-center gap-0.5 text-xs font-medium leading-none' : 'hidden items-center gap-0.5 text-[11px] font-medium leading-none xl:flex'}>
+      <span className="hidden items-center gap-0.5 text-[11px] font-medium leading-none xl:flex">
         {label}
         {showChevron && <ChevronDown className="h-3 w-3" />}
       </span>

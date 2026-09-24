@@ -13,13 +13,6 @@ const config: Config = {
       screens: { '2xl': '1440px' },
     },
     extend: {
-      screens: {
-        // Desktop app shell (pinned sidebar + full header). Width alone (md) put a phone held
-        // in landscape (e.g. 812x375) into the desktop shell: a pinned sidebar plus the 64px
-        // header left ~300px of usable height. Short viewports get the mobile shell (drawer
-        // nav + compact header) whatever their width.
-        shell: { raw: '(min-width: 768px) and (min-height: 501px)' },
-      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
