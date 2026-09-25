@@ -56,7 +56,7 @@ public class BrandingController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
-    /// <summary>Uploads/replaces the hospital logo (PNG/JPG/WEBP/SVG, max 500KB, 16-2000px per side for raster formats — content is decoded/sanity-checked, not just trusted by extension).</summary>
+    /// <summary>Uploads/replaces one logo slot (PNG/JPG/WEBP/SVG, max 500KB, 16-2000px per side for raster formats — content is decoded/sanity-checked, not just trusted by extension). <paramref name="slot"/> is a BrandingLogoSlots value; omitted means the Primary logo, so existing callers are unchanged.</summary>
     /// <response code="200">The logo was uploaded and set.</response>
     /// <response code="400">The file is missing or failed validation.</response>
     /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
@@ -64,7 +64,7 @@ public class BrandingController : ControllerBase
     [Consumes("multipart/form-data")]
     [RequirePermission("identity-administration.edit")]
     [EnableRateLimiting(RateLimitingPolicyNames.Write)]
-    public async Task<IActionResult> UploadLogo(IFormFile file, CancellationToken cancellationToken)
+    public async Task<IActionResult> UploadLogo(IFormFile file, [FromQuery] string? slot, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
         {
@@ -72,7 +72,20 @@ public class BrandingController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await _brandingService.UploadLogoAsync(stream, file.FileName, file.Length, actorId: User.GetUserId(), cancellationToken);
+        var result = await _brandingService.UploadLogoAsync(slot ?? BrandingLogoSlots.Primary, stream, file.FileName, file.Length, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Removes one logo slot's logo (Primary when <paramref name="slot"/> is omitted); the app then falls back per the logo display settings.</summary>
+    /// <response code="200">The logo was removed.</response>
+    /// <response code="400">Unknown slot.</response>
+    /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
+    [HttpDelete("logo")]
+    [RequirePermission("identity-administration.edit")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
+    public async Task<IActionResult> RemoveLogo([FromQuery] string? slot, CancellationToken cancellationToken)
+    {
+        var result = await _brandingService.RemoveLogoAsync(slot ?? BrandingLogoSlots.Primary, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

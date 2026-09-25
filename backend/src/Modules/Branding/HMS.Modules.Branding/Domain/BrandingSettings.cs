@@ -23,7 +23,16 @@ internal class BrandingSettings : Entity
     /// OPD Consultation report) — optional, unlike HospitalName/AppTitle.</summary>
     public string? Address { get; private set; }
     public string? PhoneNumber { get; private set; }
+    /// <summary>The Primary logo (BrandingLogoSlots.Primary) — the original single hospital logo.</summary>
     public string? LogoPath { get; private set; }
+    public string? CompactLogoPath { get; private set; }
+    public string? LoginLogoPath { get; private set; }
+    public string? PrintLogoPath { get; private set; }
+    public string? FaviconPath { get; private set; }
+
+    /// <summary>Serialized Contracts.LogoDisplaySettings; null until an admin first saves one
+    /// (the mapping then returns the defaults).</summary>
+    public string? LogoDisplayJson { get; private set; }
     public string FontFamily { get; private set; } = null!;
     public string FontSizeScale { get; private set; } = null!;
     public string IconSizeScale { get; private set; } = null!;
@@ -117,9 +126,28 @@ internal class BrandingSettings : Entity
         MarkUpdated(updatedBy);
     }
 
-    public void UpdateLogo(string? logoPath, Guid? updatedBy)
+    /// <summary>Sets (or, with a null path, clears) one logo slot. <paramref name="slot"/> must
+    /// already be validated against Contracts.BrandingLogoSlots.</summary>
+    public void UpdateLogo(string slot, string? logoPath, Guid? updatedBy)
     {
-        LogoPath = logoPath;
+        switch (slot)
+        {
+            case Contracts.BrandingLogoSlots.Primary: LogoPath = logoPath; break;
+            case Contracts.BrandingLogoSlots.Compact: CompactLogoPath = logoPath; break;
+            case Contracts.BrandingLogoSlots.Login: LoginLogoPath = logoPath; break;
+            case Contracts.BrandingLogoSlots.Print: PrintLogoPath = logoPath; break;
+            case Contracts.BrandingLogoSlots.Favicon: FaviconPath = logoPath; break;
+            default: throw new ArgumentOutOfRangeException(nameof(slot), slot, "Unknown logo slot.");
+        }
+
+        MarkUpdated(updatedBy);
+    }
+
+    public void UpdateLogoDisplay(string logoDisplayJson, Guid? updatedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(logoDisplayJson, nameof(logoDisplayJson));
+
+        LogoDisplayJson = logoDisplayJson;
         MarkUpdated(updatedBy);
     }
 }

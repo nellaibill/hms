@@ -13,6 +13,13 @@ internal static class BrandingMappingExtensions
         Address = settings.Address,
         PhoneNumber = settings.PhoneNumber,
         LogoUrl = settings.LogoPath,
+        CompactLogoUrl = settings.CompactLogoPath,
+        LoginLogoUrl = settings.LoginLogoPath,
+        PrintLogoUrl = settings.PrintLogoPath,
+        FaviconUrl = settings.FaviconPath,
+        LogoDisplay = string.IsNullOrWhiteSpace(settings.LogoDisplayJson)
+            ? new LogoDisplaySettings()
+            : JsonSerializer.Deserialize<LogoDisplaySettings>(settings.LogoDisplayJson) ?? new LogoDisplaySettings(),
         FontFamily = settings.FontFamily,
         FontSizeScale = settings.FontSizeScale,
         IconSizeScale = settings.IconSizeScale,

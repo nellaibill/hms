@@ -38,6 +38,11 @@ internal class BrandingService : IBrandingService
     // or if that box ever grows, while still cutting a typical full-size upload well below the
     // 500KB cap above. Only ever downscales: an upload already at or under this is stored as-is.
     private const int StoredLogoDimensionPx = 512;
+    // Display box bounds for LogoDisplaySettings — the frontend offers a smaller curated list per
+    // slot (and the header clamps to its own fixed height regardless); this just rejects nonsense.
+    private const int MinLogoDisplayHeightPx = 16;
+    private const int MaxLogoDisplayHeightPx = 160;
+    private static readonly string[] AllowedLogoFits = ["contain", "scale-down"];
 
     private readonly IBrandingRepository _repository;
     private readonly IBrandingLogoStorage _logoStorage;
@@ -79,6 +84,12 @@ internal class BrandingService : IBrandingService
                 $"'{request.IconSizeScale}' is not a supported icon size scale.");
         }
 
+        var logoDisplayError = ValidateLogoDisplay(request.LogoDisplay);
+        if (logoDisplayError is not null)
+        {
+            return Result<BrandingResponse>.Failure(BrandingErrorCodes.InvalidLogoDisplay, logoDisplayError);
+        }
+
         var settings = await GetOrCreateAsync(cancellationToken);
 
         settings.UpdateIdentity(request.HospitalName, request.AppTitle, request.Address, request.PhoneNumber, actorId);
@@ -87,6 +98,10 @@ internal class BrandingService : IBrandingService
             JsonSerializer.Serialize(request.TokensLight),
             JsonSerializer.Serialize(request.TokensDark),
             actorId);
+        if (request.LogoDisplay is not null)
+        {
+            settings.UpdateLogoDisplay(JsonSerializer.Serialize(request.LogoDisplay), actorId);
+        }
 
         await _repository.SaveChangesAsync(cancellationToken);
 
@@ -95,8 +110,13 @@ internal class BrandingService : IBrandingService
         return Result<BrandingResponse>.Success(settings.ToResponse());
     }
 
-    public async Task<Result<BrandingResponse>> UploadLogoAsync(Stream content, string fileName, long length, Guid? actorId, CancellationToken cancellationToken)
+    public async Task<Result<BrandingResponse>> UploadLogoAsync(string slot, Stream content, string fileName, long length, Guid? actorId, CancellationToken cancellationToken)
     {
+        if (!BrandingLogoSlots.IsValid(slot))
+        {
+            return InvalidSlot(slot);
+        }
+
         if (length > MaxLogoSizeBytes)
         {
             return Result<BrandingResponse>.Failure(BrandingErrorCodes.InvalidFile, "Logo must be 500KB or smaller.");
@@ -132,15 +152,64 @@ internal class BrandingService : IBrandingService
         var toStore = resized ?? buffer;
         toStore.Position = 0;
 
-        var logoPath = await _logoStorage.SaveAsync(fileName, toStore, cancellationToken);
+        var logoPath = await _logoStorage.SaveAsync(fileName, toStore, cancellationToken, slot);
 
         var settings = await GetOrCreateAsync(cancellationToken);
-        settings.UpdateLogo(logoPath, actorId);
+        settings.UpdateLogo(slot, logoPath, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Uploaded new branding logo");
+        _logger.LogInformation("Uploaded new branding logo for slot {LogoSlot}", slot);
 
         return Result<BrandingResponse>.Success(settings.ToResponse());
+    }
+
+    public async Task<Result<BrandingResponse>> RemoveLogoAsync(string slot, Guid? actorId, CancellationToken cancellationToken)
+    {
+        if (!BrandingLogoSlots.IsValid(slot))
+        {
+            return InvalidSlot(slot);
+        }
+
+        var settings = await GetOrCreateAsync(cancellationToken);
+        settings.UpdateLogo(slot, logoPath: null, actorId);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Removed branding logo for slot {LogoSlot}", slot);
+
+        return Result<BrandingResponse>.Success(settings.ToResponse());
+    }
+
+    private static Result<BrandingResponse> InvalidSlot(string? slot) =>
+        Result<BrandingResponse>.Failure(
+            BrandingErrorCodes.InvalidLogoSlot,
+            $"'{slot}' is not a logo slot. Expected one of: {string.Join(", ", BrandingLogoSlots.All)}.");
+
+    private static string? ValidateLogoDisplay(LogoDisplaySettings? display)
+    {
+        if (display is null)
+        {
+            return null;
+        }
+
+        foreach (var (slot, options) in display.Slots)
+        {
+            if (!BrandingLogoSlots.IsValid(slot))
+            {
+                return $"'{slot}' is not a logo slot.";
+            }
+
+            if (options.Height < MinLogoDisplayHeightPx || options.Height > MaxLogoDisplayHeightPx)
+            {
+                return $"Logo display height must be between {MinLogoDisplayHeightPx} and {MaxLogoDisplayHeightPx}px.";
+            }
+
+            if (!AllowedLogoFits.Contains(options.Fit))
+            {
+                return $"'{options.Fit}' is not a supported logo fit.";
+            }
+        }
+
+        return null;
     }
 
     /// <summary>Decodes the buffer as a real image (rejecting anything that isn't, regardless

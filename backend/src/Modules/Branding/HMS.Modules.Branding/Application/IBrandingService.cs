@@ -18,5 +18,9 @@ public interface IBrandingService
 
     Task<Result<BrandingResponse>> UpdateAsync(UpdateBrandingRequest request, Guid? actorId, CancellationToken cancellationToken);
 
-    Task<Result<BrandingResponse>> UploadLogoAsync(Stream content, string fileName, long length, Guid? actorId, CancellationToken cancellationToken);
+    /// <param name="slot">A <see cref="BrandingLogoSlots"/> value; anything else fails with BRANDING.INVALID_LOGO_SLOT.</param>
+    Task<Result<BrandingResponse>> UploadLogoAsync(string slot, Stream content, string fileName, long length, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Clears one logo slot (the stored file is left on disk, same as a replaced logo).</summary>
+    Task<Result<BrandingResponse>> RemoveLogoAsync(string slot, Guid? actorId, CancellationToken cancellationToken);
 }

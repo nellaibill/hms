@@ -1,4 +1,5 @@
 using FluentAssertions;
+using HMS.Modules.Branding.Contracts;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.Hosting;
@@ -54,6 +55,18 @@ public class BrandingLogoStorageTests : IDisposable
         relativePath.Should().StartWith($"uploads/branding/{tenantId}/logo/");
         var fullPath = Path.Combine(_contentRoot, "wwwroot", relativePath.Replace('/', Path.DirectorySeparatorChar));
         File.Exists(fullPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveAsync_WritesANonPrimarySlotUnderItsOwnFolder()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.SetTenant(tenantId, "irrelevant-connection-string");
+        using var content = new MemoryStream([1, 2, 3]);
+
+        var relativePath = await _sut.SaveAsync("favicon.png", content, CancellationToken.None, BrandingLogoSlots.Favicon);
+
+        relativePath.Should().StartWith($"uploads/branding/{tenantId}/favicon/");
     }
 
     [Fact]

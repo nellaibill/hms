@@ -25,6 +25,11 @@ internal class BrandingSettingsConfiguration : IEntityTypeConfiguration<Branding
         builder.Property(b => b.Address).HasColumnName("address").HasMaxLength(500);
         builder.Property(b => b.PhoneNumber).HasColumnName("phone_number").HasMaxLength(20);
         builder.Property(b => b.LogoPath).HasColumnName("logo_path").HasMaxLength(500);
+        builder.Property(b => b.CompactLogoPath).HasColumnName("compact_logo_path").HasMaxLength(500);
+        builder.Property(b => b.LoginLogoPath).HasColumnName("login_logo_path").HasMaxLength(500);
+        builder.Property(b => b.PrintLogoPath).HasColumnName("print_logo_path").HasMaxLength(500);
+        builder.Property(b => b.FaviconPath).HasColumnName("favicon_path").HasMaxLength(500);
+        builder.Property(b => b.LogoDisplayJson).HasColumnName("logo_display").HasColumnType("jsonb");
         builder.Property(b => b.FontFamily).HasColumnName("font_family").HasMaxLength(50).IsRequired();
         builder.Property(b => b.FontSizeScale).HasColumnName("font_size_scale").HasMaxLength(10).IsRequired();
         builder.Property(b => b.IconSizeScale).HasColumnName("icon_size_scale").HasMaxLength(10).IsRequired().HasDefaultValue("md");

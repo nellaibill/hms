@@ -11,4 +11,6 @@ public record UpdateBrandingRequest
     public string IconSizeScale { get; init; } = string.Empty;
     public Dictionary<string, string> TokensLight { get; init; } = new();
     public Dictionary<string, string> TokensDark { get; init; } = new();
+    /// <summary>Null leaves the stored logo display settings unchanged (e.g. an older client).</summary>
+    public LogoDisplaySettings? LogoDisplay { get; init; }
 }

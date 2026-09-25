@@ -1,8 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ApiError } from '@hms/shared';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { RotateCcw, Upload } from 'lucide-react';
+import { Building2, RotateCcw } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { hexToHslTriple, hslTripleToHex } from '@/lib/color';
 import { useBrandingQuery } from '../hooks/useBrandingQuery';
-import { useResetBrandingMutation, useUpdateBrandingMutation, useUploadLogoMutation } from '../hooks/useBrandingMutations';
+import { resolveBrandLogoUrl } from '../brandLogo';
+import { useResetBrandingMutation, useUpdateBrandingMutation } from '../hooks/useBrandingMutations';
 import { DEFAULT_TOKENS_DARK, DEFAULT_TOKENS_LIGHT } from '../mockBrandingStore';
 import {
   FONT_FAMILIES,
@@ -20,10 +20,13 @@ import {
   FONT_SIZE_SCALE_LABELS,
   ICON_SIZE_SCALES,
   ICON_SIZE_SCALE_LABELS,
+  DEFAULT_LOGO_DISPLAY,
   TOKEN_GROUPS,
   type BrandingConfig,
+  type LogoDisplaySettings,
 } from '../types';
 import { BrandingLivePreview } from './BrandingLivePreview';
+import { LogoConfigurationSection } from './LogoConfigurationSection';
 
 const identitySchema = z.object({
   hospitalName: z.string().trim().min(1, 'Hospital name is required'),
@@ -121,44 +124,16 @@ export function BrandingForm() {
   const query = useBrandingQuery();
   const updateMutation = useUpdateBrandingMutation();
   const resetMutation = useResetBrandingMutation();
-  const uploadLogoMutation = useUploadLogoMutation();
-  const logoFileInputRef = useRef<HTMLInputElement>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
 
   const [editingTheme, setEditingTheme] = useState<'light' | 'dark'>('light');
   const [draftTokensLight, setDraftTokensLight] = useState<Record<string, string>>({});
   const [draftTokensDark, setDraftTokensDark] = useState<Record<string, string>>({});
-  // Synced from the persisted config (below) and fed into the live preview, and now also the
-  // actual upload target — see the Identity tab's Hospital logo control.
-  const [previewLogoUrl, setPreviewLogoUrl] = useState<string | null>(null);
+  const [draftLogoDisplay, setDraftLogoDisplay] = useState<LogoDisplaySettings>(DEFAULT_LOGO_DISPLAY);
   const [savedMessage, setSavedMessage] = useState(false);
-
-  // The real validation (content decode, exact pixel bounds) is server-side — see
-  // BrandingService.UploadLogoAsync — so this is just fast, obvious-case feedback before
-  // spending a request; the server's own message is what's shown on rejection either way.
-  function handleLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setLogoError(null);
-    setSavedMessage(false);
-
-    if (file.size > 500 * 1024) {
-      setLogoError('Logo must be 500KB or smaller.');
-      return;
-    }
-    if (!/\.(png|jpe?g|webp|svg)$/i.test(file.name)) {
-      setLogoError('Logo must be a PNG, JPG, WEBP, or SVG image.');
-      return;
-    }
-
-    uploadLogoMutation.mutate(file, {
-      onError: (error) => {
-        setLogoError(error instanceof ApiError ? error.message : 'Could not upload the logo. Please try again.');
-      },
-    });
-  }
+  // A logo Replace/Remove applies immediately and writes the server's full response into the
+  // query cache — this skips the one re-sync that follows, so the admin's other unsaved edits
+  // (names, colors, logo heights…) aren't thrown away by an unrelated upload.
+  const skipNextSyncRef = useRef(false);
 
   const {
     register,
@@ -178,9 +153,13 @@ export function BrandingForm() {
   // never fires mid-edit from a background refetch.
   useEffect(() => {
     if (!query.data) return;
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      return;
+    }
     setDraftTokensLight(query.data.tokensLight);
     setDraftTokensDark(query.data.tokensDark);
-    setPreviewLogoUrl(query.data.logoUrl);
+    setDraftLogoDisplay(query.data.logoDisplay);
     reset({
       hospitalName: query.data.hospitalName,
       appTitle: query.data.appTitle,
@@ -220,6 +199,7 @@ export function BrandingForm() {
       ...values,
       tokensLight: draftTokensLight,
       tokensDark: draftTokensDark,
+      logoDisplay: draftLogoDisplay,
     };
     updateMutation.mutate(patch, {
       onSuccess: () => {
@@ -256,68 +236,67 @@ export function BrandingForm() {
           </TabsList>
 
           <TabsContent value="identity">
-            <div className="flex flex-col gap-4 rounded-lg border border-border p-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="hospitalName">Hospital name</Label>
-                <Input id="hospitalName" {...register('hospitalName')} />
-                {errors.hospitalName && <p className="text-sm text-destructive">{errors.hospitalName.message}</p>}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="appTitle">Application title</Label>
-                <Input id="appTitle" {...register('appTitle')} />
-                {errors.appTitle && <p className="text-sm text-destructive">{errors.appTitle.message}</p>}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="address">Hospital address</Label>
-                <Input id="address" placeholder="e.g. 123 Anna Salai, Chennai, Tamil Nadu 600002" {...register('address')} />
-                {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
-                <p className="text-xs text-muted-foreground">Shown on printed/exported clinical documents (e.g. OPD Consultation).</p>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="phoneNumber">Hospital phone number</Label>
-                <Input id="phoneNumber" placeholder="e.g. 044-12345678" {...register('phoneNumber')} />
-                {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>Hospital logo</Label>
-                <div className="flex items-center gap-3">
-                  {/* Same fixed-box containment as the real header (HospitalLogo.tsx, sized via
-                      TopHeader's imageClassName="h-16 max-w-80") — the preview here should
-                      honestly reflect how any shape will actually render once saved, not a
-                      generously-sized preview that hides a bad upload. */}
-                  <span className="flex h-16 w-80 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-                    {previewLogoUrl ? (
-                      <img src={previewLogoUrl} alt="Current logo" className="max-h-full max-w-full object-contain" />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No logo</span>
-                    )}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    disabled={uploadLogoMutation.isPending}
-                    onClick={() => logoFileInputRef.current?.click()}
-                  >
-                    <Upload className="h-4 w-4" />
-                    {uploadLogoMutation.isPending ? 'Uploading…' : 'Upload logo'}
-                  </Button>
-                  <input
-                    ref={logoFileInputRef}
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml"
-                    className="hidden"
-                    onChange={handleLogoFileChange}
-                  />
+            <div className="flex flex-col gap-6 rounded-lg border border-border p-4">
+              <section className="flex flex-col gap-4">
+                <div className="flex items-start gap-3">
+                  <Building2 className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Hospital Information</h3>
+                    <p className="text-xs text-muted-foreground">Basic information about your hospital, used across the application and in documents.</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">PNG, JPG, WEBP, or SVG · max 500KB · 16–2000px per side. Applies immediately once uploaded.</p>
-                {logoError && <p className="text-sm text-destructive">{logoError}</p>}
-              </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="hospitalName">
+                      Hospital name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input id="hospitalName" {...register('hospitalName')} />
+                    {errors.hospitalName && <p className="text-sm text-destructive">{errors.hospitalName.message}</p>}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="appTitle">
+                      Application title <span className="text-destructive">*</span>
+                    </Label>
+                    <Input id="appTitle" {...register('appTitle')} />
+                    {errors.appTitle && <p className="text-sm text-destructive">{errors.appTitle.message}</p>}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="address">Hospital address</Label>
+                    <Input id="address" placeholder="e.g. 123 Anna Salai, Chennai, Tamil Nadu 600002" {...register('address')} />
+                    {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="phoneNumber">Hospital phone number</Label>
+                    <Input id="phoneNumber" placeholder="e.g. 044-12345678" {...register('phoneNumber')} />
+                    {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Address and phone are shown on printed/exported clinical documents (e.g. OPD Consultation).</p>
+              </section>
+
+              <hr className="border-border" />
+
+              {query.data && (
+                <LogoConfigurationSection
+                  config={query.data}
+                  display={draftLogoDisplay}
+                  onDisplayChange={(next) => {
+                    setDraftLogoDisplay(next);
+                    setSavedMessage(false);
+                  }}
+                  onBeforeLogoChange={() => {
+                    skipNextSyncRef.current = true;
+                    setSavedMessage(false);
+                  }}
+                  onLogoChangeFailed={() => {
+                    skipNextSyncRef.current = false;
+                  }}
+                />
+              )}
             </div>
           </TabsContent>
 
@@ -439,7 +418,7 @@ export function BrandingForm() {
         <BrandingLivePreview
           hospitalName={watched.hospitalName || 'Hospital name'}
           appTitle={watched.appTitle || 'Application title'}
-          logoUrl={previewLogoUrl}
+          logoUrl={resolveBrandLogoUrl(query.data, 'primary', null)}
           fontFamily={watched.fontFamily}
           fontSizeScale={watched.fontSizeScale}
           tokens={activeTokens}

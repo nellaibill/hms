@@ -1,15 +1,20 @@
-import type { BrandingConfigDto } from '@hms/shared';
+import type { BrandingConfigDto, LogoDisplaySettingsDto } from '@hms/shared';
 import { env } from '@/config/env';
 import { brandingApi } from '@/services/apiClient';
-import { mockBrandingStore } from './mockBrandingStore';
+import { mockBrandingStore, readRememberedLogos, rememberLogos } from './mockBrandingStore';
 import {
+  DEFAULT_LOGO_DISPLAY,
   FONT_FAMILIES,
+  LOGO_FITS,
+  LOGO_SLOTS,
   FONT_SIZE_SCALES,
   ICON_SIZE_SCALES,
   type BrandingConfig,
   type FontFamily,
   type FontSizeScale,
   type IconSizeScale,
+  type LogoDisplaySettings,
+  type LogoSlot,
 } from './types';
 
 function toFontFamily(value: string): FontFamily {
@@ -34,6 +39,19 @@ function resolveLogoUrl(logoUrl: string | null): string | null {
   return `${env.apiBaseUrl}/${logoUrl.replace(/^\/+/, '')}`;
 }
 
+/** Fills any slot the server hasn't stored settings for yet (a row saved before this feature,
+ * or a partial map) from DEFAULT_LOGO_DISPLAY, and drops values the UI doesn't know. */
+function toLogoDisplay(dto: LogoDisplaySettingsDto | null | undefined): LogoDisplaySettings {
+  const slots = { ...DEFAULT_LOGO_DISPLAY.slots };
+  for (const slot of LOGO_SLOTS) {
+    const stored = dto?.slots?.[slot];
+    if (stored && stored.height > 0 && (LOGO_FITS as readonly string[]).includes(stored.fit)) {
+      slots[slot] = { height: stored.height, fit: stored.fit };
+    }
+  }
+  return { usePrimaryAsFallback: dto?.usePrimaryAsFallback ?? DEFAULT_LOGO_DISPLAY.usePrimaryAsFallback, slots };
+}
+
 function fromDto(dto: BrandingConfigDto): BrandingConfig {
   return {
     hospitalName: dto.hospitalName,
@@ -41,6 +59,11 @@ function fromDto(dto: BrandingConfigDto): BrandingConfig {
     address: dto.address ?? '',
     phoneNumber: dto.phoneNumber ?? '',
     logoUrl: resolveLogoUrl(dto.logoUrl),
+    compactLogoUrl: resolveLogoUrl(dto.compactLogoUrl),
+    loginLogoUrl: resolveLogoUrl(dto.loginLogoUrl),
+    printLogoUrl: resolveLogoUrl(dto.printLogoUrl),
+    faviconUrl: resolveLogoUrl(dto.faviconUrl),
+    logoDisplay: toLogoDisplay(dto.logoDisplay),
     fontFamily: toFontFamily(dto.fontFamily),
     fontSizeScale: toFontSizeScale(dto.fontSizeScale),
     iconSizeScale: toIconSizeScale(dto.iconSizeScale),
@@ -58,11 +81,17 @@ export const apiBrandingRepository = {
   async getBranding(): Promise<BrandingConfig> {
     try {
       const dto = await brandingApi.getBranding();
-      return fromDto(dto);
+      const config = fromDto(dto);
+      rememberLogos(config);
+      return config;
     } catch {
-      // Backend unreachable (down, or the frontend is being run standalone) — fall back to
-      // the local mock/localStorage store so the app never renders unstyled.
-      return mockBrandingStore.getBranding();
+      // Backend unreachable (down, or the frontend is being run standalone), or — the common
+      // case — the pre-login screen, which has no tenant/JWT yet and always gets a 401 here.
+      // Falls back to the local mock/localStorage store so the app never renders unstyled,
+      // with the logos last seen on a signed-in session in this browser layered on top, so
+      // the login screen and favicon can still show the hospital's configured Login logo.
+      const fallback = await mockBrandingStore.getBranding();
+      return { ...fallback, ...readRememberedLogos() };
     }
   },
 
@@ -89,13 +118,17 @@ export const apiBrandingRepository = {
       iconSizeScale: merged.iconSizeScale,
       tokensLight: merged.tokensLight,
       tokensDark: merged.tokensDark,
+      logoDisplay: merged.logoDisplay,
     });
     return fromDto(dto);
   },
 
-  async uploadLogo(file: File): Promise<{ logoUrl: string }> {
-    const dto = await brandingApi.uploadLogo(file);
-    return { logoUrl: resolveLogoUrl(dto.logoUrl) ?? '' };
+  async uploadLogo(file: File, slot: LogoSlot = 'primary'): Promise<BrandingConfig> {
+    return fromDto(await brandingApi.uploadLogo(file, slot));
+  },
+
+  async removeLogo(slot: LogoSlot): Promise<BrandingConfig> {
+    return fromDto(await brandingApi.removeLogo(slot));
   },
 
   async resetToDefaults(): Promise<BrandingConfig> {
