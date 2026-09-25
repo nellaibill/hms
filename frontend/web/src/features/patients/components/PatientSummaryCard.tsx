@@ -212,7 +212,7 @@ export function PatientSummaryCard({ patient }: PatientSummaryCardProps) {
         />
       )}
 
-      {showVerifyPrompt && <VerifyPatientDialog patient={patient} onCancel={() => setShowVerifyPrompt(false)} />}
+      {showVerifyPrompt && <VerifyPatientDialog patient={patient} action="adding a visit" onCancel={() => setShowVerifyPrompt(false)} />}
     </div>
   );
 }
