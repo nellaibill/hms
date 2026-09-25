@@ -1,7 +1,7 @@
 import { ApiError, NetworkError, type Patient } from '@hms/shared';
 import { FilePlus2, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useBlocker } from 'react-router-dom';
+import { useBlocker, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -32,7 +32,7 @@ import {
   type ConsultationBillingFormValues,
   type PaymentMethod,
 } from '../../features/billing';
-import { usePatientVisitsQuery, VerifyPatientDialog } from '../../features/patients';
+import { usePatientQuery, usePatientVisitsQuery, VerifyPatientDialog } from '../../features/patients';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 /**
@@ -264,6 +264,17 @@ export default function InvoiceCreatePage() {
 
     await saveInvoice(values);
   }
+
+  // ?patientId= (Patient Details → Billing → New Bill) preselects that patient once, through the
+  // same path as the picker so an unverified patient still gets VerifyPatientDialog.
+  const [searchParams] = useSearchParams();
+  const { data: preselectedPatient } = usePatientQuery(searchParams.get('patientId') ?? undefined);
+  const preselectAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!preselectedPatient || preselectAppliedRef.current) return;
+    preselectAppliedRef.current = true;
+    handleSelectPatient(preselectedPatient);
+  }, [preselectedPatient]);
 
   function handleSelectPatient(selected: Patient) {
     if (selected.requiresDataVerification) {

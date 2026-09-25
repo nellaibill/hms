@@ -28,10 +28,8 @@ import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
 import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
-import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type Billing, type BillingItem } from '@/features/billing';
-import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
+import { formatCurrency, usePatientInvoicesQuery } from '@/features/billing';
 import { UploadDocumentModal } from '@/features/documents';
-import { useMasterOptionsQuery } from '@/features/masters';
 import { documentsApi } from '../../../services/apiClient';
 import { useAuth } from '../../auth/AuthContext';
 import { modeOfArrivalChannelLabel } from '../arrivalChannelLabel';
@@ -42,8 +40,8 @@ import { useAddPatientAllergyMutation, useDeletePatientDocumentMutation, useRemo
 import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
 import { patientDocumentsQueryKey, usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { PatientBillingPanel } from './PatientBillingPanel';
 import { PatientTimelineTab } from './PatientTimelineTab';
-import { encounterTypeShortLabel } from '../encounterTypeLabel';
 import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientMedicalInformationTab } from './PatientMedicalInformationTab';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
@@ -669,126 +667,6 @@ function PatientVisitsTab({ patient }: { patient: Patient }) {
   return <VisitsTable visits={visits} />;
 }
 
-/* ---------------------------------------------------------------------------- Billing */
-
-function BillingLineItem({ item }: { item: BillingItem }) {
-  const { serviceLabel, consultantName } = describeBillingItem(item);
-  return (
-    <div className="flex items-start justify-between gap-3 py-2.5 text-sm">
-      <div className="min-w-0">
-        <p className="font-medium text-foreground">
-          {item.billingType} — {serviceLabel}
-        </p>
-        <p className="truncate text-xs text-muted-foreground">
-          {consultantName}
-          {item.discount > 0 ? ` · Discount ${formatCurrency(item.discount)}` : ''}
-        </p>
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className="font-medium tabular-nums text-foreground">{formatCurrency(item.total)}</span>
-        <Badge variant={item.paymentStatus === 'Paid' ? 'success' : 'warning'} className="text-[10px]">
-          {item.paymentStatus}
-        </Badge>
-      </div>
-    </div>
-  );
-}
-
-/** OPD/IPD context for one invoice, from the data the invoice is actually linked to — never
- * from service names. An invoice's visitId points at the Patients module's visit record, whose
- * visitType is the real encounter type (OP → OPD, IP → IPD, else e.g. Emergency/Day Care). The
- * IPD final bill has no visit (IPDBillingService falls back to visitId = patientId) but is the
- * only source of InpatientCharge lines, so those are IPD by construction. Anything else with no
- * visit link (e.g. a pharmacy dispense bill) is labelled as such rather than guessed. */
-function billingContext(billing: Billing, visits: PatientVisit[] | undefined): { label: string; variant: BadgeProps['variant'] } {
-  const visit = visits?.find((v) => v.visitId === billing.visitId);
-  if (visit) {
-    if (visit.visitType === 'OP') return { label: 'OPD', variant: 'success' };
-    if (visit.visitType === 'IP') return { label: 'IPD', variant: 'default' };
-    return { label: encounterTypeShortLabel(visit.visitType), variant: 'secondary' };
-  }
-  if (billing.items.length > 0 && billing.items.every((item) => item.billingType === 'InpatientCharge')) {
-    return { label: 'IPD', variant: 'default' };
-  }
-  return { label: 'No visit link', variant: 'outline' };
-}
-
-/** Billing is its own bounded context (see features/billing) — this reads it read-only for display via the real Billing API, the same way it reads DocumentUpload's storage elsewhere. A patient can have zero billing records (every category is optional at registration) — that's shown explicitly rather than hiding the section, so "no charges were entered" reads as a fact, not a missing feature. */
-function PatientBillingTab({ patientId }: { patientId: string }) {
-  const { data: billings, isPending, isError } = usePatientInvoicesQuery(patientId);
-  const { data: visits } = usePatientVisitsQuery(patientId);
-  // Primes the Masters reference cache describeBillingItem reads from in BillingLineItem
-  // below, so every line item resolves to its real name instead of a raw id.
-  useMasterOptionsQuery('diagnosticTest');
-  useMasterOptionsQuery('department');
-  useMasterOptionsQuery('consultant');
-  useMasterOptionsQuery('consultationType');
-  // Radiology/Laboratory now read the new typed DiagnosticService/DiagnosticPackage catalogs
-  // (see billingCalculations.ts's describeBillingItem) — these prime that cache the same way.
-  useDiagnosticServices('Radiology');
-  useDiagnosticServices('Laboratory');
-  usePrimeDiagnosticPackageCache();
-
-  if (isPending) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading billing…
-      </div>
-    );
-  }
-
-  // Checked before the empty state — a failed request (e.g. a 403 for a role without
-  // finance-billing.view) used to fall through to "No billing recorded", which misreads as fact.
-  if (isError) {
-    return (
-      <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        Couldn't load billing for this patient — please try again.
-      </p>
-    );
-  }
-
-  if (!billings || billings.length === 0) {
-    return <EmptyState icon={FileText} message="No billing recorded for this patient yet." />;
-  }
-
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <div className="flex flex-col gap-3">
-        {billings.map((billing) => {
-          const context = billingContext(billing, visits);
-          return (
-          <div key={billing.id} className="flex flex-col divide-y divide-border">
-            <div className="flex flex-wrap items-center gap-2 pb-2 text-xs text-muted-foreground">
-              <Badge variant={context.variant} className="text-[10px]" title="Encounter this bill belongs to">
-                {context.label}
-              </Badge>
-              <span className="font-mono">{billing.invoiceNumber ?? billing.id}</span>
-              <span>{new Date(billing.createdAt).toLocaleDateString('en-IN')}</span>
-              {billing.isVoided && (
-                <Badge variant="destructive" className="text-[10px]">
-                  Voided
-                </Badge>
-              )}
-            </div>
-            {billing.items.map((item) => (
-              <BillingLineItem key={item.id} item={item} />
-            ))}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 text-sm">
-              <span className="text-muted-foreground">
-                Gross {formatCurrency(billing.grossAmount)}
-                {billing.totalDiscount > 0 ? ` · Discount −${formatCurrency(billing.totalDiscount)}` : ''}
-              </span>
-              <span className="text-base font-semibold text-primary">Net {formatCurrency(billing.netAmount)}</span>
-            </div>
-          </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /* -------------------------------------------------------------------------- Documents */
 
 function PatientDocumentsTab({ patient }: { patient: Patient }) {
@@ -946,11 +824,11 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       </TabsContent>
 
       <TabsContent value="billing" className="pt-2.5">
-        <PatientBillingTab patientId={patient.id} />
+        <PatientBillingPanel patientId={patient.id} />
       </TabsContent>
 
       <TabsContent value="timeline" className="pt-2.5">
-        <PatientTimelineTab patient={patient} />
+        <PatientTimelineTab patient={patient} onNavigateToTab={onActiveTabChange} />
       </TabsContent>
       </Tabs>
     </div>
