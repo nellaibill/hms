@@ -46,7 +46,7 @@ function toLogoDisplay(dto: LogoDisplaySettingsDto | null | undefined): LogoDisp
   for (const slot of LOGO_SLOTS) {
     const stored = dto?.slots?.[slot];
     if (stored && stored.height > 0 && (LOGO_FITS as readonly string[]).includes(stored.fit)) {
-      slots[slot] = { height: stored.height, fit: stored.fit };
+      slots[slot] = { width: stored.width > 0 ? stored.width : slots[slot].width, height: stored.height, fit: stored.fit };
     }
   }
   return { usePrimaryAsFallback: dto?.usePrimaryAsFallback ?? DEFAULT_LOGO_DISPLAY.usePrimaryAsFallback, slots };

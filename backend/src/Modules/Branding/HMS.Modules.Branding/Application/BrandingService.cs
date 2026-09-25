@@ -38,11 +38,12 @@ internal class BrandingService : IBrandingService
     // or if that box ever grows, while still cutting a typical full-size upload well below the
     // 500KB cap above. Only ever downscales: an upload already at or under this is stored as-is.
     private const int StoredLogoDimensionPx = 512;
-    // Display box bounds for LogoDisplaySettings — the frontend offers a smaller curated list per
-    // slot (and the header clamps to its own fixed height regardless); this just rejects nonsense.
-    private const int MinLogoDisplayHeightPx = 16;
-    private const int MaxLogoDisplayHeightPx = 160;
-    private static readonly string[] AllowedLogoFits = ["contain", "scale-down"];
+    // Display box bounds for LogoDisplaySettings, matching the frontend's inputs — the header and
+    // sidebar still clamp a logo to their own fixed size regardless; this just rejects nonsense.
+    private const int MinLogoDisplayPx = 16;
+    private const int MaxLogoDisplayWidthPx = 800;
+    private const int MaxLogoDisplayHeightPx = 400;
+    private static readonly string[] AllowedLogoFits = ["contain", "cover", "fill"];
 
     private readonly IBrandingRepository _repository;
     private readonly IBrandingLogoStorage _logoStorage;
@@ -198,9 +199,14 @@ internal class BrandingService : IBrandingService
                 return $"'{slot}' is not a logo slot.";
             }
 
-            if (options.Height < MinLogoDisplayHeightPx || options.Height > MaxLogoDisplayHeightPx)
+            if (options.Width < MinLogoDisplayPx || options.Width > MaxLogoDisplayWidthPx)
             {
-                return $"Logo display height must be between {MinLogoDisplayHeightPx} and {MaxLogoDisplayHeightPx}px.";
+                return $"Logo display width must be between {MinLogoDisplayPx} and {MaxLogoDisplayWidthPx}px.";
+            }
+
+            if (options.Height < MinLogoDisplayPx || options.Height > MaxLogoDisplayHeightPx)
+            {
+                return $"Logo display height must be between {MinLogoDisplayPx} and {MaxLogoDisplayHeightPx}px.";
             }
 
             if (!AllowedLogoFits.Contains(options.Fit))

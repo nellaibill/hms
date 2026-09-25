@@ -1,10 +1,11 @@
 namespace HMS.Modules.Branding.Contracts;
 
-/// <summary>How one logo slot renders — its box height in CSS px and its object-fit mode.
-/// Fit is only ever a non-cropping mode ("contain" or "scale-down"), so no uploaded logo is
-/// ever stretched or cut off regardless of its shape.</summary>
+/// <summary>How one logo slot renders — its box width and height in CSS px (independent, no
+/// aspect lock) and its CSS object-fit mode: "contain" (never distorts or crops), "cover"
+/// (fills the box, cropping overflow) or "fill" (stretches to the box).</summary>
 public record LogoSlotDisplay
 {
+    public int Width { get; init; }
     public int Height { get; init; }
     public string Fit { get; init; } = "contain";
 }

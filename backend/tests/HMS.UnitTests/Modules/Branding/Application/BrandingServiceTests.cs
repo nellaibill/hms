@@ -91,14 +91,14 @@ public class BrandingServiceTests
         var display = new LogoDisplaySettings
         {
             UsePrimaryAsFallback = false,
-            Slots = new() { [BrandingLogoSlots.Primary] = new LogoSlotDisplay { Height = 48, Fit = "scale-down" } },
+            Slots = new() { [BrandingLogoSlots.Primary] = new LogoSlotDisplay { Width = 180, Height = 48, Fit = "cover" } },
         };
 
         var result = await _sut.UpdateAsync(ValidRequest() with { LogoDisplay = display }, actorId: null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.LogoDisplay.UsePrimaryAsFallback.Should().BeFalse();
-        result.Value.LogoDisplay.Slots[BrandingLogoSlots.Primary].Should().Be(new LogoSlotDisplay { Height = 48, Fit = "scale-down" });
+        result.Value.LogoDisplay.Slots[BrandingLogoSlots.Primary].Should().Be(new LogoSlotDisplay { Width = 180, Height = 48, Fit = "cover" });
     }
 
     [Fact]
@@ -111,13 +111,15 @@ public class BrandingServiceTests
     }
 
     [Theory]
-    [InlineData("banner", 40, "contain")]
-    [InlineData(BrandingLogoSlots.Primary, 4, "contain")]
-    [InlineData(BrandingLogoSlots.Primary, 999, "contain")]
-    [InlineData(BrandingLogoSlots.Primary, 40, "cover")]
-    public async Task UpdateAsync_RejectsInvalidLogoDisplay(string slot, int height, string fit)
+    [InlineData("banner", 180, 40, "contain")]
+    [InlineData(BrandingLogoSlots.Primary, 180, 4, "contain")]
+    [InlineData(BrandingLogoSlots.Primary, 180, 999, "contain")]
+    [InlineData(BrandingLogoSlots.Primary, 4, 40, "contain")]
+    [InlineData(BrandingLogoSlots.Primary, 5000, 40, "contain")]
+    [InlineData(BrandingLogoSlots.Primary, 180, 40, "stretch")]
+    public async Task UpdateAsync_RejectsInvalidLogoDisplay(string slot, int width, int height, string fit)
     {
-        var display = new LogoDisplaySettings { Slots = new() { [slot] = new LogoSlotDisplay { Height = height, Fit = fit } } };
+        var display = new LogoDisplaySettings { Slots = new() { [slot] = new LogoSlotDisplay { Width = width, Height = height, Fit = fit } } };
 
         var result = await _sut.UpdateAsync(ValidRequest() with { LogoDisplay = display }, actorId: null, CancellationToken.None);
 

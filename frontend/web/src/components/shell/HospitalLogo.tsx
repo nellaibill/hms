@@ -10,7 +10,7 @@ interface HospitalLogoProps {
   showName?: boolean;
   /** Use on a solid `bg-primary` surface (e.g. the top header) — lightens the system-name text to read on that background. */
   invert?: boolean;
-  /** Caps on the logo box (defaults to `max-h-16 max-w-32`) — pass Tailwind max-height/max-width utilities only. The box's actual height is the slot's configured display height (Theme & Branding → Logo Configuration), clamped by these caps, so a surface with a fixed height (the top bar) can never be grown by a configured size. */
+  /** Caps on the logo box (defaults to `max-h-16 max-w-32`) — pass Tailwind max-height/max-width utilities only. The box's actual size is the slot's configured width × height (Theme & Branding → Logo Configuration), clamped by these caps, so a surface with a fixed size (the top bar) can never be grown by a configured size. */
   imageClassName?: string;
   /** Which configured logo to show — see LOGO_SLOT_META. Falls back to the Primary logo, then the bundled default. */
   slot?: LogoSlot;
@@ -19,15 +19,12 @@ interface HospitalLogoProps {
 /**
  * Tenants upload logos of wildly different dimensions/aspect ratios/shapes (wide, tall,
  * square, circular) — the box below is a slot every logo scales *inside* of, never the other
- * way around. The box height is the slot's configured display height, capped by
- * `imageClassName`'s max-h/max-w; the image fills that height with a non-cropping object-fit
- * ("contain", or "scale-down" to keep a small logo at its natural size) — never
- * `object-cover` — so it is never stretched, cropped, or allowed to grow the box. `overflow-hidden` on the box is a safety net for any image whose intrinsic
+ * way around. The box is the slot's configured width × height, capped by `imageClassName`'s
+ * max-h/max-w; the image fills it with the configured object-fit ("contain" — the default —
+ * never distorts or crops; "cover"/"fill" are the admin's explicit choice) and can never grow
+ * the box. `overflow-hidden` on the box is a safety net for any image whose intrinsic
  * sizing tries to escape the clamp anyway (e.g. an SVG with a `width`/`height` attribute of
  * its own).
- *
- * Width is `w-auto` up to the max-w cap, not a fixed width — the box hugs whatever the image
- * actually renders at rather than always claiming the full slot width.
  *
  * Deliberately no background/chip behind the image (tried a white one, then a rounded one —
  * both ended up fighting whatever shape/color the uploaded logo actually was: a visible box
@@ -39,7 +36,7 @@ interface HospitalLogoProps {
  * read against the blue header, which is a property of that specific file, not something a
  * generic wrapper here can fix for every possible upload without breaking some other one.
  */
-const LOGO_BOX = 'flex w-auto shrink-0 items-center justify-center overflow-hidden';
+const LOGO_BOX = 'flex shrink-0 items-center justify-center overflow-hidden';
 
 export function HospitalLogo({ className, showName = true, invert = false, imageClassName = 'max-h-16 max-w-32', slot = 'primary' }: HospitalLogoProps) {
   const { data: brandingConfig } = useBrandingQuery();
@@ -50,8 +47,8 @@ export function HospitalLogo({ className, showName = true, invert = false, image
 
   return (
     <div className={cn('flex items-center gap-4', className)}>
-      <span className={cn(LOGO_BOX, imageClassName)} style={{ height: display.height }}>
-        <img src={logoUrl} alt={hospitalName} className="h-full w-auto max-w-full" style={{ objectFit: display.fit }} />
+      <span className={cn(LOGO_BOX, imageClassName)} style={{ width: display.width, height: display.height }}>
+        <img src={logoUrl} alt={hospitalName} className="h-full w-full" style={{ objectFit: display.fit }} />
       </span>
       {showName && (
         <span

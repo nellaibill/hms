@@ -3,8 +3,9 @@ export type BrandingLogoSlotDto = 'primary' | 'compact' | 'login' | 'print' | 'f
 
 /** Mirrors HMS.Modules.Branding.Contracts.LogoSlotDisplay. */
 export interface LogoSlotDisplayDto {
+  width: number;
   height: number;
-  fit: 'contain' | 'scale-down';
+  fit: 'contain' | 'cover' | 'fill';
 }
 
 /** Mirrors HMS.Modules.Branding.Contracts.LogoDisplaySettings. */

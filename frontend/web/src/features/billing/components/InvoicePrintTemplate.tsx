@@ -50,7 +50,7 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
       style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
       <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-4 text-center">
-        <img src={printLogo.url} alt={hospitalName} className="w-auto max-w-[20rem]" style={{ height: printLogo.display.height, objectFit: printLogo.display.fit }} />
+        <img src={printLogo.url} alt={hospitalName} className="max-w-full" style={{ width: printLogo.display.width, height: printLogo.display.height, objectFit: printLogo.display.fit }} />
         <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
         <span className="text-xs text-gray-600">{appTitle}</span>
       </div>

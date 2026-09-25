@@ -35,13 +35,18 @@ export interface BrandingConfig {
 export const LOGO_SLOTS = ['primary', 'compact', 'login', 'print', 'favicon'] as const;
 export type LogoSlot = (typeof LOGO_SLOTS)[number];
 
-/** Non-cropping object-fit modes only — no logo is ever stretched or cut off. */
-export const LOGO_FITS = ['contain', 'scale-down'] as const;
+/** CSS object-fit modes offered per logo. Only `contain` guarantees the image is never
+ * distorted or cropped; `cover` crops to fill the box, `fill` stretches to it. */
+export const LOGO_FITS = ['contain', 'cover', 'fill'] as const;
 export type LogoFit = (typeof LOGO_FITS)[number];
-export const LOGO_FIT_LABELS: Record<LogoFit, string> = { contain: 'Contain', 'scale-down': 'Scale down (never enlarge)' };
+export const LOGO_FIT_LABELS: Record<LogoFit, string> = { contain: 'Contain', cover: 'Cover', fill: 'Fill' };
+
+/** Bounds for the Width/Height inputs — mirror BrandingService's LogoDisplay validation. */
+export const LOGO_DIMENSION_LIMITS = { min: 16, maxWidth: 800, maxHeight: 400 } as const;
 
 export interface LogoSlotDisplay {
-  /** Logo box height in CSS px. */
+  /** Logo box width/height in CSS px — independent, no aspect lock. */
+  width: number;
   height: number;
   fit: LogoFit;
 }
@@ -52,15 +57,14 @@ export interface LogoDisplaySettings {
   slots: Record<LogoSlot, LogoSlotDisplay>;
 }
 
-/** Where each slot's logo shows up, and the display heights offered for it. The Primary
- * logo's heights are capped at the top bar's own 64px height (h-16), so a configured size can
- * never make the header taller. */
-export const LOGO_SLOT_META: Record<LogoSlot, { label: string; usage: string; heights: readonly number[]; configKey: LogoUrlKey }> = {
-  primary: { label: 'Primary Logo', usage: 'Used in application header', heights: [32, 40, 48, 56, 64], configKey: 'logoUrl' },
-  compact: { label: 'Compact Logo', usage: 'Used in collapsed sidebar / mobile', heights: [24, 32, 40], configKey: 'compactLogoUrl' },
-  login: { label: 'Login Logo', usage: 'Used in login screen', heights: [40, 48, 64, 80, 96], configKey: 'loginLogoUrl' },
-  print: { label: 'Print Logo', usage: 'Used in invoices, reports, prescriptions and certificates', heights: [40, 48, 64, 72, 80], configKey: 'printLogoUrl' },
-  favicon: { label: 'Favicon', usage: 'Used in browser tab', heights: [32], configKey: 'faviconUrl' },
+/** Where each slot's logo shows up. Surfaces with a fixed size (the 64px top bar) still clamp
+ * a configured width/height to their own box, so no setting can change the header layout. */
+export const LOGO_SLOT_META: Record<LogoSlot, { label: string; usage: string; configKey: LogoUrlKey }> = {
+  primary: { label: 'Primary Logo', usage: 'Used in application header', configKey: 'logoUrl' },
+  compact: { label: 'Compact Logo', usage: 'Used in collapsed sidebar / mobile', configKey: 'compactLogoUrl' },
+  login: { label: 'Login Logo', usage: 'Used in login screen', configKey: 'loginLogoUrl' },
+  print: { label: 'Print Logo', usage: 'Used in invoices, reports, prescriptions and certificates', configKey: 'printLogoUrl' },
+  favicon: { label: 'Favicon', usage: 'Used in browser tab', configKey: 'faviconUrl' },
 };
 
 export type LogoUrlKey = 'logoUrl' | 'compactLogoUrl' | 'loginLogoUrl' | 'printLogoUrl' | 'faviconUrl';
@@ -68,11 +72,11 @@ export type LogoUrlKey = 'logoUrl' | 'compactLogoUrl' | 'loginLogoUrl' | 'printL
 export const DEFAULT_LOGO_DISPLAY: LogoDisplaySettings = {
   usePrimaryAsFallback: true,
   slots: {
-    primary: { height: 64, fit: 'contain' },
-    compact: { height: 40, fit: 'contain' },
-    login: { height: 40, fit: 'contain' },
-    print: { height: 64, fit: 'contain' },
-    favicon: { height: 32, fit: 'contain' },
+    primary: { width: 180, height: 40, fit: 'contain' },
+    compact: { width: 48, height: 48, fit: 'contain' },
+    login: { width: 220, height: 60, fit: 'contain' },
+    print: { width: 220, height: 60, fit: 'contain' },
+    favicon: { width: 32, height: 32, fit: 'contain' },
   },
 };
 
