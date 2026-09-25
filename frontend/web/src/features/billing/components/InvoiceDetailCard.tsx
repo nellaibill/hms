@@ -47,7 +47,7 @@ export function InvoiceDetailCard({
           </span>
           <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
             <CardTitle className="text-lg">
-              <PatientNameLink patientId={billing.patientId}>{billing.patientName}</PatientNameLink>{' '}
+              <PatientNameLink patientId={billing.patientId} tab="billing">{billing.patientName}</PatientNameLink>{' '}
               <span className="font-normal text-muted-foreground">· {billing.patientUhid}</span>
             </CardTitle>
             <CardDescription>

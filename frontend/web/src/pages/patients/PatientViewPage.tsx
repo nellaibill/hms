@@ -1,12 +1,24 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { PatientDetails, PatientSummaryCard, usePatientQuery } from '../../features/patients';
 
 export default function PatientViewPage() {
   const { id } = useParams<{ id: string }>();
   const { data: patient, isPending, isError } = usePatientQuery(id);
-  const [activeTab, setActiveTab] = useState('overview');
+  // The active tab lives in ?tab= so a link can land on a specific tab (e.g. the Billing tab)
+  // and Back from an invoice/lab order opened from Billing or Timeline returns to that tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') ?? 'overview';
+  const setActiveTab = (tab: string) =>
+    setSearchParams(
+      (params) => {
+        const next = new URLSearchParams(params);
+        if (tab === 'overview') next.delete('tab');
+        else next.set('tab', tab);
+        return next;
+      },
+      { replace: true },
+    );
 
   if (isPending) {
     return (
