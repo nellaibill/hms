@@ -9,7 +9,7 @@ import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Field } from '@/features/patients/components/FormSection';
-import { consultantsApi, consultationTypesApi } from '@/services/apiClient';
+import { consultationTypesApi } from '@/services/apiClient';
 import { isConsultationEntryActive } from '../billingActivity';
 import { getServicePrice, type BillingService } from '../billingCatalog';
 import { formatCurrency } from '../billingCalculations';
@@ -255,27 +255,6 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
     queryFn: () => consultationTypesApi.getConsultationTypes({ pageSize: 100, isActive: true }),
   });
 
-  // Same query key ConsultantSelect uses for its own list, so switching consultants within an
-  // already-loaded department is a cache read too — just here to read the selected consultant's
-  // own Consultation Types (Masters → Consultant Edit) so this row only offers types this
-  // specific doctor actually does, instead of every active type hospital-wide.
-  const { data: consultants } = useQuery({
-    queryKey: ['consultants', 'select-list', departmentId],
-    queryFn: () => consultantsApi.getConsultants({ pageSize: 100, isActive: true, departmentId }),
-    enabled: Boolean(departmentId),
-  });
-  const selectedConsultant = consultants?.items.find((c) => c.id === consultantId);
-  const allowedConsultationTypeIds = selectedConsultant?.consultationTypeCharges.map((c) => c.consultationTypeId);
-
-  // A consultant's previously-picked type can fall out of scope when the consultant itself
-  // changes (or is cleared) — mirrors Department→Consultant's identical clearing just below.
-  useEffect(() => {
-    if (consultationTypeId && allowedConsultationTypeIds && !allowedConsultationTypeIds.includes(consultationTypeId)) {
-      setValue(`${basePath}.consultationTypeId`, '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consultantId]);
-
   const selectedType = consultationTypes?.items.find((t) => t.id === consultationTypeId);
   // Types like "Doctor's Consultation - Others/On-call" have no fixed master amount (amount:
   // null, "Amount to be filled" — see ConsultationTypeSelect) — the charge field stays editable
@@ -370,7 +349,10 @@ function ConsultationBillingRow({ index, showRemove, onRemove, isLast }: Consult
                 id={`${basePath}-type`}
                 value={field.value}
                 onValueChange={field.onChange}
-                allowedIds={allowedConsultationTypeIds}
+                // Scoped to this consultant's own Consultation Types, and cleared when the
+                // consultant changes — see ConsultationTypeSelect.
+                departmentId={departmentId || undefined}
+                consultantId={consultantId || undefined}
               />
             )}
           />

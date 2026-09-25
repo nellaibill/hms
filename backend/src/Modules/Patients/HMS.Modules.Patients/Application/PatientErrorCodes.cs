@@ -19,6 +19,7 @@ internal static class PatientErrorCodes
     public const string InvalidConsultant = "PATIENTS.INVALID_CONSULTANT";
     public const string InvalidAppointmentType = "PATIENTS.INVALID_APPOINTMENT_TYPE";
     public const string InvalidConsultationType = "PATIENTS.INVALID_CONSULTATION_TYPE";
+    public const string ConsultationTypeNotOffered = "PATIENTS.CONSULTATION_TYPE_NOT_OFFERED";
     public const string ConsultationNotFound = "PATIENTS.CONSULTATION_NOT_FOUND";
     public const string InvalidStatusTransition = "PATIENTS.INVALID_STATUS_TRANSITION";
 

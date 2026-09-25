@@ -79,6 +79,17 @@ internal class PatientVisitService : IPatientVisitService
                 {
                     return Result<PatientVisitResponse>.Failure(PatientErrorCodes.InvalidConsultationType, $"Consultation type '{line.ConsultationTypeId}' was not found.");
                 }
+
+                // The consultant's own Consultation Types (Masters → Consultant Edit) are the one
+                // source of truth for which types can be booked with them — the same rule the
+                // Registration, Add Visit and Billing pickers apply, enforced here so no page (or
+                // direct API call) can record a type the doctor doesn't offer.
+                if (!consultant.Value!.ConsultationTypeCharges.Any(c => c.ConsultationTypeId == line.ConsultationTypeId.Value))
+                {
+                    return Result<PatientVisitResponse>.Failure(
+                        PatientErrorCodes.ConsultationTypeNotOffered,
+                        $"{consultant.Value.Name} does not offer '{consultationType.Value!.Name}'. Pick one of the consultant's consultation types (Masters → Consultants).");
+                }
             }
         }
 

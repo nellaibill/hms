@@ -40,7 +40,12 @@ public class PatientVisitServiceTests
         _departmentService.GetByIdAsync(DepartmentId, Arg.Any<CancellationToken>())
             .Returns(Result<DepartmentResponse>.Success(new DepartmentResponse { Id = DepartmentId }));
         _consultantService.GetByIdAsync(ConsultantId, Arg.Any<CancellationToken>())
-            .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse { Id = ConsultantId }));
+            .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse
+            {
+                Id = ConsultantId,
+                Name = "Dr. Karthikeyan",
+                ConsultationTypeCharges = [new ConsultationTypeChargeDto(ConsultationTypeId, null)],
+            }));
         _appointmentTypeService.GetByIdAsync(AppointmentTypeId, Arg.Any<CancellationToken>())
             .Returns(Result<AppointmentTypeResponse>.Success(new AppointmentTypeResponse { Id = AppointmentTypeId }));
         _consultationTypeService.GetByIdAsync(ConsultationTypeId, Arg.Any<CancellationToken>())
@@ -55,6 +60,24 @@ public class PatientVisitServiceTests
             ? consultations
             : [new VisitConsultationRequest { DepartmentId = DepartmentId, ConsultantId = ConsultantId, ConsultationTypeId = ConsultationTypeId }],
     };
+
+    [Fact]
+    public async Task CreateAsync_WithAConsultationTypeTheConsultantDoesNotOffer_FailsAndSavesNothing()
+    {
+        var otherTypeId = Guid.NewGuid();
+        _consultationTypeService.GetByIdAsync(otherTypeId, Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultationTypeResponse>.Success(new ConsultationTypeResponse { Id = otherTypeId, Name = "Emergency / Casualty" }));
+
+        var result = await _sut.CreateAsync(
+            PatientId,
+            NewRequest(new VisitConsultationRequest { DepartmentId = DepartmentId, ConsultantId = ConsultantId, ConsultationTypeId = otherTypeId }),
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.ConsultationTypeNotOffered);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<PatientVisit>(), Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task CreateAsync_WithValidRequest_CreatesVisitAndReturnsSuccess()

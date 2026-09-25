@@ -409,6 +409,7 @@ export function PatientRegistrationForm({
   const isDayCareOrObservation = encounterType === 'DayCare' || encounterType === 'Observation';
   const showReferralColumn = isIpOrEmergency || isDayCareOrObservation;
   const registrationDepartmentId = watch('registration.departmentId');
+  const registrationConsultantId = watch('registration.consultantId');
   const state = watch('state');
 
   // A consultant picked under the previous department is meaningless once the department
@@ -1291,7 +1292,13 @@ export function PatientRegistrationForm({
                 name="registration.consultationTypeId"
                 control={control}
                 render={({ field }) => (
-                  <ConsultationTypeSelect id="consultationType" value={field.value ?? ''} onValueChange={field.onChange} />
+                  <ConsultationTypeSelect
+                    id="consultationType"
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                    departmentId={registrationDepartmentId}
+                    consultantId={registrationConsultantId}
+                  />
                 )}
               />
             </Field>
@@ -1479,6 +1486,8 @@ function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsult
           id={`additional-consultation-type-${index}`}
           value={consultationTypeField.field.value ?? ''}
           onValueChange={consultationTypeField.field.onChange}
+          departmentId={departmentField.field.value || undefined}
+          consultantId={consultantField.field.value || undefined}
         />
       </Field>
       <Button type="button" variant="ghost" size="icon" aria-label={`Remove consultant ${index + 2}`} onClick={onRemove}>
