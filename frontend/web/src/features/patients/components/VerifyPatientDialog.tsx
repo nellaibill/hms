@@ -5,15 +5,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 interface VerifyPatientDialogProps {
   patient: Patient;
+  /** What's being blocked, completing "before ___" in the dialog copy — e.g. "adding a visit". */
+  action: string;
   onCancel: () => void;
 }
 
-/** Blocks "Add Visit" for a patient still flagged Patient.requiresDataVerification (placeholder
+/** Blocks an action (Add Visit, OPD Billing) for a patient still flagged Patient.requiresDataVerification (placeholder
  * data from bulk import) — recording a visit against unverified demographics/contact details
  * would carry that bad data straight into billing/OPD/IPD, so this is a hard stop rather than
  * just a warning banner: the only way out is Edit Patient (which clears the flag on save) or
- * Cancel. See PatientSummaryCard's Add Visit button, the only entry point into this flow. */
-export function VerifyPatientDialog({ patient, onCancel }: VerifyPatientDialogProps) {
+ * Cancel. Used by PatientSummaryCard's Add Visit button and InvoiceCreatePage's patient picker. */
+export function VerifyPatientDialog({ patient, action, onCancel }: VerifyPatientDialogProps) {
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent role="alertdialog" aria-labelledby="verify-patient-title">
@@ -24,7 +26,7 @@ export function VerifyPatientDialog({ patient, onCancel }: VerifyPatientDialogPr
               {patient.firstName} {patient.lastName}
             </strong>{' '}
             (UHID {patient.uhid}) still has placeholder data from import. Please edit and verify the patient's
-            details before adding a visit.
+            details before {action}.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

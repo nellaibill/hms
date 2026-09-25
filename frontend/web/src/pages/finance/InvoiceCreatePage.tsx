@@ -32,7 +32,7 @@ import {
   type ConsultationBillingFormValues,
   type PaymentMethod,
 } from '../../features/billing';
-import { usePatientVisitsQuery } from '../../features/patients';
+import { usePatientVisitsQuery, VerifyPatientDialog } from '../../features/patients';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 /**
@@ -62,6 +62,11 @@ function describeSaveError(error: unknown): string {
  */
 export default function InvoiceCreatePage() {
   const [patient, setPatient] = useState<Patient | null>(null);
+  // A patient still flagged requiresDataVerification (placeholder data from bulk import) is
+  // never allowed to become `patient` — billing would carry that bad data into the invoice.
+  // The picker selection is parked here instead and VerifyPatientDialog sends the receptionist
+  // to Edit Patient; saveInvoice re-checks the flag too as a backstop.
+  const [unverifiedPatient, setUnverifiedPatient] = useState<Patient | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveErrorDetails, setSaveErrorDetails] = useState<string[]>([]);
   const billingRef = useRef<BillingStepHandle>(null);
@@ -260,8 +265,20 @@ export default function InvoiceCreatePage() {
     await saveInvoice(values);
   }
 
+  function handleSelectPatient(selected: Patient) {
+    if (selected.requiresDataVerification) {
+      setUnverifiedPatient(selected);
+      return;
+    }
+    setPatient(selected);
+  }
+
   async function saveInvoice(values: BillingFormValues) {
     if (!patient) return;
+    if (patient.requiresDataVerification) {
+      setSaveError('This patient must be verified before billing — edit and verify the patient details first.');
+      return;
+    }
     try {
       // Use the patient's actual visit (populates Registration Type/Department/Consultant(s)
       // on the Recent Patient Bills ledger via the Billing↔Patients join in
@@ -341,7 +358,7 @@ export default function InvoiceCreatePage() {
             this same BillingStep component in the registration wizard. */}
         <div className="flex w-full flex-col gap-4">
           {!patient ? (
-            <PatientPicker onSelect={setPatient} />
+            <PatientPicker onSelect={handleSelectPatient} />
           ) : (
             <>
               <Card>
@@ -425,6 +442,10 @@ export default function InvoiceCreatePage() {
           )}
         </div>
       </div>
+
+      {unverifiedPatient && (
+        <VerifyPatientDialog patient={unverifiedPatient} action="billing" onCancel={() => setUnverifiedPatient(null)} />
+      )}
 
       <Dialog open={showUnsavedDialog} onOpenChange={(open) => !open && handleCancelDiscard()}>
         <DialogContent aria-labelledby="discard-invoice-title">
