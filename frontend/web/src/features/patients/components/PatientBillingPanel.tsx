@@ -314,7 +314,11 @@ function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
           </thead>
           <tbody>
             {items.map((item, index) => {
-              const { serviceLabel, consultantName } = describeBillingItem(item);
+              const described = describeBillingItem(item);
+              const serviceLabel = described.serviceLabel;
+              // describeBillingItem uses '—' as its "no consultant" placeholder (Pharmacy,
+              // InpatientCharge, lines billed without a doctor) — don't render it as a sub-line.
+              const consultantName = described.consultantName === '—' ? '' : described.consultantName;
               return (
                 <tr key={item.id} className="border-b border-border last:border-b-0">
                   <td className="px-3 py-2 text-muted-foreground">{index + 1}</td>
