@@ -12,4 +12,5 @@ internal static class BillingErrorCodes
     public const string HasPayments = "BILLING.HAS_PAYMENTS";
     public const string PaymentAmountMismatch = "BILLING.PAYMENT_AMOUNT_MISMATCH";
     public const string ConsultationChargeMismatch = "BILLING.CONSULTATION_CHARGE_MISMATCH";
+    public const string ConsultationTypeNotOffered = "BILLING.CONSULTATION_TYPE_NOT_OFFERED";
 }

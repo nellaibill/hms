@@ -141,6 +141,37 @@ internal class InvoiceService : IInvoiceService
         return Result.Success();
     }
 
+    /// <summary>
+    /// A Consultation line's type must be one its consultant offers (Masters → Consultant Edit →
+    /// Consultation Types) — the same rule the Registration, Add Visit and Billing pickers apply
+    /// in the UI. Lines whose ConsultantId/ServiceId aren't ids, or whose consultant can't be
+    /// found, are left alone, same as ValidateConsultationChargesAsync above.
+    /// </summary>
+    private async Task<Result> ValidateConsultationTypesOfferedAsync(IReadOnlyCollection<CreateInvoiceLineItemRequest> items, CancellationToken cancellationToken)
+    {
+        foreach (var item in items.Where(i => i.BillingType == BillingType.Consultation))
+        {
+            if (!Guid.TryParse(item.ServiceId, out var consultationTypeId) || !Guid.TryParse(item.ConsultantId, out var consultantId))
+            {
+                continue;
+            }
+
+            var consultant = await _consultantService.GetByIdAsync(consultantId, cancellationToken);
+            if (!consultant.IsSuccess || consultant.Value!.ConsultationTypeCharges.Any(c => c.ConsultationTypeId == consultationTypeId))
+            {
+                continue;
+            }
+
+            var consultationType = await _consultationTypeService.GetByIdAsync(consultationTypeId, cancellationToken);
+            var typeName = consultationType.IsSuccess ? consultationType.Value!.Name : item.ServiceId;
+            return Result.Failure(
+                BillingErrorCodes.ConsultationTypeNotOffered,
+                $"{consultant.Value.Name} does not offer '{typeName}'. Pick one of the consultant's consultation types (Masters → Consultants).");
+        }
+
+        return Result.Success();
+    }
+
     public async Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, CancellationToken cancellationToken)
     {
         var utcNow = DateTime.UtcNow;
@@ -175,6 +206,12 @@ internal class InvoiceService : IInvoiceService
         if (!chargeCheck.IsSuccess)
         {
             return Result<InvoiceResponse>.Failure(chargeCheck.ErrorCode!, chargeCheck.Error!);
+        }
+
+        var offeredCheck = await ValidateConsultationTypesOfferedAsync(request.Items, cancellationToken);
+        if (!offeredCheck.IsSuccess)
+        {
+            return Result<InvoiceResponse>.Failure(offeredCheck.ErrorCode!, offeredCheck.Error!);
         }
 
         var invoiceNumber = await _numberGenerator.NextInvoiceNumberAsync(cancellationToken);

@@ -109,6 +109,50 @@ public class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithAConsultationTypeTheConsultantDoesNotOffer_FailsAndSavesNothing()
+    {
+        var typeId = Guid.NewGuid();
+        var consultantId = Guid.NewGuid();
+        GivenConsultationType(typeId, 250m);
+        _consultantService.GetByIdAsync(consultantId, Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse
+            {
+                Id = consultantId,
+                Name = "Dr. Karthikeyan",
+                ConsultationTypeCharges = [new ConsultationTypeChargeDto(Guid.NewGuid(), null)],
+            }));
+        var request = ConsultationRequest(typeId, 250m);
+        request = request with { Items = [request.Items[0] with { ConsultantId = consultantId.ToString() }] };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.ConsultationTypeNotOffered);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAConsultationTypeTheConsultantOffers_Succeeds()
+    {
+        var typeId = Guid.NewGuid();
+        var consultantId = Guid.NewGuid();
+        GivenConsultationType(typeId, 250m);
+        _consultantService.GetByIdAsync(consultantId, Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse
+            {
+                Id = consultantId,
+                Name = "Dr. Karthikeyan",
+                ConsultationTypeCharges = [new ConsultationTypeChargeDto(typeId, 150m)],
+            }));
+        var request = ConsultationRequest(typeId, 250m);
+        request = request with { Items = [request.Items[0] with { ConsultantId = consultantId.ToString() }] };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task CreateAsync_WithConsultationChargeEqualToTheTypesFixedFee_Succeeds()
     {
         var typeId = Guid.NewGuid();
