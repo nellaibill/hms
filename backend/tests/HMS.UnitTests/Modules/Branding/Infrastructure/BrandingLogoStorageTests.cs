@@ -51,7 +51,7 @@ public class BrandingLogoStorageTests : IDisposable
 
         var relativePath = await _sut.SaveAsync("logo.png", content, CancellationToken.None);
 
-        relativePath.Should().StartWith($"uploads/branding/{tenantId}/logo/");
+        relativePath.Should().StartWith($"uploads/Tenant/{tenantId}/branding/logo/");
         var fullPath = Path.Combine(_contentRoot, "wwwroot", relativePath.Replace('/', Path.DirectorySeparatorChar));
         File.Exists(fullPath).Should().BeTrue();
     }

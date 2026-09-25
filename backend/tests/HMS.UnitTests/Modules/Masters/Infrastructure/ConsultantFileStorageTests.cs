@@ -53,8 +53,8 @@ public class ConsultantFileStorageTests : IDisposable
 
         var relativePath = await _sut.SavePhotoAsync(consultantId, "photo.jpg", content, CancellationToken.None);
 
-        relativePath.Should().Be($"uploads/consultants/{tenantId}/{consultantId}.jpg");
-        var fullPath = Path.Combine(_contentRoot, "wwwroot", "uploads", "consultants", tenantId.ToString(), $"{consultantId}.jpg");
+        relativePath.Should().Be($"uploads/Tenant/{tenantId}/consultants/{consultantId}.jpg");
+        var fullPath = Path.Combine(_contentRoot, "wwwroot", "uploads", "Tenant", tenantId.ToString(), "consultants", $"{consultantId}.jpg");
         File.Exists(fullPath).Should().BeTrue();
     }
 
@@ -80,8 +80,8 @@ public class ConsultantFileStorageTests : IDisposable
             await _sut.SavePhotoAsync(consultantId, "photo.jpg", contentB, CancellationToken.None);
         }
 
-        var pathA = Path.Combine(_contentRoot, "wwwroot", "uploads", "consultants", tenantA.ToString(), $"{consultantId}.jpg");
-        var pathB = Path.Combine(_contentRoot, "wwwroot", "uploads", "consultants", tenantB.ToString(), $"{consultantId}.jpg");
+        var pathA = Path.Combine(_contentRoot, "wwwroot", "uploads", "Tenant", tenantA.ToString(), "consultants", $"{consultantId}.jpg");
+        var pathB = Path.Combine(_contentRoot, "wwwroot", "uploads", "Tenant", tenantB.ToString(), "consultants", $"{consultantId}.jpg");
 
         File.ReadAllBytes(pathA).Should().Equal(1);
         File.ReadAllBytes(pathB).Should().Equal(2);

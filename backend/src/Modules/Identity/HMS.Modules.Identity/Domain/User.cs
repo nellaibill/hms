@@ -73,7 +73,7 @@ internal class User : Entity
     public DateTime? LockedOutUntil { get; private set; }
 
     /// <summary>
-    /// Relative path under wwwroot (e.g. "uploads/users/{id}.jpg"), written only via
+    /// Relative path under wwwroot (e.g. "uploads/Tenant/{tenantId}/users/{id}.jpg"), written only via
     /// <see cref="SetProfilePhoto"/>. Null until an admin uploads one from the User Details
     /// page — never set at creation time (see UsersController.UploadProfilePhoto).
     /// </summary>

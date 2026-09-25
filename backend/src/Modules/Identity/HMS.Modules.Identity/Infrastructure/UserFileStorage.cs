@@ -13,7 +13,10 @@ namespace HMS.Modules.Identity.Infrastructure;
 /// and a re-upload simply overwrites it in place. Scoped under the caller's own
 /// <see cref="ITenantContext.TenantId"/> — this app is database-per-tenant but a single
 /// shared filesystem/process, so without this every hospital's user photos would sit in one
-/// shared directory tree (see docs/DecisionLog.md ADR-083).
+/// shared directory tree (see docs/DecisionLog.md ADR-083). Stored tenant-first —
+/// "uploads/Tenant/{tenantId}/users/…" — alongside every other upload kind's own subfolder
+/// under that same tenant folder, rather than the kind-first "uploads/users/{tenantId}/…"
+/// layout this replaced.
 /// </summary>
 internal class UserFileStorage : IUserFileStorage
 {
@@ -22,7 +25,7 @@ internal class UserFileStorage : IUserFileStorage
 
     public UserFileStorage(IHostEnvironment environment, ITenantContext tenantContext)
     {
-        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "users");
+        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "Tenant");
         _tenantContext = tenantContext;
     }
 
@@ -30,7 +33,7 @@ internal class UserFileStorage : IUserFileStorage
     {
         var tenantId = _tenantContext.TenantId
             ?? throw new InvalidOperationException("UserFileStorage reached without a resolved tenant.");
-        var directory = Path.Combine(_rootPath, tenantId.ToString());
+        var directory = Path.Combine(_rootPath, tenantId.ToString(), "users");
         Directory.CreateDirectory(directory);
 
         // Only the extension is taken from the caller-supplied file name — the stored name
@@ -45,6 +48,6 @@ internal class UserFileStorage : IUserFileStorage
             await content.CopyToAsync(fileStream, cancellationToken);
         }
 
-        return Path.Combine("uploads", "users", tenantId.ToString(), storedFileName).Replace('\\', '/');
+        return Path.Combine("uploads", "Tenant", tenantId.ToString(), "users", storedFileName).Replace('\\', '/');
     }
 }

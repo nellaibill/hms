@@ -10,7 +10,10 @@ namespace HMS.Modules.Products.Infrastructure;
 /// file-upload pattern (see docs/DecisionLog.md's file-upload ADR). Scoped under the
 /// caller's own <see cref="ITenantContext.TenantId"/> — this app is database-per-tenant but
 /// a single shared filesystem/process, so without this every hospital's product images would
-/// sit in one shared directory tree (see docs/DecisionLog.md ADR-083).
+/// sit in one shared directory tree (see docs/DecisionLog.md ADR-083). Stored tenant-first —
+/// "uploads/Tenant/{tenantId}/products/{productId}/images/…" — alongside every other upload
+/// kind's own subfolder under that same tenant folder, rather than the kind-first
+/// "uploads/products/{tenantId}/…" layout this replaced.
 /// </summary>
 internal class ProductImageStorage : IProductImageStorage
 {
@@ -19,7 +22,7 @@ internal class ProductImageStorage : IProductImageStorage
 
     public ProductImageStorage(IHostEnvironment environment, ITenantContext tenantContext)
     {
-        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "products");
+        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "Tenant");
         _tenantContext = tenantContext;
     }
 
@@ -27,7 +30,7 @@ internal class ProductImageStorage : IProductImageStorage
     {
         var tenantId = _tenantContext.TenantId
             ?? throw new InvalidOperationException("ProductImageStorage reached without a resolved tenant.");
-        var directory = Path.Combine(_rootPath, tenantId.ToString(), productId.ToString(), "images");
+        var directory = Path.Combine(_rootPath, tenantId.ToString(), "products", productId.ToString(), "images");
         Directory.CreateDirectory(directory);
 
         // Only the extension is taken from the caller-supplied file name — the stored
@@ -42,6 +45,6 @@ internal class ProductImageStorage : IProductImageStorage
             await content.CopyToAsync(fileStream, cancellationToken);
         }
 
-        return Path.Combine("uploads", "products", tenantId.ToString(), productId.ToString(), "images", storedFileName).Replace('\\', '/');
+        return Path.Combine("uploads", "Tenant", tenantId.ToString(), "products", productId.ToString(), "images", storedFileName).Replace('\\', '/');
     }
 }
