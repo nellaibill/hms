@@ -49,7 +49,7 @@ export function TopHeader() {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="flex flex-col bg-sidebar p-0">
           <div className="flex h-16 items-center border-b border-border px-4">
-            <HospitalLogo />
+            <HospitalLogo imageClassName="max-h-12 max-w-48" />
           </div>
           {/* Extra bottom clearance (well beyond safe-area-inset-bottom alone) — a mobile
               browser's own bottom toolbar isn't covered by the safe-area env vars, only
@@ -65,11 +65,11 @@ export function TopHeader() {
           below 2xl this block is just the logo, which keeps its size so it never overlaps the
           icon row — the logo itself steps down in size instead (imageClassName). */}
       <div className="flex shrink-0 items-center gap-3 2xl:min-w-0 2xl:shrink">
-        {/* Bigger than HospitalLogo's own default box (h-10 max-w-32) — a wordmark-style logo
-            (wide, short — the bundled default is 699x138px) barely reads at that size. Sized to
-            reach the header's own height for a typical wordmark logo; object-contain still
-            protects a differently-shaped upload from ever being stretched or cropped. */}
-        <HospitalLogo invert showName={false} imageClassName="h-10 max-w-32 sm:h-12 sm:max-w-48 xl:h-16 xl:max-w-80" />
+        {/* The configured Primary logo height (Logo Configuration) is clamped by these caps,
+            which never exceed the header's own h-16 — so no logo or configured size can make
+            the top bar taller. Below sm the Compact logo (square/icon-style) is shown instead. */}
+        <HospitalLogo slot="compact" className="sm:hidden" invert showName={false} imageClassName="max-h-10 max-w-32" />
+        <HospitalLogo className="hidden sm:flex" invert showName={false} imageClassName="max-h-12 max-w-48 xl:max-h-16 xl:max-w-80" />
         <span className="hidden min-w-0 truncate text-base font-bold leading-tight tracking-tight text-header-foreground 2xl:inline 2xl:text-lg">
           {appTitle}
         </span>

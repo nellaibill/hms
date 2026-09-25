@@ -1,4 +1,5 @@
 import { branding } from '@/config/branding';
+import { useBrandLogo } from '@/features/branding/brandLogo';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
@@ -25,6 +26,8 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
   const { user } = useAuth();
   const hospitalName = brandingConfig?.hospitalName ?? branding.hospitalName;
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
+  // The configured Print logo, else the Primary logo, else the bundled default.
+  const printLogo = useBrandLogo('print');
 
   // Same reference-cache priming InvoiceDetailCard does — kept here too so this template
   // resolves real names even if it's ever rendered without that card mounted alongside it.
@@ -47,6 +50,7 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
       style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
       <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-4 text-center">
+        <img src={printLogo.url} alt={hospitalName} className="max-w-full" style={{ width: printLogo.display.width, height: printLogo.display.height, objectFit: printLogo.display.fit }} />
         <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
         <span className="text-xs text-gray-600">{appTitle}</span>
       </div>

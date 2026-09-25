@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { applyBrandingTokens } from '@/lib/apply-branding';
+import { resolveBrandLogoUrl } from '@/features/branding/brandLogo';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 
 type Theme = 'light' | 'dark';
@@ -34,6 +35,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, theme);
     applyBrandingTokens(theme, brandingConfig);
   }, [theme, brandingConfig]);
+
+  // Configured Favicon (else the Primary logo when it's the fallback). No fallback to the
+  // bundled wordmark — it's unreadable at 16px — so with nothing configured the browser keeps
+  // its default tab icon, as before this setting existed.
+  const faviconUrl = resolveBrandLogoUrl(brandingConfig, 'favicon', null);
+  useEffect(() => {
+    let link = document.querySelector<HTMLLinkElement>('link#hms-favicon');
+    if (!faviconUrl) {
+      link?.remove();
+      return;
+    }
+    if (!link) {
+      link = document.createElement('link');
+      link.id = 'hms-favicon';
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = faviconUrl;
+  }, [faviconUrl]);
 
   const setTheme = (next: Theme) => setThemeState(next);
   const toggleTheme = () => setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));

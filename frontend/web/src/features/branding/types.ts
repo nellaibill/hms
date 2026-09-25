@@ -12,8 +12,16 @@ export interface BrandingConfig {
    * Consultation report) — optional, unlike hospitalName/appTitle. */
   address: string;
   phoneNumber: string;
-  /** data: URI in the mock store; a server-relative URL once a backend exists. Null = no custom logo uploaded. */
+  /** The Primary logo (application header, and the fallback for every other slot — see
+   * logoDisplay.usePrimaryAsFallback). data: URI in the mock store; an absolute API URL
+   * otherwise. Null = no custom logo uploaded. */
   logoUrl: string | null;
+  /** Per-surface logos (see LOGO_SLOTS) — null = not configured, falls back per resolveBrandLogoUrl. */
+  compactLogoUrl: string | null;
+  loginLogoUrl: string | null;
+  printLogoUrl: string | null;
+  faviconUrl: string | null;
+  logoDisplay: LogoDisplaySettings;
   fontFamily: FontFamily;
   fontSizeScale: FontSizeScale;
   iconSizeScale: IconSizeScale;
@@ -21,6 +29,56 @@ export interface BrandingConfig {
   tokensLight: Record<string, string>;
   tokensDark: Record<string, string>;
 }
+
+/** Mirrors HMS.Modules.Branding.Contracts.BrandingLogoSlots — the `slot` of POST/DELETE
+ * api/v1/branding/logo. */
+export const LOGO_SLOTS = ['primary', 'compact', 'login', 'print', 'favicon'] as const;
+export type LogoSlot = (typeof LOGO_SLOTS)[number];
+
+/** CSS object-fit modes offered per logo. Only `contain` guarantees the image is never
+ * distorted or cropped; `cover` crops to fill the box, `fill` stretches to it. */
+export const LOGO_FITS = ['contain', 'cover', 'fill'] as const;
+export type LogoFit = (typeof LOGO_FITS)[number];
+export const LOGO_FIT_LABELS: Record<LogoFit, string> = { contain: 'Contain', cover: 'Cover', fill: 'Fill' };
+
+/** Bounds for the Width/Height inputs — mirror BrandingService's LogoDisplay validation. */
+export const LOGO_DIMENSION_LIMITS = { min: 16, maxWidth: 800, maxHeight: 400 } as const;
+
+export interface LogoSlotDisplay {
+  /** Logo box width/height in CSS px — independent, no aspect lock. */
+  width: number;
+  height: number;
+  fit: LogoFit;
+}
+
+export interface LogoDisplaySettings {
+  /** When on, a slot with no logo of its own shows the Primary logo before the bundled default. */
+  usePrimaryAsFallback: boolean;
+  slots: Record<LogoSlot, LogoSlotDisplay>;
+}
+
+/** Where each slot's logo shows up. Surfaces with a fixed size (the 64px top bar) still clamp
+ * a configured width/height to their own box, so no setting can change the header layout. */
+export const LOGO_SLOT_META: Record<LogoSlot, { label: string; usage: string; configKey: LogoUrlKey }> = {
+  primary: { label: 'Primary Logo', usage: 'Used in application header', configKey: 'logoUrl' },
+  compact: { label: 'Compact Logo', usage: 'Used in collapsed sidebar / mobile', configKey: 'compactLogoUrl' },
+  login: { label: 'Login Logo', usage: 'Used in login screen', configKey: 'loginLogoUrl' },
+  print: { label: 'Print Logo', usage: 'Used in invoices, reports, prescriptions and certificates', configKey: 'printLogoUrl' },
+  favicon: { label: 'Favicon', usage: 'Used in browser tab', configKey: 'faviconUrl' },
+};
+
+export type LogoUrlKey = 'logoUrl' | 'compactLogoUrl' | 'loginLogoUrl' | 'printLogoUrl' | 'faviconUrl';
+
+export const DEFAULT_LOGO_DISPLAY: LogoDisplaySettings = {
+  usePrimaryAsFallback: true,
+  slots: {
+    primary: { width: 180, height: 40, fit: 'contain' },
+    compact: { width: 48, height: 48, fit: 'contain' },
+    login: { width: 220, height: 60, fit: 'contain' },
+    print: { width: 220, height: 60, fit: 'contain' },
+    favicon: { width: 32, height: 32, fit: 'contain' },
+  },
+};
 
 export const FONT_FAMILIES = ['Inter', 'Roboto', 'OpenSans', 'Lato', 'Poppins'] as const;
 export type FontFamily = (typeof FONT_FAMILIES)[number];

@@ -1,6 +1,6 @@
 import { branding } from '@/config/branding';
 import { contrastForeground } from '@/lib/color';
-import type { BrandingConfig } from './types';
+import { DEFAULT_LOGO_DISPLAY, type BrandingConfig } from './types';
 
 const STORAGE_KEY = 'hms-branding-config';
 
@@ -106,6 +106,11 @@ function defaultConfig(): BrandingConfig {
     address: '',
     phoneNumber: '',
     logoUrl: null,
+    compactLogoUrl: null,
+    loginLogoUrl: null,
+    printLogoUrl: null,
+    faviconUrl: null,
+    logoDisplay: DEFAULT_LOGO_DISPLAY,
     fontFamily: 'Inter',
     fontSizeScale: 'md',
     iconSizeScale: 'md',
@@ -139,6 +144,36 @@ function writeStored(config: BrandingConfig): void {
   } catch {
     // localStorage unavailable/quota exceeded — config still lives in memory
     // for the rest of this session via the in-flight promise chain/query cache.
+  }
+}
+
+const REMEMBERED_LOGOS_KEY = 'hms-branding-logos';
+
+type RememberedLogos = Pick<BrandingConfig, 'logoUrl' | 'loginLogoUrl' | 'faviconUrl' | 'logoDisplay'>;
+
+/** Remembers the logos the pre-login screen needs (Login logo, its Primary fallback, the
+ * favicon) from the last signed-in branding fetch in this browser — the branding API needs a
+ * tenant JWT, so the login page can't fetch them itself. Only public static-file URLs. */
+export function rememberLogos(config: BrandingConfig): void {
+  const remembered: RememberedLogos = {
+    logoUrl: config.logoUrl,
+    loginLogoUrl: config.loginLogoUrl,
+    faviconUrl: config.faviconUrl,
+    logoDisplay: config.logoDisplay,
+  };
+  try {
+    localStorage.setItem(REMEMBERED_LOGOS_KEY, JSON.stringify(remembered));
+  } catch {
+    // localStorage unavailable — the login screen just shows the bundled default logo.
+  }
+}
+
+export function readRememberedLogos(): Partial<RememberedLogos> {
+  try {
+    const raw = localStorage.getItem(REMEMBERED_LOGOS_KEY);
+    return raw ? (JSON.parse(raw) as Partial<RememberedLogos>) : {};
+  } catch {
+    return {};
   }
 }
 

@@ -54,7 +54,7 @@ export default function ChangePasswordPage() {
 
       <Card className="relative w-full max-w-md shadow-soft-lg">
         <CardHeader className="items-center text-center">
-          <HospitalLogo className="mb-2" showName={false} />
+          <HospitalLogo slot="login" className="mb-2" showName={false} imageClassName="max-h-24 max-w-80" />
           <CardTitle className="mt-2">Change your password</CardTitle>
           <CardDescription>
             For security, you must set a new password before continuing — the one you signed in with was chosen by

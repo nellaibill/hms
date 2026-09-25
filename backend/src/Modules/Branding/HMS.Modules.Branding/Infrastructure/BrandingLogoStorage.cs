@@ -1,4 +1,5 @@
 using HMS.Modules.Branding.Application.Abstractions;
+using HMS.Modules.Branding.Contracts;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.Hosting;
 
@@ -25,11 +26,13 @@ internal class BrandingLogoStorage : IBrandingLogoStorage
         _tenantContext = tenantContext;
     }
 
-    public async Task<string> SaveAsync(string fileName, Stream content, CancellationToken cancellationToken)
+    public async Task<string> SaveAsync(string fileName, Stream content, CancellationToken cancellationToken, string slot = BrandingLogoSlots.Primary)
     {
+        // Primary keeps the original "logo" folder so existing stored paths stay where they are.
+        var folder = slot == BrandingLogoSlots.Primary ? "logo" : slot;
         var tenantId = _tenantContext.TenantId
             ?? throw new InvalidOperationException("BrandingLogoStorage reached without a resolved tenant.");
-        var directory = Path.Combine(_rootPath, tenantId.ToString(), "logo");
+        var directory = Path.Combine(_rootPath, tenantId.ToString(), folder);
         Directory.CreateDirectory(directory);
 
         // Only the extension is taken from the caller-supplied file name — the stored
@@ -44,6 +47,6 @@ internal class BrandingLogoStorage : IBrandingLogoStorage
             await content.CopyToAsync(fileStream, cancellationToken);
         }
 
-        return Path.Combine("uploads", "branding", tenantId.ToString(), "logo", storedFileName).Replace('\\', '/');
+        return Path.Combine("uploads", "branding", tenantId.ToString(), folder, storedFileName).Replace('\\', '/');
     }
 }

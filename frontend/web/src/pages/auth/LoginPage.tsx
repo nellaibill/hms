@@ -104,7 +104,7 @@ export default function LoginPage() {
               showing it a second time next to the logo also skewed this row off-center
               (a wide fixed-width logo image + separate text block don't read as one
               centered unit the way the logo alone does). */}
-          <HospitalLogo className="mb-2" showName={false} />
+          <HospitalLogo slot="login" className="mb-2" showName={false} imageClassName="max-h-24 max-w-80" />
           <CardTitle className="mt-2">Sign in</CardTitle>
           <CardDescription>{appTitle}</CardDescription>
         </CardHeader>

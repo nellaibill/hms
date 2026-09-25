@@ -1,6 +1,7 @@
-import defaultLogoUrl from '@/assets/logo.png';
 import { branding } from '@/config/branding';
+import { useBrandLogo } from '@/features/branding/brandLogo';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
+import type { LogoSlot } from '@/features/branding/types';
 import { cn } from '@/lib/utils';
 
 interface HospitalLogoProps {
@@ -9,22 +10,21 @@ interface HospitalLogoProps {
   showName?: boolean;
   /** Use on a solid `bg-primary` surface (e.g. the top header) — lightens the system-name text to read on that background. */
   invert?: boolean;
-  /** Overrides the logo-box height/max-width (defaults to `h-10 max-w-32`) — pass Tailwind height/width utilities only; every other constraint (object-contain, overflow-hidden, centering) is fixed and not meant to be overridden per call site. */
+  /** Caps on the logo box (defaults to `max-h-16 max-w-32`) — pass Tailwind max-height/max-width utilities only. The box's actual size is the slot's configured width × height (Theme & Branding → Logo Configuration), clamped by these caps, so a surface with a fixed size (the top bar) can never be grown by a configured size. */
   imageClassName?: string;
+  /** Which configured logo to show — see LOGO_SLOT_META. Falls back to the Primary logo, then the bundled default. */
+  slot?: LogoSlot;
 }
 
 /**
  * Tenants upload logos of wildly different dimensions/aspect ratios/shapes (wide, tall,
  * square, circular) — the box below is a slot every logo scales *inside* of, never the other
- * way around. `max-h-full max-w-full` + `object-contain` (never `object-cover`) means the
- * image is clamped down to fit without ever being stretched, cropped, or allowed to grow the
- * box — a tiny logo just renders at its natural size, centered, rather than being blown up
- * and blurred. `overflow-hidden` on the box is a safety net for any image whose intrinsic
+ * way around. The box is the slot's configured width × height, capped by `imageClassName`'s
+ * max-h/max-w; the image fills it with the configured object-fit ("contain" — the default —
+ * never distorts or crops; "cover"/"fill" are the admin's explicit choice) and can never grow
+ * the box. `overflow-hidden` on the box is a safety net for any image whose intrinsic
  * sizing tries to escape the clamp anyway (e.g. an SVG with a `width`/`height` attribute of
  * its own).
- *
- * Width is `w-auto max-w-32`, not a fixed `w-32` — the box hugs whatever the image actually
- * renders at, up to that cap, rather than always claiming the full slot width.
  *
  * Deliberately no background/chip behind the image (tried a white one, then a rounded one —
  * both ended up fighting whatever shape/color the uploaded logo actually was: a visible box
@@ -36,19 +36,19 @@ interface HospitalLogoProps {
  * read against the blue header, which is a property of that specific file, not something a
  * generic wrapper here can fix for every possible upload without breaking some other one.
  */
-const LOGO_BOX = 'flex h-10 w-auto max-w-32 shrink-0 items-center justify-center overflow-hidden';
+const LOGO_BOX = 'flex shrink-0 items-center justify-center overflow-hidden';
 
-export function HospitalLogo({ className, showName = true, invert = false, imageClassName }: HospitalLogoProps) {
+export function HospitalLogo({ className, showName = true, invert = false, imageClassName = 'max-h-16 max-w-32', slot = 'primary' }: HospitalLogoProps) {
   const { data: brandingConfig } = useBrandingQuery();
   const hospitalName = brandingConfig?.hospitalName ?? branding.hospitalName;
   const appTitle = brandingConfig?.appTitle ?? branding.systemName;
-  // Admin-uploaded logo wins; otherwise fall back to the bundled default artwork.
-  const logoUrl = brandingConfig?.logoUrl ?? defaultLogoUrl;
+  // The slot's own upload, else the Primary logo (if enabled as fallback), else the bundled default.
+  const { url: logoUrl, display } = useBrandLogo(slot);
 
   return (
     <div className={cn('flex items-center gap-4', className)}>
-      <span className={cn(LOGO_BOX, imageClassName)}>
-        <img src={logoUrl} alt={hospitalName} className="max-h-full max-w-full object-contain" />
+      <span className={cn(LOGO_BOX, imageClassName)} style={{ width: display.width, height: display.height }}>
+        <img src={logoUrl} alt={hospitalName} className="h-full w-full" style={{ objectFit: display.fit }} />
       </span>
       {showName && (
         <span

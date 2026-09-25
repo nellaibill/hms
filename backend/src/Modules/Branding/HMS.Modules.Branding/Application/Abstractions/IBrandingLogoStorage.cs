@@ -9,5 +9,6 @@ namespace HMS.Modules.Branding.Application.Abstractions;
 /// </summary>
 internal interface IBrandingLogoStorage
 {
-    Task<string> SaveAsync(string fileName, Stream content, CancellationToken cancellationToken);
+    /// <param name="slot">A Contracts.BrandingLogoSlots value — each slot gets its own folder.</param>
+    Task<string> SaveAsync(string fileName, Stream content, CancellationToken cancellationToken, string slot = Contracts.BrandingLogoSlots.Primary);
 }

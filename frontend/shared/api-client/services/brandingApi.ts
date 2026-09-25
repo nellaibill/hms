@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { BrandingConfigDto, UpdateBrandingRequest } from '../../dtos';
+import type { BrandingConfigDto, BrandingLogoSlotDto, UpdateBrandingRequest } from '../../dtos';
 import type { HttpClient } from '../httpClient';
 
 /**
@@ -19,10 +19,17 @@ export class BrandingApi {
     return response.data;
   }
 
-  async uploadLogo(file: File): Promise<BrandingConfigDto> {
+  /** Uploads/replaces one logo slot — `primary` (the original hospital logo) when omitted. */
+  async uploadLogo(file: File, slot: BrandingLogoSlotDto = 'primary'): Promise<BrandingConfigDto> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await this.client.postFormData<BrandingConfigDto>(API_ROUTES.branding.logo, formData);
+    const response = await this.client.postFormData<BrandingConfigDto>(API_ROUTES.branding.logo, formData, { query: { slot } });
+    return response.data;
+  }
+
+  /** Clears one logo slot; the app then falls back per the logo display settings. */
+  async removeLogo(slot: BrandingLogoSlotDto): Promise<BrandingConfigDto> {
+    const response = await this.client.delete<BrandingConfigDto>(API_ROUTES.branding.logo, { query: { slot } });
     return response.data;
   }
 }
