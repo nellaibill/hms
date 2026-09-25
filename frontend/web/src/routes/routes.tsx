@@ -166,7 +166,7 @@ const specialPages: Record<string, React.ReactNode> = {
 // patientReportsRoutes below.
 const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/diagnostics/radiology', '/documents', '/reports', '/admin/activity-log']);
 
-// Document Management, reachable from the '/documents' nav leaf. Route-gated via
+// Document Management — no longer a sidebar item; reachable from TopHeader's Documents icon. Route-gated via
 // RequirePermissionRoute using the nav leaf's own permission ('records-compliance',
 // config/navigation.ts), matching DocumentsController's actual server-side check
 // ('records-compliance.view') — previously relied on nav-level filtering alone.

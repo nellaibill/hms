@@ -20,7 +20,6 @@ import {
   CalendarDays,
   MessageSquare,
   BarChart3,
-  Files,
   type LucideIcon,
 } from 'lucide-react';
 // Flat, two-section Primary Navigation model — Dashboard stands alone at the
@@ -201,17 +200,6 @@ export const navigationTree: NavNode[] = [
     description: 'Certificate issuance and medical records department (MRD) retrieval.',
     permission: 'records-compliance',
     feature: 'records-and-certificates',
-    section: 'Administrative',
-  },
-  {
-    type: 'leaf',
-    label: 'Document Management',
-    path: '/documents',
-    icon: Files,
-    iconColor: 'text-purple-500',
-    description: 'Centralized document repository — upload, preview, download, and archive files for any HMS record.',
-    permission: 'records-compliance',
-    feature: 'documents',
     section: 'Administrative',
   },
   {
