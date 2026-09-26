@@ -14,7 +14,7 @@ internal enum DocumentIndexSkipReason
     NoText,
 }
 
-internal readonly record struct DocumentIndexResult(int ChunkCount, DocumentIndexSkipReason? SkipReason);
+internal readonly record struct DocumentIndexResult(int ChunkCount, DocumentIndexSkipReason? SkipReason, int EmbeddedCount = 0);
 
 internal interface IDocumentIndexer
 {
@@ -22,8 +22,8 @@ internal interface IDocumentIndexer
     IReadOnlyCollection<string> IndexableContentTypes { get; }
 
     /// <summary>(Re)builds the document's chunks from its stored file, replacing any it
-    /// already had. Embeddings are not computed here — chunks are written with a null
-    /// embedding for the embedding step to fill in.</summary>
+    /// already had, then embeds them when embeddings are configured. A failed embedding call
+    /// leaves the chunks stored with a null embedding (EmbeddedCount 0).</summary>
     Task<DocumentIndexResult> IndexAsync(Document document, CancellationToken cancellationToken);
 }
 
@@ -42,12 +42,14 @@ internal class DocumentIndexer : IDocumentIndexer
     private readonly IReadOnlyDictionary<string, IDocumentTextExtractor> _extractorsByContentType;
     private readonly IDocumentFileStorage _fileStorage;
     private readonly IDocumentChunkRepository _chunkRepository;
+    private readonly IDocumentChunkEmbedder _embedder;
     private readonly ILogger<DocumentIndexer> _logger;
 
     public DocumentIndexer(
         IEnumerable<IDocumentTextExtractor> extractors,
         IDocumentFileStorage fileStorage,
         IDocumentChunkRepository chunkRepository,
+        IDocumentChunkEmbedder embedder,
         ILogger<DocumentIndexer> logger)
     {
         _extractorsByContentType = extractors
@@ -55,6 +57,7 @@ internal class DocumentIndexer : IDocumentIndexer
             .ToDictionary(pair => pair.contentType, pair => pair.e, StringComparer.OrdinalIgnoreCase);
         _fileStorage = fileStorage;
         _chunkRepository = chunkRepository;
+        _embedder = embedder;
         _logger = logger;
     }
 
@@ -109,7 +112,9 @@ internal class DocumentIndexer : IDocumentIndexer
             return new DocumentIndexResult(0, DocumentIndexSkipReason.NoText);
         }
 
-        _logger.LogInformation("Document {DocumentId} indexed into {ChunkCount} chunks.", document.Id, chunks.Count);
-        return new DocumentIndexResult(chunks.Count, null);
+        var embedded = await _embedder.EmbedAsync(chunks, cancellationToken);
+
+        _logger.LogInformation("Document {DocumentId} indexed into {ChunkCount} chunks ({EmbeddedCount} embedded).", document.Id, chunks.Count, embedded);
+        return new DocumentIndexResult(chunks.Count, null, embedded);
     }
 }

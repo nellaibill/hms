@@ -8,6 +8,7 @@ using HMS.Modules.Documents.Contracts;
 using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.Documents.Infrastructure.Repositories;
 using HMS.Modules.Documents.Infrastructure.TextExtraction;
+using HMS.Shared.Infrastructure.Ai;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
@@ -53,6 +54,8 @@ public static class DocumentsModule
         // each clean scan (DocumentScanBackgroundService) and via reindex/backfill.
         services.AddScoped<IDocumentChunkRepository, DocumentChunkRepository>();
         services.AddScoped<IDocumentIndexer, DocumentIndexer>();
+        services.AddScoped<IDocumentChunkEmbedder, DocumentChunkEmbedder>();
+        services.AddHmsAiEmbeddings(configuration);
         services.AddSingleton<IDocumentTextExtractor, PdfTextExtractor>();
         services.AddSingleton<IDocumentTextExtractor, DocxTextExtractor>();
         services.AddSingleton<IDocumentTextExtractor, XlsxTextExtractor>();

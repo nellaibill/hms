@@ -48,6 +48,14 @@ public interface IDocumentService
     /// <summary>Indexes up to <paramref name="limit"/> Available documents that have no
     /// chunks yet (documents uploaded before indexing existed), oldest first.</summary>
     Task<Result<DocumentIndexBackfillResponse>> BackfillIndexAsync(DateTime? createdAfter, int limit, DocumentActor actor, CancellationToken cancellationToken);
+
+    /// <summary>Embeds up to <paramref name="limit"/> chunks that have no embedding (or one
+    /// from a different model), e.g. after enabling embeddings or switching model.</summary>
+    Task<Result<DocumentEmbedBackfillResponse>> BackfillEmbeddingsAsync(int limit, DocumentActor actor, CancellationToken cancellationToken);
+
+    /// <summary>Semantic search over embedded chunks, filtered to what the caller may read,
+    /// optionally scoped to one owner (e.g. one patient).</summary>
+    Task<Result<IReadOnlyList<DocumentSearchHitResponse>>> SearchAsync(string query, DocumentOwnerType? ownerType, Guid? ownerId, int limit, DocumentActor actor, CancellationToken cancellationToken);
 }
 
 /// <summary>A resolved, readable document stream plus the metadata a controller needs to

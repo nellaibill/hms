@@ -125,6 +125,10 @@ After the virus scan marks a document `Available`, `DocumentScanBackgroundServic
 - `GET /api/v1/documents/{id}/chunks` (`records-compliance.view`) — the stored chunks, for inspection.
 - `POST /api/v1/documents/{id}/reindex` (`records-compliance.edit`) — rebuild one document's chunks; the response's `skipReason` explains an empty result (`NotAvailable`, `UnsupportedContentType`, `NoText`).
 - `POST /api/v1/documents/index/backfill?limit=100&createdAfter=` (admin only) — index a batch of `Available` documents that have no chunks yet; repeat with the returned `nextCreatedAfter` until it's null.
+- `POST /api/v1/documents/index/embed?limit=100` (admin only) — embed a batch of chunks with no embedding (or one from a different model); repeat while `moreRemaining`.
+- `GET /api/v1/documents/search?q=...&ownerType=Patient&ownerId=...&limit=10` (`records-compliance.view`) — semantic search: embeds the query and returns the nearest chunks (cosine similarity) the caller may read.
+
+**Embeddings** are configured under `Ai:Embeddings` and are off unless `Provider` is set. The only provider today is `HuggingFace`: Hugging Face's hosted Inference API (`BAAI/bge-m3`, 1024 dimensions, token from `Ai:HuggingFace:ApiKey`). Chunks are embedded right after indexing; if the call fails they stay stored with a null embedding for the embed backfill. **The hosted provider sends chunk text to Hugging Face — use it with test/sample data only.** Real patient documents need a local model (e.g. `bge-m3` via Ollama or Hugging Face TEI) before embeddings are enabled in a hospital.
 
 ## pgvector Setup
 
@@ -164,5 +168,5 @@ Do this on every environment **before** deploying the release that adds `AddDocu
 - Replace `NullVirusScanner` with a real engine (e.g. ClamAV) — the interface seam is already in place.
 - Consolidate Patients' `UploadPhoto`/`UploadIdProof` into this module once a migration path for existing uploaded files is designed.
 - Resolve E-MRD and Records & Certificates against this module per the relationship described above.
-- RAG phase 1 remainder: an `IEmbeddingProvider` to fill `document_chunks.embedding` (chunks are currently written with a null embedding), and OCR so images and scanned PDFs get indexed too.
+- RAG phase 1 remainder: a local embedding provider for real patient data, hybrid (vector + keyword) search, and OCR so images and scanned PDFs get indexed too.
 - Document versioning, full-text search/OCR, digital signature, retention-policy automation, bulk upload, a database-backed classification/permission matrix once that infrastructure exists platform-wide.

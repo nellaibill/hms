@@ -17,6 +17,7 @@ public class DocumentIndexerTests
     private readonly IDocumentFileStorage _fileStorage = Substitute.For<IDocumentFileStorage>();
     private readonly IDocumentChunkRepository _chunks = Substitute.For<IDocumentChunkRepository>();
     private readonly IDocumentTextExtractor _pdfExtractor = Substitute.For<IDocumentTextExtractor>();
+    private readonly IDocumentChunkEmbedder _embedder = Substitute.For<IDocumentChunkEmbedder>();
 
     public DocumentIndexerTests()
     {
@@ -25,7 +26,7 @@ public class DocumentIndexerTests
             .Returns(_ => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes("file"))));
     }
 
-    private DocumentIndexer NewIndexer() => new([_pdfExtractor], _fileStorage, _chunks, NullLogger<DocumentIndexer>.Instance);
+    private DocumentIndexer NewIndexer() => new([_pdfExtractor], _fileStorage, _chunks, _embedder, NullLogger<DocumentIndexer>.Instance);
 
     private static Document NewDocument(string contentType = Pdf, bool available = true)
     {
@@ -61,7 +62,8 @@ public class DocumentIndexerTests
 
         var result = await NewIndexer().IndexAsync(document, CancellationToken.None);
 
-        result.Should().Be(new DocumentIndexResult(1, null));
+        result.ChunkCount.Should().Be(1);
+        result.SkipReason.Should().BeNull();
         stored.Should().ContainSingle();
         var chunk = stored![0];
         chunk.SourceId.Should().Be(document.Id);
@@ -120,6 +122,29 @@ public class DocumentIndexerTests
         await NewIndexer().IndexAsync(document, CancellationToken.None);
 
         stored!.Sum(c => c.Content.Length).Should().Be(DocumentIndexer.MaxExtractedChars);
+    }
+
+    [Fact]
+    public async Task IndexAsync_EmbedsTheStoredChunksAndReportsHowManyWereEmbedded()
+    {
+        var document = NewDocument();
+        ExtractedTextIs("HbA1c 8.2% on metformin.");
+        _embedder.EmbedAsync(Arg.Any<IReadOnlyList<DocumentChunk>>(), Arg.Any<CancellationToken>()).Returns(1);
+
+        var result = await NewIndexer().IndexAsync(document, CancellationToken.None);
+
+        result.EmbeddedCount.Should().Be(1);
+        await _embedder.Received(1).EmbedAsync(Arg.Is<IReadOnlyList<DocumentChunk>>(c => c.Count == 1), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task IndexAsync_DoesNotEmbedWhenThereAreNoChunks()
+    {
+        ExtractedTextIs("   ");
+
+        await NewIndexer().IndexAsync(NewDocument(), CancellationToken.None);
+
+        await _embedder.DidNotReceiveWithAnyArgs().EmbedAsync(default!, default);
     }
 
     [Fact]

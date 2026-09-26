@@ -212,6 +212,40 @@ public class DocumentsController : ControllerBase
             : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Embeds one batch of chunks that have no embedding yet (or one from a
+    /// different model). Repeat while MoreRemaining is true.</summary>
+    /// <response code="200">The batch ran.</response>
+    /// <response code="403">The caller isn't an administrator.</response>
+    /// <response code="502">The embedding service call failed.</response>
+    /// <response code="503">Embeddings aren't configured.</response>
+    [RequirePermission("records-compliance.edit")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
+    [HttpPost("index/embed")]
+    public async Task<IActionResult> BackfillEmbeddings([FromQuery] int limit = 100, CancellationToken cancellationToken = default)
+    {
+        var result = await _documentService.BackfillEmbeddingsAsync(limit, GetActor(), cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<DocumentEmbedBackfillResponse> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Semantic search over indexed document text — the chunks closest in meaning
+    /// to <paramref name="q"/>, limited to documents the caller may read. Optionally scoped to
+    /// one owner (e.g. ownerType=Patient&amp;ownerId=...).</summary>
+    /// <response code="200">Matching chunks, most similar first.</response>
+    /// <response code="400">The query is empty.</response>
+    /// <response code="502">The embedding service call failed.</response>
+    /// <response code="503">Embeddings aren't configured.</response>
+    [RequirePermission("records-compliance.view")]
+    [HttpGet("search")]
+    public async Task<IActionResult> Search([FromQuery] string q, [FromQuery] DocumentOwnerType? ownerType, [FromQuery] Guid? ownerId, [FromQuery] int limit = 10, CancellationToken cancellationToken = default)
+    {
+        var result = await _documentService.SearchAsync(q, ownerType, ownerId, limit, GetActor(), cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<IReadOnlyList<DocumentSearchHitResponse>> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     /// <summary>Reads the authenticated caller's identity off the validated JWT (US-2) — see
     /// DocumentActor's remarks for why "LoginType," not the freeform "RoleName," is the claim
     /// used to drive access decisions.</summary>
@@ -241,6 +275,8 @@ public class DocumentsController : ControllerBase
             DocumentErrorCodes.Forbidden => StatusCodes.Status403Forbidden,
             DocumentErrorCodes.NotAvailable => StatusCodes.Status409Conflict,
             DocumentErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
+            DocumentErrorCodes.EmbeddingsNotConfigured => StatusCodes.Status503ServiceUnavailable,
+            DocumentErrorCodes.EmbeddingFailed => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest,
         };
 

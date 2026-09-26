@@ -11,4 +11,7 @@ internal static class DocumentErrorCodes
     public const string OwnerNotFound = "DOCUMENTS.OWNER_NOT_FOUND";
     public const string Forbidden = "DOCUMENTS.FORBIDDEN";
     public const string NotAvailable = "DOCUMENTS.CONTENT_NOT_AVAILABLE";
+    public const string InvalidQuery = "DOCUMENTS.INVALID_SEARCH_QUERY";
+    public const string EmbeddingsNotConfigured = "DOCUMENTS.EMBEDDINGS_NOT_CONFIGURED";
+    public const string EmbeddingFailed = "DOCUMENTS.EMBEDDING_FAILED";
 }

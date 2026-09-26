@@ -19,6 +19,7 @@ public record DocumentIndexResponse
 {
     public Guid DocumentId { get; init; }
     public int ChunkCount { get; init; }
+    public int EmbeddedCount { get; init; }
     public string? SkipReason { get; init; }
 }
 
@@ -32,4 +33,27 @@ public record DocumentIndexBackfillResponse
     public int Skipped { get; init; }
     public int Failed { get; init; }
     public DateTime? NextCreatedAfter { get; init; }
+}
+
+/// <summary>Outcome of one embed-backfill batch (chunks with no embedding, or one from a
+/// different model than the configured one).</summary>
+public record DocumentEmbedBackfillResponse
+{
+    public int Processed { get; init; }
+    public int Embedded { get; init; }
+    public string Model { get; init; } = string.Empty;
+    public bool MoreRemaining { get; init; }
+}
+
+/// <summary>One semantic-search hit (GET /api/v1/documents/search). <see cref="Similarity"/>
+/// is 1 − cosine distance: closer to 1 means closer in meaning.</summary>
+public record DocumentSearchHitResponse
+{
+    public Guid DocumentId { get; init; }
+    public string OriginalFileName { get; init; } = string.Empty;
+    public DocumentOwnerType OwnerType { get; init; }
+    public Guid OwnerId { get; init; }
+    public int ChunkIndex { get; init; }
+    public string Content { get; init; } = string.Empty;
+    public double Similarity { get; init; }
 }

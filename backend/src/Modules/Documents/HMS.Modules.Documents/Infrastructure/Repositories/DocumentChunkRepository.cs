@@ -2,6 +2,8 @@ using HMS.Modules.Documents.Application.Abstractions;
 using HMS.Modules.Documents.Contracts;
 using HMS.Modules.Documents.Domain;
 using Microsoft.EntityFrameworkCore;
+using Pgvector;
+using Pgvector.EntityFrameworkCore;
 
 namespace HMS.Modules.Documents.Infrastructure.Repositories;
 
@@ -58,4 +60,41 @@ internal class DocumentChunkRepository : IDocumentChunkRepository
 
         return rows.Select(r => (r.Id, r.CreatedAt)).ToList();
     }
+
+    public async Task<IReadOnlyList<DocumentChunk>> GetUnembeddedAsync(string model, int limit, CancellationToken cancellationToken)
+        => await _dbContext.DocumentChunks
+            .Where(c => c.Embedding == null || c.EmbeddingModel != model)
+            .OrderBy(c => c.CreatedAt)
+            .ThenBy(c => c.ChunkIndex)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ChunkSearchHit>> SearchAsync(Vector query, string model, DocumentOwnerType? ownerType, Guid? ownerId, int limit, CancellationToken cancellationToken)
+    {
+        var chunks = _dbContext.DocumentChunks.AsNoTracking()
+            .Where(c => c.Embedding != null && c.EmbeddingModel == model);
+
+        if (ownerType is not null)
+        {
+            chunks = chunks.Where(c => c.OwnerType == ownerType.Value);
+        }
+
+        if (ownerId is not null)
+        {
+            chunks = chunks.Where(c => c.OwnerId == ownerId.Value);
+        }
+
+        // The join also applies Documents' soft-delete query filter, as a second guard on top
+        // of chunks being hard-deleted with their document.
+        var rows = await chunks
+            .Join(_dbContext.Documents, c => c.SourceId, d => d.Id, (c, d) => new { Chunk = c, d.OriginalFileName })
+            .OrderBy(r => r.Chunk.Embedding!.CosineDistance(query))
+            .Select(r => new { r.Chunk, r.OriginalFileName, Distance = r.Chunk.Embedding!.CosineDistance(query) })
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(r => new ChunkSearchHit(r.Chunk, r.OriginalFileName, r.Distance)).ToList();
+    }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
 }
