@@ -47,10 +47,16 @@ function errorMessage(error: unknown): { title: string; detail: string } {
   return { title: 'Search failed', detail: 'Couldn’t reach the server. Check your connection and try again.' };
 }
 
-/** Wraps the question's words (3+ letters) in <mark> — semantic matches often won't contain
- * them, but when they do it shows the doctor where to look. */
+/** Question words too common to be worth highlighting in a passage. */
+const STOP_WORDS = new Set([
+  'and', 'the', 'for', 'with', 'was', 'were', 'are', 'has', 'had', 'have', 'any', 'all', 'from', 'this', 'that', 'there',
+  'what', 'which', 'when', 'who', 'how', 'did', 'does', 'given', 'show', 'list', 'latest', 'last', 'patient', 'results',
+]);
+
+/** Wraps the question's meaningful words (3+ letters, not stop words) in <mark> — semantic
+ * matches often won't contain them, but when they do it shows the doctor where to look. */
 function highlight(text: string, question: string): ReactNode {
-  const words = [...new Set(question.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? [])];
+  const words = [...new Set(question.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? [])].filter((word) => !STOP_WORDS.has(word));
   if (words.length === 0) return text;
   const pattern = new RegExp(`(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'giu');
   return text.split(pattern).map((part, i) =>
