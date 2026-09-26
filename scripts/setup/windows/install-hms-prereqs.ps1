@@ -42,7 +42,7 @@ $packages = @(
     'git',
     'dotnet-10.0-sdk',   # .NET 10 SDK - matches Directory.Build.props TargetFramework net10.0
     'nodejs-lts',        # Node.js 20.x LTS - matches frontend/web/Dockerfile's node:20-alpine
-    'postgresql16',      # matches docker-compose.yml's postgres:16-alpine
+    'postgresql16',      # matches docker-compose.yml's Postgres 16 (pgvector must be built separately — docs/modules/Documents/DocumentManagement.md)
     'vscode'             # optional editor; skip if you already have Visual Studio 2022
 )
 

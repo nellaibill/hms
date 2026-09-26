@@ -1,4 +1,5 @@
 using HMS.Modules.Documents.Application.Abstractions;
+using HMS.Modules.Documents.Application.Indexing;
 using HMS.Modules.Documents.Domain;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.DependencyInjection;
@@ -85,5 +86,26 @@ internal class DocumentScanBackgroundService : BackgroundService
         }
 
         await repository.SaveChangesAsync(cancellationToken);
+
+        if (result.Outcome == ScanOutcome.Clean)
+        {
+            await IndexAsync(scope.ServiceProvider, document, cancellationToken);
+        }
+    }
+
+    /// <summary>RAG indexing (extract → chunk → store) right after a clean scan. Separate
+    /// from, and after, the Available status save: an indexing failure only means the
+    /// document isn't searchable yet (the reindex/backfill endpoints can retry it) — it must
+    /// never hold the document back from being viewable/downloadable.</summary>
+    private async Task IndexAsync(IServiceProvider services, Document document, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await services.GetRequiredService<IDocumentIndexer>().IndexAsync(document, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to index document {DocumentId} for search; it stays Available but unindexed.", document.Id);
+        }
     }
 }

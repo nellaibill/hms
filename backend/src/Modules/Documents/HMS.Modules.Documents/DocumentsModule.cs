@@ -1,13 +1,17 @@
 using FluentValidation;
 using HMS.Modules.Documents.Application;
 using HMS.Modules.Documents.Application.Abstractions;
+using HMS.Modules.Documents.Application.Indexing;
 using HMS.Modules.Documents.Application.Security;
 using HMS.Modules.Documents.Application.Validators;
 using HMS.Modules.Documents.Contracts;
 using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.Documents.Infrastructure.Repositories;
+using HMS.Modules.Documents.Infrastructure.TextExtraction;
+using HMS.Shared.Infrastructure.Ai;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,6 +41,7 @@ public static class DocumentsModule
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", DocumentsDbContext.SchemaName);
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
+                npgsql.UseVector();
             });
         });
 
@@ -44,6 +49,16 @@ public static class DocumentsModule
         services.AddScoped<IDocumentFileStorage, DocumentFileStorage>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IDocumentAccessPolicy, DocumentAccessPolicy>();
+
+        // RAG phase 1: extract -> chunk -> store into documents.document_chunks, run after
+        // each clean scan (DocumentScanBackgroundService) and via reindex/backfill.
+        services.AddScoped<IDocumentChunkRepository, DocumentChunkRepository>();
+        services.AddScoped<IDocumentIndexer, DocumentIndexer>();
+        services.AddScoped<IDocumentChunkEmbedder, DocumentChunkEmbedder>();
+        services.AddHmsAiEmbeddings(configuration);
+        services.AddSingleton<IDocumentTextExtractor, PdfTextExtractor>();
+        services.AddSingleton<IDocumentTextExtractor, DocxTextExtractor>();
+        services.AddSingleton<IDocumentTextExtractor, XlsxTextExtractor>();
 
         // Scan pipeline (US-9): one queue for the process's lifetime, one background reader,
         // and the stub scan engine — see NullVirusScanner's remarks.
