@@ -72,6 +72,25 @@ public class TextChunkerTests
     }
 
     [Fact]
+    public void Chunk_OverlapsWithTheLastWordsWhenAWholeParagraphIsTooLongToRepeat()
+    {
+        // Each paragraph (~300 chars) is far over the 80-char overlap budget — the shape of
+        // a PDF page — so the overlap has to come from the end of the previous paragraph.
+        var paragraphs = Enumerable.Range(1, 6).Select(i => string.Join(' ', Enumerable.Range(1, 50).Select(w => $"p{i}w{w:D2}"))).ToList();
+
+        var chunks = TextChunker.Chunk(string.Join("\n\n", paragraphs), maxTokens: 100, overlapTokens: 20);
+
+        chunks.Should().HaveCountGreaterThan(1);
+        chunks.Should().OnlyContain(c => c.Content.Length <= 100 * 4);
+        for (var i = 1; i < chunks.Count; i++)
+        {
+            var carried = chunks[i].Content.Split('\n')[0];
+            carried.Length.Should().BeInRange(1, 20 * 4);
+            chunks[i - 1].Content.Should().EndWith(carried);
+        }
+    }
+
+    [Fact]
     public void Chunk_BreaksAnOversizedParagraphAtSentencesThenWhitespace()
     {
         var sentence = Words(30) + ".";

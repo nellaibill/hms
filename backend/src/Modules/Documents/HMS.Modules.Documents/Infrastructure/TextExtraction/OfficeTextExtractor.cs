@@ -42,9 +42,10 @@ internal class DocxTextExtractor : IDocumentTextExtractor
 }
 
 /// <summary>
-/// Excel (.xlsx) cell values, one row per line with cells tab-separated and a heading per
-/// sheet, so a row's values stay together in one chunk. Uses each cell's formatted value
-/// (what a person sees), not raw formulas.
+/// Excel (.xlsx) cell values, one row per line with cells separated by " | " and a heading
+/// per sheet, so a row's values stay together in one chunk. " | " rather than a tab because
+/// the chunker collapses horizontal whitespace, which would run the columns together. Uses
+/// each cell's formatted value (what a person sees), not raw formulas.
 /// </summary>
 internal class XlsxTextExtractor : IDocumentTextExtractor
 {
@@ -63,7 +64,7 @@ internal class XlsxTextExtractor : IDocumentTextExtractor
             foreach (var row in sheet.RowsUsed())
             {
                 var values = row.CellsUsed().Select(cell => cell.GetFormattedString().Trim()).Where(value => value.Length > 0);
-                var line = string.Join('\t', values);
+                var line = string.Join(" | ", values);
                 if (line.Length > 0)
                 {
                     text.AppendLine(line);

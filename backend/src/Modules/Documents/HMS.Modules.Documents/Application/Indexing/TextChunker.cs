@@ -128,11 +128,18 @@ internal static partial class TextChunker
         }
     }
 
-    /// <summary>The trailing units of the chunk just closed, up to the overlap budget, so
-    /// context spanning a boundary is retrievable from either side. Dropped entirely when
-    /// even the overlap plus the next unit wouldn't fit in one chunk.</summary>
+    /// <summary>The tail of the chunk just closed, up to the overlap budget, so context
+    /// spanning a boundary is retrievable from either side: whole trailing units where they
+    /// fit, otherwise the last unit's final words (a long paragraph — typical of PDF pages —
+    /// would otherwise leave no overlap at all). Dropped entirely when even the overlap plus
+    /// the next unit wouldn't fit in one chunk.</summary>
     private static (List<string> Units, int Length) CarryOverlap(List<string> previous, int overlapChars, int nextUnitLength, int maxChars)
     {
+        if (overlapChars == 0 || previous.Count == 0)
+        {
+            return ([], 0);
+        }
+
         var carried = new List<string>();
         var length = 0;
         for (var i = previous.Count - 1; i >= 0; i--)
@@ -147,7 +154,31 @@ internal static partial class TextChunker
             length += added;
         }
 
+        if (carried.Count == 0)
+        {
+            var tail = WordTail(previous[^1], overlapChars);
+            if (tail.Length > 0)
+            {
+                carried.Add(tail);
+                length = tail.Length;
+            }
+        }
+
         return length + 1 + nextUnitLength > maxChars ? ([], 0) : (carried, length);
+    }
+
+    /// <summary>At most <paramref name="maxChars"/> from the end of <paramref name="text"/>,
+    /// starting at a word boundary.</summary>
+    private static string WordTail(string text, int maxChars)
+    {
+        if (text.Length <= maxChars)
+        {
+            return text;
+        }
+
+        var start = text.Length - maxChars;
+        var space = text.IndexOfAny([' ', '\n'], start);
+        return space < 0 ? string.Empty : text[(space + 1)..].Trim();
     }
 
     private static TextChunk Build(int index, List<string> units)

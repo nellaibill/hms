@@ -46,7 +46,7 @@ public class TextExtractorTests
     }
 
     [Fact]
-    public async Task Xlsx_ExtractsEachSheetsRowsAsTabSeparatedLines()
+    public async Task Xlsx_ExtractsEachSheetsRowsAsPipeSeparatedLines()
     {
         using var xlsx = new MemoryStream();
         using (var workbook = new XLWorkbook())
@@ -62,6 +62,6 @@ public class TextExtractorTests
         xlsx.Position = 0;
         var text = await new XlsxTextExtractor().ExtractAsync(xlsx, CancellationToken.None);
 
-        text.Should().Contain("Sheet: Labs").And.Contain("Test\tResult").And.Contain("HbA1c\t8.2");
+        text.Should().Contain("Sheet: Labs").And.Contain("Test | Result").And.Contain("HbA1c | 8.2");
     }
 }
