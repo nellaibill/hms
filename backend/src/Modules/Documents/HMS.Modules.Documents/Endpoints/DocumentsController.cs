@@ -168,6 +168,50 @@ public class DocumentsController : ControllerBase
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Lists the RAG chunks indexing produced for a document, in order — for checking
+    /// what search will see. The embedding vector itself isn't returned.</summary>
+    /// <response code="200">The document's chunks (empty if it isn't indexed).</response>
+    /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
+    [RequirePermission("records-compliance.view")]
+    [HttpGet("{id:guid}/chunks")]
+    public async Task<IActionResult> GetChunks(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _documentService.GetChunksAsync(id, GetActor(), cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<IReadOnlyList<DocumentChunkResponse>> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Re-extracts and re-chunks one document now, replacing its chunks.</summary>
+    /// <response code="200">Indexing ran; SkipReason says why if it produced no chunks.</response>
+    /// <response code="403">The caller may not modify documents for this owner type.</response>
+    /// <response code="404">No document was found.</response>
+    [RequirePermission("records-compliance.edit")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
+    [HttpPost("{id:guid}/reindex")]
+    public async Task<IActionResult> Reindex(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _documentService.ReindexAsync(id, GetActor(), cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<DocumentIndexResponse> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Indexes one batch of Available documents that have no chunks yet (uploads from
+    /// before indexing existed). Repeat with the returned NextCreatedAfter until it's null.</summary>
+    /// <response code="200">The batch ran.</response>
+    /// <response code="403">The caller isn't an administrator.</response>
+    [RequirePermission("records-compliance.edit")]
+    [EnableRateLimiting(RateLimitingPolicyNames.Write)]
+    [HttpPost("index/backfill")]
+    public async Task<IActionResult> BackfillIndex([FromQuery] DateTime? createdAfter, [FromQuery] int limit = 100, CancellationToken cancellationToken = default)
+    {
+        var result = await _documentService.BackfillIndexAsync(createdAfter, limit, GetActor(), cancellationToken);
+        return result.IsSuccess
+            ? Ok(new ApiResponse<DocumentIndexBackfillResponse> { Data = result.Value })
+            : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     /// <summary>Reads the authenticated caller's identity off the validated JWT (US-2) — see
     /// DocumentActor's remarks for why "LoginType," not the freeform "RoleName," is the claim
     /// used to drive access decisions.</summary>

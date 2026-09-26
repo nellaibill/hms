@@ -68,6 +68,8 @@ internal class DocumentAccessPolicy : IDocumentAccessPolicy
 
     public bool CanWrite(DocumentActor actor, DocumentOwnerType ownerType) => HasOwnerTypeAccess(actor, ownerType);
 
+    public bool CanManageIndex(DocumentActor actor) => IsBypass(actor);
+
     private static bool HasOwnerTypeAccess(DocumentActor actor, DocumentOwnerType ownerType)
     {
         if (IsBypass(actor))

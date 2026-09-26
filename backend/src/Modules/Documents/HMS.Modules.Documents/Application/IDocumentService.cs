@@ -37,6 +37,17 @@ public interface IDocumentService
     /// unfiltered by any access policy (a cross-module count, not a per-caller document list)
     /// — mirrors GetSummaryAsync's own "repository-wide" framing.</summary>
     Task<int> GetExpiringDocumentCountAsync(DocumentOwnerType ownerType, int withinDays, CancellationToken cancellationToken);
+
+    /// <summary>The document's stored RAG chunks, in order, after the same read check as
+    /// GetByIdAsync.</summary>
+    Task<Result<IReadOnlyList<DocumentChunkResponse>>> GetChunksAsync(Guid id, DocumentActor actor, CancellationToken cancellationToken);
+
+    /// <summary>Re-extracts and re-chunks one document now, replacing its chunks.</summary>
+    Task<Result<DocumentIndexResponse>> ReindexAsync(Guid id, DocumentActor actor, CancellationToken cancellationToken);
+
+    /// <summary>Indexes up to <paramref name="limit"/> Available documents that have no
+    /// chunks yet (documents uploaded before indexing existed), oldest first.</summary>
+    Task<Result<DocumentIndexBackfillResponse>> BackfillIndexAsync(DateTime? createdAfter, int limit, DocumentActor actor, CancellationToken cancellationToken);
 }
 
 /// <summary>A resolved, readable document stream plus the metadata a controller needs to

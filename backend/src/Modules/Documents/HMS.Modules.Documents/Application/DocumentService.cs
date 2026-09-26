@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using HMS.Modules.Documents.Application.Abstractions;
+using HMS.Modules.Documents.Application.Indexing;
 using HMS.Modules.Documents.Application.Mapping;
 using HMS.Modules.Documents.Application.Security;
 using HMS.Modules.Documents.Application.Validation;
@@ -29,7 +30,11 @@ internal class DocumentService : IDocumentService
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
 
+    private const int MaxBackfillBatch = 500;
+
     private readonly IDocumentRepository _repository;
+    private readonly IDocumentChunkRepository _chunkRepository;
+    private readonly IDocumentIndexer _indexer;
     private readonly IDocumentFileStorage _fileStorage;
     private readonly IDocumentAccessPolicy _accessPolicy;
     private readonly IDocumentScanQueue _scanQueue;
@@ -40,6 +45,8 @@ internal class DocumentService : IDocumentService
 
     public DocumentService(
         IDocumentRepository repository,
+        IDocumentChunkRepository chunkRepository,
+        IDocumentIndexer indexer,
         IDocumentFileStorage fileStorage,
         IDocumentAccessPolicy accessPolicy,
         IDocumentScanQueue scanQueue,
@@ -49,6 +56,8 @@ internal class DocumentService : IDocumentService
         ILogger<DocumentService> logger)
     {
         _repository = repository;
+        _chunkRepository = chunkRepository;
+        _indexer = indexer;
         _fileStorage = fileStorage;
         _accessPolicy = accessPolicy;
         _scanQueue = scanQueue;
@@ -212,6 +221,10 @@ internal class DocumentService : IDocumentService
         document.SoftDelete(actor.UserId);
         await _repository.SaveChangesAsync(cancellationToken);
 
+        // Unlike the document row and file, its RAG chunks are removed outright: a deleted
+        // document's text must never come back in a search result.
+        await _chunkRepository.DeleteForSourceAsync(DocumentChunkSourceType.Document, document.Id, cancellationToken);
+
         _logger.LogInformation("Document {DocumentId} soft-deleted by {UserId}", document.Id, actor.UserId);
 
         return Result.Success();
@@ -249,5 +262,93 @@ internal class DocumentService : IDocumentService
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return _repository.GetExpiringCountAsync(ownerType, today, today.AddDays(withinDays), cancellationToken);
+    }
+
+    public async Task<Result<IReadOnlyList<DocumentChunkResponse>>> GetChunksAsync(Guid id, DocumentActor actor, CancellationToken cancellationToken)
+    {
+        var document = await _repository.GetByIdAsync(id, cancellationToken);
+        if (document is null || !_accessPolicy.CanRead(actor, document.OwnerType, document.Classification))
+        {
+            return Result<IReadOnlyList<DocumentChunkResponse>>.Failure(DocumentErrorCodes.NotFound, $"Document '{id}' was not found.");
+        }
+
+        var chunks = await _chunkRepository.GetForSourceAsync(DocumentChunkSourceType.Document, id, cancellationToken);
+        return Result<IReadOnlyList<DocumentChunkResponse>>.Success(chunks.Select(c => c.ToResponse()).ToList());
+    }
+
+    public async Task<Result<DocumentIndexResponse>> ReindexAsync(Guid id, DocumentActor actor, CancellationToken cancellationToken)
+    {
+        var document = await _repository.GetByIdAsync(id, cancellationToken);
+        if (document is null)
+        {
+            return Result<DocumentIndexResponse>.Failure(DocumentErrorCodes.NotFound, $"Document '{id}' was not found.");
+        }
+
+        if (!_accessPolicy.CanWrite(actor, document.OwnerType))
+        {
+            return Result<DocumentIndexResponse>.Failure(DocumentErrorCodes.Forbidden, "You do not have permission to reindex documents for this record type.");
+        }
+
+        var result = await _indexer.IndexAsync(document, cancellationToken);
+        return Result<DocumentIndexResponse>.Success(new DocumentIndexResponse
+        {
+            DocumentId = id,
+            ChunkCount = result.ChunkCount,
+            SkipReason = result.SkipReason?.ToString(),
+        });
+    }
+
+    public async Task<Result<DocumentIndexBackfillResponse>> BackfillIndexAsync(DateTime? createdAfter, int limit, DocumentActor actor, CancellationToken cancellationToken)
+    {
+        if (!_accessPolicy.CanManageIndex(actor))
+        {
+            return Result<DocumentIndexBackfillResponse>.Failure(DocumentErrorCodes.Forbidden, "Only administrators can run the document index backfill.");
+        }
+
+        var batchSize = Math.Clamp(limit, 1, MaxBackfillBatch);
+        var pending = await _chunkRepository.GetUnindexedDocumentsAsync(_indexer.IndexableContentTypes, createdAfter, batchSize, cancellationToken);
+
+        int indexed = 0, chunksCreated = 0, skipped = 0, failed = 0;
+        foreach (var (documentId, _) in pending)
+        {
+            try
+            {
+                var document = await _repository.GetByIdAsync(documentId, cancellationToken);
+                if (document is null)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var result = await _indexer.IndexAsync(document, cancellationToken);
+                if (result.ChunkCount > 0)
+                {
+                    indexed++;
+                    chunksCreated += result.ChunkCount;
+                }
+                else
+                {
+                    skipped++;
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // One unreadable/corrupt file mustn't stop the rest of the batch.
+                failed++;
+                _logger.LogError(ex, "Backfill failed to index document {DocumentId}.", documentId);
+            }
+        }
+
+        _logger.LogInformation("Document index backfill by {UserId}: {Processed} processed, {Indexed} indexed, {Skipped} skipped, {Failed} failed.", actor.UserId, pending.Count, indexed, skipped, failed);
+
+        return Result<DocumentIndexBackfillResponse>.Success(new DocumentIndexBackfillResponse
+        {
+            Processed = pending.Count,
+            Indexed = indexed,
+            ChunksCreated = chunksCreated,
+            Skipped = skipped,
+            Failed = failed,
+            NextCreatedAfter = pending.Count == batchSize ? pending[^1].CreatedAt : null,
+        });
     }
 }

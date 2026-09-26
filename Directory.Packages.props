@@ -34,8 +34,13 @@
     <!-- Validation -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
 
-    <!-- Excel parsing (Patient Import module only) -->
+    <!-- Excel parsing (Patient Import, and Documents' RAG text extraction) -->
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
+
+    <!-- Documents' RAG text extraction: PDF text (PdfPig) and .docx (OpenXml; also what
+         ClosedXML itself sits on, so this pin must stay within ClosedXML's [3.1.1, 4.0.0)). -->
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
+    <PackageVersion Include="DocumentFormat.OpenXml" Version="3.5.1" />
 
     <!-- Image decoding (Branding module only) — confirms an uploaded logo's actual content
          decodes as a real raster image and reads its real pixel dimensions, rather than
