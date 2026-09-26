@@ -20,10 +20,16 @@ public class DocumentsDbContext : DbContext
     // property would be a CS0053 accessibility violation. The context itself stays public
     // (HMS.Api's Program.cs resolves it by type for the startup migration call).
     internal DbSet<Document> Documents => Set<Document>();
+    internal DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);
+        // pgvector, for document_chunks.embedding. Emitted by the migration as CREATE
+        // EXTENSION IF NOT EXISTS, which needs a superuser the first time, so it's expected to
+        // be pre-installed per database (and in template1 for newly provisioned tenants).
+        // See docs/modules/Documents/DocumentManagement.md's pgvector setup section.
+        modelBuilder.HasPostgresExtension("vector");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocumentsDbContext).Assembly);
     }
 }

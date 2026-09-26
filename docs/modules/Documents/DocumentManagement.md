@@ -41,6 +41,8 @@ Implemented, priority-ordered (see the originating architecture review for full 
 
 `Status` (Pending/Available/Quarantined) is the state the asynchronous scan pipeline (US-9) drives — content is only downloadable once `Available`.
 
+`DocumentChunk` (`documents.document_chunks`) is the RAG retrieval table: one row per slice of extracted text, with `SourceType`/`SourceId` (only `Document` today; structured clinical records later), `OwnerType`/`OwnerId`/`Classification` copied from the source so searches can be patient-scoped and filtered through `DocumentAccessPolicy` without a join, `ChunkIndex`, `Content`, `TokenCount`, a nullable `Embedding` (`vector(1024)`, HNSW cosine index) with `EmbeddingModel`/`EmbeddedAt`, and a database-generated `SearchVector` (`tsvector`, `simple` config, GIN index) for the keyword half of hybrid search. It's derived data, so it doesn't extend `Entity`: no soft delete — chunks are hard-deleted when their source is deleted or re-indexed. See [pgvector setup](#pgvector-setup) for the extension it needs.
+
 **No polymorphic foreign key exists** — `owner_id` is a plain `uuid` column with no database-level constraint tying it to a specific parent table, because no other table in this codebase has ever needed a polymorphic association and introducing one (via a trigger or generalized constraint) would be disproportionate to this one module. Referential integrity is enforced at the application layer instead — see Authorization/Data Integrity below.
 
 ## Authorization (US-2)
@@ -116,6 +118,29 @@ Base path: `/api/v1/documents`. Every action requires authentication (`[Authoriz
 
 **Not implemented in this iteration:** bulk/batch upload (a realistic MRD paper-scanning workflow, flagged as a near-term fast-follow, not a hypothetical), document versioning endpoints.
 
+## pgvector Setup
+
+`document_chunks.embedding` uses the [pgvector](https://github.com/pgvector/pgvector) extension. The Documents migration runs `CREATE EXTENSION IF NOT EXISTS vector`, but pgvector isn't a trusted extension, so **the first `CREATE EXTENSION` in each database must be run by a superuser** — the app's own role (`hms`) can't. Without it, the Documents migration fails at startup for that tenant.
+
+1. **Install the binaries on the Postgres server.**
+   - Docker: `docker-compose.yml` uses `pgvector/pgvector:pg16`, which ships them.
+   - Linux native: `apt install postgresql-16-pgvector` (match the server's major version).
+   - Windows native (no prebuilt binaries): install Visual Studio's "Desktop development with C++" workload, then in an **x64 Native Tools Command Prompt, run as administrator**:
+     ```bat
+     set "PGROOT=C:\Program Files\PostgreSQL\16"
+     cd %TEMP% && git clone --branch v0.8.6 https://github.com/pgvector/pgvector.git
+     cd %TEMP%\pgvector && nmake /F Makefile.win && nmake /F Makefile.win install
+     ```
+2. **Enable it as `postgres`** in `template1` (so every tenant database provisioned later inherits it) and in every existing tenant database (PowerShell):
+   ```powershell
+   $psql = "C:\Program Files\PostgreSQL\16\bin\psql.exe"
+   & $psql -U postgres -d template1 -c "CREATE EXTENSION IF NOT EXISTS vector;"
+   & $psql -U postgres -tAc "select datname from pg_database where datname like 'hms_%' and datname <> 'hms_platform'" | Where-Object { $_ } | ForEach-Object { & $psql -U postgres -d $_ -c "CREATE EXTENSION IF NOT EXISTS vector;" }
+   ```
+3. **Verify:** `select extversion from pg_extension where extname = 'vector';` in any tenant database.
+
+Do this on every environment **before** deploying the release that adds `AddDocumentChunks`.
+
 ## Risks
 
 - **`NullVirusScanner` provides no real malware protection.** Anyone relying on `Status == Available` as a scanning guarantee today is relying on a stub. Tracked as the top item to close before any real, external-facing deployment.
@@ -131,4 +156,5 @@ Base path: `/api/v1/documents`. Every action requires authentication (`[Authoriz
 - Replace `NullVirusScanner` with a real engine (e.g. ClamAV) — the interface seam is already in place.
 - Consolidate Patients' `UploadPhoto`/`UploadIdProof` into this module once a migration path for existing uploaded files is designed.
 - Resolve E-MRD and Records & Certificates against this module per the relationship described above.
+- RAG phase 1 remainder: text extraction/chunking after a document is marked `Available`, an `IEmbeddingProvider`, chunk cleanup on delete, and a backfill job — `document_chunks` exists but nothing writes to it yet.
 - Document versioning, full-text search/OCR, digital signature, retention-policy automation, bulk upload, a database-backed classification/permission matrix once that infrastructure exists platform-wide.

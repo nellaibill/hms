@@ -8,6 +8,7 @@ using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.Documents.Infrastructure.Repositories;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,6 +38,7 @@ public static class DocumentsModule
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", DocumentsDbContext.SchemaName);
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
+                npgsql.UseVector();
             });
         });
 

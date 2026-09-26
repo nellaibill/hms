@@ -26,6 +26,10 @@
     <!-- Npgsql's EF Core provider version tracks the EF Core major version; confirm the
          published 10.x version when restoring for real — see backend/README.md. -->
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <!-- pgvector's vector type + HNSW index for Documents' RAG chunk embeddings
+         (documents.document_chunks). Requires the pgvector extension on the Postgres server —
+         see docs/modules/Documents/DocumentManagement.md's pgvector setup section. -->
+    <PackageVersion Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
 
     <!-- Validation -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
