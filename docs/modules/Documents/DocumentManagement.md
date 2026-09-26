@@ -118,6 +118,14 @@ Base path: `/api/v1/documents`. Every action requires authentication (`[Authoriz
 
 **Not implemented in this iteration:** bulk/batch upload (a realistic MRD paper-scanning workflow, flagged as a near-term fast-follow, not a hypothetical), document versioning endpoints.
 
+## RAG Indexing
+
+After the virus scan marks a document `Available`, `DocumentScanBackgroundService` runs `DocumentIndexer`: extract the text (`PdfTextExtractor` for a PDF's text layer, `DocxTextExtractor`, `XlsxTextExtractor` with cells joined by ` | `), split it with `TextChunker` (~500-token chunks, ~50-token overlap, breaking at paragraphs, then sentences, then whitespace; tokens estimated at 4 characters each), and atomically replace the document's rows in `document_chunks`. Extracted text is capped at 2M characters. Images and scanned PDFs yield no chunks until OCR exists. An indexing failure is logged and never affects the document's `Available` status. Deleting a document hard-deletes its chunks.
+
+- `GET /api/v1/documents/{id}/chunks` (`records-compliance.view`) — the stored chunks, for inspection.
+- `POST /api/v1/documents/{id}/reindex` (`records-compliance.edit`) — rebuild one document's chunks; the response's `skipReason` explains an empty result (`NotAvailable`, `UnsupportedContentType`, `NoText`).
+- `POST /api/v1/documents/index/backfill?limit=100&createdAfter=` (admin only) — index a batch of `Available` documents that have no chunks yet; repeat with the returned `nextCreatedAfter` until it's null.
+
 ## pgvector Setup
 
 `document_chunks.embedding` uses the [pgvector](https://github.com/pgvector/pgvector) extension. The Documents migration runs `CREATE EXTENSION IF NOT EXISTS vector`, but pgvector isn't a trusted extension, so **the first `CREATE EXTENSION` in each database must be run by a superuser** — the app's own role (`hms`) can't. Without it, the Documents migration fails at startup for that tenant.
@@ -156,5 +164,5 @@ Do this on every environment **before** deploying the release that adds `AddDocu
 - Replace `NullVirusScanner` with a real engine (e.g. ClamAV) — the interface seam is already in place.
 - Consolidate Patients' `UploadPhoto`/`UploadIdProof` into this module once a migration path for existing uploaded files is designed.
 - Resolve E-MRD and Records & Certificates against this module per the relationship described above.
-- RAG phase 1 remainder: text extraction/chunking after a document is marked `Available`, an `IEmbeddingProvider`, chunk cleanup on delete, and a backfill job — `document_chunks` exists but nothing writes to it yet.
+- RAG phase 1 remainder: an `IEmbeddingProvider` to fill `document_chunks.embedding` (chunks are currently written with a null embedding), and OCR so images and scanned PDFs get indexed too.
 - Document versioning, full-text search/OCR, digital signature, retention-policy automation, bulk upload, a database-backed classification/permission matrix once that infrastructure exists platform-wide.
