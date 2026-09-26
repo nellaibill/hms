@@ -1,5 +1,6 @@
 using HMS.Modules.Documents.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace HMS.Database.Migrations.Documents;
@@ -23,6 +24,7 @@ public class DocumentsDbContextFactory : IDesignTimeDbContextFactory<DocumentsDb
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", DocumentsDbContext.SchemaName);
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
+                npgsql.UseVector();
             });
 
         return new DocumentsDbContext(optionsBuilder.Options);

@@ -20,6 +20,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Pgvector.EntityFrameworkCore" />
+    <!-- RAG text extraction (Infrastructure/TextExtraction). -->
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="ClosedXML" />
     <!-- FluentValidation.DependencyInjectionExtensions is deliberately NOT referenced: its
          AddValidatorsFromAssembly* scanners only find *public* IValidator<T>
          implementations (this module's validators are internal by design), so it would be
