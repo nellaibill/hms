@@ -100,8 +100,6 @@ export const API_ROUTES = {
     content: (id: string) => `/api/v1/documents/${id}/content`,
     archive: (id: string) => `/api/v1/documents/${id}/archive`,
     summary: '/api/v1/documents/summary',
-    /** Semantic (RAG) search over indexed document text — DocumentsController.Search. */
-    search: '/api/v1/documents/search',
   },
   /**
    * Masters (Reference Data) — mirrors HMS.Modules.Masters.Endpoints.*Controller. Keyed by

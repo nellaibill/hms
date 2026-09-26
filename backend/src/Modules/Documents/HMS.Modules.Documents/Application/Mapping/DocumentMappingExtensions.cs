@@ -27,14 +27,4 @@ internal static class DocumentMappingExtensions
         CreatedAt = document.CreatedAt,
         UpdatedAt = document.UpdatedAt,
     };
-
-    public static DocumentChunkResponse ToResponse(this DocumentChunk chunk) => new()
-    {
-        ChunkIndex = chunk.ChunkIndex,
-        Content = chunk.Content,
-        TokenCount = chunk.TokenCount,
-        HasEmbedding = chunk.Embedding is not null,
-        EmbeddingModel = chunk.EmbeddingModel,
-        CreatedAt = chunk.CreatedAt,
-    };
 }

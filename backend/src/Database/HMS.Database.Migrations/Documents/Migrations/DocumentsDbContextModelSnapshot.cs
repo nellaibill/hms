@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using NpgsqlTypes;
-using Pgvector;
 
 #nullable disable
 
@@ -20,10 +18,9 @@ namespace HMS.Database.Migrations.Documents.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("documents")
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("HMS.Modules.Documents.Domain.Document", b =>
@@ -154,100 +151,6 @@ namespace HMS.Database.Migrations.Documents.Migrations
                         .HasDatabaseName("ix_documents_owner");
 
                     b.ToTable("documents", "documents");
-                });
-
-            modelBuilder.Entity("HMS.Modules.Documents.Domain.DocumentChunk", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("ChunkIndex")
-                        .HasColumnType("integer")
-                        .HasColumnName("chunk_index");
-
-                    b.Property<string>("Classification")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("classification");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("EmbeddedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("embedded_at");
-
-                    b.Property<Vector>("Embedding")
-                        .HasColumnType("vector(1024)")
-                        .HasColumnName("embedding");
-
-                    b.Property<string>("EmbeddingModel")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("embedding_model");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("owner_id");
-
-                    b.Property<string>("OwnerType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("owner_type");
-
-                    b.Property<NpgsqlTsVector>("SearchVector")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("tsvector")
-                        .HasColumnName("search_vector")
-                        .HasAnnotation("Npgsql:TsVectorConfig", "simple")
-                        .HasAnnotation("Npgsql:TsVectorProperties", new[] { "Content" });
-
-                    b.Property<Guid>("SourceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_id");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("source_type");
-
-                    b.Property<int>("TokenCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("token_count");
-
-                    b.HasKey("Id")
-                        .HasName("pk_document_chunks");
-
-                    b.HasIndex("Embedding")
-                        .HasDatabaseName("ix_document_chunks_embedding_hnsw");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Embedding"), "hnsw");
-                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Embedding"), new[] { "vector_cosine_ops" });
-
-                    b.HasIndex("SearchVector")
-                        .HasDatabaseName("ix_document_chunks_search_vector");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
-
-                    b.HasIndex("OwnerType", "OwnerId")
-                        .HasDatabaseName("ix_document_chunks_owner");
-
-                    b.HasIndex("SourceType", "SourceId", "ChunkIndex")
-                        .IsUnique()
-                        .HasDatabaseName("ux_document_chunks_source_chunk");
-
-                    b.ToTable("document_chunks", "documents");
                 });
 #pragma warning restore 612, 618
         }

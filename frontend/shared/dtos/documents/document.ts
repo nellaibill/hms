@@ -93,26 +93,3 @@ export interface DocumentSummaryResponse {
   archived: number;
   storageUsedBytes: number;
 }
-
-/** Query for GET /api/v1/documents/search (DocumentsController.Search). */
-export interface DocumentSemanticSearchQuery {
-  q: string;
-  ownerType?: DocumentOwnerType;
-  ownerId?: string;
-  /** Server clamps to 1–50; defaults to 10. */
-  limit?: number;
-}
-
-/** Mirrors HMS.Modules.Documents.Contracts.DocumentSearchHitResponse — one passage of an
- * indexed document, ranked by closeness in meaning to the query. */
-export interface DocumentSearchHitResponse {
-  documentId: string;
-  originalFileName: string;
-  ownerType: DocumentOwnerType;
-  ownerId: string;
-  /** 0-based position of this passage within its document. */
-  chunkIndex: number;
-  content: string;
-  /** 1 − cosine distance; closer to 1 means closer in meaning. */
-  similarity: number;
-}

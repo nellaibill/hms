@@ -40,11 +40,6 @@ _To be documented._
 _To be documented._
 
 ## Database Migration Deployment
-
-> **Prerequisite (pgvector):** from the `AddDocumentChunks` Documents migration onward, every
-> Postgres server needs the pgvector extension installed and enabled by a superuser in each
-> tenant database and `template1`, or tenant migration fails at startup. See
-> [DocumentManagement.md → pgvector Setup](modules/Documents/DocumentManagement.md#pgvector-setup).
 Per [DatabaseArchitecture.md](DatabaseArchitecture.md)'s Migration Strategy: pending
 migrations are applied as an explicit, logged step before the new application version
 begins serving traffic — not automatically on every startup.

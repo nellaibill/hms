@@ -19,7 +19,6 @@ using HMS.Modules.Products.Infrastructure;
 using HMS.Modules.Radiology.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
-using Pgvector.EntityFrameworkCore;
 
 namespace HMS.Api.Provisioning;
 
@@ -183,10 +182,6 @@ public sealed class TenantMigrationService : ITenantMigrationService
             {
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", schemaName);
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
-                // Only DocumentsDbContext maps a vector column today, but Migrate() builds the
-                // full model (pending-model-changes check), which fails without the type
-                // mapping — harmless for every other context.
-                npgsql.UseVector();
             })
             .Options;
     }

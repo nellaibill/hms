@@ -1,14 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type {
-  DocumentOwnerType,
-  DocumentResponse,
-  DocumentSearchHitResponse,
-  DocumentSearchQuery,
-  DocumentSemanticSearchQuery,
-  DocumentSummaryResponse,
-  DocumentType,
-  UploadDocumentRequest,
-} from '../../dtos';
+import type { DocumentOwnerType, DocumentResponse, DocumentSearchQuery, DocumentSummaryResponse, DocumentType, UploadDocumentRequest } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
 
@@ -103,16 +94,6 @@ export class DocumentsApi {
   /** Mirrors DocumentsController.Archive (idempotent). */
   async archiveDocument(id: string): Promise<DocumentResponse> {
     const response = await this.client.patch<DocumentResponse>(API_ROUTES.documents.archive(id));
-    return response.data;
-  }
-
-  /** Semantic search over indexed document text (RAG) — the passages closest in meaning to
-   * the query, only from documents the caller may read. Mirrors DocumentsController.Search;
-   * fails with 503 when embeddings aren't configured for the environment. */
-  async searchDocuments(query: DocumentSemanticSearchQuery): Promise<DocumentSearchHitResponse[]> {
-    const response = await this.client.get<DocumentSearchHitResponse[]>(API_ROUTES.documents.search, {
-      query: { q: query.q, ownerType: query.ownerType, ownerId: query.ownerId, limit: query.limit },
-    });
     return response.data;
   }
 }

@@ -48,29 +48,4 @@ public static class AiServiceCollectionExtensions
 
         return services;
     }
-
-    /// <summary>
-    /// Registers the <see cref="IAiEmbeddingProvider"/> named by <c>Ai:Embeddings:Provider</c>
-    /// ("HuggingFace"); unset or anything else registers a disabled provider, so embedding is
-    /// opt-in per environment. Independent of <c>Ai:Provider</c> — see IAiEmbeddingProvider.
-    /// Idempotent, like <see cref="AddHmsAiExtractor"/>.
-    /// </summary>
-    public static IServiceCollection AddHmsAiEmbeddings(this IServiceCollection services, IConfiguration configuration)
-    {
-        if (services.Any(descriptor => descriptor.ServiceType == typeof(IAiEmbeddingProvider)))
-        {
-            return services;
-        }
-
-        if (string.Equals(configuration["Ai:Embeddings:Provider"], "HuggingFace", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddHttpClient<IAiEmbeddingProvider, HuggingFaceEmbeddingProvider>();
-        }
-        else
-        {
-            services.AddSingleton<IAiEmbeddingProvider, DisabledEmbeddingProvider>();
-        }
-
-        return services;
-    }
 }

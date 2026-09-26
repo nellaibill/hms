@@ -31,10 +31,7 @@ x-api-env: &api-env
 
 services:
   postgres:
-    # pgvector build of the same Postgres 16 major (not postgres:16-alpine) — Documents'
-    # RAG chunk table needs the vector extension. Same data directory format, so an existing
-    # pgdata volume works unchanged.
-    image: pgvector/pgvector:pg16
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

@@ -14,7 +14,7 @@ namespace HMS.IntegrationTests.Modules.Identity;
 public class UsersApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("pgvector/pgvector:pg16") // Documents migrations need the vector extension
+        .WithImage("postgres:16-alpine")
         .WithDatabase("hms_test")
         .WithUsername("hms")
         .WithPassword("hms")

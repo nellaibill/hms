@@ -9,7 +9,6 @@ import {
   Loader2,
   MapPin,
   Plus,
-  Sparkles,
   Stethoscope,
   Trash2,
   Upload,
@@ -31,10 +30,10 @@ import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
 import { formatCurrency, usePatientInvoicesQuery } from '@/features/billing';
 import { UploadDocumentModal } from '@/features/documents';
+import { documentsApi } from '../../../services/apiClient';
 import { useAuth } from '../../auth/AuthContext';
 import { modeOfArrivalChannelLabel } from '../arrivalChannelLabel';
 import { humanize } from '../humanize';
-import { openDocument } from '../openDocument';
 import { maritalStatusLabel } from '../maritalStatusLabel';
 import { maskIdNumber } from '../maskIdNumber';
 import { useAddPatientAllergyMutation, useDeletePatientDocumentMutation, useRemovePatientAllergyMutation } from '../hooks/usePatientMutations';
@@ -42,7 +41,6 @@ import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
 import { patientDocumentsQueryKey, usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
 import { PatientBillingPanel } from './PatientBillingPanel';
-import { PatientAiSearchTab } from './PatientAiSearchTab';
 import { PatientTimelineTab } from './PatientTimelineTab';
 import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientMedicalInformationTab } from './PatientMedicalInformationTab';
@@ -527,6 +525,20 @@ function RecentVisitsCard({ patient, onViewAll }: { patient: Patient; onViewAll:
 
 /* --------------------------------------------------------------------- Recent Documents */
 
+async function openDocument(document: DocumentResponse, mode: 'view' | 'download') {
+  const blob = await documentsApi.getDocumentContent(document.id);
+  const url = URL.createObjectURL(blob);
+  if (mode === 'view') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  const link = window.document.createElement('a');
+  link.href = url;
+  link.download = document.originalFileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 /** `onDelete` is only passed where deleting is offered (the Documents tab, gated on
  * records-compliance.delete) — the Overview's Recent Documents card stays read-only. Delete is
  * offered for every status, so a Quarantined upload can be cleared too. */
@@ -782,10 +794,6 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
 /* ------------------------------------------------------------------------------- Root */
 
 export function PatientDetails({ patient, activeTab, onActiveTabChange }: PatientDetailsProps) {
-  const { hasPermission } = useAuth();
-  // Searches document content, so it follows the same permission as viewing documents.
-  const canSearchDocuments = hasPermission('records-compliance.view');
-
   return (
     <div className="flex flex-col gap-3">
       {patient.requiresDataVerification && <DataVerificationBanner />}
@@ -797,12 +805,6 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="billing">Billing</TabsTrigger>
         <TabsTrigger value="timeline">Timeline</TabsTrigger>
-        {canSearchDocuments && (
-          <TabsTrigger value="ai-search" className="gap-1">
-            <Sparkles className="h-3.5 w-3.5" />
-            AI Search
-          </TabsTrigger>
-        )}
       </TabsList>
 
       <TabsContent value="overview" className="pt-2.5">
@@ -828,12 +830,6 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
       <TabsContent value="timeline" className="pt-2.5">
         <PatientTimelineTab patient={patient} onNavigateToTab={onActiveTabChange} />
       </TabsContent>
-
-      {canSearchDocuments && (
-        <TabsContent value="ai-search" className="pt-2.5">
-          <PatientAiSearchTab patient={patient} />
-        </TabsContent>
-      )}
       </Tabs>
     </div>
   );

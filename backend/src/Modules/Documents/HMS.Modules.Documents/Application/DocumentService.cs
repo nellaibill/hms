@@ -1,12 +1,10 @@
 using System.Security.Cryptography;
 using HMS.Modules.Documents.Application.Abstractions;
-using HMS.Modules.Documents.Application.Indexing;
 using HMS.Modules.Documents.Application.Mapping;
 using HMS.Modules.Documents.Application.Security;
 using HMS.Modules.Documents.Application.Validation;
 using HMS.Modules.Documents.Contracts;
 using HMS.Modules.Documents.Domain;
-using HMS.Shared.Infrastructure.Ai;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -31,13 +29,7 @@ internal class DocumentService : IDocumentService
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
 
-    private const int MaxBackfillBatch = 500;
-
     private readonly IDocumentRepository _repository;
-    private readonly IDocumentChunkRepository _chunkRepository;
-    private readonly IDocumentIndexer _indexer;
-    private readonly IDocumentChunkEmbedder _embedder;
-    private readonly IAiEmbeddingProvider _embeddingProvider;
     private readonly IDocumentFileStorage _fileStorage;
     private readonly IDocumentAccessPolicy _accessPolicy;
     private readonly IDocumentScanQueue _scanQueue;
@@ -48,10 +40,6 @@ internal class DocumentService : IDocumentService
 
     public DocumentService(
         IDocumentRepository repository,
-        IDocumentChunkRepository chunkRepository,
-        IDocumentIndexer indexer,
-        IDocumentChunkEmbedder embedder,
-        IAiEmbeddingProvider embeddingProvider,
         IDocumentFileStorage fileStorage,
         IDocumentAccessPolicy accessPolicy,
         IDocumentScanQueue scanQueue,
@@ -61,10 +49,6 @@ internal class DocumentService : IDocumentService
         ILogger<DocumentService> logger)
     {
         _repository = repository;
-        _chunkRepository = chunkRepository;
-        _indexer = indexer;
-        _embedder = embedder;
-        _embeddingProvider = embeddingProvider;
         _fileStorage = fileStorage;
         _accessPolicy = accessPolicy;
         _scanQueue = scanQueue;
@@ -228,10 +212,6 @@ internal class DocumentService : IDocumentService
         document.SoftDelete(actor.UserId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        // Unlike the document row and file, its RAG chunks are removed outright: a deleted
-        // document's text must never come back in a search result.
-        await _chunkRepository.DeleteForSourceAsync(DocumentChunkSourceType.Document, document.Id, cancellationToken);
-
         _logger.LogInformation("Document {DocumentId} soft-deleted by {UserId}", document.Id, actor.UserId);
 
         return Result.Success();
@@ -269,169 +249,5 @@ internal class DocumentService : IDocumentService
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return _repository.GetExpiringCountAsync(ownerType, today, today.AddDays(withinDays), cancellationToken);
-    }
-
-    public async Task<Result<IReadOnlyList<DocumentChunkResponse>>> GetChunksAsync(Guid id, DocumentActor actor, CancellationToken cancellationToken)
-    {
-        var document = await _repository.GetByIdAsync(id, cancellationToken);
-        if (document is null || !_accessPolicy.CanRead(actor, document.OwnerType, document.Classification))
-        {
-            return Result<IReadOnlyList<DocumentChunkResponse>>.Failure(DocumentErrorCodes.NotFound, $"Document '{id}' was not found.");
-        }
-
-        var chunks = await _chunkRepository.GetForSourceAsync(DocumentChunkSourceType.Document, id, cancellationToken);
-        return Result<IReadOnlyList<DocumentChunkResponse>>.Success(chunks.Select(c => c.ToResponse()).ToList());
-    }
-
-    public async Task<Result<DocumentIndexResponse>> ReindexAsync(Guid id, DocumentActor actor, CancellationToken cancellationToken)
-    {
-        var document = await _repository.GetByIdAsync(id, cancellationToken);
-        if (document is null)
-        {
-            return Result<DocumentIndexResponse>.Failure(DocumentErrorCodes.NotFound, $"Document '{id}' was not found.");
-        }
-
-        if (!_accessPolicy.CanWrite(actor, document.OwnerType))
-        {
-            return Result<DocumentIndexResponse>.Failure(DocumentErrorCodes.Forbidden, "You do not have permission to reindex documents for this record type.");
-        }
-
-        var result = await _indexer.IndexAsync(document, cancellationToken);
-        return Result<DocumentIndexResponse>.Success(new DocumentIndexResponse
-        {
-            DocumentId = id,
-            ChunkCount = result.ChunkCount,
-            EmbeddedCount = result.EmbeddedCount,
-            SkipReason = result.SkipReason?.ToString(),
-        });
-    }
-
-    public async Task<Result<DocumentIndexBackfillResponse>> BackfillIndexAsync(DateTime? createdAfter, int limit, DocumentActor actor, CancellationToken cancellationToken)
-    {
-        if (!_accessPolicy.CanManageIndex(actor))
-        {
-            return Result<DocumentIndexBackfillResponse>.Failure(DocumentErrorCodes.Forbidden, "Only administrators can run the document index backfill.");
-        }
-
-        var batchSize = Math.Clamp(limit, 1, MaxBackfillBatch);
-        var pending = await _chunkRepository.GetUnindexedDocumentsAsync(_indexer.IndexableContentTypes, createdAfter, batchSize, cancellationToken);
-
-        int indexed = 0, chunksCreated = 0, skipped = 0, failed = 0;
-        foreach (var (documentId, _) in pending)
-        {
-            try
-            {
-                var document = await _repository.GetByIdAsync(documentId, cancellationToken);
-                if (document is null)
-                {
-                    skipped++;
-                    continue;
-                }
-
-                var result = await _indexer.IndexAsync(document, cancellationToken);
-                if (result.ChunkCount > 0)
-                {
-                    indexed++;
-                    chunksCreated += result.ChunkCount;
-                }
-                else
-                {
-                    skipped++;
-                }
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // One unreadable/corrupt file mustn't stop the rest of the batch.
-                failed++;
-                _logger.LogError(ex, "Backfill failed to index document {DocumentId}.", documentId);
-            }
-        }
-
-        _logger.LogInformation("Document index backfill by {UserId}: {Processed} processed, {Indexed} indexed, {Skipped} skipped, {Failed} failed.", actor.UserId, pending.Count, indexed, skipped, failed);
-
-        return Result<DocumentIndexBackfillResponse>.Success(new DocumentIndexBackfillResponse
-        {
-            Processed = pending.Count,
-            Indexed = indexed,
-            ChunksCreated = chunksCreated,
-            Skipped = skipped,
-            Failed = failed,
-            NextCreatedAfter = pending.Count == batchSize ? pending[^1].CreatedAt : null,
-        });
-    }
-
-    public async Task<Result<DocumentEmbedBackfillResponse>> BackfillEmbeddingsAsync(int limit, DocumentActor actor, CancellationToken cancellationToken)
-    {
-        if (!_accessPolicy.CanManageIndex(actor))
-        {
-            return Result<DocumentEmbedBackfillResponse>.Failure(DocumentErrorCodes.Forbidden, "Only administrators can run the embedding backfill.");
-        }
-
-        if (!_embeddingProvider.IsConfigured)
-        {
-            return Result<DocumentEmbedBackfillResponse>.Failure(DocumentErrorCodes.EmbeddingsNotConfigured, "Embeddings aren't configured for this environment.");
-        }
-
-        var batchSize = Math.Clamp(limit, 1, MaxBackfillBatch);
-        var chunks = await _chunkRepository.GetUnembeddedAsync(_embeddingProvider.Model, batchSize, cancellationToken);
-        var embedded = await _embedder.EmbedAsync(chunks, cancellationToken);
-        if (chunks.Count > 0 && embedded == 0)
-        {
-            return Result<DocumentEmbedBackfillResponse>.Failure(DocumentErrorCodes.EmbeddingFailed, "The embedding service call failed; see the API log.");
-        }
-
-        _logger.LogInformation("Embedding backfill by {UserId}: {Embedded} of {Count} chunks embedded with {Model}.", actor.UserId, embedded, chunks.Count, _embeddingProvider.Model);
-
-        return Result<DocumentEmbedBackfillResponse>.Success(new DocumentEmbedBackfillResponse
-        {
-            Processed = chunks.Count,
-            Embedded = embedded,
-            Model = _embeddingProvider.Model,
-            MoreRemaining = chunks.Count == batchSize,
-        });
-    }
-
-    public async Task<Result<IReadOnlyList<DocumentSearchHitResponse>>> SearchAsync(string query, DocumentOwnerType? ownerType, Guid? ownerId, int limit, DocumentActor actor, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return Result<IReadOnlyList<DocumentSearchHitResponse>>.Failure(DocumentErrorCodes.InvalidQuery, "A search query is required.");
-        }
-
-        if (!_embeddingProvider.IsConfigured)
-        {
-            return Result<IReadOnlyList<DocumentSearchHitResponse>>.Failure(DocumentErrorCodes.EmbeddingsNotConfigured, "Embeddings aren't configured for this environment.");
-        }
-
-        var embedding = await _embeddingProvider.EmbedAsync([query.Trim()], EmbeddingInputKind.Query, cancellationToken);
-        if (!embedding.IsSuccess)
-        {
-            return Result<IReadOnlyList<DocumentSearchHitResponse>>.Failure(DocumentErrorCodes.EmbeddingFailed, "The embedding service call failed; see the API log.");
-        }
-
-        var take = Math.Clamp(limit, 1, 50);
-
-        // Over-fetch, then apply the access policy in memory (same trade as GetPagedAsync):
-        // DocumentAccessPolicy stays the single source of truth for what a caller may see.
-        var hits = await _chunkRepository.SearchAsync(new Pgvector.Vector(embedding.Value!.Vectors[0]), embedding.Value.Model, ownerType, ownerId, take * 4, cancellationToken);
-
-        var visible = hits
-            .Where(h => _accessPolicy.CanRead(actor, h.Chunk.OwnerType, h.Chunk.Classification))
-            .Take(take)
-            .Select(h => new DocumentSearchHitResponse
-            {
-                DocumentId = h.Chunk.SourceId,
-                OriginalFileName = h.OriginalFileName,
-                OwnerType = h.Chunk.OwnerType,
-                OwnerId = h.Chunk.OwnerId,
-                ChunkIndex = h.Chunk.ChunkIndex,
-                Content = h.Chunk.Content,
-                Similarity = Math.Round(1 - h.Distance, 4),
-            })
-            .ToList();
-
-        _logger.LogInformation("Document search by {UserId}: {Count} hits.", actor.UserId, visible.Count);
-
-        return Result<IReadOnlyList<DocumentSearchHitResponse>>.Success(visible);
     }
 }
