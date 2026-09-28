@@ -32,12 +32,22 @@ test.describe('Accounts and Finance', () => {
     });
   }
 
-  test('reports wait for a search before showing data', async ({ page }) => {
-    await page.goto('/finance/accounts/reports');
-    await expect(page.getByRole('main').getByLabel('From', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
-    await expect(page.getByRole('main').getByLabel('To', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
-    await expect(page.getByText('Please select a date range and filters, then click Search to view this report.')).toBeVisible();
-  });
+  const reportSections = [
+    { path: '/finance/accounts/reports', section: /^Income/ },
+    { path: '/finance/accounts/reports/profit', section: /^Billed Services/ },
+    { path: '/finance/accounts/reports/laboratory', section: /^Billed Services/ },
+    { path: '/finance/accounts/reports/radiology', section: /^Billed Services/ },
+    { path: '/finance/accounts/reports/consultant', section: /^By Consultant/ },
+  ];
+  for (const { path, section } of reportSections) {
+    test(`${path} shows the default-range report without a search`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.getByRole('main').getByLabel('From', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+      await expect(page.getByRole('main').getByLabel('To', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+      await expect(page.getByRole('heading', { level: 2, name: section })).toBeVisible();
+      await expect(page.getByText('No data to display')).toHaveCount(0);
+    });
+  }
 
   test('All Invoices search and payment-status filter narrow the list', async ({ page }) => {
     await page.goto('/finance/accounts/invoices');
