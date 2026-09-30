@@ -19,6 +19,14 @@ namespace HMS.Modules.Backups.Infrastructure;
 /// </summary>
 internal sealed class TenantFilesArchive : ITenantFilesArchive
 {
+    // Every upload kind's allowed type that is already compressed internally. Deflating these
+    // again only makes them bigger (seen live: PNG user photos grew ~5% in the zip), so they
+    // are stored as-is. Anything else (SVG logos, in practice) is still deflated.
+    private static readonly HashSet<string> AlreadyCompressedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".pdf", ".docx", ".xlsx",
+    };
+
     private readonly IReadOnlyList<FileSource> _sources;
     private readonly ILogger<TenantFilesArchive> _logger;
 
@@ -83,9 +91,10 @@ internal sealed class TenantFilesArchive : ITenantFilesArchive
                     {
                         var relativePath = Path.GetRelativePath(tenantRoot, file.FullName).Replace('\\', '/');
 
-                        // Fastest, not Optimal: nearly everything here is a JPEG/PNG/PDF that is
-                        // already compressed, so harder compression buys almost nothing.
-                        var entry = archive.CreateEntry($"{source.Key}/{relativePath}", CompressionLevel.Fastest);
+                        var compression = AlreadyCompressedExtensions.Contains(file.Extension)
+                            ? CompressionLevel.NoCompression
+                            : CompressionLevel.Optimal;
+                        var entry = archive.CreateEntry($"{source.Key}/{relativePath}", compression);
                         entry.LastWriteTime = file.LastWriteTime;
 
                         await using var output = entry.Open();

@@ -114,6 +114,24 @@ public class TenantFilesArchiveTests : IDisposable
     }
 
     [Fact]
+    public async Task WriteZipAsync_StoresAlreadyCompressedFormatsAsIs_AndDeflatesTheRest()
+    {
+        var repetitive = string.Concat(Enumerable.Repeat("<svg></svg>", 200));
+        WriteFile($"wwwroot/uploads/users/{TenantA}/photo.PNG", repetitive);
+        WriteFile($"App_Data/documents/{TenantA}/report.pdf", repetitive);
+        WriteFile($"wwwroot/uploads/branding/{TenantA}/logo/logo.svg", repetitive);
+
+        using var zipStream = new MemoryStream();
+        await _sut.WriteZipAsync(TenantA, zipStream, CancellationToken.None);
+
+        zipStream.Position = 0;
+        using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
+        archive.GetEntry("user-photos/photo.PNG")!.CompressedLength.Should().Be(repetitive.Length);
+        archive.GetEntry("documents/report.pdf")!.CompressedLength.Should().Be(repetitive.Length);
+        archive.GetEntry("branding/logo/logo.svg")!.CompressedLength.Should().BeLessThan(repetitive.Length);
+    }
+
+    [Fact]
     public async Task WriteZipAsync_LeavesTheDestinationStreamOpen()
     {
         WriteFile($"App_Data/documents/{TenantA}/doc.pdf", "x");
