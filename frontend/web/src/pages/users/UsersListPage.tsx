@@ -83,6 +83,8 @@ export default function UsersListPage() {
         icon={UsersIcon}
         title="Users"
         subtitle="Manage system accounts — the Identity reference module, connected live to the HMS.Api backend."
+        backTo="/admin/settings"
+        backLabel="Back to settings"
       />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">

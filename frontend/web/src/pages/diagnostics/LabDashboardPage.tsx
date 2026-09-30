@@ -21,6 +21,8 @@ export default function LabDashboardPage() {
         icon={Microscope}
         title="Laboratory Workflow"
         subtitle="Sample collection through result entry, verification, and report release — the day-to-day lab worklist."
+        backTo="/diagnostics/lab"
+        backLabel="Back to Central Laboratory"
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
