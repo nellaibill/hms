@@ -29,7 +29,13 @@ export default function PatientImportHistoryPage() {
   return (
     <RequirePermission permission={IMPORT_PERMISSION}>
       <div className="flex flex-1 flex-col">
-        <PageBanner icon={History} title="Import History" subtitle="Every bulk patient import run on this account, newest first." />
+        <PageBanner
+          icon={History}
+          title="Import History"
+          subtitle="Every bulk patient import run on this account, newest first."
+          backTo="/patients/import"
+          backLabel="Back to Bulk Patient Import"
+        />
 
         <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
           <div className="flex justify-end">

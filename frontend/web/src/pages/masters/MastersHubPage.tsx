@@ -96,6 +96,8 @@ export default function MastersHubPage() {
         icon={Database}
         title="Hospital Reference Data"
         subtitle="Reference data grouped by the module that owns it — Hospital, HR, Pharmacy & Inventory, and Finance."
+        backTo="/admin/settings"
+        backLabel="Back to settings"
       />
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
