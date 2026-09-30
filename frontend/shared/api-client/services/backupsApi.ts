@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { BackupSummaryResponse } from '../../dtos';
+import type { BackupSummaryResponse, TenantFilesSummaryResponse } from '../../dtos';
 import type { HttpClient } from '../httpClient';
 
 /**
@@ -18,5 +18,18 @@ export class BackupsApi {
 
   async downloadMine(): Promise<Blob> {
     return this.client.getBlob(API_ROUTES.backups.mineDownload);
+  }
+
+  async getMyFiles(): Promise<TenantFilesSummaryResponse> {
+    const response = await this.client.get<TenantFilesSummaryResponse>(
+      API_ROUTES.backups.mineFiles,
+    );
+    return response.data;
+  }
+
+  /** The zip is built on the server at request time, so this can take a while for a hospital
+   * with many uploads — callers should show a busy state until it resolves. */
+  async downloadMyFiles(): Promise<Blob> {
+    return this.client.getBlob(API_ROUTES.backups.mineFilesDownload);
   }
 }

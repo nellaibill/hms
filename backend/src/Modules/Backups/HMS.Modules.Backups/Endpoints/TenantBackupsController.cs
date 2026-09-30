@@ -13,7 +13,9 @@ namespace HMS.Modules.Backups.Endpoints;
 /// same tenant-resolution seam every other per-tenant module already relies on — there is no
 /// request parameter naming a tenant, so there is nothing here for a caller to manipulate to
 /// reach another hospital's data. Reuses the existing identity-administration.view permission
-/// (already gates the whole Settings area) rather than adding a new one.
+/// (already gates the whole Settings area) rather than adding a new one. Also serves the
+/// hospital's uploaded documents &amp; images as a zip (see ITenantFilesArchive) — the files a
+/// database dump only holds the paths of.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -21,11 +23,13 @@ namespace HMS.Modules.Backups.Endpoints;
 public class TenantBackupsController : ControllerBase
 {
     private readonly IBackupStorage _storage;
+    private readonly ITenantFilesArchive _filesArchive;
     private readonly ITenantContext _tenantContext;
 
-    public TenantBackupsController(IBackupStorage storage, ITenantContext tenantContext)
+    public TenantBackupsController(IBackupStorage storage, ITenantFilesArchive filesArchive, ITenantContext tenantContext)
     {
         _storage = storage;
+        _filesArchive = filesArchive;
         _tenantContext = tenantContext;
     }
 
@@ -72,6 +76,81 @@ public class TenantBackupsController : ControllerBase
         return PhysicalFile(latest.FilePath, "application/octet-stream", downloadName, enableRangeProcessing: true);
     }
 
-    private string CurrentTenantKey()
-        => (_tenantContext.TenantId ?? throw new InvalidOperationException("TenantBackupsController reached without a resolved tenant.")).ToString();
+    /// <summary>What the current tenant's documents &amp; images zip would contain right now.</summary>
+    /// <response code="200">File counts and sizes, per upload kind and in total.</response>
+    [RequirePermission("identity-administration.view")]
+    [HttpGet("mine/files")]
+    public async Task<IActionResult> GetMyFiles(CancellationToken cancellationToken)
+    {
+        var summary = await _filesArchive.GetSummaryAsync(CurrentTenantId(), cancellationToken);
+        return Ok(new ApiResponse<TenantFilesSummaryResponse>
+        {
+            Data = new TenantFilesSummaryResponse
+            {
+                FileCount = summary.FileCount,
+                TotalSizeBytes = summary.TotalSizeBytes,
+                Categories = summary.Categories
+                    .Select(category => new TenantFileCategoryResponse
+                    {
+                        Key = category.Key,
+                        Label = category.Label,
+                        FileCount = category.FileCount,
+                        SizeBytes = category.SizeBytes,
+                    })
+                    .ToList(),
+            },
+        });
+    }
+
+    /// <summary>Zips and streams every document and image the current tenant has uploaded.</summary>
+    /// <response code="200">The zip file.</response>
+    /// <response code="404">This hospital has no uploaded files yet.</response>
+    [RequirePermission("identity-administration.view")]
+    [HttpGet("mine/files/download")]
+    public async Task<IActionResult> DownloadMyFiles(CancellationToken cancellationToken)
+    {
+        // Built into a temp file first rather than straight into the response: the response
+        // then gets a real Content-Length, and a failure part-way through is still a clean
+        // error instead of a 200 with a truncated zip. DeleteOnClose removes the temp file as
+        // soon as FileStreamResult disposes the stream after sending it (or below, on failure).
+        var zipStream = new FileStream(
+            Path.Combine(Path.GetTempPath(), $"hms-files-{Guid.NewGuid():N}.zip"),
+            FileMode.CreateNew,
+            FileAccess.ReadWrite,
+            FileShare.None,
+            bufferSize: 81920,
+            FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+
+        int fileCount;
+        try
+        {
+            fileCount = await _filesArchive.WriteZipAsync(CurrentTenantId(), zipStream, cancellationToken);
+        }
+        catch
+        {
+            await zipStream.DisposeAsync();
+            throw;
+        }
+
+        if (fileCount == 0)
+        {
+            await zipStream.DisposeAsync();
+            return NotFound(new ApiErrorResponse
+            {
+                ErrorCode = "BACKUPS.NO_FILES",
+                Message = "This hospital has no uploaded documents or images yet.",
+                CorrelationId = HttpContext.GetCorrelationId(),
+                Timestamp = DateTime.UtcNow,
+            });
+        }
+
+        zipStream.Position = 0;
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, MonthlySeries.HospitalTimeZone));
+        return File(zipStream, "application/zip", $"documents-and-images-{today:yyyy-MM-dd}.zip");
+    }
+
+    private string CurrentTenantKey() => CurrentTenantId().ToString();
+
+    private Guid CurrentTenantId()
+        => _tenantContext.TenantId ?? throw new InvalidOperationException("TenantBackupsController reached without a resolved tenant.");
 }
