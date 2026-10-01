@@ -31,6 +31,7 @@ import { DistrictName } from '@/components/DistrictName';
 import { StateName } from '@/components/StateName';
 import { formatCurrency, usePatientInvoicesQuery } from '@/features/billing';
 import { UploadDocumentModal } from '@/features/documents';
+import { useOpdConsultationsByPatientQuery } from '@/features/opdConsultation';
 import { useAuth } from '../../auth/AuthContext';
 import { modeOfArrivalChannelLabel } from '../arrivalChannelLabel';
 import { humanize } from '../humanize';
@@ -38,6 +39,7 @@ import { openDocument } from '../openDocument';
 import { maritalStatusLabel } from '../maritalStatusLabel';
 import { maskIdNumber } from '../maskIdNumber';
 import { useAddPatientAllergyMutation, useDeletePatientDocumentMutation, useRemovePatientAllergyMutation } from '../hooks/usePatientMutations';
+import { usePatientAdmissionsQuery } from '../hooks/usePatientAdmissionsQuery';
 import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
 import { patientDocumentsQueryKey, usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
@@ -393,24 +395,31 @@ function StatItem({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-const VISIT_STAT_TYPES = ['OP', 'IP', 'Emergency', 'DayCare'] as const;
-const VISIT_STAT_LABELS: Record<(typeof VISIT_STAT_TYPES)[number], string> = {
-  OP: 'OP Visits',
-  IP: 'IP Admissions',
-  Emergency: 'Emergency',
-  DayCare: 'Day Care',
-};
-
 function AtAGlanceStrip({ patient }: { patient: Patient }) {
+  const { hasFeature, hasPermission } = useAuth();
+  const canViewClinical = hasPermission('clinical-care.view');
+  const canViewAdmissions = canViewClinical && hasFeature('ipd');
+
   const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient.id);
   const { data: documents, isPending: documentsPending } = usePatientDocumentsQuery(patient.id);
   const { data: billings, isPending: billingsPending } = usePatientInvoicesQuery(patient.id);
+  // IP admissions and written prescriptions live in the IPD and OPD Consultation modules, not in
+  // visits/documents — both endpoints need clinical-care.view, so viewers without it see a dash.
+  const admissionsQuery = usePatientAdmissionsQuery(patient.id, canViewAdmissions);
+  const consultationsQuery = useOpdConsultationsByPatientQuery(patient.id, canViewClinical);
 
   const dash = <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin text-muted-foreground" />;
 
-  const visitCountByType = (type: (typeof VISIT_STAT_TYPES)[number]) => visits?.filter((v) => v.visitType === type).length ?? 0;
+  const visitCountByType = (type: PatientVisit['visitType']) => visits?.filter((v) => v.visitType === type).length ?? 0;
   const lastVisit = visits?.[0];
-  const prescriptionCount = documents?.filter((doc) => doc.documentType === 'Prescription').length ?? 0;
+  // Requested/Cancelled admissions never actually admitted the patient.
+  const admissionCount = admissionsQuery.data?.filter((a) => a.status === 'Admitted' || a.status === 'Discharged').length ?? 0;
+  // A completed consultation's medicines form one prescription (a draft hasn't been issued yet);
+  // uploaded Prescription documents (e.g. an outside doctor's) count on top of those.
+  const writtenPrescriptionCount =
+    consultationsQuery.data?.filter((c) => c.note.status === 'Completed' && c.note.prescriptions.length > 0).length ?? 0;
+  const prescriptionCount = writtenPrescriptionCount + (documents?.filter((doc) => doc.documentType === 'Prescription').length ?? 0);
+  const prescriptionsPending = documentsPending || (canViewClinical && consultationsQuery.isPending);
   const totalBills = billings?.reduce((sum, billing) => sum + billing.netAmount, 0) ?? 0;
   const outstanding =
     billings?.reduce((sum, billing) => sum + billing.items.filter((item) => item.paymentStatus === 'Pending').reduce((s, item) => s + item.total, 0), 0) ?? 0;
@@ -418,14 +427,15 @@ function AtAGlanceStrip({ patient }: { patient: Patient }) {
   return (
     <div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
       <StatItem label="Total Visits" value={visitsPending ? dash : (visits?.length ?? 0)} />
-      {VISIT_STAT_TYPES.map((type) => (
-        <StatItem key={type} label={VISIT_STAT_LABELS[type]} value={visitsPending ? dash : visitCountByType(type)} />
-      ))}
+      <StatItem label="OP Visits" value={visitsPending ? dash : visitCountByType('OP')} />
+      <StatItem label="IP Admissions" value={!canViewAdmissions ? '—' : admissionsQuery.isPending ? dash : admissionCount} />
+      <StatItem label="Emergency" value={visitsPending ? dash : visitCountByType('Emergency')} />
+      <StatItem label="Day Care" value={visitsPending ? dash : visitCountByType('DayCare')} />
       <StatItem
         label="Last Visit"
         value={visitsPending ? dash : lastVisit ? new Date(lastVisit.createdAt).toLocaleDateString('en-IN') : '—'}
       />
-      <StatItem label="Total Prescriptions" value={documentsPending ? dash : prescriptionCount} />
+      <StatItem label="Total Prescriptions" value={prescriptionsPending ? dash : prescriptionCount} />
       <StatItem label="Total Bills" value={billingsPending ? dash : formatCurrency(totalBills)} />
       <StatItem label="Outstanding" value={billingsPending ? dash : formatCurrency(outstanding)} />
     </div>

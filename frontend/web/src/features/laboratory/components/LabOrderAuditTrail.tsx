@@ -1,10 +1,12 @@
 import { History } from 'lucide-react';
+import { useStaffNameMap } from '@/features/messaging/hooks/useStaffNameMap';
 import { humanize } from '@/features/patients/humanize';
 import type { LabOrder } from '../types';
 
 interface AuditEntry {
   key: string;
-  testName: string;
+  /** The test the event belongs to — absent for order-level events (report generate/release). */
+  testName?: string;
   eventType: string;
   actorId?: string | null;
   occurredAt: string;
@@ -17,20 +19,34 @@ interface LabOrderAuditTrailProps {
 
 /** Every item's event history, flattened across the whole order and sorted newest first —
  * doubles as both sample-status history and general audit trail (one append-only entry per
- * LabOrderItemEvent). */
+ * LabOrderItemEvent). Report generation and release are recorded on the order itself rather than
+ * as item events, so they're added here from the order's own stamps. */
 export function LabOrderAuditTrail({ order }: LabOrderAuditTrailProps) {
-  const entries: AuditEntry[] = order.items
-    .flatMap((item) =>
-      item.events.map((event) => ({
-        key: event.id,
-        testName: item.testName,
-        eventType: event.eventType,
-        actorId: event.actorId,
-        occurredAt: event.occurredAt,
-        remarks: event.remarks,
-      })),
-    )
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  const { nameById } = useStaffNameMap();
+
+  const itemEntries: AuditEntry[] = order.items.flatMap((item) =>
+    item.events.map((event) => ({
+      key: event.id,
+      testName: item.testName,
+      eventType: event.eventType,
+      actorId: event.actorId,
+      occurredAt: event.occurredAt,
+      remarks: event.remarks,
+    })),
+  );
+  const reportEntries: AuditEntry[] = [];
+  if (order.reportGeneratedAt) {
+    reportEntries.push({ key: 'report-generated', eventType: 'ReportGenerated', actorId: order.reportGeneratedBy, occurredAt: order.reportGeneratedAt });
+  }
+  if (order.reportReleasedAt) {
+    reportEntries.push({ key: 'report-released', eventType: 'ReportReleased', actorId: order.reportReleasedBy, occurredAt: order.reportReleasedAt });
+  }
+  const entries = [...itemEntries, ...reportEntries].sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+
+  // actorId is an Identity User id — resolved through the same low-sensitivity staff directory
+  // Messaging uses (no admin permission needed). That directory only lists active users (up to
+  // its 100-entry cap), so anyone outside it still falls back to a short id.
+  const actorLabel = (actorId: string) => nameById.get(actorId) ?? `User ${actorId.slice(0, 8)}…`;
 
   if (entries.length === 0) {
     return (
@@ -48,12 +64,7 @@ export function LabOrderAuditTrail({ order }: LabOrderAuditTrailProps) {
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-foreground">{humanize(entry.eventType)}</span>
             <span className="text-xs text-muted-foreground">
-              {entry.testName}
-              {/* actorId is an Identity User id, not a Masters Consultant/Department reference
-                  — there's no existing id->display-name resolver for users in this codebase
-                  (ConsultantName/DepartmentName only resolve Masters entities), so it's shown
-                  as a short id rather than misusing one of those components. */}
-              {entry.actorId && <> · User {entry.actorId.slice(0, 8)}…</>}
+              {[entry.testName ?? 'Whole order', entry.actorId && actorLabel(entry.actorId)].filter(Boolean).join(' · ')}
             </span>
             {entry.remarks && <span className="text-xs text-muted-foreground">{entry.remarks}</span>}
           </div>

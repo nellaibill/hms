@@ -622,7 +622,15 @@ export function OpdConsultationForm({
   const readOnly = note.status === 'Completed';
   const heightCm = watch('heightCm');
   const weightKg = watch('weightKg');
-  const bmi = heightCm && weightKg && Number(heightCm) > 0 ? (Number(weightKg) / (Number(heightCm) / 100) ** 2).toFixed(1) : null;
+  // Only for values the form would accept (height 0–300 cm, weight 0–500 kg, both above 0) — an
+  // out-of-range or negative entry already shows its own field error, and a BMI derived from it
+  // (e.g. -0.1) is just noise next to that error.
+  const heightValue = Number(heightCm);
+  const weightValue = Number(weightKg);
+  const bmi =
+    heightValue > 0 && heightValue <= 300 && weightValue > 0 && weightValue <= 500
+      ? (weightValue / (heightValue / 100) ** 2).toFixed(1)
+      : null;
 
   useEffect(() => {
     if (!apiError?.validationErrors) return;

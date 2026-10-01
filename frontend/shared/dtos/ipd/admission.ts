@@ -103,6 +103,8 @@ export interface Admission {
 
 /** Mirrors HMS.Modules.IPD.Contracts.AdmissionListQuery. */
 export interface AdmissionListQuery extends PagedQuery {
+  /** One patient's admissions only — backs Patient Details' "IP Admissions" count. */
+  patientId?: string;
   status?: AdmissionStatus;
   wardId?: string;
   departmentId?: string;

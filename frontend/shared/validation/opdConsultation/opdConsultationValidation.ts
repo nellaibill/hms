@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { OPD_DIAGNOSIS_TYPES, OPD_INVESTIGATION_DEPARTMENTS, OPD_INVESTIGATION_PRIORITIES } from '../../dtos/opdConsultation/opdConsultation';
+import { optionalBloodPressureSchema } from '../bloodPressure';
 
 /**
  * Mirrors HMS.Modules.OpdConsultation.Application.Validators.SaveOpdConsultationRequestValidator
@@ -20,6 +21,18 @@ function optionalBoundedNumber(min: number, max: number) {
   return z.preprocess(
     (value) => (value === '' || value === undefined || value === null || (typeof value === 'number' && Number.isNaN(value)) ? undefined : value),
     z.coerce.number().min(min, message).max(max, message).optional(),
+  );
+}
+
+/** A vital Complete can't go without. A blank number input arrives as '' (or NaN), which
+ * z.coerce.number() would quietly turn into 0 and pass a min(0) check — so blank is mapped to
+ * undefined first and reported as missing, and the value must be above 0 like the backend's
+ * GreaterThan(0) rule. */
+function requiredPositiveNumber(max: number, requiredMessage: string) {
+  const rangeMessage = `Must be greater than 0 and at most ${max}`;
+  return z.preprocess(
+    (value) => (value === '' || value === undefined || value === null || (typeof value === 'number' && Number.isNaN(value)) ? undefined : value),
+    z.coerce.number({ required_error: requiredMessage, invalid_type_error: requiredMessage }).gt(0, rangeMessage).max(max, rangeMessage),
   );
 }
 
@@ -57,7 +70,7 @@ export const saveOpdConsultationSchema = z.object({
   heightCm: optionalBoundedNumber(0, 300),
   weightKg: optionalBoundedNumber(0, 500),
   pulseRate: optionalBoundedNumber(0, 300),
-  bloodPressure: optionalTrimmedString(20),
+  bloodPressure: optionalBloodPressureSchema,
   temperatureF: optionalBoundedNumber(70, 115),
   spO2Percent: optionalBoundedNumber(0, 100),
 
@@ -89,6 +102,6 @@ export type OpdConsultationFormValues = z.infer<typeof saveOpdConsultationSchema
  * lenient schema above regardless of which fields are filled in. */
 export const completeOpdConsultationSchema = saveOpdConsultationSchema.extend({
   presentingComplaints: z.string().trim().min(1, 'Presenting complaints are required to complete a consultation.').max(2000),
-  heightCm: z.coerce.number({ message: 'Height is required to complete a consultation.' }).min(0).max(300),
-  weightKg: z.coerce.number({ message: 'Weight is required to complete a consultation.' }).min(0).max(500),
+  heightCm: requiredPositiveNumber(300, 'Height is required to complete a consultation.'),
+  weightKg: requiredPositiveNumber(500, 'Weight is required to complete a consultation.'),
 });
