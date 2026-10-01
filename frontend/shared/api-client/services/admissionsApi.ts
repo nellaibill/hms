@@ -57,6 +57,7 @@ export class AdmissionsApi {
         pageSize: query.pageSize,
         sort: query.sort,
         search: query.search,
+        patientId: query.patientId,
         status: query.status,
         wardId: query.wardId,
         departmentId: query.departmentId,
