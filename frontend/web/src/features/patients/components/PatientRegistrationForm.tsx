@@ -36,6 +36,7 @@ import { ConsultationTypeSelect } from '@/components/ConsultationTypeSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { DistrictSelect } from '@/components/DistrictSelect';
 import { StateSelect } from '@/components/StateSelect';
+import { useLiveErrorRefresh } from '@/hooks/useLiveErrorRefresh';
 import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } from './DocumentUploadStaging';
 import { Field, FormSection } from './FormSection';
 import { TabErrorSummary } from './TabErrorSummary';
@@ -197,6 +198,8 @@ export function PatientRegistrationForm({
     trigger,
     getValues,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors, isDirty },
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
@@ -206,9 +209,10 @@ export function PatientRegistrationForm({
     // Two independent async validation passes writing to the same formState.errors can resolve
     // out of order, letting a stale (superseded) pass overwrite a fresh, correct one — causing
     // Next to intermittently show a phantom error on a field that was actually filled in.
-    // Default mode ('onSubmit') plus the default reValidateMode ('onChange') gives the same
-    // "live-clears-as-you-fix-it" UX after a field's first validation, without the race.
+    // Live-clearing an error once the field is fixed is useLiveErrorRefresh's job below:
+    // reValidateMode only kicks in after a real submit, which trigger() on Next never is.
   });
+  useLiveErrorRefresh({ schema: patientRegistrationUiSchema, watch, errors, setError, clearErrors });
 
   // UI-only demo affordance — see additionalConsultantSchema's own doc comment for why this
   // never reaches CreatePatientRequest.
@@ -317,20 +321,19 @@ export function PatientRegistrationForm({
       for (const tab of ['patient-info', 'contact-info', 'medical-info'] as const) {
         const isTabValid = await trigger(TAB_ERROR_FIELDS[tab]);
         setAttemptedTabs((prev) => new Set(prev).add(tab));
-        if (!isTabValid) {
+        // The ID proof number isn't an RHF field (see idProofNumberError above), but it's on
+        // this tab — check it in the same pass, so a bad Aadhaar shows up together with the
+        // tab's other errors instead of only after they've all been fixed.
+        const idProofError = tab === 'medical-info' ? idProofNumberValidationError(documents) : null;
+        if (tab === 'medical-info') setIdProofNumberError(idProofError);
+        if (!isTabValid || idProofError) {
           setActiveTab(tab);
+          // 'instant', not 'smooth' — see formTopRef's own tab-change effect above for why a
+          // smooth scroll here gets cancelled by the layout shift from the banner mounting.
+          if (idProofError) formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
           return;
         }
       }
-      const idProofError = idProofNumberValidationError(documents);
-      if (idProofError) {
-        setIdProofNumberError(idProofError);
-        // 'instant', not 'smooth' — see formTopRef's own tab-change effect above for why a
-        // smooth scroll here gets cancelled by the layout shift from the banner mounting.
-        formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
-        return;
-      }
-      setIdProofNumberError(null);
       // getValues() returns the raw, untransformed field values — e.g. a name typed with a
       // trailing space passes trigger() (Zod's schema trims before checking the regex) but
       // that untrimmed space would still reach the API and fail the backend's own (stricter,
@@ -518,7 +521,7 @@ export function PatientRegistrationForm({
         <TabErrorSummary messages={tabMessages('patient-info')} />
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
-            <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
+            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -562,6 +565,10 @@ export function PatientRegistrationForm({
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>
+          {/* Title's errors (title vs. age, title vs. gender) run a full sentence long — rendered
+              across the whole row instead of inside the narrow Title column, where they wrapped
+              into a tall sliver of text. */}
+          {errors.title?.message && <p className="-mt-2 text-sm text-destructive">{errors.title.message}</p>}
 
           <div className="flex flex-wrap gap-3">
             <Field label="Gender" htmlFor="gender" error={errors.gender?.message} className="flex w-full flex-col gap-1 sm:w-36">

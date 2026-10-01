@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { useLiveErrorRefresh } from '@/hooks/useLiveErrorRefresh';
 import { isConsultationEntryActive } from '../billingActivity';
 import { billingFormSchema, defaultBillingFormValues, type BillingFormValues } from '../billingValidation';
 import type { BillingType } from '../types';
@@ -60,12 +61,11 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
   // select, then another row) can resolve out of order, letting an earlier pass's now-stale
   // result overwrite a later, correct one — surfacing a phantom error on a field that's
   // actually valid. Same root cause and same fix already applied to
-  // PatientRegistrationForm.tsx for this exact symptom. RHF's default `reValidateMode:
-  // 'onChange'` still live-clears an error once a field has been validated at least once (via
-  // toggleCategory's per-category trigger() on collapse, or Save's full validate()), so nothing
-  // about the tab-dot/error-summary/inline-message UX regresses — errors just don't start
-  // appearing before the user has attempted to proceed, which matches how every other tab in
-  // this app already behaves.
+  // PatientRegistrationForm.tsx for this exact symptom. Errors still don't start appearing
+  // before the user has attempted to proceed (toggleCategory's per-category trigger() on
+  // collapse, or Save's full validate()), which matches how every other tab in this app
+  // behaves; clearing them once fixed is useLiveErrorRefresh's job below, since RHF's
+  // reValidateMode only applies after a real submit.
   const methods = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
     defaultValues: defaultValues ?? defaultBillingFormValues,
@@ -74,8 +74,11 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
     trigger,
     watch,
     getValues,
+    setError,
+    clearErrors,
     formState: { errors, isDirty },
   } = methods;
+  useLiveErrorRefresh({ schema: billingFormSchema, watch, errors, setError, clearErrors });
 
   // A category starts expanded when its rows were prefilled (see InvoiceCreatePage's
   // billingDefaultValues) — Consultation from the patient's visit, Laboratory/Radiology from the
