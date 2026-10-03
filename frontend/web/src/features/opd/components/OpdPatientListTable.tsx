@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useStartConsultationMutation } from '../hooks/useStartConsultationMutation';
 import { useOpdPatientListQuery } from '../hooks/useOpdPatientListQuery';
 import { useVisitPaymentStatusesQuery } from '../hooks/useVisitPaymentStatusesQuery';
+import { OpdListHeading } from './OpdListHeading';
 import { OpdPaymentStatusBadge } from './OpdPaymentStatusBadge';
 import { OpdStatusBadge } from './OpdStatusBadge';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
@@ -36,13 +37,6 @@ function formatAppointmentDateTime(iso: string): string {
     minute: '2-digit',
     hour12: true,
   });
-}
-
-function formatHeadingDate(dateIso: string): string {
-  if (!dateIso) {
-    return '';
-  }
-  return new Date(dateIso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 interface OpdPatientListTableProps {
@@ -79,22 +73,17 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
 
   return (
     <div className="flex flex-col gap-3">
-      <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-          <h2 className="text-sm font-semibold text-foreground">
-            OPD Patients {formatHeadingDate(filters.to || filters.from) && `(${formatHeadingDate(filters.to || filters.from)})`}
-          </h2>
-          {data &&
-            (isPlaceholderData ? (
-              <Badge variant="secondary" className="gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Updating…
-              </Badge>
-            ) : (
-              <Badge variant="secondary">Total: {data.meta.totalCount} Patients</Badge>
-            ))}
-        </CardContent>
-      </Card>
+      <OpdListHeading title="OPD Patients" from={filters.from} to={filters.to}>
+        {data &&
+          (isPlaceholderData ? (
+            <Badge variant="secondary" className="gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Updating…
+            </Badge>
+          ) : (
+            <Badge variant="secondary">Total: {data.meta.totalCount} Patients</Badge>
+          ))}
+      </OpdListHeading>
 
       {isPending && (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
