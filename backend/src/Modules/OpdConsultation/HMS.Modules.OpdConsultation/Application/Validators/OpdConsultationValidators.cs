@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.OpdConsultation.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.OpdConsultation.Application.Validators;
 
@@ -17,7 +18,8 @@ internal class SaveOpdConsultationRequestValidator : AbstractValidator<SaveOpdCo
         RuleFor(x => x.WeightKg).GreaterThan(0).When(x => x.WeightKg.HasValue).WithMessage("Weight must be greater than 0.");
         RuleFor(x => x.PulseRate).GreaterThan(0).When(x => x.PulseRate.HasValue).WithMessage("Pulse rate must be greater than 0.");
         RuleFor(x => x.SpO2Percent).InclusiveBetween(0, 100).When(x => x.SpO2Percent.HasValue).WithMessage("SpO2 must be between 0 and 100.");
-        RuleFor(x => x.BloodPressure).MaximumLength(20);
+        RuleFor(x => x.BloodPressure).MaximumLength(20)
+            .Must(BloodPressureFormat.IsValidOrEmpty).WithMessage(BloodPressureFormat.Message);
 
         RuleFor(x => x.PresentingComplaints).MaximumLength(2000);
         RuleFor(x => x.ClinicalHistory).MaximumLength(4000);

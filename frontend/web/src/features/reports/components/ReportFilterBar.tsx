@@ -63,9 +63,10 @@ interface ReportFilterBarProps {
  * same row. Applies only once "Search" is clicked rather than live on every keystroke/selection:
  * a report can mix a large date range with several filters at once, so committing them together
  * as one explicit action reads more predictably than the numbers shifting under a half-typed
- * search term. "Reset" clears every field back to the page's defaults and returns to the
- * pre-search empty state, not just clearing the inputs — see each report page's own
- * handleReset for what "defaults" means there.
+ * search term. Each page's applied filters start out equal to its defaults, so the default-range
+ * report shows on first load without a Search. "Reset" clears every field back to those defaults
+ * and re-shows that default-range report, not just clearing the inputs — see each report page's
+ * own handleReset for what "defaults" means there.
  */
 export function ReportFilterBar({
   range,

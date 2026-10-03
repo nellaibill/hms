@@ -32,6 +32,11 @@ internal class AdmissionRepository : IAdmissionRepository
     {
         var admissions = _dbContext.Admissions.AsQueryable();
 
+        if (query.PatientId.HasValue)
+        {
+            admissions = admissions.Where(a => a.PatientId == query.PatientId.Value);
+        }
+
         if (query.Status.HasValue)
         {
             admissions = admissions.Where(a => a.Status == query.Status.Value);

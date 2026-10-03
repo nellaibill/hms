@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.DischargeSummary.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.DischargeSummary.Application.Validators;
 
@@ -36,7 +37,8 @@ internal class UpdateDischargeSummaryRequestValidator : AbstractValidator<Update
         RuleFor(x => x.RespiratoryRate).InclusiveBetween(0, 150).When(x => x.RespiratoryRate.HasValue);
         RuleFor(x => x.TemperatureF).InclusiveBetween(70, 115).When(x => x.TemperatureF.HasValue);
         RuleFor(x => x.SpO2Percent).InclusiveBetween(0, 100).When(x => x.SpO2Percent.HasValue);
-        RuleFor(x => x.BloodPressure).MaximumLength(20);
+        RuleFor(x => x.BloodPressure).MaximumLength(20)
+            .Must(BloodPressureFormat.IsValidOrEmpty).WithMessage(BloodPressureFormat.Message);
 
         RuleFor(x => x.CourseInHospital).MaximumLength(8000);
 

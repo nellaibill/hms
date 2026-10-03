@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 using HMS.Modules.Identity.Application;
+using HMS.Modules.Identity.Application.Mapping;
 using HMS.Modules.Identity.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
@@ -64,14 +65,15 @@ public class AuthenticationController : ControllerBase
     }
 
     /// <summary>Returns the caller's own identity, as read from the validated JWT — proof
-    /// the bearer token pipeline is actually enforced end to end.</summary>
+    /// the bearer token pipeline is actually enforced end to end. Repeated claim types
+    /// (one Permission/Feature claim per grant) come back as one comma-separated value.</summary>
     /// <response code="200">The token was valid.</response>
     /// <response code="401">No token, or the token was missing/invalid/expired.</response>
     [Authorize]
     [HttpGet("me")]
     public IActionResult Me()
     {
-        var claims = User.Claims.ToDictionary(c => c.Type, c => c.Value);
+        var claims = User.Claims.ToClaimsDictionary();
         return Ok(new ApiResponse<Dictionary<string, string>> { Data = claims });
     }
 

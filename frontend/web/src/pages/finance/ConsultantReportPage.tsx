@@ -1,4 +1,4 @@
-import { FileSearch, Stethoscope } from 'lucide-react';
+import { Stethoscope } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useInvoicesForReportQuery } from '@/features/billing';
@@ -27,7 +27,8 @@ import { defaultReportDateRange } from '@/lib/reportDateRange';
  * silently omitting the majority of real (paid) revenue.
  *
  * Same shared filter bar and draft/applied/"click Search" pattern every other Finance report
- * uses (see ReportFilterBar's own doc comment) — Billing Type and Consultant dropdowns are
+ * uses (see ReportFilterBar's own doc comment), showing the default range on first load —
+ * Billing Type and Consultant dropdowns are
  * hidden here: Billing Type is always Consultation, and this report is already one row per
  * consultant, so filtering it down to a single one has no real use.
  */
@@ -36,7 +37,6 @@ export default function ConsultantReportPage() {
   const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
   const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
-  const [hasSearched, setHasSearched] = useState(false);
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
   const { data: consultantOptions } = useMasterOptionsQuery('consultant');
@@ -49,8 +49,8 @@ export default function ConsultantReportPage() {
   // usually still empty — and never pick up the real figures once the priming query resolves.
   // Mirrors ProfitReportPage's identical reasoning for its own `rows` memo.
   const rows = useMemo(
-    () => (hasSearched ? getProfitRows(billings ?? [], appliedRange) : []),
-    [hasSearched, billings, appliedRange, consultantOptions],
+    () => getProfitRows(billings ?? [], appliedRange),
+    [billings, appliedRange, consultantOptions],
   );
   const filteredRows = useMemo(() => filterProfitRows(rows, appliedFilters), [rows, appliedFilters]);
   const consultationRows = useMemo(() => filteredRows.filter((row) => row.billingType === 'Consultation'), [filteredRows]);
@@ -60,7 +60,6 @@ export default function ConsultantReportPage() {
   function handleSearch() {
     setAppliedRange(draftRange);
     setAppliedFilters(draftFilters);
-    setHasSearched(true);
   }
 
   function handleReset() {
@@ -69,7 +68,6 @@ export default function ConsultantReportPage() {
     setDraftFilters({});
     setAppliedRange(fresh);
     setAppliedFilters({});
-    setHasSearched(false);
   }
 
   return (
@@ -97,34 +95,20 @@ export default function ConsultantReportPage() {
             showConsultant={false}
           />
 
-          {!hasSearched ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card px-6 py-20 text-center">
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <FileSearch className="h-8 w-8" aria-hidden="true" />
-              </span>
-              <p className="text-base font-medium text-foreground">No data to display</p>
-              <p className="max-w-sm text-sm text-muted-foreground">
-                Please select a date range and filters, then click Search to view this report.
-              </p>
-            </div>
-          ) : (
-            <>
-              <ProfitSummaryCards totals={totals} />
+          <ProfitSummaryCards totals={totals} />
 
-              <div className="flex flex-col gap-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                  By Consultant <span className="font-normal text-muted-foreground">({byConsultant.length} consultants)</span>
-                </h2>
-                {isLoadingBillings ? (
-                  <p className="text-sm text-muted-foreground">Loading invoices…</p>
-                ) : byConsultant.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No consultation charges match the current filters.</p>
-                ) : (
-                  <ConsultantProfitTable rows={byConsultant} />
-                )}
-              </div>
-            </>
-          )}
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-foreground">
+              By Consultant <span className="font-normal text-muted-foreground">({byConsultant.length} consultants)</span>
+            </h2>
+            {isLoadingBillings ? (
+              <p className="text-sm text-muted-foreground">Loading invoices…</p>
+            ) : byConsultant.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No consultation charges match the current filters.</p>
+            ) : (
+              <ConsultantProfitTable rows={byConsultant} />
+            )}
+          </div>
         </div>
       </div>
     </div>

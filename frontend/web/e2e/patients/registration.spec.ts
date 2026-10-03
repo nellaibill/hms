@@ -59,7 +59,7 @@ test.describe('New patient registration — validation', () => {
     await wizard.field('Last name').fill('Smith');
     await wizard.field('Date of birth').fill('1990-01-01');
     await wizard.nextButton.click();
-    await expect(wizard.errorSummary.getByRole('listitem')).toContainText(['Enter letters only.']);
+    await expect(wizard.errorSummary.getByRole('listitem')).toContainText(['First name can contain letters only.']);
   });
 
   test('rejects a date of birth in the future', async () => {
@@ -120,7 +120,7 @@ test.describe('New patient registration — validation', () => {
     await wizard.nextButton.click();
     await expect(wizard.errorSummary.getByRole('listitem')).toContainText([
       'Pincode must be 6 digits',
-      'Phone number must be exactly 10 digits.',
+      'Primary phone must be exactly 10 digits.',
     ]);
   });
 

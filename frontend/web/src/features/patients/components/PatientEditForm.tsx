@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DistrictSelect } from '@/components/DistrictSelect';
 import { StateSelect } from '@/components/StateSelect';
+import { useLiveErrorRefresh } from '@/hooks/useLiveErrorRefresh';
 import { offlineAdChannelLabel, onlineAdChannelLabel } from '../arrivalChannelLabel';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
@@ -110,6 +111,8 @@ export function PatientEditForm({
     watch,
     trigger,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors, isDirty },
   } = useForm<PatientEditUiFormValues>({
     resolver: zodResolver(patientEditUiSchema),
@@ -117,6 +120,7 @@ export function PatientEditForm({
     // Deliberately not `mode: 'onChange'` — see PatientRegistrationForm's identical fix for
     // why: it races an overlapping validation pass against goToTab's own trigger() call.
   });
+  useLiveErrorRefresh({ schema: patientEditUiSchema, watch, errors, setError, clearErrors });
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -289,7 +293,7 @@ export function PatientEditForm({
         <TabErrorSummary messages={tabMessages('patient-info')} />
         <FormSection id="demographics" title="Patient Identification & Demographics">
           <div className="flex flex-wrap gap-3">
-            <Field label="Title" htmlFor="title" error={errors.title?.message} className="flex w-full flex-col gap-1 sm:w-28">
+            <Field label="Title" htmlFor="title" className="flex w-full flex-col gap-1 sm:w-28">
               <Controller
                 name="title"
                 control={control}
@@ -333,6 +337,10 @@ export function PatientEditForm({
               {detailedAge && <p className="text-xs text-muted-foreground">Age: {detailedAge}</p>}
             </Field>
           </div>
+          {/* Title's errors (title vs. age, title vs. gender) run a full sentence long — rendered
+              across the whole row instead of inside the narrow Title column, where they wrapped
+              into a tall sliver of text. */}
+          {errors.title?.message && <p className="-mt-2 text-sm text-destructive">{errors.title.message}</p>}
 
           <div className="flex flex-wrap gap-3">
             <Field label="Gender" htmlFor="gender" error={errors.gender?.message} className="flex w-full flex-col gap-1 sm:w-36">

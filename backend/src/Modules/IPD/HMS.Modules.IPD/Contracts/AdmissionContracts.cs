@@ -112,6 +112,8 @@ public record AdmissionResponse
 
 public class AdmissionListQuery : PagedRequest
 {
+    /// <summary>One patient's admissions only — backs Patient Details' "IP Admissions" count.</summary>
+    public Guid? PatientId { get; set; }
     public AdmissionStatus? Status { get; set; }
     public Guid? WardId { get; set; }
     public Guid? DepartmentId { get; set; }

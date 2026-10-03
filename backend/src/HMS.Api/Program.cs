@@ -42,7 +42,9 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 
 
-builder.Services.AddControllers()
+// With the ModelState filter suppressed, an unparseable body would reach actions as null and
+// throw inside FluentValidation (a 500) — RequestBodyRequiredFilter turns it back into a 400.
+builder.Services.AddControllers(options => options.Filters.Add<RequestBodyRequiredFilter>())
     // Patients is the first module with enum fields (Title, Gender, EncounterType, ...) —
     // serialize them as their string names, not the default integer ordinal, so the JSON
     // contract is self-describing for Swagger and every frontend consumer.

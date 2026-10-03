@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { FOOD_INSTRUCTIONS } from '../../enums/dischargeSummary';
+import { optionalBloodPressureSchema } from '../bloodPressure';
 
 /**
  * Mirrors HMS.Modules.DischargeSummary.Application.Validators.UpdateDischargeSummaryRequestValidator
@@ -66,7 +67,7 @@ export const updateDischargeSummarySchema = z.object({
   respiratoryRate: optionalBoundedNumber(0, 150),
   temperatureF: optionalBoundedNumber(70, 115),
   spO2Percent: optionalBoundedNumber(0, 100),
-  bloodPressure: optionalTrimmedString(20),
+  bloodPressure: optionalBloodPressureSchema,
 
   courseInHospital: optionalTrimmedString(8000),
 

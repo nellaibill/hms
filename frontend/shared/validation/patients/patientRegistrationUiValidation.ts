@@ -28,7 +28,9 @@ import {
 // CreatePatientRequestValidator.PhonePattern (^[0-9]{10}$), which now actually rejects
 // anything else, so the UI must match exactly rather than just being "at least as strict".
 const phonePattern = /^[0-9]{10}$/;
-const phonePatternMessage = 'Phone number must be exactly 10 digits.';
+// Each message names its field: the tab's error summary de-duplicates messages, so a shared
+// "Phone number must be…" for two different phones showed up as one unattributed line.
+const phonePatternMessage = (label: string) => `${label} must be exactly 10 digits.`;
 const pincodePattern = /^[0-9]{6}$/;
 
 // \p{L}/\p{M} (Unicode letter/mark categories) rather than A-Za-z so names in Indian
@@ -36,7 +38,9 @@ const pincodePattern = /^[0-9]{6}$/;
 // and most symbols. Allows spaces/apostrophes/periods/hyphens for names like "Mary-Jane
 // O'Brien" or "Dr. Rao". Kept in sync with backend's CreatePatientRequestValidator.NamePattern.
 const namePattern = /^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$/u;
-const namePatternMessage = 'Enter letters only.';
+// Names its field for the same reason as phonePatternMessage — "Enter letters only." alone
+// didn't say whether the first name, last name or emergency contact name was wrong.
+const namePatternMessage = (label: string) => `${label} can contain letters only.`;
 
 // Kept in sync with the backend's CreatePatientRequestValidator — Aadhaar/Passport/VoterId
 // each have one fixed, nationally-standardized format, checkable outright. DrivingLicense
@@ -66,7 +70,7 @@ export function idProofNumberFormatError(idProofType: IdProofType, trimmedNumber
 }
 
 const primaryPhoneSchema = z.object({
-  number: z.string().trim().min(1, 'Primary phone is required').max(20).regex(phonePattern, phonePatternMessage),
+  number: z.string().trim().min(1, 'Primary phone is required').max(20).regex(phonePattern, phonePatternMessage('Primary phone')),
 });
 
 // A second/third emergency contact added via "Add Emergency Contact" — the first one stays
@@ -75,8 +79,8 @@ const primaryPhoneSchema = z.object({
 // additionalConsultants' "the primary one is a fixed field, extras are an array" split.
 const emergencyContactEntrySchema = z.object({
   relationship: z.enum(RELATIONSHIPS),
-  name: z.string().trim().min(1, 'Name is required').max(150).regex(namePattern, namePatternMessage),
-  phone: z.string().trim().min(1, 'Phone is required').max(20).regex(phonePattern, phonePatternMessage),
+  name: z.string().trim().min(1, 'Name is required').max(150).regex(namePattern, namePatternMessage('Emergency contact name')),
+  phone: z.string().trim().min(1, 'Phone is required').max(20).regex(phonePattern, phonePatternMessage('Emergency contact phone')),
 });
 
 // UI-only demo affordance ("Add another Allergy") — mirrors additionalConsultantSchema's own
@@ -172,7 +176,7 @@ const arrivalSourceSchema = z
 const referralColumnSchema = z.object({
   category: z.enum(REFERRAL_COLUMN_CATEGORIES),
   details: z.string().trim().max(200).optional().or(z.literal('')),
-  contactNumber: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
+  contactNumber: z.string().trim().max(20).regex(phonePattern, phonePatternMessage('Contact number')).optional().or(z.literal('')),
 });
 
 // "Add another Consultant" row — each field stays optional/unvalidated here (a half-filled
@@ -233,8 +237,8 @@ export type RecordVisitUiFormValues = z.infer<typeof recordVisitUiSchema>;
 
 const demographicsUiSchema = {
   title: z.enum(TITLES),
-  firstName: z.string().trim().min(1, 'First name is required').max(100).regex(namePattern, namePatternMessage),
-  lastName: z.string().trim().min(1, 'Last name is required').max(100).regex(namePattern, namePatternMessage),
+  firstName: z.string().trim().min(1, 'First name is required').max(100).regex(namePattern, namePatternMessage('First name')),
+  lastName: z.string().trim().min(1, 'Last name is required').max(100).regex(namePattern, namePatternMessage('Last name')),
   dateOfBirth: z
     .string()
     .min(1, 'Date of birth is required')
@@ -267,18 +271,18 @@ const demographicsUiSchema = {
   pincode: z.string().regex(pincodePattern, 'Pincode must be 6 digits'),
 
   primaryPhone: primaryPhoneSchema,
-  secondaryPhone: z.string().trim().max(20).regex(phonePattern, phonePatternMessage).optional().or(z.literal('')),
+  secondaryPhone: z.string().trim().max(20).regex(phonePattern, phonePatternMessage('Secondary phone')).optional().or(z.literal('')),
   email: z.string().email('Enter a valid email address').max(256).optional().or(z.literal('')),
   profession: z.string().max(100).optional().or(z.literal('')),
 
   emergencyContactRelationship: z.enum(RELATIONSHIPS),
-  emergencyContactName: z.string().trim().min(1, 'Emergency contact name is required').max(150).regex(namePattern, namePatternMessage),
+  emergencyContactName: z.string().trim().min(1, 'Emergency contact name is required').max(150).regex(namePattern, namePatternMessage('Emergency contact name')),
   emergencyContactPhone: z
     .string()
     .trim()
     .min(1, 'Emergency contact phone is required')
     .max(20)
-    .regex(phonePattern, phonePatternMessage),
+    .regex(phonePattern, phonePatternMessage('Emergency contact phone')),
   additionalEmergencyContacts: z.array(emergencyContactEntrySchema).max(2, 'Up to two additional emergency contacts').default([]),
 
   hasKnownAllergy: z.boolean(),
@@ -326,6 +330,14 @@ const allergyRefinement = (
 // Mirrors the backend's CreatePatientRequestValidator.CalculateAge (whole-year age, adjusted
 // for whether the birthday has occurred yet this year) so both layers agree on the same age
 // for a given date of birth.
+// The age-based rules below (title, marital status) only judge a date of birth that's itself
+// valid — a future or malformed one already has its own error on Date of birth, and an age
+// computed from it (negative, or from a 6-digit year) only stacked a misleading Title/Marital
+// status error on top of it.
+function isUsableDateOfBirth(dateOfBirth: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) && new Date(dateOfBirth) <= new Date();
+}
+
 function calculateAge(dateOfBirth: string, asOf: Date): number {
   const dob = new Date(dateOfBirth);
   let age = asOf.getFullYear() - dob.getFullYear();
@@ -341,7 +353,7 @@ function calculateAge(dateOfBirth: string, asOf: Date): number {
 // Title is an age category, not a free-text honorific, so it must stay consistent with the
 // patient's actual age. Deliberately not coupled to Gender (a separate, more sensitive call).
 const titleAgeRefinement = (data: { title: string; dateOfBirth: string }, ctx: z.RefinementCtx) => {
-  if (!data.dateOfBirth) {
+  if (!isUsableDateOfBirth(data.dateOfBirth)) {
     return;
   }
   const age = calculateAge(data.dateOfBirth, new Date());
@@ -410,7 +422,7 @@ const titleGenderRefinement = (data: { title: string; gender: string }, ctx: z.R
 // 18-or-older must give a real answer (Married or Unmarried), not 'NA'. Same 18 threshold
 // Title already uses for Mr/Mrs/Ms/Dr.
 const maritalStatusAgeRefinement = (data: { maritalStatus: string; dateOfBirth: string }, ctx: z.RefinementCtx) => {
-  if (!data.dateOfBirth) {
+  if (!isUsableDateOfBirth(data.dateOfBirth)) {
     return;
   }
   const isMinor = calculateAge(data.dateOfBirth, new Date()) < 18;

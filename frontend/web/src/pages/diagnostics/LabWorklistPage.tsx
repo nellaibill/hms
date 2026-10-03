@@ -40,6 +40,8 @@ export default function LabWorklistPage() {
         icon={ClipboardList}
         title="Lab Worklist"
         subtitle="Every lab order — sample collection through report release."
+        backTo="/diagnostics/lab/dashboard"
+        backLabel="Back to Laboratory Workflow"
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">

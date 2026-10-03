@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { FileSearch, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useInvoicesForReportQuery, type BillingType } from '@/features/billing';
@@ -30,8 +30,8 @@ interface CategoryProfitReportPageProps {
  * Shared page for a single-`BillingType` profit breakdown (Laboratory, Radiology) — everything
  * here is the exact same data pipeline `ProfitReportPage` (Hospital Profit Report) uses, just
  * pre-filtered to one billing type, so the two near-identical reports don't duplicate the whole
- * page — including the same draft/applied filter split and "click Search" empty state (see
- * ReportFilterBar's own doc comment). Deliberately OPD-billed only, same scope Hospital Profit
+ * page — including the same draft/applied filter split and default-range report on first load
+ * (see ReportFilterBar's own doc comment). Deliberately OPD-billed only, same scope Hospital Profit
  * Report has: IPD-originated lab/radiology charges are folded into generic `InpatientCharge`
  * lines (ADR-066) with no catalog reference to resolve a cost from — extending this would mean
  * reworking IPD's already-shipped Final Billing charge-posting, out of scope for this pass
@@ -43,7 +43,6 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
   const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
   const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
   const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
-  const [hasSearched, setHasSearched] = useState(false);
   const [page, setPage] = useState(1);
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
@@ -59,11 +58,9 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
   usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(() => {
-    if (!hasSearched) return [];
     const allRows = getProfitRows(billings ?? [], appliedRange);
     return allRows.filter((row) => row.billingType === billingType);
   }, [
-    hasSearched,
     billings,
     appliedRange,
     billingType,
@@ -83,7 +80,6 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
   function handleSearch() {
     setAppliedRange(draftRange);
     setAppliedFilters(draftFilters);
-    setHasSearched(true);
     setPage(1);
   }
 
@@ -93,7 +89,6 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
     setDraftFilters({});
     setAppliedRange(fresh);
     setAppliedFilters({});
-    setHasSearched(false);
     setPage(1);
   }
 
@@ -122,42 +117,28 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
             exportSlot={<ProfitExportButtons range={appliedRange} rows={filteredRows} />}
           />
 
-          {!hasSearched ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card px-6 py-20 text-center">
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <FileSearch className="h-8 w-8" aria-hidden="true" />
-              </span>
-              <p className="text-base font-medium text-foreground">No data to display</p>
-              <p className="max-w-sm text-sm text-muted-foreground">
-                Please select a date range and filters, then click Search to view this report.
-              </p>
-            </div>
-          ) : (
-            <>
-              <ProfitSummaryCards totals={totals} />
+          <ProfitSummaryCards totals={totals} />
 
-              <CategoryBreakdownCard title={`Profit by ${billingType} Test`} rows={byTest} tone="success" maxRows={10} />
+          <CategoryBreakdownCard title={`Profit by ${billingType} Test`} rows={byTest} tone="success" maxRows={10} />
 
-              <div className="flex flex-col gap-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                  Billed Services <span className="font-normal text-muted-foreground">({filteredRows.length} line items)</span>
-                </h2>
-                {isLoadingBillings ? (
-                  <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading invoices…
-                  </div>
-                ) : filteredRows.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No billed services match the current filters.</p>
-                ) : (
-                  <>
-                    <ProfitTable rows={pagedRows.items} />
-                    <Pagination meta={pagedRows.meta} onPageChange={setPage} />
-                  </>
-                )}
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-foreground">
+              Billed Services <span className="font-normal text-muted-foreground">({filteredRows.length} line items)</span>
+            </h2>
+            {isLoadingBillings ? (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading invoices…
               </div>
-            </>
-          )}
+            ) : filteredRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No billed services match the current filters.</p>
+            ) : (
+              <>
+                <ProfitTable rows={pagedRows.items} />
+                <Pagination meta={pagedRows.meta} onPageChange={setPage} />
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

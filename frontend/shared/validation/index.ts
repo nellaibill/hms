@@ -1,4 +1,5 @@
 export * from './passwordPolicy';
+export * from './bloodPressure';
 export * from './identity/userValidation';
 export * from './identity/authValidation';
 export * from './patients/patientRegistrationUiValidation';

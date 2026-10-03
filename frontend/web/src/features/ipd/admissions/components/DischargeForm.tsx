@@ -1,6 +1,6 @@
 import { ApiError, DISCHARGE_TYPES, dischargeAdmissionSchema, type DischargeAdmissionFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ export function DischargeForm({ isSubmitting, apiError, onSubmit }: DischargeFor
     register,
     handleSubmit,
     setError,
+    watch,
     formState: { errors },
   } = useForm<DischargeAdmissionFormValues>({
     resolver: zodResolver(dischargeAdmissionSchema),
@@ -47,7 +48,16 @@ export function DischargeForm({ isSubmitting, apiError, onSubmit }: DischargeFor
     }
   }, [apiError, setError]);
 
-  const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
+  // A rejected discharge (e.g. "cannot be before the admission date/time") is answered by editing
+  // the form, so its banner goes away on the first edit instead of sitting above the corrected
+  // value until the next submit. A new submit's failure is a new error object and shows again.
+  const [editedSinceError, setEditedSinceError] = useState<ApiError | null>(null);
+  useEffect(() => {
+    const subscription = watch(() => setEditedSinceError(apiError));
+    return () => subscription.unsubscribe();
+  }, [watch, apiError]);
+
+  const generalError = apiError && !apiError.validationErrors && editedSinceError !== apiError ? apiError.message : null;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex max-w-xl flex-col gap-4">
