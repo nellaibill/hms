@@ -57,8 +57,8 @@ const sections: SettingsSection[] = [
     status: 'available',
   },
   {
-    title: 'Database Backup',
-    description: 'Download this hospital’s latest automated daily backup.',
+    title: 'Backup',
+    description: 'Download this hospital’s latest daily database backup, or a zip of its documents and images.',
     icon: DatabaseBackup,
     path: '/admin/settings/backup',
     status: 'available',
