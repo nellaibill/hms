@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatConsultantAvailability } from '@/features/masters';
 import { useOpdConsultationSummaryQuery } from '../hooks/useOpdConsultationSummaryQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+import { OpdListHeading } from './OpdListHeading';
 
 interface OpdConsultationListTableProps {
   filters: OpdFilterValues;
@@ -18,6 +19,15 @@ interface OpdConsultationListTableProps {
  * paginated (the backend returns a plain list); this endpoint only filters on from/to/
  * departmentId/consultantId — the shared filter bar's Status/Search fields don't apply here. */
 export function OpdConsultationListTable({ filters, onViewPatients }: OpdConsultationListTableProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      <OpdListHeading title="OPD Consultations" from={filters.from} to={filters.to} />
+      <OpdConsultationListContent filters={filters} onViewPatients={onViewPatients} />
+    </div>
+  );
+}
+
+function OpdConsultationListContent({ filters, onViewPatients }: OpdConsultationListTableProps) {
   const { data, isPending, isPlaceholderData, isError, error } = useOpdConsultationSummaryQuery({
     from: toRangeStart(filters.from),
     to: toRangeEnd(filters.to),

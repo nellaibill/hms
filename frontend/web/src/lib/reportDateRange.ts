@@ -22,6 +22,26 @@ export function defaultReportDateRange(): { from: string; to: string } {
   return { from: toLocalDateInputValue(yesterday), to: toLocalDateInputValue(today) };
 }
 
+function formatDateInputValue(date: string | undefined): string {
+  if (!date) return '';
+  // Parsed as a local date, not `new Date(date)` — a bare YYYY-MM-DD is read as UTC midnight,
+  // which is the previous calendar day anywhere west of UTC.
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/** A From/To filter pair as a heading label, e.g. "01 Oct 2026 – 02 Oct 2026", or just
+ * "02 Oct 2026" when both are the same day. Empty when neither date is set (or valid). */
+export function formatDateRangeLabel(from: string | undefined, to: string | undefined): string {
+  const fromLabel = formatDateInputValue(from);
+  const toLabel = formatDateInputValue(to);
+  if (fromLabel && toLabel) return fromLabel === toLabel ? fromLabel : `${fromLabel} – ${toLabel}`;
+  if (fromLabel) return `From ${fromLabel}`;
+  if (toLabel) return `Up to ${toLabel}`;
+  return '';
+}
+
 // A plain `type="date"` value (e.g. "2026-09-11") has no time component — sending it to the
 // backend as-is binds to midnight for BOTH From and To, so a same-day range like
 // from=2026-09-11&to=2026-09-11 becomes a zero-width window (>= midnight AND <= midnight) that

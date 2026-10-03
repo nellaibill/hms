@@ -10,6 +10,7 @@ import { ConsultantName } from '@/components/ConsultantName';
 import { LabStatusBadge } from '@/features/laboratory';
 import { useOpdInvestigationsQuery } from '../hooks/useOpdInvestigationsQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+import { OpdListHeading } from './OpdListHeading';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 const PAGE_SIZE = 10;
@@ -24,6 +25,15 @@ interface OpdInvestigationsListTableProps {
  * `source=OP` filter), one row per test/service rather than per order (an order covering 3
  * tests renders as 3 rows, each independently actionable from the worklist). */
 export function OpdInvestigationsListTable({ filters, page, onPageChange }: OpdInvestigationsListTableProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      <OpdListHeading title="OPD Investigations" from={filters.from} to={filters.to} />
+      <OpdInvestigationsListContent filters={filters} page={page} onPageChange={onPageChange} />
+    </div>
+  );
+}
+
+function OpdInvestigationsListContent({ filters, page, onPageChange }: OpdInvestigationsListTableProps) {
   const { data, isPending, isPlaceholderData, isError, error } = useOpdInvestigationsQuery({
     page,
     pageSize: PAGE_SIZE,

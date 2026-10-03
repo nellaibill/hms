@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, PaymentStatusBadge } from '@/features/billing';
 import { useOpdProceduresQuery } from '../hooks/useOpdProceduresQuery';
 import { toRangeEnd, toRangeStart, type OpdFilterValues } from '../types';
+import { OpdListHeading } from './OpdListHeading';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 const PAGE_SIZE = 10;
@@ -30,6 +31,15 @@ interface OpdProceduresListTableProps {
  * ProcedureListItem's own doc comment for why both are returned.
  */
 export function OpdProceduresListTable({ filters, page, onPageChange }: OpdProceduresListTableProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      <OpdListHeading title="OPD Procedures" from={filters.from} to={filters.to} />
+      <OpdProceduresListContent filters={filters} page={page} onPageChange={onPageChange} />
+    </div>
+  );
+}
+
+function OpdProceduresListContent({ filters, page, onPageChange }: OpdProceduresListTableProps) {
   const { data, isPending, isPlaceholderData, isError, error } = useOpdProceduresQuery({
     page,
     pageSize: PAGE_SIZE,
