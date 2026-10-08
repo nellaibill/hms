@@ -114,12 +114,13 @@ app.UseHmsRateLimiting();
 app.UseHmsSwagger();
 
 // Before UseStaticFiles() so the raster/SVG uploads served from wwwroot (Branding logos,
-// product images, patient photos) also get nosniff/X-Frame-Options/CSP, not just the JSON API
-// responses below.
+// product images, user/consultant photos) also get nosniff/X-Frame-Options/CSP, not just the
+// JSON API responses below.
 app.UseHmsSecurityHeaders();
 
-// Serves patient photos/ID proofs saved by PatientFileStorage under wwwroot/uploads —
-// the app's first static-file surface (see docs/DecisionLog.md's file-upload ADR).
+// Serves each tenant's public uploads from wwwroot/uploads/Tenant/{tenantId}/… (see
+// TenantFileLocations and docs/DecisionLog.md ADR-087). Documents live under App_Data instead
+// and are never served from here.
 app.UseStaticFiles();
 
 // HMS Multi-Tenancy Phase C: must run after authentication (so it has a JWT's "UserId"/

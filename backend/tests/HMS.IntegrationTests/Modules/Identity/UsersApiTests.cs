@@ -210,11 +210,11 @@ public class UsersApiTests : IClassFixture<UsersApiFactory>
         var uploadResponse = await _client.PostAsync($"/api/v1/users/{created.Data.Id}/profile-photo", content);
         uploadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var uploaded = await uploadResponse.Content.ReadFromJsonAsync<ApiResponse<UserResponse>>();
-        uploaded!.Data!.ProfilePhotoUrl.Should().Be($"uploads/users/{created.Data.Id}.jpg");
+        uploaded!.Data!.ProfilePhotoUrl.Should().MatchRegex($@"^uploads/Tenant/[0-9a-f-]{{36}}/users/{created.Data.Id}\.jpg$");
 
         var getResponse = await _client.GetAsync($"/api/v1/users/{created.Data.Id}");
         var fetched = await getResponse.Content.ReadFromJsonAsync<ApiResponse<UserResponse>>();
-        fetched!.Data!.ProfilePhotoUrl.Should().Be($"uploads/users/{created.Data.Id}.jpg");
+        fetched!.Data!.ProfilePhotoUrl.Should().Be(uploaded.Data.ProfilePhotoUrl);
     }
 
     [Fact]

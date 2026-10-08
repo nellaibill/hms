@@ -11,4 +11,8 @@ namespace HMS.Modules.Identity.Application.Abstractions;
 internal interface IUserFileStorage
 {
     Task<string> SaveProfilePhotoAsync(Guid userId, string fileName, Stream content, CancellationToken cancellationToken);
+
+    /// <summary>Deletes a photo this storage saved earlier. A null path, or one outside the
+    /// current tenant's users folder, is ignored.</summary>
+    Task DeleteAsync(string? relativePath, CancellationToken cancellationToken);
 }

@@ -2,6 +2,7 @@ using FluentAssertions;
 using HMS.Modules.Masters.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
@@ -21,7 +22,7 @@ public class ConsultantFileStorageTests : IDisposable
         var environment = Substitute.For<IHostEnvironment>();
         environment.ContentRootPath.Returns(_contentRoot);
 
-        _sut = new ConsultantFileStorage(environment, _tenantContext);
+        _sut = new ConsultantFileStorage(environment, _tenantContext, NullLogger<ConsultantFileStorage>.Instance);
     }
 
     public void Dispose()
@@ -53,8 +54,8 @@ public class ConsultantFileStorageTests : IDisposable
 
         var relativePath = await _sut.SavePhotoAsync(consultantId, "photo.jpg", content, CancellationToken.None);
 
-        relativePath.Should().Be($"uploads/consultants/{tenantId}/{consultantId}.jpg");
-        var fullPath = Path.Combine(_contentRoot, "wwwroot", "uploads", "consultants", tenantId.ToString(), $"{consultantId}.jpg");
+        relativePath.Should().Be($"uploads/Tenant/{tenantId}/consultants/{consultantId}.jpg");
+        var fullPath = Path.Combine(_contentRoot, "wwwroot", "uploads", "Tenant", tenantId.ToString(), "consultants", $"{consultantId}.jpg");
         File.Exists(fullPath).Should().BeTrue();
     }
 
@@ -80,10 +81,35 @@ public class ConsultantFileStorageTests : IDisposable
             await _sut.SavePhotoAsync(consultantId, "photo.jpg", contentB, CancellationToken.None);
         }
 
-        var pathA = Path.Combine(_contentRoot, "wwwroot", "uploads", "consultants", tenantA.ToString(), $"{consultantId}.jpg");
-        var pathB = Path.Combine(_contentRoot, "wwwroot", "uploads", "consultants", tenantB.ToString(), $"{consultantId}.jpg");
+        var pathA = Path.Combine(_contentRoot, "wwwroot", "uploads", "Tenant", tenantA.ToString(), "consultants", $"{consultantId}.jpg");
+        var pathB = Path.Combine(_contentRoot, "wwwroot", "uploads", "Tenant", tenantB.ToString(), "consultants", $"{consultantId}.jpg");
 
         File.ReadAllBytes(pathA).Should().Equal(1);
         File.ReadAllBytes(pathB).Should().Equal(2);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RemovesAPhotoFromTheTenantsOwnFolder()
+    {
+        _tenantContext.SetTenant(Guid.NewGuid(), "conn");
+        using var content = new MemoryStream([1]);
+        var relativePath = await _sut.SavePhotoAsync(Guid.NewGuid(), "photo.jpg", content, CancellationToken.None);
+
+        await _sut.DeleteAsync(relativePath, CancellationToken.None);
+
+        File.Exists(Path.Combine(_contentRoot, "wwwroot", relativePath.Replace('/', Path.DirectorySeparatorChar))).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_LeavesAnotherTenantsPhotoAlone()
+    {
+        _tenantContext.SetTenant(Guid.NewGuid(), "conn-a");
+        using var content = new MemoryStream([1]);
+        var relativePath = await _sut.SavePhotoAsync(Guid.NewGuid(), "photo.jpg", content, CancellationToken.None);
+
+        _tenantContext.SetTenant(Guid.NewGuid(), "conn-b");
+        await _sut.DeleteAsync(relativePath, CancellationToken.None);
+
+        File.Exists(Path.Combine(_contentRoot, "wwwroot", relativePath.Replace('/', Path.DirectorySeparatorChar))).Should().BeTrue();
     }
 }

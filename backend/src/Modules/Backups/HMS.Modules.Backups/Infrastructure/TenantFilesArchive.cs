@@ -1,21 +1,20 @@
 using System.IO.Compression;
 using HMS.Modules.Backups.Application.Abstractions;
+using HMS.Shared.Kernel;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace HMS.Modules.Backups.Infrastructure;
 
 /// <summary>
-/// Zips one tenant's share of the five upload trees every file-storing module writes to (see
-/// docs/DecisionLog.md ADR-083 — each is "&lt;root&gt;/{tenantId}/..." on the one shared
-/// filesystem). The roots are repeated here rather than asked of each module, the same way
-/// TenantFileStorageMigrator repeats them: the storage classes are internal to their own
-/// modules, and only their root directory is needed, not their read/write behaviour. A new
-/// upload kind needs adding here too, or its files silently won't be in the zip.
+/// Zips one tenant's five upload kinds, each a subfolder of that tenant's own folder (see
+/// <see cref="TenantFileLocations"/> and docs/DecisionLog.md ADR-087). The kinds are listed
+/// here rather than asked of each module: the storage classes are internal to their own
+/// modules, and only their folder is needed, not their read/write behaviour. A new upload kind
+/// needs adding here too, or its files silently won't be in the zip.
 ///
-/// Inside the zip the tenant id segment is dropped and each root gets a readable folder name
-/// ("documents/", "product-images/", …) — the layout below each tenant folder (e.g. a product's
-/// "{productId}/images/") is kept as is.
+/// Inside the zip each kind gets a readable folder name ("documents/", "product-images/", …) —
+/// the layout below each kind's folder (e.g. a product's "{productId}/images/") is kept as is.
 /// </summary>
 internal sealed class TenantFilesArchive : ITenantFilesArchive
 {
@@ -32,14 +31,14 @@ internal sealed class TenantFilesArchive : ITenantFilesArchive
 
     public TenantFilesArchive(IHostEnvironment environment, ILogger<TenantFilesArchive> logger)
     {
-        var uploadsRoot = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads");
+        var contentRoot = environment.ContentRootPath;
         _sources =
         [
-            new FileSource("documents", "Documents", Path.Combine(environment.ContentRootPath, "App_Data", "documents")),
-            new FileSource("consultant-photos", "Consultant photos", Path.Combine(uploadsRoot, "consultants")),
-            new FileSource("user-photos", "User photos", Path.Combine(uploadsRoot, "users")),
-            new FileSource("product-images", "Product images", Path.Combine(uploadsRoot, "products")),
-            new FileSource("branding", "Branding", Path.Combine(uploadsRoot, "branding")),
+            new FileSource("documents", "Documents", tenantId => TenantFileLocations.PrivateDirectory(contentRoot, tenantId, TenantFileLocations.Documents)),
+            new FileSource("consultant-photos", "Consultant photos", tenantId => TenantFileLocations.PublicDirectory(contentRoot, tenantId, TenantFileLocations.Consultants)),
+            new FileSource("user-photos", "User photos", tenantId => TenantFileLocations.PublicDirectory(contentRoot, tenantId, TenantFileLocations.Users)),
+            new FileSource("product-images", "Product images", tenantId => TenantFileLocations.PublicDirectory(contentRoot, tenantId, TenantFileLocations.Products)),
+            new FileSource("branding", "Branding", tenantId => TenantFileLocations.PublicDirectory(contentRoot, tenantId, TenantFileLocations.Branding)),
         ];
         _logger = logger;
     }
@@ -116,8 +115,5 @@ internal sealed class TenantFilesArchive : ITenantFilesArchive
                 .OrderBy(file => file.FullName, StringComparer.Ordinal)
             : [];
 
-    private sealed record FileSource(string Key, string Label, string Root)
-    {
-        public string TenantRoot(Guid tenantId) => Path.Combine(Root, tenantId.ToString());
-    }
+    private sealed record FileSource(string Key, string Label, Func<Guid, string> TenantRoot);
 }
