@@ -37,6 +37,28 @@ _To be documented._
 
 ## Decisions
 
+### ADR-086: A hospital can download its own uploaded documents & images as a zip, built on demand (not nightly) next to the database backup
+**Date:** 2026-09-30
+**Status:** Accepted
+
+**Context**
+User request: let a hospital zip and download its own documents and images, the same way it already downloads its database backup from Settings → Backup. The daily `pg_dump` only holds the *paths* of uploaded files, never their bytes, so the database backup alone can't restore a hospital's documents, photos, product images or logo. ADR-083 already puts every upload under a `{tenantId}` folder, which gives one clean boundary to zip.
+
+**Decision**
+- New `ITenantFilesArchive` in `HMS.Modules.Backups` (`TenantFilesArchive`) covers the five upload roots from ADR-083 (`App_Data/documents`, `wwwroot/uploads/{consultants,users,products,branding}`) for a single tenant id. In the zip each root becomes a readable top-level folder (`documents/`, `consultant-photos/`, `user-photos/`, `product-images/`, `branding/`) with the tenant-id segment dropped. The layout below each tenant folder is kept.
+- Two endpoints on `TenantBackupsController`: `GET /api/v1/backups/mine/files` (file count and size per kind) and `GET /api/v1/backups/mine/files/download` (the zip, or `404 BACKUPS.NO_FILES`). They use the same `identity-administration.view` permission and the same "tenant comes only from the caller's JWT" rule as the database download. No Platform-side endpoint is added.
+- The zip is built **on demand**, not by the 1 AM job. Files are mostly append-only, and a nightly full copy of every tenant's upload tree would multiply disk use by the 14-day retention window. A hospital asking for its files also wants today's set, not last night's.
+- Formats that are already compressed (JPEG/PNG/WebP/PDF/DOCX/XLSX) are *stored* in the zip, not deflated again. In the live check, deflating them made PNG photos about 5% bigger. SVG logos, the only other upload type, are still deflated.
+- The zip is written to a temp file (`FileOptions.DeleteOnClose`) and then streamed, not written straight into the response. This gives the response a real `Content-Length`, and a failure mid-zip returns a clean error instead of a 200 with a truncated body. Files are opened with `FileShare.ReadWrite | FileShare.Delete` before their entry is created, so a download never blocks a concurrent photo replace or document delete. A file that vanishes or can't be opened is skipped and logged.
+- The Settings page is now titled "Backup" and shows two cards: Database (unchanged) and Documents & images (counts per kind plus a "Download zip" button).
+
+**Consequences**
+- Files still sitting at the pre-ADR-083 shared paths (i.e. `migrate-tenant-files` was never run on that host) belong to no tenant folder and are **not** in any hospital's zip. Run `migrate-tenant-files` (dry run first) on any host where that's uncertain.
+- The five roots are hard-coded here, as they already are in `TenantFileStorageMigrator`. A new upload kind has to be added in both places, or its files silently won't be zipped.
+- Building the zip costs CPU and temp disk roughly equal to the tenant's total upload size on each request, and the browser holds the whole zip in memory (same `getBlob` path as the database download). This is fine at today's sizes. A tenant with many GB of uploads would need a streamed or background-prepared download instead.
+
+---
+
 ### ADR-085: Patient Date of Birth capped at 100 years old (was 130) on both registration and edit
 **Date:** 2026-09-23
 **Status:** Accepted

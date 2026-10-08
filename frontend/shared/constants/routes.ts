@@ -92,6 +92,8 @@ export const API_ROUTES = {
   backups: {
     mine: '/api/v1/backups/mine',
     mineDownload: '/api/v1/backups/mine/download',
+    mineFiles: '/api/v1/backups/mine/files',
+    mineFilesDownload: '/api/v1/backups/mine/files/download',
   },
   /** Mirrors HMS.Modules.Documents.Endpoints.DocumentsController — see documentsApi.ts. */
   documents: {
