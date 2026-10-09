@@ -308,9 +308,18 @@ internal class UserService : IUserService
             return Result<UserResponse>.Failure(UserErrorCodes.InvalidFile, "The uploaded file is not a valid image.");
         }
 
+        var previousPath = user.ProfilePhotoUrl;
         var path = await _fileStorage.SaveProfilePhotoAsync(id, fileName, content, cancellationToken);
         user.SetProfilePhoto(path, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+
+        // The file is named after the user's id, so a re-upload overwrites it in place — the old
+        // file only lingers when the extension changed. Case-insensitive so "a.JPG" -> "a.jpg"
+        // never deletes the file just written on a case-insensitive disk.
+        if (!string.Equals(previousPath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            await _fileStorage.DeleteAsync(previousPath, cancellationToken);
+        }
 
         var role = await _roleRepository.GetByIdAsync(user.RoleId, cancellationToken);
 

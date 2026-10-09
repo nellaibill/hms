@@ -126,6 +126,18 @@ internal class BrandingSettings : Entity
         MarkUpdated(updatedBy);
     }
 
+    /// <summary>The stored path for one logo slot. <paramref name="slot"/> must already be
+    /// validated against Contracts.BrandingLogoSlots.</summary>
+    public string? GetLogoPath(string slot) => slot switch
+    {
+        Contracts.BrandingLogoSlots.Primary => LogoPath,
+        Contracts.BrandingLogoSlots.Compact => CompactLogoPath,
+        Contracts.BrandingLogoSlots.Login => LoginLogoPath,
+        Contracts.BrandingLogoSlots.Print => PrintLogoPath,
+        Contracts.BrandingLogoSlots.Favicon => FaviconPath,
+        _ => throw new ArgumentOutOfRangeException(nameof(slot), slot, "Unknown logo slot."),
+    };
+
     /// <summary>Sets (or, with a null path, clears) one logo slot. <paramref name="slot"/> must
     /// already be validated against Contracts.BrandingLogoSlots.</summary>
     public void UpdateLogo(string slot, string? logoPath, Guid? updatedBy)

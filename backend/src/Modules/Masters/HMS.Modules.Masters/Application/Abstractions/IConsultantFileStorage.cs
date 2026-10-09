@@ -9,4 +9,8 @@ namespace HMS.Modules.Masters.Application.Abstractions;
 internal interface IConsultantFileStorage
 {
     Task<string> SavePhotoAsync(Guid consultantId, string fileName, Stream content, CancellationToken cancellationToken);
+
+    /// <summary>Deletes a photo this storage saved earlier. A null path, or one outside the
+    /// current tenant's consultants folder, is ignored.</summary>
+    Task DeleteAsync(string? relativePath, CancellationToken cancellationToken);
 }

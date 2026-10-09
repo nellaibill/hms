@@ -86,20 +86,27 @@ tenants (Platform, legacy) are already migrated. If you see `42703` right after 
 added a migration, this is the first thing to check: migrate the hospital tenant that request
 was actually resolved against, via the Migrate button above.
 
-### One-time: tenant-scoped file storage migration (`migrate-tenant-files`)
-Per [DecisionLog.md ADR-083](DecisionLog.md): uploaded files (documents, consultant/user
-photos, product images, branding logo) are now stored under a per-tenant subfolder rather than
-one shared `wwwroot/uploads`/`App_Data/documents` tree. Any file uploaded *before* this change
-still needs to be moved into its tenant's own folder (and, for everything except Documents, its
-DB path column rewritten to match) — this is a separate, one-time, explicitly-run step, deliberately
-**not** part of `migrate` or Development's auto-migrate, since unlike a schema migration it
-moves real files and rewrites real rows in each tenant's live database.
+### Tenant file storage migration (`migrate-tenant-files`)
+Per [DecisionLog.md ADR-087](DecisionLog.md): every file a hospital uploads now lives under that
+hospital's own `Tenant/{tenantId}` folder:
 
-Run it once, after `migrate` (so the schema is current) and after the new app version is
-deployed:
+```
+wwwroot/uploads/Tenant/{tenantId}/branding|users|consultants|products/…   (public images)
+App_Data/Tenant/{tenantId}/documents/…                                    (private documents)
+```
+
+Files saved in either older layout (the original shared `wwwroot/uploads/{kind}` and
+`App_Data/documents` trees, or ADR-083's `uploads/{kind}/{tenantId}` and
+`App_Data/documents/{tenantId}`) need to be moved, and for everything except Documents their DB
+path column rewritten. This is a separate, explicitly-run step, deliberately **not** part of
+`migrate` or Development's auto-migrate, since unlike a schema migration it moves real files and
+rewrites real rows in each tenant's live database.
+
+Run it **right after** `migrate` and deploying the version that includes ADR-087 — until it runs,
+that tenant's existing files are missing from Settings → Backup's documents & images zip:
 
 ```bash
-# 1. Dry run first — reports per-tenant, per-kind counts (moved / already-migrated /
+# 1. Dry run first — reports per-tenant, per-kind counts (to move / already migrated /
 #    missing source file) without touching any file or row.
 dotnet HMS.Api.dll migrate-tenant-files --dry-run
 
@@ -107,10 +114,12 @@ dotnet HMS.Api.dll migrate-tenant-files --dry-run
 dotnet HMS.Api.dll migrate-tenant-files
 ```
 
-Idempotent and safe to re-run — anything already at its new tenant-scoped path is skipped, and
-one tenant failing is logged and skipped rather than aborting the whole run. Old files stay
-reachable at their old path until a tenant is migrated, so nothing breaks for a tenant that
-hasn't been run yet.
+Idempotent and safe to re-run — anything already in the current layout is skipped, and one
+tenant failing is logged and skipped rather than aborting the whole run. Images keep working at
+their old path until the run (their DB column still points there), and documents are read from
+the ADR-083 folder as a fallback, so nothing breaks in between. Afterwards, the tenant's own
+empty ADR-083 folders are removed; anything left in the old shared folders belongs to no
+database row and can be reviewed and deleted by hand.
 
 ## Rollback Strategy
 _To be documented._

@@ -6,7 +6,7 @@ export interface Consultant {
   specialization?: string | null;
   isActive: boolean;
   priority?: number | null;
-  /** Relative path (e.g. "uploads/consultants/{id}.jpg"), set only via the dedicated photo
+  /** Relative path (e.g. "uploads/Tenant/{tenantId}/consultants/{id}.jpg"), set only via the dedicated photo
    * upload endpoint — resolve to a full URL the same way Consultant Photo does elsewhere
    * (`${apiBaseUrl}/${photoUrl}`). */
   photoUrl?: string | null;

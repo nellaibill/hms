@@ -10,9 +10,10 @@ namespace HMS.Modules.Backups;
 /// Single composition entry point for this module — mirrors every other module's
 /// Add&lt;X&gt;Module convention (see BrandingModule). Deliberately has no DbContext/migration
 /// of its own: a backup is a pg_dump file on disk (see IBackupStorage), not a row in any
-/// database, so there is nothing here for EF Core to own. IPgDumpRunner/IBackupStorage are
-/// singletons (they hold no per-request state, only IOptions&lt;BackupOptions&gt; plus filesystem/
-/// process calls) — safe both for the background scheduler and for the two controllers to share.
+/// database, so there is nothing here for EF Core to own. IPgDumpRunner/IBackupStorage/
+/// ITenantFilesArchive are singletons (they hold no per-request state, only configuration plus
+/// filesystem/process calls — the tenant is always passed in, never read from the request) —
+/// safe both for the background scheduler and for the two controllers to share.
 /// </summary>
 public static class BackupsModule
 {
@@ -22,6 +23,7 @@ public static class BackupsModule
 
         services.AddSingleton<IPgDumpRunner, PgDumpRunner>();
         services.AddSingleton<IBackupStorage, FileSystemBackupStorage>();
+        services.AddSingleton<ITenantFilesArchive, TenantFilesArchive>();
         services.AddHostedService<DailyBackupSchedulerService>();
 
         return services;

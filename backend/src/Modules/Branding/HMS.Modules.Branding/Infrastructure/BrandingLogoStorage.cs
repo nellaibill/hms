@@ -2,37 +2,36 @@ using HMS.Modules.Branding.Application.Abstractions;
 using HMS.Modules.Branding.Contracts;
 using HMS.Shared.Kernel;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace HMS.Modules.Branding.Infrastructure;
 
 /// <summary>
 /// Local-disk file storage under HMS.Api's wwwroot, mirroring
 /// HMS.Modules.Patients.Infrastructure.PatientFileStorage — this app's established
-/// file-upload pattern (see docs/DecisionLog.md's file-upload ADR). Single well-known slot
-/// per tenant (no owning-entity id, since BrandingSettings is itself a one-row-per-tenant
-/// table — see that entity's own doc comment) — but this app is database-per-tenant with a
-/// single shared filesystem/process underneath, so the slot is scoped under the caller's own
-/// <see cref="ITenantContext.TenantId"/> rather than shared across every hospital (see
-/// docs/DecisionLog.md ADR-083).
+/// file-upload pattern (see docs/DecisionLog.md's file-upload ADR). One folder per logo slot
+/// (no owning-entity id, since BrandingSettings is itself a one-row-per-tenant table — see
+/// that entity's own doc comment), all under the caller's own tenant folder:
+/// "uploads/Tenant/{tenantId}/branding/{slot}/{guid}{ext}" (see
+/// <see cref="TenantFileLocations"/> and docs/DecisionLog.md ADR-087).
 /// </summary>
 internal class BrandingLogoStorage : IBrandingLogoStorage
 {
-    private readonly string _rootPath;
+    private readonly string _contentRootPath;
     private readonly ITenantContext _tenantContext;
+    private readonly ILogger<BrandingLogoStorage> _logger;
 
-    public BrandingLogoStorage(IHostEnvironment environment, ITenantContext tenantContext)
+    public BrandingLogoStorage(IHostEnvironment environment, ITenantContext tenantContext, ILogger<BrandingLogoStorage> logger)
     {
-        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "branding");
+        _contentRootPath = environment.ContentRootPath;
         _tenantContext = tenantContext;
+        _logger = logger;
     }
 
     public async Task<string> SaveAsync(string fileName, Stream content, CancellationToken cancellationToken, string slot = BrandingLogoSlots.Primary)
     {
-        // Primary keeps the original "logo" folder so existing stored paths stay where they are.
-        var folder = slot == BrandingLogoSlots.Primary ? "logo" : slot;
-        var tenantId = _tenantContext.TenantId
-            ?? throw new InvalidOperationException("BrandingLogoStorage reached without a resolved tenant.");
-        var directory = Path.Combine(_rootPath, tenantId.ToString(), folder);
+        var tenantId = CurrentTenantId();
+        var directory = Path.Combine(TenantFileLocations.PublicDirectory(_contentRootPath, tenantId, TenantFileLocations.Branding), slot);
         Directory.CreateDirectory(directory);
 
         // Only the extension is taken from the caller-supplied file name — the stored
@@ -47,6 +46,34 @@ internal class BrandingLogoStorage : IBrandingLogoStorage
             await content.CopyToAsync(fileStream, cancellationToken);
         }
 
-        return Path.Combine("uploads", "branding", tenantId.ToString(), folder, storedFileName).Replace('\\', '/');
+        return TenantFileLocations.PublicRelativePath(tenantId, TenantFileLocations.Branding, slot, storedFileName);
     }
+
+    public Task DeleteAsync(string? relativePath, CancellationToken cancellationToken)
+    {
+        var tenantId = CurrentTenantId();
+
+        // Only ever this tenant's own branding folder — a logo still at an older layout's path
+        // is left for migrate-tenant-files rather than deleted from a request.
+        if (!TenantFileLocations.IsInTenantPublicFolder(relativePath, tenantId, TenantFileLocations.Branding))
+        {
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            File.Delete(TenantFileLocations.PublicFullPath(_contentRootPath, relativePath!));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A leftover file is harmless; failing the request after the database already
+            // points at the new logo would not be.
+            _logger.LogWarning(ex, "Could not delete replaced branding logo {LogoPath}", relativePath);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Guid CurrentTenantId() => _tenantContext.TenantId
+        ?? throw new InvalidOperationException("BrandingLogoStorage reached without a resolved tenant.");
 }

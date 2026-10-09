@@ -37,6 +37,56 @@ _To be documented._
 
 ## Decisions
 
+### ADR-087: Every tenant's files live under one `Tenant/{tenantId}` folder; replaced logos and photos are deleted
+**Date:** 2026-10-08
+**Status:** Accepted
+
+**Context**
+ADR-083 scoped uploads per tenant, but kind-first: each kind had its own top-level folder with a tenant folder inside it (`uploads/branding/{tenantId}/…`, `uploads/users/{tenantId}/…`, `App_Data/documents/{tenantId}/…`). The user asked for every logo and icon, and by extension every tenant file, to sit under one `Tenant` folder per tenant id, so a hospital's whole footprint is one place to back up, zip, move or delete. PR #249 (2026-09-16) tried this but fell 177 commits behind main and missed the four logo slots added on 2026-09-25 and Documents. The folder layout was also repeated in five storage classes, the migrator and ADR-086's zip, and no storage class ever deleted a file, so every logo re-upload left the previous file on disk.
+
+**Decision**
+1. One layout, built only by the new `HMS.Shared.Kernel.TenantFileLocations`:
+   - `wwwroot/uploads/Tenant/{tenantId}/branding/{primary|compact|login|print|favicon}/{guid}{ext}`
+   - `wwwroot/uploads/Tenant/{tenantId}/users/{userId}{ext}` and `…/consultants/{consultantId}{ext}`
+   - `wwwroot/uploads/Tenant/{tenantId}/products/{productId}/images/{guid}{ext}`
+   - `App_Data/Tenant/{tenantId}/documents/{documentId}{ext}` — still outside `wwwroot`, so documents stay reachable only through the authenticated content endpoint.
+   The primary logo's folder is renamed from `logo` to `primary` to match the other slots; it only kept the old name to avoid moving files, and every file moves anyway.
+2. All five storage classes, ADR-086's `TenantFilesArchive` and `TenantFileStorageMigrator` use `TenantFileLocations`, so the layout is defined once.
+3. Branding, user and consultant storage gain `DeleteAsync`. The services call it after the database save, for the slot's previous file (branding upload and remove) or when a re-uploaded photo's extension changed. It only deletes inside the caller's own tenant folder for that kind (`TenantFileLocations.IsInTenantPublicFolder`); a path in an older layout or another tenant's folder is ignored, and an I/O failure is logged, not returned. Product images have no replace or remove flow, so nothing changes there.
+4. `migrate-tenant-files` now moves files from either older layout (original shared, or ADR-083) straight to this one, for Documents and all eight path columns (`consultants.photo_url`, `users.profile_photo_url`, `product_images.image_url`, and the five `branding_settings` logo columns), then removes the tenant's ADR-083 folders once they are empty. The path mapping is `TenantFileLocations.ToCurrentPublicPath`, unit-tested on every shape.
+5. `DocumentFileStorage` reads and deletes from the ADR-083 folder as a fallback when a file isn't in the new folder yet, so documents keep working between deploy and migration.
+
+**Consequences**
+- Run `migrate-tenant-files` (dry run first) right after deploying this. Until it runs, that tenant's existing files are missing from the Settings → Backup zip. Images and documents keep working in the meantime.
+- Remove the document read fallback, `ToCurrentPublicPath` and the migrator once every host has been migrated.
+- A new upload kind still needs adding to `TenantFileLocations` and `TenantFilesArchive` (ADR-086's consequence), but no longer repeats the folder layout.
+- The folder name `Tenant` is capitalised as requested. URLs and paths are case-sensitive on Linux hosts, so anything that builds a path by hand must use `TenantFileLocations.TenantFolderName`.
+- `UseStaticFiles` still serves `wwwroot/uploads` without authentication (ADR-083's consequence is unchanged). Logos must be public anyway, since they show on the login page.
+
+---
+
+### ADR-086: A hospital can download its own uploaded documents & images as a zip, built on demand (not nightly) next to the database backup
+**Date:** 2026-09-30
+**Status:** Accepted
+
+**Context**
+User request: let a hospital zip and download its own documents and images, the same way it already downloads its database backup from Settings → Backup. The daily `pg_dump` only holds the *paths* of uploaded files, never their bytes, so the database backup alone can't restore a hospital's documents, photos, product images or logo. ADR-083 already puts every upload under a `{tenantId}` folder, which gives one clean boundary to zip.
+
+**Decision**
+- New `ITenantFilesArchive` in `HMS.Modules.Backups` (`TenantFilesArchive`) covers the five upload roots from ADR-083 (`App_Data/documents`, `wwwroot/uploads/{consultants,users,products,branding}`) for a single tenant id. In the zip each root becomes a readable top-level folder (`documents/`, `consultant-photos/`, `user-photos/`, `product-images/`, `branding/`) with the tenant-id segment dropped. The layout below each tenant folder is kept.
+- Two endpoints on `TenantBackupsController`: `GET /api/v1/backups/mine/files` (file count and size per kind) and `GET /api/v1/backups/mine/files/download` (the zip, or `404 BACKUPS.NO_FILES`). They use the same `identity-administration.view` permission and the same "tenant comes only from the caller's JWT" rule as the database download. No Platform-side endpoint is added.
+- The zip is built **on demand**, not by the 1 AM job. Files are mostly append-only, and a nightly full copy of every tenant's upload tree would multiply disk use by the 14-day retention window. A hospital asking for its files also wants today's set, not last night's.
+- Formats that are already compressed (JPEG/PNG/WebP/PDF/DOCX/XLSX) are *stored* in the zip, not deflated again. In the live check, deflating them made PNG photos about 5% bigger. SVG logos, the only other upload type, are still deflated.
+- The zip is written to a temp file (`FileOptions.DeleteOnClose`) and then streamed, not written straight into the response. This gives the response a real `Content-Length`, and a failure mid-zip returns a clean error instead of a 200 with a truncated body. Files are opened with `FileShare.ReadWrite | FileShare.Delete` before their entry is created, so a download never blocks a concurrent photo replace or document delete. A file that vanishes or can't be opened is skipped and logged.
+- The Settings page is now titled "Backup" and shows two cards: Database (unchanged) and Documents & images (counts per kind plus a "Download zip" button).
+
+**Consequences**
+- Files still sitting at the pre-ADR-083 shared paths (i.e. `migrate-tenant-files` was never run on that host) belong to no tenant folder and are **not** in any hospital's zip. Run `migrate-tenant-files` (dry run first) on any host where that's uncertain.
+- The five roots are hard-coded here, as they already are in `TenantFileStorageMigrator`. A new upload kind has to be added in both places, or its files silently won't be zipped.
+- Building the zip costs CPU and temp disk roughly equal to the tenant's total upload size on each request, and the browser holds the whole zip in memory (same `getBlob` path as the database download). This is fine at today's sizes. A tenant with many GB of uploads would need a streamed or background-prepared download instead.
+
+---
+
 ### ADR-085: Patient Date of Birth capped at 100 years old (was 130) on both registration and edit
 **Date:** 2026-09-23
 **Status:** Accepted
@@ -79,7 +129,7 @@ A live read-only load test against staging aborted after about 200 requests/minu
 
 ### ADR-083: Uploaded files (documents, consultant/user photos, product images, branding logo) are now scoped under the tenant's own folder on disk — plus a separate, explicit `migrate-tenant-files` command to fix up files already saved at the old shared paths
 **Date:** 2026-09-15
-**Status:** Accepted
+**Status:** Accepted — folder layout superseded by ADR-087
 
 **Context**
 User asked how tenant-level isolation for uploaded images/documents was being handled, suspecting it wasn't. Investigation confirmed it wasn't: this app is database-per-tenant (each hospital has its own connection string, resolved per-request via `ITenantContext` — see `TenantResolutionMiddleware`), but a single shared filesystem/process serves every tenant. None of the five local-disk file storage classes (`DocumentFileStorage`, `ConsultantFileStorage`, `ProductImageStorage`, `BrandingLogoStorage`, `UserFileStorage`) took the current tenant into account — every upload landed in one shared directory tree (`wwwroot/uploads/...` or `App_Data/documents`), keyed only by the owning entity's own GUID. In practice this didn't cause cross-tenant collisions (GUIDs don't collide, and Branding's logo is a fresh GUID filename per upload too, not a literal shared slot — ADR-072 already made the *branding_settings* DB row itself tenant-aware, per-tenant database), but it meant no real isolation boundary: no way to back up, quota, or wipe one tenant's files without touching every other hospital's, and any future bug (predictable id, path traversal, static-file misconfiguration) had blast radius across every tenant rather than one.

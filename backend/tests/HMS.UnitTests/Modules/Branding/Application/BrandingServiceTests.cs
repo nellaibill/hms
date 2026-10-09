@@ -77,6 +77,32 @@ public class BrandingServiceTests
     }
 
     [Fact]
+    public async Task UploadLogoAsync_DeletesTheSlotsPreviousFile_AfterSaving()
+    {
+        _logoStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>(), BrandingLogoSlots.Login)
+            .Returns("uploads/Tenant/t/branding/login/first.png", "uploads/Tenant/t/branding/login/second.png");
+
+        await UploadSmallPngAsync(BrandingLogoSlots.Login);
+        var result = await UploadSmallPngAsync(BrandingLogoSlots.Login);
+
+        result.Value!.LoginLogoUrl.Should().Be("uploads/Tenant/t/branding/login/second.png");
+        await _logoStorage.Received(1).DeleteAsync("uploads/Tenant/t/branding/login/first.png", Arg.Any<CancellationToken>());
+        await _logoStorage.DidNotReceive().DeleteAsync("uploads/Tenant/t/branding/login/second.png", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RemoveLogoAsync_DeletesTheRemovedFile()
+    {
+        _logoStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>(), BrandingLogoSlots.Print)
+            .Returns("uploads/Tenant/t/branding/print/logo.png");
+        await UploadSmallPngAsync(BrandingLogoSlots.Print);
+
+        await _sut.RemoveLogoAsync(BrandingLogoSlots.Print, actorId: null, CancellationToken.None);
+
+        await _logoStorage.Received(1).DeleteAsync("uploads/Tenant/t/branding/print/logo.png", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RemoveLogoAsync_RejectsAnUnknownSlot()
     {
         var result = await _sut.RemoveLogoAsync("banner", actorId: null, CancellationToken.None);
