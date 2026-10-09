@@ -49,6 +49,9 @@ frontend/mobile/ios/DerivedData/
 # source control. wwwroot/.gitkeep keeps the parent folder itself tracked.
 # =========================
 backend/src/HMS.Api/wwwroot/uploads/
+# Private uploads (Documents, incl. patient photos/ID proofs) — same reasoning, stored outside
+# wwwroot (App_Data/Tenant/{tenantId}/documents, ADR-087).
+backend/src/HMS.Api/App_Data/
 
 # =========================
 # IDE

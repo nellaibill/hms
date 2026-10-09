@@ -201,6 +201,31 @@ public class ConsultantServiceTests
     }
 
     [Fact]
+    public async Task UploadPhotoAsync_WhenTheExtensionChanges_DeletesThePreviousFile()
+    {
+        var consultant = Consultant.Create(
+            "Dr. Karthikeyan",
+            departmentId: null,
+            specialization: null,
+            isActive: true,
+            priority: null,
+            availableDays: [],
+            visitStartTime: null,
+            visitEndTime: null,
+            consultationTypes: [],
+            createdBy: null);
+        consultant.SetPhoto("uploads/Tenant/t/consultants/old.png", null);
+        _repository.GetByIdAsync(consultant.Id, Arg.Any<CancellationToken>()).Returns(consultant);
+        _fileStorage.SavePhotoAsync(consultant.Id, "photo.jpg", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns("uploads/Tenant/t/consultants/new.jpg");
+        using var content = new MemoryStream([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46]);
+
+        await _sut.UploadPhotoAsync(consultant.Id, content, "photo.jpg", "image/jpeg", content.Length, actorId: null, CancellationToken.None);
+
+        await _fileStorage.Received(1).DeleteAsync("uploads/Tenant/t/consultants/old.png", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task UploadPhotoAsync_WhenConsultantDoesNotExist_ReturnsNotFound()
     {
         _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Consultant?)null);

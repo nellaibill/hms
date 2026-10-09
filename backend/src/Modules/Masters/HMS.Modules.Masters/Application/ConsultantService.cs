@@ -187,9 +187,17 @@ internal class ConsultantService : IConsultantService
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidFile, "The uploaded file is not a valid image.");
         }
 
+        var previousPath = consultant.PhotoUrl;
         var path = await _fileStorage.SavePhotoAsync(id, fileName, content, cancellationToken);
         consultant.SetPhoto(path, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+
+        // Same as UserService.UploadProfilePhotoAsync: only an extension change leaves an old
+        // file behind, and the comparison is case-insensitive so the new file is never deleted.
+        if (!string.Equals(previousPath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            await _fileStorage.DeleteAsync(previousPath, cancellationToken);
+        }
 
         return Result<ConsultantResponse>.Success(consultant.ToResponse());
     }

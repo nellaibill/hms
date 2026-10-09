@@ -156,8 +156,16 @@ internal class BrandingService : IBrandingService
         var logoPath = await _logoStorage.SaveAsync(fileName, toStore, cancellationToken, slot);
 
         var settings = await GetOrCreateAsync(cancellationToken);
+        var previousPath = settings.GetLogoPath(slot);
         settings.UpdateLogo(slot, logoPath, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+
+        // Every upload gets a fresh file name, so the slot's previous file would otherwise be
+        // left on disk forever. Only after the save, so a failed save never loses the old logo.
+        if (!string.Equals(previousPath, logoPath, StringComparison.OrdinalIgnoreCase))
+        {
+            await _logoStorage.DeleteAsync(previousPath, cancellationToken);
+        }
 
         _logger.LogInformation("Uploaded new branding logo for slot {LogoSlot}", slot);
 
@@ -172,8 +180,11 @@ internal class BrandingService : IBrandingService
         }
 
         var settings = await GetOrCreateAsync(cancellationToken);
+        var previousPath = settings.GetLogoPath(slot);
         settings.UpdateLogo(slot, logoPath: null, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+
+        await _logoStorage.DeleteAsync(previousPath, cancellationToken);
 
         _logger.LogInformation("Removed branding logo for slot {LogoSlot}", slot);
 

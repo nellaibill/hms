@@ -29,7 +29,7 @@ function toIconSizeScale(value: string): IconSizeScale {
   return (ICON_SIZE_SCALES as readonly string[]).includes(value) ? (value as IconSizeScale) : 'md';
 }
 
-// The backend returns the logo as a server-relative path (e.g. "uploads/branding/logo/xxx.png"),
+// The backend returns the logo as a server-relative path (e.g. "uploads/Tenant/{tenantId}/branding/primary/xxx.png"),
 // same as patient photos elsewhere in the app (see PatientSummaryCard) — it has to be resolved
 // against the API's own origin, not the frontend's, or every <img> using it 404s. Left alone when
 // it's already absolute (http(s):/data:/blob:) — e.g. the mock store's data: URI fallback below.

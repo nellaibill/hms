@@ -7,25 +7,23 @@ namespace HMS.Modules.Documents.Infrastructure;
 /// <summary>
 /// Local-disk file storage, mirroring HMS.Modules.Patients.Infrastructure.PatientFileStorage
 /// (same "no premature complexity" rationale — no blob storage/CDN until there's a real
-/// need). The one deliberate difference: this is stored under
-/// <c>App_Data/documents</c>, <em>outside</em> <c>wwwroot</c>, so it is structurally
-/// impossible for `app.UseStaticFiles()` to ever serve a document's bytes directly — content
-/// only ever leaves this module through DocumentsController's authenticated
-/// GET /{id}/content action (see docs/ApiStandards.md §10's "served through a controlled
-/// download endpoint rather than direct static file serving"). Every path is further scoped
-/// under the caller's own <see cref="ITenantContext.TenantId"/> — this app is
-/// database-per-tenant but a single shared filesystem/process, so without this every
-/// hospital's uploaded files would sit in one shared directory tree (see docs/DecisionLog.md
-/// ADR-083).
+/// need). The one deliberate difference: this is stored under <c>App_Data</c>,
+/// <em>outside</em> <c>wwwroot</c>, so it is structurally impossible for
+/// `app.UseStaticFiles()` to ever serve a document's bytes directly — content only ever leaves
+/// this module through DocumentsController's authenticated GET /{id}/content action (see
+/// docs/ApiStandards.md §10's "served through a controlled download endpoint rather than
+/// direct static file serving"). Every file sits in the caller's own tenant folder,
+/// "App_Data/Tenant/{tenantId}/documents/{documentId}{ext}" (see
+/// <see cref="TenantFileLocations"/> and docs/DecisionLog.md ADR-087).
 /// </summary>
 internal class DocumentFileStorage : IDocumentFileStorage
 {
-    private readonly string _rootPath;
+    private readonly string _contentRootPath;
     private readonly ITenantContext _tenantContext;
 
     public DocumentFileStorage(IHostEnvironment environment, ITenantContext tenantContext)
     {
-        _rootPath = Path.Combine(environment.ContentRootPath, "App_Data", "documents");
+        _contentRootPath = environment.ContentRootPath;
         _tenantContext = tenantContext;
     }
 
@@ -62,16 +60,29 @@ internal class DocumentFileStorage : IDocumentFileStorage
     public Task<Stream> OpenReadAsync(string storageKey, CancellationToken cancellationToken)
     {
         var fullPath = Path.Combine(TenantPath(), storageKey);
+        if (!File.Exists(fullPath))
+        {
+            // Not yet moved by migrate-tenant-files — read it where ADR-083 left it. Remove this
+            // fallback once every host has been migrated.
+            var previousPath = Path.Combine(PreviousTenantPath(), storageKey);
+            if (File.Exists(previousPath))
+            {
+                fullPath = previousPath;
+            }
+        }
+
         Stream stream = File.OpenRead(fullPath);
         return Task.FromResult(stream);
     }
 
     public Task DeleteAsync(string storageKey, CancellationToken cancellationToken)
     {
-        var fullPath = Path.Combine(TenantPath(), storageKey);
-        if (File.Exists(fullPath))
+        foreach (var fullPath in new[] { Path.Combine(TenantPath(), storageKey), Path.Combine(PreviousTenantPath(), storageKey) })
         {
-            File.Delete(fullPath);
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
         }
 
         return Task.CompletedTask;
@@ -81,9 +92,12 @@ internal class DocumentFileStorage : IDocumentFileStorage
     // the tenant segment lives purely in the directory, resolved fresh on every call from
     // the caller's own request-scoped tenant rather than cached at construction time.
     private string TenantPath()
-    {
-        var tenantId = _tenantContext.TenantId
-            ?? throw new InvalidOperationException("DocumentFileStorage reached without a resolved tenant.");
-        return Path.Combine(_rootPath, tenantId.ToString());
-    }
+        => TenantFileLocations.PrivateDirectory(_contentRootPath, CurrentTenantId(), TenantFileLocations.Documents);
+
+    // ADR-083's "App_Data/documents/{tenantId}" — only read and deleted from, never written to.
+    private string PreviousTenantPath()
+        => Path.Combine(_contentRootPath, "App_Data", "documents", CurrentTenantId().ToString());
+
+    private Guid CurrentTenantId() => _tenantContext.TenantId
+        ?? throw new InvalidOperationException("DocumentFileStorage reached without a resolved tenant.");
 }

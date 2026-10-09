@@ -503,6 +503,7 @@ public class UserServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.ProfilePhotoUrl.Should().Be("uploads/users/new.png");
         user.ProfilePhotoUrl.Should().Be("uploads/users/new.png");
+        await _fileStorage.Received(1).DeleteAsync("uploads/users/old.jpg", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -525,6 +526,8 @@ public class UserServiceTests
         secondResult.IsSuccess.Should().BeTrue();
         firstResult.Value!.ProfilePhotoUrl.Should().Be(secondResult.Value!.ProfilePhotoUrl);
         user.ProfilePhotoUrl.Should().Be($"uploads/users/{user.Id}.png");
+        // Overwritten in place — deleting the "previous" path would delete the new photo.
+        await _fileStorage.DidNotReceive().DeleteAsync($"uploads/users/{user.Id}.png", Arg.Any<CancellationToken>());
     }
 
     [Fact]

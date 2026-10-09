@@ -7,19 +7,18 @@ namespace HMS.Modules.Products.Infrastructure;
 /// <summary>
 /// Local-disk file storage under HMS.Api's wwwroot, mirroring
 /// HMS.Modules.Patients.Infrastructure.PatientFileStorage — this app's established
-/// file-upload pattern (see docs/DecisionLog.md's file-upload ADR). Scoped under the
-/// caller's own <see cref="ITenantContext.TenantId"/> — this app is database-per-tenant but
-/// a single shared filesystem/process, so without this every hospital's product images would
-/// sit in one shared directory tree (see docs/DecisionLog.md ADR-083).
+/// file-upload pattern (see docs/DecisionLog.md's file-upload ADR). Stored under the caller's
+/// own tenant folder: "uploads/Tenant/{tenantId}/products/{productId}/images/{guid}{ext}" (see
+/// <see cref="TenantFileLocations"/> and docs/DecisionLog.md ADR-087).
 /// </summary>
 internal class ProductImageStorage : IProductImageStorage
 {
-    private readonly string _rootPath;
+    private readonly string _contentRootPath;
     private readonly ITenantContext _tenantContext;
 
     public ProductImageStorage(IHostEnvironment environment, ITenantContext tenantContext)
     {
-        _rootPath = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads", "products");
+        _contentRootPath = environment.ContentRootPath;
         _tenantContext = tenantContext;
     }
 
@@ -27,7 +26,8 @@ internal class ProductImageStorage : IProductImageStorage
     {
         var tenantId = _tenantContext.TenantId
             ?? throw new InvalidOperationException("ProductImageStorage reached without a resolved tenant.");
-        var directory = Path.Combine(_rootPath, tenantId.ToString(), productId.ToString(), "images");
+        var directory = Path.Combine(
+            TenantFileLocations.PublicDirectory(_contentRootPath, tenantId, TenantFileLocations.Products), productId.ToString(), "images");
         Directory.CreateDirectory(directory);
 
         // Only the extension is taken from the caller-supplied file name — the stored
@@ -42,6 +42,6 @@ internal class ProductImageStorage : IProductImageStorage
             await content.CopyToAsync(fileStream, cancellationToken);
         }
 
-        return Path.Combine("uploads", "products", tenantId.ToString(), productId.ToString(), "images", storedFileName).Replace('\\', '/');
+        return TenantFileLocations.PublicRelativePath(tenantId, TenantFileLocations.Products, productId.ToString(), "images", storedFileName);
     }
 }
