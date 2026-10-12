@@ -14,7 +14,7 @@ test.describe('Reception & Registration hub', () => {
     await page.goto('/patients/registration');
     await page.getByRole('link', { name: /^Old Patient Registration/ }).click();
     await expect(page).toHaveURL(/\/patients\/enquiry$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Old Patient Registration' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Patient Enquiry' })).toBeVisible();
   });
 });
 
@@ -272,7 +272,7 @@ test.describe('New patient registration — end to end', () => {
 test.describe('Patient Enquiry', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/patients/enquiry');
-    await expect(page.getByRole('heading', { level: 1, name: 'Old Patient Registration' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Patient Enquiry' })).toBeVisible();
   });
 
   test('lists recently active patients before any search', async ({ page }) => {
