@@ -323,11 +323,12 @@ Write-Host "Phase 1 done. Departments: $departmentCount created. Consultants: $c
 # ===========================================================================
 Write-Host "`n===== PHASE 2: Appointment Types & Consultation Types =====" -ForegroundColor Magenta
 
+# Listed in picker display order - each one's position here is sent as its Priority.
 $appointmentTypes = @(
     'Regular (Walk-in)',
-    'Online (Website/WhatsApp)',
+    'Scheduled',
     'Phone Call',
-    'Scheduled'
+    'Online (Website/WhatsApp)'
 )
 
 # Amount is $null for "Others / On-call" - decided per visit instead of a fixed rate.
@@ -352,7 +353,7 @@ foreach ($name in $appointmentTypes) {
         Write-Host "  '$name' already exists - skipping." -ForegroundColor DarkGray
         continue
     }
-    $body = @{ name = $name; isActive = $true } | ConvertTo-Json
+    $body = @{ name = $name; isActive = $true; priority = $appointmentTypes.IndexOf($name) + 1 } | ConvertTo-Json
     $created = Invoke-WithRetry -Method Post -Uri "$ApiBaseUrl/api/v1/masters/appointment-types" -Body $body -Label $name
     Write-Host "  Created appointment type '$name'." -ForegroundColor Green
     $apptTypeCount++

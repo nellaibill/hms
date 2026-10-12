@@ -54,9 +54,13 @@ internal class AppointmentTypeRepository : IAppointmentTypeRepository
 
     private static IQueryable<AppointmentType> ApplySort(IQueryable<AppointmentType> appointmentTypes, string? sort)
     {
+        // Default (and unrecognized-field) ordering: Priority first (lower shows first;
+        // null/unset sorts after every prioritized type), then alphabetical among ties.
+        // AppointmentTypeSelect never passes an explicit `sort`, so this is the order the
+        // Registration / Record Visit picker shows — same rule as ConsultantRepository.
         if (string.IsNullOrWhiteSpace(sort))
         {
-            return appointmentTypes.OrderBy(a => a.Name);
+            return appointmentTypes.OrderBy(a => a.Priority ?? int.MaxValue).ThenBy(a => a.Name);
         }
 
         var descending = sort.StartsWith('-');
@@ -65,7 +69,8 @@ internal class AppointmentTypeRepository : IAppointmentTypeRepository
         return field.ToLowerInvariant() switch
         {
             "updatedat" => descending ? appointmentTypes.OrderByDescending(a => a.UpdatedAt) : appointmentTypes.OrderBy(a => a.UpdatedAt),
-            _ => descending ? appointmentTypes.OrderByDescending(a => a.Name) : appointmentTypes.OrderBy(a => a.Name),
+            "name" => descending ? appointmentTypes.OrderByDescending(a => a.Name) : appointmentTypes.OrderBy(a => a.Name),
+            _ => appointmentTypes.OrderBy(a => a.Priority ?? int.MaxValue).ThenBy(a => a.Name),
         };
     }
 }

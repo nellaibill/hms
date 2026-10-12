@@ -47,11 +47,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Listed in picker display order - each one's position here is sent as its Priority.
 $appointmentTypes = @(
     'Regular (Walk-in)',
-    'Online (Website/WhatsApp)',
+    'Scheduled',
     'Phone Call',
-    'Scheduled'
+    'Online (Website/WhatsApp)'
 )
 
 # Amount is $null for "Others / On-call" - decided per visit instead of a fixed rate (the
@@ -110,7 +111,7 @@ foreach ($name in $appointmentTypes) {
         $skippedAppointmentTypeCount++
         continue
     }
-    $body = @{ name = $name; isActive = $true } | ConvertTo-Json
+    $body = @{ name = $name; isActive = $true; priority = $appointmentTypes.IndexOf($name) + 1 } | ConvertTo-Json
     $created = Invoke-RestMethod -Method Post -Uri "$ApiBaseUrl/api/v1/masters/appointment-types" -Headers $authHeaders -Body $body
     Write-Host "  Created '$name'." -ForegroundColor Green
     $createdAppointmentTypeCount++
