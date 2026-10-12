@@ -8,6 +8,8 @@ internal class CreateAppointmentTypeRequestValidator : AbstractValidator<CreateA
     public CreateAppointmentTypeRequestValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.Priority).GreaterThanOrEqualTo(1).When(x => x.Priority.HasValue)
+            .WithMessage("Priority must be 1 or greater.");
     }
 }
 
@@ -16,5 +18,7 @@ internal class UpdateAppointmentTypeRequestValidator : AbstractValidator<UpdateA
     public UpdateAppointmentTypeRequestValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.Priority).GreaterThanOrEqualTo(1).When(x => x.Priority.HasValue)
+            .WithMessage("Priority must be 1 or greater.");
     }
 }

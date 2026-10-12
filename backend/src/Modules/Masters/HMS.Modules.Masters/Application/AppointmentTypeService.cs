@@ -40,7 +40,7 @@ internal class AppointmentTypeService : IAppointmentTypeService
             return Result<AppointmentTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Appointment type name '{request.Name}' is already in use.");
         }
 
-        var appointmentType = AppointmentType.Create(request.Name, request.IsActive, actorId);
+        var appointmentType = AppointmentType.Create(request.Name, request.IsActive, request.Priority, actorId);
 
         await _repository.AddAsync(appointmentType, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -65,7 +65,7 @@ internal class AppointmentTypeService : IAppointmentTypeService
             return Result<AppointmentTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Appointment type name '{request.Name}' is already in use.");
         }
 
-        appointmentType.Update(request.Name, request.IsActive, actorId);
+        appointmentType.Update(request.Name, request.IsActive, request.Priority, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<AppointmentTypeResponse>.Success(appointmentType.ToResponse());

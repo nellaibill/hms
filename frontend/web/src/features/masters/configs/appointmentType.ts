@@ -11,5 +11,12 @@ export const appointmentTypeConfig: MasterEntityConfig = {
   nameField: 'name',
   fields: [
     { key: 'name', label: 'Appointment Type Name', type: 'text', required: true },
+    {
+      key: 'priority',
+      label: 'Priority',
+      type: 'number',
+      min: 1,
+      helpText: 'Controls display order in the appointment type picker (Registration, Record Visit) — lower shows first. Leave blank for no preference.',
+    },
   ],
 };

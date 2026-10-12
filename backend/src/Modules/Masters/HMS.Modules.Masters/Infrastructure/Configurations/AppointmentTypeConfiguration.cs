@@ -15,6 +15,7 @@ internal class AppointmentTypeConfiguration : IEntityTypeConfiguration<Appointme
 
         builder.Property(a => a.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
         builder.Property(a => a.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
+        builder.Property(a => a.Priority).HasColumnName("priority");
 
         builder.Property(a => a.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(a => a.CreatedBy).HasColumnName("created_by");

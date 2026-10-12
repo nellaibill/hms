@@ -37,6 +37,25 @@ _To be documented._
 
 ## Decisions
 
+### ADR-088: Appointment type picker order — a per-type Priority field, same mechanism as Consultant Priority
+**Date:** 2026-10-12
+**Status:** Accepted
+
+**Context**
+User request: on Patient Registration's Add Visit, the appointment type picker should read Regular (Walk-in), Scheduled, Phone Call, Online (Website/WhatsApp). It was plain alphabetical (Online, Phone Call, Regular, Scheduled) because `AppointmentType` had no ordering field. Appointment types are per-tenant master data, so the order can't be a hardcoded name list in the frontend — the same reasoning as ADR-049.
+
+**Decision**
+- Added `AppointmentType.Priority` (`int?`, `>= 1` when supplied) end to end, mirroring `Consultant.Priority`: domain, contracts, validators, mapping, service, EF configuration, and the `AddAppointmentTypePriority` migration.
+- `AppointmentTypeRepository.ApplySort`'s default (no explicit `sort` — which is what `AppointmentTypeSelect` sends) is now `Priority ?? int.MaxValue`, then `Name`. An explicit `sort=name` still sorts alphabetically, so the Masters list page is unchanged.
+- The migration also backfills priority 1–4 onto the four standard seeded names, so existing tenants get the requested order on deploy with no manual edits. Both seed scripts now list the types in that order and send the position as `priority`.
+- Frontend: one `priority` number field on the Appointment Type Masters config.
+
+**Consequences**
+- Applies wherever `AppointmentTypeSelect` is used (Registration's Add Visit and Record Visit), not only Registration.
+- A tenant that renamed a standard type, or added its own, is not backfilled: those stay unprioritized (alphabetical, after the prioritized ones) until an admin sets Priority in Masters → Appointment Types.
+
+---
+
 ### ADR-087: Every tenant's files live under one `Tenant/{tenantId}` folder; replaced logos and photos are deleted
 **Date:** 2026-10-08
 **Status:** Accepted

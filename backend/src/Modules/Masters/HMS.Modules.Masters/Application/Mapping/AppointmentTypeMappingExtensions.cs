@@ -10,6 +10,7 @@ internal static class AppointmentTypeMappingExtensions
         Id = appointmentType.Id,
         Name = appointmentType.Name,
         IsActive = appointmentType.IsActive,
+        Priority = appointmentType.Priority,
         CreatedAt = appointmentType.CreatedAt,
         UpdatedAt = appointmentType.UpdatedAt,
     };

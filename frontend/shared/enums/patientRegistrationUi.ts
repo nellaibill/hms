@@ -72,7 +72,7 @@ export type ReferralColumnCategory = (typeof REFERRAL_COLUMN_CATEGORIES)[number]
  * CreatePatientRequest/PatientResponse wire DTOs, and "Observation" isn't a value the backend
  * enum accepts.
  */
-export const ENCOUNTER_TYPES_UI = ['OP', 'IP', 'Emergency', 'DayCare', 'Observation'] as const;
+export const ENCOUNTER_TYPES_UI = ['OP', 'IP', 'DayCare', 'Observation', 'Emergency'] as const;
 export type EncounterTypeUi = (typeof ENCOUNTER_TYPES_UI)[number];
 
 /** Source: "PATIENT MODE OF ARRIVAL FORM" — top-level source of how the patient found the hospital. */
