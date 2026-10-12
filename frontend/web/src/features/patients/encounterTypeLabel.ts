@@ -7,10 +7,10 @@ import type { EncounterTypeUi } from '@hms/shared';
  */
 const LABELS: Record<EncounterTypeUi, string> = {
   OP: 'OP',
-  IP: 'IP (Inpatient): More than 12 hours',
-  Emergency: 'Emergency: Emergency cases',
-  DayCare: 'Day Care: 6–12 hours',
-  Observation: 'Observation: 1–6 hours',
+  IP: 'IP (Inpatient): More than 24 hours',
+  DayCare: 'Day Care: 12–24 hours',
+  Observation: 'Observation: Up to 12 hours',
+  Emergency: 'Emergency: ICU / Casualty / LR',
 };
 
 export function encounterTypeLabel(encounterType: EncounterTypeUi): string {

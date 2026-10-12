@@ -19,7 +19,7 @@ const RECENT_VISITS_PAGE_SIZE = 20;
 const RECENT_VISITS_LIMIT = 100;
 const RECENT_VISITS_MAX_PAGE = RECENT_VISITS_LIMIT / RECENT_VISITS_PAGE_SIZE;
 
-/** "Old Patient Registration" — the Reception & Registration hub's existing-patient search + list (docs/ScreenInventory.md).
+/** "Patient Enquiry" — the Reception & Registration hub's existing-patient search + list (docs/ScreenInventory.md).
  * Loads the same default "Recent visits" list OPD Billing Entry's PatientPicker shows before
  * any search — the 100 most recently active patients by last visit (not registration date),
  * 20 per page — rather than gating every row behind an explicit Search click first. Search/
@@ -109,7 +109,7 @@ export default function PatientsListPage() {
     <div className="flex flex-1 flex-col">
       <PageBanner
         icon={UserPlus2}
-        title="Old Patient Registration"
+        title="Patient Enquiry"
         subtitle="Find an existing patient by name, age, UHID, or phone to view or update their registration."
       />
 

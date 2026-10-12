@@ -3,6 +3,7 @@ export interface AppointmentType {
   id: string;
   name: string;
   isActive: boolean;
+  priority?: number | null;
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -11,12 +12,14 @@ export interface AppointmentType {
 export interface CreateAppointmentTypeRequest {
   name: string;
   isActive: boolean;
+  priority?: number | null;
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.UpdateAppointmentTypeRequest. */
 export interface UpdateAppointmentTypeRequest {
   name: string;
   isActive: boolean;
+  priority?: number | null;
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.AppointmentTypeListQuery. */

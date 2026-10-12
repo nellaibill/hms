@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/auth.fixture';
 // Sidebar leaves backed by a real page (not the shared PlaceholderPage), with the banner
 // heading each renders. Source of truth: src/config/navigation.ts + each page component.
 const destinations = [
-  { label: 'Patient Enquiry', path: '/patients/enquiry', heading: 'Old Patient Registration' },
+  { label: 'Patient Enquiry', path: '/patients/enquiry', heading: 'Patient Enquiry' },
   { label: 'Out Patient Department (OPD)', path: '/clinical/opd', heading: 'Out Patient Department (OPD)' },
   { label: 'In Patient Department (IPD)', path: '/clinical/ipd', heading: 'In Patient Department (IPD)' },
   { label: 'Pharmacy', path: '/pharmacy', heading: 'Pharmacy' },
