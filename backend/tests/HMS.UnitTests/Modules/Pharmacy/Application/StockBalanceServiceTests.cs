@@ -2,6 +2,7 @@ using FluentAssertions;
 using HMS.Modules.Pharmacy.Application;
 using HMS.Modules.Pharmacy.Application.Abstractions;
 using HMS.Modules.Pharmacy.Contracts;
+using HMS.Modules.Pharmacy.Domain;
 using HMS.Modules.Products.Application;
 using HMS.Modules.Products.Contracts;
 using HMS.Shared.Kernel;
@@ -13,6 +14,8 @@ namespace HMS.UnitTests.Modules.Pharmacy.Application;
 public class StockBalanceServiceTests
 {
     private readonly IPharmacyStockBalanceRepository _balanceRepository = Substitute.For<IPharmacyStockBalanceRepository>();
+    private readonly IPharmacyStoreRepository _storeRepository = Substitute.For<IPharmacyStoreRepository>();
+    private readonly PharmacyStore _store = PharmacyStore.Create("MAIN", "Main Pharmacy", StoreType.Pharmacy, null);
     private readonly IProductService _productService = Substitute.For<IProductService>();
     private readonly IProductBatchService _productBatchService = Substitute.For<IProductBatchService>();
     private readonly StockBalanceService _sut;
@@ -26,9 +29,15 @@ public class StockBalanceServiceTests
 
     public StockBalanceServiceTests()
     {
-        _sut = new StockBalanceService(_balanceRepository, _productService, _productBatchService);
+        _sut = new StockBalanceService(_balanceRepository, _storeRepository, _productService, _productBatchService);
 
-        _balanceRepository.GetLinesAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>())
+        // One store, the default — what every tenant has until it adds more. Requests in
+        // these tests name no store, so they resolve to it.
+        _store.MakeDefault(null);
+        _storeRepository.GetDefaultAsync(Arg.Any<CancellationToken>()).Returns(_store);
+        _storeRepository.GetByIdAsync(_store.Id, Arg.Any<CancellationToken>()).Returns(_store);
+
+        _balanceRepository.GetLinesAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 var productIds = call.Arg<IReadOnlyCollection<Guid>?>();
@@ -36,12 +45,14 @@ public class StockBalanceServiceTests
             });
         _productBatchService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => _batches.Where(b => call.Arg<IReadOnlyCollection<Guid>>().Contains(b.Id)).ToList());
+        _productService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Result<ProductResponse>.Success(new ProductResponse { Id = call.Arg<Guid>(), SellingPrice = 20m, IsActive = true }));
     }
 
-    private Guid AddStock(Guid productId, string batchNo, decimal quantity, DateOnly expiry, bool isActive = true)
+    private Guid AddStock(Guid productId, string batchNo, decimal quantity, DateOnly expiry, bool isActive = true, decimal? mrp = null)
     {
         var batchId = Guid.NewGuid();
-        _batches.Add(new ProductBatchResponse { Id = batchId, ProductId = productId, BatchNo = batchNo, ExpiryDate = expiry, IsActive = isActive });
+        _batches.Add(new ProductBatchResponse { Id = batchId, ProductId = productId, BatchNo = batchNo, ExpiryDate = expiry, IsActive = isActive, Mrp = mrp });
         _lines.Add(new StockBalanceLine(productId, batchId, quantity));
         return batchId;
     }
@@ -75,6 +86,7 @@ public class StockBalanceServiceTests
             Arg.Any<CancellationToken>());
         await _balanceRepository.Received(1).GetLinesAsync(
             Arg.Is<IReadOnlyCollection<Guid>?>(ids => ids != null && ids.Count == 1 && ids.Contains(_paracetamolId)),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
         await _productService.DidNotReceive().GetStockProfilesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
@@ -106,7 +118,7 @@ public class StockBalanceServiceTests
         result.Items.Select(s => s.Status).Should().Equal(StockStatus.LowStock, StockStatus.OutOfStock);
         result.TotalCount.Should().Be(2);
 
-        await _balanceRepository.Received(1).GetLinesAsync(Arg.Is<IReadOnlyCollection<Guid>?>(ids => ids == null), Arg.Any<CancellationToken>());
+        await _balanceRepository.Received(1).GetLinesAsync(Arg.Is<IReadOnlyCollection<Guid>?>(ids => ids == null), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
         await _productService.DidNotReceive().GetPagedAsync(Arg.Any<ProductListQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -140,7 +152,7 @@ public class StockBalanceServiceTests
         AddStock(_paracetamolId, "B-INACTIVE", 25m, Today.AddMonths(3), isActive: false);
         AddStock(_amoxicillinId, "B-OTHER", 99m, Today.AddDays(1));
 
-        var batches = await _sut.GetAvailableBatchesAsync(_paracetamolId, CancellationToken.None);
+        var batches = await _sut.GetAvailableBatchesAsync(_paracetamolId, storeId: null, CancellationToken.None);
 
         batches.Select(b => b.ProductBatchId).Should().Equal(soonest, later);
         batches[0].BatchNo.Should().Be("B-SOON");
@@ -150,9 +162,45 @@ public class StockBalanceServiceTests
     }
 
     [Fact]
+    public async Task GetAvailableBatchesAsync_PricesEachBatchPerUnit_FromItsOwnMrpWhereItHasOne()
+    {
+        // A strip of 10. One batch carries its own MRP of ₹24, the other has none and falls
+        // back to the product's ₹21 — so the same tablet is ₹2.40 from one batch, ₹2.10 from the other.
+        _productService.GetByIdAsync(_paracetamolId, Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = _paracetamolId, UnitsPerPack = 10m, SellingPrice = 21m, IsActive = true }));
+        AddStock(_paracetamolId, "B-PRICED", 30m, Today.AddMonths(3), mrp: 24m);
+        AddStock(_paracetamolId, "B-PLAIN", 30m, Today.AddMonths(6));
+
+        var batches = await _sut.GetAvailableBatchesAsync(_paracetamolId, storeId: null, CancellationToken.None);
+
+        batches.Select(b => (b.BatchNo, b.Mrp, b.UnitPrice)).Should().Equal(("B-PRICED", 24m, 2.4m), ("B-PLAIN", null, 2.1m));
+    }
+
+    [Fact]
+    public async Task GetAvailableBatchesAsync_ReadsOnlyTheResolvedStoresStock()
+    {
+        AddStock(_paracetamolId, "B-1", 30m, Today.AddMonths(3));
+
+        await _sut.GetAvailableBatchesAsync(_paracetamolId, storeId: null, CancellationToken.None);
+
+        await _balanceRepository.Received(1).GetLinesAsync(
+            Arg.Any<IReadOnlyCollection<Guid>?>(), _store.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAvailableBatchesAsync_ForAnUnknownOrInactiveStore_ReturnsEmpty()
+    {
+        AddStock(_paracetamolId, "B-1", 30m, Today.AddMonths(3));
+
+        var batches = await _sut.GetAvailableBatchesAsync(_paracetamolId, storeId: Guid.NewGuid(), CancellationToken.None);
+
+        batches.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task GetAvailableBatchesAsync_WhenProductHasNoStock_ReturnsEmpty()
     {
-        var batches = await _sut.GetAvailableBatchesAsync(_paracetamolId, CancellationToken.None);
+        var batches = await _sut.GetAvailableBatchesAsync(_paracetamolId, storeId: null, CancellationToken.None);
 
         batches.Should().BeEmpty();
     }

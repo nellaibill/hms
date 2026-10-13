@@ -17,6 +17,7 @@ public class PharmacyDbContext : DbContext
     }
 
     // Internal (not public): domain types are internal, so DbSet<T> properties stay internal too.
+    internal DbSet<PharmacyStore> Stores => Set<PharmacyStore>();
     internal DbSet<PharmacyStockBalance> StockBalances => Set<PharmacyStockBalance>();
     internal DbSet<PharmacyStockTransaction> StockTransactions => Set<PharmacyStockTransaction>();
 

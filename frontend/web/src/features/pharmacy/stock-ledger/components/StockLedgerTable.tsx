@@ -26,7 +26,9 @@ export function StockLedgerTable({ transactions }: StockLedgerTableProps) {
           {transactions.map((txn) => (
             <tr key={txn.id} className="hover:bg-muted/30">
               <td className="px-4 py-3">
-                <Badge variant={txn.transactionType === 'Receipt' ? 'success' : 'secondary'}>{txn.transactionType}</Badge>
+                <Badge variant={txn.transactionType === 'Dispense' ? 'secondary' : 'success'}>
+                  {txn.transactionType === 'OpeningStock' ? 'Opening stock' : txn.transactionType}
+                </Badge>
               </td>
               <td className="px-4 py-3 font-medium text-foreground">{txn.productName}</td>
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{txn.batchNo}</td>

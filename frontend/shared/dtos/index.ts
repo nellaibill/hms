@@ -52,6 +52,7 @@ export * from './ipd/dashboard';
 export * from './billing/invoice';
 export * from './laboratory/labOrder';
 export * from './opd/opd';
+export * from './pharmacy/store';
 export * from './pharmacy/stockReceipt';
 export * from './pharmacy/dispense';
 export * from './pharmacy/dispenseCart';

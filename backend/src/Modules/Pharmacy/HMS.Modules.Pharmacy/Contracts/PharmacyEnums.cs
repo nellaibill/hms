@@ -7,6 +7,23 @@ public enum TransactionType
 {
     Receipt,
     Dispense,
+
+    /// <summary>Stock already on the shelf when the system went live — entered once, not
+    /// bought through it.</summary>
+    OpeningStock,
+}
+
+/// <summary>What kind of place a pharmacy store is.</summary>
+public enum StoreType
+{
+    /// <summary>Bulk store that receives purchases and supplies the others.</summary>
+    MainStore,
+
+    /// <summary>A dispensing counter — OP pharmacy, IP pharmacy.</summary>
+    Pharmacy,
+
+    /// <summary>Stock held at the point of use — a ward, a theatre, ICU.</summary>
+    SubStore,
 }
 
 /// <summary>A product's stock position, judged on what can actually be dispensed (see

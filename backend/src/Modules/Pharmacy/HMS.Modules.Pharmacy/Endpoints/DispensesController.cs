@@ -106,6 +106,7 @@ public class DispensesController : ControllerBase
             PharmacyErrorCodes.InvalidProduct => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.InvalidBatch => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.InvalidPatient => StatusCodes.Status409Conflict,
+            PharmacyErrorCodes.InvalidStore => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.ProductInactive => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.BatchInactive => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.BatchExpired => StatusCodes.Status409Conflict,

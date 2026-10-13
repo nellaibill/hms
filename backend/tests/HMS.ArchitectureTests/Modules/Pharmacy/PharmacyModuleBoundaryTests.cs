@@ -22,7 +22,7 @@ public class PharmacyModuleBoundaryTests
     private static readonly Assembly PharmacyAssembly = typeof(StockReceiptsController).Assembly;
 
     private const string AllowedPublicTypeNamePattern =
-        "^(PharmacyDbContext|IStockReceiptService|IDispenseService|IStockBalanceService|IStockLedgerService)$";
+        "^(PharmacyDbContext|IStockReceiptService|IDispenseService|IStockBalanceService|IStockLedgerService|IStoreService)$";
 
     [Theory]
     [InlineData("HMS.Modules.Pharmacy.Domain")]

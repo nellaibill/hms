@@ -40,6 +40,10 @@ public record StockSummaryResponse
 public class StockSummaryListQuery : PagedRequest
 {
     public StockSummaryFilter? Filter { get; set; }
+
+    /// <summary>Limits the roll-up to one store. Omitted, a product shows its stock across
+    /// every store.</summary>
+    public Guid? StoreId { get; set; }
 }
 
 /// <summary>
@@ -53,4 +57,11 @@ public record AvailableBatchResponse
     public DateOnly ExpiryDate { get; init; }
     public decimal QuantityOnHand { get; init; }
     public bool IsExpiringSoon { get; init; }
+
+    /// <summary>The MRP printed on this batch, per pack. Null when not recorded.</summary>
+    public decimal? Mrp { get; init; }
+
+    /// <summary>What one unit of this batch sells for — worked out by PharmacyPricing, so the
+    /// counter shows the same figure the dispense will bill.</summary>
+    public decimal UnitPrice { get; init; }
 }

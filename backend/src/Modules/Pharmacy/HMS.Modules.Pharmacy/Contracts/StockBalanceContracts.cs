@@ -10,6 +10,7 @@ namespace HMS.Modules.Pharmacy.Contracts;
 public record StockBalanceResponse
 {
     public Guid Id { get; init; }
+    public Guid StoreId { get; init; }
     public Guid ProductId { get; init; }
     public string ProductName { get; init; } = string.Empty;
     public Guid ProductBatchId { get; init; }
@@ -28,6 +29,9 @@ public record StockBalanceResponse
 public class StockBalanceListQuery : PagedRequest
 {
     public Guid? ProductId { get; set; }
+
+    /// <summary>Limits the list to one store. Omitted, every store is included.</summary>
+    public Guid? StoreId { get; set; }
 
     /// <summary>When true, leaves out batches whose balance has run down to zero — every
     /// batch ever received keeps its balance row, so a long-stocked product otherwise lists

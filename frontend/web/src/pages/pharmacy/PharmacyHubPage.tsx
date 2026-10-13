@@ -1,4 +1,4 @@
-import { ArrowRight, PackagePlus, Pill, Receipt } from 'lucide-react';
+import { ArrowRight, PackagePlus, Pill, Receipt, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageBanner } from '@/components/PageBanner';
@@ -27,6 +27,7 @@ export default function PharmacyHubPage() {
     { key: 'receipts', label: 'Stock Receipts', description: 'History of stock received.', icon: Receipt, path: '/pharmacy/stock-receipts' },
     { key: 'dispenses', label: 'Dispenses', description: 'History of stock dispensed to patients.', icon: Pill, path: '/pharmacy/dispenses' },
     { key: 'ledger', label: 'Stock Ledger', description: 'Combined, filterable receipt + dispense history.', icon: Receipt, path: '/pharmacy/stock-ledger' },
+    { key: 'stores', label: 'Stores', description: 'Where stock is held — main store, counters and sub-stores.', icon: Store, path: '/pharmacy/stores' },
   ];
 
   return (

@@ -3,6 +3,25 @@ using HMS.Modules.Pharmacy.Contracts;
 
 namespace HMS.Modules.Pharmacy.Application.Validators;
 
+internal class CreateStoreRequestValidator : AbstractValidator<CreateStoreRequest>
+{
+    public CreateStoreRequestValidator()
+    {
+        RuleFor(x => x.Code).NotEmpty().MaximumLength(30);
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.StoreType).IsInEnum();
+    }
+}
+
+internal class UpdateStoreRequestValidator : AbstractValidator<UpdateStoreRequest>
+{
+    public UpdateStoreRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.StoreType).IsInEnum();
+    }
+}
+
 internal class CreateStockReceiptRequestValidator : AbstractValidator<CreateStockReceiptRequest>
 {
     public CreateStockReceiptRequestValidator()

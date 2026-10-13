@@ -37,6 +37,32 @@ _To be documented._
 
 ## Decisions
 
+### ADR-092: Pharmacy Phase 1 (slice 2) — stores, and store / unit cost / unit price on every stock movement
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+A hospital pharmacy is several places — a main store, OP and IP counters, ward and theatre sub-stores — and the module had one implicit one. Every later phase writes ledger rows; adding a store to them afterwards would mean rewriting every row already written, so the dimension goes in now. The ledger also recorded quantity only: what a unit cost and sold for was recomputed from whatever the product's price happened to be when read, which makes margin and stock valuation for a past period wrong the moment a price changes. ADR-091 added per-batch, per-pack prices that nothing yet read.
+
+**Decision**
+- **`PharmacyStore`** (`pharmacy.pharmacy_stores`): code, name, `StoreType` (`MainStore/Pharmacy/SubStore`), `IsDefault`, `IsActive`. Owned by Pharmacy rather than reusing Masters' `Warehouse`: a store carries pharmacy meaning a generic address record doesn't, and being in this schema lets balances and the ledger hold a real foreign key to it. CRUD at `api/v1/pharmacy/stores` (no delete — a store with history is deactivated).
+- **Exactly one default store**, used whenever a request names none; kept by `StoreService`, which moves the flag in one save, never switches it off, and refuses to deactivate the default. Deliberately not a unique index on `is_default`: EF orders a swap's two UPDATEs by index values, cannot see that a filter exempts the `false` rows, and reads the swap as a circular dependency.
+- **Balance and ledger gain `StoreId`**; the balance's unique key becomes (store, product, batch). Every stock request takes an optional `StoreId`; every list an optional `StoreId` filter (omitted = all stores, where the by-product summary adds a batch held in two stores together but counts it once).
+- **Ledger rows snapshot `UnitCost` and `UnitPrice`** at write time. New `TransactionType.OpeningStock` for stock entered at go-live.
+- **`PharmacyPricing` is the one place a per-unit figure is worked out**: unit price = (batch selling rate, else batch MRP, else product selling price) ÷ units per pack; unit cost = (batch purchase rate, else product cost price) ÷ units per pack, null when neither is recorded. Unit figures keep four decimals; a line amount rounds to paise. Dispense bills from it, and `available-batches` returns the same `UnitPrice` so the counter shows what will be billed instead of recomputing it.
+- **Migration `AddStoresAndLedgerPricing`**: `dotnet ef`-generated, plus one hand-written block that seeds a default store (`MAIN`, "Main Pharmacy") in every tenant, assigns all existing balances and ledger rows to it, and drops the generated all-zero column default — run before the foreign keys are added.
+- The store picker stays hidden while a hospital has a single store.
+
+**Consequences**
+- Existing tenants must be migrated before Pharmacy runs on this build. Once migrated, an older build can no longer write stock (`store_id` is required and has no default).
+- Ledger rows written before this have no unit cost or price; nothing backfills them.
+- `UnitCost` is stored but not yet returned by any endpoint — it is the same sensitive figure as `CostPrice` and will be exposed with the reports, behind `pharmacy.view-cost`.
+- No transfers between stores yet: stock reaches a second store only by receiving into it. Transfers and indents are Phase 5.
+- A user is not tied to a store; anyone with `pharmacy.create` can receive into or dispense from any of them.
+- The single-line, quantity-only stock receipt still exists and now records unit cost from the batch's purchase rate. The multi-line goods receipt that sets those rates is the next slice.
+
+---
+
 ### ADR-091: Pharmacy Phase 1 (slice 1) — drug profile on the product, MRP and rates per batch, priced per pack
 **Date:** 2026-10-13
 **Status:** Accepted

@@ -37,6 +37,11 @@ internal class PharmacyStockTransactionRepository : IPharmacyStockTransactionRep
             transactions = transactions.Where(t => t.ProductBatchId == query.ProductBatchId.Value);
         }
 
+        if (query.StoreId.HasValue)
+        {
+            transactions = transactions.Where(t => t.StoreId == query.StoreId.Value);
+        }
+
         if (query.TransactionType.HasValue)
         {
             transactions = transactions.Where(t => t.TransactionType == query.TransactionType.Value);

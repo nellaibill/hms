@@ -102,6 +102,7 @@ const StockReceiptCreatePage = lazy(() => import('../pages/pharmacy/StockReceipt
 const DispensesListPage = lazy(() => import('../pages/pharmacy/DispensesListPage'));
 const DispenseCreatePage = lazy(() => import('../pages/pharmacy/DispenseCreatePage'));
 const StockLedgerPage = lazy(() => import('../pages/pharmacy/StockLedgerPage'));
+const StoresPage = lazy(() => import('../pages/pharmacy/StoresPage'));
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
@@ -427,6 +428,7 @@ const pharmacyRoutes = [
           { path: 'pharmacy/dispenses', element: withSuspense(<DispensesListPage />) },
           { path: 'pharmacy/dispenses/new', element: withSuspense(<DispenseCreatePage />) },
           { path: 'pharmacy/stock-ledger', element: withSuspense(<StockLedgerPage />) },
+          { path: 'pharmacy/stores', element: withSuspense(<StoresPage />) },
         ],
       },
     ],

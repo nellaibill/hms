@@ -19,6 +19,7 @@ export default function DispenseCreatePage() {
       {
         patientId: values.patientId,
         admissionId: values.admissionId || undefined,
+        storeId: values.storeId || undefined,
         lines: values.lines.map((line) => ({
           productId: line.productId,
           productBatchId: line.productBatchId,

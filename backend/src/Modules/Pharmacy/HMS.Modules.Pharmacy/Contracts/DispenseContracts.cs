@@ -10,6 +10,9 @@ public record CreateDispenseRequest
     public Guid? AdmissionId { get; init; }
     public decimal Quantity { get; init; }
     public string? Remarks { get; init; }
+
+    /// <summary>The store this applies to. Omitted, it is the default store.</summary>
+    public Guid? StoreId { get; init; }
 }
 
 /// <summary>
@@ -20,6 +23,7 @@ public record CreateDispenseRequest
 public record DispenseResponse
 {
     public Guid Id { get; init; }
+    public Guid StoreId { get; init; }
     public Guid ProductId { get; init; }
     public string ProductName { get; init; } = string.Empty;
     public Guid ProductBatchId { get; init; }
@@ -28,6 +32,11 @@ public record DispenseResponse
     public string PatientName { get; init; } = string.Empty;
     public Guid? AdmissionId { get; init; }
     public decimal Quantity { get; init; }
+
+    /// <summary>What one unit was sold for. Null on a dispense recorded before prices were
+    /// kept on the ledger.</summary>
+    public decimal? UnitPrice { get; init; }
+
     public decimal BalanceAfter { get; init; }
     public DateTime TransactionDate { get; init; }
     public string? Remarks { get; init; }
@@ -61,6 +70,9 @@ public class DispenseListQuery : PagedRequest
 {
     public Guid? PatientId { get; set; }
     public Guid? ProductId { get; set; }
+
+    /// <summary>Limits the list to one store. Omitted, every store is included.</summary>
+    public Guid? StoreId { get; set; }
 }
 
 public record DispenseCartLineRequest
@@ -81,6 +93,10 @@ public record CreateDispenseCartRequest
 {
     public Guid PatientId { get; init; }
     public Guid? AdmissionId { get; init; }
+
+    /// <summary>The store this applies to. Omitted, it is the default store.</summary>
+    public Guid? StoreId { get; init; }
+
     public IReadOnlyList<DispenseCartLineRequest> Lines { get; init; } = [];
 }
 

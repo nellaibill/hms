@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StoreSelect } from '@/features/pharmacy/stores';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useStockBalancesQuery } from '../hooks/useStockBalancesQuery';
 import { useStockSummaryQuery } from '../hooks/useStockSummaryQuery';
@@ -47,6 +48,8 @@ export function StockSummaryPanel() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterTab>(ALL);
   const [page, setPage] = useState(1);
+  // '' = every store rolled up together.
+  const [storeId, setStoreId] = useState('');
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
 
@@ -55,11 +58,18 @@ export function StockSummaryPanel() {
     pageSize: PAGE_SIZE,
     search: debouncedSearch || undefined,
     filter: filter === ALL ? undefined : filter,
+    storeId: storeId || undefined,
   });
 
   function handleSearchChange(value: string) {
     setSearch(value);
     setPage(1);
+  }
+
+  function handleStoreChange(value: string) {
+    setStoreId(value);
+    setPage(1);
+    setExpandedProductId(null);
   }
 
   function handleFilterChange(value: string) {
@@ -81,16 +91,21 @@ export function StockSummaryPanel() {
           </TabsList>
         </Tabs>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search name, generic, SKU, or code…"
-            aria-label="Search products"
-            className="pl-9"
-          />
-          {isFetching && !isPending && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+        <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto">
+          <StoreSelect id="stock-store" value={storeId} onValueChange={handleStoreChange} allowAll />
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search name, generic, SKU, or code…"
+              aria-label="Search products"
+              className="pl-9"
+            />
+            {isFetching && !isPending && (
+              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
+          </div>
         </div>
       </div>
 
@@ -142,7 +157,7 @@ export function StockSummaryPanel() {
                       {isExpanded && (
                         <tr>
                           <td colSpan={6} className="bg-muted/20 px-4 py-3">
-                            <ProductBatches productId={summary.productId} />
+                            <ProductBatches productId={summary.productId} storeId={storeId || undefined} />
                           </td>
                         </tr>
                       )}
@@ -218,8 +233,8 @@ function StockSummaryRow({ summary, isExpanded, onToggle }: StockSummaryRowProps
 }
 
 /** The expanded row's batch breakdown — fetched only when a product is opened. */
-function ProductBatches({ productId }: { productId: string }) {
-  const { data, isPending, isError } = useStockBalancesQuery({ productId, inStockOnly: true, pageSize: 100 });
+function ProductBatches({ productId, storeId }: { productId: string; storeId?: string }) {
+  const { data, isPending, isError } = useStockBalancesQuery({ productId, storeId, inStockOnly: true, pageSize: 100 });
 
   if (isPending) {
     return (

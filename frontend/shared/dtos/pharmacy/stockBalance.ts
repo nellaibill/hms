@@ -7,6 +7,7 @@ import type { PagedQuery } from '../../types';
  */
 export interface StockBalanceResponse {
   id: string;
+  storeId: string;
   productId: string;
   productName: string;
   productBatchId: string;
@@ -22,6 +23,8 @@ export interface StockBalanceResponse {
 /** Mirrors HMS.Modules.Pharmacy.Contracts.StockBalanceListQuery. */
 export interface StockBalanceListQuery extends PagedQuery {
   productId?: string;
+  /** Limits the list to one store. Omitted, every store is included. */
+  storeId?: string;
   /** Leaves out batches whose balance has run down to zero. */
   inStockOnly?: boolean;
 }

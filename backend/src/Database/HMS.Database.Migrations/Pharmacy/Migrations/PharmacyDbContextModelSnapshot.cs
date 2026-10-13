@@ -18,7 +18,7 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("pharmacy")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -66,6 +66,10 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasDefaultValue(0m)
                         .HasColumnName("quantity_on_hand");
 
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -83,9 +87,12 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                     b.HasKey("Id")
                         .HasName("pk_pharmacy_stock_balances");
 
-                    b.HasIndex("ProductId", "ProductBatchId")
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_pharmacy_stock_balances_product_id");
+
+                    b.HasIndex("StoreId", "ProductId", "ProductBatchId")
                         .IsUnique()
-                        .HasDatabaseName("ux_pharmacy_stock_balances_product_batch")
+                        .HasDatabaseName("ux_pharmacy_stock_balances_store_product_batch")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("pharmacy_stock_balances", "pharmacy");
@@ -154,6 +161,10 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("remarks");
 
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
                     b.Property<DateTime>("TransactionDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("transaction_date");
@@ -163,6 +174,16 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("transaction_type");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("unit_cost");
+
+                    b.Property<decimal?>("UnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("unit_price");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -184,6 +205,9 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                     b.HasIndex("PatientId")
                         .HasDatabaseName("ix_pharmacy_stock_transactions_patient_id");
 
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_pharmacy_stock_transactions_store_id");
+
                     b.HasIndex("TransactionDate")
                         .HasDatabaseName("ix_pharmacy_stock_transactions_transaction_date");
 
@@ -191,6 +215,109 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasDatabaseName("ix_pharmacy_stock_transactions_product_batch");
 
                     b.ToTable("pharmacy_stock_transactions", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("StoreType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("store_type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_stores");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_stores_code")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("pharmacy_stores", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockBalance", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_balances_pharmacy_stores_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_transactions_pharmacy_stores_store_id");
                 });
 #pragma warning restore 612, 618
         }

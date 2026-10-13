@@ -11,12 +11,17 @@ namespace HMS.Modules.Pharmacy.Contracts;
 public record StockTransactionResponse
 {
     public Guid Id { get; init; }
+    public Guid StoreId { get; init; }
     public Guid ProductId { get; init; }
     public string ProductName { get; init; } = string.Empty;
     public Guid ProductBatchId { get; init; }
     public string BatchNo { get; init; } = string.Empty;
     public TransactionType TransactionType { get; init; }
     public decimal Quantity { get; init; }
+
+    /// <summary>What one unit was sold for, on a dispense. Null otherwise.</summary>
+    public decimal? UnitPrice { get; init; }
+
     public decimal BalanceAfter { get; init; }
     public DateTime TransactionDate { get; init; }
     public Guid? PatientId { get; init; }
@@ -30,6 +35,9 @@ public class StockLedgerListQuery : PagedRequest
 {
     public Guid? ProductId { get; set; }
     public Guid? ProductBatchId { get; set; }
+
+    /// <summary>Limits the list to one store. Omitted, every store is included.</summary>
+    public Guid? StoreId { get; set; }
     public TransactionType? TransactionType { get; set; }
     public Guid? PatientId { get; set; }
     public DateTime? FromDate { get; set; }
