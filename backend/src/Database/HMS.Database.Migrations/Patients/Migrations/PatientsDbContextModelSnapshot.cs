@@ -18,13 +18,17 @@ namespace HMS.Database.Migrations.Patients.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("patients")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.HasSequence("imported_uhid_seq", "patients")
                 .HasMax(40000L);
+
+            modelBuilder.HasSequence("ip_number_seq", "patients");
+
+            modelBuilder.HasSequence("op_number_seq", "patients");
 
             modelBuilder.HasSequence("uhid_seq", "patients")
                 .StartsAt(40001L);
@@ -486,9 +490,24 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("visit_id");
 
+                    b.Property<string>("AdmissionType")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("admission_type");
+
                     b.Property<Guid?>("AppointmentTypeId")
                         .HasColumnType("uuid")
                         .HasColumnName("appointment_type_id");
+
+                    b.Property<string>("ArNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ar_number");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("category");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -512,9 +531,18 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<bool?>("IsReferred")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_referred");
+
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid")
                         .HasColumnName("patient_id");
+
+                    b.Property<string>("ReferredBy")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("referred_by");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -523,6 +551,11 @@ namespace HMS.Database.Migrations.Patients.Migrations
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
+
+                    b.Property<string>("VisitNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("visit_number");
 
                     b.Property<string>("VisitType")
                         .IsRequired()
@@ -541,6 +574,11 @@ namespace HMS.Database.Migrations.Patients.Migrations
 
                     b.HasIndex("PatientId")
                         .HasDatabaseName("ix_patient_visits_patient_id");
+
+                    b.HasIndex("VisitNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_patient_visits_visit_number")
+                        .HasFilter("visit_number IS NOT NULL");
 
                     b.ToTable("patient_visits", "patients");
                 });

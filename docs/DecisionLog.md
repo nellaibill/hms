@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-089: Every visit gets an auto-generated OP No / IP No; non-OP visits record admission details
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+User request, in four steps on the Add Visit form (`/patients/registration/:id/visits/new`): for IP, Day Care, Observation and Emergency, collect Admission type (labelled "Observation type" for Day Care/Observation) MLC/NMLC, an A.R number when MLC, Referral Yes/No with a referrer (Ambulance/Doctor/Medicals/Others) when Yes, and a Category (A/B/C "as of now"); OP unchanged. Then: the type is mandatory under either label, the A.R number is mandatory for MLC, an IP No must be generated when such a visit is saved, and an OP No when an OP visit is saved. `docs/BusinessRequirementsAnalysis.md` already listed "Auto-number (OP No/IP No)" per encounter; nothing implemented it, and `PatientVisit` had no column for any of these fields. The wizard's own older admissionType/referral/category fields were (and still are) UI-only.
+
+**Decision**
+- `PatientVisit.VisitNumber`, one column for both series: `OP-{yyyy}-{seq:D6}` for OP, `IP-{yyyy}-{seq:D6}` for every other visit type, from two new Postgres sequences (`patients.op_number_seq`, `patients.ip_number_seq`, both from 1) — the same mechanism and format as the UHID (`P-…`) and `ADM-…`. Drawn in `PatientVisitService.CreateAsync` only after every check has passed. Unique index, filtered to non-null.
+- The number is generated server-side by visit type, so visits recorded through the New Patient Registration wizard get one too.
+- `PatientVisit` gains `AdmissionType` (`MedicoLegalType`: the IPD module already owns an unrelated `AdmissionType` enum), `ArNumber`, `IsReferred`, `ReferredBy` (`ReferralSource`), `Category` (`VisitCategory`). `SetAdmissionDetails` is a no-op on an OP visit and drops an A.R number without MLC, or a referrer without `IsReferred`.
+- Validation is split. The Add Visit form (`recordVisitFormSchema`, in web beside the form) requires the type for every non-OP encounter. The API requires only that an answer is never half-given (MLC ⇒ A.R number, referred ⇒ referrer) and leaves the type itself optional, because the wizard posts non-OP visits to the same endpoint without these fields.
+- Migration `AddVisitNumberAndAdmissionDetails` (`dotnet ef`-generated): additive columns, two sequences, one index.
+- The number is shown in the Add Visit success toast, the patient's Visits table and the timeline.
+
+**Consequences**
+- Visits recorded before this have no number and are not backfilled; they show "—".
+- The year in a number is the year it was issued; the sequences do not restart each year (same as the UHID).
+- Existing tenants must be migrated before visits can be saved or listed on the new build.
+- The wizard's Registration Details tab still has its older, unsaved versions of these fields. Until it is brought in line, the API cannot make the type mandatory.
+- Category is an enum, so replacing A/B/C with real categories is a code change, not master data.
+
+---
+
 ### ADR-088: Appointment type picker order — a per-type Priority field, same mechanism as Consultant Priority
 **Date:** 2026-10-12
 **Status:** Accepted

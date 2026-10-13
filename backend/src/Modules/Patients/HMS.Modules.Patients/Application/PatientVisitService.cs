@@ -18,6 +18,7 @@ internal class PatientVisitService : IPatientVisitService
 {
     private readonly IPatientVisitRepository _repository;
     private readonly IPatientRepository _patientRepository;
+    private readonly IPatientIdentifierGenerator _identifierGenerator;
     private readonly IDepartmentService _departmentService;
     private readonly IConsultantService _consultantService;
     private readonly IAppointmentTypeService _appointmentTypeService;
@@ -27,6 +28,7 @@ internal class PatientVisitService : IPatientVisitService
     public PatientVisitService(
         IPatientVisitRepository repository,
         IPatientRepository patientRepository,
+        IPatientIdentifierGenerator identifierGenerator,
         IDepartmentService departmentService,
         IConsultantService consultantService,
         IAppointmentTypeService appointmentTypeService,
@@ -35,6 +37,7 @@ internal class PatientVisitService : IPatientVisitService
     {
         _repository = repository;
         _patientRepository = patientRepository;
+        _identifierGenerator = identifierGenerator;
         _departmentService = departmentService;
         _consultantService = consultantService;
         _appointmentTypeService = appointmentTypeService;
@@ -93,7 +96,13 @@ internal class PatientVisitService : IPatientVisitService
             }
         }
 
-        var visit = PatientVisit.Create(patientId, request.VisitType, request.AppointmentTypeId, actorId);
+        // Drawn only now, after every check above has passed, so a rejected request doesn't
+        // burn an OP No/IP No. A failed save below still can — sequences are gap-tolerant by
+        // design, same as the UHID.
+        var visitNumber = await _identifierGenerator.NextVisitNumberAsync(request.VisitType, cancellationToken);
+
+        var visit = PatientVisit.Create(patientId, request.VisitType, request.AppointmentTypeId, actorId, visitNumber);
+        visit.SetAdmissionDetails(request.AdmissionType, request.ArNumber, request.IsReferred, request.ReferredBy, request.Category);
         foreach (var line in request.Consultations)
         {
             visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, line.DepartmentId, line.ConsultantId, line.ConsultationTypeId, line.AppointmentTime), actorId);
@@ -102,7 +111,9 @@ internal class PatientVisitService : IPatientVisitService
         await _repository.AddAsync(visit, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Recorded visit {VisitId} for patient {PatientId} with {ConsultationCount} consultation(s)", visit.Id, patientId, visit.Consultations.Count);
+        _logger.LogInformation(
+            "Recorded visit {VisitId} ({VisitNumber}) for patient {PatientId} with {ConsultationCount} consultation(s)",
+            visit.Id, visit.VisitNumber, patientId, visit.Consultations.Count);
 
         return Result<PatientVisitResponse>.Success(visit.ToResponse());
     }

@@ -19,11 +19,11 @@ interface InvoiceListToolbarProps {
  *
  * Same bordered/shadowed card look every Finance report's own filter bar uses
  * (features/reports/components/ReportFilterBar.tsx) for visual consistency across the whole
- * Accounts & Finance section — but deliberately NOT that shared component or its Search/Reset-
- * commits-a-draft pattern: this toolbar's search is already server-side and debounced
- * (AllInvoicesPage's own `useDebouncedValue`), so it stays genuinely live rather than gaining an
- * extra click that would only slow it down. "Reset" here just clears these two fields back to
- * their defaults, immediately.
+ * Accounts & Finance section — but deliberately NOT that shared component: this toolbar has a
+ * different field set (no date range; a Payment Status filter) and its search is server-side,
+ * debounced by AllInvoicesPage's own `useDebouncedValue`. Live the same way the reports' bar is,
+ * with no Search button. "Reset" here just clears these two fields back to their defaults,
+ * immediately.
  */
 export function InvoiceListToolbar({ search, onSearchChange, paymentStatus, onPaymentStatusChange }: InvoiceListToolbarProps) {
   function handleReset() {

@@ -18,3 +18,4 @@ export * from './incomeExpenseReport';
 export * from './pagination';
 export * from './profitReport';
 export * from './types';
+export * from './useReportFilters';
