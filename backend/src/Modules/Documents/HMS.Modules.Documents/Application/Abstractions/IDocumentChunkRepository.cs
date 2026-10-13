@@ -8,6 +8,10 @@ namespace HMS.Modules.Documents.Application.Abstractions;
 /// (0 = same direction, 2 = opposite).</summary>
 internal sealed record ChunkSearchHit(DocumentChunk Chunk, string OriginalFileName, double Distance);
 
+/// <summary>One keyword-search hit: the chunk and its document's file name. Hits are returned
+/// best first; the rank they were ordered by isn't comparable across queries, so it isn't exposed.</summary>
+internal sealed record ChunkKeywordHit(DocumentChunk Chunk, string OriginalFileName);
+
 /// <summary>Persistence for documents.document_chunks. Chunks are always written and removed
 /// per source as a set, never edited one by one — except for filling in their embedding.</summary>
 internal interface IDocumentChunkRepository
@@ -35,6 +39,12 @@ internal interface IDocumentChunkRepository
     /// embedded with <paramref name="model"/> whose document isn't deleted, optionally
     /// scoped to one owner type / owner.</summary>
     Task<IReadOnlyList<ChunkSearchHit>> SearchAsync(Vector query, string model, DocumentOwnerType? ownerType, Guid? ownerId, int limit, CancellationToken cancellationToken);
+
+    /// <summary>Chunks containing at least one of <paramref name="terms"/> (lower-case words of
+    /// letters and digits only — see <see cref="Indexing.KeywordSearchTerms"/>), those matching
+    /// more of them first, whose document isn't deleted. Needs no embedding, so it covers every
+    /// indexed chunk. An empty term list returns nothing.</summary>
+    Task<IReadOnlyList<ChunkKeywordHit>> KeywordSearchAsync(IReadOnlyList<string> terms, DocumentOwnerType? ownerType, Guid? ownerId, int limit, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

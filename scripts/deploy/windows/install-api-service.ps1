@@ -13,6 +13,12 @@
   of leaving Swagger UI reachable to the public internet (Swagger is gated on
   IsDevelopment(), see SwaggerConfiguration.cs).
 
+  The API listens on localhost only: nginx on the same machine is the only thing that needs
+  to reach it (see nginx-hms-reverse-proxy.conf), and a port bound to every interface is one
+  firewall rule away from serving the API to the internet over plain HTTP, past the proxy's
+  TLS. Pass -ExposeApiPortDirectly only for a machine that must be called on that port from
+  elsewhere.
+
   Run this in an ELEVATED PowerShell (Run as Administrator), after `dotnet publish` (see
   docs/Deployment.md's Manual Deployment Steps for the full sequence).
 
@@ -45,7 +51,11 @@ param(
     # must actually be installed at this path and match the Postgres server's major version -
     # this script does not install it, only points the app at where it should be.
     [string]$PgDumpExecutablePath = "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe",
-    [string]$BackupRootDirectory = "C:\hms-backups"
+    [string]$BackupRootDirectory = "C:\hms-backups",
+    # Bind the API to every network interface instead of localhost only. Off by default; the
+    # port still needs its own firewall rule (open-deployment-firewall-ports.ps1 has the
+    # matching switch) before anything outside this machine can reach it.
+    [switch]$ExposeApiPortDirectly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -77,9 +87,11 @@ $dotnetPath = (Get-Command dotnet).Source
 # (hms_platform, not a separate hms_qa) so a fresh install creates exactly one database -
 # Branding's schema is isolated from Platform's own by schema name, not by a second physical
 # database.
+$bindHost = if ($ExposeApiPortDirectly) { "0.0.0.0" } else { "localhost" }
+
 $envVars = @(
     "ASPNETCORE_ENVIRONMENT=Production",
-    "ASPNETCORE_URLS=http://0.0.0.0:$ApiPort",
+    "ASPNETCORE_URLS=http://${bindHost}:$ApiPort",
     "ConnectionStrings__Default=Host=localhost;Port=5432;Database=hms_platform;Username=$PgUser;Password=$PgPassword",
     "ConnectionStrings__Platform=Host=localhost;Port=5432;Database=hms_platform;Username=$PgUser;Password=$PgPassword",
     "ConnectionStrings__PlatformAdmin=Host=localhost;Port=5432;Database=postgres;Username=$PgUser;Password=$PgPassword",
@@ -137,3 +149,7 @@ Write-Host "Done. Verify with:" -ForegroundColor Green
 Write-Host "  Get-Service $ServiceName" -ForegroundColor Green
 Write-Host "  Get-Content '$PublishDir\service.out.log' -Tail 40" -ForegroundColor Green
 Write-Host "  curl http://localhost:$ApiPort/health" -ForegroundColor Green
+if (-not $ExposeApiPortDirectly) {
+    Write-Host "The API listens on localhost only. From another machine, port $ApiPort should not answer:" -ForegroundColor Green
+    Write-Host "  Test-NetConnection <this machine's public IP> -Port $ApiPort   # expect TcpTestSucceeded: False" -ForegroundColor Green
+}

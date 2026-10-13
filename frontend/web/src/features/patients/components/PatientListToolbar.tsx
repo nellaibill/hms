@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { MAX_QUERY_VALUE_LENGTH } from '@/lib/queryLimits';
 import { useAuth } from '../../auth/AuthContext';
 import { usePatientsQuery } from '../hooks/usePatientsQuery';
 
@@ -134,6 +135,7 @@ export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear,
               placeholder="e.g. Karthik Selvam"
               value={filters.name}
               onChange={(event) => onFilterChange('name', event.target.value)}
+              maxLength={MAX_QUERY_VALUE_LENGTH}
               onFocus={() => setActiveField('name')}
               onBlur={() => setActiveField((current) => (current === 'name' ? null : current))}
               autoComplete="off"
@@ -160,6 +162,7 @@ export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear,
               placeholder="e.g. NH20260018"
               value={filters.uhid}
               onChange={(event) => onFilterChange('uhid', event.target.value)}
+              maxLength={MAX_QUERY_VALUE_LENGTH}
               onFocus={() => setActiveField('uhid')}
               onBlur={() => setActiveField((current) => (current === 'uhid' ? null : current))}
               autoComplete="off"
@@ -176,6 +179,7 @@ export function PatientListToolbar({ filters, onFilterChange, onSearch, onClear,
               placeholder="e.g. 9600889012"
               value={filters.phone}
               onChange={(event) => onFilterChange('phone', event.target.value)}
+              maxLength={MAX_QUERY_VALUE_LENGTH}
               onFocus={() => setActiveField('phone')}
               onBlur={() => setActiveField((current) => (current === 'phone' ? null : current))}
               autoComplete="off"

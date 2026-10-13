@@ -1,7 +1,7 @@
 // Read-only API load test for HMS (k6 — https://k6.io).
 //
 // Usage (see README.md in this folder):
-//   k6 run -e BASE_URL=http://host:58158 -e HMS_TOKEN=... -e PROFILE=baseline read-baseline.js
+//   k6 run -e BASE_URL=https://host -e HMS_TOKEN=... -e PROFILE=baseline read-baseline.js
 //
 // GET requests only, so it's safe against any environment's data. It still counts against
 // the API's rate limiter (RateLimiting section of appsettings.json, ADR-084): one token is one

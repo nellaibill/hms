@@ -54,7 +54,9 @@ public interface IDocumentService
     Task<Result<DocumentEmbedBackfillResponse>> BackfillEmbeddingsAsync(int limit, DocumentActor actor, CancellationToken cancellationToken);
 
     /// <summary>Semantic search over embedded chunks, filtered to what the caller may read,
-    /// optionally scoped to one owner (e.g. one patient).</summary>
+    /// optionally scoped to one owner (e.g. one patient). If the query can't be embedded
+    /// (the embedding service call fails), answers with keyword matches over all indexed
+    /// chunks instead of failing.</summary>
     Task<Result<IReadOnlyList<DocumentSearchHitResponse>>> SearchAsync(string query, DocumentOwnerType? ownerType, Guid? ownerId, int limit, DocumentActor actor, CancellationToken cancellationToken);
 }
 

@@ -103,8 +103,13 @@ export interface DocumentSemanticSearchQuery {
   limit?: number;
 }
 
+/** Mirrors HMS.Modules.Documents.Contracts.DocumentSearchMatchType. 'Keyword' is the
+ * fallback when the server couldn't reach its embedding service: passages that share words
+ * with the query rather than its meaning. */
+export type DocumentSearchMatchType = 'Semantic' | 'Keyword';
+
 /** Mirrors HMS.Modules.Documents.Contracts.DocumentSearchHitResponse — one passage of an
- * indexed document, ranked by closeness in meaning to the query. */
+ * indexed document. Hits arrive best match first. */
 export interface DocumentSearchHitResponse {
   documentId: string;
   originalFileName: string;
@@ -113,6 +118,7 @@ export interface DocumentSearchHitResponse {
   /** 0-based position of this passage within its document. */
   chunkIndex: number;
   content: string;
-  /** 1 − cosine distance; closer to 1 means closer in meaning. */
-  similarity: number;
+  matchType: DocumentSearchMatchType;
+  /** 1 − cosine distance; closer to 1 means closer in meaning. Null for a 'Keyword' hit. */
+  similarity: number | null;
 }

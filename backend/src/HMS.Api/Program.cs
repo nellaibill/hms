@@ -44,7 +44,13 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 // With the ModelState filter suppressed, an unparseable body would reach actions as null and
 // throw inside FluentValidation (a 500) — RequestBodyRequiredFilter turns it back into a 400.
-builder.Services.AddControllers(options => options.Filters.Add<RequestBodyRequiredFilter>())
+// QueryStringGuardFilter does the same for query values PostgreSQL can't take (a null
+// character) or that are too long to be a real search term.
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<RequestBodyRequiredFilter>();
+        options.Filters.Add<QueryStringGuardFilter>();
+    })
     // Patients is the first module with enum fields (Title, Gender, EncounterType, ...) —
     // serialize them as their string names, not the default integer ordinal, so the JSON
     // contract is self-describing for Swagger and every frontend consumer.

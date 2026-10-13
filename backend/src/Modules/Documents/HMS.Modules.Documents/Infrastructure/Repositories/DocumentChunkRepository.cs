@@ -96,5 +96,42 @@ internal class DocumentChunkRepository : IDocumentChunkRepository
         return rows.Select(r => new ChunkSearchHit(r.Chunk, r.OriginalFileName, r.Distance)).ToList();
     }
 
+    public async Task<IReadOnlyList<ChunkKeywordHit>> KeywordSearchAsync(IReadOnlyList<string> terms, DocumentOwnerType? ownerType, Guid? ownerId, int limit, CancellationToken cancellationToken)
+    {
+        if (terms.Count == 0)
+        {
+            return [];
+        }
+
+        // "a | b | c": any term matches, and ts_rank puts chunks matching more of them first.
+        // Same "simple" configuration as the generated search_vector column, so the GIN index
+        // on it serves the match. Terms are letters and digits only, so the string can't
+        // contain tsquery operators.
+        var anyTerm = string.Join(" | ", terms);
+
+        var chunks = _dbContext.DocumentChunks.AsNoTracking()
+            .Where(c => c.SearchVector.Matches(EF.Functions.ToTsQuery("simple", anyTerm)));
+
+        if (ownerType is not null)
+        {
+            chunks = chunks.Where(c => c.OwnerType == ownerType.Value);
+        }
+
+        if (ownerId is not null)
+        {
+            chunks = chunks.Where(c => c.OwnerId == ownerId.Value);
+        }
+
+        var rows = await chunks
+            .Join(_dbContext.Documents, c => c.SourceId, d => d.Id, (c, d) => new { Chunk = c, d.OriginalFileName })
+            .OrderByDescending(r => r.Chunk.SearchVector.Rank(EF.Functions.ToTsQuery("simple", anyTerm)))
+            .ThenBy(r => r.Chunk.SourceId)
+            .ThenBy(r => r.Chunk.ChunkIndex)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(r => new ChunkKeywordHit(r.Chunk, r.OriginalFileName)).ToList();
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
 }

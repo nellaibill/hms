@@ -22,8 +22,14 @@ Read-only [k6](https://k6.io) scripts for load-testing a deployed HMS API.
 ## Run
 
 ```bash
-k6 run -e BASE_URL=http://<host>:58158 -e HMS_TOKEN=$HMS_TOKEN -e PROFILE=baseline scripts/load-test/read-baseline.js
+k6 run -e BASE_URL=https://<host> -e HMS_TOKEN=$HMS_TOKEN -e PROFILE=baseline scripts/load-test/read-baseline.js
 ```
+
+`BASE_URL` is the site's public origin: the API is reached through nginx, and its own port
+(58158) is not open from outside (docs/Deployment.md). Add `--insecure-skip-tls-verify` when
+the host uses a certificate your machine doesn't trust, such as staging's mkcert one. To
+measure the API without the proxy, run k6 on the server itself against
+`http://localhost:58158`.
 
 `PROFILE` options:
 

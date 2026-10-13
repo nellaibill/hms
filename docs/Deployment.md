@@ -138,8 +138,10 @@ API's port — substitute your own.
   hardcodes `https://localhost:58157;http://localhost:58158`, but that file only affects
   `dotnet run`/Visual Studio. The actual published app takes its URLs from the
   `ASPNETCORE_URLS` environment variable — already how `docker-compose.yml`/the API
-  Dockerfile do it (`ENV ASPNETCORE_URLS=http://+:8080`). **No code change needed** to bind
-  externally — just set that env var when running the published app.
+  Dockerfile do it (`ENV ASPNETCORE_URLS=http://+:8080`). On a VPS the published app binds
+  **localhost only** (`install-api-service.ps1` sets `ASPNETCORE_URLS=http://localhost:58158`):
+  nginx on the same machine is the only caller, and the API's own port speaks plain HTTP, so
+  it must not be reachable from outside (ADR-092).
 - **CORS** — [backend/src/HMS.Api/Configuration/CorsConfiguration.cs](../backend/src/HMS.Api/Configuration/CorsConfiguration.cs)
   reads `Cors:AllowedOrigins` from configuration and fails closed (empty list = allow
   nothing, never `AllowAnyOrigin`). Already override-able via the `Cors__AllowedOrigins__0`
@@ -150,7 +152,9 @@ API's port — substitute your own.
   real deployment only because the service ran with `ASPNETCORE_ENVIRONMENT=Development` for
   an unrelated reason (migration convenience); that's fixed now, so this bullet's earlier
   claim ("registered unconditionally... not gated") no longer describes either the code or
-  the deployed behavior.
+  the deployed behavior. A server that does run in Development mode (the `dotnet run` case in
+  step 6) can still switch it off with `Swagger__Enabled=false`, and the nginx config only
+  proxies `/swagger/` for a browser on the VPS itself.
 - **Secrets** (`Jwt:SigningKey`, `SuperAdminSeed:Password`, `PlatformAdminSeed:Password`) —
   ship as empty strings in `appsettings.json` and throw at startup if unset (see
   [Configuration.md](Configuration.md)). A Windows Service can't use `dotnet user-secrets`
@@ -186,11 +190,11 @@ API's port — substitute your own.
 Rather than exposing the frontend and API on two separate public ports with a CORS
 allowlist between them, [scripts/deploy/windows/nginx-hms-reverse-proxy.conf](../scripts/deploy/windows/nginx-hms-reverse-proxy.conf)
 puts a single nginx instance on port 80 in front of both: `/` serves the built React app,
-`/api/*` and `/swagger/*` proxy to Kestrel on `127.0.0.1:58158`. This means the browser only
-ever talks to `http://<public-ip>/...` — same-origin, so the deployed app doesn't depend on
-CORS being configured correctly at all (CORS is still configured below, both because the API
-port can optionally be opened directly for testing, and because `AllowAnyOrigin` is never
-acceptable per existing project convention).
+`/api/*` proxies to Kestrel on `127.0.0.1:58158` (and `/swagger/*` too, but only for a
+browser on the VPS itself). This means the browser only ever talks to
+`http://<public-ip>/...` — same-origin, so the deployed app doesn't depend on CORS being
+configured correctly at all (CORS is still configured below, because `AllowAnyOrigin` is
+never acceptable per existing project convention).
 
 ```powershell
 choco install nginx -y
@@ -233,6 +237,8 @@ guarantee `restart: unless-stopped` gives the Docker deployment.
 Get-Service HmsApi                      # should show Running
 curl http://localhost:58158/health      # from the VPS itself
 ```
+The service listens on `localhost:58158` only. `-ExposeApiPortDirectly` binds every interface
+instead; leave it off unless something outside this machine must call the API on that port.
 
 If this deploy adds new migrations and this VPS has hospital tenants beyond the legacy one,
 also run the migrate step from [Database Migration Deployment](#database-migration-deployment)
@@ -267,13 +273,14 @@ baked in, not read at runtime.
 ```powershell
 cd C:\hms\scripts\deploy\windows
 .\open-deployment-firewall-ports.ps1
-# add -ExposeApiPortDirectly only if you also want to curl the API on port 58158 directly,
-# bypassing the reverse proxy, for testing — Swagger UI itself will still 404 there too,
-# since it's gated on ASPNETCORE_ENVIRONMENT=Production (see step 2 above), not just on
-# which port/proxy path reaches it
+# -CloseApiPort removes any inbound rule that opens the API's own port (58158)
+# -ExposeApiPortDirectly opens it instead, for testing; the API must then also be installed
+#  with install-api-service.ps1 -ExposeApiPortDirectly, or nothing listens there
 ```
 This opens **port 80 only** by default. It never touches port 5432 — PostgreSQL stays
-unreachable from outside this machine. If this VPS is hosted on a cloud provider
+unreachable from outside this machine. The API's port stays closed as well: if a rule for it
+already exists, the script names it and `-CloseApiPort` removes it. An open 58158 serves the
+whole API over plain HTTP, without nginx's TLS in front. If this VPS is hosted on a cloud provider
 (AWS/Azure/GCP/etc.), that provider's own Security Group / Network Security Group must also
 allow port 80 inbound — Windows Firewall alone isn't sufficient there.
 
@@ -296,23 +303,27 @@ while `Get-Process` shows a `dotnet.exe` (the `dotnet run` host) plus a child `H
 ```powershell
 Get-Process | Where-Object { $_.ProcessName -match "dotnet|HMS.Api" } | Select-Object Id, ProcessName, Path, StartTime
 ```
-This mode works for a quick fix, but has three sharp edges the published/NSSM path doesn't:
+This mode works for a quick fix, but has four sharp edges the published/NSSM path doesn't:
 
 - **`ASPNETCORE_URLS` gets silently overridden.** `dotnet run` loads
   [launchSettings.json](../backend/src/HMS.Api/Properties/launchSettings.json)'s launch
   profile (you'll see `Using launch settings from ...` in the output), and the profile's own
   `applicationUrl` wins over an ambient `$env:ASPNETCORE_URLS` you set in the same shell —
-  Kestrel still binds `localhost` only, so the app works from `curl http://localhost:...` on
-  the VM itself but times out (`ERR_CONNECTION_TIMED_OUT`) from anywhere external, even with
-  the firewall port open. Fix: pass `--urls` on the command line instead, which *does* take
-  precedence — `dotnet run --urls "http://+:58158"` — and confirm the startup log now shows
-  `http://[::]:58158` or `http://+:58158`, not `http://localhost:58158`.
-- **Port 58158 (or whatever port) needs its own firewall rule**, same as the
-  `-ExposeApiPortDirectly` case in step 4 above — `open-deployment-firewall-ports.ps1` was
-  written for the NSSM/nginx path and won't have been run for an ad hoc `dotnet run` session.
-  Check with `Get-NetFirewallRule -DisplayName "*<port>*"`; add one with
-  `New-NetFirewallRule -DisplayName "HMS API <port>" -Direction Inbound -Protocol TCP -LocalPort <port> -Action Allow`
-  if it's missing.
+  Kestrel binds whatever the profile says, not what the variable says. Pass `--urls` on the
+  command line instead, which *does* take precedence — `dotnet run --urls "http://localhost:58158"`
+  — and confirm the startup log shows `Now listening on: http://localhost:58158`. Localhost
+  is all nginx needs. **Don't use `--urls "http://+:58158"`:** that listens on every
+  interface, and with a firewall rule for the port the whole API is then served to the
+  internet over plain HTTP (found on staging, 2026-10-13).
+- **Port 58158 (or whatever port) must have no inbound firewall rule.** Earlier versions of
+  this guide said to add one. Check from the VPS with
+  `.\open-deployment-firewall-ports.ps1` (it lists any rule that opens the port) and remove
+  it with `-CloseApiPort`; then, from another machine,
+  `Test-NetConnection 162.35.105.234 -Port 58158` should report `TcpTestSucceeded: False`.
+- **Swagger is on in this mode**, because the launch profile runs the app as `Development`.
+  Add `--Swagger:Enabled=false` to the `dotnet run` command line (or set
+  `$env:Swagger__Enabled = "false"` first) so the API description isn't published; the nginx
+  config also refuses `/swagger/` to anyone but a browser on the VPS itself.
 - **`ASPNETCORE_ENVIRONMENT` also comes from the launch profile**, not the ambient shell — so
   `$env:ASPNETCORE_ENVIRONMENT` printing empty doesn't mean the app is running as `Production`;
   check the `Hosting environment:` line the app itself prints at startup instead of trusting
@@ -320,7 +331,7 @@ This mode works for a quick fix, but has three sharp edges the published/NSSM pa
 
 To pick up a new commit while running this way: stop the process (`Ctrl+C` in its terminal, or
 `Stop-Process -Id <dotnet.exe PID> -Force`), `git pull`/`checkout` the target commit, then
-`dotnet run --urls "http://+:<port>"` again from `backend/src/HMS.Api` — this recompiles
+`dotnet run --urls "http://localhost:<port>" --Swagger:Enabled=false` again from `backend/src/HMS.Api` — this recompiles
 against the current source and, if `ASPNETCORE_ENVIRONMENT=Development` (the launch profile's
 default), auto-runs the Platform + legacy-tenant migration on startup per
 [Database Migration Deployment](#database-migration-deployment) above. It will **not** migrate
@@ -332,16 +343,19 @@ moment the terminal/session closes or the VM reboots, with no automatic restart.
 ## Testing
 
 1. **API from the VPS itself:** `curl http://localhost:58158/health` → `Healthy`.
-2. **API via public IP, direct port** (only if `-ExposeApiPortDirectly` was used):
-   from another machine, `curl http://162.35.105.234:58158/health`.
+2. **API port is NOT reachable externally:** from another machine,
+   `Test-NetConnection 162.35.105.234 -Port 58158` should report `TcpTestSucceeded: False`
+   (unless `-ExposeApiPortDirectly` was used on purpose). If it succeeds, the API is bound
+   beyond localhost and a firewall rule opens the port — see step 6.
 3. **API via the reverse proxy, public IP:** from another machine,
    `curl http://162.35.105.234/api/v1/...` (any anonymous endpoint) or
    `curl http://162.35.105.234/health`.
-4. **Swagger is NOT reachable externally:** open `http://162.35.105.234/swagger` in a browser
-   on another machine and confirm it 404s — `ASPNETCORE_ENVIRONMENT=Production` (step 2
-   above) gates Swagger off entirely. If it loads instead, the service isn't actually running
-   as Production; check `Get-Service HmsApi`'s environment (`nssm get HmsApi
-   AppEnvironmentExtra`) rather than assuming the deploy script ran successfully.
+4. **Swagger is NOT reachable externally:** open `http://162.35.105.234/swagger/index.html`
+   in a browser on another machine and confirm it is refused (403 from nginx; 404 from the
+   API itself when it runs as Production or with `Swagger__Enabled=false`). If it loads
+   instead, the live nginx config is missing the `allow`/`deny` lines in its `/swagger/`
+   block and the API is running in Development mode — check the `Hosting environment:` line
+   in the API's startup output rather than assuming the deploy script ran successfully.
 5. **React from another machine:** open `http://162.35.105.234/` in a browser, open
    DevTools → Network before logging in, confirm login requests go to
    `http://162.35.105.234/api/v1/auth/login` (same-origin, no CORS error) and return `200`.
