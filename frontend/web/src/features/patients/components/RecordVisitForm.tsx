@@ -1,9 +1,10 @@
-import { ENCOUNTER_TYPES_UI, recordVisitUiSchema, type ApiError, type RecordVisitUiFormValues } from '@hms/shared';
+import { ADMISSION_TYPES, ENCOUNTER_TYPES_UI, REFERRAL_COLUMN_CATEGORIES, type ApiError } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { Controller, useController, useFieldArray, useForm, type Control } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AppointmentTypeSelect } from '@/components/AppointmentTypeSelect';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
@@ -11,43 +12,57 @@ import { ConsultationTypeSelect } from '@/components/ConsultationTypeSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { Field, FormSection } from './FormSection';
 import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLabel';
+import {
+  admissionTypeLabel,
+  hasAdmissionDetails,
+  recordVisitFormSchema,
+  REFERRAL_ANSWERS,
+  VISIT_CATEGORIES,
+  type RecordVisitFormValues,
+} from '../recordVisitFormSchema';
 
 interface RecordVisitFormProps {
   isSubmitting: boolean;
   apiError: ApiError | null;
-  onSubmit: (values: RecordVisitUiFormValues) => void;
+  onSubmit: (values: RecordVisitFormValues) => void;
   onCancel: () => void;
   /** Mirrors the form's own dirty state up to the parent page, which owns the actual
    * unsaved-changes navigation guard (useUnsavedChangesGuard). */
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
-const defaultValues: RecordVisitUiFormValues = {
+const defaultValues: RecordVisitFormValues = {
   encounterType: 'OP',
   departmentId: '',
   consultantId: '',
   additionalConsultants: [],
   appointmentTypeId: '',
   consultationTypeId: '',
+  admissionType: '',
+  arNumber: '',
+  referral: '',
+  referredBy: '',
+  category: '',
 };
 
-/** The standalone "Add Visit" form for an existing patient — same fields, same
- * ConsultantSelect/DepartmentSelect/etc. components, and the same recordVisitUiSchema
- * validation as the Registration Details tab of the New Patient Registration wizard
- * (PatientRegistrationForm.tsx), just as its own small form rather than one tab of a larger
- * one. Kept as a separate component (some duplicated JSX) rather than sharing the wizard's
- * tab component directly — that component is typed to the wizard's own
+/** The standalone "Add Visit" form for an existing patient — same core fields, same
+ * ConsultantSelect/DepartmentSelect/etc. components as the Registration Details tab of the New
+ * Patient Registration wizard (PatientRegistrationForm.tsx), just as its own small form rather
+ * than one tab of a larger one. Kept as a separate component (some duplicated JSX) rather than
+ * sharing the wizard's tab component directly — that component is typed to the wizard's own
  * Control<PatientRegistrationUiFormValues> and `registration.*` field paths, which don't
- * apply here. */
+ * apply here. Every encounter type except OP also gets a second row of admission fields — see
+ * recordVisitFormSchema's own doc comment for what they are. */
 export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, onDirtyChange }: RecordVisitFormProps) {
   const {
     control,
     handleSubmit,
+    register,
     watch,
     setValue,
     formState: { errors, isDirty },
-  } = useForm<RecordVisitUiFormValues>({
-    resolver: zodResolver(recordVisitUiSchema),
+  } = useForm<RecordVisitFormValues>({
+    resolver: zodResolver(recordVisitFormSchema),
     defaultValues,
   });
 
@@ -58,6 +73,8 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   const encounterType = watch('encounterType');
   const departmentId = watch('departmentId');
   const consultantId = watch('consultantId');
+  const admissionType = watch('admissionType');
+  const referral = watch('referral');
   const additionalConsultants = useFieldArray({ control, name: 'additionalConsultants' });
 
   // A consultant picked under the previous department is meaningless once the department
@@ -65,6 +82,31 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   function handleDepartmentChange(newDepartmentId: string, onChange: (value: string) => void) {
     onChange(newDepartmentId);
     setValue('consultantId', '');
+  }
+
+  // The admission fields only exist for non-OP encounters, and their meaning follows the
+  // encounter type ("Admission type" vs "Observation type") — values entered under the previous
+  // type are cleared rather than carried over, or left set behind a hidden field. Same reasoning
+  // as the wizard's own handleEncounterTypeChange.
+  function handleEncounterTypeChange(newEncounterType: string, onChange: (value: string) => void) {
+    onChange(newEncounterType);
+    setValue('admissionType', '');
+    setValue('arNumber', '');
+    setValue('referral', '');
+    setValue('referredBy', '');
+    setValue('category', '');
+  }
+
+  // "A.R number" and "Referred by" are each only on screen for one answer of the dropdown before
+  // them (MLC, Yes) — changing that answer clears what was typed/picked under it.
+  function handleAdmissionTypeChange(newAdmissionType: string, onChange: (value: string) => void) {
+    onChange(newAdmissionType);
+    if (newAdmissionType !== 'MLC') setValue('arNumber', '');
+  }
+
+  function handleReferralChange(newReferral: string, onChange: (value: string) => void) {
+    onChange(newReferral);
+    if (newReferral !== 'Yes') setValue('referredBy', '');
   }
 
   const generalError = apiError?.message ?? null;
@@ -92,7 +134,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
               name="encounterType"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value} onValueChange={(value) => handleEncounterTypeChange(value, field.onChange)}>
                   <SelectTrigger id="encounterType" aria-label="Encounter type">
                     <SelectValue>{encounterTypeShortLabel(field.value)}</SelectValue>
                   </SelectTrigger>
@@ -173,6 +215,103 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
         {additionalConsultants.fields.map((field, index) => (
           <AdditionalConsultantRow key={field.id} control={control} index={index} onRemove={() => additionalConsultants.remove(index)} />
         ))}
+
+        {hasAdmissionDetails(encounterType) && (
+          <div className="flex flex-wrap gap-3">
+            <Field
+              label={admissionTypeLabel(encounterType)}
+              htmlFor="admissionType"
+              error={errors.admissionType?.message}
+              className="flex w-full flex-col gap-1 sm:w-44"
+            >
+              <Controller
+                name="admissionType"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ''} onValueChange={(value) => handleAdmissionTypeChange(value, field.onChange)}>
+                    <SelectTrigger id="admissionType" aria-label={admissionTypeLabel(encounterType)}>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ADMISSION_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+            {admissionType === 'MLC' && (
+              <Field label="A.R number" htmlFor="arNumber" error={errors.arNumber?.message} className="flex w-full flex-col gap-1 sm:w-48">
+                <Input id="arNumber" {...register('arNumber')} />
+              </Field>
+            )}
+            <Field label="Referral" htmlFor="referral" error={errors.referral?.message} className="flex w-full flex-col gap-1 sm:w-32">
+              <Controller
+                name="referral"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ''} onValueChange={(value) => handleReferralChange(value, field.onChange)}>
+                    <SelectTrigger id="referral" aria-label="Referral">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REFERRAL_ANSWERS.map((answer) => (
+                        <SelectItem key={answer} value={answer}>
+                          {answer}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+            {referral === 'Yes' && (
+              <Field label="Referred by" htmlFor="referredBy" error={errors.referredBy?.message} className="flex w-full flex-col gap-1 sm:w-44">
+                <Controller
+                  name="referredBy"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                      <SelectTrigger id="referredBy" aria-label="Referred by">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REFERRAL_COLUMN_CATEGORIES.map((source) => (
+                          <SelectItem key={source} value={source}>
+                            {source}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            )}
+            <Field label="Category" htmlFor="category" error={errors.category?.message} className="flex w-full flex-col gap-1 sm:w-32">
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <SelectTrigger id="category" aria-label="Category">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VISIT_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          </div>
+        )}
       </FormSection>
 
       <div className="flex items-center justify-between gap-3">
@@ -188,7 +327,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 }
 
 interface AdditionalConsultantRowProps {
-  control: Control<RecordVisitUiFormValues>;
+  control: Control<RecordVisitFormValues>;
   index: number;
   onRemove: () => void;
 }

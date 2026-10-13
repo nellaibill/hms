@@ -476,6 +476,7 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
         <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-3 py-2">Date</th>
+            <th className="px-3 py-2">OP / IP No</th>
             <th className="px-3 py-2">Visit Type</th>
             <th className="px-3 py-2">Department</th>
             <th className="px-3 py-2">Consultant</th>
@@ -487,6 +488,7 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
             return (
               <tr key={visit.visitId} className="hover:bg-muted/30">
                 <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{new Date(visit.createdAt).toLocaleDateString('en-IN')}</td>
+                <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{visit.visitNumber ?? '—'}</td>
                 <td className="px-3 py-2">
                   <Badge variant="outline" className="text-[10px]">
                     {visit.visitType}

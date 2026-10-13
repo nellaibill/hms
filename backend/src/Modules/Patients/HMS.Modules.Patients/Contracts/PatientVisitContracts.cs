@@ -11,6 +11,24 @@ public record CreatePatientVisitRequest
     public VisitType VisitType { get; init; }
     public Guid? AppointmentTypeId { get; init; }
     public IReadOnlyList<VisitConsultationRequest> Consultations { get; init; } = [];
+
+    // Admission details — recorded for every visit type except OP, where they're ignored.
+    // All optional on the wire: the standalone Add Visit form sends (and itself requires)
+    // them, but the New Patient Registration wizard records non-OP visits through this same
+    // request without collecting them yet. See CreatePatientVisitRequestValidator.
+
+    /// <summary>The form's "Admission type" / "Observation type" answer.</summary>
+    public MedicoLegalType? AdmissionType { get; init; }
+
+    /// <summary>Accident Register number — required when <see cref="AdmissionType"/> is MLC.</summary>
+    public string? ArNumber { get; init; }
+
+    public bool? IsReferred { get; init; }
+
+    /// <summary>Required when <see cref="IsReferred"/> is true.</summary>
+    public ReferralSource? ReferredBy { get; init; }
+
+    public VisitCategory? Category { get; init; }
 }
 
 public record VisitConsultationRequest
@@ -29,7 +47,17 @@ public record PatientVisitResponse
     public Guid VisitId { get; init; }
     public Guid PatientId { get; init; }
     public VisitType VisitType { get; init; }
+
+    /// <summary>The auto-generated OP No (OP visits, "OP-…") or IP No (every other visit type,
+    /// "IP-…"). Null only for visits recorded before these numbers existed.</summary>
+    public string? VisitNumber { get; init; }
+
     public Guid? AppointmentTypeId { get; init; }
+    public MedicoLegalType? AdmissionType { get; init; }
+    public string? ArNumber { get; init; }
+    public bool? IsReferred { get; init; }
+    public ReferralSource? ReferredBy { get; init; }
+    public VisitCategory? Category { get; init; }
     public IReadOnlyList<VisitConsultationResponse> Consultations { get; init; } = [];
     public DateTime CreatedAt { get; init; }
 }

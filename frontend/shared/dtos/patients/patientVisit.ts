@@ -1,4 +1,22 @@
-import type { VisitType } from '../../enums/patients';
+import type { AdmissionType, VisitType } from '../../enums/patients';
+import type { ReferralColumnCategory } from '../../enums/patientRegistrationUi';
+
+/** Mirrors HMS.Modules.Patients.Contracts.VisitCategory — a placeholder list until the
+ * hospital's real visit categories are decided. */
+export type VisitCategory = 'A' | 'B' | 'C';
+
+/** A non-OP visit's admission details, as carried by both CreatePatientVisitRequest and
+ * PatientVisitResponse — always absent/null on an OP visit. `admissionType` mirrors the
+ * backend's MedicoLegalType, `referredBy` its ReferralSource. */
+export interface VisitAdmissionDetails {
+  admissionType?: AdmissionType | null;
+  /** Accident Register number — only with admissionType 'MLC'. */
+  arNumber?: string | null;
+  isReferred?: boolean | null;
+  /** Only when isReferred is true. */
+  referredBy?: ReferralColumnCategory | null;
+  category?: VisitCategory | null;
+}
 
 /** Mirrors HMS.Modules.Patients.Contracts.VisitConsultationRequest/VisitConsultationResponse. */
 export interface VisitConsultation {
@@ -9,17 +27,20 @@ export interface VisitConsultation {
 
 /** Mirrors HMS.Modules.Patients.Contracts.PatientVisitResponse. All consultation lines
  * created together share one visitId — a later, separate visit gets a new one. */
-export interface PatientVisit {
+export interface PatientVisit extends VisitAdmissionDetails {
   visitId: string;
   patientId: string;
   visitType: VisitType;
+  /** The auto-generated OP No ("OP-…", OP visits) or IP No ("IP-…", every other visit type).
+   * Missing only on visits recorded before these numbers existed. */
+  visitNumber?: string | null;
   appointmentTypeId?: string | null;
   consultations: VisitConsultation[];
   createdAt: string;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.CreatePatientVisitRequest. */
-export interface CreatePatientVisitRequest {
+export interface CreatePatientVisitRequest extends VisitAdmissionDetails {
   visitType: VisitType;
   appointmentTypeId?: string | null;
   consultations: VisitConsultation[];

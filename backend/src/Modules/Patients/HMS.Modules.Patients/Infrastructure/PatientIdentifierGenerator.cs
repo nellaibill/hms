@@ -1,11 +1,12 @@
 using HMS.Modules.Patients.Application.Abstractions;
+using HMS.Modules.Patients.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace HMS.Modules.Patients.Infrastructure;
 
 /// <summary>
-/// Formats the short, human-readable UHID from a real Postgres sequence —
+/// Formats the short, human-readable UHID and OP No/IP No from real Postgres sequences —
 /// coordination-free under concurrent registrations, unlike a MAX(...)+1 query.
 /// </summary>
 internal class PatientIdentifierGenerator : IPatientIdentifierGenerator
@@ -49,5 +50,17 @@ internal class PatientIdentifierGenerator : IPatientIdentifierGenerator
             // says no, not an application-level count that a bug could skip.
             return null;
         }
+    }
+
+    public async Task<string> NextVisitNumberAsync(VisitType visitType, CancellationToken cancellationToken)
+    {
+        var isOutpatient = visitType == VisitType.OP;
+        var sequenceName = isOutpatient ? PatientsDbContext.OpNumberSequenceName : PatientsDbContext.IpNumberSequenceName;
+        var fullyQualifiedName = $"{PatientsDbContext.SchemaName}.{sequenceName}";
+        var results = await _dbContext.Database
+            .SqlQuery<long>($"SELECT nextval({fullyQualifiedName}::regclass)")
+            .ToListAsync(cancellationToken);
+
+        return $"{(isOutpatient ? "OP" : "IP")}-{DateTime.UtcNow:yyyy}-{results[0]:D6}";
     }
 }
