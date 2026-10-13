@@ -14,6 +14,7 @@ const chargeTypeLabels: Record<(typeof CHARGE_TYPES)[number], string> = {
   NursingCharge: 'Nursing Charge',
   LabCharge: 'Lab Charge',
   DoctorOrderCharge: 'Doctor Order Charge',
+  PharmacyCharge: 'Pharmacy',
 };
 
 // Charge types IPDLabOrderService/DoctorOrderService/bed-transfer flows post automatically —

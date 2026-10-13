@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, FileSpreadsheet, type LucideIcon, Package, Store, Truck } from 'lucide-react';
+import { ArrowRight, Building2, FileSpreadsheet, type LucideIcon, Package, SlidersHorizontal, Store, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SETUP_LINKS } from '@/features/pharmacy/shell/links';
 import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
@@ -12,6 +12,7 @@ interface SetupCard {
 
 const CARDS: SetupCard[] = [
   { label: 'Import products and opening stock', description: 'Load your product list and the stock on your shelf from Excel. The quickest way to get started.', icon: FileSpreadsheet, to: '/pharmacy/import' },
+  { label: 'Bill and counter settings', description: 'GSTIN, drug licence and footer printed on bills; bill paper; the discount limit.', icon: SlidersHorizontal, to: '/pharmacy/settings' },
   { label: 'Products', description: 'The medicine catalog: names, generics, pack sizes, GST, schedule and rack.', icon: Package, to: '/support/inventory' },
   { label: 'Suppliers', description: 'The distributors you buy from, with their GSTIN and contact details.', icon: Truck, to: '/admin/masters/supplier' },
   { label: 'Stores', description: 'Where stock is held: main store, dispensing counters and ward sub-stores.', icon: Store, to: '/pharmacy/stores' },

@@ -108,6 +108,10 @@ const PurchaseEntryPage = lazy(() => import('../pages/pharmacy/PurchaseEntryPage
 const PurchaseDetailPage = lazy(() => import('../pages/pharmacy/PurchaseDetailPage'));
 const PharmacyImportPage = lazy(() => import('../pages/pharmacy/ImportPage'));
 const PharmacySetupPage = lazy(() => import('../pages/pharmacy/SetupPage'));
+const PharmacyCounterPage = lazy(() => import('../pages/pharmacy/CounterPage'));
+const PharmacySalesListPage = lazy(() => import('../pages/pharmacy/SalesListPage'));
+const PharmacySaleDetailPage = lazy(() => import('../pages/pharmacy/SaleDetailPage'));
+const PharmacySettingsPage = lazy(() => import('../pages/pharmacy/SettingsPage'));
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
@@ -439,6 +443,10 @@ const pharmacyRoutes = [
           { path: 'pharmacy/purchases/:id', element: withSuspense(<PurchaseDetailPage />) },
           { path: 'pharmacy/import', element: withSuspense(<PharmacyImportPage />) },
           { path: 'pharmacy/setup', element: withSuspense(<PharmacySetupPage />) },
+          { path: 'pharmacy/counter', element: withSuspense(<PharmacyCounterPage />) },
+          { path: 'pharmacy/sales', element: withSuspense(<PharmacySalesListPage />) },
+          { path: 'pharmacy/sales/:id', element: withSuspense(<PharmacySaleDetailPage />) },
+          { path: 'pharmacy/settings', element: withSuspense(<PharmacySettingsPage />) },
         ],
       },
     ],

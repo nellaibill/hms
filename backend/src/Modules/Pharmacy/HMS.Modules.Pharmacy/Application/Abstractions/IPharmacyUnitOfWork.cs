@@ -40,4 +40,7 @@ internal interface IPharmacyUnitOfWork
     /// must therefore build everything it adds from scratch each time it is called.
     /// </summary>
     Task<Result<T>> ExecuteAsync<T>(Func<Task<Result<T>>> work, CancellationToken cancellationToken);
+
+    /// <summary>A plain save, for changes that move no stock (a held bill, a draft order).</summary>
+    Task SaveChangesAsync(CancellationToken cancellationToken);
 }

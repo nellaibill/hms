@@ -55,7 +55,7 @@ export default function PurchaseDetailPage() {
       )}
 
       {receipt && (
-        <article className="rounded-lg border border-border bg-background p-5 print:border-0 print:p-0">
+        <article className="print-target rounded-lg border border-border bg-background p-5 print:border-0 print:p-0">
           <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Goods receipt note</p>

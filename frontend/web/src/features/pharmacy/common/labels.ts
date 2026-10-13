@@ -26,6 +26,8 @@ export function sourceDocumentPath(sourceType: StockSourceType | null | undefine
   switch (sourceType) {
     case 'GoodsReceipt':
       return `/pharmacy/purchases/${sourceId}`;
+    case 'Sale':
+      return `/pharmacy/sales/${sourceId}`;
     default:
       return null;
   }

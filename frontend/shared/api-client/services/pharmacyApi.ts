@@ -1,6 +1,18 @@
 import { API_ROUTES } from '../../constants';
 import type {
   AvailableBatchResponse,
+  CollectSalePaymentRequest,
+  CounterItemResponse,
+  CreateSaleRequest,
+  CreateSaleReturnRequest,
+  HeldBillResponse,
+  HoldBillRequest,
+  PharmacySettings,
+  UpdatePharmacySettingsRequest,
+  SaleListQuery,
+  SaleResponse,
+  SaleReturnListQuery,
+  SaleReturnResponse,
   CreateDispenseCartRequest,
   CreateGoodsReceiptRequest,
   GoodsReceiptListQuery,
@@ -218,6 +230,79 @@ export class PharmacyApi {
   /** Imports up to 200 spreadsheet rows; with `validateOnly`, reports what would happen without saving. */
   async importProducts(request: ImportProductsRequest): Promise<ImportProductsResponse> {
     const response = await this.client.post<ImportProductsResponse>(API_ROUTES.pharmacy.imports.products, request);
+    return response.data;
+  }
+
+  /** Items matching what was typed or scanned, with their sellable batches and prices in one store. */
+  async searchCounterItems(search: string, storeId?: string, limit = 20): Promise<CounterItemResponse[]> {
+    const response = await this.client.get<CounterItemResponse[]>(API_ROUTES.pharmacy.counter.items, { query: { search, storeId, limit } });
+    return response.data;
+  }
+
+  /** The named products with their sellable stock as it is now. */
+  async lookupCounterItems(productIds: string[], storeId?: string): Promise<CounterItemResponse[]> {
+    const response = await this.client.post<CounterItemResponse[]>(API_ROUTES.pharmacy.counter.itemsLookup, productIds, { query: { storeId } });
+    return response.data;
+  }
+
+  /** In-stock products with the same generic. */
+  async getSubstitutes(productId: string, storeId?: string): Promise<CounterItemResponse[]> {
+    const response = await this.client.get<CounterItemResponse[]>(API_ROUTES.pharmacy.counter.substitutes(productId), { query: { storeId } });
+    return response.data;
+  }
+
+  async holdBill(request: HoldBillRequest): Promise<HeldBillResponse> {
+    const response = await this.client.post<HeldBillResponse>(API_ROUTES.pharmacy.counter.heldBills, request);
+    return response.data;
+  }
+
+  async getHeldBills(storeId?: string): Promise<HeldBillResponse[]> {
+    const response = await this.client.get<HeldBillResponse[]>(API_ROUTES.pharmacy.counter.heldBills, { query: { storeId } });
+    return response.data;
+  }
+
+  async discardHeldBill(id: string): Promise<void> {
+    await this.client.delete<boolean>(API_ROUTES.pharmacy.counter.heldBillById(id));
+  }
+
+  /** Makes a bill: stock out, GST worked out, payment recorded — in one call. */
+  async createSale(request: CreateSaleRequest): Promise<SaleResponse> {
+    const response = await this.client.post<SaleResponse>(API_ROUTES.pharmacy.sales.base, request);
+    return response.data;
+  }
+
+  async getSales(query: SaleListQuery = {}): Promise<Paged<SaleResponse>> {
+    const response = await this.client.get<SaleResponse[]>(API_ROUTES.pharmacy.sales.base, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getSaleById(id: string): Promise<SaleResponse> {
+    const response = await this.client.get<SaleResponse>(API_ROUTES.pharmacy.sales.byId(id));
+    return response.data;
+  }
+
+  async collectSalePayment(id: string, request: CollectSalePaymentRequest): Promise<SaleResponse> {
+    const response = await this.client.post<SaleResponse>(API_ROUTES.pharmacy.sales.payments(id), request);
+    return response.data;
+  }
+
+  async createSaleReturn(saleId: string, request: CreateSaleReturnRequest): Promise<SaleReturnResponse> {
+    const response = await this.client.post<SaleReturnResponse>(API_ROUTES.pharmacy.sales.returnsFor(saleId), request);
+    return response.data;
+  }
+
+  async getSaleReturns(query: SaleReturnListQuery = {}): Promise<Paged<SaleReturnResponse>> {
+    const response = await this.client.get<SaleReturnResponse[]>(API_ROUTES.pharmacy.sales.returns, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getSettings(): Promise<PharmacySettings> {
+    const response = await this.client.get<PharmacySettings>(API_ROUTES.pharmacy.settings);
+    return response.data;
+  }
+
+  async updateSettings(request: UpdatePharmacySettingsRequest): Promise<PharmacySettings> {
+    const response = await this.client.put<PharmacySettings>(API_ROUTES.pharmacy.settings, request);
     return response.data;
   }
 }

@@ -83,19 +83,23 @@ internal class ProductRepository : IProductRepository
 
     // GenericName is searched too: a pharmacist looks a drug up by its molecule
     // ("paracetamol") at least as often as by its brand name.
-    private static IQueryable<Product> ApplySearch(IQueryable<Product> products, string? search)
+    private IQueryable<Product> ApplySearch(IQueryable<Product> products, string? search)
     {
         if (string.IsNullOrWhiteSpace(search))
         {
             return products;
         }
 
-        var term = $"%{search.Trim()}%";
+        // A scanned barcode arrives here as the search text, so an exact barcode match counts
+        // as a hit alongside the name/generic/code matches.
+        var exact = search.Trim();
+        var term = $"%{exact}%";
         return products.Where(p =>
             EF.Functions.ILike(p.Sku, term)
             || EF.Functions.ILike(p.ProductCode, term)
             || EF.Functions.ILike(p.ProductName, term)
-            || (p.GenericName != null && EF.Functions.ILike(p.GenericName, term)));
+            || (p.GenericName != null && EF.Functions.ILike(p.GenericName, term))
+            || _dbContext.ProductBarcodes.Any(b => b.ProductId == p.Id && b.IsActive && b.BarcodeValue == exact));
     }
 
     private static IQueryable<Product> ApplySort(IQueryable<Product> products, string? sort)

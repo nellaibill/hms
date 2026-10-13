@@ -70,6 +70,13 @@ public enum ChargeType
     /// value per OrderType, Remarks distinguishes which (e.g. "Radiology: Chest X-ray").
     /// See ADR-065.</summary>
     DoctorOrderCharge,
+
+    /// <summary>Posted by HMS.Modules.Pharmacy when a pharmacy bill for an admitted patient
+    /// is put on the admission rather than paid at the counter. Remarks carries the bill
+    /// number. A return against such a bill posts a negative amount, so the charge list
+    /// always nets to what the pharmacy is actually owed — see
+    /// IPDBillingService.GenerateFinalBillAsync, which bills the net as one line.</summary>
+    PharmacyCharge,
 }
 
 /// <summary>Named `NursingShift` (not `Shift`) to avoid any confusion with HR's unrelated

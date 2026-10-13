@@ -1,4 +1,4 @@
-import { PackagePlus, Pill } from 'lucide-react';
+import { PackagePlus, ReceiptText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -24,9 +24,9 @@ export default function PharmacyHubPage() {
         canCreate && (
           <>
             <Button size="sm" variant="outline" asChild>
-              <Link to="/pharmacy/dispenses/new">
-                <Pill className="h-4 w-4" />
-                Dispense
+              <Link to="/pharmacy/counter">
+                <ReceiptText className="h-4 w-4" />
+                Billing counter
               </Link>
             </Button>
             <Button size="sm" asChild>
