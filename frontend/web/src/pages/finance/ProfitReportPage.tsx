@@ -18,9 +18,8 @@ import {
   ProfitTable,
   ReportFilterBar,
   AccountsNavTabs,
+  useReportFilters,
 } from '@/features/reports';
-import type { ProfitReportFilterState, ReportDateRange } from '@/features/reports';
-import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 const ROWS_PER_PAGE = 10;
 
@@ -33,19 +32,13 @@ const ROWS_PER_PAGE = 10;
  * read from, the same set InvoiceDetailCard primes for an equivalent reason: this page can be
  * opened directly, without ever visiting a live billing form first.
  *
- * Filters are a draft/applied split, not live: the filter bar edits `draftRange`/`draftFilters`
- * on every keystroke, but the report only recomputes once "Search" commits them into
- * `appliedRange`/`appliedFilters` (see ReportFilterBar's own doc comment for why — shared with
- * every other Finance report, not just this one). The applied state starts out equal to the
- * draft defaults, so the report for the default range is shown on first load without a Search;
- * Reset returns both to those defaults, which re-shows the default-range report.
+ * Filters are live and remembered for the browser session — see useReportFilters' own doc
+ * comment (shared with every other Finance report, not just this one). The report for the
+ * default range is shown on first load; Reset returns to it.
  */
 export default function ProfitReportPage() {
-  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
-  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
   const [page, setPage] = useState(1);
+  const { range, filters, appliedRange, appliedFilters, setRange, setFilters, reset } = useReportFilters('profit', () => setPage(1));
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
 
@@ -85,21 +78,6 @@ export default function ProfitReportPage() {
 
   const pagedRows = paginate(filteredRows, page, ROWS_PER_PAGE);
 
-  function handleSearch() {
-    setAppliedRange(draftRange);
-    setAppliedFilters(draftFilters);
-    setPage(1);
-  }
-
-  function handleReset() {
-    const fresh = defaultReportDateRange();
-    setDraftRange(fresh);
-    setDraftFilters({});
-    setAppliedRange(fresh);
-    setAppliedFilters({});
-    setPage(1);
-  }
-
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
@@ -115,12 +93,11 @@ export default function ProfitReportPage() {
 
         <div className="flex w-full flex-col gap-4">
           <ReportFilterBar
-            range={draftRange}
-            filters={draftFilters}
-            onRangeChange={setDraftRange}
-            onFiltersChange={setDraftFilters}
-            onSearch={handleSearch}
-            onReset={handleReset}
+            range={range}
+            filters={filters}
+            onRangeChange={setRange}
+            onFiltersChange={setFilters}
+            onReset={reset}
             exportSlot={<ProfitExportButtons range={appliedRange} rows={filteredRows} />}
           />
 

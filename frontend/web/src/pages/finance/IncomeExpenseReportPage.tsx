@@ -19,9 +19,8 @@ import {
   ReportFilterBar,
   AccountsNavTabs,
   ReportSummaryCards,
+  useReportFilters,
 } from '@/features/reports';
-import type { ProfitReportFilterState, ReportDateRange } from '@/features/reports';
-import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 const ROWS_PER_PAGE = 10;
 
@@ -30,20 +29,20 @@ const ROWS_PER_PAGE = 10;
  * Income comes from the real Billing API (useInvoicesForReportQuery); expenses are still mock
  * data (features/reports/mockExpenses.ts) pending an Accounts/Expenses backend.
  *
- * Same shared filter bar and draft/applied/"click Search" pattern every other Finance report
- * uses (see ReportFilterBar's own doc comment), showing the default range on first load —
+ * Same shared filter bar and live, session-remembered filters every other Finance report uses
+ * (see useReportFilters' own doc comment), showing the default range on first load —
  * Billing Type/Department/Consultant dropdowns
  * are all hidden here: Income is invoice-level (no per-line billing type/department/consultant
  * breakdown at this granularity) and Expenses are hospital-wide mock entries with none of that
  * attribution yet, so only Date Range + Search apply.
  */
 export default function IncomeExpenseReportPage() {
-  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
-  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
   const [incomePage, setIncomePage] = useState(1);
   const [expensePage, setExpensePage] = useState(1);
+  const { range, filters, appliedRange, appliedFilters, setRange, setFilters, reset } = useReportFilters('income-expense', () => {
+    setIncomePage(1);
+    setExpensePage(1);
+  });
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
   const incomeRows = useMemo(
@@ -69,23 +68,6 @@ export default function IncomeExpenseReportPage() {
   const pagedIncome = paginate(incomeRows, incomePage, ROWS_PER_PAGE);
   const pagedExpense = paginate(expenseRows, expensePage, ROWS_PER_PAGE);
 
-  function handleSearch() {
-    setAppliedRange(draftRange);
-    setAppliedFilters(draftFilters);
-    setIncomePage(1);
-    setExpensePage(1);
-  }
-
-  function handleReset() {
-    const fresh = defaultReportDateRange();
-    setDraftRange(fresh);
-    setDraftFilters({});
-    setAppliedRange(fresh);
-    setAppliedFilters({});
-    setIncomePage(1);
-    setExpensePage(1);
-  }
-
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
@@ -101,12 +83,11 @@ export default function IncomeExpenseReportPage() {
 
         <div className="flex w-full flex-col gap-4">
           <ReportFilterBar
-            range={draftRange}
-            filters={draftFilters}
-            onRangeChange={setDraftRange}
-            onFiltersChange={setDraftFilters}
-            onSearch={handleSearch}
-            onReset={handleReset}
+            range={range}
+            filters={filters}
+            onRangeChange={setRange}
+            onFiltersChange={setFilters}
+            onReset={reset}
             showBillingType={false}
             showDepartment={false}
             showConsultant={false}

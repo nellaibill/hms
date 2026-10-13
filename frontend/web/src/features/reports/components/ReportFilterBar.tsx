@@ -32,7 +32,6 @@ interface ReportFilterBarProps {
   filters: ProfitReportFilterState;
   onRangeChange: (range: ReportDateRange) => void;
   onFiltersChange: (filters: ProfitReportFilterState) => void;
-  onSearch: () => void;
   onReset: () => void;
   /** Hide the Billing Type dropdown on a report already fixed to one type (Laboratory,
    * Radiology, Consultant) — showing a filter with no real effect just invites confusion.
@@ -46,7 +45,7 @@ interface ReportFilterBarProps {
    * all (Income & Expense — Income is invoice-level with no per-department breakdown, Expenses
    * are hospital-wide entries with no department concept yet). Defaults to shown. */
   showDepartment?: boolean;
-  /** Rendered after Search/Reset, in the same row — each page supplies its own export control
+  /** Rendered after Reset, in the same row — each page supplies its own export control
    * (or omits this entirely, like Consultant Profit Report, which has none yet) rather than this
    * shared bar owning export behavior itself. */
   exportSlot?: ReactNode;
@@ -59,21 +58,17 @@ interface ReportFilterBarProps {
 /**
  * Every Finance report's shared one-card filter bar — Date Range + free-text Search always,
  * Billing Type/Department/Consultant dropdowns as each report needs (see showBillingType/
- * showConsultant), Search/Reset (and each page's own export control) grouped at the end of the
- * same row. Applies only once "Search" is clicked rather than live on every keystroke/selection:
- * a report can mix a large date range with several filters at once, so committing them together
- * as one explicit action reads more predictably than the numbers shifting under a half-typed
- * search term. Each page's applied filters start out equal to its defaults, so the default-range
- * report shows on first load without a Search. "Reset" clears every field back to those defaults
- * and re-shows that default-range report, not just clearing the inputs — see each report page's
- * own handleReset for what "defaults" means there.
+ * showConsultant), Reset (and each page's own export control) grouped at the end of the same
+ * row. Live — there is no Search button: every change is handed straight to the page, whose
+ * useReportFilters reloads the report for it and remembers it for the rest of the browser
+ * session (see that hook's own doc comment). "Reset" clears every field back to the defaults
+ * and re-shows the default-range report.
  */
 export function ReportFilterBar({
   range,
   filters,
   onRangeChange,
   onFiltersChange,
-  onSearch,
   onReset,
   showBillingType = true,
   showConsultant = true,
@@ -212,10 +207,6 @@ export function ReportFilterBar({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" className="gap-1.5" onClick={onSearch}>
-          <Search className="h-4 w-4" />
-          Search
-        </Button>
         <Button type="button" variant="outline" className="gap-1.5" onClick={onReset}>
           <RotateCcw className="h-4 w-4" />
           Reset
