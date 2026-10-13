@@ -180,7 +180,6 @@ test.describe('OPD Billing Entry — end to end', () => {
 
     await test.step('the Consultant report attributes the revenue to the consultant', async () => {
       await page.goto('/finance/accounts/reports/consultant');
-      await page.getByRole('button', { name: 'Search', exact: true }).click();
       await expect(page.getByRole('main').getByText(billableConsultant.consultant).first()).toBeVisible();
     });
 

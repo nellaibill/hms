@@ -1,5 +1,5 @@
 import { Stethoscope } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useInvoicesForReportQuery } from '@/features/billing';
 import { useMasterOptionsQuery } from '@/features/masters';
@@ -12,10 +12,8 @@ import {
   getProfitByConsultant,
   getProfitRows,
   getProfitTotals,
-  type ProfitReportFilterState,
-  type ReportDateRange,
+  useReportFilters,
 } from '@/features/reports';
-import { defaultReportDateRange } from '@/lib/reportDateRange';
 
 /**
  * Consultant Profit Report — revenue/cost/profit attributed to each consultant. Scoped to
@@ -26,17 +24,14 @@ import { defaultReportDateRange } from '@/lib/reportDateRange';
  * point of adding `billedConsultantId` was to make this report possible without that gap
  * silently omitting the majority of real (paid) revenue.
  *
- * Same shared filter bar and draft/applied/"click Search" pattern every other Finance report
- * uses (see ReportFilterBar's own doc comment), showing the default range on first load —
+ * Same shared filter bar and live, session-remembered filters every other Finance report uses
+ * (see useReportFilters' own doc comment), showing the default range on first load —
  * Billing Type and Consultant dropdowns are
  * hidden here: Billing Type is always Consultation, and this report is already one row per
  * consultant, so filtering it down to a single one has no real use.
  */
 export default function ConsultantReportPage() {
-  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
-  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
+  const { range, filters, appliedRange, appliedFilters, setRange, setFilters, reset } = useReportFilters('consultant');
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
   const { data: consultantOptions } = useMasterOptionsQuery('consultant');
@@ -57,19 +52,6 @@ export default function ConsultantReportPage() {
   const totals = useMemo(() => getProfitTotals(consultationRows), [consultationRows]);
   const byConsultant = useMemo(() => getProfitByConsultant(consultationRows), [consultationRows]);
 
-  function handleSearch() {
-    setAppliedRange(draftRange);
-    setAppliedFilters(draftFilters);
-  }
-
-  function handleReset() {
-    const fresh = defaultReportDateRange();
-    setDraftRange(fresh);
-    setDraftFilters({});
-    setAppliedRange(fresh);
-    setAppliedFilters({});
-  }
-
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
@@ -85,12 +67,11 @@ export default function ConsultantReportPage() {
 
         <div className="flex w-full flex-col gap-4">
           <ReportFilterBar
-            range={draftRange}
-            filters={draftFilters}
-            onRangeChange={setDraftRange}
-            onFiltersChange={setDraftFilters}
-            onSearch={handleSearch}
-            onReset={handleReset}
+            range={range}
+            filters={filters}
+            onRangeChange={setRange}
+            onFiltersChange={setFilters}
+            onReset={reset}
             showBillingType={false}
             showConsultant={false}
           />

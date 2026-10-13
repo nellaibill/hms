@@ -5,7 +5,7 @@ import { PageBanner } from '@/components/PageBanner';
 import { useInvoicesForReportQuery, type BillingType } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
-import { filterProfitRows, getProfitByTest, getProfitRows, getProfitTotals, type ProfitReportFilterState } from '../profitReport';
+import { filterProfitRows, getProfitByTest, getProfitRows, getProfitTotals } from '../profitReport';
 import { Pagination } from './Pagination';
 import { paginate } from '../pagination';
 import { ProfitExportButtons } from './ProfitExportButtons';
@@ -14,8 +14,7 @@ import { ProfitTable } from './ProfitTable';
 import { CategoryBreakdownCard } from './CategoryBreakdownCard';
 import { ReportFilterBar } from './ReportFilterBar';
 import { AccountsNavTabs } from './AccountsNavTabs';
-import type { ReportDateRange } from '../types';
-import { defaultReportDateRange } from '@/lib/reportDateRange';
+import { useReportFilters } from '../useReportFilters';
 
 const ROWS_PER_PAGE = 10;
 
@@ -30,8 +29,8 @@ interface CategoryProfitReportPageProps {
  * Shared page for a single-`BillingType` profit breakdown (Laboratory, Radiology) — everything
  * here is the exact same data pipeline `ProfitReportPage` (Hospital Profit Report) uses, just
  * pre-filtered to one billing type, so the two near-identical reports don't duplicate the whole
- * page — including the same draft/applied filter split and default-range report on first load
- * (see ReportFilterBar's own doc comment). Deliberately OPD-billed only, same scope Hospital Profit
+ * page — including the same live, session-remembered filters and default-range report on first
+ * load (see useReportFilters' own doc comment). Deliberately OPD-billed only, same scope Hospital Profit
  * Report has: IPD-originated lab/radiology charges are folded into generic `InpatientCharge`
  * lines (ADR-066) with no catalog reference to resolve a cost from — extending this would mean
  * reworking IPD's already-shipped Final Billing charge-posting, out of scope for this pass
@@ -39,11 +38,10 @@ interface CategoryProfitReportPageProps {
  * per test here).
  */
 export function CategoryProfitReportPage({ billingType, title, description, icon: Icon }: CategoryProfitReportPageProps) {
-  const [draftRange, setDraftRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [draftFilters, setDraftFilters] = useState<ProfitReportFilterState>({});
-  const [appliedRange, setAppliedRange] = useState<ReportDateRange>(defaultReportDateRange);
-  const [appliedFilters, setAppliedFilters] = useState<ProfitReportFilterState>({});
   const [page, setPage] = useState(1);
+  const { range, filters, appliedRange, appliedFilters, setRange, setFilters, reset } = useReportFilters(billingType.toLowerCase(), () =>
+    setPage(1),
+  );
 
   const { data: billings, isPending: isLoadingBillings } = useInvoicesForReportQuery();
 
@@ -77,21 +75,6 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
 
   const pagedRows = paginate(filteredRows, page, ROWS_PER_PAGE);
 
-  function handleSearch() {
-    setAppliedRange(draftRange);
-    setAppliedFilters(draftFilters);
-    setPage(1);
-  }
-
-  function handleReset() {
-    const fresh = defaultReportDateRange();
-    setDraftRange(fresh);
-    setDraftFilters({});
-    setAppliedRange(fresh);
-    setAppliedFilters({});
-    setPage(1);
-  }
-
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
@@ -107,12 +90,11 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
 
         <div className="flex w-full flex-col gap-4">
           <ReportFilterBar
-            range={draftRange}
-            filters={draftFilters}
-            onRangeChange={setDraftRange}
-            onFiltersChange={setDraftFilters}
-            onSearch={handleSearch}
-            onReset={handleReset}
+            range={range}
+            filters={filters}
+            onRangeChange={setRange}
+            onFiltersChange={setFilters}
+            onReset={reset}
             showBillingType={false}
             exportSlot={<ProfitExportButtons range={appliedRange} rows={filteredRows} />}
           />
