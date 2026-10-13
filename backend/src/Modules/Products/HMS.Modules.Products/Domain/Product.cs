@@ -1,3 +1,4 @@
+using HMS.Modules.Products.Contracts;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Products.Domain;
@@ -42,6 +43,15 @@ internal class Product : Entity
     public string? HsnCode { get; private set; }
     public decimal? Weight { get; private set; }
     public decimal? Volume { get; private set; }
+
+    // Drug profile — see SetDrugProfile.
+    public DosageForm? DosageForm { get; private set; }
+    public string? Strength { get; private set; }
+    public decimal UnitsPerPack { get; private set; } = 1m;
+    public DrugSchedule Schedule { get; private set; } = DrugSchedule.None;
+    public StorageCondition StorageCondition { get; private set; } = StorageCondition.RoomTemperature;
+    public string? RackLocation { get; private set; }
+    public decimal? GstRatePercent { get; private set; }
 
     private Product()
     {
@@ -132,6 +142,44 @@ internal class Product : Entity
         HsnCode = hsnCode?.Trim();
         Weight = weight;
         Volume = volume;
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>
+    /// The pharmacy-specific attributes of a product, set separately from Create/Update so
+    /// their already-long parameter lists don't grow further (same shape as
+    /// PatientVisit.SetAdmissionDetails).
+    /// <para>
+    /// <paramref name="unitsPerPack"/> is how many stock units make one pack as bought and
+    /// priced — 10 for a strip of ten tablets, 1 for a bottle. Stock quantities are always in
+    /// units; MRP and rates are always per pack; a unit's price is the pack price divided by
+    /// this. It defaults to 1, where pack and unit are the same thing, which is how every
+    /// product behaved before this field existed.
+    /// </para>
+    /// </summary>
+    public void SetDrugProfile(
+        DosageForm? dosageForm,
+        string? strength,
+        decimal unitsPerPack,
+        DrugSchedule schedule,
+        StorageCondition storageCondition,
+        string? rackLocation,
+        decimal? gstRatePercent,
+        Guid? updatedBy)
+    {
+        Guard.AgainstNonPositive(unitsPerPack, nameof(unitsPerPack));
+        if (gstRatePercent is < 0 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(gstRatePercent), "GST rate must be between 0 and 100.");
+        }
+
+        DosageForm = dosageForm;
+        Strength = string.IsNullOrWhiteSpace(strength) ? null : strength.Trim();
+        UnitsPerPack = unitsPerPack;
+        Schedule = schedule;
+        StorageCondition = storageCondition;
+        RackLocation = string.IsNullOrWhiteSpace(rackLocation) ? null : rackLocation.Trim();
+        GstRatePercent = gstRatePercent;
         MarkUpdated(updatedBy);
     }
 }

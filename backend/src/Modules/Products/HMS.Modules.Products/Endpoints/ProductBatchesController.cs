@@ -42,7 +42,7 @@ public class ProductBatchesController : ControllerBase
         var result = await _service.CreateAsync(productId, request, actorId: User.GetUserId(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
-            : CreatedAtAction(nameof(GetById), new { productId, id = result.Value!.Id }, Envelope(result.Value));
+            : CreatedAtAction(nameof(GetById), new { productId, id = result.Value!.Id }, Envelope(RedactPurchaseRate(result.Value)));
     }
 
     /// <summary>Updates a product batch.</summary>
@@ -57,8 +57,9 @@ public class ProductBatchesController : ControllerBase
             return BadRequest(BuildValidationError(validation));
         }
 
-        var result = await _service.UpdateAsync(productId, id, request, actorId: User.GetUserId(), cancellationToken);
-        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+        var result = await _service.UpdateAsync(
+            productId, id, request, actorId: User.GetUserId(), cancellationToken, keepPurchaseRate: !User.HasPermission("pharmacy.view-cost"));
+        return result.IsSuccess ? Ok(Envelope(RedactPurchaseRate(result.Value!))) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>Gets a single batch by id.</summary>
@@ -68,7 +69,7 @@ public class ProductBatchesController : ControllerBase
     public async Task<IActionResult> GetById(Guid productId, Guid id, CancellationToken cancellationToken)
     {
         var result = await _service.GetByIdAsync(productId, id, cancellationToken);
-        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+        return result.IsSuccess ? Ok(Envelope(RedactPurchaseRate(result.Value!))) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>Lists a product's batches with paging and active-status filtering.</summary>
@@ -80,8 +81,18 @@ public class ProductBatchesController : ControllerBase
         var paged = await _service.GetPagedAsync(productId, query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
 
-        return Ok(new ApiResponse<IReadOnlyList<ProductBatchResponse>> { Data = paged.Items, Meta = meta });
+        var items = paged.Items.Select(RedactPurchaseRate).ToList();
+
+        return Ok(new ApiResponse<IReadOnlyList<ProductBatchResponse>> { Data = items, Meta = meta });
     }
+
+    /// <summary>A batch's purchase rate is the same commercially sensitive figure as
+    /// <c>ProductResponse.CostPrice</c>, so it is withheld from a caller without
+    /// <c>pharmacy.view-cost</c> on every action that returns a batch (ADR-077). Null rather
+    /// than 0 here because the field is already nullable — "not shown" and "not recorded"
+    /// read the same to this caller either way.</summary>
+    private ProductBatchResponse RedactPurchaseRate(ProductBatchResponse response) =>
+        User.HasPermission("pharmacy.view-cost") ? response : response with { PurchaseRate = null };
 
     private static ApiResponse<ProductBatchResponse> Envelope(ProductBatchResponse? data) => new() { Data = data };
 

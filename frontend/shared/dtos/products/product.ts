@@ -1,3 +1,5 @@
+import type { DosageForm, DrugSchedule, StorageCondition } from '../../enums';
+
 /** Mirrors HMS.Modules.Products.Contracts.ProductResponse. */
 export interface Product {
   id: string;
@@ -25,6 +27,15 @@ export interface Product {
   hsnCode?: string | null;
   weight?: number | null;
   volume?: number | null;
+  /** Null when the product is not a drug (a consumable, a device). */
+  dosageForm?: DosageForm | null;
+  strength?: string | null;
+  /** Stock units in one pack as bought and priced — 10 for a strip of ten. Prices are per pack. */
+  unitsPerPack: number;
+  schedule: DrugSchedule;
+  storageCondition: StorageCondition;
+  rackLocation?: string | null;
+  gstRatePercent?: number | null;
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -55,6 +66,13 @@ export interface CreateProductRequest {
   hsnCode?: string | null;
   weight?: number | null;
   volume?: number | null;
+  dosageForm?: DosageForm | null;
+  strength?: string | null;
+  unitsPerPack: number;
+  schedule: DrugSchedule;
+  storageCondition: StorageCondition;
+  rackLocation?: string | null;
+  gstRatePercent?: number | null;
 }
 
 /** Mirrors HMS.Modules.Products.Contracts.UpdateProductRequest — no Sku/ProductCode (immutable). */
@@ -81,6 +99,13 @@ export interface UpdateProductRequest {
   hsnCode?: string | null;
   weight?: number | null;
   volume?: number | null;
+  dosageForm?: DosageForm | null;
+  strength?: string | null;
+  unitsPerPack: number;
+  schedule: DrugSchedule;
+  storageCondition: StorageCondition;
+  rackLocation?: string | null;
+  gstRatePercent?: number | null;
 }
 
 /** Mirrors HMS.Modules.Products.Contracts.ProductListQuery. */

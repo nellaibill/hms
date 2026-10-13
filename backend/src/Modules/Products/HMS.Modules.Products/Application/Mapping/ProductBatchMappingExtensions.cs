@@ -13,6 +13,9 @@ internal static class ProductBatchMappingExtensions
         ManufactureDate = batch.ManufactureDate,
         ExpiryDate = batch.ExpiryDate,
         IsActive = batch.IsActive,
+        Mrp = batch.Mrp,
+        PurchaseRate = batch.PurchaseRate,
+        SellingRate = batch.SellingRate,
         CreatedAt = batch.CreatedAt,
         UpdatedAt = batch.UpdatedAt,
     };

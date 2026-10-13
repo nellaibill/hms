@@ -86,6 +86,9 @@ internal class ProductService : IProductService
             request.IsBatchTracked, request.IsSerialized, request.IsActive,
             request.ReorderLevel, request.MinStockLevel, request.MaxStockLevel, request.Mrp, request.CostPrice, request.SellingPrice,
             request.HsnCode, request.Weight, request.Volume, actorId);
+        product.SetDrugProfile(
+            request.DosageForm, request.Strength, request.UnitsPerPack, request.Schedule, request.StorageCondition,
+            request.RackLocation, request.GstRatePercent, actorId);
 
         await _repository.AddAsync(product, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -114,6 +117,9 @@ internal class ProductService : IProductService
             request.IsBatchTracked, request.IsSerialized, request.IsActive,
             request.ReorderLevel, request.MinStockLevel, request.MaxStockLevel, request.Mrp, request.CostPrice, request.SellingPrice,
             request.HsnCode, request.Weight, request.Volume, actorId);
+        product.SetDrugProfile(
+            request.DosageForm, request.Strength, request.UnitsPerPack, request.Schedule, request.StorageCondition,
+            request.RackLocation, request.GstRatePercent, actorId);
 
         await _repository.SaveChangesAsync(cancellationToken);
 

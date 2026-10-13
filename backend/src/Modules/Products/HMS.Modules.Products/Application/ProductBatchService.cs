@@ -10,7 +10,10 @@ public interface IProductBatchService
 {
     Task<Result<ProductBatchResponse>> CreateAsync(Guid productId, CreateProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken);
 
-    Task<Result<ProductBatchResponse>> UpdateAsync(Guid productId, Guid id, UpdateProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken);
+    /// <param name="keepPurchaseRate">True when the caller can't see purchase rates
+    /// (no pharmacy.view-cost): the stored rate is kept and the request's ignored, so saving
+    /// back a form that was shown a withheld rate can't wipe the real one.</param>
+    Task<Result<ProductBatchResponse>> UpdateAsync(Guid productId, Guid id, UpdateProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken, bool keepPurchaseRate = false);
 
     Task<Result<ProductBatchResponse>> GetByIdAsync(Guid productId, Guid id, CancellationToken cancellationToken);
 
@@ -46,6 +49,7 @@ internal class ProductBatchService : IProductBatchService
         }
 
         var batch = ProductBatch.Create(productId, request.BatchNo, request.ManufactureDate, request.ExpiryDate, request.IsActive, actorId);
+        batch.SetPrices(request.Mrp, request.PurchaseRate, request.SellingRate, actorId);
 
         await _repository.AddAsync(batch, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -53,7 +57,7 @@ internal class ProductBatchService : IProductBatchService
         return Result<ProductBatchResponse>.Success(batch.ToResponse());
     }
 
-    public async Task<Result<ProductBatchResponse>> UpdateAsync(Guid productId, Guid id, UpdateProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken)
+    public async Task<Result<ProductBatchResponse>> UpdateAsync(Guid productId, Guid id, UpdateProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken, bool keepPurchaseRate = false)
     {
         var batch = await _repository.GetByIdAsync(id, cancellationToken);
         if (batch is null || batch.ProductId != productId)
@@ -62,6 +66,7 @@ internal class ProductBatchService : IProductBatchService
         }
 
         batch.Update(request.ManufactureDate, request.ExpiryDate, request.IsActive, actorId);
+        batch.SetPrices(request.Mrp, keepPurchaseRate ? batch.PurchaseRate : request.PurchaseRate, request.SellingRate, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<ProductBatchResponse>.Success(batch.ToResponse());

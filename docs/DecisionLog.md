@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-091: Pharmacy Phase 1 (slice 1) — drug profile on the product, MRP and rates per batch, priced per pack
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+Phase 1 of the Pharmacy build-out is the data foundation the billing counter, procurement and compliance phases all stand on. A product carried nothing a pharmacy needs beyond name, generic name and one MRP/cost/selling price; a batch carried only number and dates. In India MRP is printed per batch and the same medicine is routinely on the shelf at two MRPs, medicines are bought by the strip and sold by the tablet, and the schedule a drug falls under decides whether a sale needs a prescription and a register entry.
+
+**Decision**
+- **`Product` gains a drug profile**, set through `SetDrugProfile` rather than by growing `Create`/`Update` (same shape as `PatientVisit.SetAdmissionDetails`): `DosageForm?` (null = not a drug), `Strength`, `UnitsPerPack`, `Schedule` (`None/G/H/H1/X/Narcotic`), `StorageCondition`, `RackLocation`, `GstRatePercent?`. Enums are stored by name.
+- **One pack/unit rule for the whole module:** stock quantities are in units, MRP and rates are per pack, a unit's price is the pack price ÷ `UnitsPerPack`. `UnitsPerPack` defaults to 1, where pack and unit coincide — exactly how every existing product already behaves, so no data needs converting.
+- **`ProductBatch` gains `Mrp`, `PurchaseRate`, `SellingRate`**, all nullable and per pack. A batch without them falls back to the product's own prices. A selling rate above MRP is rejected in the validator and the domain.
+- **GST is a rate on the product**, not a `ProductTaxMapping` row. That entity (many taxes per product, each inclusive or not) stays in place but unused: one rate per HSN is how medicines are taxed, and a single field is what a purchase or sale line can snapshot.
+- **A batch's purchase rate is withheld like `CostPrice`** (ADR-077): null in every `ProductBatchesController` response for a caller without `pharmacy.view-cost`. Unlike ADR-077's accepted asymmetry, an update from such a caller keeps the stored rate (`keepPurchaseRate`), so saving back a form that was shown a withheld rate cannot wipe the real one.
+- Migration `AddDrugProfileAndBatchPrices` (`dotnet ef`-generated): additive columns only, defaults `None` / `RoomTemperature` / `1`.
+
+**Consequences**
+- Existing tenants must be migrated before the Products API runs on this build.
+- Nothing reads the new fields yet: dispense still prices from `Product.SellingPrice`. Pricing by batch and by unit arrives with the store and ledger changes in the next slice.
+- Rack location is one value per product, not per store.
+- The product-level `CostPrice` still has ADR-077's write-back problem (an editor without view-cost saves 0 over the real cost); not changed here.
+- Remaining Phase 1 slices: stores and cost/price on the ledger; multi-line goods receipt with supplier and rates; Excel import of products and opening stock.
+
+---
+
 ### ADR-090: Pharmacy Phase 0 — stock is judged per product, pickers search and filter on the server, no schema change
 **Date:** 2026-10-13
 **Status:** Accepted

@@ -1,3 +1,4 @@
+using HMS.Modules.Products.Contracts;
 using HMS.Modules.Products.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -45,6 +46,16 @@ internal class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.HsnCode).HasColumnName("hsn_code").HasMaxLength(50);
         builder.Property(p => p.Weight).HasColumnName("weight").HasPrecision(18, 4);
         builder.Property(p => p.Volume).HasColumnName("volume").HasPrecision(18, 4);
+
+        // Enums stored by name, so a row reads the same in psql as in the API and reordering
+        // the enum can never silently re-label existing data.
+        builder.Property(p => p.DosageForm).HasColumnName("dosage_form").HasConversion<string>().HasMaxLength(30);
+        builder.Property(p => p.Strength).HasColumnName("strength").HasMaxLength(100);
+        builder.Property(p => p.UnitsPerPack).HasColumnName("units_per_pack").HasPrecision(18, 4).IsRequired().HasDefaultValue(1m);
+        builder.Property(p => p.Schedule).HasColumnName("schedule").HasConversion<string>().HasMaxLength(30).IsRequired().HasDefaultValue(DrugSchedule.None);
+        builder.Property(p => p.StorageCondition).HasColumnName("storage_condition").HasConversion<string>().HasMaxLength(30).IsRequired().HasDefaultValue(StorageCondition.RoomTemperature);
+        builder.Property(p => p.RackLocation).HasColumnName("rack_location").HasMaxLength(50);
+        builder.Property(p => p.GstRatePercent).HasColumnName("gst_rate_percent").HasPrecision(5, 2);
 
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(p => p.CreatedBy).HasColumnName("created_by");
