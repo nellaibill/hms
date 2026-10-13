@@ -15,6 +15,7 @@ import {
   type VisitConsultation,
   type VisitType,
 } from '@hms/shared';
+import { hasAdmissionDetails, type RecordVisitFormValues } from './recordVisitFormSchema';
 
 /**
  * Shared UI-form <-> backend-DTO structural mappers for the Patients feature. Patient
@@ -187,5 +188,25 @@ export function toCreatePatientVisitRequest(registration: RecordVisitUiFormValue
     visitType: registration.encounterType as VisitType,
     appointmentTypeId: registration.appointmentTypeId || undefined,
     consultations,
+  };
+}
+
+/** The standalone "Add Visit" form -> CreatePatientVisitRequest: toCreatePatientVisitRequest's
+ * core fields plus, for every encounter type except OP, the admission details that form
+ * collects. A dependent answer is only sent with the answer it depends on (A.R number with
+ * MLC, the referrer with Referral = Yes) — the form already clears them, this keeps the request
+ * right even if that ever slips. The wizard's Registration Details tab doesn't use this: its
+ * own older admissionType/referral/category fields are still UI-only. */
+export function toRecordVisitRequest(values: RecordVisitFormValues): CreatePatientVisitRequest {
+  const request = toCreatePatientVisitRequest(values);
+  if (!hasAdmissionDetails(values.encounterType)) return request;
+
+  return {
+    ...request,
+    admissionType: values.admissionType || undefined,
+    arNumber: values.admissionType === 'MLC' ? values.arNumber || undefined : undefined,
+    isReferred: values.referral ? values.referral === 'Yes' : undefined,
+    referredBy: values.referral === 'Yes' ? values.referredBy || undefined : undefined,
+    category: values.category || undefined,
   };
 }

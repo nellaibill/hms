@@ -17,6 +17,11 @@ public class PatientsDbContext : DbContext
     /// Never overlaps with UhidSequenceName's 40001+ range.</summary>
     public const string ImportedUhidSequenceName = "imported_uhid_seq";
 
+    /// <summary>The OP No series (OP visits) and the IP No series (IP, Emergency, Day Care and
+    /// Observation visits) — see IPatientIdentifierGenerator.NextVisitNumberAsync.</summary>
+    public const string OpNumberSequenceName = "op_number_seq";
+    public const string IpNumberSequenceName = "ip_number_seq";
+
     public PatientsDbContext(DbContextOptions<PatientsDbContext> options) : base(options)
     {
     }
@@ -59,5 +64,10 @@ public class PatientsDbContext : DbContext
         // resizes both this and UhidSequenceName once, at provisioning time, per the Platform
         // Admin's chosen "Imported Patient Capacity" (see CreateHospitalRequest).
         modelBuilder.HasSequence<long>(ImportedUhidSequenceName, SchemaName).StartsAt(1).HasMax(40000);
+
+        // One sequence per visit-number series, both from 1 — same coordination-free reasoning
+        // as the UHID sequence above.
+        modelBuilder.HasSequence<long>(OpNumberSequenceName, SchemaName);
+        modelBuilder.HasSequence<long>(IpNumberSequenceName, SchemaName);
     }
 }

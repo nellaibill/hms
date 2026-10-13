@@ -108,7 +108,7 @@ export function PatientTimelineTab({ patient, onNavigateToTab, className }: Pati
         category: 'visit',
         icon: ClipboardList,
         title: `${visit.visitType} visit`,
-        detail: doctors || undefined,
+        detail: [visit.visitNumber, doctors].filter(Boolean).join(' · ') || undefined,
         target: tab('visits'),
       });
     }

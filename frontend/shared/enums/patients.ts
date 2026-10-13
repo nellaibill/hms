@@ -38,9 +38,11 @@ export { ENCOUNTER_TYPES_UI as VISIT_TYPES, type EncounterTypeUi as VisitType } 
 export const ALLERGY_SEVERITIES = ['Mild', 'Moderate', 'Severe'] as const;
 export type AllergySeverity = (typeof ALLERGY_SEVERITIES)[number];
 
-// Still used by the Registration Details tab's (unwired — see PatientRegistrationCreatePage's
-// toRequest doc comment) Admission Type field — kept here even though CreatePatientRequest no
-// longer has a `registration` block. Named plainly `AdmissionType` for this module; IPD's own,
+// Mirrors HMS.Modules.Patients.Contracts.MedicoLegalType — a non-OP visit's "Admission type" /
+// "Observation type" (CreatePatientVisitRequest.admissionType, sent by the Add Visit page). Also
+// used by the wizard's Registration Details tab, whose own Admission Type field is still unwired
+// (see PatientRegistrationCreatePage's toRequest doc comment). Named plainly `AdmissionType` for
+// this module; IPD's own,
 // unrelated admission concept is deliberately named IpdAdmissionType (see enums/ipd.ts) to
 // avoid colliding with this export in the shared barrel.
 export const ADMISSION_TYPES = ['MLC', 'NMLC'] as const;

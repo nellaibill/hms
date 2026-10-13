@@ -22,6 +22,7 @@ public class PatientVisitServiceTests
 
     private readonly IPatientVisitRepository _repository = Substitute.For<IPatientVisitRepository>();
     private readonly IPatientRepository _patientRepository = Substitute.For<IPatientRepository>();
+    private readonly IPatientIdentifierGenerator _identifierGenerator = Substitute.For<IPatientIdentifierGenerator>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IAppointmentTypeService _appointmentTypeService = Substitute.For<IAppointmentTypeService>();
@@ -31,12 +32,14 @@ public class PatientVisitServiceTests
     public PatientVisitServiceTests()
     {
         _sut = new PatientVisitService(
-            _repository, _patientRepository, _departmentService, _consultantService, _appointmentTypeService, _consultationTypeService,
-            NullLogger<PatientVisitService>.Instance);
+            _repository, _patientRepository, _identifierGenerator, _departmentService, _consultantService, _appointmentTypeService,
+            _consultationTypeService, NullLogger<PatientVisitService>.Instance);
 
         // Happy-path defaults: the patient and every referenced Masters id exist.
         // Failure-path tests override these per-test.
         _patientRepository.ExistsAsync(PatientId, Arg.Any<CancellationToken>()).Returns(true);
+        _identifierGenerator.NextVisitNumberAsync(VisitType.OP, Arg.Any<CancellationToken>()).Returns("OP-2026-000001");
+        _identifierGenerator.NextVisitNumberAsync(Arg.Is<VisitType>(t => t != VisitType.OP), Arg.Any<CancellationToken>()).Returns("IP-2026-000001");
         _departmentService.GetByIdAsync(DepartmentId, Arg.Any<CancellationToken>())
             .Returns(Result<DepartmentResponse>.Success(new DepartmentResponse { Id = DepartmentId }));
         _consultantService.GetByIdAsync(ConsultantId, Arg.Any<CancellationToken>())
@@ -90,6 +93,54 @@ public class PatientVisitServiceTests
         result.Value.Consultations.Should().ContainSingle(c => c.DepartmentId == DepartmentId && c.ConsultantId == ConsultantId);
         await _repository.Received(1).AddAsync(Arg.Any<PatientVisit>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_ForAnOpVisit_AssignsTheGeneratedOpNumber()
+    {
+        var result = await _sut.CreateAsync(PatientId, NewRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitNumber.Should().Be("OP-2026-000001");
+    }
+
+    [Theory]
+    [InlineData(VisitType.IP)]
+    [InlineData(VisitType.Emergency)]
+    [InlineData(VisitType.DayCare)]
+    [InlineData(VisitType.Observation)]
+    public async Task CreateAsync_ForANonOpVisit_AssignsTheGeneratedIpNumberAndSavesAdmissionDetails(VisitType visitType)
+    {
+        var request = NewRequest() with
+        {
+            VisitType = visitType,
+            AppointmentTypeId = null,
+            AdmissionType = MedicoLegalType.MLC,
+            ArNumber = "AR/2026/1024",
+            IsReferred = true,
+            ReferredBy = ReferralSource.Doctor,
+            Category = VisitCategory.B,
+        };
+
+        var result = await _sut.CreateAsync(PatientId, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitNumber.Should().Be("IP-2026-000001");
+        result.Value.AdmissionType.Should().Be(MedicoLegalType.MLC);
+        result.Value.ArNumber.Should().Be("AR/2026/1024");
+        result.Value.IsReferred.Should().BeTrue();
+        result.Value.ReferredBy.Should().Be(ReferralSource.Doctor);
+        result.Value.Category.Should().Be(VisitCategory.B);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenTheRequestIsRejected_DoesNotDrawAVisitNumber()
+    {
+        _patientRepository.ExistsAsync(PatientId, Arg.Any<CancellationToken>()).Returns(false);
+
+        await _sut.CreateAsync(PatientId, NewRequest(), actorId: null, CancellationToken.None);
+
+        await _identifierGenerator.DidNotReceive().NextVisitNumberAsync(Arg.Any<VisitType>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

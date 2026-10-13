@@ -10,7 +10,13 @@ internal static class PatientVisitMappingExtensions
         VisitId = visit.Id,
         PatientId = visit.PatientId,
         VisitType = visit.VisitType,
+        VisitNumber = visit.VisitNumber,
         AppointmentTypeId = visit.AppointmentTypeId,
+        AdmissionType = visit.AdmissionType,
+        ArNumber = visit.ArNumber,
+        IsReferred = visit.IsReferred,
+        ReferredBy = visit.ReferredBy,
+        Category = visit.Category,
         Consultations = visit.Consultations.Select(c => c.ToResponse()).ToList(),
         CreatedAt = visit.CreatedAt,
     };

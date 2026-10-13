@@ -115,6 +115,35 @@ public enum VisitType
     Observation,
 }
 
+/// <summary>Whether a non-OP encounter is a Medico-Legal Case — the "Admission type"
+/// (IP/Emergency) / "Observation type" (Day Care/Observation) dropdown. Matches the frontend's
+/// ADMISSION_TYPES exactly. Not named AdmissionType: HMS.Modules.IPD.Contracts already has an
+/// unrelated enum by that name (Emergency/Elective/Transfer).</summary>
+public enum MedicoLegalType
+{
+    MLC,
+    NMLC,
+}
+
+/// <summary>Who referred a non-OP patient. Matches the frontend's REFERRAL_COLUMN_CATEGORIES
+/// exactly.</summary>
+public enum ReferralSource
+{
+    Ambulance,
+    Doctor,
+    Medicals,
+    Others,
+}
+
+/// <summary>Placeholder list — the hospital's real visit categories aren't decided yet
+/// ("A, B, C as of now"). Matches the frontend's VISIT_CATEGORIES exactly.</summary>
+public enum VisitCategory
+{
+    A,
+    B,
+    C,
+}
+
 /// <summary>The OPD queue status of one consultation line — set at Create (Waiting) and
 /// advanced via PatientVisitConsultation's transition methods as the patient moves through
 /// the front desk (CheckedIn), a consultant's room (InConsultation), and out

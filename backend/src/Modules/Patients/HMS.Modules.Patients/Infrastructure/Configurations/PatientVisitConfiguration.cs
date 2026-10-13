@@ -19,7 +19,15 @@ internal class PatientVisitConfiguration : IEntityTypeConfiguration<PatientVisit
 
         builder.Property(v => v.PatientId).HasColumnName("patient_id").IsRequired();
         builder.Property(v => v.VisitType).HasColumnName("visit_type").HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(v => v.VisitNumber).HasColumnName("visit_number").HasMaxLength(20);
         builder.Property(v => v.AppointmentTypeId).HasColumnName("appointment_type_id");
+
+        // Admission details — all null on an OP visit.
+        builder.Property(v => v.AdmissionType).HasColumnName("admission_type").HasConversion<string>().HasMaxLength(10);
+        builder.Property(v => v.ArNumber).HasColumnName("ar_number").HasMaxLength(50);
+        builder.Property(v => v.IsReferred).HasColumnName("is_referred");
+        builder.Property(v => v.ReferredBy).HasColumnName("referred_by").HasConversion<string>().HasMaxLength(20);
+        builder.Property(v => v.Category).HasColumnName("category").HasConversion<string>().HasMaxLength(20);
 
         // Standard audit columns.
         builder.Property(v => v.CreatedAt).HasColumnName("created_at").IsRequired();
@@ -36,6 +44,13 @@ internal class PatientVisitConfiguration : IEntityTypeConfiguration<PatientVisit
         builder.HasQueryFilter(v => !v.IsDeleted);
 
         builder.HasIndex(v => v.PatientId).HasDatabaseName("ix_patient_visits_patient_id");
+
+        // A visit number is a business identifier staff quote and search by — never issued
+        // twice. Filtered, since visits recorded before these numbers existed have none.
+        builder.HasIndex(v => v.VisitNumber)
+            .HasDatabaseName("ux_patient_visits_visit_number")
+            .IsUnique()
+            .HasFilter("visit_number IS NOT NULL");
 
         // Same-module reference (unlike Department/Consultant/AppointmentType/ConsultationType
         // below, which point into Masters and stay app-level-only per docs/Architecture.md §4)

@@ -193,10 +193,11 @@ const additionalConsultantSchema = z.object({
 
 // Shared by registrationDetailsUiSchema (the wizard's Registration Details tab) and
 // recordVisitUiSchema (the standalone "Add Visit" page for an existing patient, below) — the
-// exact fields CreatePatientVisitRequest actually needs. admissionType/referral/category are
-// deliberately NOT part of this shared shape: they're UI-only everywhere (never sent to the
-// backend, see toCreatePatientVisitRequest in bridging.ts), so a schema built from just this
-// object has nothing to validate that isn't actually rendered/persisted.
+// fields every visit needs. The admission fields are deliberately NOT part of this shared
+// shape, because the two forms disagree about them: the wizard's admissionType/referral/
+// category are UI-only (never sent to the backend, see toCreatePatientVisitRequest in
+// bridging.ts), while the Add Visit page collects and saves its own set (web's
+// features/patients/recordVisitFormSchema.ts, which extends recordVisitUiSchema).
 const visitCoreFieldsUiSchema = {
   encounterType: z.enum(ENCOUNTER_TYPES_UI),
   departmentId: z.string().trim().min(1, 'Department is required'),
@@ -226,10 +227,10 @@ export const registrationDetailsUiSchema = z
     }
   });
 
-/** The standalone "Add Visit" page (an existing patient getting a new encounter) — same core
- * fields as registrationDetailsUiSchema, minus the UI-only admissionType/referral/category
- * that don't persist anywhere, so there's no field here that can fail validation without also
- * being on screen to fix. */
+/** The core of the standalone "Add Visit" page's form (an existing patient getting a new
+ * encounter) — same core fields as registrationDetailsUiSchema, minus the wizard's UI-only
+ * admissionType/referral/category. The page itself validates with an extension of this that
+ * adds the admission fields it saves (web's features/patients/recordVisitFormSchema.ts). */
 export const recordVisitUiSchema = z.object({ ...visitCoreFieldsUiSchema });
 
 export type RegistrationDetailsUiFormValues = z.infer<typeof registrationDetailsUiSchema>;
