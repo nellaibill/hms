@@ -1,7 +1,6 @@
 import { ApiError, STORE_TYPES, type StoreResponse, type StoreType } from '@hms/shared';
-import { Loader2, Store } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { PageBanner } from '@/components/PageBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/AuthContext';
+import { SETUP_LINKS } from '@/features/pharmacy/shell/links';
+import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { useCreateStoreMutation, useStoresQuery, useUpdateStoreMutation } from '@/features/pharmacy/stores';
 
 const STORE_TYPE_LABELS: Record<StoreType, string> = {
@@ -88,16 +89,7 @@ export default function StoresPage() {
   const editingDefault = editing !== null && editing !== 'new' && editing.isDefault;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <PageBanner
-        icon={Store}
-        title="Pharmacy Stores"
-        subtitle="Where stock is held — main store, dispensing counters and sub-stores."
-        backTo="/pharmacy"
-        backLabel="Back to Pharmacy"
-      />
-
-      <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
+    <PharmacyPage title="Stores" subtitle="Where stock is held — main store, dispensing counters and sub-stores." subLinks={SETUP_LINKS}>
         {isPending && (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -245,7 +237,6 @@ export default function StoresPage() {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </PharmacyPage>
   );
 }

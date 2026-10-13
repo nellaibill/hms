@@ -27,6 +27,21 @@ public record UpdateProductBatchRequest
     public decimal? SellingRate { get; init; }
 }
 
+/// <summary>
+/// "This batch arrived" — what a goods receipt or an opening-stock import knows about a batch.
+/// Matched on the batch number: an existing batch has its expiry and prices brought up to
+/// date, an unknown one is created. A null price leaves the stored one alone.
+/// </summary>
+public record UpsertProductBatchRequest
+{
+    public string BatchNo { get; init; } = string.Empty;
+    public DateOnly? ManufactureDate { get; init; }
+    public DateOnly ExpiryDate { get; init; }
+    public decimal? Mrp { get; init; }
+    public decimal? PurchaseRate { get; init; }
+    public decimal? SellingRate { get; init; }
+}
+
 public record ProductBatchResponse
 {
     public Guid Id { get; init; }

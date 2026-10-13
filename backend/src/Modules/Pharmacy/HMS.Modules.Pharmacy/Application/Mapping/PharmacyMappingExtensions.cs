@@ -93,6 +93,9 @@ internal static class PharmacyMappingExtensions
         PatientName = patientName,
         AdmissionId = transaction.AdmissionId,
         Remarks = transaction.Remarks,
+        SourceType = transaction.SourceType,
+        SourceId = transaction.SourceId,
+        SourceNo = transaction.SourceNo,
         CreatedAt = transaction.CreatedAt,
     };
 }

@@ -28,6 +28,11 @@ public record StockTransactionResponse
     public string? PatientName { get; init; }
     public Guid? AdmissionId { get; init; }
     public string? Remarks { get; init; }
+
+    /// <summary>The document this movement was posted from, when there is one.</summary>
+    public StockSourceType? SourceType { get; init; }
+    public Guid? SourceId { get; init; }
+    public string? SourceNo { get; init; }
     public DateTime CreatedAt { get; init; }
 }
 

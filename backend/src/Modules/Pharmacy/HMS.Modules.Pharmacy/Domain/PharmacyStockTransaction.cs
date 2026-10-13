@@ -30,6 +30,13 @@ internal class PharmacyStockTransaction : Entity
     public decimal? UnitCost { get; private set; }
     public decimal? UnitPrice { get; private set; }
 
+    /// <summary>The document this movement was posted from — a goods receipt, a pharmacy bill,
+    /// a transfer — and its printed number, so the ledger reads on its own. Null on rows
+    /// written before documents existed, and on the old single-line receive/dispense.</summary>
+    public StockSourceType? SourceType { get; private set; }
+    public Guid? SourceId { get; private set; }
+    public string? SourceNo { get; private set; }
+
     /// <summary>Set once, after the fact, by a successful best-effort billing attempt — see
     /// DispenseService.CreateAsync. Null means either this is a Receipt (never billed) or a
     /// Dispense whose billing attempt hasn't succeeded (not yet tried, or tried and failed;
@@ -71,6 +78,40 @@ internal class PharmacyStockTransaction : Entity
         Remarks = string.IsNullOrWhiteSpace(remarks) ? null : remarks.Trim();
         UnitCost = unitCost;
         UnitPrice = unitPrice;
+    }
+
+    /// <summary>True for the movement types that add to a store's stock.</summary>
+    public static bool IsInward(TransactionType type) => type is TransactionType.Receipt or TransactionType.OpeningStock
+        or TransactionType.SaleReturn or TransactionType.TransferIn or TransactionType.AdjustmentIn;
+
+    /// <summary>A movement posted from a document — see StockPoster, the only caller.</summary>
+    public static PharmacyStockTransaction CreateFromDocument(
+        TransactionType transactionType,
+        Guid storeId,
+        Guid productId,
+        Guid productBatchId,
+        decimal quantity,
+        decimal balanceAfter,
+        decimal? unitCost,
+        decimal? unitPrice,
+        StockSourceType? sourceType,
+        Guid? sourceId,
+        string? sourceNo,
+        Guid? patientId,
+        Guid? admissionId,
+        string? remarks,
+        Guid? createdBy)
+    {
+        Guard.AgainstNonPositive(quantity, nameof(quantity));
+
+        return new PharmacyStockTransaction(
+            Guid.CreateVersion7(), storeId, productId, productBatchId, transactionType, quantity, balanceAfter, DateTime.UtcNow,
+            patientId, admissionId, remarks, unitCost, unitPrice, createdBy)
+        {
+            SourceType = sourceType,
+            SourceId = sourceId,
+            SourceNo = sourceNo,
+        };
     }
 
     /// <param name="transactionType">Receipt, or OpeningStock for stock entered at go-live.</param>

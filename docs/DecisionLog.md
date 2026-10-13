@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-093: Pharmacy Phase 1 (slices 3–4) — documents post stock through one engine; goods receipt and spreadsheet import
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+Stock came in one batch at a time through a form that knew nothing about who it was bought from or what it cost, and the ledger could not say which paper a movement came from. Every later phase adds another document that moves stock (a bill, a return, a transfer, an adjustment); writing the "balance and ledger move together, never below zero, retry on a concurrent change" logic once per document is how it goes wrong. A new pharmacy also arrives with thousands of products and a shelf of stock, and Product requires seven Masters references before one can be saved.
+
+**Decision**
+- **One posting engine.** `IStockPoster` is the only code that changes a balance for a document. It holds the request's balances so two lines on one batch see each other, and refuses an outward movement larger than what the store holds. `IPharmacyUnitOfWork.ExecuteAsync` commits a document with its movements in one save and, on a concurrent change to a balance, clears tracking and re-runs the work (three attempts, then `PHARMACY.STOCK_CONFLICT`). The old single-line receive and dispense keep their own code path.
+- **Ledger rows name their document.** `SourceType`, `SourceId`, `SourceNo` on `PharmacyStockTransaction`. `TransactionType` gains `PurchaseReturn`, `Sale`, `SaleReturn`, `TransferOut/In`, `AdjustmentIn/Out` now, since it is stored as text and costs nothing.
+- **Document numbers** come from one Postgres sequence per series (`DocumentSeries`: GRN, PH, SR, PO, PR, SP, ST, ADJ, SC, IND), all created in this migration, formatted `GRN-2026-000001` on the hospital-local year. The number is taken before the retry loop so a retry does not burn one.
+- **Goods receipt** (`PharmacyGoodsReceipt` + lines): supplier (Masters), supplier invoice number and date, quantities in packs with free quantity, purchase rate before tax, MRP, discount %, GST %. Posted on save and never edited. Each line upserts its batch in Products by batch number (`IProductBatchService.UpsertAsync`) and receives `(quantity + free) × units per pack`. Unit cost on the ledger is taxable amount ÷ units received, so free goods and discount lower it and tax is not counted as cost. The same supplier invoice number twice is refused (`PHARMACY.DUPLICATE_SUPPLIER_INVOICE`). Totals are worked out by `GstMath` (tax-exclusive for purchases, tax-inclusive for sales, round-off to the rupee).
+- **Batches are saved before the receipt**, in Products' own transaction. A batch with no stock is harmless; stock pointing at a batch that failed to save would not be.
+- **Import** (`POST pharmacy/imports/products`, 200 rows a call, `ValidateOnly` for a dry run): rows are independent and reported one by one. A product is matched by name (then SKU) and never duplicated; category, manufacturer, brand and unit are matched by name, created when new, defaulted when blank, with the catalog's lower two levels filled by a "General". Stock goes in as `OpeningStock`; a batch that already has opening stock in the store is skipped, so a file can be run twice. The spreadsheet is read in the browser (exceljs), with loose heading matching.
+- **Reading purchases needs `pharmacy.view-cost`**; entering one needs `pharmacy.create`.
+- **Frontend:** a pharmacy menu frame (`PharmacyPage`) replaces the tall page banner on pharmacy screens; `LookupInput` is the keyboard-first search box the entry screens share.
+
+**Consequences**
+New tables `pharmacy_goods_receipts`, `pharmacy_goods_receipt_lines`; three nullable columns and an index on the ledger; ten sequences. Additive: existing rows are untouched and older ledger rows simply have no source document. New configurations use `MapDocument`, which maps audit columns, xmin and snake_case names by convention. Pharmacy now references Masters (suppliers and the catalog masters). The receive-stock screen is no longer linked from the menu; its endpoint still exists.
+
 ### ADR-092: Pharmacy Phase 1 (slice 2) — stores, and store / unit cost / unit price on every stock movement
 **Date:** 2026-10-13
 **Status:** Accepted

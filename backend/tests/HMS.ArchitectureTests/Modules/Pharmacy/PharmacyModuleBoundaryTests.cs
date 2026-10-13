@@ -21,8 +21,10 @@ public class PharmacyModuleBoundaryTests
 {
     private static readonly Assembly PharmacyAssembly = typeof(StockReceiptsController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern =
-        "^(PharmacyDbContext|IStockReceiptService|IDispenseService|IStockBalanceService|IStockLedgerService|IStoreService)$";
+    // Every I{UseCase}Service is public for its controller (see above); the rest of
+    // Application, and all of Domain and Infrastructure, stay internal. Internal abstractions
+    // are named I...Repository / IStockPoster / IPharmacyUnitOfWork and so don't match.
+    private const string AllowedPublicTypeNamePattern = "^(PharmacyDbContext|I[A-Za-z]+Service)$";
 
     [Theory]
     [InlineData("HMS.Modules.Pharmacy.Domain")]

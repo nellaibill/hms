@@ -1,4 +1,4 @@
-import type { TransactionType } from '../../enums';
+import type { StockSourceType, TransactionType } from '../../enums';
 import type { PagedQuery } from '../../types';
 
 /**
@@ -24,6 +24,10 @@ export interface StockTransactionResponse {
   patientName?: string;
   admissionId?: string;
   remarks?: string;
+  /** The document this movement was posted from, when there is one. */
+  sourceType?: StockSourceType | null;
+  sourceId?: string | null;
+  sourceNo?: string | null;
   createdAt: string;
 }
 

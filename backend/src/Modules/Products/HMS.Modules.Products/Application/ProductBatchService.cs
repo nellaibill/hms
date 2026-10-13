@@ -15,6 +15,10 @@ public interface IProductBatchService
     /// back a form that was shown a withheld rate can't wipe the real one.</param>
     Task<Result<ProductBatchResponse>> UpdateAsync(Guid productId, Guid id, UpdateProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken, bool keepPurchaseRate = false);
 
+    /// <summary>Finds the product's batch by number and brings its expiry and prices up to
+    /// date, or creates it — see <see cref="UpsertProductBatchRequest"/>.</summary>
+    Task<Result<ProductBatchResponse>> UpsertAsync(Guid productId, UpsertProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken);
+
     Task<Result<ProductBatchResponse>> GetByIdAsync(Guid productId, Guid id, CancellationToken cancellationToken);
 
     /// <summary>Bulk lookup across products, for callers denormalizing batch number/expiry
@@ -67,6 +71,44 @@ internal class ProductBatchService : IProductBatchService
 
         batch.Update(request.ManufactureDate, request.ExpiryDate, request.IsActive, actorId);
         batch.SetPrices(request.Mrp, keepPurchaseRate ? batch.PurchaseRate : request.PurchaseRate, request.SellingRate, actorId);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        return Result<ProductBatchResponse>.Success(batch.ToResponse());
+    }
+
+    public async Task<Result<ProductBatchResponse>> UpsertAsync(Guid productId, UpsertProductBatchRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.BatchNo))
+        {
+            return Result<ProductBatchResponse>.Failure(ProductsErrorCodes.InvalidReference, "A batch number is required.");
+        }
+
+        var batch = await _repository.GetByBatchNoAsync(productId, request.BatchNo.Trim(), cancellationToken);
+        if (batch is null)
+        {
+            if (!await _productRepository.ExistsAsync(productId, cancellationToken))
+            {
+                return Result<ProductBatchResponse>.Failure(ProductsErrorCodes.InvalidReference, $"Product '{productId}' was not found.");
+            }
+
+            // No manufacture date on most supplier invoices; the expiry date is what matters.
+            batch = ProductBatch.Create(productId, request.BatchNo, request.ManufactureDate ?? DateOnly.FromDateTime(DateTime.UtcNow), request.ExpiryDate, isActive: true, actorId);
+            await _repository.AddAsync(batch, cancellationToken);
+        }
+        else
+        {
+            batch.Update(request.ManufactureDate ?? batch.ManufactureDate, request.ExpiryDate, batch.IsActive, actorId);
+        }
+
+        var mrp = request.Mrp ?? batch.Mrp;
+        var sellingRate = request.SellingRate ?? batch.SellingRate;
+        if (mrp is not null && sellingRate > mrp)
+        {
+            // A new, lower MRP on a re-received batch: the old selling rate can't stand above it.
+            sellingRate = mrp;
+        }
+
+        batch.SetPrices(mrp, request.PurchaseRate ?? batch.PurchaseRate, sellingRate, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<ProductBatchResponse>.Success(batch.ToResponse());

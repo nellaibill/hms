@@ -72,3 +72,45 @@ internal class CreateDispenseCartRequestValidator : AbstractValidator<CreateDisp
             .When(x => x.Lines.Count > 0);
     }
 }
+
+internal class GoodsReceiptLineRequestValidator : AbstractValidator<GoodsReceiptLineRequest>
+{
+    public GoodsReceiptLineRequestValidator()
+    {
+        RuleFor(x => x.ProductId).NotEmpty();
+        RuleFor(x => x.BatchNo).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.ExpiryDate).NotEmpty();
+        RuleFor(x => x.Quantity).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.FreeQuantity).GreaterThanOrEqualTo(0);
+        RuleFor(x => x).Must(x => x.Quantity + x.FreeQuantity > 0).WithName("Quantity").WithMessage("Enter a quantity or a free quantity.");
+        RuleFor(x => x.PurchaseRate).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Mrp).GreaterThan(0);
+        RuleFor(x => x.SellingRate).GreaterThan(0).LessThanOrEqualTo(x => x.Mrp).When(x => x.SellingRate.HasValue)
+            .WithMessage("Selling rate cannot be above MRP.");
+        RuleFor(x => x.DiscountPercent).InclusiveBetween(0, 100);
+        RuleFor(x => x.GstRatePercent).InclusiveBetween(0, 100).When(x => x.GstRatePercent.HasValue);
+    }
+}
+
+internal class CreateGoodsReceiptRequestValidator : AbstractValidator<CreateGoodsReceiptRequest>
+{
+    public CreateGoodsReceiptRequestValidator()
+    {
+        RuleFor(x => x.SupplierId).NotEmpty();
+        RuleFor(x => x.SupplierInvoiceNo).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.OtherCharges).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Remarks).MaximumLength(500);
+        RuleFor(x => x.Lines).NotEmpty().WithMessage("Add at least one line.");
+        RuleFor(x => x.Lines).Must(l => l.Count <= 300).WithMessage("A goods receipt can hold at most 300 lines.");
+        RuleForEach(x => x.Lines).SetValidator(new GoodsReceiptLineRequestValidator());
+    }
+}
+
+internal class ImportProductsRequestValidator : AbstractValidator<ImportProductsRequest>
+{
+    public ImportProductsRequestValidator()
+    {
+        RuleFor(x => x.Rows).NotEmpty().WithMessage("There are no rows to import.");
+        RuleFor(x => x.Rows).Must(r => r.Count <= 200).WithMessage("Send at most 200 rows at a time.");
+    }
+}

@@ -1,8 +1,9 @@
-import { Loader2, Receipt } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageBanner } from '@/components/PageBanner';
 import { Pagination } from '@/components/Pagination';
+import { STOCK_LINKS } from '@/features/pharmacy/shell/links';
+import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { StockLedgerTable, StockLedgerToolbar, useStockLedgerQuery, type StockLedgerFilters } from '@/features/pharmacy/stock-ledger';
 import { defaultReportDateRange } from '@/lib/reportDateRange';
 
@@ -33,16 +34,7 @@ export default function StockLedgerPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <PageBanner
-        icon={Receipt}
-        title="Stock Ledger"
-        subtitle="Combined, filterable receipt + dispense history."
-        backTo="/pharmacy"
-        backLabel="Back to Pharmacy"
-      />
-
-      <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
+    <PharmacyPage title="Stock ledger" subtitle="Every movement of stock, in or out, with the document it came from." subLinks={STOCK_LINKS}>
         <StockLedgerToolbar filters={filters} onChange={handleFiltersChange} />
 
         {isPending && (
@@ -73,7 +65,6 @@ export default function StockLedgerPage() {
             <Pagination meta={data.meta} onPageChange={setPage} />
           </div>
         )}
-      </div>
-    </div>
+    </PharmacyPage>
   );
 }

@@ -1,3 +1,4 @@
+using HMS.Modules.Pharmacy.Application.Abstractions;
 using HMS.Modules.Pharmacy.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,10 +21,19 @@ public class PharmacyDbContext : DbContext
     internal DbSet<PharmacyStore> Stores => Set<PharmacyStore>();
     internal DbSet<PharmacyStockBalance> StockBalances => Set<PharmacyStockBalance>();
     internal DbSet<PharmacyStockTransaction> StockTransactions => Set<PharmacyStockTransaction>();
+    internal DbSet<PharmacyGoodsReceipt> GoodsReceipts => Set<PharmacyGoodsReceipt>();
+    internal DbSet<PharmacyGoodsReceiptLine> GoodsReceiptLines => Set<PharmacyGoodsReceiptLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);
+
+        // One sequence per printed-number series — see IPharmacyUnitOfWork.NextNumberAsync.
+        foreach (var series in DocumentSeries.All)
+        {
+            modelBuilder.HasSequence<long>(series.SequenceName, SchemaName).StartsAt(1);
+        }
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PharmacyDbContext).Assembly);
     }
 }

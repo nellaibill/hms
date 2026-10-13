@@ -2,6 +2,11 @@ import { API_ROUTES } from '../../constants';
 import type {
   AvailableBatchResponse,
   CreateDispenseCartRequest,
+  CreateGoodsReceiptRequest,
+  GoodsReceiptListQuery,
+  GoodsReceiptResponse,
+  ImportProductsRequest,
+  ImportProductsResponse,
   CreateStoreRequest,
   CreateDispenseRequest,
   CreateStockReceiptRequest,
@@ -21,6 +26,12 @@ import type {
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
+
+/** A page of any pharmacy list. */
+export interface Paged<T> {
+  items: T[];
+  meta: PaginationMeta;
+}
 
 export interface PagedStockReceipts {
   items: StockReceiptResponse[];
@@ -186,5 +197,27 @@ export class PharmacyApi {
       },
     });
     return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getGoodsReceipts(query: GoodsReceiptListQuery = {}): Promise<Paged<GoodsReceiptResponse>> {
+    const response = await this.client.get<GoodsReceiptResponse[]>(API_ROUTES.pharmacy.goodsReceipts.base, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getGoodsReceiptById(id: string): Promise<GoodsReceiptResponse> {
+    const response = await this.client.get<GoodsReceiptResponse>(API_ROUTES.pharmacy.goodsReceipts.byId(id));
+    return response.data;
+  }
+
+  /** Books a supplier invoice into stock. Posted on save — there is no draft and no edit. */
+  async createGoodsReceipt(request: CreateGoodsReceiptRequest): Promise<GoodsReceiptResponse> {
+    const response = await this.client.post<GoodsReceiptResponse>(API_ROUTES.pharmacy.goodsReceipts.base, request);
+    return response.data;
+  }
+
+  /** Imports up to 200 spreadsheet rows; with `validateOnly`, reports what would happen without saving. */
+  async importProducts(request: ImportProductsRequest): Promise<ImportProductsResponse> {
+    const response = await this.client.post<ImportProductsResponse>(API_ROUTES.pharmacy.imports.products, request);
+    return response.data;
   }
 }

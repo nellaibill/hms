@@ -39,7 +39,13 @@ public static class PharmacyModule
         services.AddScoped<IPharmacyStockBalanceRepository, PharmacyStockBalanceRepository>();
         services.AddScoped<IPharmacyStockTransactionRepository, PharmacyStockTransactionRepository>();
 
+        services.AddScoped<IPharmacyGoodsReceiptRepository, PharmacyGoodsReceiptRepository>();
+        services.AddScoped<IStockPoster, StockPoster>();
+        services.AddScoped<IPharmacyUnitOfWork, PharmacyUnitOfWork>();
+
         services.AddScoped<IStoreService, StoreService>();
+        services.AddScoped<IGoodsReceiptService, GoodsReceiptService>();
+        services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IStockReceiptService, StockReceiptService>();
         services.AddScoped<IDispenseService, DispenseService>();
         services.AddScoped<IStockBalanceService, StockBalanceService>();
@@ -53,6 +59,8 @@ public static class PharmacyModule
         services.AddScoped<IValidator<CreateStoreRequest>, CreateStoreRequestValidator>();
         services.AddScoped<IValidator<UpdateStoreRequest>, UpdateStoreRequestValidator>();
         services.AddScoped<IValidator<CreateStockReceiptRequest>, CreateStockReceiptRequestValidator>();
+        services.AddScoped<IValidator<CreateGoodsReceiptRequest>, CreateGoodsReceiptRequestValidator>();
+        services.AddScoped<IValidator<ImportProductsRequest>, ImportProductsRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseRequest>, CreateDispenseRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseCartRequest>, CreateDispenseCartRequestValidator>();
 

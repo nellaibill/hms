@@ -59,6 +59,8 @@ export * from './pharmacy/dispenseCart';
 export * from './pharmacy/stockBalance';
 export * from './pharmacy/stockSummary';
 export * from './pharmacy/stockLedger';
+export * from './pharmacy/goodsReceipt';
+export * from './pharmacy/productImport';
 export * from './notifications/notification';
 export * from './notifications/notificationTemplate';
 export * from './notifications/notificationPreference';

@@ -26,6 +26,9 @@ internal class PharmacyStockTransactionConfiguration : IEntityTypeConfiguration<
         builder.Property(t => t.InvoiceId).HasColumnName("invoice_id");
         builder.Property(t => t.UnitCost).HasColumnName("unit_cost").HasPrecision(18, 4);
         builder.Property(t => t.UnitPrice).HasColumnName("unit_price").HasPrecision(18, 4);
+        builder.Property(t => t.SourceType).HasColumnName("source_type").HasConversion<string>().HasMaxLength(20);
+        builder.Property(t => t.SourceId).HasColumnName("source_id");
+        builder.Property(t => t.SourceNo).HasColumnName("source_no").HasMaxLength(30);
 
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(t => t.CreatedBy).HasColumnName("created_by");
@@ -54,6 +57,7 @@ internal class PharmacyStockTransactionConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(t => t.TransactionDate).HasDatabaseName("ix_pharmacy_stock_transactions_transaction_date");
         builder.HasIndex(t => t.PatientId).HasDatabaseName("ix_pharmacy_stock_transactions_patient_id");
         builder.HasIndex(t => t.StoreId).HasDatabaseName("ix_pharmacy_stock_transactions_store_id");
+        builder.HasIndex(t => t.SourceId).HasDatabaseName("ix_pharmacy_stock_transactions_source_id");
 
         builder.HasOne<PharmacyStore>()
             .WithMany()
