@@ -373,6 +373,8 @@ export const API_ROUTES = {
     },
     stockBalances: {
       base: '/api/v1/pharmacy/stock-balances',
+      summary: '/api/v1/pharmacy/stock-balances/summary',
+      availableBatches: (productId: string) => `/api/v1/pharmacy/stock-balances/${productId}/available-batches`,
       byProductBatch: (productId: string, productBatchId: string) => `/api/v1/pharmacy/stock-balances/${productId}/${productBatchId}`,
     },
     stockLedger: '/api/v1/pharmacy/stock-ledger',

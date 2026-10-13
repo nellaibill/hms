@@ -15,7 +15,15 @@ public interface IProductService
 
     Task<Result<ProductResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Bulk lookup for callers denormalizing product fields onto a list (e.g.
+    /// Pharmacy's ledger) — ids that don't resolve are simply absent from the result.</summary>
+    Task<IReadOnlyList<ProductResponse>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
     Task<PagedResult<ProductResponse>> GetPagedAsync(ProductListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Every active product matching <paramref name="search"/>, name-ordered and
+    /// unpaged — see <see cref="ProductStockProfileResponse"/>.</summary>
+    Task<IReadOnlyList<ProductStockProfileResponse>> GetStockProfilesAsync(string? search, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -120,11 +128,25 @@ internal class ProductService : IProductService
             : Result<ProductResponse>.Success(product.ToResponse());
     }
 
+    public async Task<IReadOnlyList<ProductResponse>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var products = await _repository.GetManyByIdsAsync(ids, cancellationToken);
+        return products.Select(p => p.ToResponse()).ToList();
+    }
+
     public async Task<PagedResult<ProductResponse>> GetPagedAsync(ProductListQuery query, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
         return new PagedResult<ProductResponse>(items.Select(p => p.ToResponse()).ToList(), query.Page, query.PageSize, totalCount);
     }
+
+    public Task<IReadOnlyList<ProductStockProfileResponse>> GetStockProfilesAsync(string? search, CancellationToken cancellationToken)
+        => _repository.GetStockProfilesAsync(search, cancellationToken);
 
     private async Task<string?> ValidateReferencesAsync(
         Guid brandId, Guid manufacturerId, Guid categoryId, Guid subCategoryId, Guid groupId, Guid uomId, Guid baseUomId, CancellationToken cancellationToken)

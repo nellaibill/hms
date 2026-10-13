@@ -29,9 +29,9 @@ public class StockReceiptServiceTests
         // Happy-path defaults: a valid product and batch, no existing balance row yet. Each
         // failure-path test overrides the relevant substitute.
         _productService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = _productId, ProductName = "Paracetamol 500mg" }));
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = _productId, ProductName = "Paracetamol 500mg" }));
         _productBatchService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = _productBatchId, ProductId = _productId, BatchNo = "B-2026-001", ExpiryDate = new DateOnly(2027, 1, 1) }));
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = _productBatchId, ProductId = _productId, BatchNo = "B-2026-001", ExpiryDate = new DateOnly(2027, 1, 1) }));
         _balanceRepository.GetByProductAndBatchAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((PharmacyStockBalance?)null);
     }
@@ -97,6 +97,32 @@ public class StockReceiptServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PharmacyErrorCodes.InvalidBatch);
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenProductIsInactive_ReturnsProductInactiveFailure()
+    {
+        _productService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = _productId, ProductName = "Paracetamol 500mg", IsActive = false }));
+
+        var result = await _sut.CreateAsync(NewRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.ProductInactive);
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenBatchIsInactive_ReturnsBatchInactiveFailure()
+    {
+        _productBatchService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = _productBatchId, ProductId = _productId, BatchNo = "B-2026-001", ExpiryDate = new DateOnly(2027, 1, 1), IsActive = false }));
+
+        var result = await _sut.CreateAsync(NewRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.BatchInactive);
         await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
     }
 }

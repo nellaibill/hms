@@ -1,5 +1,6 @@
 using HMS.Modules.Pharmacy.Contracts;
 using HMS.Modules.Pharmacy.Domain;
+using HMS.Modules.Products.Contracts;
 
 namespace HMS.Modules.Pharmacy.Application.Mapping;
 
@@ -55,14 +56,17 @@ internal static class PharmacyMappingExtensions
         BillingError = billingError,
     };
 
-    public static StockBalanceResponse ToResponse(this PharmacyStockBalance balance, string productName, string batchNo, DateOnly expiryDate) => new()
+    /// <summary>Product/batch are null when the Products lookup couldn't resolve them — the
+    /// balance row is still returned, just without its display fields.</summary>
+    public static StockBalanceResponse ToResponse(this PharmacyStockBalance balance, ProductResponse? product, ProductBatchResponse? batch) => new()
     {
         Id = balance.Id,
         ProductId = balance.ProductId,
-        ProductName = productName,
+        ProductName = product?.ProductName ?? string.Empty,
         ProductBatchId = balance.ProductBatchId,
-        BatchNo = batchNo,
-        ExpiryDate = expiryDate,
+        BatchNo = batch?.BatchNo ?? string.Empty,
+        ExpiryDate = batch?.ExpiryDate ?? default,
+        BatchIsActive = batch?.IsActive ?? false,
         QuantityOnHand = balance.QuantityOnHand,
         CreatedAt = balance.CreatedAt,
         UpdatedAt = balance.UpdatedAt,

@@ -14,6 +14,11 @@ public interface IProductBatchService
 
     Task<Result<ProductBatchResponse>> GetByIdAsync(Guid productId, Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Bulk lookup across products, for callers denormalizing batch number/expiry
+    /// onto a list (e.g. Pharmacy's stock balances) — ids that don't resolve are simply
+    /// absent from the result.</summary>
+    Task<IReadOnlyList<ProductBatchResponse>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
     Task<PagedResult<ProductBatchResponse>> GetPagedAsync(Guid productId, ProductBatchListQuery query, CancellationToken cancellationToken);
 }
 
@@ -68,6 +73,17 @@ internal class ProductBatchService : IProductBatchService
         return batch is null || batch.ProductId != productId
             ? Result<ProductBatchResponse>.Failure(ProductsErrorCodes.NotFound, $"Batch '{id}' was not found for product '{productId}'.")
             : Result<ProductBatchResponse>.Success(batch.ToResponse());
+    }
+
+    public async Task<IReadOnlyList<ProductBatchResponse>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var batches = await _repository.GetManyByIdsAsync(ids, cancellationToken);
+        return batches.Select(b => b.ToResponse()).ToList();
     }
 
     public async Task<PagedResult<ProductBatchResponse>> GetPagedAsync(Guid productId, ProductBatchListQuery query, CancellationToken cancellationToken)

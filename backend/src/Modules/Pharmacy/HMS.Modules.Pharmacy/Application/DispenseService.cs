@@ -156,7 +156,7 @@ internal class DispenseService : IDispenseService
     {
         var multiLine = lines.Count > 1;
         var contexts = new List<(DispenseCartLineRequest Line, ProductResponse Product, ProductBatchResponse Batch)>(lines.Count);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = PharmacyClock.Today();
 
         for (var i = 0; i < lines.Count; i++)
         {
@@ -175,7 +175,24 @@ internal class DispenseService : IDispenseService
                 return Result<List<DispensedLine>>.Failure(PharmacyErrorCodes.InvalidBatch, $"{linePrefix}Batch '{line.ProductBatchId}' was not found for product '{line.ProductId}'.");
             }
 
-            if (batchResult.Value!.ExpiryDate < today)
+            // The pickers only offer active products/batches; enforced here too so a
+            // discontinued product or a withdrawn batch can't be dispensed by calling the API
+            // directly.
+            if (!productResult.Value!.IsActive)
+            {
+                return Result<List<DispensedLine>>.Failure(
+                    PharmacyErrorCodes.ProductInactive,
+                    $"{linePrefix}Product '{productResult.Value.ProductName}' is inactive and can't be dispensed.");
+            }
+
+            if (!batchResult.Value!.IsActive)
+            {
+                return Result<List<DispensedLine>>.Failure(
+                    PharmacyErrorCodes.BatchInactive,
+                    $"{linePrefix}Batch '{batchResult.Value.BatchNo}' is inactive and can't be dispensed.");
+            }
+
+            if (batchResult.Value.ExpiryDate < today)
             {
                 return Result<List<DispensedLine>>.Failure(
                     PharmacyErrorCodes.BatchExpired,
@@ -351,14 +368,16 @@ internal class DispenseService : IDispenseService
 
         var (items, totalCount) = await _transactionRepository.GetPagedAsync(ledgerQuery, cancellationToken);
 
-        // MVP-scale N+1 lookups (one Product/ProductBatch/Patient round-trip per row) to
-        // denormalize display fields — same trade-off IPD's AdmissionService.GetPagedAsync
-        // documents; revisit with a bulk lookup if this list grows large enough to matter.
-        var responses = new List<DispenseResponse>(items.Count);
-        foreach (var item in items)
-        {
-            responses.Add(await BuildResponseAsync(item, cancellationToken));
-        }
+        var products = await _productService.GetLookupAsync(items.Select(t => t.ProductId), cancellationToken);
+        var batches = await _productBatchService.GetLookupAsync(items.Select(t => t.ProductBatchId), cancellationToken);
+        var patientNames = await _patientService.GetNameLookupAsync(items.Select(t => t.PatientId), cancellationToken);
+
+        var responses = items
+            .Select(t => t.ToDispenseResponse(
+                products.GetValueOrDefault(t.ProductId)?.ProductName ?? string.Empty,
+                batches.GetValueOrDefault(t.ProductBatchId)?.BatchNo ?? string.Empty,
+                t.PatientId is { } patientId ? patientNames.GetValueOrDefault(patientId) ?? string.Empty : string.Empty))
+            .ToList();
 
         return new PagedResult<DispenseResponse>(responses, query.Page, query.PageSize, totalCount);
     }

@@ -3,14 +3,12 @@ import { Badge } from '@/components/ui/badge';
 
 interface StockBalanceTableProps {
   balances: StockBalanceResponse[];
-  /** Product id -> reorder level, when known (Product.reorderLevel), used to flag low stock
-   * alongside the always-available zero-stock flag. */
-  reorderLevelsByProductId?: Record<string, number>;
 }
 
 /** A batch within this many days of its expiry date is flagged "Expiring soon" — chosen to
  * give a real pharmacy user enough lead time to prioritize dispensing it or writing it off
- * before it's unusable, mirroring the existing low-stock reorder-level warning's purpose. */
+ * before it's unusable. Mirrors the backend's PharmacyClock.ExpiringSoonWindowDays, which the
+ * product-level stock summary uses for the same judgement. */
 const EXPIRING_SOON_WINDOW_DAYS = 30;
 
 function daysUntil(dateString: string): number {
@@ -18,9 +16,14 @@ function daysUntil(dateString: string): number {
   return Math.ceil((new Date(dateString).getTime() - Date.now()) / msPerDay);
 }
 
-export function StockBalanceTable({ balances, reorderLevelsByProductId }: StockBalanceTableProps) {
+/**
+ * Per-batch on-hand quantities. Deliberately carries no low-stock flag: whether a product is
+ * low is a question about its total across batches, answered by StockSummaryPanel — a batch
+ * here is only ever in stock, empty, expired, or on hold.
+ */
+export function StockBalanceTable({ balances }: StockBalanceTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border bg-background">
       <table className="w-full text-sm">
         <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
@@ -33,19 +36,13 @@ export function StockBalanceTable({ balances, reorderLevelsByProductId }: StockB
         </thead>
         <tbody className="divide-y divide-border">
           {balances.map((balance) => {
-            const reorderLevel = reorderLevelsByProductId?.[balance.productId];
             const isZero = balance.quantityOnHand === 0;
-            const isLow = !isZero && reorderLevel !== undefined && balance.quantityOnHand <= reorderLevel;
             const daysToExpiry = daysUntil(balance.expiryDate);
             const isExpired = daysToExpiry < 0;
             const isExpiringSoon = !isExpired && daysToExpiry <= EXPIRING_SOON_WINDOW_DAYS;
-            const rowClassName = isZero
-              ? 'bg-destructive/5 hover:bg-destructive/10'
-              : isExpired
-                ? 'bg-destructive/5 hover:bg-destructive/10'
-                : isLow || isExpiringSoon
-                  ? 'bg-warning/5 hover:bg-warning/10'
-                  : 'hover:bg-muted/30';
+            const isOnHold = !isExpired && !balance.batchIsActive;
+            const rowClassName =
+              isZero || isExpired ? 'bg-destructive/5 hover:bg-destructive/10' : isExpiringSoon ? 'bg-warning/5 hover:bg-warning/10' : 'hover:bg-muted/30';
             return (
               <tr key={balance.id} className={rowClassName}>
                 <td className="px-4 py-3 font-medium text-foreground">{balance.productName}</td>
@@ -59,9 +56,10 @@ export function StockBalanceTable({ balances, reorderLevelsByProductId }: StockB
                 </td>
                 <td className="px-4 py-3 tabular-nums font-medium text-foreground">{balance.quantityOnHand}</td>
                 <td className="px-4 py-3">
-                  {isZero && <Badge variant="destructive">Out of stock</Badge>}
-                  {isLow && <Badge variant="warning">Low stock</Badge>}
-                  {!isZero && !isLow && <Badge variant="success">In stock</Badge>}
+                  {isZero && <Badge variant="destructive">Empty</Badge>}
+                  {!isZero && isOnHold && <Badge variant="secondary">On hold</Badge>}
+                  {!isZero && !isOnHold && !isExpired && <Badge variant="success">In stock</Badge>}
+                  {!isZero && isExpired && <Badge variant="destructive">Not dispensable</Badge>}
                 </td>
               </tr>
             );

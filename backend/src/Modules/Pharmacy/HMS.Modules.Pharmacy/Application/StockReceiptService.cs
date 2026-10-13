@@ -56,6 +56,18 @@ internal class StockReceiptService : IStockReceiptService
             return Result<StockReceiptResponse>.Failure(PharmacyErrorCodes.InvalidBatch, $"Batch '{request.ProductBatchId}' was not found for product '{request.ProductId}'.");
         }
 
+        // The pickers only offer active products/batches; enforced here too so stock can't be
+        // received against a discontinued product or a withdrawn batch by calling the API directly.
+        if (!productResult.Value!.IsActive)
+        {
+            return Result<StockReceiptResponse>.Failure(PharmacyErrorCodes.ProductInactive, $"Product '{productResult.Value.ProductName}' is inactive.");
+        }
+
+        if (!batchResult.Value!.IsActive)
+        {
+            return Result<StockReceiptResponse>.Failure(PharmacyErrorCodes.BatchInactive, $"Batch '{batchResult.Value.BatchNo}' is inactive.");
+        }
+
         var balance = await _balanceRepository.GetByProductAndBatchAsync(request.ProductId, request.ProductBatchId, cancellationToken);
         if (balance is null)
         {
@@ -104,15 +116,14 @@ internal class StockReceiptService : IStockReceiptService
 
         var (items, totalCount) = await _transactionRepository.GetPagedAsync(ledgerQuery, cancellationToken);
 
-        // MVP-scale N+1 lookups (one Product/ProductBatch round-trip per row) to denormalize
-        // display fields — acceptable at Pharmacy's current volumes; revisit with a bulk
-        // lookup if this list grows large enough to matter (same trade-off IPD's
-        // AdmissionService.GetPagedAsync documents).
-        var responses = new List<StockReceiptResponse>(items.Count);
-        foreach (var item in items)
-        {
-            responses.Add(await BuildResponseAsync(item, cancellationToken));
-        }
+        var products = await _productService.GetLookupAsync(items.Select(t => t.ProductId), cancellationToken);
+        var batches = await _productBatchService.GetLookupAsync(items.Select(t => t.ProductBatchId), cancellationToken);
+
+        var responses = items
+            .Select(t => t.ToReceiptResponse(
+                products.GetValueOrDefault(t.ProductId)?.ProductName ?? string.Empty,
+                batches.GetValueOrDefault(t.ProductBatchId)?.BatchNo ?? string.Empty))
+            .ToList();
 
         return new PagedResult<StockReceiptResponse>(responses, query.Page, query.PageSize, totalCount);
     }

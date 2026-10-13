@@ -1,5 +1,6 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  AvailableBatchResponse,
   CreateDispenseCartRequest,
   CreateDispenseRequest,
   CreateStockReceiptRequest,
@@ -11,6 +12,8 @@ import type {
   StockLedgerListQuery,
   StockReceiptListQuery,
   StockReceiptResponse,
+  StockSummaryListQuery,
+  StockSummaryResponse,
   StockTransactionResponse,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
@@ -28,6 +31,11 @@ export interface PagedDispenses {
 
 export interface PagedStockBalances {
   items: StockBalanceResponse[];
+  meta: PaginationMeta;
+}
+
+export interface PagedStockSummaries {
+  items: StockSummaryResponse[];
   meta: PaginationMeta;
 }
 
@@ -105,9 +113,29 @@ export class PharmacyApi {
         sort: query.sort,
         search: query.search,
         productId: query.productId,
+        inStockOnly: query.inStockOnly,
       },
     });
     return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  /** Stock per product (every batch rolled up), name-ordered and searchable server-side. */
+  async getStockSummary(query: StockSummaryListQuery = {}): Promise<PagedStockSummaries> {
+    const response = await this.client.get<StockSummaryResponse[]>(API_ROUTES.pharmacy.stockBalances.summary, {
+      query: {
+        page: query.page,
+        pageSize: query.pageSize,
+        search: query.search,
+        filter: query.filter,
+      },
+    });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  /** The batches of a product that can be dispensed right now, earliest expiry first. */
+  async getAvailableBatches(productId: string): Promise<AvailableBatchResponse[]> {
+    const response = await this.client.get<AvailableBatchResponse[]>(API_ROUTES.pharmacy.stockBalances.availableBatches(productId));
+    return response.data;
   }
 
   async getStockBalance(productId: string, productBatchId: string): Promise<StockBalanceResponse> {
