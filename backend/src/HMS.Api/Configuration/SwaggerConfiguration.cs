@@ -76,9 +76,19 @@ public static class SwaggerConfiguration
         return services;
     }
 
+    /// <summary>
+    /// Swagger is served only in Development, and not even there when <c>Swagger:Enabled</c>
+    /// is false. The setting can only switch it off: a server that runs in Development mode
+    /// but is reachable from the internet (a staging box started with <c>dotnet run</c>) must
+    /// be able to stop publishing the full API description, while no configuration value can
+    /// publish it from a Production host.
+    /// </summary>
+    private static bool IsSwaggerEnabled(IConfiguration configuration, IHostEnvironment environment) =>
+        environment.IsDevelopment() && configuration.GetValue("Swagger:Enabled", true);
+
     public static WebApplication UseHmsSwagger(this WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
+        if (!IsSwaggerEnabled(app.Configuration, app.Environment))
         {
             return app;
         }

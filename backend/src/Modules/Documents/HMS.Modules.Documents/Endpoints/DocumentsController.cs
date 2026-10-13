@@ -232,12 +232,15 @@ public class DocumentsController : ControllerBase
     /// <summary>Semantic search over indexed document text — the chunks closest in meaning
     /// to <paramref name="q"/>, limited to documents the caller may read. Optionally scoped to
     /// one owner (e.g. ownerType=Patient&amp;ownerId=...).</summary>
-    /// <response code="200">Matching chunks, most similar first.</response>
-    /// <response code="400">The query is empty.</response>
-    /// <response code="502">The embedding service call failed.</response>
+    /// <remarks>If the embedding service call fails, the response is still 200: the hits are
+    /// keyword matches instead (<c>matchType: "Keyword"</c>, no <c>similarity</c>).</remarks>
+    /// <response code="200">Matching chunks, best match first.</response>
+    /// <response code="400">The query is empty, or longer than 500 characters.</response>
     /// <response code="503">Embeddings aren't configured.</response>
     [RequirePermission("records-compliance.view")]
     [HttpGet("search")]
+    // A question in plain language, not a search term: the AI Search box accepts up to 500 characters.
+    [QueryValueMaxLength(500)]
     public async Task<IActionResult> Search([FromQuery] string q, [FromQuery] DocumentOwnerType? ownerType, [FromQuery] Guid? ownerId, [FromQuery] int limit = 10, CancellationToken cancellationToken = default)
     {
         var result = await _documentService.SearchAsync(q, ownerType, ownerId, limit, GetActor(), cancellationToken);

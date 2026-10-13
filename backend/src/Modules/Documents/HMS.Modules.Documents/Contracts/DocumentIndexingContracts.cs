@@ -45,8 +45,18 @@ public record DocumentEmbedBackfillResponse
     public bool MoreRemaining { get; init; }
 }
 
-/// <summary>One semantic-search hit (GET /api/v1/documents/search). <see cref="Similarity"/>
-/// is 1 − cosine distance: closer to 1 means closer in meaning.</summary>
+/// <summary>How a search hit was found: by closeness in meaning to the query (the normal
+/// path), or by sharing words with it (the fallback when the query couldn't be embedded).</summary>
+public enum DocumentSearchMatchType
+{
+    Semantic,
+    Keyword,
+}
+
+/// <summary>One search hit (GET /api/v1/documents/search). For a <see cref="DocumentSearchMatchType.Semantic"/>
+/// hit <see cref="Similarity"/> is 1 − cosine distance: closer to 1 means closer in meaning.
+/// A <see cref="DocumentSearchMatchType.Keyword"/> hit has no similarity; hits come back
+/// best match first either way.</summary>
 public record DocumentSearchHitResponse
 {
     public Guid DocumentId { get; init; }
@@ -55,5 +65,6 @@ public record DocumentSearchHitResponse
     public Guid OwnerId { get; init; }
     public int ChunkIndex { get; init; }
     public string Content { get; init; } = string.Empty;
-    public double Similarity { get; init; }
+    public DocumentSearchMatchType MatchType { get; init; }
+    public double? Similarity { get; init; }
 }

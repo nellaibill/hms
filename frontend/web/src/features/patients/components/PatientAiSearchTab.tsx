@@ -31,6 +31,15 @@ function relevance(similarity: number): { label: string; variant: BadgeProps['va
   return { label: 'Weak match', variant: 'secondary' };
 }
 
+/** A keyword hit (the server's fallback when it can't match by meaning) has no similarity. */
+function matchBadge(hit: DocumentSearchHitResponse): { text: string; variant: BadgeProps['variant']; title: string } {
+  if (hit.similarity === null) {
+    return { text: 'Keyword match', variant: 'secondary', title: 'Contains words from your question' };
+  }
+  const { label, variant } = relevance(hit.similarity);
+  return { text: `${label} · ${Math.round(hit.similarity * 100)}%`, variant, title: `Similarity ${hit.similarity.toFixed(2)}` };
+}
+
 function errorMessage(error: unknown): { title: string; detail: string } {
   if (error instanceof ApiError) {
     if (error.status === 503) {
@@ -73,7 +82,7 @@ function highlight(text: string, question: string): ReactNode {
 function ResultCard({ hit, rank, question }: { hit: DocumentSearchHitResponse; rank: number; question: string }) {
   const [expanded, setExpanded] = useState(false);
   const [opening, setOpening] = useState(false);
-  const { label, variant } = relevance(hit.similarity);
+  const badge = matchBadge(hit);
   const content = hit.content.replace(/\n{2,}/g, '\n');
   const isLong = content.length > PREVIEW_CHARS;
   const shown = expanded || !isLong ? content : `${content.slice(0, PREVIEW_CHARS).trimEnd()}…`;
@@ -99,8 +108,8 @@ function ResultCard({ hit, rank, question }: { hit: DocumentSearchHitResponse; r
           <span className="shrink-0 text-xs text-muted-foreground">· passage {hit.chunkIndex + 1}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <Badge variant={variant} className="text-[10px]" title={`Similarity ${hit.similarity.toFixed(2)}`}>
-            {label} · {Math.round(hit.similarity * 100)}%
+          <Badge variant={badge.variant} className="text-[10px]" title={badge.title}>
+            {badge.text}
           </Badge>
           <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={handleOpen} disabled={opening}>
             {opening ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
@@ -132,7 +141,8 @@ function ResultCard({ hit, rank, question }: { hit: DocumentSearchHitResponse; r
  * Semantic (RAG) search over this patient's uploaded documents: a doctor asks a question in
  * plain language and gets back the passages closest in meaning, each linked to its source
  * document. It retrieves passages — it doesn't generate an answer — so every result is text
- * that is actually in the patient's record.
+ * that is actually in the patient's record. When the server can't reach its embedding service
+ * it answers with keyword matches instead, which this tab labels as such.
  */
 export function PatientAiSearchTab({ patient }: { patient: Patient }) {
   const [draft, setDraft] = useState('');
@@ -248,9 +258,17 @@ export function PatientAiSearchTab({ patient }: { patient: Patient }) {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="px-0.5 text-xs text-muted-foreground">
-            {hits.length} passage{hits.length === 1 ? '' : 's'} most related to “{question}”, best match first.
-          </p>
+          {hits.some((hit) => hit.matchType === 'Keyword') ? (
+            <p className="flex items-start gap-1.5 rounded-md border border-amber-300/60 bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+              Matching by meaning is unavailable right now. Showing {hits.length} passage{hits.length === 1 ? '' : 's'} that contain words from “{question}” — try the exact terms
+              you expect to find in the document.
+            </p>
+          ) : (
+            <p className="px-0.5 text-xs text-muted-foreground">
+              {hits.length} passage{hits.length === 1 ? '' : 's'} most related to “{question}”, best match first.
+            </p>
+          )}
           <ol className="flex flex-col gap-2">
             {hits.map((hit, index) => (
               <ResultCard key={`${hit.documentId}-${hit.chunkIndex}`} hit={hit} rank={index + 1} question={question} />

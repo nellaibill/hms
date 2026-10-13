@@ -37,6 +37,69 @@ _To be documented._
 
 ## Decisions
 
+### ADR-092: The API listens on localhost behind nginx; Swagger can be switched off and is proxied to the server itself only
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+The 2026-10-13 staging regression found `http://<vps>:58158` answering from the internet: the whole API over plain HTTP, past nginx and its TLS, with Swagger's full endpoint description served without login on both that port and 443. Nothing in the code opened it. `install-api-service.ps1` bound `0.0.0.0`, and docs/Deployment.md's `dotnet run` section told the reader to use `--urls "http://+:58158"` and add a firewall rule for the port. Swagger is gated on `IsDevelopment()`, and a `dotnet run` server is in Development mode.
+
+**Decision**
+- `install-api-service.ps1` binds `http://localhost:{port}`. A new `-ExposeApiPortDirectly` switch binds every interface, for the rare machine that needs it.
+- `open-deployment-firewall-ports.ps1` reports any inbound allow rule on the API port and removes it with `-CloseApiPort`. It never removes a rule unasked.
+- `Swagger:Enabled` (default `true`) can switch Swagger off in Development. It cannot switch it on outside Development.
+- The nginx template proxies `/swagger/` only for loopback clients.
+- docs/Deployment.md now says `--urls "http://localhost:58158"` for the `dotnet run` case and no firewall rule for the port.
+
+**Consequences**
+- An already-deployed server stays exposed until someone acts on it: rebind the API to localhost, remove the firewall rule, and copy the `/swagger/` `allow`/`deny` lines into the live nginx config (the repo file is a template; the live one differs, e.g. it has the 443 server block).
+- Tools that called the API on its own port from another machine (the k6 script's old example) must go through the public origin instead.
+- Swagger on a remote Development server is reached from a browser on that server, or through an SSH tunnel.
+
+---
+
+### ADR-091: Document search answers with keyword matches when the query can't be embedded
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+`GET /api/v1/documents/search` is semantic only: it embeds the question through a third-party service (Hugging Face) and ranks chunks by vector distance. On staging that call was failing, so every search returned 502 and the patient record's AI Search tab was unusable. Why it fails there is a configuration matter (token, quota or model); the API log has the upstream status. But a search feature shouldn't depend on a third party being up when the text is already in our database: `document_chunks.search_vector` (a generated `tsvector` with a GIN index) has been there since the table was created, unused.
+
+**Decision**
+- When `EmbedAsync` fails, `DocumentService.SearchAsync` logs a warning and runs a keyword search instead of returning `DOCUMENTS.EMBEDDING_FAILED`.
+- `KeywordSearchTerms` reduces the question to at most 12 lower-case words of three or more letters or digits, minus common question words. The repository matches chunks containing any of them (`search_vector @@ to_tsquery('simple', 'a | b | c')`), ordered by `ts_rank`, with the same owner scoping, document join and in-memory access-policy filter as the semantic path.
+- `DocumentSearchHitResponse` gains `matchType` (`Semantic` / `Keyword`); `similarity` becomes nullable and is null for a keyword hit. The AI Search tab labels keyword results and says matching by meaning is unavailable.
+- Embeddings not being configured at all is unchanged: still 503 `DOCUMENTS.EMBEDDINGS_NOT_CONFIGURED`. That is an explicit per-environment choice, not an outage.
+
+**Consequences**
+- A failing embedding service is now visible only in the API log and in the label on the results, not as an error. Check the log after enabling or changing embedding configuration.
+- Keyword matching finds words, not meaning: "antibiotics" will not find a passage that only says "amoxicillin".
+- The `simple` text-search configuration does no stemming, so "antibiotic" and "antibiotics" are different words. This matches how the column was defined; changing it means regenerating the column.
+- This is the keyword half of the planned hybrid search, used as a fallback only. Blending both rankings is still open.
+- The SQL is covered by a unit test that captures the command without a database; it has not been run against PostgreSQL in CI, which excludes the integration tests.
+
+---
+
+### ADR-090: Query-string values are checked once, globally: no null characters, 100 characters at most
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+Two defects from the 2026-10-13 staging regression had the same shape: a query-string value no endpoint could use reached PostgreSQL anyway. `?search=%00` returned 500 from every list endpoint tried, because PostgreSQL text cannot hold a null character. And search terms had no length limit while the cost of matching one grows with its length: against 31,391 patients a 2,000-character term took 12.5 s (20 characters: 0.9 s), so a few such requests in parallel could tie up the database. Search and filter strings are declared on some sixty query classes plus loose `[FromQuery]` parameters, so per-class validators would have to be remembered for each new endpoint.
+
+**Decision**
+- A global MVC filter, `QueryStringGuardFilter` (registered next to `RequestBodyRequiredFilter`), rejects a request with 400 `VALIDATION.FAILED` when any query-string value contains a null character or is longer than 100 characters. The response lists each offending parameter in `validationErrors`.
+- `[QueryValueMaxLength(n)]` on an action or controller changes the limit. Document search uses 500, because its `q` is a question in plain language and the AI Search box already allows that many.
+- The web app's `Input` component sets `maxLength` to 100 for `type="search"`, and the patient enquiry's name, UHID and phone fields set it explicitly, so the limit is not reachable by typing.
+
+**Consequences**
+- Any new query parameter that legitimately needs more than 100 characters must opt in with the attribute.
+- The limit is on each decoded value, not on the URL: 100 Tamil characters are allowed even though they percent-encode to 900.
+- Search inputs that are not `type="search"` and have no `maxLength` of their own can still send a longer value; the user then sees the API's validation message.
+- Request bodies are not covered. A null character in a JSON string field that is stored as-is would still fail in PostgreSQL; none was found in testing, but it was not searched for.
+
+---
+
 ### ADR-089: Every visit gets an auto-generated OP No / IP No; non-OP visits record admission details
 **Date:** 2026-10-13
 **Status:** Accepted

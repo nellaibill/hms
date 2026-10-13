@@ -403,13 +403,17 @@ internal class DocumentService : IDocumentService
             return Result<IReadOnlyList<DocumentSearchHitResponse>>.Failure(DocumentErrorCodes.EmbeddingsNotConfigured, "Embeddings aren't configured for this environment.");
         }
 
+        var take = Math.Clamp(limit, 1, 50);
+
         var embedding = await _embeddingProvider.EmbedAsync([query.Trim()], EmbeddingInputKind.Query, cancellationToken);
         if (!embedding.IsSuccess)
         {
-            return Result<IReadOnlyList<DocumentSearchHitResponse>>.Failure(DocumentErrorCodes.EmbeddingFailed, "The embedding service call failed; see the API log.");
+            // The embedding service is a third party that can be down, out of quota or
+            // misconfigured (the provider has logged which). Indexed text is still matchable
+            // by keyword without it, so answer with that rather than fail the search.
+            _logger.LogWarning("Document search by {UserId}: the query could not be embedded ({Error}); falling back to keyword matching.", actor.UserId, embedding.Error);
+            return await KeywordSearchAsync(query, ownerType, ownerId, take, actor, cancellationToken);
         }
-
-        var take = Math.Clamp(limit, 1, 50);
 
         // Over-fetch, then apply the access policy in memory (same trade as GetPagedAsync):
         // DocumentAccessPolicy stays the single source of truth for what a caller may see.
@@ -418,20 +422,38 @@ internal class DocumentService : IDocumentService
         var visible = hits
             .Where(h => _accessPolicy.CanRead(actor, h.Chunk.OwnerType, h.Chunk.Classification))
             .Take(take)
-            .Select(h => new DocumentSearchHitResponse
-            {
-                DocumentId = h.Chunk.SourceId,
-                OriginalFileName = h.OriginalFileName,
-                OwnerType = h.Chunk.OwnerType,
-                OwnerId = h.Chunk.OwnerId,
-                ChunkIndex = h.Chunk.ChunkIndex,
-                Content = h.Chunk.Content,
-                Similarity = Math.Round(1 - h.Distance, 4),
-            })
+            .Select(h => ToSearchHit(h.Chunk, h.OriginalFileName, DocumentSearchMatchType.Semantic, Math.Round(1 - h.Distance, 4)))
             .ToList();
 
         _logger.LogInformation("Document search by {UserId}: {Count} hits.", actor.UserId, visible.Count);
 
         return Result<IReadOnlyList<DocumentSearchHitResponse>>.Success(visible);
     }
+
+    private async Task<Result<IReadOnlyList<DocumentSearchHitResponse>>> KeywordSearchAsync(string query, DocumentOwnerType? ownerType, Guid? ownerId, int take, DocumentActor actor, CancellationToken cancellationToken)
+    {
+        var hits = await _chunkRepository.KeywordSearchAsync(KeywordSearchTerms.From(query), ownerType, ownerId, take * 4, cancellationToken);
+
+        var visible = hits
+            .Where(h => _accessPolicy.CanRead(actor, h.Chunk.OwnerType, h.Chunk.Classification))
+            .Take(take)
+            .Select(h => ToSearchHit(h.Chunk, h.OriginalFileName, DocumentSearchMatchType.Keyword, similarity: null))
+            .ToList();
+
+        _logger.LogInformation("Document keyword search by {UserId}: {Count} hits.", actor.UserId, visible.Count);
+
+        return Result<IReadOnlyList<DocumentSearchHitResponse>>.Success(visible);
+    }
+
+    private static DocumentSearchHitResponse ToSearchHit(DocumentChunk chunk, string originalFileName, DocumentSearchMatchType matchType, double? similarity) => new()
+    {
+        DocumentId = chunk.SourceId,
+        OriginalFileName = originalFileName,
+        OwnerType = chunk.OwnerType,
+        OwnerId = chunk.OwnerId,
+        ChunkIndex = chunk.ChunkIndex,
+        Content = chunk.Content,
+        MatchType = matchType,
+        Similarity = similarity,
+    };
 }

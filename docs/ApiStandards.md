@@ -137,6 +137,7 @@ Every error response — regardless of which module or layer produced it — use
 | Page Size | Query parameter `pageSize`, with a sane server-defined default and an enforced server-side maximum — a client cannot request an unbounded page size. |
 | Sorting | Query parameter `sort`; a field name optionally prefixed with `-` for descending (`sort=-scheduledAt`). Multiple fields via comma-separation (`sort=lastName,-createdAt`) where an endpoint genuinely needs multi-field sort — most need only one. |
 | Filtering | Query parameters named after the field being filtered (`status=scheduled`), combined as an implicit AND. Ranges use suffixed parameter names (`scheduledAfter`, `scheduledBefore`) rather than a generic operator syntax, keeping filters simple and self-documenting at MVP scope. |
+| Value limits | Every query-string value is limited to 100 characters and may not contain a null character; a request that breaks either rule gets `400 VALIDATION.FAILED` naming the parameter, before the endpoint runs (`QueryStringGuardFilter`, ADR-090). An endpoint whose parameter is free text rather than a search term raises its own limit with `[QueryValueMaxLength(n)]`. |
 | Searching | A dedicated `search` (or `q`) query parameter for free-text search across an endpoint's designated searchable fields — distinct from exact-match filters. Matching behavior (prefix, substring, fuzzy) is documented per endpoint since it depends on the underlying index strategy (see [DatabaseArchitecture.md](DatabaseArchitecture.md) §8). |
 
 ---
