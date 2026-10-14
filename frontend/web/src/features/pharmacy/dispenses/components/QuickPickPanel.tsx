@@ -8,14 +8,14 @@ import { useProductCategoriesQuery } from '@/features/pharmacy/product-lookup';
 interface QuickPickPanelProps {
   products: Product[];
   selectedProductId: string;
-  onSelectProduct: (productId: string) => void;
+  onSelectProduct: (product: Product) => void;
 }
 
 const ALL_TAB = 'all';
 
 /**
  * A faster way to fill the Add Item card's Product field — nothing more. Clicking a tile
- * calls the exact same onSelectProduct the Product dropdown's onValueChange calls, so Batch
+ * calls the exact same onSelectProduct the Product dropdown's onProductChange calls, so Batch
  * selection, quantity entry, and stock/expiry validation all stay in the one existing Add
  * Item flow; this panel owns no cart or dispense logic of its own.
  *
@@ -66,7 +66,7 @@ export function QuickPickPanel({ products, selectedProductId, onSelectProduct }:
                 <button
                   key={product.id}
                   type="button"
-                  onClick={() => onSelectProduct(product.id)}
+                  onClick={() => onSelectProduct(product)}
                   className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center shadow-soft transition-all ${
                     isSelected
                       ? 'border-primary bg-primary/5 shadow-soft-md'

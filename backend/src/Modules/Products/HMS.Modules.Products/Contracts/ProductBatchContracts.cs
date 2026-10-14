@@ -8,6 +8,11 @@ public record CreateProductBatchRequest
     public DateOnly ManufactureDate { get; init; }
     public DateOnly ExpiryDate { get; init; }
     public bool IsActive { get; init; } = true;
+
+    /// <summary>Per pack — see ProductBatch.SetPrices.</summary>
+    public decimal? Mrp { get; init; }
+    public decimal? PurchaseRate { get; init; }
+    public decimal? SellingRate { get; init; }
 }
 
 public record UpdateProductBatchRequest
@@ -15,6 +20,26 @@ public record UpdateProductBatchRequest
     public DateOnly ManufactureDate { get; init; }
     public DateOnly ExpiryDate { get; init; }
     public bool IsActive { get; init; } = true;
+
+    /// <summary>Per pack — see ProductBatch.SetPrices.</summary>
+    public decimal? Mrp { get; init; }
+    public decimal? PurchaseRate { get; init; }
+    public decimal? SellingRate { get; init; }
+}
+
+/// <summary>
+/// "This batch arrived" — what a goods receipt or an opening-stock import knows about a batch.
+/// Matched on the batch number: an existing batch has its expiry and prices brought up to
+/// date, an unknown one is created. A null price leaves the stored one alone.
+/// </summary>
+public record UpsertProductBatchRequest
+{
+    public string BatchNo { get; init; } = string.Empty;
+    public DateOnly? ManufactureDate { get; init; }
+    public DateOnly ExpiryDate { get; init; }
+    public decimal? Mrp { get; init; }
+    public decimal? PurchaseRate { get; init; }
+    public decimal? SellingRate { get; init; }
 }
 
 public record ProductBatchResponse
@@ -25,6 +50,13 @@ public record ProductBatchResponse
     public DateOnly ManufactureDate { get; init; }
     public DateOnly ExpiryDate { get; init; }
     public bool IsActive { get; init; }
+
+    /// <summary>Per pack. PurchaseRate is null for a caller without pharmacy.view-cost, the
+    /// same way ProductResponse.CostPrice is withheld (ADR-077).</summary>
+    public decimal? Mrp { get; init; }
+    public decimal? PurchaseRate { get; init; }
+    public decimal? SellingRate { get; init; }
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

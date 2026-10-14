@@ -7,11 +7,14 @@ import type { PagedQuery } from '../../types';
  */
 export interface StockBalanceResponse {
   id: string;
+  storeId: string;
   productId: string;
   productName: string;
   productBatchId: string;
   batchNo: string;
   expiryDate: string;
+  /** False when the batch has been marked inactive — still counted, but can't be dispensed. */
+  batchIsActive: boolean;
   quantityOnHand: number;
   createdAt: string;
   updatedAt?: string | null;
@@ -20,4 +23,8 @@ export interface StockBalanceResponse {
 /** Mirrors HMS.Modules.Pharmacy.Contracts.StockBalanceListQuery. */
 export interface StockBalanceListQuery extends PagedQuery {
   productId?: string;
+  /** Limits the list to one store. Omitted, every store is included. */
+  storeId?: string;
+  /** Leaves out batches whose balance has run down to zero. */
+  inStockOnly?: boolean;
 }

@@ -1,5 +1,6 @@
 using HMS.Modules.Pharmacy.Contracts;
 using HMS.Modules.Pharmacy.Domain;
+using HMS.Modules.Products.Contracts;
 
 namespace HMS.Modules.Pharmacy.Application.Mapping;
 
@@ -16,6 +17,7 @@ internal static class PharmacyMappingExtensions
     public static StockReceiptResponse ToReceiptResponse(this PharmacyStockTransaction transaction, string productName, string batchNo) => new()
     {
         Id = transaction.Id,
+        StoreId = transaction.StoreId,
         ProductId = transaction.ProductId,
         ProductName = productName,
         ProductBatchId = transaction.ProductBatchId,
@@ -37,6 +39,7 @@ internal static class PharmacyMappingExtensions
         string? billingError = null) => new()
     {
         Id = transaction.Id,
+        StoreId = transaction.StoreId,
         ProductId = transaction.ProductId,
         ProductName = productName,
         ProductBatchId = transaction.ProductBatchId,
@@ -45,6 +48,7 @@ internal static class PharmacyMappingExtensions
         PatientName = patientName,
         AdmissionId = transaction.AdmissionId,
         Quantity = transaction.Quantity,
+        UnitPrice = transaction.UnitPrice,
         BalanceAfter = transaction.BalanceAfter,
         TransactionDate = transaction.TransactionDate,
         Remarks = transaction.Remarks,
@@ -55,14 +59,18 @@ internal static class PharmacyMappingExtensions
         BillingError = billingError,
     };
 
-    public static StockBalanceResponse ToResponse(this PharmacyStockBalance balance, string productName, string batchNo, DateOnly expiryDate) => new()
+    /// <summary>Product/batch are null when the Products lookup couldn't resolve them — the
+    /// balance row is still returned, just without its display fields.</summary>
+    public static StockBalanceResponse ToResponse(this PharmacyStockBalance balance, ProductResponse? product, ProductBatchResponse? batch) => new()
     {
         Id = balance.Id,
+        StoreId = balance.StoreId,
         ProductId = balance.ProductId,
-        ProductName = productName,
+        ProductName = product?.ProductName ?? string.Empty,
         ProductBatchId = balance.ProductBatchId,
-        BatchNo = batchNo,
-        ExpiryDate = expiryDate,
+        BatchNo = batch?.BatchNo ?? string.Empty,
+        ExpiryDate = batch?.ExpiryDate ?? default,
+        BatchIsActive = batch?.IsActive ?? false,
         QuantityOnHand = balance.QuantityOnHand,
         CreatedAt = balance.CreatedAt,
         UpdatedAt = balance.UpdatedAt,
@@ -71,18 +79,23 @@ internal static class PharmacyMappingExtensions
     public static StockTransactionResponse ToLedgerResponse(this PharmacyStockTransaction transaction, string productName, string batchNo, string? patientName) => new()
     {
         Id = transaction.Id,
+        StoreId = transaction.StoreId,
         ProductId = transaction.ProductId,
         ProductName = productName,
         ProductBatchId = transaction.ProductBatchId,
         BatchNo = batchNo,
         TransactionType = transaction.TransactionType,
         Quantity = transaction.Quantity,
+        UnitPrice = transaction.UnitPrice,
         BalanceAfter = transaction.BalanceAfter,
         TransactionDate = transaction.TransactionDate,
         PatientId = transaction.PatientId,
         PatientName = patientName,
         AdmissionId = transaction.AdmissionId,
         Remarks = transaction.Remarks,
+        SourceType = transaction.SourceType,
+        SourceId = transaction.SourceId,
+        SourceNo = transaction.SourceNo,
         CreatedAt = transaction.CreatedAt,
     };
 }

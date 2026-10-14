@@ -1,5 +1,6 @@
 import type { Product } from '@hms/shared';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
+import { DRUG_SCHEDULE_LABELS, STORAGE_CONDITION_LABELS } from '../drugProfile';
 import { StatusBadge } from './StatusBadge';
 
 interface ProductDetailsProps {
@@ -39,6 +40,13 @@ export function ProductDetails({ product }: ProductDetailsProps) {
         <Field label="Group" value={resolveRecordLabel('productGroup', product.groupId)} />
         <Field label="Selling Unit" value={resolveRecordLabel('unitOfMeasure', product.uomId)} />
         <Field label="Base Unit" value={resolveRecordLabel('unitOfMeasure', product.baseUomId)} />
+        <Field label="Dosage Form" value={product.dosageForm ?? '—'} />
+        <Field label="Strength" value={product.strength || '—'} />
+        <Field label="Units per Pack" value={product.unitsPerPack} />
+        <Field label="Schedule" value={DRUG_SCHEDULE_LABELS[product.schedule]} />
+        <Field label="Storage" value={STORAGE_CONDITION_LABELS[product.storageCondition]} />
+        <Field label="Rack Location" value={product.rackLocation || '—'} />
+        <Field label="GST Rate" value={product.gstRatePercent != null ? product.gstRatePercent + '%' : '—'} />
         <Field label="Batch Tracked" value={product.isBatchTracked ? 'Yes' : 'No'} />
         <Field label="Serialized" value={product.isSerialized ? 'Yes' : 'No'} />
         <Field label="Reorder Level" value={product.reorderLevel} />

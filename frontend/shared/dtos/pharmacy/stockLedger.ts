@@ -1,4 +1,4 @@
-import type { TransactionType } from '../../enums';
+import type { StockSourceType, TransactionType } from '../../enums';
 import type { PagedQuery } from '../../types';
 
 /**
@@ -9,18 +9,25 @@ import type { PagedQuery } from '../../types';
  */
 export interface StockTransactionResponse {
   id: string;
+  storeId: string;
   productId: string;
   productName: string;
   productBatchId: string;
   batchNo: string;
   transactionType: TransactionType;
   quantity: number;
+  /** What one unit was sold for, on a dispense. */
+  unitPrice?: number | null;
   balanceAfter: number;
   transactionDate: string;
   patientId?: string;
   patientName?: string;
   admissionId?: string;
   remarks?: string;
+  /** The document this movement was posted from, when there is one. */
+  sourceType?: StockSourceType | null;
+  sourceId?: string | null;
+  sourceNo?: string | null;
   createdAt: string;
 }
 
@@ -28,6 +35,8 @@ export interface StockTransactionResponse {
 export interface StockLedgerListQuery extends PagedQuery {
   productId?: string;
   productBatchId?: string;
+  /** Limits the list to one store. Omitted, every store is included. */
+  storeId?: string;
   transactionType?: TransactionType;
   patientId?: string;
   fromDate?: string;

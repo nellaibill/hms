@@ -18,6 +18,7 @@ export default function StockReceiptCreatePage() {
         productBatchId: values.productBatchId,
         quantity: values.quantity,
         remarks: values.remarks || undefined,
+        storeId: values.storeId || undefined,
       },
       {
         onSuccess: (receipt) => {

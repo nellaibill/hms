@@ -13,7 +13,7 @@ public class PharmacyStockBalanceTests
         var productBatchId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
 
-        var balance = PharmacyStockBalance.Create(productId, productBatchId, actorId);
+        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), productId, productBatchId, actorId);
 
         balance.ProductId.Should().Be(productId);
         balance.ProductBatchId.Should().Be(productBatchId);
@@ -25,7 +25,7 @@ public class PharmacyStockBalanceTests
     [Fact]
     public void Receive_IncreasesQuantityOnHandAndAudit()
     {
-        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), null);
+        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
         var updatedBy = Guid.NewGuid();
 
         balance.Receive(10m, updatedBy);
@@ -44,7 +44,7 @@ public class PharmacyStockBalanceTests
     [InlineData(-1)]
     public void Receive_WithNonPositiveQuantity_ThrowsArgumentOutOfRangeException(decimal quantity)
     {
-        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), null);
+        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
 
         var act = () => balance.Receive(quantity, null);
 
@@ -54,7 +54,7 @@ public class PharmacyStockBalanceTests
     [Fact]
     public void Dispense_DecreasesQuantityOnHandAndAudit()
     {
-        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), null);
+        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
         balance.Receive(20m, null);
         var updatedBy = Guid.NewGuid();
 
@@ -69,7 +69,7 @@ public class PharmacyStockBalanceTests
     [InlineData(-1)]
     public void Dispense_WithNonPositiveQuantity_ThrowsArgumentOutOfRangeException(decimal quantity)
     {
-        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), null);
+        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
         balance.Receive(10m, null);
 
         var act = () => balance.Dispense(quantity, null);
@@ -80,7 +80,7 @@ public class PharmacyStockBalanceTests
     [Fact]
     public void Dispense_WhenQuantityExceedsQuantityOnHand_ThrowsInvalidOperationException()
     {
-        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), null);
+        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
         balance.Receive(5m, null);
 
         var act = () => balance.Dispense(6m, null);
@@ -92,7 +92,7 @@ public class PharmacyStockBalanceTests
     [Fact]
     public void Dispense_WhenQuantityEqualsQuantityOnHand_ReducesToZero()
     {
-        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), null);
+        var balance = PharmacyStockBalance.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
         balance.Receive(5m, null);
 
         balance.Dispense(5m, null);

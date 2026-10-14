@@ -25,6 +25,13 @@ internal class CreateProductRequestValidator : AbstractValidator<CreateProductRe
         RuleFor(x => x.Mrp).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0);
         RuleFor(x => x.SellingPrice).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.DosageForm).IsInEnum();
+        RuleFor(x => x.Strength).MaximumLength(100);
+        RuleFor(x => x.UnitsPerPack).GreaterThan(0);
+        RuleFor(x => x.Schedule).IsInEnum();
+        RuleFor(x => x.StorageCondition).IsInEnum();
+        RuleFor(x => x.RackLocation).MaximumLength(50);
+        RuleFor(x => x.GstRatePercent).InclusiveBetween(0, 100);
     }
 }
 
@@ -48,5 +55,12 @@ internal class UpdateProductRequestValidator : AbstractValidator<UpdateProductRe
         RuleFor(x => x.Mrp).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0);
         RuleFor(x => x.SellingPrice).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.DosageForm).IsInEnum();
+        RuleFor(x => x.Strength).MaximumLength(100);
+        RuleFor(x => x.UnitsPerPack).GreaterThan(0);
+        RuleFor(x => x.Schedule).IsInEnum();
+        RuleFor(x => x.StorageCondition).IsInEnum();
+        RuleFor(x => x.RackLocation).MaximumLength(50);
+        RuleFor(x => x.GstRatePercent).InclusiveBetween(0, 100);
     }
 }

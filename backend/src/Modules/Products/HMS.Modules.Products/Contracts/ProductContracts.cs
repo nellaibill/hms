@@ -28,6 +28,16 @@ public record CreateProductRequest
     public string? HsnCode { get; init; }
     public decimal? Weight { get; init; }
     public decimal? Volume { get; init; }
+
+    // Drug profile — see Product.SetDrugProfile. Defaults keep a request that omits them
+    // (every client written before these existed) behaving exactly as it did.
+    public DosageForm? DosageForm { get; init; }
+    public string? Strength { get; init; }
+    public decimal UnitsPerPack { get; init; } = 1m;
+    public DrugSchedule Schedule { get; init; } = DrugSchedule.None;
+    public StorageCondition StorageCondition { get; init; } = StorageCondition.RoomTemperature;
+    public string? RackLocation { get; init; }
+    public decimal? GstRatePercent { get; init; }
 }
 
 public record UpdateProductRequest
@@ -54,6 +64,16 @@ public record UpdateProductRequest
     public string? HsnCode { get; init; }
     public decimal? Weight { get; init; }
     public decimal? Volume { get; init; }
+
+    // Drug profile — see Product.SetDrugProfile. Defaults keep a request that omits them
+    // (every client written before these existed) behaving exactly as it did.
+    public DosageForm? DosageForm { get; init; }
+    public string? Strength { get; init; }
+    public decimal UnitsPerPack { get; init; } = 1m;
+    public DrugSchedule Schedule { get; init; } = DrugSchedule.None;
+    public StorageCondition StorageCondition { get; init; } = StorageCondition.RoomTemperature;
+    public string? RackLocation { get; init; }
+    public decimal? GstRatePercent { get; init; }
 }
 
 public record ProductResponse
@@ -83,8 +103,30 @@ public record ProductResponse
     public string? HsnCode { get; init; }
     public decimal? Weight { get; init; }
     public decimal? Volume { get; init; }
+    public DosageForm? DosageForm { get; init; }
+    public string? Strength { get; init; }
+    public decimal UnitsPerPack { get; init; } = 1m;
+    public DrugSchedule Schedule { get; init; }
+    public StorageCondition StorageCondition { get; init; }
+    public string? RackLocation { get; init; }
+    public decimal? GstRatePercent { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+}
+
+/// <summary>
+/// Lean, unpaged projection of an active product — just what a stock view needs to name a
+/// product and judge its on-hand quantity against <see cref="ReorderLevel"/>. Exists so a
+/// caller that has to consider the whole catalog at once (Pharmacy's low-stock/expiry
+/// filters) doesn't page full <see cref="ProductResponse"/>s 100 at a time.
+/// </summary>
+public record ProductStockProfileResponse
+{
+    public Guid Id { get; init; }
+    public string Sku { get; init; } = string.Empty;
+    public string ProductName { get; init; } = string.Empty;
+    public string? GenericName { get; init; }
+    public decimal ReorderLevel { get; init; }
 }
 
 public class ProductListQuery : PagedRequest

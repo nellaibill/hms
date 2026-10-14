@@ -31,6 +31,7 @@ import { Controller, useFieldArray, useForm, type Control, type FieldErrors, typ
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PharmacyDrugOptions } from '@/features/pharmacy/common/PharmacyDrugOptions';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -437,7 +438,8 @@ function PrescriptionsSection({ control, errors }: { control: Control<OpdConsult
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-6 sm:items-end">
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <Label htmlFor="opd-rx-drug">Drug</Label>
-          <Input id="opd-rx-drug" placeholder="e.g. Amoxicillin 500 mg" value={draft.drugName} onChange={(e) => update('drugName', e.target.value)} />
+          <Input id="opd-rx-drug" list="opd-rx-drug-options" autoComplete="off" placeholder="e.g. Amoxicillin 500 mg" value={draft.drugName} onChange={(e) => update('drugName', e.target.value)} />
+          <PharmacyDrugOptions id="opd-rx-drug-options" search={draft.drugName} />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="opd-rx-dose">Dose</Label>

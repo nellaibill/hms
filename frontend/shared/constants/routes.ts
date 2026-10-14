@@ -362,6 +362,10 @@ export const API_ROUTES = {
   },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
   pharmacy: {
+    stores: {
+      base: '/api/v1/pharmacy/stores',
+      byId: (id: string) => `/api/v1/pharmacy/stores/${id}`,
+    },
     stockReceipts: {
       base: '/api/v1/pharmacy/stock-receipts',
       byId: (id: string) => `/api/v1/pharmacy/stock-receipts/${id}`,
@@ -373,9 +377,81 @@ export const API_ROUTES = {
     },
     stockBalances: {
       base: '/api/v1/pharmacy/stock-balances',
+      summary: '/api/v1/pharmacy/stock-balances/summary',
+      availableBatches: (productId: string) => `/api/v1/pharmacy/stock-balances/${productId}/available-batches`,
       byProductBatch: (productId: string, productBatchId: string) => `/api/v1/pharmacy/stock-balances/${productId}/${productBatchId}`,
     },
     stockLedger: '/api/v1/pharmacy/stock-ledger',
+    goodsReceipts: {
+      base: '/api/v1/pharmacy/goods-receipts',
+      byId: (id: string) => `/api/v1/pharmacy/goods-receipts/${id}`,
+    },
+    imports: {
+      products: '/api/v1/pharmacy/imports/products',
+    },
+    sales: {
+      base: '/api/v1/pharmacy/sales',
+      byId: (id: string) => `/api/v1/pharmacy/sales/${id}`,
+      payments: (id: string) => `/api/v1/pharmacy/sales/${id}/payments`,
+      returnsFor: (id: string) => `/api/v1/pharmacy/sales/${id}/returns`,
+      returns: '/api/v1/pharmacy/sales/returns',
+      returnById: (id: string) => `/api/v1/pharmacy/sales/returns/${id}`,
+    },
+    settings: '/api/v1/pharmacy/settings',
+    stockControl: {
+      adjustments: '/api/v1/pharmacy/stock-control/adjustments',
+      adjustmentById: (id: string) => `/api/v1/pharmacy/stock-control/adjustments/${id}`,
+      transfers: '/api/v1/pharmacy/stock-control/transfers',
+      transferById: (id: string) => `/api/v1/pharmacy/stock-control/transfers/${id}`,
+      counts: '/api/v1/pharmacy/stock-control/counts',
+      countById: (id: string) => `/api/v1/pharmacy/stock-control/counts/${id}`,
+      postCount: (id: string) => `/api/v1/pharmacy/stock-control/counts/${id}/post`,
+      cancelCount: (id: string) => `/api/v1/pharmacy/stock-control/counts/${id}/cancel`,
+      expiring: '/api/v1/pharmacy/stock-control/expiring',
+      scheduleRegister: '/api/v1/pharmacy/stock-control/schedule-register',
+    },
+    reports: {
+      dashboard: '/api/v1/pharmacy/reports/dashboard',
+      dailySales: '/api/v1/pharmacy/reports/daily-sales',
+      salesRegister: '/api/v1/pharmacy/reports/sales-register',
+      productSales: '/api/v1/pharmacy/reports/product-sales',
+      collections: '/api/v1/pharmacy/reports/collections',
+      gst: '/api/v1/pharmacy/reports/gst',
+      purchaseRegister: '/api/v1/pharmacy/reports/purchase-register',
+      stockValuation: '/api/v1/pharmacy/reports/stock-valuation',
+      nonMoving: '/api/v1/pharmacy/reports/non-moving',
+    },
+    prescriptions: '/api/v1/pharmacy/prescriptions',
+    catalog: '/api/v1/pharmacy/catalog',
+    indents: {
+      base: '/api/v1/pharmacy/indents',
+      byId: (id: string) => `/api/v1/pharmacy/indents/${id}`,
+      cancel: (id: string) => `/api/v1/pharmacy/indents/${id}/cancel`,
+    },
+    purchaseOrders: {
+      base: '/api/v1/pharmacy/purchase-orders',
+      byId: (id: string) => `/api/v1/pharmacy/purchase-orders/${id}`,
+      place: (id: string) => `/api/v1/pharmacy/purchase-orders/${id}/place`,
+      cancel: (id: string) => `/api/v1/pharmacy/purchase-orders/${id}/cancel`,
+      suggestions: '/api/v1/pharmacy/purchase-orders/suggestions',
+    },
+    purchaseReturns: {
+      base: '/api/v1/pharmacy/purchase-returns',
+      byId: (id: string) => `/api/v1/pharmacy/purchase-returns/${id}`,
+      returnableBatches: (productId: string) => `/api/v1/pharmacy/purchase-returns/returnable-batches/${productId}`,
+    },
+    supplierAccounts: {
+      base: '/api/v1/pharmacy/supplier-accounts',
+      statement: (supplierId: string) => `/api/v1/pharmacy/supplier-accounts/${supplierId}/statement`,
+      payments: (supplierId: string) => `/api/v1/pharmacy/supplier-accounts/${supplierId}/payments`,
+    },
+    counter: {
+      items: '/api/v1/pharmacy/counter/items',
+      itemsLookup: '/api/v1/pharmacy/counter/items/lookup',
+      substitutes: (productId: string) => `/api/v1/pharmacy/counter/items/${productId}/substitutes`,
+      heldBills: '/api/v1/pharmacy/counter/held-bills',
+      heldBillById: (id: string) => `/api/v1/pharmacy/counter/held-bills/${id}`,
+    },
   },
   /** Mirrors HMS.Modules.ActivityLog.Endpoints.ActivityLogsController (read-only). */
   activityLogs: {

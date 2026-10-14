@@ -2,7 +2,7 @@ import { ApiError, type ProductProfileFormValues } from '@hms/shared';
 import { Loader2, Settings2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
-import { ProductForm, useProductQuery, useUpdateProductMutation } from '@/features/products';
+import { ProductForm, toDrugProfileFormValues, toDrugProfileRequest, useProductQuery, useUpdateProductMutation } from '@/features/products';
 import { RequirePermission } from '@/features/auth/RequirePermission';
 
 export default function ProductEditPage() {
@@ -57,6 +57,7 @@ export default function ProductEditPage() {
           hsnCode: values.hsnCode || undefined,
           weight: values.weight,
           volume: values.volume,
+          ...toDrugProfileRequest(values),
         },
       },
       {
@@ -107,6 +108,7 @@ export default function ProductEditPage() {
             hsnCode: product.hsnCode ?? '',
             weight: product.weight ?? undefined,
             volume: product.volume ?? undefined,
+            ...toDrugProfileFormValues(product),
           }}
           onSubmit={handleSubmit}
         />

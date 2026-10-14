@@ -12,6 +12,7 @@ namespace HMS.Modules.Pharmacy.Domain;
 /// </summary>
 internal class PharmacyStockTransaction : Entity
 {
+    public Guid StoreId { get; private set; }
     public Guid ProductId { get; private set; }
     public Guid ProductBatchId { get; private set; }
     public TransactionType TransactionType { get; private set; }
@@ -21,6 +22,20 @@ internal class PharmacyStockTransaction : Entity
     public Guid? PatientId { get; private set; }
     public Guid? AdmissionId { get; private set; }
     public string? Remarks { get; private set; }
+
+    /// <summary>What one unit cost the pharmacy, and what it was sold for, as they stood when
+    /// this row was written — snapshotted so margin and stock valuation for a past period do
+    /// not shift when a batch's rates are later corrected. Null where not known (a receipt
+    /// with no purchase rate recorded) or not applicable (UnitPrice on anything but a sale).</summary>
+    public decimal? UnitCost { get; private set; }
+    public decimal? UnitPrice { get; private set; }
+
+    /// <summary>The document this movement was posted from — a goods receipt, a pharmacy bill,
+    /// a transfer — and its printed number, so the ledger reads on its own. Null on rows
+    /// written before documents existed, and on the old single-line receive/dispense.</summary>
+    public StockSourceType? SourceType { get; private set; }
+    public Guid? SourceId { get; private set; }
+    public string? SourceNo { get; private set; }
 
     /// <summary>Set once, after the fact, by a successful best-effort billing attempt — see
     /// DispenseService.CreateAsync. Null means either this is a Receipt (never billed) or a
@@ -36,6 +51,7 @@ internal class PharmacyStockTransaction : Entity
 
     private PharmacyStockTransaction(
         Guid id,
+        Guid storeId,
         Guid productId,
         Guid productBatchId,
         TransactionType transactionType,
@@ -45,9 +61,12 @@ internal class PharmacyStockTransaction : Entity
         Guid? patientId,
         Guid? admissionId,
         string? remarks,
+        decimal? unitCost,
+        decimal? unitPrice,
         Guid? createdBy)
         : base(id, createdBy)
     {
+        StoreId = storeId;
         ProductId = productId;
         ProductBatchId = productBatchId;
         TransactionType = transactionType;
@@ -57,38 +76,28 @@ internal class PharmacyStockTransaction : Entity
         PatientId = patientId;
         AdmissionId = admissionId;
         Remarks = string.IsNullOrWhiteSpace(remarks) ? null : remarks.Trim();
+        UnitCost = unitCost;
+        UnitPrice = unitPrice;
     }
 
-    public static PharmacyStockTransaction CreateReceipt(
+    /// <summary>True for the movement types that add to a store's stock.</summary>
+    public static bool IsInward(TransactionType type) => type is TransactionType.Receipt or TransactionType.OpeningStock
+        or TransactionType.SaleReturn or TransactionType.TransferIn or TransactionType.AdjustmentIn;
+
+    /// <summary>A movement posted from a document — see StockPoster, the only caller.</summary>
+    public static PharmacyStockTransaction CreateFromDocument(
+        TransactionType transactionType,
+        Guid storeId,
         Guid productId,
         Guid productBatchId,
         decimal quantity,
         decimal balanceAfter,
-        string? remarks,
-        Guid? createdBy)
-    {
-        Guard.AgainstNonPositive(quantity, nameof(quantity));
-
-        return new PharmacyStockTransaction(
-            Guid.CreateVersion7(),
-            productId,
-            productBatchId,
-            TransactionType.Receipt,
-            quantity,
-            balanceAfter,
-            DateTime.UtcNow,
-            patientId: null,
-            admissionId: null,
-            remarks,
-            createdBy);
-    }
-
-    public static PharmacyStockTransaction CreateDispense(
-        Guid productId,
-        Guid productBatchId,
-        decimal quantity,
-        decimal balanceAfter,
-        Guid patientId,
+        decimal? unitCost,
+        decimal? unitPrice,
+        StockSourceType? sourceType,
+        Guid? sourceId,
+        string? sourceNo,
+        Guid? patientId,
         Guid? admissionId,
         string? remarks,
         Guid? createdBy)
@@ -96,7 +105,68 @@ internal class PharmacyStockTransaction : Entity
         Guard.AgainstNonPositive(quantity, nameof(quantity));
 
         return new PharmacyStockTransaction(
+            Guid.CreateVersion7(), storeId, productId, productBatchId, transactionType, quantity, balanceAfter, DateTime.UtcNow,
+            patientId, admissionId, remarks, unitCost, unitPrice, createdBy)
+        {
+            SourceType = sourceType,
+            SourceId = sourceId,
+            SourceNo = sourceNo,
+        };
+    }
+
+    /// <param name="transactionType">Receipt, or OpeningStock for stock entered at go-live.</param>
+    public static PharmacyStockTransaction CreateReceipt(
+        Guid storeId,
+        Guid productId,
+        Guid productBatchId,
+        decimal quantity,
+        decimal balanceAfter,
+        decimal? unitCost,
+        string? remarks,
+        Guid? createdBy,
+        TransactionType transactionType = TransactionType.Receipt)
+    {
+        Guard.AgainstNonPositive(quantity, nameof(quantity));
+        if (transactionType is not (TransactionType.Receipt or TransactionType.OpeningStock))
+        {
+            throw new ArgumentOutOfRangeException(nameof(transactionType), "A receipt is either Receipt or OpeningStock.");
+        }
+
+        return new PharmacyStockTransaction(
             Guid.CreateVersion7(),
+            storeId,
+            productId,
+            productBatchId,
+            transactionType,
+            quantity,
+            balanceAfter,
+            DateTime.UtcNow,
+            patientId: null,
+            admissionId: null,
+            remarks,
+            unitCost,
+            unitPrice: null,
+            createdBy);
+    }
+
+    public static PharmacyStockTransaction CreateDispense(
+        Guid storeId,
+        Guid productId,
+        Guid productBatchId,
+        decimal quantity,
+        decimal balanceAfter,
+        Guid patientId,
+        Guid? admissionId,
+        decimal? unitCost,
+        decimal unitPrice,
+        string? remarks,
+        Guid? createdBy)
+    {
+        Guard.AgainstNonPositive(quantity, nameof(quantity));
+
+        return new PharmacyStockTransaction(
+            Guid.CreateVersion7(),
+            storeId,
             productId,
             productBatchId,
             TransactionType.Dispense,
@@ -106,6 +176,8 @@ internal class PharmacyStockTransaction : Entity
             patientId,
             admissionId,
             remarks,
+            unitCost,
+            unitPrice,
             createdBy);
     }
 

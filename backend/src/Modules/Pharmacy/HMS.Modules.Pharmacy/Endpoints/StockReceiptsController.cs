@@ -81,6 +81,9 @@ public class StockReceiptsController : ControllerBase
             PharmacyErrorCodes.NotFound => StatusCodes.Status404NotFound,
             PharmacyErrorCodes.InvalidProduct => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.InvalidBatch => StatusCodes.Status409Conflict,
+            PharmacyErrorCodes.InvalidStore => StatusCodes.Status409Conflict,
+            PharmacyErrorCodes.ProductInactive => StatusCodes.Status409Conflict,
+            PharmacyErrorCodes.BatchInactive => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

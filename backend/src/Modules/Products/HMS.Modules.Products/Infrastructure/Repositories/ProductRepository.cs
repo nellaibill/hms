@@ -29,6 +29,14 @@ internal class ProductRepository : IProductRepository
     public Task<bool> ExistsByProductCodeAsync(string productCode, Guid? excludingId, CancellationToken cancellationToken)
         => _dbContext.Products.AnyAsync(p => p.ProductCode == productCode && p.Id != excludingId, cancellationToken);
 
+    public async Task<IReadOnlyList<Product>> GetManyByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        // Copied to a List so the SQL parameter is a type Npgsql maps to an array whatever
+        // collection the caller passed (same as RoleRepository.GetManyByIdsAsync).
+        var distinctIds = ids.Distinct().ToList();
+        return await _dbContext.Products.Where(p => distinctIds.Contains(p.Id)).ToListAsync(cancellationToken);
+    }
+
     public async Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(ProductListQuery query, CancellationToken cancellationToken)
     {
         var products = _dbContext.Products.AsQueryable();
@@ -48,12 +56,7 @@ internal class ProductRepository : IProductRepository
             products = products.Where(p => p.BrandId == query.BrandId.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var term = $"%{query.Search.Trim()}%";
-            products = products.Where(p => EF.Functions.ILike(p.Sku, term) || EF.Functions.ILike(p.ProductCode, term) || EF.Functions.ILike(p.ProductName, term));
-        }
-
+        products = ApplySearch(products, query.Search);
         products = ApplySort(products, query.Sort);
 
         var totalCount = await products.CountAsync(cancellationToken);
@@ -62,8 +65,42 @@ internal class ProductRepository : IProductRepository
         return (items, totalCount);
     }
 
+    public async Task<IReadOnlyList<ProductStockProfileResponse>> GetStockProfilesAsync(string? search, CancellationToken cancellationToken)
+        => await ApplySearch(_dbContext.Products.Where(p => p.IsActive), search)
+            .OrderBy(p => p.ProductName)
+            .Select(p => new ProductStockProfileResponse
+            {
+                Id = p.Id,
+                Sku = p.Sku,
+                ProductName = p.ProductName,
+                GenericName = p.GenericName,
+                ReorderLevel = p.ReorderLevel,
+            })
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
+
+    // GenericName is searched too: a pharmacist looks a drug up by its molecule
+    // ("paracetamol") at least as often as by its brand name.
+    private IQueryable<Product> ApplySearch(IQueryable<Product> products, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            return products;
+        }
+
+        // A scanned barcode arrives here as the search text, so an exact barcode match counts
+        // as a hit alongside the name/generic/code matches.
+        var exact = search.Trim();
+        var term = $"%{exact}%";
+        return products.Where(p =>
+            EF.Functions.ILike(p.Sku, term)
+            || EF.Functions.ILike(p.ProductCode, term)
+            || EF.Functions.ILike(p.ProductName, term)
+            || (p.GenericName != null && EF.Functions.ILike(p.GenericName, term))
+            || _dbContext.ProductBarcodes.Any(b => b.ProductId == p.Id && b.IsActive && b.BarcodeValue == exact));
+    }
 
     private static IQueryable<Product> ApplySort(IQueryable<Product> products, string? sort)
     {

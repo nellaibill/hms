@@ -23,6 +23,9 @@ internal class PharmacyStockTransactionRepository : IPharmacyStockTransactionRep
     public Task<PharmacyStockTransaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.StockTransactions.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
+    public Task<bool> ExistsAsync(Guid storeId, Guid productBatchId, TransactionType transactionType, CancellationToken cancellationToken)
+        => _dbContext.StockTransactions.AnyAsync(t => t.StoreId == storeId && t.ProductBatchId == productBatchId && t.TransactionType == transactionType, cancellationToken);
+
     public async Task<(IReadOnlyList<PharmacyStockTransaction> Items, int TotalCount)> GetPagedAsync(StockLedgerListQuery query, CancellationToken cancellationToken)
     {
         var transactions = _dbContext.StockTransactions.AsQueryable();
@@ -35,6 +38,11 @@ internal class PharmacyStockTransactionRepository : IPharmacyStockTransactionRep
         if (query.ProductBatchId.HasValue)
         {
             transactions = transactions.Where(t => t.ProductBatchId == query.ProductBatchId.Value);
+        }
+
+        if (query.StoreId.HasValue)
+        {
+            transactions = transactions.Where(t => t.StoreId == query.StoreId.Value);
         }
 
         if (query.TransactionType.HasValue)

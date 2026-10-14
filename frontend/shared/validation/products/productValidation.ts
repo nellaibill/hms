@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DOSAGE_FORMS, DRUG_SCHEDULES, STORAGE_CONDITIONS } from '../../enums';
 
 /**
  * Mirrors HMS.Modules.Products.Application.Validators.CreateProductRequestValidator /
@@ -38,6 +39,17 @@ export const productProfileSchema = z.object({
   hsnCode: z.string().trim().max(20).optional().or(z.literal('')),
   weight: optionalNonNegativeDecimal,
   volume: optionalNonNegativeDecimal,
+  // Empty string = "not a drug" — the select has no way to hold null.
+  dosageForm: z.enum(DOSAGE_FORMS).or(z.literal('')),
+  strength: z.string().trim().max(100).optional().or(z.literal('')),
+  unitsPerPack: z.coerce.number().positive('Must be greater than 0'),
+  schedule: z.enum(DRUG_SCHEDULES),
+  storageCondition: z.enum(STORAGE_CONDITIONS),
+  rackLocation: z.string().trim().max(50).optional().or(z.literal('')),
+  gstRatePercent: z.preprocess(
+    (value) => (value === '' || value === undefined || (typeof value === 'number' && Number.isNaN(value)) ? undefined : value),
+    z.coerce.number().min(0, 'Must be between 0 and 100').max(100, 'Must be between 0 and 100').optional(),
+  ),
 });
 
 export const createProductSchema = productProfileSchema;

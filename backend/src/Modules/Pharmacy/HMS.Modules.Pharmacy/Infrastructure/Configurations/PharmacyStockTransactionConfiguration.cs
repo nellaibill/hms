@@ -13,6 +13,7 @@ internal class PharmacyStockTransactionConfiguration : IEntityTypeConfiguration<
         builder.HasKey(t => t.Id).HasName("pk_pharmacy_stock_transactions");
         builder.Property(t => t.Id).HasColumnName("id").ValueGeneratedNever();
 
+        builder.Property(t => t.StoreId).HasColumnName("store_id").IsRequired();
         builder.Property(t => t.ProductId).HasColumnName("product_id").IsRequired();
         builder.Property(t => t.ProductBatchId).HasColumnName("product_batch_id").IsRequired();
         builder.Property(t => t.TransactionType).HasColumnName("transaction_type").HasConversion<string>().HasMaxLength(20).IsRequired();
@@ -23,6 +24,11 @@ internal class PharmacyStockTransactionConfiguration : IEntityTypeConfiguration<
         builder.Property(t => t.AdmissionId).HasColumnName("admission_id");
         builder.Property(t => t.Remarks).HasColumnName("remarks").HasMaxLength(500);
         builder.Property(t => t.InvoiceId).HasColumnName("invoice_id");
+        builder.Property(t => t.UnitCost).HasColumnName("unit_cost").HasPrecision(18, 4);
+        builder.Property(t => t.UnitPrice).HasColumnName("unit_price").HasPrecision(18, 4);
+        builder.Property(t => t.SourceType).HasColumnName("source_type").HasConversion<string>().HasMaxLength(20);
+        builder.Property(t => t.SourceId).HasColumnName("source_id");
+        builder.Property(t => t.SourceNo).HasColumnName("source_no").HasMaxLength(30);
 
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(t => t.CreatedBy).HasColumnName("created_by");
@@ -50,5 +56,13 @@ internal class PharmacyStockTransactionConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(t => new { t.ProductId, t.ProductBatchId }).HasDatabaseName("ix_pharmacy_stock_transactions_product_batch");
         builder.HasIndex(t => t.TransactionDate).HasDatabaseName("ix_pharmacy_stock_transactions_transaction_date");
         builder.HasIndex(t => t.PatientId).HasDatabaseName("ix_pharmacy_stock_transactions_patient_id");
+        builder.HasIndex(t => t.StoreId).HasDatabaseName("ix_pharmacy_stock_transactions_store_id");
+        builder.HasIndex(t => t.SourceId).HasDatabaseName("ix_pharmacy_stock_transactions_source_id");
+
+        builder.HasOne<PharmacyStore>()
+            .WithMany()
+            .HasForeignKey(t => t.StoreId)
+            .HasConstraintName("fk_pharmacy_stock_transactions_pharmacy_stores_store_id")
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

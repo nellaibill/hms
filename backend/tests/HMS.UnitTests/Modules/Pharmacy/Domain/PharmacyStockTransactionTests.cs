@@ -14,7 +14,7 @@ public class PharmacyStockTransactionTests
         var productBatchId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
 
-        var transaction = PharmacyStockTransaction.CreateReceipt(productId, productBatchId, 10m, 10m, "Initial stock", actorId);
+        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), productId, productBatchId, 10m, 10m, null, "Initial stock", actorId);
 
         transaction.ProductId.Should().Be(productId);
         transaction.ProductBatchId.Should().Be(productBatchId);
@@ -37,7 +37,7 @@ public class PharmacyStockTransactionTests
         var admissionId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
 
-        var transaction = PharmacyStockTransaction.CreateDispense(productId, productBatchId, 4m, 6m, patientId, admissionId, "OPD dispense", actorId);
+        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), productId, productBatchId, 4m, 6m, patientId, admissionId, null, 20m, "OPD dispense", actorId);
 
         transaction.TransactionType.Should().Be(TransactionType.Dispense);
         transaction.Quantity.Should().Be(4m);
@@ -50,7 +50,7 @@ public class PharmacyStockTransactionTests
     [Fact]
     public void CreateDispense_WithoutAdmission_LeavesAdmissionIdNull()
     {
-        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), 1m, 0m, Guid.NewGuid(), admissionId: null, remarks: null, createdBy: null);
+        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1m, 0m, Guid.NewGuid(), admissionId: null, null, 20m, remarks: null, createdBy: null);
 
         transaction.AdmissionId.Should().BeNull();
         transaction.Remarks.Should().BeNull();
@@ -59,7 +59,7 @@ public class PharmacyStockTransactionTests
     [Fact]
     public void CreateReceipt_WithWhitespaceRemarks_StoresNull()
     {
-        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), 1m, 1m, "   ", null);
+        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1m, 1m, null, "   ", null);
 
         transaction.Remarks.Should().BeNull();
     }
@@ -67,7 +67,7 @@ public class PharmacyStockTransactionTests
     [Fact]
     public void CreateReceipt_TrimsRemarks()
     {
-        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), 1m, 1m, "  restock  ", null);
+        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1m, 1m, null, "  restock  ", null);
 
         transaction.Remarks.Should().Be("restock");
     }
@@ -77,7 +77,7 @@ public class PharmacyStockTransactionTests
     [InlineData(-1)]
     public void CreateReceipt_WithNonPositiveQuantity_ThrowsArgumentOutOfRangeException(decimal quantity)
     {
-        var act = () => PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), quantity, 0m, null, null);
+        var act = () => PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), quantity, 0m, null, null, null);
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
@@ -87,7 +87,7 @@ public class PharmacyStockTransactionTests
     [InlineData(-1)]
     public void CreateDispense_WithNonPositiveQuantity_ThrowsArgumentOutOfRangeException(decimal quantity)
     {
-        var act = () => PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), quantity, 0m, Guid.NewGuid(), null, null, null);
+        var act = () => PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), quantity, 0m, Guid.NewGuid(), null, null, 20m, null, null);
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
@@ -95,7 +95,7 @@ public class PharmacyStockTransactionTests
     [Fact]
     public void SetInvoiceId_OnADispense_SetsIt()
     {
-        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), 4m, 6m, Guid.NewGuid(), null, null, null);
+        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 4m, 6m, Guid.NewGuid(), null, null, 20m, null, null);
         var invoiceId = Guid.NewGuid();
 
         transaction.SetInvoiceId(invoiceId, null);
@@ -106,7 +106,7 @@ public class PharmacyStockTransactionTests
     [Fact]
     public void SetInvoiceId_OnAReceipt_Throws()
     {
-        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), 10m, 10m, null, null);
+        var transaction = PharmacyStockTransaction.CreateReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10m, 10m, null, null, null);
 
         var act = () => transaction.SetInvoiceId(Guid.NewGuid(), null);
 
@@ -116,7 +116,7 @@ public class PharmacyStockTransactionTests
     [Fact]
     public void SetInvoiceId_CalledTwice_ThrowsOnTheSecondCall()
     {
-        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), 4m, 6m, Guid.NewGuid(), null, null, null);
+        var transaction = PharmacyStockTransaction.CreateDispense(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 4m, 6m, Guid.NewGuid(), null, null, 20m, null, null);
         transaction.SetInvoiceId(Guid.NewGuid(), null);
 
         var act = () => transaction.SetInvoiceId(Guid.NewGuid(), null);

@@ -32,6 +32,13 @@ internal static class ProductMappingExtensions
         HsnCode = product.HsnCode,
         Weight = product.Weight,
         Volume = product.Volume,
+        DosageForm = product.DosageForm,
+        Strength = product.Strength,
+        UnitsPerPack = product.UnitsPerPack,
+        Schedule = product.Schedule,
+        StorageCondition = product.StorageCondition,
+        RackLocation = product.RackLocation,
+        GstRatePercent = product.GstRatePercent,
         CreatedAt = product.CreatedAt,
         UpdatedAt = product.UpdatedAt,
     };

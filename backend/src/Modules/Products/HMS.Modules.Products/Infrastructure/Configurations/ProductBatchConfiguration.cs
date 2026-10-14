@@ -19,6 +19,10 @@ internal class ProductBatchConfiguration : IEntityTypeConfiguration<ProductBatch
         builder.Property(b => b.ExpiryDate).HasColumnName("expiry_date").HasColumnType("date").IsRequired();
         builder.Property(b => b.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
 
+        builder.Property(b => b.Mrp).HasColumnName("mrp").HasPrecision(18, 4);
+        builder.Property(b => b.PurchaseRate).HasColumnName("purchase_rate").HasPrecision(18, 4);
+        builder.Property(b => b.SellingRate).HasColumnName("selling_rate").HasPrecision(18, 4);
+
         builder.Property(b => b.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(b => b.CreatedBy).HasColumnName("created_by");
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at");

@@ -33,15 +33,43 @@ public class StockBalancesController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<StockBalanceResponse>> { Data = paged.Items, Meta = meta });
     }
 
-    /// <summary>Gets the current stock balance for a single product/batch pair.</summary>
+    /// <summary>Lists stock per product — every batch rolled up, split into available /
+    /// expiring soon / expired / on hold — name-ordered, searchable by name, generic name, SKU
+    /// or code, and optionally narrowed to the products needing attention.</summary>
+    /// <response code="200">The page of product stock summaries.</response>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetSummary([FromQuery] StockSummaryListQuery query, CancellationToken cancellationToken)
+    {
+        var paged = await _service.GetSummaryPagedAsync(query, cancellationToken);
+        var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
+        return Ok(new ApiResponse<IReadOnlyList<StockSummaryResponse>> { Data = paged.Items, Meta = meta });
+    }
+
+    /// <summary>Lists the batches of a product that can be dispensed right now from one store
+    /// (active, unexpired, with stock on hand), earliest expiry first, each with its unit
+    /// price. The default store when <paramref name="storeId"/> is omitted.</summary>
+    /// <response code="200">The dispensable batches — empty when the product has none.</response>
+    [Authorize]
+    [RequirePermission("pharmacy.view")]
+    [HttpGet("{productId:guid}/available-batches")]
+    public async Task<IActionResult> GetAvailableBatches(Guid productId, [FromQuery] Guid? storeId, CancellationToken cancellationToken)
+    {
+        var batches = await _service.GetAvailableBatchesAsync(productId, storeId, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<AvailableBatchResponse>> { Data = batches });
+    }
+
+    /// <summary>Gets the current stock balance for a single product/batch pair in one store
+    /// (the default store when <paramref name="storeId"/> is omitted).</summary>
     /// <response code="200">The stock balance.</response>
     /// <response code="404">No stock balance exists for that product/batch.</response>
     [Authorize]
     [RequirePermission("pharmacy.view")]
     [HttpGet("{productId:guid}/{productBatchId:guid}")]
-    public async Task<IActionResult> Get(Guid productId, Guid productBatchId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(Guid productId, Guid productBatchId, [FromQuery] Guid? storeId, CancellationToken cancellationToken)
     {
-        var result = await _service.GetAsync(productId, productBatchId, cancellationToken);
+        var result = await _service.GetAsync(productId, productBatchId, storeId, cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 

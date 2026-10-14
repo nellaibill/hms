@@ -1,7 +1,8 @@
 import { ApiError, createMedicationOrderSchema, type MedicationOrderFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Pill, Plus, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +71,17 @@ export function MedicationOrdersPanel({ admissionId }: MedicationOrdersPanelProp
           Failed to load medication orders.
         </p>
       )}
+
+      {/* Ordering a medicine here records the doctor's order; getting it from the pharmacy
+          is a separate request, raised on the indent screen. */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/pharmacy/indents/new?admission=${admissionId}`}>
+            <Pill className="h-4 w-4" />
+            Request medicines from pharmacy
+          </Link>
+        </Button>
+      </div>
 
       {!isPending && !isError && (
         <div className="overflow-x-auto rounded-lg border border-border">

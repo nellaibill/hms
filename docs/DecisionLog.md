@@ -37,6 +37,196 @@ _To be documented._
 
 ## Decisions
 
+### ADR-098: Pharmacy Phase 6 — reports and the dashboard are summed from the documents; finance reads pharmacy revenue there
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+The pharmacy could bill, buy and keep stock, but could not answer the questions asked of it every day and every month: how much was sold and collected today, what the margin is, what GST is owed on sales and claimable on purchases, what the stock is worth, and what is not selling. Because pharmacy bills are not hospital invoices (ADR-094), none of this appeared in Accounts and Finance either.
+
+**Decision**
+- **Nothing is stored for reporting.** Every figure is summed on request from the bills, sale returns, payments, goods receipts, purchase returns, supplier payments and stock balances. A report cannot drift from the documents, and there is no second set of numbers to reconcile.
+- **Days are hospital-local.** Bills, returns and payments are stamped in UTC; a period is the UTC span from the start of its first local day to the end of its last, and day-wise figures are grouped by local date — a bill at 00:30 in India belongs to that day, not the one before.
+- **What counts where.** A return reduces sales on the day it came back, not the day of the bill. Money counts on the day it was taken or refunded, in the mode it was taken or refunded in, so *collected* differs from *net sales* by credit and inpatient bills. Margin is taxable value less cost of goods (each bill line carries its batch's unit cost at sale), both net of returns; a line with no recorded cost counts as zero cost.
+- **GST** is reported by HSN code and rate: sales less sale returns (output tax) and purchases less purchase returns (input tax). Counter sales are treated as within the state (CGST + SGST split evenly, any odd paisa to SGST); purchases follow each invoice's inter-state flag (IGST). A purchase-return line takes its HSN code and inter-state flag from the goods receipt its batch last came in on. Whether inpatient pharmacy sales are taxed the same way is for the hospital's accountant to confirm.
+- **Reports** (`api/v1/pharmacy/reports/…`): dashboard, day-wise sales, sales register (bill-wise, up to three months), item-wise sales and margin, collections by payment mode, GST summary, purchase register, stock valuation (at cost and at MRP, expired stock set apart) and non-moving stock (no sale for N days; a product never sold is measured from when its oldest batch on the shelf was recorded). Other periods are capped at a year.
+- **Dashboard** is the pharmacy's landing page (`/pharmacy`; current stock moved to `/pharmacy/stock`): today against yesterday and the month, fourteen days of sales and collections, shelf alerts (low and out of stock, expired and expiring batches), work waiting (IP indents, today's unbilled prescriptions, awaited orders, customer dues, supplier payable) and the month's best sellers.
+- **Who sees what.** Reports are open to `pharmacy.view` and to `finance-billing.view`. Cost, margin, stock value at cost, purchase GST and the purchase register need `pharmacy.view-cost` or `finance-billing.view` — accounts already see the hospital's profit, and need input tax to file. Accounts and Finance gets a **Pharmacy** tab (day-wise sales, collections, GST, item-wise margin) reading the same endpoints.
+
+**Consequences**
+No new tables or migrations. Report cost grows with the period: a year of day-wise figures reads a year of bill headers and payments into memory, which suits a single hospital pharmacy but would need SQL-side grouping at chain scale. The hospital dashboard's revenue charts still come from Billing and so still exclude the pharmacy; finance sees pharmacy revenue on its own tab, not merged into the hospital totals. GST figures are a working summary, not a filed return — there is no GSTR-1 JSON export, no B2B/B2C split (all counter sales are treated as B2C) and no e-invoicing.
+
+### ADR-097: Pharmacy Phase 5 — adjustments, transfers, stock counts, expiry and the schedule registers
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+Stock could come in (purchases), go out (bills) and go back (returns), but the books could not be made to agree with the shelf: no way to write off a broken strip or expired stock, to move stock between the main store and a counter or ward, or to count a store and correct what the count found. Expiry was a badge on the stock list, and the Schedule H1 / X / NDPS registers the Drugs and Cosmetics Rules require were not available at all.
+
+**Decision**
+- **Adjustment** (`PharmacyStockAdjustment`, `ADJ` series) is the only way to change stock without a purchase or a sale. One store, one reason (Expired, Damaged, Shortage, Excess, FreeIssue, StockCount, Correction, Other), signed quantities per batch, posted on save through `IStockPoster` as `AdjustmentIn` / `AdjustmentOut`, valued at the batch's unit cost. It cannot take a batch below zero and, like every pharmacy document, is never edited or deleted — a wrong adjustment is corrected by another.
+- **Transfer** (`PharmacyStockTransfer`, `ST` series) is done in one step: saving posts `TransferOut` from one store and `TransferIn` to the other in the same unit of work, at the same cost. There is no in-transit state and no acceptance by the receiving store; the stores of a hospital pharmacy are rooms in one building.
+- **Stock count** (`PharmacyStockCount`, `SC` series) has a life: Open → Posted, or Cancelled. Starting one snapshots the store's batches (rack, then name — the order shelves are walked); one count may be open per store. Counted quantities are saved as often as the counter likes. Billing is **not** frozen during a count: on posting, each counted line is compared with what the books hold *at that moment*, not with the snapshot, so stock sold mid-count is not taken off twice. Lines never counted are left alone. The differences become one adjustment with reason StockCount, linked both ways; a count with no differences posts without one.
+- **Expiry** is a list, not a document: batches on hand that have expired or will within a window (default: the pharmacy's `ExpiryAlertDays` setting, which the stock summary's "expiring soon" now uses too), with value at cost and the supplier of the batch's last goods receipt. The two things done with such stock already exist — a purchase return (ADR-095) or an Expired adjustment — so the screen links to the first and does the second for ticked rows.
+- **Schedule registers are read from the bills.** The counter already refuses a Schedule H1, X or narcotic drug without a patient name and a prescriber (ADR-094), so every sale line of such a product *is* the register entry. `GET stock-control/schedule-register` returns them for a period (up to a year) with patient, prescriber, batch, quantity and quantity since returned; the screen prints and exports them, and lists Schedule H sales the same way for convenience (those may lack a prescriber, which the rules do not require to be recorded). Nothing is stored twice and nothing can be left out of the register that was billed.
+- **Permissions:** viewing needs `pharmacy.view`; adjustments, transfers, and starting, posting or cancelling a count need `pharmacy.edit`; values at cost appear only with `pharmacy.view-cost`.
+
+**Consequences**
+New tables `pharmacy_stock_adjustments`, `pharmacy_stock_adjustment_lines`, `pharmacy_stock_transfers`, `pharmacy_stock_transfer_lines`, `pharmacy_stock_counts`, `pharmacy_stock_count_lines` (migration `AddStockControl`, additive). A count posted while the counter is busy is only as good as the moment each shelf was counted; a hospital that wants a hard stock-take should count with the counter closed. A batch on the shelf that the books do not know (found stock with no purchase) cannot be added through a count — it needs a goods receipt or opening-stock import first. The NDPS register is the sale side only; the receipt side is the purchase list filtered by product. Document numbers come from sequences, so a save the stock check refuses can leave a gap in the `ADJ`/`ST` series.
+
+### ADR-096: Pharmacy Phase 4 — OPD prescriptions and IP indents reach the counter; filling either is an ordinary bill
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+The pharmacy was cut off from the clinical side. A doctor's OPD prescription (free-text drug lines on the consultation note) reached the counter only on paper, and a ward had no way to ask the pharmacy for an inpatient's medicines. Both are requests the pharmacy fills; neither should become a second way of moving stock or charging money.
+
+**Decision**
+- **One way out of the shelf.** A prescription or an indent is filled by making a normal pharmacy bill (ADR-094). The bill carries `PrescriptionId` (the OPD consultation) or `IndentId`; there is no separate "issue" document and no second stock path.
+- **Prescriptions stay in OpdConsultation.** That module gains one read, `GetPrescriptionQueueAsync` (completed notes with at least one prescription in a time window). Pharmacy reads it and sets each against its own bills (`PrescriptionId`), so the queue shows waiting and billed. Nothing is copied.
+- **Free text is matched, never auto-billed.** Opening a prescription at the counter sets the patient and doctor and looks each drug name up in the catalog; the best match is offered with its stock, and the pharmacist adds it. A course quantity is suggested only when frequency and duration can be read ("1-0-1", "BD", "TDS" × days); "SOS" or "as directed" suggests nothing.
+- **Prescribing gets catalog suggestions.** The OPD drug box offers names from the pharmacy catalog with an in-stock note (`GET pharmacy/catalog`), while remaining free text. A name picked there is one the counter finds at once.
+- **Indent** (`PharmacyIndent`, `IND` series) is a ward's request for an admitted patient: exact catalog items and quantities, urgent flag, ward/bed/doctor copied from the admission. It moves no stock. A bill made against it records units issued per product; the indent goes Pending → PartlyIssued → Issued, and closing a part-issued indent finishes it rather than cancelling it. An indent can only be billed for its own patient.
+- **Who may do what.** Raising, listing and closing indents, and searching the catalog, accept `clinical-care.*` as well as `pharmacy.*` — ward staff and doctors have no pharmacy rights. The catalog search returns stock and selling price, never cost. The indent entry route sits outside the pharmacy.view gate and shows no pharmacy menu to a user without it.
+
+**Consequences**
+New tables `pharmacy_indents`, `pharmacy_indent_lines` (migration `AddIndents`, additive). Pharmacy now references OpdConsultation. The prescription queue costs one OPD header lookup per prescription (capped at 200 a request, 31 days a query). A prescription billed in two visits shows two bills; nothing tracks per-drug fulfilment of free-text lines. IPD medication orders are untouched: ordering a medicine and requesting it from the pharmacy remain two acts, linked by a button on the medication panel.
+
+### ADR-095: Pharmacy Phase 3 — purchase orders, reorder list, purchase returns, supplier accounts
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+Purchases could be entered (ADR-093) but nothing came before or after them: no order to receive against, no list of what had run low, no way to send expired or damaged stock back to the supplier who will credit it, and no record of what each supplier is owed.
+
+**Decision**
+- **Purchase order** (`PharmacyPurchaseOrder`, `PO` series) is the one pharmacy document with a life: Draft (freely edited, lines replaced wholesale) → Ordered → PartlyReceived → Received, or Cancelled. It moves no stock. A goods receipt may name an order (`PurchaseOrderId`); each receipt line's billed packs are recorded against the order's line for that product, and the status follows. Free packs do not count as delivery; a product not on the order is ignored, because suppliers substitute and the receipt is still valid. An order placed with one supplier cannot be received against by another.
+- **Reorder list** is arithmetic a pharmacist can check by eye: products whose available stock is at or below the reorder level (the existing stock summary), with a suggestion of enough packs to reach the maximum level — or twice the reorder level where no maximum is set — less what is already on open orders, rounded up to whole packs. Each row carries the supplier and rate of its last goods receipt. Ticked rows become draft orders, one per supplier; products never purchased (opening stock) are ordered from a supplier the buyer names.
+- **Purchase return** (`PharmacyPurchaseReturn`, `PR` series) is posted on save: stock leaves through `IStockPoster` as `PurchaseReturn` and may be expired — that is what most returns are. Quantities are in units; the credit per unit defaults to the batch's purchase rate; GST is added on top. The receipt lines the batch came in on are marked with what went back (`ReturnedUnits`), newest first, as bookkeeping only.
+- **Supplier account** is a running account, not invoice-by-invoice settlement: goods receipts add to what is owed, returns and payments (`PharmacySupplierPayment`, `SP` series) take off it. The statement is those three in date order with a running balance and an opening balance for a date range — the shape of the distributor's own statement, which is what it gets reconciled against. Nothing is stored per balance; it is summed from the documents.
+- **Purchase entry** can load an invoice's lines from the supplier's Excel/CSV export. Products are matched by exact name; rows that do not match or are incomplete are listed, never guessed. The spreadsheet reader was generalised (`readMappedFile`) and now skips a bare "Total" row.
+- **Permissions:** the reorder list and orders need `pharmacy.view`; anything showing what was paid (return list, supplier accounts, rates on the reorder list) needs `pharmacy.view-cost`.
+
+**Consequences**
+New tables `pharmacy_purchase_orders`, `pharmacy_purchase_order_lines`, `pharmacy_purchase_returns`, `pharmacy_purchase_return_lines`, `pharmacy_supplier_payments` (migration `AddProcurement`, additive). Payments are not allocated to invoices, so "which invoices are unpaid" and ageing by invoice are not available — only the balance and the statement. Purchases entered before this phase count towards supplier balances from the start, since balances are summed from goods receipts.
+
+### ADR-094: Pharmacy Phase 2 — the pharmacy bill is its own document; counter sales are not mirrored into Billing
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+"Dispense" moved stock and then, best-effort, raised a pending Billing invoice for a cashier to collect on. That is not how a pharmacy counter works: it bills, takes the money and prints in one step, sells to people who are not registered patients, gives line and bill discounts, charges GST inside MRP, and takes goods back. Billing's invoice cannot hold that: it needs a patient, its quantity is an integer, it has no tax fields, a line is paid or not paid, and the only reversal is voiding the whole invoice. ADR-028 already had to fold a dispense's quantity into the unit price to fit.
+
+**Decision**
+- **`PharmacySale` is the bill and the book of record** — header, lines (one batch each, with the product's schedule on the day), payments. Numbered from the `PH` series. Posted on save, never edited. Stock leaves through `IStockPoster` with the bill as the source document, at the unit price and cost of the batch sold.
+- **Counter sales are not written to Billing.** A second copy would be wrong for walk-ins (no patient) and could not show a partial return. Pharmacy revenue is reported from Pharmacy (Phase 6); the old dispense endpoints and their Billing invoices are left as they were, but the screens are no longer linked.
+- **Inpatients:** a bill can be charged to the patient's admission instead of paid at the counter. The unpaid amount is posted to IPD as `ChargeType.PharmacyCharge`, and a return against such a bill posts a negative charge. `IPDBillingService.GenerateFinalBillAsync` bills pharmacy charges as one line, net of returns, because an invoice line's total clamps at zero and separate negative lines would silently drop every return. Posting the charge is best-effort after the bill is saved (the medicine has left either way); the bill stays marked `ChargedToAdmission`.
+- **Batches:** a line that names no batch is filled earliest-expiry-first across as many batches as it needs; each batch is its own bill line at its own price. `SalePlanner` does this, the discount and the GST as pure functions, and `ISellableStockReader` is the single read of "what can this store sell" used by both the item search and the sale.
+- **Money:** MRP includes tax, so GST is found inside the discounted amount (`GstMath.Inclusive`); the bill is settled in whole rupees with the paise shown as round-off. Cash over the amount due is change and is not recorded; card, UPI and bank payments may not exceed the bill. A balance may be left only for a registered patient (`AllowCredit`) or on an admission; a walk-in pays in full.
+- **Scheduled drugs:** a bill with an H1, X or narcotic line is refused without a patient name and a prescribing doctor — those are the columns of the statutory register (Phase 5 reads them from the sale lines).
+- **Returns** (`PharmacySaleReturn`, `SR` series) are entered against the bill's own lines, credited at the share of taxable amount and tax actually charged, settled in whole rupees and never for more than is left of the bill. The value comes off any balance due first; only the remainder is refunded. `Restock = false` credits the customer without putting unfit goods back on the shelf.
+- **Held bills** store the counter's cart as opaque JSON and post nothing; recalling one re-reads every item against current stock.
+- **`PharmacySettings`** (one row): GSTIN, drug licence number, name/address/footer for the bill, bill paper (A5, A4, 80 mm thermal), the counter's maximum discount, and the expiry-alert window. A bill prints as a tax invoice when a GSTIN is set.
+- **Product search matches an exact barcode** (`ProductBarcode.BarcodeValue`) as well as name, generic and code, so a scanner works in the item box unaided.
+
+**Consequences**
+New tables `pharmacy_sales`, `pharmacy_sale_lines`, `pharmacy_sale_payments`, `pharmacy_sale_returns`, `pharmacy_sale_return_lines`, `pharmacy_held_bills`, `pharmacy_settings` (migration `AddSalesAndSettings`, additive). Pharmacy now references IPD. Hospital finance reports built on Billing invoices do not include counter sales until Phase 6 adds the pharmacy's own figures; inpatient pharmacy charges still reach the hospital bill through the admission. `ExpiryAlertDays` is stored but the stock summary still uses its 30-day constant until Phase 5 wires it in.
+
+### ADR-093: Pharmacy Phase 1 (slices 3–4) — documents post stock through one engine; goods receipt and spreadsheet import
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+Stock came in one batch at a time through a form that knew nothing about who it was bought from or what it cost, and the ledger could not say which paper a movement came from. Every later phase adds another document that moves stock (a bill, a return, a transfer, an adjustment); writing the "balance and ledger move together, never below zero, retry on a concurrent change" logic once per document is how it goes wrong. A new pharmacy also arrives with thousands of products and a shelf of stock, and Product requires seven Masters references before one can be saved.
+
+**Decision**
+- **One posting engine.** `IStockPoster` is the only code that changes a balance for a document. It holds the request's balances so two lines on one batch see each other, and refuses an outward movement larger than what the store holds. `IPharmacyUnitOfWork.ExecuteAsync` commits a document with its movements in one save and, on a concurrent change to a balance, clears tracking and re-runs the work (three attempts, then `PHARMACY.STOCK_CONFLICT`). The old single-line receive and dispense keep their own code path.
+- **Ledger rows name their document.** `SourceType`, `SourceId`, `SourceNo` on `PharmacyStockTransaction`. `TransactionType` gains `PurchaseReturn`, `Sale`, `SaleReturn`, `TransferOut/In`, `AdjustmentIn/Out` now, since it is stored as text and costs nothing.
+- **Document numbers** come from one Postgres sequence per series (`DocumentSeries`: GRN, PH, SR, PO, PR, SP, ST, ADJ, SC, IND), all created in this migration, formatted `GRN-2026-000001` on the hospital-local year. The number is taken before the retry loop so a retry does not burn one.
+- **Goods receipt** (`PharmacyGoodsReceipt` + lines): supplier (Masters), supplier invoice number and date, quantities in packs with free quantity, purchase rate before tax, MRP, discount %, GST %. Posted on save and never edited. Each line upserts its batch in Products by batch number (`IProductBatchService.UpsertAsync`) and receives `(quantity + free) × units per pack`. Unit cost on the ledger is taxable amount ÷ units received, so free goods and discount lower it and tax is not counted as cost. The same supplier invoice number twice is refused (`PHARMACY.DUPLICATE_SUPPLIER_INVOICE`). Totals are worked out by `GstMath` (tax-exclusive for purchases, tax-inclusive for sales, round-off to the rupee).
+- **Batches are saved before the receipt**, in Products' own transaction. A batch with no stock is harmless; stock pointing at a batch that failed to save would not be.
+- **Import** (`POST pharmacy/imports/products`, 200 rows a call, `ValidateOnly` for a dry run): rows are independent and reported one by one. A product is matched by name (then SKU) and never duplicated; category, manufacturer, brand and unit are matched by name, created when new, defaulted when blank, with the catalog's lower two levels filled by a "General". Stock goes in as `OpeningStock`; a batch that already has opening stock in the store is skipped, so a file can be run twice. The spreadsheet is read in the browser (exceljs), with loose heading matching.
+- **Reading purchases needs `pharmacy.view-cost`**; entering one needs `pharmacy.create`.
+- **Frontend:** a pharmacy menu frame (`PharmacyPage`) replaces the tall page banner on pharmacy screens; `LookupInput` is the keyboard-first search box the entry screens share.
+
+**Consequences**
+New tables `pharmacy_goods_receipts`, `pharmacy_goods_receipt_lines`; three nullable columns and an index on the ledger; ten sequences. Additive: existing rows are untouched and older ledger rows simply have no source document. New configurations use `MapDocument`, which maps audit columns, xmin and snake_case names by convention. Pharmacy now references Masters (suppliers and the catalog masters). The receive-stock screen is no longer linked from the menu; its endpoint still exists.
+
+### ADR-092: Pharmacy Phase 1 (slice 2) — stores, and store / unit cost / unit price on every stock movement
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+A hospital pharmacy is several places — a main store, OP and IP counters, ward and theatre sub-stores — and the module had one implicit one. Every later phase writes ledger rows; adding a store to them afterwards would mean rewriting every row already written, so the dimension goes in now. The ledger also recorded quantity only: what a unit cost and sold for was recomputed from whatever the product's price happened to be when read, which makes margin and stock valuation for a past period wrong the moment a price changes. ADR-091 added per-batch, per-pack prices that nothing yet read.
+
+**Decision**
+- **`PharmacyStore`** (`pharmacy.pharmacy_stores`): code, name, `StoreType` (`MainStore/Pharmacy/SubStore`), `IsDefault`, `IsActive`. Owned by Pharmacy rather than reusing Masters' `Warehouse`: a store carries pharmacy meaning a generic address record doesn't, and being in this schema lets balances and the ledger hold a real foreign key to it. CRUD at `api/v1/pharmacy/stores` (no delete — a store with history is deactivated).
+- **Exactly one default store**, used whenever a request names none; kept by `StoreService`, which moves the flag in one save, never switches it off, and refuses to deactivate the default. Deliberately not a unique index on `is_default`: EF orders a swap's two UPDATEs by index values, cannot see that a filter exempts the `false` rows, and reads the swap as a circular dependency.
+- **Balance and ledger gain `StoreId`**; the balance's unique key becomes (store, product, batch). Every stock request takes an optional `StoreId`; every list an optional `StoreId` filter (omitted = all stores, where the by-product summary adds a batch held in two stores together but counts it once).
+- **Ledger rows snapshot `UnitCost` and `UnitPrice`** at write time. New `TransactionType.OpeningStock` for stock entered at go-live.
+- **`PharmacyPricing` is the one place a per-unit figure is worked out**: unit price = (batch selling rate, else batch MRP, else product selling price) ÷ units per pack; unit cost = (batch purchase rate, else product cost price) ÷ units per pack, null when neither is recorded. Unit figures keep four decimals; a line amount rounds to paise. Dispense bills from it, and `available-batches` returns the same `UnitPrice` so the counter shows what will be billed instead of recomputing it.
+- **Migration `AddStoresAndLedgerPricing`**: `dotnet ef`-generated, plus one hand-written block that seeds a default store (`MAIN`, "Main Pharmacy") in every tenant, assigns all existing balances and ledger rows to it, and drops the generated all-zero column default — run before the foreign keys are added.
+- The store picker stays hidden while a hospital has a single store.
+
+**Consequences**
+- Existing tenants must be migrated before Pharmacy runs on this build. Once migrated, an older build can no longer write stock (`store_id` is required and has no default).
+- Ledger rows written before this have no unit cost or price; nothing backfills them.
+- `UnitCost` is stored but not yet returned by any endpoint — it is the same sensitive figure as `CostPrice` and will be exposed with the reports, behind `pharmacy.view-cost`.
+- No transfers between stores yet: stock reaches a second store only by receiving into it. Transfers and indents are Phase 5.
+- A user is not tied to a store; anyone with `pharmacy.create` can receive into or dispense from any of them.
+- The single-line, quantity-only stock receipt still exists and now records unit cost from the batch's purchase rate. The multi-line goods receipt that sets those rates is the next slice.
+
+---
+
+### ADR-091: Pharmacy Phase 1 (slice 1) — drug profile on the product, MRP and rates per batch, priced per pack
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+Phase 1 of the Pharmacy build-out is the data foundation the billing counter, procurement and compliance phases all stand on. A product carried nothing a pharmacy needs beyond name, generic name and one MRP/cost/selling price; a batch carried only number and dates. In India MRP is printed per batch and the same medicine is routinely on the shelf at two MRPs, medicines are bought by the strip and sold by the tablet, and the schedule a drug falls under decides whether a sale needs a prescription and a register entry.
+
+**Decision**
+- **`Product` gains a drug profile**, set through `SetDrugProfile` rather than by growing `Create`/`Update` (same shape as `PatientVisit.SetAdmissionDetails`): `DosageForm?` (null = not a drug), `Strength`, `UnitsPerPack`, `Schedule` (`None/G/H/H1/X/Narcotic`), `StorageCondition`, `RackLocation`, `GstRatePercent?`. Enums are stored by name.
+- **One pack/unit rule for the whole module:** stock quantities are in units, MRP and rates are per pack, a unit's price is the pack price ÷ `UnitsPerPack`. `UnitsPerPack` defaults to 1, where pack and unit coincide — exactly how every existing product already behaves, so no data needs converting.
+- **`ProductBatch` gains `Mrp`, `PurchaseRate`, `SellingRate`**, all nullable and per pack. A batch without them falls back to the product's own prices. A selling rate above MRP is rejected in the validator and the domain.
+- **GST is a rate on the product**, not a `ProductTaxMapping` row. That entity (many taxes per product, each inclusive or not) stays in place but unused: one rate per HSN is how medicines are taxed, and a single field is what a purchase or sale line can snapshot.
+- **A batch's purchase rate is withheld like `CostPrice`** (ADR-077): null in every `ProductBatchesController` response for a caller without `pharmacy.view-cost`. Unlike ADR-077's accepted asymmetry, an update from such a caller keeps the stored rate (`keepPurchaseRate`), so saving back a form that was shown a withheld rate cannot wipe the real one.
+- Migration `AddDrugProfileAndBatchPrices` (`dotnet ef`-generated): additive columns only, defaults `None` / `RoomTemperature` / `1`.
+
+**Consequences**
+- Existing tenants must be migrated before the Products API runs on this build.
+- Nothing reads the new fields yet: dispense still prices from `Product.SellingPrice`. Pricing by batch and by unit arrives with the store and ledger changes in the next slice.
+- Rack location is one value per product, not per store.
+- The product-level `CostPrice` still has ADR-077's write-back problem (an editor without view-cost saves 0 over the real cost); not changed here.
+- Remaining Phase 1 slices: stores and cost/price on the ledger; multi-line goods receipt with supplier and rates; Excel import of products and opening stock.
+
+---
+
+### ADR-090: Pharmacy Phase 0 — stock is judged per product, pickers search and filter on the server, no schema change
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+First step of the Pharmacy build-out agreed on 2026-10-13 (Phase 0 "fix foundations", ahead of the data-model work in Phase 1). A code review of the ADR-027/028 module found it would fail at a real catalog's size: the product picker loaded one page of 100 products and searched inside it; the hub listed 50 batches with no paging and asked for a `productName` sort the repository silently ignored; "low stock" compared each batch, not the product's total, against the reorder level, and only for the first 100 products; the dispense batch picker listed expired and empty batches with no quantities. Smaller defects: expiry was checked against the UTC date, inactive products and batches could be dispensed, and every list did one Products/Patients lookup per row.
+
+**Decision**
+- **No migration.** Everything here is queries, rules and UI, so it deploys without a per-tenant database step. Denormalizing expiry/price onto Pharmacy's own rows is Phase 1's job.
+- **Product-level stock summary** (`GET /pharmacy/stock-balances/summary`). One row per active product: available (active, unexpired batches), expiring soon, expired, on hold (inactive batch), nearest expiry, and a `StockStatus` judged on available stock only. `OutOfStock` needs the product to have been stocked before or to have a reorder level; otherwise it is `NotStocked`, so a reorder list is not filled with catalog items the pharmacy never carries.
+- **Two paging paths, because product names live in Products and quantities in Pharmacy with no SQL join across modules.** Unfiltered, Products pages/searches/orders in SQL and only that page's balances are loaded. With a filter (`NeedsReorder`, `ExpiringSoon`, `Expired`) the status is only known after roll-up, so every active product is rolled up from lean unpaged projections (`IProductService.GetStockProfilesAsync`, `IPharmacyStockBalanceRepository.GetLinesAsync`) and paged in memory — bounded by catalog size, not transaction history.
+- **Dispensable batches** (`GET /pharmacy/stock-balances/{productId}/available-batches`): active, unexpired, in stock, earliest expiry first. The dispense form defaults to the first one (FEFO) and refuses a quantity above the batch's on-hand before checkout. Stock Receipt keeps the all-batches picker.
+- **Product picker searches on the server**, 25 matches at a time; Products' search now also matches `GenericName`.
+- **Rules tightened:** dispense and receipt reject inactive products/batches (`PHARMACY.PRODUCT_INACTIVE`, `PHARMACY.BATCH_INACTIVE`, 409). "Today" for expiry is the hospital's date (`MonthlySeries.HospitalTimeZone`), not UTC's.
+- **Bulk lookups** `IProductService.GetByIdsAsync` / `IProductBatchService.GetByIdsAsync` replace per-row calls on all four Pharmacy lists. Patients has no bulk lookup on its seam, so patient names are resolved once per distinct patient on the page.
+
+**Consequences**
+- The filtered summary costs three unpaged queries per request. Acceptable for one hospital's catalog; Phase 1's denormalized columns let it move into SQL.
+- An inactive product is absent from the summary even if it still has stock; that stock stays visible in the per-batch list and the ledger.
+- A cart line still draws on one batch; a quantity larger than the earliest batch holds needs a second line (the picker then offers the next batch). Splitting automatically is left to the counter-sale rebuild.
+- The expiring-soon window (30 days) is a constant on both sides (`PharmacyClock.ExpiringSoonWindowDays`, `StockBalanceTable`).
+- Still open from the review and unchanged here: no payment at the counter, one price per product, no tax, no returns, free-text admission reference.
+
+---
+
 ### ADR-089: Every visit gets an auto-generated OP No / IP No; non-OP visits record admission details
 **Date:** 2026-10-13
 **Status:** Accepted

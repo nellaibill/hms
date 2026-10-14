@@ -50,6 +50,7 @@ const ProfitReportPage = lazy(() => import('../pages/finance/ProfitReportPage'))
 const LaboratoryReportPage = lazy(() => import('../pages/finance/LaboratoryReportPage'));
 const RadiologyReportPage = lazy(() => import('../pages/finance/RadiologyReportPage'));
 const ConsultantReportPage = lazy(() => import('../pages/finance/ConsultantReportPage'));
+const PharmacyFinanceReportPage = lazy(() => import('../pages/finance/PharmacyReportPage'));
 const HrHubPage = lazy(() => import('../pages/hr/HrHubPage'));
 const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
 const ShiftCreatePage = lazy(() => import('../pages/hr/ShiftCreatePage'));
@@ -96,12 +97,38 @@ const BedOccupancyPage = lazy(() => import('../pages/ipd/BedOccupancyPage'));
 const AdmissionsListPage = lazy(() => import('../pages/ipd/AdmissionsListPage'));
 const AdmissionCreatePage = lazy(() => import('../pages/ipd/AdmissionCreatePage'));
 const AdmissionViewPage = lazy(() => import('../pages/ipd/AdmissionViewPage'));
-const PharmacyHubPage = lazy(() => import('../pages/pharmacy/PharmacyHubPage'));
+const PharmacyDashboardPage = lazy(() => import('../pages/pharmacy/PharmacyDashboardPage'));
+const PharmacyCurrentStockPage = lazy(() => import('../pages/pharmacy/CurrentStockPage'));
+const PharmacyReportsPage = lazy(() => import('../pages/pharmacy/ReportsPage'));
 const StockReceiptsListPage = lazy(() => import('../pages/pharmacy/StockReceiptsListPage'));
 const StockReceiptCreatePage = lazy(() => import('../pages/pharmacy/StockReceiptCreatePage'));
 const DispensesListPage = lazy(() => import('../pages/pharmacy/DispensesListPage'));
 const DispenseCreatePage = lazy(() => import('../pages/pharmacy/DispenseCreatePage'));
 const StockLedgerPage = lazy(() => import('../pages/pharmacy/StockLedgerPage'));
+const StoresPage = lazy(() => import('../pages/pharmacy/StoresPage'));
+const PurchasesListPage = lazy(() => import('../pages/pharmacy/PurchasesListPage'));
+const PurchaseEntryPage = lazy(() => import('../pages/pharmacy/PurchaseEntryPage'));
+const PurchaseDetailPage = lazy(() => import('../pages/pharmacy/PurchaseDetailPage'));
+const PharmacyImportPage = lazy(() => import('../pages/pharmacy/ImportPage'));
+const PharmacySetupPage = lazy(() => import('../pages/pharmacy/SetupPage'));
+const PharmacyCounterPage = lazy(() => import('../pages/pharmacy/CounterPage'));
+const PharmacySalesListPage = lazy(() => import('../pages/pharmacy/SalesListPage'));
+const PharmacySaleDetailPage = lazy(() => import('../pages/pharmacy/SaleDetailPage'));
+const PharmacySettingsPage = lazy(() => import('../pages/pharmacy/SettingsPage'));
+const PharmacyReorderPage = lazy(() => import('../pages/pharmacy/ReorderPage'));
+const PharmacyPurchaseOrdersListPage = lazy(() => import('../pages/pharmacy/PurchaseOrdersListPage'));
+const PharmacyPurchaseOrderPage = lazy(() => import('../pages/pharmacy/PurchaseOrderPage'));
+const PharmacyPurchaseReturnsListPage = lazy(() => import('../pages/pharmacy/PurchaseReturnsListPage'));
+const PharmacyPurchaseReturnEntryPage = lazy(() => import('../pages/pharmacy/PurchaseReturnEntryPage'));
+const PharmacySupplierAccountsPage = lazy(() => import('../pages/pharmacy/SupplierAccountsPage'));
+const PharmacyPrescriptionQueuePage = lazy(() => import('../pages/pharmacy/PrescriptionQueuePage'));
+const PharmacyIndentsPage = lazy(() => import('../pages/pharmacy/IndentsPage'));
+const PharmacyIndentEntryPage = lazy(() => import('../pages/pharmacy/IndentEntryPage'));
+const PharmacyStockAdjustmentsPage = lazy(() => import('../pages/pharmacy/StockAdjustmentsPage'));
+const PharmacyStockTransfersPage = lazy(() => import('../pages/pharmacy/StockTransfersPage'));
+const PharmacyStockCountPage = lazy(() => import('../pages/pharmacy/StockCountPage'));
+const PharmacyExpiryPage = lazy(() => import('../pages/pharmacy/ExpiryPage'));
+const PharmacyRegistersPage = lazy(() => import('../pages/pharmacy/RegistersPage'));
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
@@ -148,7 +175,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/engagement/messages': withSuspense(<MessagesAndNotificationsPage />),
   '/clinical/opd': withSuspense(<OpdPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
-  '/pharmacy': withSuspense(<PharmacyHubPage />),
+  '/pharmacy': withSuspense(<PharmacyDashboardPage />),
   '/diagnostics/lab': withSuspense(<CentralLaboratoryHubPage />),
 };
 
@@ -328,6 +355,7 @@ const financeRoutes = [
       { path: 'finance/accounts/reports/laboratory', element: withSuspense(<LaboratoryReportPage />) },
       { path: 'finance/accounts/reports/radiology', element: withSuspense(<RadiologyReportPage />) },
       { path: 'finance/accounts/reports/consultant', element: withSuspense(<ConsultantReportPage />) },
+      { path: 'finance/accounts/reports/pharmacy', element: withSuspense(<PharmacyFinanceReportPage />) },
       { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
     ],
   },
@@ -419,6 +447,9 @@ const pharmacyRoutes = [
   {
     element: <RequireFeatureRoute feature="pharmacy" />,
     children: [
+      // Raising an indent is ward work: it needs clinical-care rights, not pharmacy ones, so
+      // it sits outside the pharmacy.view gate. The API checks the permission itself.
+      { path: 'pharmacy/indents/new', element: withSuspense(<PharmacyIndentEntryPage />) },
       {
         element: <RequirePermissionRoute permission="pharmacy.view" />,
         children: [
@@ -427,6 +458,33 @@ const pharmacyRoutes = [
           { path: 'pharmacy/dispenses', element: withSuspense(<DispensesListPage />) },
           { path: 'pharmacy/dispenses/new', element: withSuspense(<DispenseCreatePage />) },
           { path: 'pharmacy/stock-ledger', element: withSuspense(<StockLedgerPage />) },
+          { path: 'pharmacy/stores', element: withSuspense(<StoresPage />) },
+          { path: 'pharmacy/purchases', element: withSuspense(<PurchasesListPage />) },
+          { path: 'pharmacy/purchases/new', element: withSuspense(<PurchaseEntryPage />) },
+          { path: 'pharmacy/purchases/:id', element: withSuspense(<PurchaseDetailPage />) },
+          { path: 'pharmacy/import', element: withSuspense(<PharmacyImportPage />) },
+          { path: 'pharmacy/setup', element: withSuspense(<PharmacySetupPage />) },
+          { path: 'pharmacy/counter', element: withSuspense(<PharmacyCounterPage />) },
+          { path: 'pharmacy/sales', element: withSuspense(<PharmacySalesListPage />) },
+          { path: 'pharmacy/sales/:id', element: withSuspense(<PharmacySaleDetailPage />) },
+          { path: 'pharmacy/settings', element: withSuspense(<PharmacySettingsPage />) },
+          { path: 'pharmacy/reorder', element: withSuspense(<PharmacyReorderPage />) },
+          { path: 'pharmacy/purchase-orders', element: withSuspense(<PharmacyPurchaseOrdersListPage />) },
+          { path: 'pharmacy/purchase-orders/new', element: withSuspense(<PharmacyPurchaseOrderPage />) },
+          { path: 'pharmacy/purchase-orders/:id', element: withSuspense(<PharmacyPurchaseOrderPage />) },
+          { path: 'pharmacy/purchase-returns', element: withSuspense(<PharmacyPurchaseReturnsListPage />) },
+          { path: 'pharmacy/purchase-returns/new', element: withSuspense(<PharmacyPurchaseReturnEntryPage />) },
+          { path: 'pharmacy/suppliers', element: withSuspense(<PharmacySupplierAccountsPage />) },
+          { path: 'pharmacy/prescriptions', element: withSuspense(<PharmacyPrescriptionQueuePage />) },
+          { path: 'pharmacy/indents', element: withSuspense(<PharmacyIndentsPage />) },
+          { path: 'pharmacy/adjustments', element: withSuspense(<PharmacyStockAdjustmentsPage />) },
+          { path: 'pharmacy/transfers', element: withSuspense(<PharmacyStockTransfersPage />) },
+          { path: 'pharmacy/stock-counts', element: withSuspense(<PharmacyStockCountPage />) },
+          { path: 'pharmacy/stock-counts/:id', element: withSuspense(<PharmacyStockCountPage />) },
+          { path: 'pharmacy/expiry', element: withSuspense(<PharmacyExpiryPage />) },
+          { path: 'pharmacy/registers', element: withSuspense(<PharmacyRegistersPage />) },
+          { path: 'pharmacy/stock', element: withSuspense(<PharmacyCurrentStockPage />) },
+          { path: 'pharmacy/reports', element: withSuspense(<PharmacyReportsPage />) },
         ],
       },
     ],
