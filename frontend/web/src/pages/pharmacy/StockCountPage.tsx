@@ -67,7 +67,7 @@ function CountList() {
         </p>
       )}
       <p className="text-sm text-muted-foreground">
-        Count when the counter is quiet. Differences are worked out against the books as they stand when you post, so a sale made after a shelf was counted will show as a shortage.
+        Count when the counter is quiet. Differences are worked out against the books as they stand when you post, so stock sold before a shelf is counted is fine, but a sale made after a shelf was counted will show as excess.
       </p>
 
       {isPending && (

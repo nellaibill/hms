@@ -65,7 +65,7 @@ export default function StockAdjustmentsPage() {
       }),
     onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: ['pharmacy'] });
-      toast({ title: `Adjustment saved · ${saved.adjustmentNo}`, description: `${ADJUSTMENT_REASON_LABELS[saved.reason]} · ${saved.lineCount} lines`, variant: 'success' });
+      toast({ title: `Adjustment saved · ${saved.adjustmentNo}`, description: `${ADJUSTMENT_REASON_LABELS[saved.reason]} · ${saved.lineCount} ${saved.lineCount === 1 ? 'line' : 'lines'}`, variant: 'success' });
       setEntering(false);
       setLines([]);
       setRemarks('');
@@ -226,7 +226,7 @@ export default function StockAdjustmentsPage() {
                       <tr onClick={() => setOpenId(open ? null : item.id)} className="cursor-pointer hover:bg-muted/40">
                         <td className="px-2 py-2 text-muted-foreground">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
                         <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-medium text-primary">{item.adjustmentNo}</td>
-                        <td className="px-3 py-2">{dateLabel(item.adjustmentDate)}</td>
+                        <td className="whitespace-nowrap px-3 py-2">{dateLabel(item.adjustmentDate)}</td>
                         <td className="px-3 py-2 text-muted-foreground">{item.storeName}</td>
                         <td className="px-3 py-2">
                           <Badge variant="secondary">{ADJUSTMENT_REASON_LABELS[item.reason]}</Badge>

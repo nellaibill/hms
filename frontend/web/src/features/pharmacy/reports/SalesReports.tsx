@@ -76,12 +76,12 @@ export function DailySalesReport({ period, storeId }: PeriodReportProps) {
       error={error}
       tiles={
         <>
-          <StatTile label="Bills" value={sum(rows, (day) => day.bills)} icon={ReceiptText} />
-          <StatTile label="Sales" value={rupees(sum(rows, (day) => day.salesAmount))} icon={ShoppingBag} />
-          <StatTile label="Returns" value={rupees(sum(rows, (day) => day.returnAmount))} tone="warning" icon={Undo2} />
-          <StatTile label="Net sales" value={rupees(netSales)} tone="success" icon={IndianRupee} />
-          <StatTile label="Collected" value={rupees(sum(rows, (day) => day.collected))} hint={netSales !== sum(rows, (day) => day.collected) ? 'Credit and IP bills are collected later' : undefined} icon={Wallet} />
-          {withCost && <StatTile label="Margin" value={rupees(margin)} hint="Net of returns" tone="success" icon={Percent} />}
+          <StatTile compact label="Bills" value={sum(rows, (day) => day.bills)} icon={ReceiptText} />
+          <StatTile compact label="Sales" value={rupees(sum(rows, (day) => day.salesAmount))} icon={ShoppingBag} />
+          <StatTile compact label="Returns" value={rupees(sum(rows, (day) => day.returnAmount))} tone="warning" icon={Undo2} />
+          <StatTile compact label="Net sales" value={rupees(netSales)} tone="success" icon={IndianRupee} />
+          <StatTile compact label="Collected" value={rupees(sum(rows, (day) => day.collected))} hint={netSales !== sum(rows, (day) => day.collected) ? 'Credit and IP bills are collected later' : undefined} icon={Wallet} />
+          {withCost && <StatTile compact label="Margin" value={rupees(margin)} hint="Net of returns" tone="success" icon={Percent} />}
         </>
       }
     >
@@ -175,10 +175,10 @@ export function SalesRegisterReport({ period, storeId }: PeriodReportProps) {
       error={error}
       tiles={
         <>
-          <StatTile label="Bills" value={bills.length} icon={ReceiptText} />
-          <StatTile label="Billed" value={rupees(sum(bills, (bill) => bill.netAmount))} icon={ShoppingBag} />
-          <StatTile label="Returns" value={rupees(sum(returns, (row) => row.returnAmount))} tone="warning" icon={Undo2} />
-          <StatTile label="Still due" value={rupees(sum(bills, (bill) => bill.balanceDue))} hint="Includes inpatient credit" tone="warning" icon={Wallet} />
+          <StatTile compact label="Bills" value={bills.length} icon={ReceiptText} />
+          <StatTile compact label="Billed" value={rupees(sum(bills, (bill) => bill.netAmount))} icon={ShoppingBag} />
+          <StatTile compact label="Returns" value={rupees(sum(returns, (row) => row.returnAmount))} tone="warning" icon={Undo2} />
+          <StatTile compact label="Still due" value={rupees(sum(bills, (bill) => bill.balanceDue))} hint="Includes inpatient credit" tone="warning" icon={Wallet} />
         </>
       }
     >
@@ -217,7 +217,7 @@ export function ProductSalesReport({ period, storeId }: PeriodReportProps) {
   const columns: ReportColumn<ProductSalesRow>[] = [
     { header: '#', value: (row) => rows.indexOf(row) + 1, kind: 'count' },
     { header: 'Product', value: (row) => row.productName },
-    { header: 'Bills', value: (row) => row.bills, kind: 'count', total: true },
+    { header: 'Bills', value: (row) => row.bills, kind: 'count' },
     { header: 'Sold', value: (row) => row.quantitySold, kind: 'quantity', total: true },
     { header: 'Returned', value: (row) => row.quantityReturned, kind: 'quantity', total: true },
     { header: 'Net qty', value: (row) => row.netQuantity, kind: 'quantity', total: true },
@@ -258,10 +258,10 @@ export function ProductSalesReport({ period, storeId }: PeriodReportProps) {
       }
       tiles={
         <>
-          <StatTile label="Products sold" value={rows.filter((row) => row.netQuantity > 0).length} icon={ShoppingBag} />
-          <StatTile label="Units, net" value={sum(rows, (row) => row.netQuantity).toLocaleString('en-IN')} icon={ReceiptText} />
-          <StatTile label="Sales value" value={rupees(sum(rows, (row) => row.amount))} tone="success" icon={IndianRupee} />
-          {withCost && <StatTile label="Margin" value={rupees(margin)} hint={taxable > 0 ? `${((margin / taxable) * 100).toFixed(1)}% of taxable value` : undefined} tone="success" icon={Percent} />}
+          <StatTile compact label="Products sold" value={rows.filter((row) => row.netQuantity > 0).length} icon={ShoppingBag} />
+          <StatTile compact label="Units, net" value={sum(rows, (row) => row.netQuantity).toLocaleString('en-IN')} icon={ReceiptText} />
+          <StatTile compact label="Sales value" value={rupees(sum(rows, (row) => row.amount))} tone="success" icon={IndianRupee} />
+          {withCost && <StatTile compact label="Margin" value={rupees(margin)} hint={taxable > 0 ? `${((margin / taxable) * 100).toFixed(1)}% of taxable value` : undefined} tone="success" icon={Percent} />}
         </>
       }
     >
@@ -313,7 +313,8 @@ export function CollectionsReport({ period, storeId }: PeriodReportProps) {
     { header: 'Net', value: (day) => day.net, kind: 'money', total: true },
   ];
 
-  const netByMethod = (method: SalePaymentMethod) => sum(data ?? [], (row) => (row.method === method ? row.net : 0));
+  const byMethod = (method: SalePaymentMethod, pick: (row: CollectionRow) => number) => sum(data ?? [], (row) => (row.method === method ? pick(row) : 0));
+  const tileMethods = SALE_PAYMENT_METHODS.filter((method) => method === 'Cash' || (data ?? []).some((row) => row.method === method));
 
   return (
     <ReportFrame
@@ -325,11 +326,21 @@ export function CollectionsReport({ period, storeId }: PeriodReportProps) {
       error={error}
       tiles={
         <>
-          {SALE_PAYMENT_METHODS.map((method) => (
-            <StatTile key={method} label={PAYMENT_METHOD_LABELS[method]} value={rupees(netByMethod(method))} icon={method === 'Cash' ? Banknote : Wallet} />
-          ))}
-          <StatTile label="Refunded" value={rupees(sum(days, (day) => day.refunded))} tone="warning" icon={Undo2} />
-          <StatTile label="Net collected" value={rupees(sum(days, (day) => day.net))} tone="success" icon={IndianRupee} />
+          {tileMethods.map((method) => {
+            const refunded = byMethod(method, (row) => row.refunded);
+            return (
+              <StatTile
+                compact
+                key={method}
+                label={PAYMENT_METHOD_LABELS[method]}
+                value={rupees(byMethod(method, (row) => row.net))}
+                hint={refunded > 0 ? `${rupees(byMethod(method, (row) => row.received))} taken, ${rupees(refunded)} refunded` : 'Net of refunds'}
+                icon={method === 'Cash' ? Banknote : Wallet}
+              />
+            );
+          })}
+          <StatTile compact label="Refunded" value={rupees(sum(days, (day) => day.refunded))} tone="warning" icon={Undo2} />
+          <StatTile compact label="Net collected" value={rupees(sum(days, (day) => day.net))} tone="success" icon={IndianRupee} />
         </>
       }
     >

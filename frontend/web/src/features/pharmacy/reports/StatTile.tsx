@@ -20,18 +20,25 @@ interface StatTileProps {
   icon?: LucideIcon;
   /** Makes the tile a link to the screen behind the figure. */
   to?: string;
+  /** Smaller figure and no icon, for the tiles above a report where space is shared with the report list. */
+  compact?: boolean;
 }
 
 /** One headline figure — on the dashboard, and above each report's table. */
-export function StatTile({ label, value, hint, tone = 'default', icon: Icon, to }: StatTileProps) {
+export function StatTile({ label, value, hint, tone = 'default', icon: Icon, to, compact }: StatTileProps) {
   const body = (
     <>
       <div className="min-w-0">
         <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className={cn('mt-0.5 truncate text-xl font-semibold tabular-nums leading-tight', TONE[tone].value)}>{value}</p>
-        {hint && <p className="mt-0.5 truncate text-xs text-muted-foreground">{hint}</p>}
+        <p
+          className={cn('mt-0.5 truncate font-semibold tabular-nums leading-tight', compact ? 'text-lg' : 'text-xl', TONE[tone].value)}
+          title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}
+        >
+          {value}
+        </p>
+        {hint && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{hint}</p>}
       </div>
-      {Icon && (
+      {Icon && !compact && (
         <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md print:hidden', TONE[tone].icon)}>
           <Icon className="h-4.5 w-4.5" />
         </span>

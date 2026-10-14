@@ -58,10 +58,10 @@ export function StockValuationReport({ storeId }: StockReportProps) {
       tiles={
         data && (
           <>
-            <StatTile label="Products in stock" value={data.rows.length} icon={Boxes} />
-            {withCost && <StatTile label="Stock at cost" value={rupees(data.totalCostValue)} tone="success" icon={IndianRupee} />}
-            <StatTile label="Stock at MRP" value={rupees(data.totalMrpValue)} icon={Tag} />
-            {withCost && <StatTile label="Expired, at cost" value={rupees(data.expiredCostValue)} tone={(data.expiredCostValue ?? 0) > 0 ? 'destructive' : 'default'} to="/pharmacy/expiry" icon={AlertTriangle} />}
+            <StatTile compact label="Products in stock" value={data.rows.length} icon={Boxes} />
+            {withCost && <StatTile compact label="Stock at cost" value={rupees(data.totalCostValue)} tone="success" icon={IndianRupee} />}
+            <StatTile compact label="Stock at MRP" value={rupees(data.totalMrpValue)} icon={Tag} />
+            {withCost && <StatTile compact label="Expired, at cost" value={rupees(data.expiredCostValue)} tone={(data.expiredCostValue ?? 0) > 0 ? 'destructive' : 'default'} to="/pharmacy/expiry" icon={AlertTriangle} />}
           </>
         )
       }
@@ -123,13 +123,13 @@ export function NonMovingStockReport({ storeId }: StockReportProps) {
       }
       tiles={
         <>
-          <StatTile label="Products" value={rows.length} icon={Hourglass} />
-          <StatTile label="Never sold" value={rows.filter((row) => !row.lastSoldOn).length} tone="warning" icon={AlertTriangle} />
-          {withCost && <StatTile label="Tied up, at cost" value={rupees(sum(rows, (row) => row.costValue))} tone="warning" icon={IndianRupee} />}
+          <StatTile compact label="Products" value={rows.length} icon={Hourglass} />
+          <StatTile compact label="Never sold" value={rows.filter((row) => !row.lastSoldOn).length} tone="warning" icon={AlertTriangle} />
+          {withCost && <StatTile compact label="Tied up, at cost" value={rupees(sum(rows, (row) => row.costValue))} tone="warning" icon={IndianRupee} />}
         </>
       }
     >
-      <ReportTable columns={columns} rows={rows} rowKey={(row) => row.productId} emptyText={`Everything on the shelf has sold within the last ${days} days.`} />
+      <ReportTable columns={columns} rows={rows} rowKey={(row) => row.productId} emptyText={`Nothing on the shelf has gone ${days} days or more without a sale.`} />
     </ReportFrame>
   );
 }

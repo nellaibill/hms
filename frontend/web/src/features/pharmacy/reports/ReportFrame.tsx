@@ -56,7 +56,7 @@ export function ReportFrame({ title, caption, sections, filename, isPending, err
         </p>
       ) : (
         <>
-          {tiles && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">{tiles}</div>}
+          {tiles && <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">{tiles}</div>}
           {children}
         </>
       )}

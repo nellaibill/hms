@@ -19,6 +19,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ import { PAYMENT_METHOD_LABELS } from '@/features/pharmacy/common/labels';
 import { StatTile } from '@/features/pharmacy/reports/StatTile';
 import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { StoreSelect } from '@/features/pharmacy/stores';
+import { cn } from '@/lib/utils';
 import { pharmacyApi } from '@/services/apiClient';
 
 const compactRupees = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 });
@@ -49,6 +51,28 @@ function Panel({ title, action, children }: { title: string; action?: React.Reac
       </div>
       {children}
     </section>
+  );
+}
+
+type Tone = 'default' | 'warning' | 'destructive';
+
+const ROW_TONE: Record<Tone, string> = {
+  default: 'text-foreground',
+  warning: 'text-warning',
+  destructive: 'text-destructive',
+};
+
+/** One line of a panel: what it is, how many, and a link to deal with it. */
+function AlertRow({ icon: Icon, label, value, hint, tone = 'default', to }: { icon: LucideIcon; label: string; value: React.ReactNode; hint?: string; tone?: Tone; to: string }) {
+  return (
+    <Link to={to} className="flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-accent">
+      <Icon className={cn('h-4 w-4 shrink-0', tone === 'default' ? 'text-muted-foreground' : ROW_TONE[tone])} />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm text-foreground">{label}</span>
+        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+      </span>
+      <span className={cn('text-base font-semibold tabular-nums', ROW_TONE[tone])}>{value}</span>
+    </Link>
   );
 }
 
@@ -132,7 +156,7 @@ export default function PharmacyDashboardPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6">
             <StatTile label="Today's sales" value={rupees(data.today.netSales)} hint={versus(data.today.netSales, data.yesterday.netSales) ?? 'Net of returns'} tone="success" icon={IndianRupee} to="/pharmacy/reports?r=daily" />
             <StatTile label="Bills today" value={data.today.bills} hint={`${data.yesterday.bills} yesterday`} icon={ReceiptText} to="/pharmacy/sales" />
             <StatTile label="Collected today" value={rupees(data.today.collected)} hint={data.todayCollections.map((mode) => `${PAYMENT_METHOD_LABELS[mode.method]} ${compactRupees.format(mode.amount)}`).join(' · ') || 'Nothing yet'} icon={Wallet} to="/pharmacy/reports?r=collections" />
@@ -186,11 +210,11 @@ export default function PharmacyDashboardPage() {
 
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             <Panel title="On the shelf" action={<Link to="/pharmacy/stock" className="text-xs font-medium text-primary hover:underline">Current stock</Link>}>
-              <div className="grid grid-cols-2 gap-2">
-                <StatTile label="Low stock" value={data.stock.lowStock} tone={data.stock.lowStock > 0 ? 'warning' : 'default'} icon={PackageMinus} to="/pharmacy/reorder" />
-                <StatTile label="Out of stock" value={data.stock.outOfStock} tone={data.stock.outOfStock > 0 ? 'destructive' : 'default'} icon={AlertTriangle} to="/pharmacy/reorder" />
-                <StatTile label="Expired batches" value={data.stock.expiredBatches} hint={data.stock.expiredValue ? `${rupees(data.stock.expiredValue)} at cost` : undefined} tone={data.stock.expiredBatches > 0 ? 'destructive' : 'default'} icon={CalendarClock} to="/pharmacy/expiry" />
-                <StatTile label={`Expiring in ${data.stock.expiryAlertDays} days`} value={data.stock.expiringSoonBatches} tone={data.stock.expiringSoonBatches > 0 ? 'warning' : 'default'} icon={CalendarClock} to="/pharmacy/expiry" />
+              <div className="flex flex-col divide-y divide-border">
+                <AlertRow label="Low stock" hint="At or below the reorder level" value={data.stock.lowStock} tone={data.stock.lowStock > 0 ? 'warning' : 'default'} icon={PackageMinus} to="/pharmacy/reorder" />
+                <AlertRow label="Out of stock" value={data.stock.outOfStock} tone={data.stock.outOfStock > 0 ? 'destructive' : 'default'} icon={AlertTriangle} to="/pharmacy/reorder" />
+                <AlertRow label="Expired batches on the shelf" hint={data.stock.expiredValue ? `${rupees(data.stock.expiredValue)} at cost` : undefined} value={data.stock.expiredBatches} tone={data.stock.expiredBatches > 0 ? 'destructive' : 'default'} icon={CalendarClock} to="/pharmacy/expiry" />
+                <AlertRow label={`Expiring within ${data.stock.expiryAlertDays} days`} value={data.stock.expiringSoonBatches} tone={data.stock.expiringSoonBatches > 0 ? 'warning' : 'default'} icon={CalendarClock} to="/pharmacy/expiry" />
               </div>
               <p className="text-xs text-muted-foreground">
                 {data.stock.productsInStock} products in stock{data.stock.stockValue != null ? ` · worth ${rupees(data.stock.stockValue)} at cost` : ''}
@@ -198,17 +222,13 @@ export default function PharmacyDashboardPage() {
             </Panel>
 
             <Panel title="Waiting to be done">
-              <div className="grid grid-cols-2 gap-2">
-                <StatTile label="IP indents to issue" value={data.pending.pendingIndents} tone={data.pending.pendingIndents > 0 ? 'warning' : 'default'} icon={ClipboardList} to="/pharmacy/indents" />
-                <StatTile label="Prescriptions waiting" value={waitingPrescriptions ?? '—'} hint="Today's OPD" tone={waitingPrescriptions ? 'warning' : 'default'} icon={Stethoscope} to="/pharmacy/prescriptions" />
-                <StatTile label="Orders awaited" value={data.pending.openPurchaseOrders} icon={Truck} to="/pharmacy/purchase-orders" />
-                <StatTile label="Customer dues" value={rupees(data.pending.customerDues)} hint={`${data.pending.billsWithDues} bills`} tone={data.pending.customerDues > 0 ? 'warning' : 'default'} icon={Wallet} to="/pharmacy/sales" />
+              <div className="flex flex-col divide-y divide-border">
+                <AlertRow label="IP indents to issue" value={data.pending.pendingIndents} tone={data.pending.pendingIndents > 0 ? 'warning' : 'default'} icon={ClipboardList} to="/pharmacy/indents" />
+                <AlertRow label="OPD prescriptions not yet billed" hint="Today" value={waitingPrescriptions ?? '—'} tone={waitingPrescriptions ? 'warning' : 'default'} icon={Stethoscope} to="/pharmacy/prescriptions" />
+                <AlertRow label="Purchase orders awaited" value={data.pending.openPurchaseOrders} icon={Truck} to="/pharmacy/purchase-orders" />
+                <AlertRow label="Customer dues" hint={`${data.pending.billsWithDues} ${data.pending.billsWithDues === 1 ? 'bill' : 'bills'}, not counting IP credit`} value={rupees(data.pending.customerDues)} tone={data.pending.customerDues > 0 ? 'warning' : 'default'} icon={Wallet} to="/pharmacy/sales" />
+                {data.pending.supplierPayable != null && <AlertRow label="Owed to suppliers" value={rupees(data.pending.supplierPayable)} icon={Truck} to="/pharmacy/suppliers" />}
               </div>
-              {data.pending.supplierPayable != null && (
-                <Link to="/pharmacy/suppliers" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
-                  Owed to suppliers: <span className="font-medium text-foreground">{rupees(data.pending.supplierPayable)}</span>
-                </Link>
-              )}
             </Panel>
 
             <Panel title="Best sellers, last 30 days" action={<Link to="/pharmacy/reports?r=items" className="text-xs font-medium text-primary hover:underline">Item-wise report</Link>}>
@@ -218,10 +238,16 @@ export default function PharmacyDashboardPage() {
                 <ol className="flex flex-col divide-y divide-border text-sm">
                   {data.topProducts.map((product, index) => (
                     <li key={product.productId} className="flex items-center gap-2 py-1.5">
-                      <span className="w-4 text-xs text-muted-foreground">{index + 1}</span>
-                      <span className="min-w-0 flex-1 truncate font-medium text-foreground">{product.productName}</span>
-                      <span className="text-xs text-muted-foreground">{quantity(product.netQuantity)} units</span>
-                      <span className="w-24 text-right tabular-nums">{rupees(product.amount)}</span>
+                      <span className="w-4 shrink-0 text-xs text-muted-foreground">{index + 1}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-foreground" title={product.productName}>
+                          {product.productName}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {quantity(product.netQuantity)} units · {product.bills} {product.bills === 1 ? 'bill' : 'bills'}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right tabular-nums">{rupees(product.amount)}</span>
                     </li>
                   ))}
                 </ol>

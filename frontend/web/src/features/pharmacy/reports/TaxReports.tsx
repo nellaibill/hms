@@ -73,13 +73,13 @@ export function GstReport({ period, storeId }: PeriodReportProps) {
       tiles={
         data && (
           <>
-            <StatTile label="Taxable sales" value={rupees(sum(data.sales, (row) => row.taxableAmount) - sum(data.saleReturns, (row) => row.taxableAmount))} hint="Net of returns" icon={ArrowUpFromLine} />
-            <StatTile label="Output tax" value={rupees(data.outputTax)} hint="On sales, less returns" icon={IndianRupee} />
+            <StatTile compact label="Taxable sales" value={rupees(sum(data.sales, (row) => row.taxableAmount) - sum(data.saleReturns, (row) => row.taxableAmount))} hint="Net of returns" icon={ArrowUpFromLine} />
+            <StatTile compact label="Output tax" value={rupees(data.outputTax)} hint="On sales, less returns" icon={IndianRupee} />
             {showPurchases && (
               <>
-                <StatTile label="Taxable purchases" value={rupees(sum(data.purchases, (row) => row.taxableAmount) - sum(data.purchaseReturns, (row) => row.taxableAmount))} hint="Net of returns" icon={ArrowDownToLine} />
-                <StatTile label="Input tax" value={rupees(data.inputTax)} hint="On purchases, less returns" icon={IndianRupee} />
-                <StatTile label={net != null && net < 0 ? 'Input credit left' : 'Net payable'} value={rupees(Math.abs(net ?? 0))} hint="Pharmacy only" tone={net != null && net < 0 ? 'success' : 'warning'} icon={Scale} />
+                <StatTile compact label="Taxable purchases" value={rupees(sum(data.purchases, (row) => row.taxableAmount) - sum(data.purchaseReturns, (row) => row.taxableAmount))} hint="Net of returns" icon={ArrowDownToLine} />
+                <StatTile compact label="Input tax" value={rupees(data.inputTax)} hint="On purchases, less returns" icon={IndianRupee} />
+                <StatTile compact label={net != null && net < 0 ? 'Input credit left' : 'Net payable'} value={rupees(Math.abs(net ?? 0))} hint="Pharmacy only" tone={net != null && net < 0 ? 'success' : 'warning'} icon={Scale} />
               </>
             )}
           </>
@@ -166,10 +166,10 @@ export function PurchaseRegisterReport({ period, storeId }: PeriodReportProps) {
       error={error}
       tiles={
         <>
-          <StatTile label="Invoices" value={purchases.length} icon={FileText} />
-          <StatTile label="Purchases" value={rupees(bought)} icon={PackagePlus} />
-          <StatTile label="Returns" value={rupees(sentBack)} tone="warning" icon={Undo2} />
-          <StatTile label="Net purchases" value={rupees(bought - sentBack)} tone="success" icon={IndianRupee} />
+          <StatTile compact label="Invoices" value={purchases.length} icon={FileText} />
+          <StatTile compact label="Purchases" value={rupees(bought)} icon={PackagePlus} />
+          <StatTile compact label="Returns" value={rupees(sentBack)} tone="warning" icon={Undo2} />
+          <StatTile compact label="Net purchases" value={rupees(bought - sentBack)} tone="success" icon={IndianRupee} />
         </>
       }
     >
