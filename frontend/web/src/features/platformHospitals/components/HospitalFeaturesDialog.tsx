@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, type TenantListItemResponse } from '@hms/shared';
-import { Building2, ChevronDown, ChevronRight, Info, LayoutGrid, Search } from 'lucide-react';
+import { Building2, Check, ChevronDown, ChevronRight, LayoutGrid, Link2, Lock, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,63 +24,97 @@ interface HospitalFeaturesDialogProps {
 }
 
 const checkboxClassName =
-  'h-4 w-4 shrink-0 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60';
+  'h-4 w-4 shrink-0 rounded border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60';
 
-function IndeterminateCheckbox({ checked, indeterminate, disabled, onChange, label }: { checked: boolean; indeterminate: boolean; disabled: boolean; onChange: () => void; label: string }) {
+function IndeterminateCheckbox({ checked, indeterminate, onChange, label }: { checked: boolean; indeterminate: boolean; onChange: () => void; label: string }) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.indeterminate = indeterminate;
   }, [indeterminate]);
 
   return (
-    <label className="flex items-center gap-2 text-sm text-muted-foreground">
-      <input ref={ref} type="checkbox" checked={checked} disabled={disabled} onChange={onChange} className={checkboxClassName} />
+    <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
+      <input ref={ref} type="checkbox" checked={checked} onChange={onChange} className={checkboxClassName} />
       {label}
     </label>
   );
 }
+
+/** What Save will do to a feature, so a pending change is visible on its card before saving. */
+type PendingChange = 'on' | 'off' | null;
 
 function FeatureCard({
   featureKey,
   checked,
   mandatory,
   requires,
+  pending,
   onToggle,
 }: {
   featureKey: string;
   checked: boolean;
   mandatory: boolean;
   requires: string[];
+  pending: PendingChange;
   onToggle: () => void;
 }) {
   const meta = FEATURE_META[featureKey];
   const category = FEATURE_CATEGORIES.find((c) => c.id === featureCategoryOf(featureKey))!;
   const Icon = meta?.icon ?? category.icon;
 
+  const body = (
+    <>
+      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', category.tint)}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium leading-tight text-foreground">
+          {featureLabel(featureKey)}
+          {mandatory && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground" title="Required for every hospital">
+              <Lock className="h-2.5 w-2.5" />
+              Always on
+            </span>
+          )}
+          {pending && (
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide',
+                pending === 'on' ? 'bg-success/15 text-success' : 'bg-destructive/10 text-destructive',
+              )}
+            >
+              {pending === 'on' ? 'Turning on' : 'Turning off'}
+            </span>
+          )}
+        </span>
+        {meta && <span className="text-xs leading-snug text-muted-foreground">{meta.description}</span>}
+        {requires.length > 0 && (
+          <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Link2 className="h-3 w-3 shrink-0" />
+            Needs {requires.map(featureLabel).join(', ')}
+          </span>
+        )}
+      </span>
+    </>
+  );
+
+  // A required feature can't be switched off, so it gets a lock and no checkbox. A disabled
+  // checkbox read as broken rather than "always on".
+  if (mandatory) {
+    return (
+      <div className="flex h-full items-start gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-3">{body}</div>
+    );
+  }
+
   return (
     <label
       className={cn(
-        'flex items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors',
-        mandatory ? 'cursor-not-allowed' : 'cursor-pointer hover:border-primary/40 hover:bg-accent/40',
-        checked && !mandatory && 'border-primary/30',
+        'flex h-full cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+        checked ? 'border-primary/60 bg-primary/[0.04] shadow-sm' : 'border-border bg-card hover:border-primary/40 hover:bg-accent/40',
       )}
     >
-      <input type="checkbox" checked={checked} disabled={mandatory} onChange={onToggle} className={cn(checkboxClassName, 'mt-1')} />
-      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md', category.tint)}>
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex flex-wrap items-center gap-x-2 text-sm font-medium text-foreground">
-          {featureLabel(featureKey)}
-          {mandatory && (
-            <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-medium">
-              Required
-            </Badge>
-          )}
-        </span>
-        {meta && <span className="text-xs text-muted-foreground">{meta.description}</span>}
-        {requires.length > 0 && <span className="text-xs text-muted-foreground">Requires {requires.map(featureLabel).join(', ')}</span>}
-      </span>
+      {body}
+      <input type="checkbox" checked={checked} onChange={onToggle} className={cn(checkboxClassName, 'mt-0.5')} aria-label={featureLabel(featureKey)} />
     </label>
   );
 }
@@ -107,7 +141,9 @@ export function HospitalFeaturesDialog({ hospital, onClose }: HospitalFeaturesDi
     if (data) setEnabledFeatures(new Set(initialFeatures));
   }, [data, initialFeatures]);
 
-  const isDirty = enabledFeatures.size !== initialFeatures.size || [...enabledFeatures].some((key) => !initialFeatures.has(key));
+  const turningOn = [...enabledFeatures].filter((key) => !initialFeatures.has(key));
+  const turningOff = [...initialFeatures].filter((key) => !enabledFeatures.has(key));
+  const isDirty = turningOn.length > 0 || turningOff.length > 0;
 
   const visibleKeys = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -119,7 +155,7 @@ export function HospitalFeaturesDialog({ hospital, onClose }: HospitalFeaturesDi
 
   const groups = groupByCategory(visibleKeys);
   const shownGroups = activeCategory === 'all' ? groups : groups.filter((group) => group.category.id === activeCategory);
-  const shownCount = shownGroups.reduce((total, group) => total + group.keys.length, 0);
+  const enabledIn = (keys: string[]) => keys.filter((key) => enabledFeatures.has(key)).length;
 
   function setFeature(key: string, on: boolean) {
     setEnabledFeatures((current) => withFeatureToggled(current, key, on, dependencies, mandatory));
@@ -143,116 +179,141 @@ export function HospitalFeaturesDialog({ hospital, onClose }: HospitalFeaturesDi
   }
 
   const apiError = updateMutation.error instanceof ApiError ? updateMutation.error.message : null;
-  const registeredOn = new Date(hospital.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const registeredOn = new Date(hospital.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const railItems = [
+    { id: 'all', label: 'All features', icon: LayoutGrid, keys: visibleKeys },
+    ...groups.map((g) => ({ id: g.category.id, label: g.category.label, icon: g.category.icon, keys: g.keys })),
+  ];
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent aria-labelledby="hospital-features-title" className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="px-6 pb-4 pt-6 text-left">
-          <DialogTitle id="hospital-features-title">Manage Features — {hospital.hospitalName}</DialogTitle>
-          <DialogDescription>
-            Select the modules and features available for this hospital. Enabling a new module provisions its schema immediately; disabling one only
-            revokes access, it never deletes data. Changes apply only to this tenant.
-          </DialogDescription>
+      <DialogContent aria-labelledby="hospital-features-title" className="flex h-[90vh] w-[calc(100%-2rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="flex-row items-start gap-4 space-y-0 border-b border-border px-6 py-5 pr-12 text-left">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Building2 className="h-5 w-5" />
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <DialogTitle id="hospital-features-title" className="flex flex-wrap items-center gap-2 text-lg">
+              Manage features
+              <span className="text-muted-foreground">·</span>
+              <span className="truncate">{hospital.hospitalName}</span>
+              <Badge variant={hospital.status === 'Active' ? 'success' : 'secondary'}>{hospital.status}</Badge>
+            </DialogTitle>
+            <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <span>
+                Code <span className="font-mono text-foreground">{hospital.hospitalCode}</span>
+              </span>
+              <span>{hospital.subscriptionTier} plan</span>
+              <span>Registered {registeredOn}</span>
+            </p>
+            <DialogDescription className="hidden text-xs sm:block">
+              Choose the modules this hospital can use. Turning one on sets up its data straight away; turning one off only hides it and never deletes
+              data. Only this hospital is affected.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="px-6 pb-4">
-          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted/40 p-4">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Building2 className="h-5 w-5" />
-            </span>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">{hospital.hospitalName}</span>
-                <Badge variant={hospital.status === 'Active' ? 'success' : 'secondary'}>{hospital.status}</Badge>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                <span>Code: {hospital.hospitalCode}</span>
-                <span>Registered on: {registeredOn}</span>
-                <span>Plan: {hospital.subscriptionTier}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {featuresQuery.isPending && <p className="px-6 pb-6 text-sm text-muted-foreground">Loading…</p>}
+        {featuresQuery.isPending && <p className="px-6 py-6 text-sm text-muted-foreground">Loading features…</p>}
 
         {data && (
-          <div className="flex min-h-0 flex-1 flex-col gap-4 border-t border-border px-6 py-4 md:flex-row">
-            <nav aria-label="Feature categories" className="flex shrink-0 flex-col gap-3 md:w-60">
+          <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+            <nav aria-label="Feature categories" className="flex shrink-0 flex-col gap-3 border-b border-border bg-muted/20 p-4 md:w-64 md:border-b-0 md:border-r">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search features…" aria-label="Search features" className="pl-9" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search features…" aria-label="Search features" className="h-9 bg-background pl-9" />
               </div>
               <ul className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-                {[{ id: 'all', label: 'All Features', icon: LayoutGrid, count: visibleKeys.length }, ...groups.map((g) => ({ id: g.category.id, label: g.category.label, icon: g.category.icon, count: g.keys.length }))].map(
-                  (item) => (
+                {railItems.map((item) => {
+                  const active = activeCategory === item.id;
+                  return (
                     <li key={item.id}>
                       <button
                         type="button"
                         onClick={() => setActiveCategory(item.id)}
-                        aria-current={activeCategory === item.id}
+                        aria-current={active}
                         className={cn(
-                          'flex w-full items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm transition-colors',
-                          activeCategory === item.id ? 'bg-primary font-medium text-primary-foreground' : 'text-foreground hover:bg-accent',
+                          'flex w-full items-center gap-2.5 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm transition-colors',
+                          active ? 'bg-primary font-medium text-primary-foreground shadow-sm' : 'text-foreground hover:bg-accent',
                         )}
                       >
                         <item.icon className="h-4 w-4 shrink-0" />
                         <span className="flex-1">{item.label}</span>
-                        <span className={cn('rounded-full px-2 py-0.5 text-xs', activeCategory === item.id ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground')}>
-                          {item.count}
+                        <span className={cn('text-xs tabular-nums', active ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                          {enabledIn(item.keys)}/{item.keys.length}
                         </span>
                       </button>
                     </li>
-                  ),
-                )}
+                  );
+                })}
               </ul>
             </nav>
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-base font-semibold text-foreground">Features ({shownCount})</h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  Select:
-                  <Button type="button" variant="outline" size="sm" onClick={() => setEnabledFeatures(new Set(data.allFeatures))}>
-                    All
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setEnabledFeatures(new Set(mandatory))}>
-                    None
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setEnabledFeatures(recommendedFeatures(data.allFeatures, mandatory))}>
-                    Recommended
-                  </Button>
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">{enabledFeatures.size}</span> of {data.allFeatures.length} features on ·{' '}
+                  {mandatory.length} always on
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="hidden text-xs text-muted-foreground sm:inline">Quick select</span>
+                  <div className="inline-flex overflow-hidden rounded-md border border-border">
+                    {[
+                      { label: 'All', onClick: () => setEnabledFeatures(new Set(data.allFeatures)) },
+                      { label: 'Recommended', onClick: () => setEnabledFeatures(recommendedFeatures(data.allFeatures, mandatory)) },
+                      { label: 'Required only', onClick: () => setEnabledFeatures(new Set(mandatory)) },
+                    ].map((option, index) => (
+                      <button
+                        key={option.label}
+                        type="button"
+                        onClick={option.onClick}
+                        className={cn('whitespace-nowrap px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent', index > 0 && 'border-l border-border')}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
-                {shownGroups.length === 0 && <p className="text-sm text-muted-foreground">No features match &ldquo;{search}&rdquo;.</p>}
+              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-5">
+                {shownGroups.length === 0 && (
+                  <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">No features match &ldquo;{search}&rdquo;.</p>
+                )}
                 {shownGroups.map(({ category, keys }) => {
                   const optionalKeys = keys.filter((key) => !mandatory.includes(key));
-                  const enabledCount = optionalKeys.filter((key) => enabledFeatures.has(key)).length;
+                  const enabledOptional = enabledIn(optionalKeys);
                   const isCollapsed = collapsed.has(category.id);
                   const Chevron = isCollapsed ? ChevronRight : ChevronDown;
 
                   return (
-                    <section key={category.id} className="rounded-lg border border-border bg-muted/20">
-                      <div className="flex items-center justify-between gap-2 px-3 py-2">
+                    <section key={category.id} className="rounded-xl border border-border bg-card">
+                      <div className={cn('flex items-center justify-between gap-2 px-4 py-2.5', !isCollapsed && 'border-b border-border')}>
                         <button type="button" onClick={() => toggleCollapsed(category.id)} aria-expanded={!isCollapsed} className="flex items-center gap-2 text-sm font-semibold text-foreground">
                           <Chevron className="h-4 w-4 text-muted-foreground" />
-                          <category.icon className="h-4 w-4 text-primary" />
+                          <span className={cn('flex h-6 w-6 items-center justify-center rounded-md', category.tint)}>
+                            <category.icon className="h-3.5 w-3.5" />
+                          </span>
                           {category.label}
-                          <span className="font-normal text-muted-foreground">({keys.length})</span>
+                          <span className="text-xs font-normal text-muted-foreground">
+                            {enabledIn(keys)} of {keys.length} on
+                          </span>
                         </button>
-                        <IndeterminateCheckbox
-                          label="Select all"
-                          checked={optionalKeys.length > 0 && enabledCount === optionalKeys.length}
-                          indeterminate={enabledCount > 0 && enabledCount < optionalKeys.length}
-                          disabled={optionalKeys.length === 0}
-                          onChange={() => setMany(optionalKeys, enabledCount !== optionalKeys.length)}
-                        />
+                        {optionalKeys.length > 0 ? (
+                          <IndeterminateCheckbox
+                            label="Select all"
+                            checked={enabledOptional === optionalKeys.length}
+                            indeterminate={enabledOptional > 0 && enabledOptional < optionalKeys.length}
+                            onChange={() => setMany(optionalKeys, enabledOptional !== optionalKeys.length)}
+                          />
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Lock className="h-3.5 w-3.5" />
+                            All required
+                          </span>
+                        )}
                       </div>
                       {!isCollapsed && (
-                        <div className="grid grid-cols-1 gap-2 px-3 pb-3 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-2.5 p-3 sm:grid-cols-2">
                           {keys.map((key) => (
                             <FeatureCard
                               key={key}
@@ -260,6 +321,7 @@ export function HospitalFeaturesDialog({ hospital, onClose }: HospitalFeaturesDi
                               checked={enabledFeatures.has(key)}
                               mandatory={mandatory.includes(key)}
                               requires={dependencies[key] ?? []}
+                              pending={turningOn.includes(key) ? 'on' : turningOff.includes(key) ? 'off' : null}
                               onToggle={() => setFeature(key, !enabledFeatures.has(key))}
                             />
                           ))}
@@ -273,26 +335,38 @@ export function HospitalFeaturesDialog({ hospital, onClose }: HospitalFeaturesDi
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-t border-border px-6 py-4">
+        <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-6 py-3.5">
           {apiError && (
             <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {apiError}
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex max-w-xl items-start gap-2 rounded-md bg-info/10 px-3 py-2 text-xs text-foreground">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
-              <span>
-                <span className="font-medium">These settings are tenant-specific.</span> Enable only the modules required for this hospital. You can change these
-                anytime.
-              </span>
-            </div>
+            <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+              {isDirty ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-warning" />
+                  <span>
+                    <span className="font-medium text-foreground">
+                      {turningOn.length + turningOff.length} unsaved change{turningOn.length + turningOff.length === 1 ? '' : 's'}
+                    </span>
+                    {turningOn.length > 0 && <> · {turningOn.length} turning on</>}
+                    {turningOff.length > 0 && <> · {turningOff.length} turning off</>}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 text-success" />
+                  No unsaved changes
+                </>
+              )}
+            </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
                 Cancel
               </Button>
               <Button onClick={handleSave} disabled={!data || !isDirty || updateMutation.isPending}>
-                {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+                {updateMutation.isPending ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
           </div>
