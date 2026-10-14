@@ -153,6 +153,74 @@ public class BrandingServiceTests
         result.ErrorCode.Should().Be(BrandingErrorCodes.InvalidLogoDisplay);
     }
 
+    [Fact]
+    public async Task UpdateAsync_WithoutPrintSettings_ReturnsTheA4PortraitDefault()
+    {
+        var result = await _sut.UpdateAsync(ValidRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PrintSettings.Default.Should().Be(new PrintPageSetup { PaperSize = "A4", Orientation = "portrait", MarginMm = 12 });
+        result.Value.PrintSettings.Documents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_PersistsPrintSettings_AndAnOlderClientLeavesThemAlone()
+    {
+        var print = new PrintSettings
+        {
+            Default = new PrintPageSetup { PaperSize = PrintPaperSizes.A3, Orientation = PrintOrientations.Landscape, MarginMm = 8 },
+            Documents = new()
+            {
+                [PrintDocumentTypes.Invoice] = new PrintDocumentSetup { PaperSize = PrintPaperSizes.A5 },
+            },
+        };
+
+        await _sut.UpdateAsync(ValidRequest() with { PrintSettings = print }, actorId: null, CancellationToken.None);
+        // A client that predates print settings sends none — the stored ones must survive it.
+        var result = await _sut.UpdateAsync(ValidRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PrintSettings.Default.Should().Be(print.Default);
+        result.Value.PrintSettings.Documents.Should().ContainKey(PrintDocumentTypes.Invoice)
+            .WhoseValue.Should().Be(new PrintDocumentSetup { PaperSize = PrintPaperSizes.A5, Orientation = null });
+    }
+
+    [Theory]
+    [InlineData("A6", "portrait", 12, null, null)]
+    [InlineData("a4", "portrait", 12, null, null)]
+    [InlineData("A4", "sideways", 12, null, null)]
+    [InlineData("A4", "portrait", -1, null, null)]
+    [InlineData("A4", "portrait", 41, null, null)]
+    [InlineData("A4", "portrait", 12, "dischargeCard", "A4")]
+    [InlineData("A4", "portrait", 12, PrintDocumentTypes.LabReport, "Tabloid")]
+    public async Task UpdateAsync_RejectsInvalidPrintSettings(string paperSize, string orientation, int marginMm, string? document, string? documentPaperSize)
+    {
+        var print = new PrintSettings
+        {
+            Default = new PrintPageSetup { PaperSize = paperSize, Orientation = orientation, MarginMm = marginMm },
+            Documents = document is null ? new() : new() { [document] = new PrintDocumentSetup { PaperSize = documentPaperSize } },
+        };
+
+        var result = await _sut.UpdateAsync(ValidRequest() with { PrintSettings = print }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BrandingErrorCodes.InvalidPrintSettings);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RejectsAnInvalidDocumentOrientation()
+    {
+        var print = new PrintSettings
+        {
+            Documents = new() { [PrintDocumentTypes.Report] = new PrintDocumentSetup { Orientation = "upside-down" } },
+        };
+
+        var result = await _sut.UpdateAsync(ValidRequest() with { PrintSettings = print }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BrandingErrorCodes.InvalidPrintSettings);
+    }
+
     private static UpdateBrandingRequest ValidRequest() => new()
     {
         HospitalName = "Hospital",

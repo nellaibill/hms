@@ -13,6 +13,7 @@ import { PageBanner } from '@/components/PageBanner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast-context';
 import { branding } from '@/config/branding';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { downloadBlob } from '@/features/patientImport';
 import { bloodGroupLabel } from '@/features/patients/bloodGroupLabel';
@@ -433,6 +434,7 @@ export default function PatientReportsPage() {
        * only once printing starts. See index.css's `.print-target` rule and
        * InvoicePrintTemplate for the same convention elsewhere in this app. */}
       <div className="print-target hidden bg-white p-8 text-black print:block" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+        <PrintPageStyle document="report" />
         <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-4 text-center">
           <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
           <span className="text-xs text-gray-600">Patient Report</span>

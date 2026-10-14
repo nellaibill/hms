@@ -122,6 +122,10 @@ namespace HMS.Database.Migrations.Branding.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("print_logo_path");
 
+                    b.Property<string>("PrintSettingsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("print_settings");
+
                     b.Property<string>("TokensDarkJson")
                         .IsRequired()
                         .HasColumnType("jsonb")

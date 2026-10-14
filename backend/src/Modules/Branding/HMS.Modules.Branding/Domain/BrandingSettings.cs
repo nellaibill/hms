@@ -33,6 +33,10 @@ internal class BrandingSettings : Entity
     /// <summary>Serialized Contracts.LogoDisplaySettings; null until an admin first saves one
     /// (the mapping then returns the defaults).</summary>
     public string? LogoDisplayJson { get; private set; }
+
+    /// <summary>Serialized Contracts.PrintSettings; null until an admin first saves one (the
+    /// mapping then returns the defaults).</summary>
+    public string? PrintSettingsJson { get; private set; }
     public string FontFamily { get; private set; } = null!;
     public string FontSizeScale { get; private set; } = null!;
     public string IconSizeScale { get; private set; } = null!;
@@ -160,6 +164,14 @@ internal class BrandingSettings : Entity
         Guard.AgainstNullOrWhiteSpace(logoDisplayJson, nameof(logoDisplayJson));
 
         LogoDisplayJson = logoDisplayJson;
+        MarkUpdated(updatedBy);
+    }
+
+    public void UpdatePrintSettings(string printSettingsJson, Guid? updatedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(printSettingsJson, nameof(printSettingsJson));
+
+        PrintSettingsJson = printSettingsJson;
         MarkUpdated(updatedBy);
     }
 }

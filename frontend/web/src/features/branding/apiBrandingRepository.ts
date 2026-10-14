@@ -2,6 +2,7 @@ import type { BrandingConfigDto, LogoDisplaySettingsDto } from '@hms/shared';
 import { env } from '@/config/env';
 import { brandingApi } from '@/services/apiClient';
 import { mockBrandingStore, readRememberedLogos, rememberLogos } from './mockBrandingStore';
+import { normalizePrintSettings } from './printPageSetup';
 import {
   DEFAULT_LOGO_DISPLAY,
   FONT_FAMILIES,
@@ -64,6 +65,7 @@ function fromDto(dto: BrandingConfigDto): BrandingConfig {
     printLogoUrl: resolveLogoUrl(dto.printLogoUrl),
     faviconUrl: resolveLogoUrl(dto.faviconUrl),
     logoDisplay: toLogoDisplay(dto.logoDisplay),
+    printSettings: normalizePrintSettings(dto.printSettings),
     fontFamily: toFontFamily(dto.fontFamily),
     fontSizeScale: toFontSizeScale(dto.fontSizeScale),
     iconSizeScale: toIconSizeScale(dto.iconSizeScale),
@@ -119,6 +121,7 @@ export const apiBrandingRepository = {
       tokensLight: merged.tokensLight,
       tokensDark: merged.tokensDark,
       logoDisplay: merged.logoDisplay,
+      printSettings: merged.printSettings,
     });
     return fromDto(dto);
   },
