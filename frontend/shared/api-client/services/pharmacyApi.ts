@@ -15,6 +15,10 @@ import type {
   SaleReturnResponse,
   CreateDispenseCartRequest,
   CreateGoodsReceiptRequest,
+  CreateIndentRequest,
+  IndentListQuery,
+  IndentResponse,
+  PrescriptionQueueItemResponse,
   CreatePurchaseReturnRequest,
   CreateSupplierPaymentRequest,
   PurchaseOrderListQuery,
@@ -389,6 +393,39 @@ export class PharmacyApi {
 
   async recordSupplierPayment(supplierId: string, request: CreateSupplierPaymentRequest): Promise<SupplierPaymentResponse> {
     const response = await this.client.post<SupplierPaymentResponse>(API_ROUTES.pharmacy.supplierAccounts.payments(supplierId), request);
+    return response.data;
+  }
+
+  /** Completed OPD consultations with medicines prescribed on the given days (today by default). */
+  async getPrescriptionQueue(fromDate?: string, toDate?: string): Promise<PrescriptionQueueItemResponse[]> {
+    const response = await this.client.get<PrescriptionQueueItemResponse[]>(API_ROUTES.pharmacy.prescriptions, { query: { fromDate, toDate } });
+    return response.data;
+  }
+
+  /** The pharmacy's catalog as clinical staff may search it: items and what is in stock, no cost. */
+  async searchCatalog(search: string, storeId?: string, limit = 15): Promise<CounterItemResponse[]> {
+    const response = await this.client.get<CounterItemResponse[]>(API_ROUTES.pharmacy.catalog, { query: { search, storeId, limit } });
+    return response.data;
+  }
+
+  async getIndents(query: IndentListQuery = {}): Promise<Paged<IndentResponse>> {
+    const response = await this.client.get<IndentResponse[]>(API_ROUTES.pharmacy.indents.base, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getIndentById(id: string): Promise<IndentResponse> {
+    const response = await this.client.get<IndentResponse>(API_ROUTES.pharmacy.indents.byId(id));
+    return response.data;
+  }
+
+  /** Raises a ward's request for an admitted patient's medicines. */
+  async createIndent(request: CreateIndentRequest): Promise<IndentResponse> {
+    const response = await this.client.post<IndentResponse>(API_ROUTES.pharmacy.indents.base, request);
+    return response.data;
+  }
+
+  async cancelIndent(id: string): Promise<IndentResponse> {
+    const response = await this.client.post<IndentResponse>(API_ROUTES.pharmacy.indents.cancel(id));
     return response.data;
   }
 }

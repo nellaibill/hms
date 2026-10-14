@@ -1,4 +1,4 @@
-import type { DrugSchedule, PurchaseOrderStatus, PurchaseReturnReason, StockSourceType, SupplierPaymentMethod, TransactionType } from '@hms/shared';
+import type { DrugSchedule, IndentStatus, PurchaseOrderStatus, PurchaseReturnReason, StockSourceType, SupplierPaymentMethod, TransactionType } from '@hms/shared';
 
 /** How each kind of stock movement reads on screen, and which way it moves stock. */
 export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
@@ -73,4 +73,11 @@ export const SUPPLIER_PAYMENT_LABELS: Record<SupplierPaymentMethod, string> = {
   Cheque: 'Cheque',
   BankTransfer: 'Bank transfer',
   Upi: 'UPI',
+};
+
+export const INDENT_STATUS: Record<IndentStatus, { label: string; variant: BadgeVariant }> = {
+  Pending: { label: 'To issue', variant: 'warning' },
+  PartlyIssued: { label: 'Partly issued', variant: 'warning' },
+  Issued: { label: 'Issued', variant: 'success' },
+  Cancelled: { label: 'Cancelled', variant: 'secondary' },
 };

@@ -248,3 +248,23 @@ public record BillableInvestigationResponse
     public OpdInvestigationDepartment Department { get; init; }
     public OpdInvestigationPriority Priority { get; init; }
 }
+
+/// <summary>
+/// One completed consultation that left the doctor's room with medicines prescribed — what
+/// the pharmacy needs to fill it: who the patient is, who prescribed, and the drug lines.
+/// Read by HMS.Modules.Pharmacy for its prescription queue.
+/// </summary>
+public record OpdPrescriptionQueueItemResponse
+{
+    public Guid ConsultationId { get; init; }
+    public Guid PatientId { get; init; }
+    public string Uhid { get; init; } = string.Empty;
+    public string PatientName { get; init; } = string.Empty;
+    public string PhoneNumber { get; init; } = string.Empty;
+    public string ConsultantName { get; init; } = string.Empty;
+    public string DepartmentName { get; init; } = string.Empty;
+
+    /// <summary>When the consultation was completed (the note's last change).</summary>
+    public DateTime PrescribedAt { get; init; }
+    public IReadOnlyList<OpdConsultationPrescriptionResponse> Prescriptions { get; init; } = [];
+}

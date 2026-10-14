@@ -1,11 +1,12 @@
-import { ApiError, type CounterItemResponse, type CreateSaleRequest, type HeldBillResponse, type SalePaymentMethod, type SaleResponse } from '@hms/shared';
+import { ApiError, type CounterItemResponse, type CreateSaleRequest, type HeldBillResponse, type IndentResponse, type PrescriptionQueueItemResponse, type SalePaymentMethod, type SaleResponse } from '@hms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, BedDouble, FilePlus2, Loader2, PauseCircle, Printer, Store, Trash2, UserRound, X } from 'lucide-react';
+import { AlertTriangle, BedDouble, ClipboardList, FilePlus2, Loader2, PauseCircle, Printer, Stethoscope, Store, Trash2, UserRound, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/AuthContext';
-import { expiryLabel, money, quantity, toNumber } from '@/features/pharmacy/common/format';
+import { expiryLabel, money, quantity, todayIso, toNumber } from '@/features/pharmacy/common/format';
 import { REGISTER_SCHEDULES, SCHEDULE_BADGE } from '@/features/pharmacy/common/labels';
 import { LookupInput, type LookupInputHandle } from '@/features/pharmacy/common/LookupInput';
 import { useHotkeys } from '@/features/pharmacy/common/useHotkeys';
@@ -13,6 +14,7 @@ import { BillPrint } from '@/features/pharmacy/counter/BillPrint';
 import { type CartLine, type CounterPatient, type HeldCart, packBreakdown, previewBill } from '@/features/pharmacy/counter/cart';
 import { BillSavedDialog, HeldBillsDialog, SubstitutesDialog } from '@/features/pharmacy/counter/CounterDialogs';
 import { PatientLookup } from '@/features/pharmacy/counter/PatientLookup';
+import { loadCounterPatient } from '@/features/pharmacy/counter/patients';
 import { KeyHint, PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { StoreSelect, useStoresQuery } from '@/features/pharmacy/stores';
 import { cn } from '@/lib/utils';
@@ -55,6 +57,12 @@ export default function CounterPage() {
   const [toAdmission, setToAdmission] = useState(false);
   const [heldBillId, setHeldBillId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
+
+  // A bill started from the prescription queue or the indent queue arrives with these.
+  const [params, setParams] = useSearchParams();
+  const [prescription, setPrescription] = useState<PrescriptionQueueItemResponse | null>(null);
+  const [rxMatches, setRxMatches] = useState<(CounterItemResponse | null)[]>([]);
+  const [indent, setIndent] = useState<IndentResponse | null>(null);
 
   const [savedBill, setSavedBill] = useState<SaleResponse | null>(null);
   const [printBill, setPrintBill] = useState<SaleResponse | null>(null);
@@ -113,7 +121,88 @@ export default function CounterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [admission]);
 
+  const rxId = params.get('rx');
+  const rxDate = params.get('date') ?? todayIso();
+  const indentId = params.get('indent');
+
+  // From the prescription queue: the patient and doctor are set, and each prescribed drug is
+  // looked up in the catalog so the likeliest item is one click from the bill. The doctor
+  // wrote free text, so the match is offered, never added on its own.
+  useEffect(() => {
+    if (!rxId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const queue = await pharmacyApi.getPrescriptionQueue(rxDate, rxDate);
+        const found = queue.find((item) => item.consultationId === rxId);
+        if (!found || cancelled) {
+          if (!cancelled) setError('That prescription could not be found.');
+          return;
+        }
+        const [loadedPatient, matches] = await Promise.all([
+          loadCounterPatient(found.patientId),
+          Promise.all(found.drugs.map((drug) => pharmacyApi.searchCounterItems(drug.drugName, storeId || undefined, 5).then((items) => items[0] ?? null).catch(() => null))),
+        ]);
+        if (cancelled) return;
+        setPatient(loadedPatient);
+        setDoctorName(found.doctorName);
+        setPrescription(found);
+        setRxMatches(matches);
+      } catch {
+        if (!cancelled) setError('That prescription could not be loaded.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Loaded once per prescription; changing store afterwards does not re-match.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rxId, rxDate]);
+
+  // From the indent queue: the patient, and every item still to be issued at its pending
+  // quantity. These are exact catalog items, so they go straight onto the bill.
+  useEffect(() => {
+    if (!indentId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const found = await pharmacyApi.getIndentById(indentId);
+        const pending = found.lines.filter((line) => line.pendingQuantity > 0);
+        const [loadedPatient, items] = await Promise.all([loadCounterPatient(found.patientId), pharmacyApi.lookupCounterItems(pending.map((line) => line.productId), found.storeId)]);
+        if (cancelled) return;
+        const byId = new Map(items.map((item) => [item.productId, item]));
+        setPatient(loadedPatient);
+        setDoctorName(found.doctorName ?? '');
+        setIndent(found);
+        setLines(
+          pending.flatMap((line) => {
+            const item = byId.get(line.productId);
+            return item ? [{ key: crypto.randomUUID(), item, batchId: '', quantity: String(line.pendingQuantity), discount: '' }] : [];
+          }),
+        );
+      } catch {
+        if (!cancelled) setError('That indent could not be loaded.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [indentId]);
+
+  function addPrescribed(index: number) {
+    const item = rxMatches[index];
+    const drug = prescription?.drugs[index];
+    if (!item || !drug) return;
+    if (lines.some((line) => line.item.productId === item.productId)) return;
+    const units = drug.suggestedQuantity ?? (item.unitsPerPack > 1 ? item.unitsPerPack : 1);
+    setLines((current) => [...current, { key: crypto.randomUUID(), item, batchId: '', quantity: String(units), discount: '' }]);
+  }
+
   function resetBill() {
+    setPrescription(null);
+    setRxMatches([]);
+    setIndent(null);
+    if (params.has('rx') || params.has('indent')) setParams({}, { replace: true });
     setPatient(null);
     setCustomerName('');
     setCustomerPhone('');
@@ -222,6 +311,8 @@ export default function CounterPage() {
       customerPhone: customerPhone.trim() || undefined,
       doctorName: doctorName.trim() || undefined,
       admissionId: toAdmission ? admission?.id : undefined,
+      prescriptionId: prescription?.consultationId,
+      indentId: indent?.id,
       discountPercent,
       lines: lines.map((line, index) => ({
         productId: line.item.productId,
@@ -435,6 +526,48 @@ export default function CounterPage() {
               </div>
             )}
           </section>
+
+          {indent && (
+            <p className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
+              <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
+              Issuing indent <span className="font-mono text-xs">{indent.indentNo}</span>
+              <span className="text-muted-foreground">{[indent.location, indent.isUrgent ? 'urgent' : null].filter(Boolean).join(' · ')}</span>
+            </p>
+          )}
+
+          {prescription && (
+            <section className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Stethoscope className="h-4 w-4 text-primary" />
+                Prescription from {prescription.doctorName}
+                <span className="font-normal text-muted-foreground">Check each match against what the doctor wrote before adding it.</span>
+              </p>
+              <ul className="mt-2 grid gap-1.5 text-sm md:grid-cols-2">
+                {prescription.drugs.map((drug, index) => {
+                  const match = rxMatches[index];
+                  const added = match ? lines.some((line) => line.item.productId === match.productId) : false;
+                  return (
+                    <li key={index} className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-foreground">{drug.drugName}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {[drug.dose, drug.frequency, drug.durationDays ? `${drug.durationDays} days` : null, drug.suggestedQuantity != null ? `${quantity(drug.suggestedQuantity)} units` : null].filter(Boolean).join(' · ') || 'No dose details'}
+                        </span>
+                        <span className={cn('block truncate text-xs', match ? (match.availableQuantity > 0 ? 'text-success' : 'text-destructive') : 'text-warning')}>
+                          {match ? `→ ${match.productName} · ${match.availableQuantity > 0 ? `${quantity(match.availableQuantity)} in stock` : 'out of stock'}` : 'No match in the catalog — search for it below'}
+                        </span>
+                      </span>
+                      {match && (
+                        <Button size="sm" variant={added ? 'outline' : 'secondary'} className="h-7 shrink-0" disabled={added} onClick={() => addPrescribed(index)}>
+                          {added ? 'Added' : 'Add'}
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           <div className="flex items-end gap-2">
             <LookupInput<CounterItemResponse>

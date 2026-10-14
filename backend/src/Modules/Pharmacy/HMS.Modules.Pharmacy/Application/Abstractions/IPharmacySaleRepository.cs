@@ -15,6 +15,9 @@ internal interface IPharmacySaleRepository
     /// <summary>Headers only, newest first, with each bill's line count.</summary>
     Task<(IReadOnlyList<(PharmacySale Sale, int LineCount)> Items, int TotalCount)> GetPagedAsync(SaleListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>The bills made against each of the given prescriptions (OPD consultation ids).</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<PrescriptionBillResponse>>> GetBillsForPrescriptionsAsync(IReadOnlyCollection<Guid> prescriptionIds, CancellationToken cancellationToken);
+
     Task AddReturnAsync(PharmacySaleReturn saleReturn, CancellationToken cancellationToken);
 
     Task<PharmacySaleReturn?> GetReturnByIdAsync(Guid id, CancellationToken cancellationToken);

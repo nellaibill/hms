@@ -247,3 +247,22 @@ internal class CreateSupplierPaymentRequestValidator : AbstractValidator<CreateS
         RuleFor(x => x.Remarks).MaximumLength(500);
     }
 }
+
+internal class CreateIndentRequestValidator : AbstractValidator<CreateIndentRequest>
+{
+    public CreateIndentRequestValidator()
+    {
+        RuleFor(x => x.AdmissionId).NotEmpty();
+        RuleFor(x => x.Remarks).MaximumLength(500);
+        RuleFor(x => x.Lines).NotEmpty().WithMessage("Add at least one item to the indent.");
+        RuleFor(x => x.Lines).Must(l => l.Count <= 100).WithMessage("An indent can hold at most 100 lines.");
+        RuleFor(x => x.Lines).Must(lines => lines.Select(l => l.ProductId).Distinct().Count() == lines.Count)
+            .WithMessage("Each product can appear once on an indent.");
+        RuleForEach(x => x.Lines).ChildRules(line =>
+        {
+            line.RuleFor(l => l.ProductId).NotEmpty();
+            line.RuleFor(l => l.Quantity).GreaterThan(0);
+            line.RuleFor(l => l.Instructions).MaximumLength(200);
+        });
+    }
+}

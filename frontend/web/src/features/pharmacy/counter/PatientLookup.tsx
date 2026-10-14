@@ -3,20 +3,11 @@ import { forwardRef } from 'react';
 import { patientsApi } from '@/services/apiClient';
 import { LookupInput, type LookupInputHandle } from '../common/LookupInput';
 import type { CounterPatient } from './cart';
+import { toCounterPatient } from './patients';
 
 async function searchPatients(term: string): Promise<Patient[]> {
   const page = await patientsApi.getPatients({ search: term, pageSize: 12 });
   return page.items;
-}
-
-function toCounterPatient(patient: Patient): CounterPatient {
-  return {
-    id: patient.id,
-    name: `${patient.firstName} ${patient.lastName}`.trim(),
-    uhid: patient.uhid,
-    phone: patient.primaryPhone || undefined,
-    allergies: (patient.allergies ?? []).map((allergy) => allergy.specify || allergy.allergyType).filter(Boolean),
-  };
 }
 
 interface PatientLookupProps {

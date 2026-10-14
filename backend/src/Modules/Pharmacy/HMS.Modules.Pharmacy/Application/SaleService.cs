@@ -48,6 +48,7 @@ internal class SaleService : ISaleService
     private readonly IPatientService _patientService;
     private readonly IAdmissionChargePoster _admissionChargePoster;
     private readonly IPharmacySettingsRepository _settingsRepository;
+    private readonly IPharmacyIndentRepository _indentRepository;
 
     public SaleService(
         IPharmacySaleRepository repository,
@@ -58,9 +59,11 @@ internal class SaleService : ISaleService
         IProductService productService,
         IPatientService patientService,
         IAdmissionChargePoster admissionChargePoster,
-        IPharmacySettingsRepository settingsRepository)
+        IPharmacySettingsRepository settingsRepository,
+        IPharmacyIndentRepository indentRepository)
     {
         _settingsRepository = settingsRepository;
+        _indentRepository = indentRepository;
         _repository = repository;
         _storeRepository = storeRepository;
         _unitOfWork = unitOfWork;
@@ -117,6 +120,25 @@ internal class SaleService : ISaleService
             if (admissionProblem is not null)
             {
                 return Fail(PharmacyErrorCodes.InvalidAdmission, admissionProblem);
+            }
+        }
+
+        if (request.IndentId is { } requestedIndentId)
+        {
+            var indent = await _indentRepository.GetByIdAsync(requestedIndentId, cancellationToken);
+            if (indent is null)
+            {
+                return Fail(PharmacyErrorCodes.NotFound, "The indent was not found.");
+            }
+
+            if (!indent.IsOpen)
+            {
+                return Fail(PharmacyErrorCodes.InvalidState, $"Indent {indent.IndentNo} is already {indent.Status.ToString().ToLowerInvariant()}.");
+            }
+
+            if (indent.PatientId != request.PatientId)
+            {
+                return Fail(PharmacyErrorCodes.InvalidState, $"Indent {indent.IndentNo} is for {indent.PatientName}, not the patient on this bill.");
             }
         }
 
@@ -205,6 +227,19 @@ internal class SaleService : ISaleService
                 }
 
                 await _repository.AddAsync(sale, cancellationToken);
+
+                if (request.IndentId is { } indentId)
+                {
+                    // Read inside the unit of work: on a retry the tracked indent is gone.
+                    var indent = await _indentRepository.GetByIdAsync(indentId, cancellationToken);
+                    if (indent is { IsOpen: true })
+                    {
+                        foreach (var issued in lines.GroupBy(l => l.Product.Id))
+                        {
+                            indent.RecordIssue(issued.Key, issued.Sum(l => l.Quantity), actorId);
+                        }
+                    }
+                }
 
                 if (request.HeldBillId is { } heldBillId && await _repository.GetHeldAsync(heldBillId, cancellationToken) is { } held)
                 {

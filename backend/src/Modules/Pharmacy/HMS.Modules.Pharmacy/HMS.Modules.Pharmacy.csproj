@@ -33,6 +33,8 @@
     <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
     <!-- IAdmissionService / IAdmissionChargeService — pharmacy bills charged to an admission. -->
     <ProjectReference Include="..\..\IPD\HMS.Modules.IPD\HMS.Modules.IPD.csproj" />
+    <!-- IOpdConsultationService — the pharmacy's queue of OPD prescriptions. -->
+    <ProjectReference Include="..\..\OpdConsultation\HMS.Modules.OpdConsultation\HMS.Modules.OpdConsultation.csproj" />
     <!-- IInvoiceService — best-effort dispense billing (ADR-028). -->
     <ProjectReference Include="..\..\Billing\HMS.Modules.Billing\HMS.Modules.Billing.csproj" />
   </ItemGroup>

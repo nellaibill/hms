@@ -31,6 +31,10 @@ public interface IOpdConsultationService
     /// skipped rather than failing the whole list.</summary>
     Task<Result<IReadOnlyList<OpdConsultationDetailResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 
+    /// <summary>Completed consultations with prescriptions in a time window, newest first —
+    /// for the pharmacy's prescription queue. Capped at 200.</summary>
+    Task<IReadOnlyList<OpdPrescriptionQueueItemResponse>> GetPrescriptionQueueAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken);
+
     /// <summary>Full-record save with no required fields. Fails with NotDraft once
     /// Completed.</summary>
     Task<Result<OpdConsultationNoteResponse>> SaveDraftAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken);
@@ -144,6 +148,48 @@ internal class OpdConsultationService : IOpdConsultationService
         }
 
         return Result<IReadOnlyList<OpdConsultationDetailResponse>>.Success(details);
+    }
+
+    public async Task<IReadOnlyList<OpdPrescriptionQueueItemResponse>> GetPrescriptionQueueAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+    {
+        var notes = await _repository.GetCompletedWithPrescriptionsAsync(fromUtc, toUtc, take: 200, cancellationToken);
+
+        var items = new List<OpdPrescriptionQueueItemResponse>(notes.Count);
+        foreach (var note in notes)
+        {
+            var detailResult = await _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, cancellationToken);
+            if (!detailResult.IsSuccess)
+            {
+                continue;
+            }
+
+            var header = ToHeader(detailResult.Value!);
+            items.Add(new OpdPrescriptionQueueItemResponse
+            {
+                ConsultationId = note.ConsultationId,
+                PatientId = note.PatientId,
+                Uhid = header.Uhid,
+                PatientName = header.PatientName,
+                PhoneNumber = header.PhoneNumber,
+                ConsultantName = header.ConsultantName,
+                DepartmentName = header.DepartmentName,
+                PrescribedAt = note.UpdatedAt ?? note.CreatedAt,
+                Prescriptions = note.Prescriptions
+                    .Select(p => new OpdConsultationPrescriptionResponse
+                    {
+                        Id = p.Id,
+                        DrugName = p.DrugName,
+                        Dose = p.Dose,
+                        Route = p.Route,
+                        Frequency = p.Frequency,
+                        DurationDays = p.DurationDays,
+                        Instructions = p.Instructions,
+                    })
+                    .ToList(),
+            });
+        }
+
+        return items;
     }
 
     public async Task<Result<OpdConsultationNoteResponse>> SaveDraftAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken)
