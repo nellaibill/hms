@@ -7,6 +7,7 @@ import {
   PowerOff,
   SlidersHorizontal,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,7 +21,6 @@ interface HospitalTableProps {
   hospitals: TenantListItemResponse[];
   onToggleStatus: (hospital: TenantListItemResponse) => void;
   isTogglingId: string | undefined;
-  onManageFeatures: (hospital: TenantListItemResponse) => void;
   /** Applies any pending EF Core migrations to this hospital's database (HospitalsController's
    * PlatformSuperAdmin-only migrate action) — the operator-triggered alternative to running
    * `dotnet ef database update` by hand against the tenant's connection string. */
@@ -69,7 +69,6 @@ export function HospitalTable({
   hospitals,
   onToggleStatus,
   isTogglingId,
-  onManageFeatures,
   onMigrate,
   isMigratingId,
 }: HospitalTableProps) {
@@ -132,14 +131,13 @@ export function HospitalTable({
                 </td>
                 <td className="px-5 py-3">
                   <div className="flex items-center justify-end gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => onManageFeatures(hospital)}
-                    >
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
-                      Features
+                    {/* Opens the hospital's own Features page; the row travels with the link so
+                        the page can show its name, code and plan without another request. */}
+                    <Button asChild variant="outline" size="sm" className="gap-1.5">
+                      <Link to={`/platform/hospitals/${hospital.id}/features`} state={{ hospital }}>
+                        <SlidersHorizontal className="h-3.5 w-3.5" />
+                        Features
+                      </Link>
                     </Button>
                     <Button
                       variant="outline"

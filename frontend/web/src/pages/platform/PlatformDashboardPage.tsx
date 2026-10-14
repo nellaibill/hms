@@ -4,24 +4,20 @@ import {
   BadgeCheck,
   Building2,
   CheckCircle2,
-  DatabaseBackup,
   Loader2,
-  LogOut,
   Plus,
-  ShieldCheck,
   XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast-context';
 import { PageBanner } from '@/components/PageBanner';
 import { Pagination } from '@/components/Pagination';
-import { ThemeToggle } from '@/components/shell/ThemeToggle';
-import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
+import { PlatformTopBar } from '@/features/platformAuth/PlatformTopBar';
+import { PLATFORM_CONTAINER } from '@/features/platformAuth/platformLayout';
 import {
-  HospitalFeaturesDialog,
   HospitalListToolbar,
   HospitalTable,
   useHospitalsQuery,
@@ -101,14 +97,9 @@ function StatCard({ label, value, hint, icon: Icon, tone, progress, loading }: S
 }
 
 export default function PlatformDashboardPage() {
-  const { user, logout } = usePlatformAuth();
-  const navigate = useNavigate();
-
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search);
-  const [hospitalToManageFeatures, setHospitalToManageFeatures] =
-    useState<TenantListItemResponse | null>(null);
 
   const { toast } = useToast();
   const statsQuery = useHospitalStatsQuery();
@@ -152,69 +143,11 @@ export default function PlatformDashboardPage() {
     });
   }
 
-  const initials = (user?.fullName ?? user?.email ?? '?')
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  // Wide enough to use a large monitor, capped so lines and the table don't stretch too far.
-  const container = 'mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8';
+  const container = PLATFORM_CONTAINER;
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className={cn(container, 'flex items-center justify-between gap-3 py-3')}>
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <Building2 className="h-5 w-5" />
-            </span>
-            <div className="leading-tight">
-              <p className="font-semibold text-foreground">Platform Portal</p>
-              <p className="hidden text-xs text-muted-foreground sm:block">
-                Hospitals, features and backups
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => navigate('/platform/backups')}
-            >
-              <DatabaseBackup className="h-4 w-4" />
-              <span className="hidden sm:inline">Backups</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => navigate('/platform/security')}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span className="hidden sm:inline">Security</span>
-            </Button>
-            <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden />
-            {user && (
-              <div className="hidden items-center gap-2 pr-1 md:flex" title={user.email}>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                  {initials}
-                </span>
-                <span className="max-w-[10rem] truncate text-sm font-medium text-foreground">
-                  {user.fullName ?? user.email}
-                </span>
-              </div>
-            )}
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={logout}>
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Sign out</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <PlatformTopBar />
 
       {/* Same brand banner every hospital-app page opens with, so the portal reads as part of HMS.
           The colour spans the screen; its content lines up with the cards below. */}
@@ -326,7 +259,6 @@ export default function PlatformDashboardPage() {
                   hospitals={hospitalsQuery.data.items}
                   onToggleStatus={handleToggleStatus}
                   isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
-                  onManageFeatures={setHospitalToManageFeatures}
                   onMigrate={handleMigrate}
                   isMigratingId={migrateMutation.isPending ? migrateMutation.variables : undefined}
                 />
@@ -339,13 +271,6 @@ export default function PlatformDashboardPage() {
             )}
         </Card>
       </main>
-
-      {hospitalToManageFeatures && (
-        <HospitalFeaturesDialog
-          hospital={hospitalToManageFeatures}
-          onClose={() => setHospitalToManageFeatures(null)}
-        />
-      )}
     </div>
   );
 }
