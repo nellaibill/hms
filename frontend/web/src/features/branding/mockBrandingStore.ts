@@ -1,6 +1,6 @@
 import { branding } from '@/config/branding';
 import { contrastForeground } from '@/lib/color';
-import { DEFAULT_LOGO_DISPLAY, type BrandingConfig } from './types';
+import { DEFAULT_LOGO_DISPLAY, DEFAULT_PRINT_SETTINGS, type BrandingConfig } from './types';
 
 const STORAGE_KEY = 'hms-branding-config';
 
@@ -111,6 +111,7 @@ function defaultConfig(): BrandingConfig {
     printLogoUrl: null,
     faviconUrl: null,
     logoDisplay: DEFAULT_LOGO_DISPLAY,
+    printSettings: DEFAULT_PRINT_SETTINGS,
     fontFamily: 'Inter',
     fontSizeScale: 'md',
     iconSizeScale: 'md',

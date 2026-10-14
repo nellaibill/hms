@@ -44,6 +44,10 @@ internal class BrandingService : IBrandingService
     private const int MaxLogoDisplayWidthPx = 800;
     private const int MaxLogoDisplayHeightPx = 400;
     private static readonly string[] AllowedLogoFits = ["contain", "cover", "fill"];
+    // Page margin bounds for PrintSettings — 0 lets a pre-printed letterhead go edge to edge;
+    // anything past 40mm leaves too little of an A5 sheet to print on.
+    private const int MinPrintMarginMm = 0;
+    private const int MaxPrintMarginMm = 40;
 
     private readonly IBrandingRepository _repository;
     private readonly IBrandingLogoStorage _logoStorage;
@@ -91,6 +95,12 @@ internal class BrandingService : IBrandingService
             return Result<BrandingResponse>.Failure(BrandingErrorCodes.InvalidLogoDisplay, logoDisplayError);
         }
 
+        var printSettingsError = ValidatePrintSettings(request.PrintSettings);
+        if (printSettingsError is not null)
+        {
+            return Result<BrandingResponse>.Failure(BrandingErrorCodes.InvalidPrintSettings, printSettingsError);
+        }
+
         var settings = await GetOrCreateAsync(cancellationToken);
 
         settings.UpdateIdentity(request.HospitalName, request.AppTitle, request.Address, request.PhoneNumber, actorId);
@@ -102,6 +112,11 @@ internal class BrandingService : IBrandingService
         if (request.LogoDisplay is not null)
         {
             settings.UpdateLogoDisplay(JsonSerializer.Serialize(request.LogoDisplay), actorId);
+        }
+
+        if (request.PrintSettings is not null)
+        {
+            settings.UpdatePrintSettings(JsonSerializer.Serialize(request.PrintSettings), actorId);
         }
 
         await _repository.SaveChangesAsync(cancellationToken);
@@ -223,6 +238,59 @@ internal class BrandingService : IBrandingService
             if (!AllowedLogoFits.Contains(options.Fit))
             {
                 return $"'{options.Fit}' is not a supported logo fit.";
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ValidatePrintSettings(PrintSettings? print)
+    {
+        if (print is null)
+        {
+            return null;
+        }
+
+        if (print.Default is null)
+        {
+            return "A default page setup is required.";
+        }
+
+        if (!PrintPaperSizes.IsValid(print.Default.PaperSize))
+        {
+            return $"'{print.Default.PaperSize}' is not a supported paper size. Expected one of: {string.Join(", ", PrintPaperSizes.All)}.";
+        }
+
+        if (!PrintOrientations.IsValid(print.Default.Orientation))
+        {
+            return $"'{print.Default.Orientation}' is not a supported orientation.";
+        }
+
+        if (print.Default.MarginMm < MinPrintMarginMm || print.Default.MarginMm > MaxPrintMarginMm)
+        {
+            return $"Page margin must be between {MinPrintMarginMm} and {MaxPrintMarginMm}mm.";
+        }
+
+        foreach (var (document, setup) in print.Documents ?? [])
+        {
+            if (!PrintDocumentTypes.IsValid(document))
+            {
+                return $"'{document}' is not a printable document type.";
+            }
+
+            if (setup is null)
+            {
+                return $"The page setup for '{document}' is missing.";
+            }
+
+            if (setup.PaperSize is not null && !PrintPaperSizes.IsValid(setup.PaperSize))
+            {
+                return $"'{setup.PaperSize}' is not a supported paper size.";
+            }
+
+            if (setup.Orientation is not null && !PrintOrientations.IsValid(setup.Orientation))
+            {
+                return $"'{setup.Orientation}' is not a supported orientation.";
             }
         }
 

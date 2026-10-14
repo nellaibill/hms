@@ -22,6 +22,8 @@ export interface BrandingConfig {
   printLogoUrl: string | null;
   faviconUrl: string | null;
   logoDisplay: LogoDisplaySettings;
+  /** Paper size, orientation and margin for printouts — see resolvePrintPageSetup. */
+  printSettings: PrintSettings;
   fontFamily: FontFamily;
   fontSizeScale: FontSizeScale;
   iconSizeScale: IconSizeScale;
@@ -78,6 +80,65 @@ export const DEFAULT_LOGO_DISPLAY: LogoDisplaySettings = {
     print: { width: 220, height: 60, fit: 'contain' },
     favicon: { width: 32, height: 32, fit: 'contain' },
   },
+};
+
+/** Paper sizes offered for printouts, as CSS `@page size` keywords — mirror
+ * HMS.Modules.Branding.Contracts.PrintPaperSizes. */
+export const PAPER_SIZES = ['A4', 'A3', 'A5', 'Letter', 'Legal'] as const;
+export type PaperSize = (typeof PAPER_SIZES)[number];
+export const PAPER_SIZE_LABELS: Record<PaperSize, string> = {
+  A4: 'A4 (210 × 297 mm)',
+  A3: 'A3 (297 × 420 mm)',
+  A5: 'A5 (148 × 210 mm)',
+  Letter: 'Letter (8.5 × 11 in)',
+  Legal: 'Legal (8.5 × 14 in)',
+};
+
+export const PRINT_ORIENTATIONS = ['portrait', 'landscape'] as const;
+export type PrintOrientation = (typeof PRINT_ORIENTATIONS)[number];
+export const PRINT_ORIENTATION_LABELS: Record<PrintOrientation, string> = { portrait: 'Portrait', landscape: 'Landscape' };
+
+/** Bounds for the page margin input — mirror BrandingService's print settings validation. */
+export const PRINT_MARGIN_LIMITS = { min: 0, max: 40 } as const;
+
+/** Printouts that can use their own paper size/orientation instead of the default — mirror
+ * HMS.Modules.Branding.Contracts.PrintDocumentTypes. A page passes its key to PrintPageStyle. */
+export const PRINT_DOCUMENTS = ['patient', 'invoice', 'labReport', 'opdConsultation', 'report'] as const;
+export type PrintDocument = (typeof PRINT_DOCUMENTS)[number];
+export const PRINT_DOCUMENT_META: Record<PrintDocument, { label: string; usage: string }> = {
+  patient: { label: 'Patient sheet', usage: 'Print on a patient’s page' },
+  invoice: { label: 'Invoices', usage: 'Hospital invoices and receipts' },
+  labReport: { label: 'Lab reports', usage: 'Laboratory test reports' },
+  opdConsultation: { label: 'OPD consultation', usage: 'Consultation notes and prescriptions' },
+  report: {
+    label: 'Reports & registers',
+    usage: 'Patient reports, pharmacy reports and registers, stock counts, supplier statements, purchase orders and receipts',
+  },
+};
+
+export interface PrintPageSetup {
+  paperSize: PaperSize;
+  orientation: PrintOrientation;
+  /** Page margin on every side, in mm. */
+  marginMm: number;
+}
+
+/** A per-document override — null means "same as the default page". */
+export interface PrintDocumentSetup {
+  paperSize: PaperSize | null;
+  orientation: PrintOrientation | null;
+}
+
+export interface PrintSettings {
+  default: PrintPageSetup;
+  documents: Partial<Record<PrintDocument, PrintDocumentSetup>>;
+}
+
+/** What every printout used before print settings existed (index.css's 12mm @page margin, and
+ * the browser's own A4 portrait default). */
+export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
+  default: { paperSize: 'A4', orientation: 'portrait', marginMm: 12 },
+  documents: {},
 };
 
 export const FONT_FAMILIES = ['Inter', 'Roboto', 'OpenSans', 'Lato', 'Poppins'] as const;

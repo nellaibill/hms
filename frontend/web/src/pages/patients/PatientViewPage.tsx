@@ -1,6 +1,6 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { PatientDetails, PatientSummaryCard, usePatientQuery } from '../../features/patients';
+import { PatientDetails, PatientPrintTemplate, PatientSummaryCard, usePatientQuery } from '../../features/patients';
 
 export default function PatientViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -57,6 +57,9 @@ export default function PatientViewPage() {
           <PatientDetails patient={patient} activeTab={activeTab} onActiveTabChange={setActiveTab} />
         </div>
       </div>
+
+      {/* What the Print button in PatientSummaryCard actually prints — hidden on screen. */}
+      <PatientPrintTemplate patient={patient} />
     </div>
   );
 }

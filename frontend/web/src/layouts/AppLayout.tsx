@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/shell/AppSidebar';
 import { TopHeader } from '@/components/shell/TopHeader';
 import { AppFooter } from '@/components/shell/AppFooter';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 
 // Assembles the six structural regions from docs/LayoutFramework.md, in a
 // full-width-header-on-top / drawer-below arrangement (Material Design's
@@ -13,6 +14,9 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      {/* The hospital's default print page (paper size, orientation, margin). Rendered before
+          the page content, so a printout's own PrintPageStyle further down overrides it. */}
+      <PrintPageStyle />
       <TopHeader />
       <div className="flex flex-1">
         <AppSidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((prev) => !prev)} />

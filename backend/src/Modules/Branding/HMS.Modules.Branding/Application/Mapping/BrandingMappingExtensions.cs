@@ -20,6 +20,9 @@ internal static class BrandingMappingExtensions
         LogoDisplay = string.IsNullOrWhiteSpace(settings.LogoDisplayJson)
             ? new LogoDisplaySettings()
             : JsonSerializer.Deserialize<LogoDisplaySettings>(settings.LogoDisplayJson) ?? new LogoDisplaySettings(),
+        PrintSettings = string.IsNullOrWhiteSpace(settings.PrintSettingsJson)
+            ? new PrintSettings()
+            : JsonSerializer.Deserialize<PrintSettings>(settings.PrintSettingsJson) ?? new PrintSettings(),
         FontFamily = settings.FontFamily,
         FontSizeScale = settings.FontSizeScale,
         IconSizeScale = settings.IconSizeScale,

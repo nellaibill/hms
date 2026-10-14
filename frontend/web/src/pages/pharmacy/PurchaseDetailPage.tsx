@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Plus, Printer } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { dateLabel, dateTimeLabel, expiryLabel, money, quantity } from '@/features/pharmacy/common/format';
 import { PURCHASE_LINKS } from '@/features/pharmacy/shell/links';
 import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
@@ -56,6 +57,7 @@ export default function PurchaseDetailPage() {
 
       {receipt && (
         <article className="print-target rounded-lg border border-border bg-background p-5 print:border-0 print:p-0">
+          <PrintPageStyle document="report" />
           <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Goods receipt note</p>

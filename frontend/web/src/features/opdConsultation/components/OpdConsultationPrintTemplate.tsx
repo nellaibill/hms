@@ -1,6 +1,7 @@
 import type { OpdConsultationHeader, OpdConsultationNote } from '@hms/shared';
 import { branding } from '@/config/branding';
 import { useBrandLogo } from '@/features/branding/brandLogo';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { resolveRecordLabel } from '@/features/masters';
 import { formatDiagnosisLabel, formatPrescriptionDetails } from '../consultationLabels';
@@ -62,6 +63,7 @@ export function OpdConsultationPrintTemplate({ header, note }: OpdConsultationPr
 
   return (
     <div className="print-target hidden bg-white p-10 text-black print:block" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+      <PrintPageStyle document="opdConsultation" />
       <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-4 text-center">
         <img src={printLogo.url} alt={hospitalName} className="max-w-full" style={{ width: printLogo.display.width, height: printLogo.display.height, objectFit: printLogo.display.fit }} />
         <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
