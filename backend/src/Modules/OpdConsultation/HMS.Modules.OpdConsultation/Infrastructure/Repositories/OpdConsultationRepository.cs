@@ -1,4 +1,5 @@
 using HMS.Modules.OpdConsultation.Application.Abstractions;
+using HMS.Modules.OpdConsultation.Contracts;
 using HMS.Modules.OpdConsultation.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,6 +44,16 @@ internal class OpdConsultationRepository : IOpdConsultationRepository
             .Include(x => x.Investigations)
             .Where(x => x.VisitId == visitId)
             .OrderBy(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<OpdConsultationNote>> GetCompletedWithPrescriptionsAsync(DateTime fromUtc, DateTime toUtc, int take, CancellationToken cancellationToken)
+        => await _dbContext.OpdConsultationNotes
+            .AsNoTracking()
+            .Include(x => x.Prescriptions)
+            .Where(x => x.Status == OpdConsultationNoteStatus.Completed && x.Prescriptions.Any())
+            .Where(x => (x.UpdatedAt ?? x.CreatedAt) >= fromUtc && (x.UpdatedAt ?? x.CreatedAt) < toUtc)
+            .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+            .Take(take)
             .ToListAsync(cancellationToken);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)

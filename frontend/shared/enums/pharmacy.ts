@@ -48,3 +48,6 @@ export type SupplierPaymentMethod = (typeof SUPPLIER_PAYMENT_METHODS)[number];
 
 export const SUPPLIER_ENTRY_TYPES = ['Purchase', 'Return', 'Payment'] as const;
 export type SupplierEntryType = (typeof SUPPLIER_ENTRY_TYPES)[number];
+
+export const INDENT_STATUSES = ['Pending', 'PartlyIssued', 'Issued', 'Cancelled'] as const;
+export type IndentStatus = (typeof INDENT_STATUSES)[number];

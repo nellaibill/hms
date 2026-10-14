@@ -43,6 +43,7 @@ public static class PharmacyModule
         services.AddScoped<IPharmacySaleRepository, PharmacySaleRepository>();
         services.AddScoped<IPharmacySettingsRepository, PharmacySettingsRepository>();
         services.AddScoped<IPharmacyProcurementRepository, PharmacyProcurementRepository>();
+        services.AddScoped<IPharmacyIndentRepository, PharmacyIndentRepository>();
         services.AddScoped<IStockPoster, StockPoster>();
         services.AddScoped<ISellableStockReader, SellableStockReader>();
         services.AddScoped<IAdmissionChargePoster, AdmissionChargePoster>();
@@ -57,6 +58,8 @@ public static class PharmacyModule
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
         services.AddScoped<ISupplierAccountService, SupplierAccountService>();
+        services.AddScoped<IPrescriptionQueueService, PrescriptionQueueService>();
+        services.AddScoped<IIndentService, IndentService>();
         services.AddScoped<IStockReceiptService, StockReceiptService>();
         services.AddScoped<IDispenseService, DispenseService>();
         services.AddScoped<IStockBalanceService, StockBalanceService>();
@@ -80,6 +83,7 @@ public static class PharmacyModule
         services.AddScoped<IValidator<SavePurchaseOrderRequest>, SavePurchaseOrderRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReturnRequest>, CreatePurchaseReturnRequestValidator>();
         services.AddScoped<IValidator<CreateSupplierPaymentRequest>, CreateSupplierPaymentRequestValidator>();
+        services.AddScoped<IValidator<CreateIndentRequest>, CreateIndentRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseRequest>, CreateDispenseRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseCartRequest>, CreateDispenseCartRequestValidator>();
 

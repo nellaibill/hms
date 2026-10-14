@@ -35,6 +35,8 @@ public class PharmacyDbContext : DbContext
     internal DbSet<PharmacyPurchaseReturn> PurchaseReturns => Set<PharmacyPurchaseReturn>();
     internal DbSet<PharmacyPurchaseReturnLine> PurchaseReturnLines => Set<PharmacyPurchaseReturnLine>();
     internal DbSet<PharmacySupplierPayment> SupplierPayments => Set<PharmacySupplierPayment>();
+    internal DbSet<PharmacyIndent> Indents => Set<PharmacyIndent>();
+    internal DbSet<PharmacyIndentLine> IndentLines => Set<PharmacyIndentLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

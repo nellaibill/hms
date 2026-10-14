@@ -76,6 +76,27 @@ internal class PharmacySaleRepository : IPharmacySaleRepository
         return (page.Select(p => (p.Sale, p.LineCount)).ToList(), totalCount);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<PrescriptionBillResponse>>> GetBillsForPrescriptionsAsync(IReadOnlyCollection<Guid> prescriptionIds, CancellationToken cancellationToken)
+    {
+        if (prescriptionIds.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlyList<PrescriptionBillResponse>>();
+        }
+
+        var ids = prescriptionIds.Distinct().Cast<Guid?>().ToList();
+        var bills = await _dbContext.Sales.AsNoTracking()
+            .Where(s => ids.Contains(s.PrescriptionId))
+            .OrderBy(s => s.SaleDate)
+            .Select(s => new { PrescriptionId = s.PrescriptionId!.Value, s.Id, s.BillNo, s.NetAmount })
+            .ToListAsync(cancellationToken);
+
+        return bills
+            .GroupBy(b => b.PrescriptionId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<PrescriptionBillResponse>)g.Select(b => new PrescriptionBillResponse { SaleId = b.Id, BillNo = b.BillNo, NetAmount = b.NetAmount }).ToList());
+    }
+
     public async Task AddReturnAsync(PharmacySaleReturn saleReturn, CancellationToken cancellationToken)
         => await _dbContext.SaleReturns.AddAsync(saleReturn, cancellationToken);
 

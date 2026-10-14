@@ -118,6 +118,9 @@ const PharmacyPurchaseOrderPage = lazy(() => import('../pages/pharmacy/PurchaseO
 const PharmacyPurchaseReturnsListPage = lazy(() => import('../pages/pharmacy/PurchaseReturnsListPage'));
 const PharmacyPurchaseReturnEntryPage = lazy(() => import('../pages/pharmacy/PurchaseReturnEntryPage'));
 const PharmacySupplierAccountsPage = lazy(() => import('../pages/pharmacy/SupplierAccountsPage'));
+const PharmacyPrescriptionQueuePage = lazy(() => import('../pages/pharmacy/PrescriptionQueuePage'));
+const PharmacyIndentsPage = lazy(() => import('../pages/pharmacy/IndentsPage'));
+const PharmacyIndentEntryPage = lazy(() => import('../pages/pharmacy/IndentEntryPage'));
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
@@ -435,6 +438,9 @@ const pharmacyRoutes = [
   {
     element: <RequireFeatureRoute feature="pharmacy" />,
     children: [
+      // Raising an indent is ward work: it needs clinical-care rights, not pharmacy ones, so
+      // it sits outside the pharmacy.view gate. The API checks the permission itself.
+      { path: 'pharmacy/indents/new', element: withSuspense(<PharmacyIndentEntryPage />) },
       {
         element: <RequirePermissionRoute permission="pharmacy.view" />,
         children: [
@@ -460,6 +466,8 @@ const pharmacyRoutes = [
           { path: 'pharmacy/purchase-returns', element: withSuspense(<PharmacyPurchaseReturnsListPage />) },
           { path: 'pharmacy/purchase-returns/new', element: withSuspense(<PharmacyPurchaseReturnEntryPage />) },
           { path: 'pharmacy/suppliers', element: withSuspense(<PharmacySupplierAccountsPage />) },
+          { path: 'pharmacy/prescriptions', element: withSuspense(<PharmacyPrescriptionQueuePage />) },
+          { path: 'pharmacy/indents', element: withSuspense(<PharmacyIndentsPage />) },
         ],
       },
     ],

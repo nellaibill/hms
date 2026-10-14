@@ -44,7 +44,7 @@ const SECTIONS: PharmacySection[] = [
 
 /** Sections whose screens exist. The menu lists only these, so it never offers a dead link
  * while the module is being built out phase by phase. */
-const LIVE_SECTIONS = new Set(['counter', 'sales', 'purchases', 'stock', 'setup']);
+const LIVE_SECTIONS = new Set(['counter', 'sales', 'prescriptions', 'indents', 'purchases', 'stock', 'setup']);
 
 interface PharmacyPageProps {
   title: string;
@@ -67,7 +67,10 @@ export function PharmacyPage({ title, subtitle, actions, subLinks, flush, childr
   const { hasPermission } = useAuth();
   const { pathname } = useLocation();
 
-  const sections = SECTIONS.filter((section) => LIVE_SECTIONS.has(section.key) && (!section.permission || hasPermission(section.permission)));
+  // Ward staff reach the indent screen without pharmacy rights; they get no pharmacy menu.
+  const sections = hasPermission('pharmacy.view')
+    ? SECTIONS.filter((section) => LIVE_SECTIONS.has(section.key) && (!section.permission || hasPermission(section.permission)))
+    : [];
 
   function isActive(section: PharmacySection): boolean {
     const own = section.exact ? pathname === section.to : pathname === section.to || pathname.startsWith(`${section.to}/`);
@@ -76,7 +79,7 @@ export function PharmacyPage({ title, subtitle, actions, subLinks, flush, childr
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-muted/20">
-      <nav aria-label="Pharmacy" className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-background px-3 py-1.5 print:hidden">
+      <nav aria-label="Pharmacy" className={cn('shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-background px-3 py-1.5 print:hidden', sections.length > 0 ? 'flex' : 'hidden')}>
         {sections.map((section) => {
           const Icon = section.icon;
           const active = isActive(section);

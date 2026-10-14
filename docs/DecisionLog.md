@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-096: Pharmacy Phase 4 — OPD prescriptions and IP indents reach the counter; filling either is an ordinary bill
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+The pharmacy was cut off from the clinical side. A doctor's OPD prescription (free-text drug lines on the consultation note) reached the counter only on paper, and a ward had no way to ask the pharmacy for an inpatient's medicines. Both are requests the pharmacy fills; neither should become a second way of moving stock or charging money.
+
+**Decision**
+- **One way out of the shelf.** A prescription or an indent is filled by making a normal pharmacy bill (ADR-094). The bill carries `PrescriptionId` (the OPD consultation) or `IndentId`; there is no separate "issue" document and no second stock path.
+- **Prescriptions stay in OpdConsultation.** That module gains one read, `GetPrescriptionQueueAsync` (completed notes with at least one prescription in a time window). Pharmacy reads it and sets each against its own bills (`PrescriptionId`), so the queue shows waiting and billed. Nothing is copied.
+- **Free text is matched, never auto-billed.** Opening a prescription at the counter sets the patient and doctor and looks each drug name up in the catalog; the best match is offered with its stock, and the pharmacist adds it. A course quantity is suggested only when frequency and duration can be read ("1-0-1", "BD", "TDS" × days); "SOS" or "as directed" suggests nothing.
+- **Prescribing gets catalog suggestions.** The OPD drug box offers names from the pharmacy catalog with an in-stock note (`GET pharmacy/catalog`), while remaining free text. A name picked there is one the counter finds at once.
+- **Indent** (`PharmacyIndent`, `IND` series) is a ward's request for an admitted patient: exact catalog items and quantities, urgent flag, ward/bed/doctor copied from the admission. It moves no stock. A bill made against it records units issued per product; the indent goes Pending → PartlyIssued → Issued, and closing a part-issued indent finishes it rather than cancelling it. An indent can only be billed for its own patient.
+- **Who may do what.** Raising, listing and closing indents, and searching the catalog, accept `clinical-care.*` as well as `pharmacy.*` — ward staff and doctors have no pharmacy rights. The catalog search returns stock and selling price, never cost. The indent entry route sits outside the pharmacy.view gate and shows no pharmacy menu to a user without it.
+
+**Consequences**
+New tables `pharmacy_indents`, `pharmacy_indent_lines` (migration `AddIndents`, additive). Pharmacy now references OpdConsultation. The prescription queue costs one OPD header lookup per prescription (capped at 200 a request, 31 days a query). A prescription billed in two visits shows two bills; nothing tracks per-drug fulfilment of free-text lines. IPD medication orders are untouched: ordering a medicine and requesting it from the pharmacy remain two acts, linked by a button on the medication panel.
+
 ### ADR-095: Pharmacy Phase 3 — purchase orders, reorder list, purchase returns, supplier accounts
 **Date:** 2026-10-14
 **Status:** Accepted

@@ -408,6 +408,205 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                     b.ToTable("pharmacy_held_bills", "pharmacy");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyIndent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_id");
+
+                    b.Property<string>("AdmissionNumber")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("admission_number");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("DoctorName")
+                        .HasColumnType("text")
+                        .HasColumnName("doctor_name");
+
+                    b.Property<string>("IndentNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("indent_no");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsUrgent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_urgent");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("text")
+                        .HasColumnName("location");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<string>("PatientName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("patient_name");
+
+                    b.Property<string>("PatientUhid")
+                        .HasColumnType("text")
+                        .HasColumnName("patient_uhid");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_indents");
+
+                    b.HasIndex("AdmissionId")
+                        .HasDatabaseName("ix_pharmacy_indents_admission_id");
+
+                    b.HasIndex("IndentNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_indents_indent_no");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_pharmacy_indents_status");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("pharmacy_indents", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyIndentLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("IndentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("indent_id");
+
+                    b.Property<string>("Instructions")
+                        .HasColumnType("text")
+                        .HasColumnName("instructions");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("IssuedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("issued_quantity");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("product_name");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_indent_lines");
+
+                    b.HasIndex("IndentId")
+                        .HasDatabaseName("ix_pharmacy_indent_lines_indent_id");
+
+                    b.ToTable("pharmacy_indent_lines", "pharmacy");
+                });
+
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1921,6 +2120,26 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasConstraintName("fk_pharmacy_goods_receipt_lines_goods_receipt_id");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyIndent", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_indents_pharmacy_stores_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyIndentLine", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyIndent", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("IndentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_indent_lines_indent_id");
+                });
+
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrder", b =>
                 {
                     b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
@@ -2032,6 +2251,11 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                 });
 
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyGoodsReceipt", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyIndent", b =>
                 {
                     b.Navigation("Lines");
                 });

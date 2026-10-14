@@ -398,6 +398,13 @@ export const API_ROUTES = {
       returnById: (id: string) => `/api/v1/pharmacy/sales/returns/${id}`,
     },
     settings: '/api/v1/pharmacy/settings',
+    prescriptions: '/api/v1/pharmacy/prescriptions',
+    catalog: '/api/v1/pharmacy/catalog',
+    indents: {
+      base: '/api/v1/pharmacy/indents',
+      byId: (id: string) => `/api/v1/pharmacy/indents/${id}`,
+      cancel: (id: string) => `/api/v1/pharmacy/indents/${id}/cancel`,
+    },
     purchaseOrders: {
       base: '/api/v1/pharmacy/purchase-orders',
       byId: (id: string) => `/api/v1/pharmacy/purchase-orders/${id}`,

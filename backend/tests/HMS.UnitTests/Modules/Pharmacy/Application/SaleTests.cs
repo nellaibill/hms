@@ -195,6 +195,7 @@ public class SaleServiceTests
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IAdmissionChargePoster _admissionCharges = Substitute.For<IAdmissionChargePoster>();
     private readonly IPharmacySettingsRepository _settings = Substitute.For<IPharmacySettingsRepository>();
+    private readonly IPharmacyIndentRepository _indents = Substitute.For<IPharmacyIndentRepository>();
     private readonly PharmacyStore _store;
     private readonly SaleService _sut;
 
@@ -208,7 +209,7 @@ public class SaleServiceTests
     {
         _store = StockFixture.DefaultStore(_storeRepository);
         _batch = Shelf.Batch(_product, "DL2406", Shelf.Later, 100m);
-        _sut = new SaleService(_repository, _storeRepository, _unitOfWork, _stock.Poster, _stockReader, _productService, _patientService, _admissionCharges, _settings);
+        _sut = new SaleService(_repository, _storeRepository, _unitOfWork, _stock.Poster, _stockReader, _productService, _patientService, _admissionCharges, _settings, _indents);
 
         _settings.GetAsync(Arg.Any<CancellationToken>()).Returns((PharmacySettings?)null);
 
@@ -494,5 +495,33 @@ public class SaleServiceTests
         var result = await _sut.CollectPaymentAsync(bill.Id, new CollectSalePaymentRequest { Method = SalePaymentMethod.Cash, Amount = 35m }, null, CancellationToken.None);
 
         result.ErrorCode.Should().Be("PHARMACY.INVALID_PAYMENT");
+    }
+    [Fact]
+    public async Task CreateAsync_FillingAnIndent_RecordsWhatWasIssuedOnIt()
+    {
+        var indent = PharmacyIndent.Create("IND-2026-000001", _store.Id, _admissionId, "ADM-1", _patientId, "Kala R", "P-2026-000412", "Ward A", "Dr. Bala", false, null, null);
+        indent.AddLine(_product.Id, _product.ProductName, 60m, null);
+        _indents.GetByIdAsync(indent.Id, Arg.Any<CancellationToken>()).Returns(indent);
+
+        var request = Cart(quantity: 40m, cash: 0m) with { PatientId = _patientId, AdmissionId = _admissionId, ChargeToAdmission = true, IndentId = indent.Id };
+        var result = await _sut.CreateAsync(request, null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue(result.Error);
+        result.Value!.IndentId.Should().Be(indent.Id);
+        indent.Lines.Single().IssuedQuantity.Should().Be(40m);
+        indent.Status.Should().Be(IndentStatus.PartlyIssued);
+    }
+
+    [Fact]
+    public async Task CreateAsync_AgainstAnIndentForAnotherPatient_IsRefused()
+    {
+        var indent = PharmacyIndent.Create("IND-2026-000001", _store.Id, _admissionId, "ADM-1", Guid.NewGuid(), "Someone Else", null, null, null, false, null, null);
+        indent.AddLine(_product.Id, _product.ProductName, 10m, null);
+        _indents.GetByIdAsync(indent.Id, Arg.Any<CancellationToken>()).Returns(indent);
+
+        var result = await _sut.CreateAsync(Cart() with { PatientId = _patientId, IndentId = indent.Id }, null, CancellationToken.None);
+
+        result.ErrorCode.Should().Be("PHARMACY.INVALID_STATE");
+        _stock.Posted.Should().BeEmpty();
     }
 }
