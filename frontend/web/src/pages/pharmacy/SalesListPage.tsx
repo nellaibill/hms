@@ -134,7 +134,7 @@ export default function SalesListPage() {
                 )}
                 {bills.data.items.map((sale) => (
                   <tr key={sale.id} onClick={() => navigate(`/pharmacy/sales/${sale.id}`)} className="cursor-pointer hover:bg-muted/40">
-                    <td className="px-3 py-2 font-mono text-xs font-medium text-primary">{sale.billNo}</td>
+                    <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-medium text-primary">{sale.billNo}</td>
                     <td className="whitespace-nowrap px-3 py-2">{dateTimeLabel(sale.saleDate)}</td>
                     <td className="px-3 py-2">
                       <div className="font-medium text-foreground">{sale.customerName}</div>
@@ -191,7 +191,7 @@ export default function SalesListPage() {
                 )}
                 {returns.data.items.map((saleReturn) => (
                   <tr key={saleReturn.id} onClick={() => navigate(`/pharmacy/sales/${saleReturn.saleId}`)} className="cursor-pointer hover:bg-muted/40">
-                    <td className="px-3 py-2 font-mono text-xs font-medium text-primary">{saleReturn.returnNo}</td>
+                    <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-medium text-primary">{saleReturn.returnNo}</td>
                     <td className="whitespace-nowrap px-3 py-2">{dateTimeLabel(saleReturn.returnDate)}</td>
                     <td className="px-3 py-2 font-mono text-xs">{saleReturn.billNo}</td>
                     <td className="px-3 py-2">{saleReturn.customerName}</td>

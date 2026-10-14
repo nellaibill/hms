@@ -22,6 +22,7 @@ public class GoodsReceiptServiceTests
     private readonly IProductService _productService = Substitute.For<IProductService>();
     private readonly IProductBatchService _productBatchService = Substitute.For<IProductBatchService>();
     private readonly ISupplierService _supplierService = Substitute.For<ISupplierService>();
+    private readonly IPharmacyProcurementRepository _procurementRepository = Substitute.For<IPharmacyProcurementRepository>();
     private readonly PharmacyStore _store;
     private readonly GoodsReceiptService _sut;
 
@@ -33,7 +34,7 @@ public class GoodsReceiptServiceTests
     public GoodsReceiptServiceTests()
     {
         _store = StockFixture.DefaultStore(_storeRepository);
-        _sut = new GoodsReceiptService(_repository, _storeRepository, _unitOfWork, _stock.Poster, _productService, _productBatchService, _supplierService);
+        _sut = new GoodsReceiptService(_repository, _storeRepository, _unitOfWork, _stock.Poster, _productService, _productBatchService, _supplierService, _procurementRepository);
 
         _supplierService.GetByIdAsync(_supplierId, Arg.Any<CancellationToken>())
             .Returns(Result<SupplierResponse>.Success(new SupplierResponse { Id = _supplierId, SupplierName = "Sri Medicals", IsActive = true }));

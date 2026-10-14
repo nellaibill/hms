@@ -1,8 +1,8 @@
 import { ApiError, type CreateGoodsReceiptRequest, type GoodsReceiptLineRequest, type Product, type ProductBatch } from '@hms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Pencil, Save, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { FileSpreadsheet, Loader2, Pencil, Save, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/toast-context';
@@ -11,6 +11,7 @@ import { roundToRupee, taxExclusive } from '@/features/pharmacy/common/gst';
 import { LookupInput, type LookupInputHandle } from '@/features/pharmacy/common/LookupInput';
 import { SupplierLookup, type SupplierOption } from '@/features/pharmacy/common/SupplierLookup';
 import { useHotkeys } from '@/features/pharmacy/common/useHotkeys';
+import { readPurchaseFile } from '@/features/pharmacy/import/spreadsheet';
 import { PURCHASE_LINKS } from '@/features/pharmacy/shell/links';
 import { KeyHint, PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { StoreSelect } from '@/features/pharmacy/stores';
@@ -79,6 +80,9 @@ export default function PurchaseEntryPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const [params] = useSearchParams();
+  const purchaseOrderId = params.get('po') ?? undefined;
+
   const [supplier, setSupplier] = useState<SupplierOption | null>(null);
   const [invoiceNo, setInvoiceNo] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(todayIso());
@@ -94,6 +98,9 @@ export default function PurchaseEntryPage() {
   const [entryError, setEntryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [importing, setImporting] = useState(false);
+  const [importNotes, setImportNotes] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
   const productRef = useRef<LookupInputHandle>(null);
   const invoiceNoRef = useRef<HTMLInputElement>(null);
   const fieldRefs = useRef<Partial<Record<keyof Draft, HTMLInputElement | null>>>({});
@@ -105,6 +112,24 @@ export default function PurchaseEntryPage() {
     queryFn: async () => (await productsApi.getProductBatches(product!.id, { pageSize: 100 })).items,
     enabled: Boolean(product),
   });
+
+  // Receiving against a purchase order: the supplier comes from the order, and what is
+  // still to arrive is listed so each line can be started with one click.
+  const { data: order } = useQuery({
+    queryKey: ['pharmacy', 'purchase-orders', 'byId', purchaseOrderId],
+    queryFn: () => pharmacyApi.getPurchaseOrderById(purchaseOrderId!),
+    enabled: Boolean(purchaseOrderId),
+  });
+
+  useEffect(() => {
+    if (order) setSupplier({ id: order.supplierId, name: order.supplierName, code: '' });
+  }, [order]);
+
+  async function startOrderLine(productId: string, pending: number, rate: number) {
+    const next = await productsApi.getProductById(productId);
+    selectProduct(next);
+    setDraft((current) => ({ ...current, quantity: String(pending), rate: rate > 0 ? String(rate) : current.rate }));
+  }
 
   const saveMutation = useMutation({
     mutationFn: (request: CreateGoodsReceiptRequest) => pharmacyApi.createGoodsReceipt(request),
@@ -230,6 +255,75 @@ export default function PurchaseEntryPage() {
     }
   }
 
+  /**
+   * Loads the lines of a supplier's invoice from the Excel or CSV file their billing software
+   * exports. Each row's product is matched by exact name against the catalog; rows that
+   * cannot be matched or are incomplete are listed rather than guessed at.
+   */
+  async function importLines(file: File | undefined) {
+    if (!file) return;
+    setImporting(true);
+    setImportNotes([]);
+    try {
+      const sheet = await readPurchaseFile(file);
+      const added: PurchaseLine[] = [];
+      const notes: string[] = [];
+
+      for (const [index, row] of sheet.rows.entries()) {
+        const rowNo = sheet.firstRowNumber + index;
+        const name = String(row.productName ?? '').trim();
+        const found = (await productsApi.getProducts({ search: name, pageSize: 20, isActive: true })).items.find((candidate) => candidate.productName.toLowerCase() === name.toLowerCase());
+        const batchNo = String(row.batchNo ?? '').trim().toUpperCase();
+        const expiryDate = typeof row.expiryDate === 'string' ? row.expiryDate : '';
+        const packs = toNumber(row.quantity);
+        const free = toNumber(row.freeQuantity);
+        const mrp = toNumber(row.mrp);
+
+        const problem = !found
+          ? 'no product with this name in the catalog'
+          : !batchNo
+            ? 'no batch number'
+            : !expiryDate
+              ? 'expiry missing or unreadable'
+              : expiryDate < todayIso()
+                ? 'batch already expired'
+                : packs + free <= 0
+                  ? 'no quantity'
+                  : mrp <= 0
+                    ? 'no MRP'
+                    : [...lines, ...added].some((line) => line.product.id === found.id && line.batchNo === batchNo)
+                      ? 'this batch is already on the invoice'
+                      : null;
+
+        if (problem || !found) {
+          notes.push(`Row ${rowNo}: ${name} — ${problem}.`);
+          continue;
+        }
+
+        added.push({
+          key: crypto.randomUUID(),
+          product: found,
+          batchNo,
+          expiryDate,
+          quantity: packs,
+          freeQuantity: free,
+          purchaseRate: toNumber(row.purchaseRate),
+          mrp,
+          discountPercent: Math.min(toNumber(row.discountPercent), 100),
+          gstRatePercent: row.gstRatePercent != null ? Math.min(toNumber(row.gstRatePercent), 100) : (found.gstRatePercent ?? 0),
+        });
+      }
+
+      setLines((current) => [...current, ...added]);
+      setImportNotes([`${added.length} of ${sheet.rows.length} lines added from ${file.name}.`, ...notes]);
+    } catch (failure) {
+      setImportNotes([failure instanceof Error ? failure.message : 'Could not read this file.']);
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
   function handleSave() {
     if (saveMutation.isPending) return;
 
@@ -263,6 +357,7 @@ export default function PurchaseEntryPage() {
     saveMutation.mutate({
       storeId: storeId || undefined,
       supplierId: supplier.id,
+      purchaseOrderId,
       supplierInvoiceNo: invoiceNo.trim(),
       supplierInvoiceDate: invoiceDate || null,
       receivedDate: receivedDate || null,
@@ -306,12 +401,32 @@ export default function PurchaseEntryPage() {
       subtitle="Key in a supplier invoice. Saving it receives the goods into stock."
       subLinks={PURCHASE_LINKS}
       actions={
-        <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save purchase
-        </Button>
+        <>
+          <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(event) => void importLines(event.target.files?.[0])} />
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={importing}>
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+            Import lines from Excel
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save purchase
+          </Button>
+        </>
       }
     >
+      {importNotes.length > 0 && (
+        <section className="rounded-lg border border-border bg-background p-3 text-sm" role="status">
+          <p className="font-medium text-foreground">{importNotes[0]}</p>
+          {importNotes.length > 1 && (
+            <ul className="mt-1 max-h-32 list-disc overflow-y-auto pl-5 text-xs text-destructive">
+              {importNotes.slice(1).map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       <section className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-4 xl:grid-cols-6">
         <label className="col-span-2 flex flex-col gap-1">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Supplier</span>
@@ -345,6 +460,32 @@ export default function PurchaseEntryPage() {
           <StoreSelect id="purchase-store" value={storeId} onValueChange={setStoreId} label="Receive into" />
         </div>
       </section>
+
+      {order && (
+        <section className="rounded-lg border border-border bg-background p-3 text-sm">
+          <p className="font-medium text-foreground">
+            Receiving against {order.orderNo}
+            <span className="ml-2 font-normal text-muted-foreground">Click an item to start its line with the quantity still to come.</span>
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {order.lines.filter((line) => line.pendingQuantity > 0 && !lines.some((entered) => entered.product.id === line.productId)).length === 0 && (
+              <span className="text-muted-foreground">Everything on the order has been entered or received.</span>
+            )}
+            {order.lines
+              .filter((line) => line.pendingQuantity > 0 && !lines.some((entered) => entered.product.id === line.productId))
+              .map((line) => (
+                <button
+                  key={line.id}
+                  type="button"
+                  onClick={() => void startOrderLine(line.productId, line.pendingQuantity, line.expectedRate)}
+                  className="rounded-md border border-border px-2.5 py-1 hover:border-primary/50 hover:bg-accent"
+                >
+                  {line.productName} <span className="tabular-nums text-muted-foreground">× {quantity(line.pendingQuantity)}</span>
+                </button>
+              ))}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-lg border border-primary/30 bg-primary/5 p-3">
         <div className="flex flex-wrap items-end gap-2">

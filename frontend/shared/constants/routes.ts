@@ -398,6 +398,23 @@ export const API_ROUTES = {
       returnById: (id: string) => `/api/v1/pharmacy/sales/returns/${id}`,
     },
     settings: '/api/v1/pharmacy/settings',
+    purchaseOrders: {
+      base: '/api/v1/pharmacy/purchase-orders',
+      byId: (id: string) => `/api/v1/pharmacy/purchase-orders/${id}`,
+      place: (id: string) => `/api/v1/pharmacy/purchase-orders/${id}/place`,
+      cancel: (id: string) => `/api/v1/pharmacy/purchase-orders/${id}/cancel`,
+      suggestions: '/api/v1/pharmacy/purchase-orders/suggestions',
+    },
+    purchaseReturns: {
+      base: '/api/v1/pharmacy/purchase-returns',
+      byId: (id: string) => `/api/v1/pharmacy/purchase-returns/${id}`,
+      returnableBatches: (productId: string) => `/api/v1/pharmacy/purchase-returns/returnable-batches/${productId}`,
+    },
+    supplierAccounts: {
+      base: '/api/v1/pharmacy/supplier-accounts',
+      statement: (supplierId: string) => `/api/v1/pharmacy/supplier-accounts/${supplierId}/statement`,
+      payments: (supplierId: string) => `/api/v1/pharmacy/supplier-accounts/${supplierId}/payments`,
+    },
     counter: {
       items: '/api/v1/pharmacy/counter/items',
       itemsLookup: '/api/v1/pharmacy/counter/items/lookup',

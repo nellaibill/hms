@@ -3,13 +3,15 @@ import { parseExpiry } from '../common/format';
 
 /** A column of the import sheet: the field it fills, the heading the template gives it, and
  * the other headings a pharmacy's own export is likely to use for the same thing. */
-interface ImportColumn {
-  field: keyof ImportProductRow;
+export interface SheetColumn<TField extends string = string> {
+  field: TField;
   heading: string;
   aliases: string[];
   kind: 'text' | 'number' | 'expiry';
   sample: string | number;
 }
+
+type ImportColumn = SheetColumn<keyof ImportProductRow & string>;
 
 export const IMPORT_COLUMNS: ImportColumn[] = [
   { field: 'productName', heading: 'Product Name', aliases: ['product', 'item', 'item name', 'name', 'medicine', 'medicine name', 'description'], kind: 'text', sample: 'Dolo 650 Tablet' },
@@ -154,31 +156,42 @@ function toExpiry(cell: Cell): string | null {
   return parseExpiry(text);
 }
 
+export interface MappedSheet<TField extends string> {
+  matched: { heading: string; field: TField }[];
+  ignored: string[];
+  rows: Partial<Record<TField, string | number | null>>[];
+  /** Spreadsheet row number of rows[0]. */
+  firstRowNumber: number;
+}
+
 /**
  * Reads the first sheet of an .xlsx (or a .csv), finds the heading row, and turns every row
- * under it into an import row. Headings are matched loosely — the template's own, or the
- * usual names other pharmacy software exports — so a pharmacy can often load the list it
- * already has without retyping the headings.
+ * under it into a record keyed by field. Headings are matched loosely — the template's own,
+ * or the usual names other pharmacy software exports — so a pharmacy can often load the file
+ * it already has without retyping the headings. `keyField` is the column a row must have to
+ * count (the product name): it is how the heading row is found and how blank and total rows
+ * are skipped.
  */
-export async function readImportFile(file: File): Promise<ParsedSheet> {
+export async function readMappedFile<TField extends string>(file: File, columnSet: SheetColumn<TField>[], keyField: TField): Promise<MappedSheet<TField>> {
   const grid = await readGrid(file);
 
-  const lookup = new Map<string, ImportColumn>();
-  for (const column of IMPORT_COLUMNS) {
+  const lookup = new Map<string, SheetColumn<TField>>();
+  for (const column of columnSet) {
     lookup.set(normalize(column.heading), column);
     column.aliases.forEach((alias) => lookup.set(normalize(alias), column));
   }
 
-  // The heading row is the first of the top ten rows that names a product column — exports
+  // The heading row is the first of the top ten rows that names the key column — exports
   // often carry a title and a date above the real headings.
-  const headerIndex = grid.slice(0, 10).findIndex((row) => row.some((cell) => typeof cell === 'string' && lookup.get(normalize(cell))?.field === 'productName'));
+  const headerIndex = grid.slice(0, 10).findIndex((row) => row.some((cell) => typeof cell === 'string' && lookup.get(normalize(cell))?.field === keyField));
   if (headerIndex < 0) {
-    throw new Error('Could not find a "Product Name" column. Download the template to see the headings this import reads.');
+    const heading = columnSet.find((column) => column.field === keyField)?.heading ?? keyField;
+    throw new Error(`Could not find a "${heading}" column. Download the template to see the headings this import reads.`);
   }
 
-  const matched: ParsedSheet['matched'] = [];
+  const matched: MappedSheet<TField>['matched'] = [];
   const ignored: string[] = [];
-  const columns: (ImportColumn | null)[] = grid[headerIndex].map((cell) => {
+  const columns: (SheetColumn<TField> | null)[] = grid[headerIndex].map((cell) => {
     if (cell == null) return null;
     const heading = String(cell);
     const column = lookup.get(normalize(heading)) ?? null;
@@ -190,27 +203,57 @@ export async function readImportFile(file: File): Promise<ParsedSheet> {
     return null;
   });
 
-  const rows: ImportProductRow[] = [];
+  const rows: MappedSheet<TField>['rows'] = [];
   let firstRowNumber = headerIndex + 2;
   let seenData = false;
 
   grid.slice(headerIndex + 1).forEach((cells, offset) => {
-    const row: Record<string, string | number | null> = {};
+    const row: Partial<Record<TField, string | number | null>> = {};
     columns.forEach((column, index) => {
       if (!column) return;
       const cell = cells[index] ?? null;
       row[column.field] = column.kind === 'number' ? toNumber(cell) : column.kind === 'expiry' ? toExpiry(cell) : cell == null ? null : String(cell instanceof Date ? cell.toISOString().slice(0, 10) : cell);
     });
 
-    if (!row.productName) return; // blank and total rows
+    // Blank rows, and the bare "Total" line many exports end with.
+    const key = row[keyField];
+    if (!key || /^(grand\s+|sub\s*)?total[:\s]*$/i.test(String(key).trim())) return;
     if (!seenData) {
       firstRowNumber = headerIndex + 2 + offset;
       seenData = true;
     }
-    rows.push(row as unknown as ImportProductRow);
+    rows.push(row);
   });
 
   return { matched, ignored, rows, firstRowNumber };
+}
+
+/** Reads a products-and-opening-stock sheet into import rows. */
+export async function readImportFile(file: File): Promise<ParsedSheet> {
+  const sheet = await readMappedFile(file, IMPORT_COLUMNS, 'productName');
+  return { ...sheet, rows: sheet.rows as unknown as ImportProductRow[] };
+}
+
+/** The columns of a supplier's invoice, as distributors' billing software exports it. */
+export type PurchaseField = 'productName' | 'batchNo' | 'expiryDate' | 'quantity' | 'freeQuantity' | 'purchaseRate' | 'mrp' | 'discountPercent' | 'gstRatePercent';
+
+export const PURCHASE_COLUMNS: SheetColumn<PurchaseField>[] = [
+  { field: 'productName', heading: 'Product Name', aliases: ['product', 'item', 'item name', 'name', 'description', 'particulars', 'medicine'], kind: 'text', sample: 'Dolo 650 Tablet' },
+  { field: 'batchNo', heading: 'Batch No', aliases: ['batch', 'batch number', 'lot', 'lot no'], kind: 'text', sample: 'DL2406' },
+  { field: 'expiryDate', heading: 'Expiry', aliases: ['expiry date', 'exp', 'exp date', 'exp.'], kind: 'expiry', sample: '03/27' },
+  { field: 'quantity', heading: 'Qty', aliases: ['quantity', 'billed qty', 'packs', 'sale qty'], kind: 'number', sample: 10 },
+  { field: 'freeQuantity', heading: 'Free', aliases: ['free qty', 'free quantity', 'scheme', 'sch qty', 'bonus'], kind: 'number', sample: 1 },
+  { field: 'purchaseRate', heading: 'Rate', aliases: ['purchase rate', 'ptr', 'p.rate', 'price', 'cost'], kind: 'number', sample: 14.5 },
+  { field: 'mrp', heading: 'MRP', aliases: ['m.r.p', 'm.r.p.'], kind: 'number', sample: 21 },
+  { field: 'discountPercent', heading: 'Disc %', aliases: ['disc', 'discount', 'discount %', 'cd %', 'td %'], kind: 'number', sample: 5 },
+  { field: 'gstRatePercent', heading: 'GST %', aliases: ['gst', 'gst rate', 'tax %', 'tax'], kind: 'number', sample: 12 },
+];
+
+export type PurchaseSheetRow = Partial<Record<PurchaseField, string | number | null>>;
+
+/** Reads a supplier's invoice exported to Excel or CSV into purchase lines. */
+export async function readPurchaseFile(file: File): Promise<MappedSheet<PurchaseField>> {
+  return readMappedFile(file, PURCHASE_COLUMNS, 'productName');
 }
 
 function saveBlob(blob: Blob, filename: string) {

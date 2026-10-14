@@ -1,4 +1,4 @@
-import { Boxes, FileSpreadsheet, type LucideIcon, PackagePlus, ReceiptText, ScrollText, Settings2, SlidersHorizontal, Truck, Undo2 } from 'lucide-react';
+import { Boxes, ClipboardList, FileSpreadsheet, type LucideIcon, ListChecks, PackagePlus, ReceiptText, ScrollText, Settings2, SlidersHorizontal, Truck, Undo2, Wallet } from 'lucide-react';
 
 export interface PharmacySubLink {
   label: string;
@@ -12,7 +12,13 @@ export const SALES_LINKS: PharmacySubLink[] = [
   { label: 'Bills and returns', to: '/pharmacy/sales', icon: Undo2 },
 ];
 
-export const PURCHASE_LINKS: PharmacySubLink[] = [{ label: 'Purchase invoices', to: '/pharmacy/purchases', icon: PackagePlus }];
+export const PURCHASE_LINKS: PharmacySubLink[] = [
+  { label: 'Invoices', to: '/pharmacy/purchases', icon: PackagePlus },
+  { label: 'Reorder', to: '/pharmacy/reorder', icon: ListChecks },
+  { label: 'Orders', to: '/pharmacy/purchase-orders', icon: ClipboardList },
+  { label: 'Returns', to: '/pharmacy/purchase-returns', icon: Undo2 },
+  { label: 'Supplier accounts', to: '/pharmacy/suppliers', icon: Wallet },
+];
 
 export const STOCK_LINKS: PharmacySubLink[] = [
   { label: 'Current stock', to: '/pharmacy', icon: Boxes },

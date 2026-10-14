@@ -112,6 +112,12 @@ const PharmacyCounterPage = lazy(() => import('../pages/pharmacy/CounterPage'));
 const PharmacySalesListPage = lazy(() => import('../pages/pharmacy/SalesListPage'));
 const PharmacySaleDetailPage = lazy(() => import('../pages/pharmacy/SaleDetailPage'));
 const PharmacySettingsPage = lazy(() => import('../pages/pharmacy/SettingsPage'));
+const PharmacyReorderPage = lazy(() => import('../pages/pharmacy/ReorderPage'));
+const PharmacyPurchaseOrdersListPage = lazy(() => import('../pages/pharmacy/PurchaseOrdersListPage'));
+const PharmacyPurchaseOrderPage = lazy(() => import('../pages/pharmacy/PurchaseOrderPage'));
+const PharmacyPurchaseReturnsListPage = lazy(() => import('../pages/pharmacy/PurchaseReturnsListPage'));
+const PharmacyPurchaseReturnEntryPage = lazy(() => import('../pages/pharmacy/PurchaseReturnEntryPage'));
+const PharmacySupplierAccountsPage = lazy(() => import('../pages/pharmacy/SupplierAccountsPage'));
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
@@ -447,6 +453,13 @@ const pharmacyRoutes = [
           { path: 'pharmacy/sales', element: withSuspense(<PharmacySalesListPage />) },
           { path: 'pharmacy/sales/:id', element: withSuspense(<PharmacySaleDetailPage />) },
           { path: 'pharmacy/settings', element: withSuspense(<PharmacySettingsPage />) },
+          { path: 'pharmacy/reorder', element: withSuspense(<PharmacyReorderPage />) },
+          { path: 'pharmacy/purchase-orders', element: withSuspense(<PharmacyPurchaseOrdersListPage />) },
+          { path: 'pharmacy/purchase-orders/new', element: withSuspense(<PharmacyPurchaseOrderPage />) },
+          { path: 'pharmacy/purchase-orders/:id', element: withSuspense(<PharmacyPurchaseOrderPage />) },
+          { path: 'pharmacy/purchase-returns', element: withSuspense(<PharmacyPurchaseReturnsListPage />) },
+          { path: 'pharmacy/purchase-returns/new', element: withSuspense(<PharmacyPurchaseReturnEntryPage />) },
+          { path: 'pharmacy/suppliers', element: withSuspense(<PharmacySupplierAccountsPage />) },
         ],
       },
     ],
