@@ -360,7 +360,7 @@ export default function CounterPage() {
         </>
       }
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:h-[calc(100dvh-14.75rem)] lg:min-h-[440px] lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ---- Left: customer, item entry, lines ---- */}
         <div className="flex min-h-0 flex-col gap-3">
           <section className="rounded-lg border border-border bg-background p-3">
@@ -476,15 +476,17 @@ export default function CounterPage() {
 
           <section className="flex min-h-[200px] flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background">
             <div className="flex-1 overflow-auto">
-              <table className="w-full text-sm">
+              {/* Fixed layout: every column but Item has a set width, so Item takes all the
+                  room that is left instead of being squeezed by the inputs beside it. */}
+              <table className="w-full table-fixed text-sm">
                 <thead className="sticky top-0 z-10 bg-sidebar-active text-left text-[11px] font-medium uppercase tracking-wide text-sidebar-active-foreground">
                   <tr>
                     <th className="w-8 px-2 py-2">#</th>
                     <th className="px-2 py-2">Item</th>
                     <th className="w-44 px-2 py-2">Batch · expiry</th>
                     <th className="w-24 px-2 py-2 text-right">Qty</th>
-                    <th className="w-20 px-2 py-2 text-right">MRP</th>
-                    <th className="w-20 px-2 py-2 text-right">Disc %</th>
+                    <th className="w-[72px] px-2 py-2 text-right">MRP</th>
+                    <th className="w-16 px-2 py-2 text-right">Disc %</th>
                     <th className="w-24 px-2 py-2 text-right">Amount</th>
                     <th className="w-8 px-2 py-2" />
                   </tr>
@@ -507,11 +509,13 @@ export default function CounterPage() {
                       <tr key={line.key} className={cn(short ? 'bg-warning/10' : 'hover:bg-muted/30')}>
                         <td className="px-2 py-1.5 align-top text-muted-foreground">{index + 1}</td>
                         <td className="px-2 py-1.5 align-top">
-                          <div className="font-medium text-foreground">
-                            {line.item.productName}
-                            {badge && <span className={cn('ml-1.5 rounded px-1 py-px text-[10px] font-semibold', badge.className)}>{badge.label}</span>}
+                          <div className="flex items-center gap-1.5 font-medium text-foreground">
+                            <span className="truncate" title={line.item.productName}>
+                              {line.item.productName}
+                            </span>
+                            {badge && <span className={cn('shrink-0 rounded px-1 py-px text-[10px] font-semibold', badge.className)}>{badge.label}</span>}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="truncate text-xs text-muted-foreground" title={line.item.genericName ?? undefined}>
                             {line.item.genericName ?? ''}
                             {line.item.rackLocation ? `${line.item.genericName ? ' · ' : ''}rack ${line.item.rackLocation}` : ''}
                             {line.item.unitsPerPack > 1 ? ` · strip of ${quantity(line.item.unitsPerPack)}` : ''}
@@ -601,7 +605,7 @@ export default function CounterPage() {
         </div>
 
         {/* ---- Right: totals and payment ---- */}
-        <aside className="flex flex-col gap-3 rounded-lg border border-border bg-background p-3">
+        <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-background p-3">
           <dl className="text-sm">
             <div className="flex justify-between py-0.5">
               <dt className="text-muted-foreground">Items</dt>

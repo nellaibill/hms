@@ -1,12 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, ReceiptText, Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Pagination } from '@/components/Pagination';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/features/auth/AuthContext';
 import { dateTimeLabel, money, todayIso } from '@/features/pharmacy/common/format';
 import { SALES_LINKS } from '@/features/pharmacy/shell/links';
 import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
@@ -25,7 +23,6 @@ const field = 'h-9 rounded-md border border-input bg-background px-2 text-sm out
  */
 export default function SalesListPage() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
   const [view, setView] = useState<View>('bills');
   const [search, setSearch] = useState('');
   const [fromDate, setFromDate] = useState(todayIso());
@@ -65,16 +62,6 @@ export default function SalesListPage() {
       title="Sales and returns"
       subtitle="Find a bill to reprint it, take a balance, or return goods against it."
       subLinks={SALES_LINKS}
-      actions={
-        hasPermission('pharmacy.create') && (
-          <Button size="sm" asChild>
-            <Link to="/pharmacy/counter">
-              <ReceiptText className="h-4 w-4" />
-              Billing counter
-            </Link>
-          </Button>
-        )
-      }
     >
       <div className="flex flex-wrap items-center gap-2">
         <Tabs value={view} onValueChange={(next) => change(setView)(next as View)}>
