@@ -65,6 +65,7 @@ export * from './pharmacy/sale';
 export * from './pharmacy/settings';
 export * from './pharmacy/procurement';
 export * from './pharmacy/clinical';
+export * from './pharmacy/stockControl';
 export * from './notifications/notification';
 export * from './notifications/notificationTemplate';
 export * from './notifications/notificationPreference';

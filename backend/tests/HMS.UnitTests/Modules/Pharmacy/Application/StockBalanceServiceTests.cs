@@ -18,6 +18,7 @@ public class StockBalanceServiceTests
     private readonly PharmacyStore _store = PharmacyStore.Create("MAIN", "Main Pharmacy", StoreType.Pharmacy, null);
     private readonly IProductService _productService = Substitute.For<IProductService>();
     private readonly IProductBatchService _productBatchService = Substitute.For<IProductBatchService>();
+    private readonly IPharmacySettingsRepository _settingsRepository = Substitute.For<IPharmacySettingsRepository>();
     private readonly StockBalanceService _sut;
 
     private static readonly DateOnly Today = PharmacyClock.Today();
@@ -29,7 +30,7 @@ public class StockBalanceServiceTests
 
     public StockBalanceServiceTests()
     {
-        _sut = new StockBalanceService(_balanceRepository, _storeRepository, _productService, _productBatchService);
+        _sut = new StockBalanceService(_balanceRepository, _storeRepository, _productService, _productBatchService, _settingsRepository);
 
         // One store, the default — what every tenant has until it adds more. Requests in
         // these tests name no store, so they resolve to it.

@@ -266,3 +266,44 @@ internal class CreateIndentRequestValidator : AbstractValidator<CreateIndentRequ
         });
     }
 }
+
+internal class CreateStockAdjustmentRequestValidator : AbstractValidator<CreateStockAdjustmentRequest>
+{
+    public CreateStockAdjustmentRequestValidator()
+    {
+        RuleFor(x => x.Reason).IsInEnum();
+        RuleFor(x => x.Reason).NotEqual(AdjustmentReason.StockCount).WithMessage("Stock-count differences are posted from the count itself.");
+        RuleFor(x => x.Remarks).MaximumLength(500);
+        RuleFor(x => x.Remarks).NotEmpty().When(x => x.Reason is AdjustmentReason.Other or AdjustmentReason.Correction)
+            .WithMessage("Say what is being corrected.");
+        RuleFor(x => x.Lines).NotEmpty().WithMessage("Add at least one batch to adjust.");
+        RuleFor(x => x.Lines).Must(l => l.Count <= 300).WithMessage("An adjustment can hold at most 300 lines.");
+        RuleFor(x => x.Lines).Must(lines => lines.Select(l => l.ProductBatchId).Distinct().Count() == lines.Count)
+            .WithMessage("Each batch can appear once on an adjustment.");
+        RuleForEach(x => x.Lines).ChildRules(line =>
+        {
+            line.RuleFor(l => l.ProductId).NotEmpty();
+            line.RuleFor(l => l.ProductBatchId).NotEmpty();
+            line.RuleFor(l => l.Quantity).NotEqual(0).WithMessage("Enter how much to add or take away.");
+        });
+    }
+}
+
+internal class CreateStockTransferRequestValidator : AbstractValidator<CreateStockTransferRequest>
+{
+    public CreateStockTransferRequestValidator()
+    {
+        RuleFor(x => x.FromStoreId).NotEmpty();
+        RuleFor(x => x.ToStoreId).NotEmpty().NotEqual(x => x.FromStoreId).WithMessage("Choose two different stores.");
+        RuleFor(x => x.Remarks).MaximumLength(500);
+        RuleFor(x => x.Lines).NotEmpty().WithMessage("Add at least one batch to transfer.");
+        RuleFor(x => x.Lines).Must(lines => lines.Select(l => l.ProductBatchId).Distinct().Count() == lines.Count)
+            .WithMessage("Each batch can appear once on a transfer.");
+        RuleForEach(x => x.Lines).ChildRules(line =>
+        {
+            line.RuleFor(l => l.ProductId).NotEmpty();
+            line.RuleFor(l => l.ProductBatchId).NotEmpty();
+            line.RuleFor(l => l.Quantity).GreaterThan(0);
+        });
+    }
+}

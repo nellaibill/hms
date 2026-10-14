@@ -36,13 +36,16 @@ internal class StockBalanceService : IStockBalanceService
     private readonly IPharmacyStoreRepository _storeRepository;
     private readonly IProductService _productService;
     private readonly IProductBatchService _productBatchService;
+    private readonly IPharmacySettingsRepository _settingsRepository;
 
     public StockBalanceService(
         IPharmacyStockBalanceRepository balanceRepository,
         IPharmacyStoreRepository storeRepository,
         IProductService productService,
-        IProductBatchService productBatchService)
+        IProductBatchService productBatchService,
+        IPharmacySettingsRepository settingsRepository)
     {
+        _settingsRepository = settingsRepository;
         _balanceRepository = balanceRepository;
         _storeRepository = storeRepository;
         _productService = productService;
@@ -145,7 +148,7 @@ internal class StockBalanceService : IStockBalanceService
 
         var batches = await _productBatchService.GetLookupAsync(inStock.Select(l => l.ProductBatchId), cancellationToken);
         var today = PharmacyClock.Today();
-        var expiringSoonCutoff = today.AddDays(PharmacyClock.ExpiringSoonWindowDays);
+        var expiringSoonCutoff = today.AddDays(await ExpiryWindowDaysAsync(cancellationToken));
 
         return inStock
             .Select(line => (Line: line, Batch: batches.GetValueOrDefault(line.ProductBatchId)))
@@ -165,6 +168,11 @@ internal class StockBalanceService : IStockBalanceService
             .ToList();
     }
 
+    /// <summary>How many days ahead counts as "expiring soon": the pharmacy's own setting,
+    /// or 30 days until one is saved.</summary>
+    private async Task<int> ExpiryWindowDaysAsync(CancellationToken cancellationToken)
+        => (await _settingsRepository.GetAsync(cancellationToken))?.ExpiryAlertDays ?? PharmacyClock.ExpiringSoonWindowDays;
+
     private async Task<List<StockSummaryResponse>> BuildSummariesAsync(
         IReadOnlyList<ProductStockProfileResponse> products,
         IReadOnlyCollection<Guid>? productIds,
@@ -182,9 +190,10 @@ internal class StockBalanceService : IStockBalanceService
 
         var linesByProduct = lines.ToLookup(l => l.ProductId);
         var today = PharmacyClock.Today();
+        var window = await ExpiryWindowDaysAsync(cancellationToken);
 
         return products
-            .Select(p => StockSummaryCalculator.Build(p, linesByProduct[p.Id].ToList(), batches, today))
+            .Select(p => StockSummaryCalculator.Build(p, linesByProduct[p.Id].ToList(), batches, today, window))
             .ToList();
     }
 }

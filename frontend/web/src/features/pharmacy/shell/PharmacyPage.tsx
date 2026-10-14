@@ -44,7 +44,7 @@ const SECTIONS: PharmacySection[] = [
 
 /** Sections whose screens exist. The menu lists only these, so it never offers a dead link
  * while the module is being built out phase by phase. */
-const LIVE_SECTIONS = new Set(['counter', 'sales', 'prescriptions', 'indents', 'purchases', 'stock', 'setup']);
+const LIVE_SECTIONS = new Set(['counter', 'sales', 'prescriptions', 'indents', 'purchases', 'stock', 'registers', 'setup']);
 
 interface PharmacyPageProps {
   title: string;

@@ -398,6 +398,18 @@ export const API_ROUTES = {
       returnById: (id: string) => `/api/v1/pharmacy/sales/returns/${id}`,
     },
     settings: '/api/v1/pharmacy/settings',
+    stockControl: {
+      adjustments: '/api/v1/pharmacy/stock-control/adjustments',
+      adjustmentById: (id: string) => `/api/v1/pharmacy/stock-control/adjustments/${id}`,
+      transfers: '/api/v1/pharmacy/stock-control/transfers',
+      transferById: (id: string) => `/api/v1/pharmacy/stock-control/transfers/${id}`,
+      counts: '/api/v1/pharmacy/stock-control/counts',
+      countById: (id: string) => `/api/v1/pharmacy/stock-control/counts/${id}`,
+      postCount: (id: string) => `/api/v1/pharmacy/stock-control/counts/${id}/post`,
+      cancelCount: (id: string) => `/api/v1/pharmacy/stock-control/counts/${id}/cancel`,
+      expiring: '/api/v1/pharmacy/stock-control/expiring',
+      scheduleRegister: '/api/v1/pharmacy/stock-control/schedule-register',
+    },
     prescriptions: '/api/v1/pharmacy/prescriptions',
     catalog: '/api/v1/pharmacy/catalog',
     indents: {

@@ -1714,6 +1714,181 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                     b.ToTable("pharmacy_settings", "pharmacy");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("AdjustmentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("adjustment_date");
+
+                    b.Property<string>("AdjustmentNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("adjustment_no");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<Guid?>("StockCountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stock_count_id");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_stock_adjustments");
+
+                    b.HasIndex("AdjustmentDate")
+                        .HasDatabaseName("ix_pharmacy_stock_adjustments_adjustment_date");
+
+                    b.HasIndex("AdjustmentNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_stock_adjustments_adjustment_no");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("pharmacy_stock_adjustments", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockAdjustmentLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdjustmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("adjustment_id");
+
+                    b.Property<string>("BatchNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("batch_no");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("ProductBatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_batch_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("product_name");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("unit_cost");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_stock_adjustment_lines");
+
+                    b.HasIndex("AdjustmentId")
+                        .HasDatabaseName("ix_pharmacy_stock_adjustment_lines_adjustment_id");
+
+                    b.ToTable("pharmacy_stock_adjustment_lines", "pharmacy");
+                });
+
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockBalance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1787,6 +1962,179 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("pharmacy_stock_balances", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockCount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AdjustmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("adjustment_id");
+
+                    b.Property<string>("CountNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("count_no");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("posted_at");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_stock_counts");
+
+                    b.HasIndex("CountNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_stock_counts_count_no");
+
+                    b.HasIndex("StoreId", "Status")
+                        .HasDatabaseName("ix_pharmacy_stock_counts_store_status");
+
+                    b.ToTable("pharmacy_stock_counts", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockCountLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BatchNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("batch_no");
+
+                    b.Property<decimal>("BookQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("book_quantity");
+
+                    b.Property<decimal?>("CountedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("counted_quantity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("ProductBatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_batch_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("product_name");
+
+                    b.Property<Guid>("StockCountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stock_count_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_stock_count_lines");
+
+                    b.HasIndex("StockCountId")
+                        .HasDatabaseName("ix_pharmacy_stock_count_lines_stock_count_id");
+
+                    b.ToTable("pharmacy_stock_count_lines", "pharmacy");
                 });
 
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction", b =>
@@ -1923,6 +2271,172 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasDatabaseName("ix_pharmacy_stock_transactions_product_batch");
 
                     b.ToTable("pharmacy_stock_transactions", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransfer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("FromStoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_store_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<Guid>("ToStoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_store_id");
+
+                    b.Property<DateOnly>("TransferDate")
+                        .HasColumnType("date")
+                        .HasColumnName("transfer_date");
+
+                    b.Property<string>("TransferNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("transfer_no");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_stock_transfers");
+
+                    b.HasIndex("FromStoreId");
+
+                    b.HasIndex("ToStoreId");
+
+                    b.HasIndex("TransferDate")
+                        .HasDatabaseName("ix_pharmacy_stock_transfers_transfer_date");
+
+                    b.HasIndex("TransferNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_stock_transfers_transfer_no");
+
+                    b.ToTable("pharmacy_stock_transfers", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransferLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BatchNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("batch_no");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("ProductBatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_batch_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("product_name");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("TransferId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transfer_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_stock_transfer_lines");
+
+                    b.HasIndex("TransferId")
+                        .HasDatabaseName("ix_pharmacy_stock_transfer_lines_transfer_id");
+
+                    b.ToTable("pharmacy_stock_transfer_lines", "pharmacy");
                 });
 
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStore", b =>
@@ -2230,6 +2744,26 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasConstraintName("fk_pharmacy_sale_return_lines_sale_return_id");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockAdjustment", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_adjustments_pharmacy_stores_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockAdjustmentLine", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStockAdjustment", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("AdjustmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_adjustment_lines_adjustment_id");
+                });
+
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockBalance", b =>
                 {
                     b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
@@ -2240,6 +2774,26 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .HasConstraintName("fk_pharmacy_stock_balances_pharmacy_stores_store_id");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockCount", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_counts_pharmacy_stores_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockCountLine", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStockCount", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("StockCountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_count_lines_stock_count_id");
+                });
+
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransaction", b =>
                 {
                     b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
@@ -2248,6 +2802,33 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_pharmacy_stock_transactions_pharmacy_stores_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransfer", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("FromStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_transfers_from_store_id");
+
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("ToStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_transfers_to_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransferLine", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStockTransfer", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("TransferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_stock_transfer_lines_transfer_id");
                 });
 
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyGoodsReceipt", b =>
@@ -2278,6 +2859,21 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                 });
 
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacySaleReturn", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockAdjustment", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockCount", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyStockTransfer", b =>
                 {
                     b.Navigation("Lines");
                 });

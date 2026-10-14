@@ -121,6 +121,11 @@ const PharmacySupplierAccountsPage = lazy(() => import('../pages/pharmacy/Suppli
 const PharmacyPrescriptionQueuePage = lazy(() => import('../pages/pharmacy/PrescriptionQueuePage'));
 const PharmacyIndentsPage = lazy(() => import('../pages/pharmacy/IndentsPage'));
 const PharmacyIndentEntryPage = lazy(() => import('../pages/pharmacy/IndentEntryPage'));
+const PharmacyStockAdjustmentsPage = lazy(() => import('../pages/pharmacy/StockAdjustmentsPage'));
+const PharmacyStockTransfersPage = lazy(() => import('../pages/pharmacy/StockTransfersPage'));
+const PharmacyStockCountPage = lazy(() => import('../pages/pharmacy/StockCountPage'));
+const PharmacyExpiryPage = lazy(() => import('../pages/pharmacy/ExpiryPage'));
+const PharmacyRegistersPage = lazy(() => import('../pages/pharmacy/RegistersPage'));
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
@@ -468,6 +473,12 @@ const pharmacyRoutes = [
           { path: 'pharmacy/suppliers', element: withSuspense(<PharmacySupplierAccountsPage />) },
           { path: 'pharmacy/prescriptions', element: withSuspense(<PharmacyPrescriptionQueuePage />) },
           { path: 'pharmacy/indents', element: withSuspense(<PharmacyIndentsPage />) },
+          { path: 'pharmacy/adjustments', element: withSuspense(<PharmacyStockAdjustmentsPage />) },
+          { path: 'pharmacy/transfers', element: withSuspense(<PharmacyStockTransfersPage />) },
+          { path: 'pharmacy/stock-counts', element: withSuspense(<PharmacyStockCountPage />) },
+          { path: 'pharmacy/stock-counts/:id', element: withSuspense(<PharmacyStockCountPage />) },
+          { path: 'pharmacy/expiry', element: withSuspense(<PharmacyExpiryPage />) },
+          { path: 'pharmacy/registers', element: withSuspense(<PharmacyRegistersPage />) },
         ],
       },
     ],

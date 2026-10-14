@@ -4,6 +4,16 @@ import type {
   CollectSalePaymentRequest,
   CounterItemResponse,
   CreateSaleRequest,
+  CreateStockAdjustmentRequest,
+  CreateStockTransferRequest,
+  ExpiringBatchResponse,
+  ScheduleRegisterEntry,
+  StockAdjustmentListQuery,
+  StockAdjustmentResponse,
+  StockCountListQuery,
+  StockCountResponse,
+  StockTransferListQuery,
+  StockTransferResponse,
   CreateSaleReturnRequest,
   HeldBillResponse,
   HoldBillRequest,
@@ -426,6 +436,85 @@ export class PharmacyApi {
 
   async cancelIndent(id: string): Promise<IndentResponse> {
     const response = await this.client.post<IndentResponse>(API_ROUTES.pharmacy.indents.cancel(id));
+    return response.data;
+  }
+
+  /** Corrects stock, with a reason. Positive quantities add; negative take away. */
+  async createStockAdjustment(request: CreateStockAdjustmentRequest): Promise<StockAdjustmentResponse> {
+    const response = await this.client.post<StockAdjustmentResponse>(API_ROUTES.pharmacy.stockControl.adjustments, request);
+    return response.data;
+  }
+
+  async getStockAdjustments(query: StockAdjustmentListQuery = {}): Promise<Paged<StockAdjustmentResponse>> {
+    const response = await this.client.get<StockAdjustmentResponse[]>(API_ROUTES.pharmacy.stockControl.adjustments, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getStockAdjustmentById(id: string): Promise<StockAdjustmentResponse> {
+    const response = await this.client.get<StockAdjustmentResponse>(API_ROUTES.pharmacy.stockControl.adjustmentById(id));
+    return response.data;
+  }
+
+  /** Moves stock from one store to another, in one step. */
+  async createStockTransfer(request: CreateStockTransferRequest): Promise<StockTransferResponse> {
+    const response = await this.client.post<StockTransferResponse>(API_ROUTES.pharmacy.stockControl.transfers, request);
+    return response.data;
+  }
+
+  async getStockTransfers(query: StockTransferListQuery = {}): Promise<Paged<StockTransferResponse>> {
+    const response = await this.client.get<StockTransferResponse[]>(API_ROUTES.pharmacy.stockControl.transfers, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getStockTransferById(id: string): Promise<StockTransferResponse> {
+    const response = await this.client.get<StockTransferResponse>(API_ROUTES.pharmacy.stockControl.transferById(id));
+    return response.data;
+  }
+
+  /** Starts a physical count of a store (the default store when none is named). */
+  async startStockCount(storeId?: string, remarks?: string): Promise<StockCountResponse> {
+    const response = await this.client.post<StockCountResponse>(API_ROUTES.pharmacy.stockControl.counts, { storeId, remarks });
+    return response.data;
+  }
+
+  async saveStockCount(id: string, entries: { lineId: string; countedQuantity: number | null }[]): Promise<StockCountResponse> {
+    const response = await this.client.put<StockCountResponse>(API_ROUTES.pharmacy.stockControl.countById(id), { entries });
+    return response.data;
+  }
+
+  /** Posts the count: every difference becomes one stock adjustment. */
+  async postStockCount(id: string): Promise<StockCountResponse> {
+    const response = await this.client.post<StockCountResponse>(API_ROUTES.pharmacy.stockControl.postCount(id));
+    return response.data;
+  }
+
+  async cancelStockCount(id: string): Promise<StockCountResponse> {
+    const response = await this.client.post<StockCountResponse>(API_ROUTES.pharmacy.stockControl.cancelCount(id));
+    return response.data;
+  }
+
+  async getStockCounts(query: StockCountListQuery = {}): Promise<Paged<StockCountResponse>> {
+    const response = await this.client.get<StockCountResponse[]>(API_ROUTES.pharmacy.stockControl.counts, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getStockCountById(id: string): Promise<StockCountResponse> {
+    const response = await this.client.get<StockCountResponse>(API_ROUTES.pharmacy.stockControl.countById(id));
+    return response.data;
+  }
+
+  /** Batches that have expired or will within `days` (the pharmacy's alert window when omitted). */
+  async getExpiringBatches(storeId?: string, days?: number): Promise<ExpiringBatchResponse[]> {
+    const response = await this.client.get<ExpiringBatchResponse[]>(API_ROUTES.pharmacy.stockControl.expiring, { query: { storeId, days } });
+    return response.data;
+  }
+
+  /** Every sale of a scheduled drug in a period (H1, X and narcotic unless `schedules` says otherwise). */
+  async getScheduleRegister(fromDate: string, toDate: string, schedules?: string[], storeId?: string): Promise<ScheduleRegisterEntry[]> {
+    const params = new URLSearchParams({ fromDate, toDate });
+    schedules?.forEach((schedule) => params.append('schedule', schedule));
+    if (storeId) params.set('storeId', storeId);
+    const response = await this.client.get<ScheduleRegisterEntry[]>(`${API_ROUTES.pharmacy.stockControl.scheduleRegister}?${params.toString()}`);
     return response.data;
   }
 }

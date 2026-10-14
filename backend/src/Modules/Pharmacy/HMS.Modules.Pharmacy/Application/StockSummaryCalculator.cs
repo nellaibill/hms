@@ -16,9 +16,10 @@ internal static class StockSummaryCalculator
         ProductStockProfileResponse product,
         IReadOnlyCollection<StockBalanceLine> lines,
         IReadOnlyDictionary<Guid, ProductBatchResponse> batchesById,
-        DateOnly today)
+        DateOnly today,
+        int expiringSoonWindowDays = PharmacyClock.ExpiringSoonWindowDays)
     {
-        var expiringSoonCutoff = today.AddDays(PharmacyClock.ExpiringSoonWindowDays);
+        var expiringSoonCutoff = today.AddDays(expiringSoonWindowDays);
 
         var available = 0m;
         var expiringSoon = 0m;

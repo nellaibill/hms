@@ -41,8 +41,12 @@ export default function PurchaseReturnEntryPage() {
   const { toast } = useToast();
   const [params] = useSearchParams();
 
-  const [supplier, setSupplier] = useState<SupplierOption | null>(null);
-  const [storeId, setStoreId] = useState('');
+  // The expiry list opens this screen for the supplier a batch was bought from.
+  const [supplier, setSupplier] = useState<SupplierOption | null>(() => {
+    const id = params.get('supplierId');
+    return id ? { id, name: params.get('supplierName') ?? '', code: '' } : null;
+  });
+  const [storeId, setStoreId] = useState(params.get('storeId') ?? '');
   const [reason, setReason] = useState<PurchaseReturnReason>((params.get('reason') as PurchaseReturnReason) || 'Expired');
   const [creditNoteNo, setCreditNoteNo] = useState('');
   const [remarks, setRemarks] = useState('');
