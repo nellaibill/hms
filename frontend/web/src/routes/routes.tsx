@@ -153,6 +153,7 @@ const PlatformDashboardPage = lazy(() => import('../pages/platform/PlatformDashb
 const PlatformSecuritySettingsPage = lazy(() => import('../pages/platform/PlatformSecuritySettingsPage'));
 const CreateHospitalPage = lazy(() => import('../pages/platform/CreateHospitalPage'));
 const PlatformBackupsPage = lazy(() => import('../pages/platform/PlatformBackupsPage'));
+const HospitalFeaturesPage = lazy(() => import('../pages/platform/HospitalFeaturesPage'));
 
 const shellFallback = (
   <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
@@ -610,6 +611,7 @@ export const router = createBrowserRouter(
       children: [
         { path: '/platform/dashboard', element: withSuspense(<PlatformDashboardPage />) },
         { path: '/platform/hospitals/new', element: withSuspense(<CreateHospitalPage />) },
+        { path: '/platform/hospitals/:id/features', element: withSuspense(<HospitalFeaturesPage />) },
         { path: '/platform/security', element: withSuspense(<PlatformSecuritySettingsPage />) },
         { path: '/platform/backups', element: withSuspense(<PlatformBackupsPage />) },
       ],

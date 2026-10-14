@@ -170,7 +170,7 @@ export function recommendedFeatures(all: readonly string[], mandatory: readonly 
  * choose at hospital-creation time (mandatory ones are always included server-side).
  *
  * IMPORTANT — keep this in sync with FeatureCatalog.Optional by hand: this is a hardcoded
- * local list, not fetched from the API (unlike HospitalFeaturesDialog.tsx's post-creation
+ * local list, not fetched from the API (unlike HospitalFeaturesEditor.tsx's post-creation
  * "Manage Features" screen, which reads live from TenantFeaturesResponse.allFeatures). It
  * already drifted out of sync once — "laboratory" was added to the backend catalog without a
  * matching update here, so newly-registered hospitals had no way to enable it at creation
