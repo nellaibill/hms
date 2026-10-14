@@ -138,18 +138,21 @@ export default function RegistersPage() {
                 return (
                   <tr key={`${entry.saleId}-${index}`}>
                     <td className="px-3 py-1.5 text-muted-foreground">{index + 1}</td>
-                    <td className="whitespace-nowrap px-3 py-1.5">{dateTimeLabel(entry.saleDate)}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5">
+                      <div>{dateTimeLabel(entry.saleDate).split(', ')[0]}</div>
+                      <div className="text-xs text-muted-foreground">{dateTimeLabel(entry.saleDate).split(', ')[1]}</div>
+                    </td>
                     <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">
                       <Link to={`/pharmacy/sales/${entry.saleId}`} className="font-medium text-primary hover:underline print:text-black print:no-underline">
                         {entry.billNo}
                       </Link>
                     </td>
-                    <td className="px-3 py-1.5">
+                    <td className="min-w-[10rem] px-3 py-1.5">
                       <div className="font-medium text-foreground">{entry.patientName}</div>
                       <div className="text-xs text-muted-foreground">{[entry.patientUhid, entry.patientPhone].filter(Boolean).join(' · ')}</div>
                     </td>
-                    <td className="px-3 py-1.5">{entry.doctorName ?? '—'}</td>
-                    <td className="px-3 py-1.5">
+                    <td className="min-w-[8rem] px-3 py-1.5">{entry.doctorName ?? '—'}</td>
+                    <td className="min-w-[12rem] px-3 py-1.5">
                       <span className="font-medium text-foreground">{entry.productName}</span>
                       {badge && <span className={cn('ml-1.5 rounded px-1 py-px text-[10px] font-semibold print:hidden', badge.className)}>{badge.label}</span>}
                       {entry.genericName && <div className="text-xs text-muted-foreground">{entry.genericName}</div>}
@@ -157,7 +160,7 @@ export default function RegistersPage() {
                     <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">
                       {entry.batchNo} · {expiryLabel(entry.expiryDate)}
                     </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
                       {quantity(entry.quantity)}
                       {entry.returnedQuantity > 0 && <div className="text-xs text-muted-foreground">{quantity(entry.returnedQuantity)} returned</div>}
                     </td>

@@ -58,7 +58,7 @@ export default function StockTransfersPage() {
       }),
     onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: ['pharmacy'] });
-      toast({ title: `Transfer saved · ${saved.transferNo}`, description: `${saved.fromStoreName} → ${saved.toStoreName} · ${saved.lineCount} lines`, variant: 'success' });
+      toast({ title: `Transfer saved · ${saved.transferNo}`, description: `${saved.fromStoreName} → ${saved.toStoreName} · ${saved.lineCount} ${saved.lineCount === 1 ? 'line' : 'lines'}`, variant: 'success' });
       setEntering(false);
       setLines([]);
       setRemarks('');
@@ -237,7 +237,7 @@ export default function StockTransfersPage() {
                       <tr onClick={() => setOpenId(open ? null : item.id)} className="cursor-pointer hover:bg-muted/40">
                         <td className="px-2 py-2 text-muted-foreground">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
                         <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-medium text-primary">{item.transferNo}</td>
-                        <td className="px-3 py-2">{dateLabel(item.transferDate)}</td>
+                        <td className="whitespace-nowrap px-3 py-2">{dateLabel(item.transferDate)}</td>
                         <td className="px-3 py-2">{item.fromStoreName}</td>
                         <td className="px-3 py-2">{item.toStoreName}</td>
                         <td className="px-3 py-2 text-muted-foreground">{item.remarks ?? '—'}</td>

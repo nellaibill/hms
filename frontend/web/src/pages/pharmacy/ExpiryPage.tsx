@@ -105,7 +105,11 @@ export default function ExpiryPage() {
   return (
     <PharmacyPage
       title="Expiry"
-      subtitle={data ? `${data.length} batches · ${expired.length} already expired${totalValue ? ` · ₹${money(totalValue)} at cost, of which ₹${money(expiredValue)} expired` : ''}` : 'Stock that has expired or soon will.'}
+      subtitle={
+        data
+          ? `${data.length} ${data.length === 1 ? 'batch' : 'batches'} · ${expired.length} already expired${totalValue ? ` · ₹${money(totalValue)} at cost${expiredValue ? `, of which ₹${money(expiredValue)} expired` : ''}` : ''}`
+          : 'Stock that has expired or soon will.'
+      }
       subLinks={STOCK_LINKS}
       actions={
         <>

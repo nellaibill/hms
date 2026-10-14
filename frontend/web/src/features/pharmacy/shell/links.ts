@@ -21,7 +21,7 @@ export const PURCHASE_LINKS: PharmacySubLink[] = [
 ];
 
 export const STOCK_LINKS: PharmacySubLink[] = [
-  { label: 'Current stock', to: '/pharmacy', icon: Boxes },
+  { label: 'Current stock', to: '/pharmacy/stock', icon: Boxes },
   { label: 'Stock ledger', to: '/pharmacy/stock-ledger', icon: ScrollText },
   { label: 'Expiry', to: '/pharmacy/expiry', icon: CalendarClock },
   { label: 'Adjustments', to: '/pharmacy/adjustments', icon: Scale },
