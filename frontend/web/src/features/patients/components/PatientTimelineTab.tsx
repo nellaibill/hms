@@ -1,5 +1,5 @@
 import type { Patient } from '@hms/shared';
-import { CalendarDays, ChevronRight, ClipboardList, FileText, FlaskConical, History, Loader2, Receipt, Stethoscope, UserPlus } from 'lucide-react';
+import { CalendarDays, ChevronRight, ClipboardList, FileText, FlaskConical, History, Loader2, Pill, Receipt, Stethoscope, Undo2, UserPlus } from 'lucide-react';
 import { useMemo, useState, type ElementType } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -10,16 +10,19 @@ import { useLabOrdersByPatientQuery } from '@/features/laboratory';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import { useOpdConsultationsByPatientQuery } from '@/features/opdConsultation';
 import { usePatientDocumentsQuery } from '../hooks/usePatientDocumentsQuery';
+import { usePatientPharmacyBillsQuery } from '../hooks/usePatientPharmacyBillsQuery';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
 import { inDateRange } from './dateRange';
+import { pharmacyBillFigures } from './pharmacyBills';
 
-type EventCategory = 'registration' | 'visit' | 'consultation' | 'billing' | 'lab' | 'document';
+type EventCategory = 'registration' | 'visit' | 'consultation' | 'billing' | 'pharmacy' | 'lab' | 'document';
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   registration: 'Registration',
   visit: 'Visits',
   consultation: 'Consultations',
   billing: 'Billing',
+  pharmacy: 'Pharmacy',
   lab: 'Laboratory',
   document: 'Documents',
 };
@@ -30,6 +33,7 @@ const CATEGORY_TONES: Record<EventCategory, { bubble: string; dot: string }> = {
   visit: { bubble: 'bg-sky-100 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400', dot: 'bg-sky-500' },
   consultation: { bubble: 'bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400', dot: 'bg-green-500' },
   billing: { bubble: 'bg-orange-100 text-orange-500 dark:bg-orange-500/15 dark:text-orange-400', dot: 'bg-orange-400' },
+  pharmacy: { bubble: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400', dot: 'bg-teal-500' },
   lab: { bubble: 'bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400', dot: 'bg-violet-500' },
   document: { bubble: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300', dot: 'bg-slate-400' },
 };
@@ -65,8 +69,8 @@ interface PatientTimelineTabProps {
 
 /**
  * Patient Details' Timeline — a newest-first merge of everything already recorded for this
- * patient in the other modules (registration, visits, consultation notes, invoices, lab orders
- * and released reports, documents). Nothing here is stored separately: each source is the same
+ * patient in the other modules (registration, visits, consultation notes, invoices, pharmacy
+ * bills and returns, lab orders and released reports, documents). Nothing here is stored separately: each source is the same
  * query the other tabs use, so the timeline can't drift from them. Sources the viewer has no
  * permission for are simply left out, and an event only links somewhere the viewer can open.
  * Rendered on its own tab and alongside the Billing panel on the Billing tab.
@@ -76,12 +80,14 @@ export function PatientTimelineTab({ patient, onNavigateToTab, className }: Pati
   const canViewClinical = hasPermission('clinical-care.view');
   const canViewLab = hasPermission('diagnostics.view');
   const canViewBilling = hasPermission('finance-billing.view');
+  const canViewPharmacy = hasPermission('pharmacy.view');
 
   const visitsQuery = usePatientVisitsQuery(patient.id);
   const invoicesQuery = usePatientInvoicesQuery(patient.id);
   const documentsQuery = usePatientDocumentsQuery(patient.id);
   const consultationsQuery = useOpdConsultationsByPatientQuery(patient.id, canViewClinical);
   const labOrdersQuery = useLabOrdersByPatientQuery(canViewLab ? patient.id : undefined);
+  const pharmacyQuery = usePatientPharmacyBillsQuery(patient.id, canViewPharmacy || canViewBilling);
   // Primes resolveRecordLabel's cache for department/consultant names on visit rows.
   useMasterOptionsQuery('department');
   useMasterOptionsQuery('consultant');
@@ -151,6 +157,35 @@ export function PatientTimelineTab({ patient, onNavigateToTab, className }: Pati
       }
     }
 
+    // Pharmacy bills open the bill itself for pharmacy staff; for billing staff, the Billing tab.
+    const pharmacyTarget = (saleId: string): EventTarget | undefined => (canViewPharmacy ? { kind: 'route', to: `/pharmacy/sales/${saleId}` } : tab('billing'));
+    for (const bill of pharmacyQuery.data?.bills ?? []) {
+      const figures = pharmacyBillFigures(bill);
+      const names = bill.lines.map((line) => line.productName);
+      const medicines = names.length > 3 ? `${names.slice(0, 3).join(', ')} +${names.length - 3} more` : names.join(', ');
+      const settled = figures.onAdmission > 0 ? 'on IP bill' : figures.due > 0 ? `${formatCurrency(figures.due)} due` : 'paid';
+      list.push({
+        key: `pharmacy-${bill.id}`,
+        at: bill.saleDate,
+        category: 'pharmacy',
+        icon: Pill,
+        title: `Pharmacy bill ${bill.billNo}`,
+        detail: [medicines, `${formatCurrency(bill.netAmount)} ${settled}`].filter(Boolean).join(' · '),
+        target: pharmacyTarget(bill.id),
+      });
+    }
+    for (const saleReturn of pharmacyQuery.data?.returns ?? []) {
+      list.push({
+        key: `pharmacy-return-${saleReturn.id}`,
+        at: saleReturn.returnDate,
+        category: 'pharmacy',
+        icon: Undo2,
+        title: `Pharmacy return ${saleReturn.returnNo}`,
+        detail: `Against ${saleReturn.billNo} · ${formatCurrency(saleReturn.returnAmount)}${saleReturn.refundAmount > 0 ? ` · ${formatCurrency(saleReturn.refundAmount)} refunded` : ''}`,
+        target: pharmacyTarget(saleReturn.saleId),
+      });
+    }
+
     for (const order of labOrdersQuery.data ?? []) {
       const tests = order.items.map((item) => item.testName).join(', ');
       const target: EventTarget = { kind: 'route', to: `/diagnostics/lab/orders/${order.id}` };
@@ -187,9 +222,11 @@ export function PatientTimelineTab({ patient, onNavigateToTab, className }: Pati
     visitsQuery.data,
     consultationsQuery.data,
     invoicesQuery.data,
+    pharmacyQuery.data,
     labOrdersQuery.data,
     documentsQuery.data,
     canViewBilling,
+    canViewPharmacy,
     onNavigateToTab,
   ]);
 

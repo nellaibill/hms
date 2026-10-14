@@ -1,4 +1,4 @@
-import type { PatientVisit } from '@hms/shared';
+import type { PatientVisit, SaleLineResponse, SaleResponse, SaleReturnResponse } from '@hms/shared';
 import { CalendarDays, FileText, Loader2, Plus, RotateCcw, Search, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -11,25 +11,32 @@ import { describeBillingItem, formatCurrency, usePatientInvoicesQuery, type Bill
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
 import { encounterTypeShortLabel } from '../encounterTypeLabel';
+import { usePatientPharmacyBillsQuery } from '../hooks/usePatientPharmacyBillsQuery';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
 import { inDateRange } from './dateRange';
+import { pharmacyBillFigures, type PharmacyBillFigures, type PharmacyBillStatus } from './pharmacyBills';
 
-type ContextTone = 'opd' | 'ipd' | 'other' | 'none';
+type ContextTone = 'opd' | 'ipd' | 'other' | 'none' | 'pharmacy';
 type InvoiceStatus = 'Paid' | 'Pending' | 'Partially Paid' | 'Voided';
 type StatusFilter = 'all' | 'Paid' | 'Pending' | 'Voided';
+
+/** The encounter label pharmacy bills carry in the "All Visits" filter, and their department. */
+const PHARMACY = 'Pharmacy';
 
 const CONTEXT_TONE_CLASSES: Record<ContextTone, string> = {
   opd: 'bg-emerald-500 text-white',
   ipd: 'bg-amber-400 text-white',
   other: 'bg-sky-500 text-white',
   none: 'border border-border bg-background text-muted-foreground',
+  pharmacy: 'bg-teal-600 text-white',
 };
 
-const STATUS_PILL_CLASSES: Record<InvoiceStatus, string> = {
+const STATUS_PILL_CLASSES: Record<InvoiceStatus | PharmacyBillStatus, string> = {
   Paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
   Pending: 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400',
   'Partially Paid': 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
   Voided: 'bg-muted text-muted-foreground line-through',
+  'On IP bill': 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400',
 };
 
 /** OPD/IPD context for one invoice, from the data the invoice is actually linked to — never
@@ -64,8 +71,8 @@ function invoiceStatus(billing: Billing): InvoiceStatus {
   return paid === 0 ? 'Pending' : 'Partially Paid';
 }
 
-function StatusPill({ status }: { status: InvoiceStatus }) {
-  return <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_PILL_CLASSES[status])}>{status}</span>;
+function StatusPill({ status }: { status: InvoiceStatus | PharmacyBillStatus }) {
+  return <span className={cn('inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_PILL_CLASSES[status])}>{status}</span>;
 }
 
 function SummaryTile({ label, value, className }: { label: string; value: string; className: string }) {
@@ -88,6 +95,16 @@ interface VisibleInvoice {
   items: BillingItem[];
 }
 
+interface VisiblePharmacyBill {
+  bill: SaleResponse;
+  figures: PharmacyBillFigures;
+  lines: SaleLineResponse[];
+  returns: SaleReturnResponse[];
+}
+
+/** One card on the panel: a hospital invoice, or a pharmacy bill — newest first, together. */
+type Entry = { kind: 'invoice'; at: string; key: string; invoice: VisibleInvoice } | { kind: 'pharmacy'; at: string; key: string; pharmacy: VisiblePharmacyBill };
+
 /**
  * Patient Details' Billing panel — every invoice for this patient as its own itemised table,
  * with Total Billed/Paid/Pending tiles and client-side filters (date, encounter, department,
@@ -95,11 +112,19 @@ interface VisibleInvoice {
  * this only reads it via the real Billing API. Invoice numbers open the Invoice Detail page
  * (record payment / void / print live there), and "New Bill" opens Invoice Create with this
  * patient preselected.
+ *
+ * Pharmacy bills are the pharmacy's own documents, never hospital invoices (ADR-094), so they
+ * are read from the Pharmacy API and shown as their own cards, filtered and totalled with the
+ * invoices. The part of an inpatient pharmacy bill put on the admission is shown on its card
+ * but left out of the totals — the IP final bill carries it as its Pharmacy line.
  */
 export function PatientBillingPanel({ patientId }: { patientId: string }) {
   const { hasPermission } = useAuth();
   const canCreateBill = hasPermission('finance-billing.create');
+  const canSeePharmacyBills = hasPermission('pharmacy.view') || hasPermission('finance-billing.view');
+  const canOpenPharmacyBill = hasPermission('pharmacy.view');
   const { data: billings, isPending, isError } = usePatientInvoicesQuery(patientId);
+  const pharmacyQuery = usePatientPharmacyBillsQuery(patientId, canSeePharmacyBills);
   const { data: visits } = usePatientVisitsQuery(patientId);
   // Primes the Masters reference cache describeBillingItem reads from, so every line item
   // resolves to its real name instead of a raw id.
@@ -124,15 +149,24 @@ export function PatientBillingPanel({ patientId }: { patientId: string }) {
     () => (billings ?? []).map((billing) => ({ billing, context: billingContext(billing, visits), status: invoiceStatus(billing) })),
     [billings, visits],
   );
-  const encounterOptions = useMemo(() => [...new Set(invoices.map((invoice) => invoice.context.label))], [invoices]);
+  const pharmacyBills = useMemo(() => {
+    const returnsBySale = new Map<string, SaleReturnResponse[]>();
+    (pharmacyQuery.data?.returns ?? []).forEach((r) => returnsBySale.set(r.saleId, [...(returnsBySale.get(r.saleId) ?? []), r]));
+    return (pharmacyQuery.data?.bills ?? []).map((bill) => ({ bill, figures: pharmacyBillFigures(bill), returns: returnsBySale.get(bill.id) ?? [] }));
+  }, [pharmacyQuery.data]);
+
+  const encounterOptions = useMemo(
+    () => [...new Set([...invoices.map((invoice) => invoice.context.label), ...(pharmacyBills.length > 0 ? [PHARMACY] : [])])],
+    [invoices, pharmacyBills.length],
+  );
   const departmentOptions = useMemo(
-    () => [...new Set(invoices.flatMap((invoice) => invoice.billing.items.map(itemDepartment)))].sort(),
-    [invoices],
+    () => [...new Set([...invoices.flatMap((invoice) => invoice.billing.items.map(itemDepartment)), ...(pharmacyBills.length > 0 ? [PHARMACY] : [])])].sort(),
+    [invoices, pharmacyBills.length],
   );
 
-  const visible = useMemo<VisibleInvoice[]>(() => {
+  const visible = useMemo<Entry[]>(() => {
     const term = search.trim().toLowerCase();
-    return invoices.flatMap((invoice) => {
+    const entries: Entry[] = invoices.flatMap((invoice) => {
       if (!inDateRange(invoice.billing.createdAt, from, to)) return [];
       if (encounter !== 'all' && invoice.context.label !== encounter) return [];
       if (status === 'Voided' && !invoice.billing.isVoided) return [];
@@ -146,17 +180,41 @@ export function PatientBillingPanel({ patientId }: { patientId: string }) {
         }
         return true;
       });
-      return items.length > 0 ? [{ ...invoice, items }] : [];
+      return items.length > 0 ? [{ kind: 'invoice' as const, at: invoice.billing.createdAt, key: `invoice-${invoice.billing.id}`, invoice: { ...invoice, items } }] : [];
     });
-  }, [invoices, from, to, encounter, department, status, search]);
 
-  // Voided invoices were never really billed, so they're left out of every total.
+    for (const { bill, figures, returns } of pharmacyBills) {
+      if (!inDateRange(bill.saleDate, from, to)) continue;
+      if (encounter !== 'all' && encounter !== PHARMACY) continue;
+      if (department !== 'all' && department !== PHARMACY) continue;
+      // A pharmacy bill is never voided — goods come back as a return instead.
+      if (status === 'Voided') continue;
+      if (status === 'Paid' && figures.status !== 'Paid') continue;
+      if (status === 'Pending' && figures.status === 'Paid') continue;
+      const lines = term
+        ? bill.lines.filter((line) => `${PHARMACY} ${line.productName} ${line.genericName ?? ''} ${line.batchNo} ${bill.billNo}`.toLowerCase().includes(term))
+        : bill.lines;
+      if (lines.length === 0) continue;
+      entries.push({ kind: 'pharmacy', at: bill.saleDate, key: `pharmacy-${bill.id}`, pharmacy: { bill, figures, lines, returns } });
+    }
+
+    return entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  }, [invoices, pharmacyBills, from, to, encounter, department, status, search]);
+
+  // Voided invoices were never really billed, so they're left out of every total. A pharmacy
+  // bill counts at the bill level (its payments aren't split by line), less the part put on an
+  // admission, which the IP final bill already carries.
   const totals = useMemo(() => {
     let billed = 0;
     let paid = 0;
-    for (const invoice of visible) {
-      if (invoice.billing.isVoided) continue;
-      for (const item of invoice.items) {
+    for (const entry of visible) {
+      if (entry.kind === 'pharmacy') {
+        billed += entry.pharmacy.figures.billed;
+        paid += entry.pharmacy.figures.paid;
+        continue;
+      }
+      if (entry.invoice.billing.isVoided) continue;
+      for (const item of entry.invoice.items) {
         billed += item.total;
         if (item.paymentStatus === 'Paid') paid += item.total;
       }
@@ -165,6 +223,8 @@ export function PatientBillingPanel({ patientId }: { patientId: string }) {
   }, [visible]);
 
   const filtersActive = Boolean(from || to || search) || encounter !== 'all' || department !== 'all' || status !== 'all';
+  const loading = isPending || (canSeePharmacyBills && pharmacyQuery.isPending);
+  const nothingRecorded = invoices.length === 0 && pharmacyBills.length === 0;
 
   function resetFilters() {
     setFrom('');
@@ -243,7 +303,7 @@ export function PatientBillingPanel({ patientId }: { patientId: string }) {
         </Select>
         <div className="relative min-w-[10rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input type="search" placeholder="Search by service…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9" />
+          <Input type="search" placeholder="Search by service or medicine…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9" />
         </div>
         <Button type="button" variant="secondary" className="h-9 gap-1.5" onClick={resetFilters} disabled={!filtersActive}>
           <RotateCcw className="h-4 w-4" />
@@ -251,29 +311,42 @@ export function PatientBillingPanel({ patientId }: { patientId: string }) {
         </Button>
       </div>
 
-      {isPending ? (
+      {/* A failed request (e.g. a 403 for a role without finance-billing.view) must not fall
+          through to "No billing recorded", which misreads as fact. Whatever did load still shows. */}
+      {isError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Couldn't load hospital invoices for this patient — please try again.
+        </p>
+      )}
+      {canSeePharmacyBills && pharmacyQuery.isError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Couldn't load pharmacy bills for this patient — please try again.
+        </p>
+      )}
+
+      {loading ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading billing…
         </div>
-      ) : isError ? (
-        // A failed request (e.g. a 403 for a role without finance-billing.view) must not fall
-        // through to "No billing recorded", which misreads as fact.
-        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Couldn't load billing for this patient — please try again.
-        </p>
-      ) : invoices.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-10 text-sm text-muted-foreground">
-          <FileText className="h-8 w-8" />
-          No billing recorded for this patient yet.
-        </div>
+      ) : nothingRecorded ? (
+        !isError && !pharmacyQuery.isError && (
+          <div className="flex flex-col items-center gap-2 py-10 text-sm text-muted-foreground">
+            <FileText className="h-8 w-8" />
+            No billing recorded for this patient yet.
+          </div>
+        )
       ) : visible.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No bills match the current filters.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {visible.map((invoice) => (
-            <InvoiceTable key={invoice.billing.id} invoice={invoice} />
-          ))}
+          {visible.map((entry) =>
+            entry.kind === 'invoice' ? (
+              <InvoiceTable key={entry.key} invoice={entry.invoice} />
+            ) : (
+              <PharmacyBillTable key={entry.key} entry={entry.pharmacy} canOpen={canOpenPharmacyBill} />
+            ),
+          )}
         </div>
       )}
     </section>
@@ -358,6 +431,118 @@ function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
         <span className="text-muted-foreground">
           Net Amount <span className="ml-3 font-semibold text-orange-500">{formatCurrency(billing.netAmount)}</span>
         </span>
+      </div>
+    </div>
+  );
+}
+
+/** A pharmacy bill, laid out like an invoice card: what was dispensed (with batch and expiry),
+ * what came back, and how it was settled — at the counter or on the admission. */
+function PharmacyBillTable({ entry, canOpen }: { entry: VisiblePharmacyBill; canOpen: boolean }) {
+  const { bill, figures, lines, returns } = entry;
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div className="flex flex-wrap items-center gap-3 bg-muted/50 px-3 py-2">
+        <span className={cn('rounded-full px-3 py-0.5 text-xs font-semibold', CONTEXT_TONE_CLASSES.pharmacy)} title="Pharmacy bill">
+          {bill.admissionId ? 'Pharmacy · IP' : PHARMACY}
+        </span>
+        {canOpen ? (
+          <Link to={`/pharmacy/sales/${bill.id}`} className="text-sm font-semibold text-foreground hover:text-primary hover:underline">
+            {bill.billNo}
+          </Link>
+        ) : (
+          <span className="text-sm font-semibold text-foreground">{bill.billNo}</span>
+        )}
+        <span className="text-sm text-muted-foreground">{new Date(bill.saleDate).toLocaleDateString('en-IN')}</span>
+        <span className="text-xs text-muted-foreground">{[bill.storeName, bill.doctorName].filter(Boolean).join(' · ')}</span>
+        <span className="ml-auto">
+          <StatusPill status={figures.status} />
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[40rem] text-sm">
+          <thead>
+            <tr className="border-b border-border text-xs text-muted-foreground">
+              <th className="w-10 px-3 py-2 text-left font-medium">#</th>
+              <th className="px-3 py-2 text-left font-medium">Medicine</th>
+              <th className="px-3 py-2 text-left font-medium">Batch · Expiry</th>
+              <th className="px-3 py-2 text-center font-medium">Qty</th>
+              <th className="px-3 py-2 text-right font-medium">Rate (₹)</th>
+              <th className="px-3 py-2 text-right font-medium">Amount (₹)</th>
+              <th className="px-3 py-2 text-center font-medium">GST</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line) => (
+              <tr key={line.id} className="border-b border-border last:border-b-0">
+                <td className="px-3 py-2 text-muted-foreground">{line.lineNo}</td>
+                <td className="px-3 py-2">
+                  <span className="text-foreground">{line.productName}</span>
+                  {(line.genericName || line.discountAmount > 0 || line.returnedQuantity > 0) && (
+                    <span className="block text-xs text-muted-foreground">
+                      {[
+                        line.genericName,
+                        line.discountAmount > 0 ? `Discount ${formatCurrency(line.discountAmount)}` : null,
+                        line.returnedQuantity > 0 ? `${line.returnedQuantity} returned` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {line.batchNo} · {line.expiryDate.slice(5, 7)}/{line.expiryDate.slice(2, 4)}
+                </td>
+                <td className="px-3 py-2 text-center tabular-nums">{line.quantity}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.unitPrice)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.lineTotal)}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-muted-foreground">{line.gstRatePercent}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {returns.length > 0 && (
+        <ul className="border-t border-border bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground">
+          {returns.map((r) => (
+            <li key={r.id}>
+              Returned {r.returnNo} on {new Date(r.returnDate).toLocaleDateString('en-IN')} · {formatCurrency(r.returnAmount)}
+              {r.refundAmount > 0 ? ` · ${formatCurrency(r.refundAmount)} refunded` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-1 border-t border-border px-3 py-2 text-sm">
+        <span className="text-muted-foreground">
+          Gross Amount <span className="ml-3 font-semibold text-foreground">{formatCurrency(bill.grossAmount)}</span>
+        </span>
+        {bill.discountAmount > 0 && (
+          <span className="text-muted-foreground">
+            Discount <span className="ml-3 font-semibold text-foreground">−{formatCurrency(bill.discountAmount)}</span>
+          </span>
+        )}
+        <span className="text-muted-foreground">
+          Net Amount <span className="ml-3 font-semibold text-orange-500">{formatCurrency(bill.netAmount)}</span>
+        </span>
+        {bill.returnedAmount > 0 && (
+          <span className="text-muted-foreground">
+            Returned <span className="ml-3 font-semibold text-foreground">−{formatCurrency(bill.returnedAmount)}</span>
+          </span>
+        )}
+        <span className="text-muted-foreground">
+          Paid <span className="ml-3 font-semibold text-foreground">{formatCurrency(figures.collected)}</span>
+        </span>
+        {figures.onAdmission > 0 ? (
+          <span className="text-muted-foreground" title="Settled with the IP final bill, so not added to the totals above">
+            On IP bill <span className="ml-3 font-semibold text-sky-700 dark:text-sky-400">{formatCurrency(figures.onAdmission)}</span>
+          </span>
+        ) : (
+          figures.due > 0 && (
+            <span className="text-muted-foreground">
+              Due <span className="ml-3 font-semibold text-rose-600">{formatCurrency(figures.due)}</span>
+            </span>
+          )
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  PatientPharmacyBillsResponse,
   CollectionRow,
   DailySalesRow,
   GstSummaryResponse,
@@ -314,6 +315,12 @@ export class PharmacyApi {
 
   async getSaleById(id: string): Promise<SaleResponse> {
     const response = await this.client.get<SaleResponse>(API_ROUTES.pharmacy.sales.byId(id));
+    return response.data;
+  }
+
+  /** A patient's pharmacy bills with their lines, and the returns against them — for the patient record. */
+  async getPatientPharmacyBills(patientId: string): Promise<PatientPharmacyBillsResponse> {
+    const response = await this.client.get<PatientPharmacyBillsResponse>(API_ROUTES.pharmacy.sales.forPatient(patientId));
     return response.data;
   }
 

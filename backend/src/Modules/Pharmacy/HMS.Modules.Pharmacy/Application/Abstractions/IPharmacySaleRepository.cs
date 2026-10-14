@@ -15,6 +15,13 @@ internal interface IPharmacySaleRepository
     /// <summary>Headers only, newest first, with each bill's line count.</summary>
     Task<(IReadOnlyList<(PharmacySale Sale, int LineCount)> Items, int TotalCount)> GetPagedAsync(SaleListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>A patient's bills with their lines and payments, newest first, at most
+    /// <paramref name="max"/> of them.</summary>
+    Task<IReadOnlyList<PharmacySale>> GetForPatientAsync(Guid patientId, int max, CancellationToken cancellationToken);
+
+    /// <summary>Returns, with their lines, made against any of the given bills.</summary>
+    Task<IReadOnlyList<PharmacySaleReturn>> GetReturnsForSalesAsync(IReadOnlyCollection<Guid> saleIds, CancellationToken cancellationToken);
+
     /// <summary>The bills made against each of the given prescriptions (OPD consultation ids).</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<PrescriptionBillResponse>>> GetBillsForPrescriptionsAsync(IReadOnlyCollection<Guid> prescriptionIds, CancellationToken cancellationToken);
 

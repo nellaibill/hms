@@ -16,6 +16,10 @@ public interface ISaleService
 
     Task<PagedResult<SaleResponse>> GetPagedAsync(SaleListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>A patient's bills with their lines, and the returns against them, for the
+    /// patient's own record.</summary>
+    Task<PatientPharmacyBillsResponse> GetPatientBillsAsync(Guid patientId, CancellationToken cancellationToken);
+
     /// <summary>Takes money against a bill that was saved with a balance due.</summary>
     Task<Result<SaleResponse>> CollectPaymentAsync(Guid saleId, CollectSalePaymentRequest request, Guid? actorId, CancellationToken cancellationToken);
 
@@ -34,6 +38,10 @@ public interface ISaleService
 internal class SaleService : ISaleService
 {
     public const string WalkInName = "Cash customer";
+
+    /// <summary>How many of a patient's bills their record shows, newest first — years of an
+    /// inpatient's daily indents would otherwise come back in one response.</summary>
+    private const int MaxPatientBills = 500;
 
     /// <summary>Schedules whose every sale must be traceable to a named patient and a
     /// prescriber — they go into the statutory register.</summary>
@@ -289,6 +297,24 @@ internal class SaleService : ISaleService
             .ToList();
 
         return new PagedResult<SaleResponse>(responses, query.Page, query.PageSize, totalCount);
+    }
+
+    public async Task<PatientPharmacyBillsResponse> GetPatientBillsAsync(Guid patientId, CancellationToken cancellationToken)
+    {
+        var sales = await _repository.GetForPatientAsync(patientId, MaxPatientBills, cancellationToken);
+        if (sales.Count == 0)
+        {
+            return new PatientPharmacyBillsResponse();
+        }
+
+        var storeNames = (await _storeRepository.GetAllAsync(cancellationToken)).ToDictionary(s => s.Id, s => s.Name);
+        var returns = await _repository.GetReturnsForSalesAsync(sales.Select(s => s.Id).ToList(), cancellationToken);
+
+        return new PatientPharmacyBillsResponse
+        {
+            Bills = sales.Select(s => ToResponse(s, storeNames.GetValueOrDefault(s.StoreId) ?? string.Empty, s.Lines.Count, includeDetail: true)).ToList(),
+            Returns = returns.Select(ToResponse).ToList(),
+        };
     }
 
     public async Task<Result<SaleResponse>> CollectPaymentAsync(Guid saleId, CollectSalePaymentRequest request, Guid? actorId, CancellationToken cancellationToken)

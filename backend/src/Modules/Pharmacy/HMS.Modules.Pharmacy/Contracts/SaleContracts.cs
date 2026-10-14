@@ -184,6 +184,17 @@ public record SaleResponse
     public IReadOnlyList<SalePaymentResponse> Payments { get; init; } = [];
 }
 
+/// <summary>A patient's pharmacy bills with their lines, and the returns made against them —
+/// what the patient's own record shows under Billing and on the Timeline.</summary>
+public record PatientPharmacyBillsResponse
+{
+    /// <summary>Newest first.</summary>
+    public IReadOnlyList<SaleResponse> Bills { get; init; } = [];
+
+    /// <summary>Newest first.</summary>
+    public IReadOnlyList<SaleReturnResponse> Returns { get; init; } = [];
+}
+
 public class SaleListQuery : PagedRequest
 {
     public Guid? StoreId { get; set; }
