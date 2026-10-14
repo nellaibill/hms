@@ -1,10 +1,22 @@
 import type { TenantListItemResponse } from '@hms/shared';
-import { AlertTriangle, Building2, CheckCircle2, DatabaseBackup, Loader2, LogOut, Plus, ShieldCheck, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  BadgeCheck,
+  Building2,
+  CheckCircle2,
+  DatabaseBackup,
+  Loader2,
+  LogOut,
+  Plus,
+  ShieldCheck,
+  XCircle,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast-context';
+import { PageBanner } from '@/components/PageBanner';
 import { Pagination } from '@/components/Pagination';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
@@ -20,24 +32,73 @@ import {
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { cn } from '@/lib/utils';
 
-interface StatTile {
-  key: string;
+/** Colour role of a stat card — its left accent, icon tile and progress bar. */
+type StatTone = 'primary' | 'success' | 'muted' | 'warning' | 'danger';
+
+const TONE_CLASSES: Record<StatTone, { accent: string; tile: string; bar: string }> = {
+  primary: { accent: 'border-l-primary', tile: 'bg-primary/10 text-primary', bar: 'bg-primary' },
+  success: { accent: 'border-l-success', tile: 'bg-success/10 text-success', bar: 'bg-success' },
+  muted: {
+    accent: 'border-l-border',
+    tile: 'bg-muted text-muted-foreground',
+    bar: 'bg-muted-foreground',
+  },
+  warning: { accent: 'border-l-warning', tile: 'bg-warning/15 text-warning', bar: 'bg-warning' },
+  danger: {
+    accent: 'border-l-destructive',
+    tile: 'bg-destructive/10 text-destructive',
+    bar: 'bg-destructive',
+  },
+};
+
+interface StatCardProps {
   label: string;
-  value: string;
+  value: number | undefined;
+  /** One line saying what the number means right now (e.g. "All clear"). */
+  hint: string;
   icon: typeof Building2;
-  /** 'alert' highlights the tile in a warning color — used for the provisioning-alert
-   * count, which should stand out from the ground-truth hospital counts when nonzero. */
-  variant?: TileVariant;
+  tone: StatTone;
+  /** 0–100: draws a thin bar along the bottom (the active share of all hospitals). */
+  progress?: number;
+  loading: boolean;
 }
 
-type TileVariant = 'default' | 'success' | 'muted' | 'alert';
-
-const TILE_TINTS: Record<TileVariant, string> = {
-  default: 'bg-primary/10 text-primary',
-  success: 'bg-success/10 text-success',
-  muted: 'bg-muted text-muted-foreground',
-  alert: 'bg-destructive/10 text-destructive',
-};
+function StatCard({ label, value, hint, icon: Icon, tone, progress, loading }: StatCardProps) {
+  const classes = TONE_CLASSES[tone];
+  return (
+    <Card
+      className={cn('relative flex flex-col overflow-hidden border-l-4 shadow-sm', classes.accent)}
+    >
+      <div className="flex items-start justify-between gap-3 p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </span>
+          <span className="text-3xl font-semibold leading-none tabular-nums text-foreground">
+            {loading || value === undefined ? '–' : value}
+          </span>
+          <span className="text-xs text-muted-foreground">{loading ? 'Loading…' : hint}</span>
+        </div>
+        <span
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+            classes.tile,
+          )}
+        >
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
+        </span>
+      </div>
+      {progress !== undefined && (
+        <div className="mt-auto h-1 w-full bg-muted">
+          <div
+            className={cn('h-full transition-all', classes.bar)}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+    </Card>
+  );
+}
 
 export default function PlatformDashboardPage() {
   const { user, logout } = usePlatformAuth();
@@ -46,27 +107,22 @@ export default function PlatformDashboardPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search);
-  const [hospitalToManageFeatures, setHospitalToManageFeatures] = useState<TenantListItemResponse | null>(null);
+  const [hospitalToManageFeatures, setHospitalToManageFeatures] =
+    useState<TenantListItemResponse | null>(null);
 
   const { toast } = useToast();
   const statsQuery = useHospitalStatsQuery();
-  const hospitalsQuery = useHospitalsQuery({ page, pageSize: 20, search: debouncedSearch || undefined });
+  const hospitalsQuery = useHospitalsQuery({
+    page,
+    pageSize: 20,
+    search: debouncedSearch || undefined,
+  });
   const statusMutation = useUpdateHospitalStatusMutation();
   const migrateMutation = useMigrateHospitalMutation();
 
   const stats = statsQuery.data;
-  const tiles: StatTile[] = [
-    { key: 'total', label: 'Total Hospitals', value: stats ? String(stats.total) : '…', icon: Building2 },
-    { key: 'active', label: 'Active', value: stats ? String(stats.active) : '…', icon: CheckCircle2, variant: 'success' },
-    { key: 'inactive', label: 'Inactive', value: stats ? String(stats.inactive) : '…', icon: XCircle, variant: 'muted' },
-    {
-      key: 'provisioningAlerts',
-      label: 'Provisioning Alerts',
-      value: stats ? String(stats.provisioningAlertCount) : '…',
-      icon: AlertTriangle,
-      variant: stats && stats.provisioningAlertCount > 0 ? 'alert' : 'muted',
-    },
-  ];
+  const activeShare = stats && stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0;
+  const alerts = stats?.provisioningAlertCount ?? 0;
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -89,7 +145,8 @@ export default function PlatformDashboardPage() {
       onError: (err) =>
         toast({
           title: 'Migration failed',
-          description: err instanceof Error ? err.message : `Could not migrate ${hospital.hospitalName}.`,
+          description:
+            err instanceof Error ? err.message : `Could not migrate ${hospital.hospitalName}.`,
           variant: 'error',
         }),
     });
@@ -102,34 +159,53 @@ export default function PlatformDashboardPage() {
     .slice(0, 2)
     .toUpperCase();
 
+  // Wide enough to use a large monitor, capped so lines and the table don't stretch too far.
+  const container = 'mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8';
+
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className={cn(container, 'flex items-center justify-between gap-3 py-3')}>
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
               <Building2 className="h-5 w-5" />
             </span>
             <div className="leading-tight">
               <p className="font-semibold text-foreground">Platform Portal</p>
-              <p className="hidden text-xs text-muted-foreground sm:block">Hospitals, features and backups</p>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                Hospitals, features and backups
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate('/platform/backups')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => navigate('/platform/backups')}
+            >
               <DatabaseBackup className="h-4 w-4" />
               <span className="hidden sm:inline">Backups</span>
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate('/platform/security')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => navigate('/platform/security')}
+            >
               <ShieldCheck className="h-4 w-4" />
               <span className="hidden sm:inline">Security</span>
             </Button>
             <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden />
             {user && (
-              <div className="hidden items-center gap-2 md:flex" title={user.email}>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">{initials}</span>
-                <span className="max-w-[10rem] truncate text-sm text-foreground">{user.fullName ?? user.email}</span>
+              <div className="hidden items-center gap-2 pr-1 md:flex" title={user.email}>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  {initials}
+                </span>
+                <span className="max-w-[10rem] truncate text-sm font-medium text-foreground">
+                  {user.fullName ?? user.email}
+                </span>
               </div>
             )}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={logout}>
@@ -140,43 +216,75 @@ export default function PlatformDashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:py-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Hospitals</h1>
-            <p className="text-sm text-muted-foreground">Register hospitals, choose the features each one can use, and keep their databases up to date.</p>
-          </div>
-          <Button asChild className="gap-1.5">
-            <Link to="/platform/hospitals/new">
-              <Plus className="h-4 w-4" />
-              Register hospital
-            </Link>
-          </Button>
-        </div>
+      {/* Same brand banner every hospital-app page opens with, so the portal reads as part of HMS.
+          The colour spans the screen; its content lines up with the cards below. */}
+      <div className="bg-page-banner">
+        <PageBanner
+          className={container}
+          icon={Building2}
+          title="Hospitals"
+          subtitle="Register hospitals, choose the features each one can use, and keep their databases up to date."
+          rightActions={
+            <Button
+              asChild
+              className="gap-1.5 bg-page-banner-foreground font-semibold text-page-banner shadow-sm hover:bg-page-banner-foreground/90"
+            >
+              <Link to="/platform/hospitals/new">
+                <Plus className="h-4 w-4" />
+                Register hospital
+              </Link>
+            </Button>
+          }
+        />
+      </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {tiles.map((tile) => {
-            const Icon = tile.icon;
-            return (
-              <Card key={tile.key} className={cn('shadow-sm', tile.variant === 'alert' && 'border-destructive/50')}>
-                <CardContent className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
-                  <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11', TILE_TINTS[tile.variant ?? 'default'])}>
-                    {statsQuery.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
-                  </span>
-                  <div className="flex min-w-0 flex-col">
-                    <span className={cn('text-2xl font-semibold leading-tight tabular-nums', tile.variant === 'alert' ? 'text-destructive' : 'text-foreground')}>
-                      {tile.value}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{tile.label}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+      <main className={cn(container, 'flex flex-col gap-6 py-6')}>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <StatCard
+            label="Total hospitals"
+            value={stats?.total}
+            hint={stats ? `${stats.active} active · ${stats.inactive} inactive` : ''}
+            icon={Building2}
+            tone="primary"
+            loading={statsQuery.isPending}
+          />
+          <StatCard
+            label="Active"
+            value={stats?.active}
+            hint={`${activeShare}% of hospitals can sign in`}
+            icon={CheckCircle2}
+            tone="success"
+            progress={activeShare}
+            loading={statsQuery.isPending}
+          />
+          <StatCard
+            label="Inactive"
+            value={stats?.inactive}
+            hint={
+              stats && stats.inactive > 0
+                ? 'Sign-in is blocked for these'
+                : 'No hospital is disabled'
+            }
+            icon={XCircle}
+            tone={stats && stats.inactive > 0 ? 'warning' : 'muted'}
+            loading={statsQuery.isPending}
+          />
+          <StatCard
+            label="Provisioning alerts"
+            value={stats?.provisioningAlertCount}
+            hint={alerts > 0 ? 'A failed setup may have left a database behind' : 'All clear'}
+            icon={alerts > 0 ? AlertTriangle : BadgeCheck}
+            tone={alerts > 0 ? 'danger' : 'success'}
+            loading={statsQuery.isPending}
+          />
         </div>
 
         <Card className="overflow-hidden shadow-sm">
-          <HospitalListToolbar search={search} onSearchChange={handleSearchChange} totalCount={hospitalsQuery.data?.meta.totalCount} />
+          <HospitalListToolbar
+            search={search}
+            onSearchChange={handleSearchChange}
+            totalCount={hospitalsQuery.data?.meta.totalCount}
+          />
 
           {hospitalsQuery.isPending && (
             <div className="flex items-center justify-center gap-2 border-t border-border py-16 text-sm text-muted-foreground">
@@ -186,43 +294,57 @@ export default function PlatformDashboardPage() {
           )}
 
           {hospitalsQuery.isError && (
-            <p role="alert" className="mx-5 mb-5 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p
+              role="alert"
+              className="mx-5 mb-5 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
               Failed to load hospitals.
             </p>
           )}
 
-          {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length === 0 && (
-            <div className="flex flex-col items-center gap-2 border-t border-border py-16 text-center">
-              <Building2 className="h-8 w-8 text-muted-foreground/60" />
-              <p className="text-sm font-medium text-foreground">No hospitals found</p>
-              <p className="text-sm text-muted-foreground">
-                {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Register the first hospital to get started.'}
-              </p>
-            </div>
-          )}
+          {!hospitalsQuery.isPending &&
+            !hospitalsQuery.isError &&
+            hospitalsQuery.data &&
+            hospitalsQuery.data.items.length === 0 && (
+              <div className="flex flex-col items-center gap-2 border-t border-border py-16 text-center">
+                <Building2 className="h-8 w-8 text-muted-foreground/60" />
+                <p className="text-sm font-medium text-foreground">No hospitals found</p>
+                <p className="text-sm text-muted-foreground">
+                  {debouncedSearch
+                    ? `No results for "${debouncedSearch}".`
+                    : 'Register the first hospital to get started.'}
+                </p>
+              </div>
+            )}
 
-          {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length > 0 && (
-            <>
-              <HospitalTable
-                hospitals={hospitalsQuery.data.items}
-                onToggleStatus={handleToggleStatus}
-                isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
-                onManageFeatures={setHospitalToManageFeatures}
-                onMigrate={handleMigrate}
-                isMigratingId={migrateMutation.isPending ? migrateMutation.variables : undefined}
-              />
-              {hospitalsQuery.data.meta.totalPages > 1 && (
-                <div className="border-t border-border px-5 py-3">
-                  <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
-                </div>
-              )}
-            </>
-          )}
+          {!hospitalsQuery.isPending &&
+            !hospitalsQuery.isError &&
+            hospitalsQuery.data &&
+            hospitalsQuery.data.items.length > 0 && (
+              <>
+                <HospitalTable
+                  hospitals={hospitalsQuery.data.items}
+                  onToggleStatus={handleToggleStatus}
+                  isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
+                  onManageFeatures={setHospitalToManageFeatures}
+                  onMigrate={handleMigrate}
+                  isMigratingId={migrateMutation.isPending ? migrateMutation.variables : undefined}
+                />
+                {hospitalsQuery.data.meta.totalPages > 1 && (
+                  <div className="border-t border-border px-5 py-3">
+                    <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
+                  </div>
+                )}
+              </>
+            )}
         </Card>
       </main>
 
       {hospitalToManageFeatures && (
-        <HospitalFeaturesDialog hospital={hospitalToManageFeatures} onClose={() => setHospitalToManageFeatures(null)} />
+        <HospitalFeaturesDialog
+          hospital={hospitalToManageFeatures}
+          onClose={() => setHospitalToManageFeatures(null)}
+        />
       )}
     </div>
   );
