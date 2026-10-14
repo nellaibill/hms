@@ -1,4 +1,4 @@
-import type { DrugSchedule, IndentStatus, PurchaseOrderStatus, PurchaseReturnReason, StockSourceType, SupplierPaymentMethod, TransactionType } from '@hms/shared';
+import type { AdjustmentReason, DrugSchedule, IndentStatus, PurchaseOrderStatus, PurchaseReturnReason, StockCountStatus, StockSourceType, SupplierPaymentMethod, TransactionType } from '@hms/shared';
 
 /** How each kind of stock movement reads on screen, and which way it moves stock. */
 export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
@@ -28,6 +28,8 @@ export function sourceDocumentPath(sourceType: StockSourceType | null | undefine
       return `/pharmacy/purchases/${sourceId}`;
     case 'Sale':
       return `/pharmacy/sales/${sourceId}`;
+    case 'StockCount':
+      return `/pharmacy/stock-counts/${sourceId}`;
     default:
       return null;
   }
@@ -73,6 +75,23 @@ export const SUPPLIER_PAYMENT_LABELS: Record<SupplierPaymentMethod, string> = {
   Cheque: 'Cheque',
   BankTransfer: 'Bank transfer',
   Upi: 'UPI',
+};
+
+export const ADJUSTMENT_REASON_LABELS: Record<AdjustmentReason, string> = {
+  Expired: 'Expired',
+  Damaged: 'Damaged or broken',
+  Shortage: 'Shortage',
+  Excess: 'Excess found',
+  FreeIssue: 'Free issue',
+  StockCount: 'Stock count',
+  Correction: 'Correction',
+  Other: 'Other',
+};
+
+export const COUNT_STATUS: Record<StockCountStatus, { label: string; variant: BadgeVariant }> = {
+  Open: { label: 'Counting', variant: 'warning' },
+  Posted: { label: 'Posted', variant: 'success' },
+  Cancelled: { label: 'Cancelled', variant: 'secondary' },
 };
 
 export const INDENT_STATUS: Record<IndentStatus, { label: string; variant: BadgeVariant }> = {

@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, FileSpreadsheet, type LucideIcon, ListChecks, PackagePlus, ReceiptText, ScrollText, Settings2, SlidersHorizontal, Truck, Undo2, Wallet } from 'lucide-react';
+import { ArrowLeftRight, Boxes, CalendarClock, ClipboardCheck, ClipboardList, FileSpreadsheet, type LucideIcon, ListChecks, PackagePlus, ReceiptText, Scale, ScrollText, Settings2, SlidersHorizontal, Truck, Undo2, Wallet } from 'lucide-react';
 
 export interface PharmacySubLink {
   label: string;
@@ -23,6 +23,10 @@ export const PURCHASE_LINKS: PharmacySubLink[] = [
 export const STOCK_LINKS: PharmacySubLink[] = [
   { label: 'Current stock', to: '/pharmacy', icon: Boxes },
   { label: 'Stock ledger', to: '/pharmacy/stock-ledger', icon: ScrollText },
+  { label: 'Expiry', to: '/pharmacy/expiry', icon: CalendarClock },
+  { label: 'Adjustments', to: '/pharmacy/adjustments', icon: Scale },
+  { label: 'Transfers', to: '/pharmacy/transfers', icon: ArrowLeftRight },
+  { label: 'Stock count', to: '/pharmacy/stock-counts', icon: ClipboardCheck },
 ];
 
 export const SETUP_LINKS: PharmacySubLink[] = [

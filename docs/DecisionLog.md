@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-097: Pharmacy Phase 5 — adjustments, transfers, stock counts, expiry and the schedule registers
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+Stock could come in (purchases), go out (bills) and go back (returns), but the books could not be made to agree with the shelf: no way to write off a broken strip or expired stock, to move stock between the main store and a counter or ward, or to count a store and correct what the count found. Expiry was a badge on the stock list, and the Schedule H1 / X / NDPS registers the Drugs and Cosmetics Rules require were not available at all.
+
+**Decision**
+- **Adjustment** (`PharmacyStockAdjustment`, `ADJ` series) is the only way to change stock without a purchase or a sale. One store, one reason (Expired, Damaged, Shortage, Excess, FreeIssue, StockCount, Correction, Other), signed quantities per batch, posted on save through `IStockPoster` as `AdjustmentIn` / `AdjustmentOut`, valued at the batch's unit cost. It cannot take a batch below zero and, like every pharmacy document, is never edited or deleted — a wrong adjustment is corrected by another.
+- **Transfer** (`PharmacyStockTransfer`, `ST` series) is done in one step: saving posts `TransferOut` from one store and `TransferIn` to the other in the same unit of work, at the same cost. There is no in-transit state and no acceptance by the receiving store; the stores of a hospital pharmacy are rooms in one building.
+- **Stock count** (`PharmacyStockCount`, `SC` series) has a life: Open → Posted, or Cancelled. Starting one snapshots the store's batches (rack, then name — the order shelves are walked); one count may be open per store. Counted quantities are saved as often as the counter likes. Billing is **not** frozen during a count: on posting, each counted line is compared with what the books hold *at that moment*, not with the snapshot, so stock sold mid-count is not taken off twice. Lines never counted are left alone. The differences become one adjustment with reason StockCount, linked both ways; a count with no differences posts without one.
+- **Expiry** is a list, not a document: batches on hand that have expired or will within a window (default: the pharmacy's `ExpiryAlertDays` setting, which the stock summary's "expiring soon" now uses too), with value at cost and the supplier of the batch's last goods receipt. The two things done with such stock already exist — a purchase return (ADR-095) or an Expired adjustment — so the screen links to the first and does the second for ticked rows.
+- **Schedule registers are read from the bills.** The counter already refuses a Schedule H1, X or narcotic drug without a patient name and a prescriber (ADR-094), so every sale line of such a product *is* the register entry. `GET stock-control/schedule-register` returns them for a period (up to a year) with patient, prescriber, batch, quantity and quantity since returned; the screen prints and exports them, and lists Schedule H sales the same way for convenience (those may lack a prescriber, which the rules do not require to be recorded). Nothing is stored twice and nothing can be left out of the register that was billed.
+- **Permissions:** viewing needs `pharmacy.view`; adjustments, transfers, and starting, posting or cancelling a count need `pharmacy.edit`; values at cost appear only with `pharmacy.view-cost`.
+
+**Consequences**
+New tables `pharmacy_stock_adjustments`, `pharmacy_stock_adjustment_lines`, `pharmacy_stock_transfers`, `pharmacy_stock_transfer_lines`, `pharmacy_stock_counts`, `pharmacy_stock_count_lines` (migration `AddStockControl`, additive). A count posted while the counter is busy is only as good as the moment each shelf was counted; a hospital that wants a hard stock-take should count with the counter closed. A batch on the shelf that the books do not know (found stock with no purchase) cannot be added through a count — it needs a goods receipt or opening-stock import first. The NDPS register is the sale side only; the receipt side is the purchase list filtered by product. Document numbers come from sequences, so a save the stock check refuses can leave a gap in the `ADJ`/`ST` series.
+
 ### ADR-096: Pharmacy Phase 4 — OPD prescriptions and IP indents reach the counter; filling either is an ordinary bill
 **Date:** 2026-10-14
 **Status:** Accepted

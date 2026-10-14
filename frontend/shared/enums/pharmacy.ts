@@ -51,3 +51,9 @@ export type SupplierEntryType = (typeof SUPPLIER_ENTRY_TYPES)[number];
 
 export const INDENT_STATUSES = ['Pending', 'PartlyIssued', 'Issued', 'Cancelled'] as const;
 export type IndentStatus = (typeof INDENT_STATUSES)[number];
+
+export const ADJUSTMENT_REASONS = ['Expired', 'Damaged', 'Shortage', 'Excess', 'FreeIssue', 'StockCount', 'Correction', 'Other'] as const;
+export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number];
+
+export const STOCK_COUNT_STATUSES = ['Open', 'Posted', 'Cancelled'] as const;
+export type StockCountStatus = (typeof STOCK_COUNT_STATUSES)[number];
