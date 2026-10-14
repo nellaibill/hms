@@ -24,7 +24,7 @@ internal class PharmacySettings : Entity
     public decimal MaxDiscountPercent { get; private set; } = 100m;
 
     /// <summary>How many days ahead a batch counts as "expiring soon".</summary>
-    public int ExpiryAlertDays { get; private set; } = 90;
+    public int ExpiryAlertDays { get; private set; } = PharmacySettingsDefaults.ExpiryAlertDays;
 
     // Required by EF Core materialization.
     private PharmacySettings()
