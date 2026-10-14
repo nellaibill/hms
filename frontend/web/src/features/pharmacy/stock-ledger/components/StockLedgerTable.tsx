@@ -37,7 +37,7 @@ export function StockLedgerTable({ transactions }: StockLedgerTableProps) {
                 <td className="px-3 py-2">
                   <Badge variant={inward ? 'success' : 'secondary'}>{TRANSACTION_TYPE_LABELS[txn.transactionType] ?? txn.transactionType}</Badge>
                 </td>
-                <td className="px-3 py-2 font-mono text-xs">
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">
                   {txn.sourceNo ? (
                     documentPath ? (
                       <Link to={documentPath} className="font-medium text-primary hover:underline">

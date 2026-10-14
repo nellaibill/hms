@@ -21,6 +21,10 @@ public interface IStockBalanceService
     /// optionally narrowed to the products needing attention.</summary>
     Task<PagedResult<StockSummaryResponse>> GetSummaryPagedAsync(StockSummaryListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Every product matching one of the "needs attention" views, unpaged — for
+    /// callers that act on the whole list (the reorder list, the expiry report).</summary>
+    Task<IReadOnlyList<StockSummaryResponse>> GetSummariesAsync(StockSummaryFilter filter, Guid? storeId, CancellationToken cancellationToken);
+
     /// <summary>The batches of a product a dispense can draw on right now in one store (the
     /// default store when none is named), earliest expiry first, each with its unit price.</summary>
     Task<IReadOnlyList<AvailableBatchResponse>> GetAvailableBatchesAsync(Guid productId, Guid? storeId, CancellationToken cancellationToken);
@@ -116,6 +120,14 @@ internal class StockBalanceService : IStockBalanceService
 
         var summaries = await BuildSummariesAsync(profiles, profiles.Select(p => p.Id).ToList(), query.StoreId, cancellationToken);
         return new PagedResult<StockSummaryResponse>(summaries, query.Page, query.PageSize, productPage.TotalCount);
+    }
+
+    public async Task<IReadOnlyList<StockSummaryResponse>> GetSummariesAsync(StockSummaryFilter filter, Guid? storeId, CancellationToken cancellationToken)
+    {
+        var allProducts = await _productService.GetStockProfilesAsync(search: null, cancellationToken);
+        return (await BuildSummariesAsync(allProducts, productIds: null, storeId, cancellationToken))
+            .Where(s => StockSummaryCalculator.Matches(s, filter))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<AvailableBatchResponse>> GetAvailableBatchesAsync(Guid productId, Guid? storeId, CancellationToken cancellationToken)

@@ -15,6 +15,18 @@ import type {
   SaleReturnResponse,
   CreateDispenseCartRequest,
   CreateGoodsReceiptRequest,
+  CreatePurchaseReturnRequest,
+  CreateSupplierPaymentRequest,
+  PurchaseOrderListQuery,
+  PurchaseOrderResponse,
+  PurchaseReturnListQuery,
+  PurchaseReturnResponse,
+  ReorderSuggestionResponse,
+  ReturnableBatchResponse,
+  SavePurchaseOrderRequest,
+  SupplierBalanceResponse,
+  SupplierPaymentResponse,
+  SupplierStatementResponse,
   GoodsReceiptListQuery,
   GoodsReceiptResponse,
   ImportProductsRequest,
@@ -303,6 +315,80 @@ export class PharmacyApi {
 
   async updateSettings(request: UpdatePharmacySettingsRequest): Promise<PharmacySettings> {
     const response = await this.client.put<PharmacySettings>(API_ROUTES.pharmacy.settings, request);
+    return response.data;
+  }
+
+  /** Products at or below their reorder level, with a suggested order quantity. */
+  async getReorderSuggestions(storeId?: string): Promise<ReorderSuggestionResponse[]> {
+    const response = await this.client.get<ReorderSuggestionResponse[]>(API_ROUTES.pharmacy.purchaseOrders.suggestions, { query: { storeId } });
+    return response.data;
+  }
+
+  async getPurchaseOrders(query: PurchaseOrderListQuery = {}): Promise<Paged<PurchaseOrderResponse>> {
+    const response = await this.client.get<PurchaseOrderResponse[]>(API_ROUTES.pharmacy.purchaseOrders.base, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getPurchaseOrderById(id: string): Promise<PurchaseOrderResponse> {
+    const response = await this.client.get<PurchaseOrderResponse>(API_ROUTES.pharmacy.purchaseOrders.byId(id));
+    return response.data;
+  }
+
+  async createPurchaseOrder(request: SavePurchaseOrderRequest): Promise<PurchaseOrderResponse> {
+    const response = await this.client.post<PurchaseOrderResponse>(API_ROUTES.pharmacy.purchaseOrders.base, request);
+    return response.data;
+  }
+
+  /** Replaces a draft order. A sent order can no longer be edited. */
+  async updatePurchaseOrder(id: string, request: SavePurchaseOrderRequest): Promise<PurchaseOrderResponse> {
+    const response = await this.client.put<PurchaseOrderResponse>(API_ROUTES.pharmacy.purchaseOrders.byId(id), request);
+    return response.data;
+  }
+
+  async placePurchaseOrder(id: string): Promise<PurchaseOrderResponse> {
+    const response = await this.client.post<PurchaseOrderResponse>(API_ROUTES.pharmacy.purchaseOrders.place(id));
+    return response.data;
+  }
+
+  async cancelPurchaseOrder(id: string): Promise<PurchaseOrderResponse> {
+    const response = await this.client.post<PurchaseOrderResponse>(API_ROUTES.pharmacy.purchaseOrders.cancel(id));
+    return response.data;
+  }
+
+  /** The batches of a product a store holds and could send back, expired ones included. */
+  async getReturnableBatches(productId: string, storeId?: string): Promise<ReturnableBatchResponse[]> {
+    const response = await this.client.get<ReturnableBatchResponse[]>(API_ROUTES.pharmacy.purchaseReturns.returnableBatches(productId), { query: { storeId } });
+    return response.data;
+  }
+
+  async createPurchaseReturn(request: CreatePurchaseReturnRequest): Promise<PurchaseReturnResponse> {
+    const response = await this.client.post<PurchaseReturnResponse>(API_ROUTES.pharmacy.purchaseReturns.base, request);
+    return response.data;
+  }
+
+  async getPurchaseReturns(query: PurchaseReturnListQuery = {}): Promise<Paged<PurchaseReturnResponse>> {
+    const response = await this.client.get<PurchaseReturnResponse[]>(API_ROUTES.pharmacy.purchaseReturns.base, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getPurchaseReturnById(id: string): Promise<PurchaseReturnResponse> {
+    const response = await this.client.get<PurchaseReturnResponse>(API_ROUTES.pharmacy.purchaseReturns.byId(id));
+    return response.data;
+  }
+
+  /** Every supplier the pharmacy has dealt with: bought, returned, paid, outstanding. */
+  async getSupplierBalances(): Promise<SupplierBalanceResponse[]> {
+    const response = await this.client.get<SupplierBalanceResponse[]>(API_ROUTES.pharmacy.supplierAccounts.base);
+    return response.data;
+  }
+
+  async getSupplierStatement(supplierId: string, fromDate?: string, toDate?: string): Promise<SupplierStatementResponse> {
+    const response = await this.client.get<SupplierStatementResponse>(API_ROUTES.pharmacy.supplierAccounts.statement(supplierId), { query: { fromDate, toDate } });
+    return response.data;
+  }
+
+  async recordSupplierPayment(supplierId: string, request: CreateSupplierPaymentRequest): Promise<SupplierPaymentResponse> {
+    const response = await this.client.post<SupplierPaymentResponse>(API_ROUTES.pharmacy.supplierAccounts.payments(supplierId), request);
     return response.data;
   }
 }

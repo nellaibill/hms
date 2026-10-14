@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-095: Pharmacy Phase 3 — purchase orders, reorder list, purchase returns, supplier accounts
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+Purchases could be entered (ADR-093) but nothing came before or after them: no order to receive against, no list of what had run low, no way to send expired or damaged stock back to the supplier who will credit it, and no record of what each supplier is owed.
+
+**Decision**
+- **Purchase order** (`PharmacyPurchaseOrder`, `PO` series) is the one pharmacy document with a life: Draft (freely edited, lines replaced wholesale) → Ordered → PartlyReceived → Received, or Cancelled. It moves no stock. A goods receipt may name an order (`PurchaseOrderId`); each receipt line's billed packs are recorded against the order's line for that product, and the status follows. Free packs do not count as delivery; a product not on the order is ignored, because suppliers substitute and the receipt is still valid. An order placed with one supplier cannot be received against by another.
+- **Reorder list** is arithmetic a pharmacist can check by eye: products whose available stock is at or below the reorder level (the existing stock summary), with a suggestion of enough packs to reach the maximum level — or twice the reorder level where no maximum is set — less what is already on open orders, rounded up to whole packs. Each row carries the supplier and rate of its last goods receipt. Ticked rows become draft orders, one per supplier; products never purchased (opening stock) are ordered from a supplier the buyer names.
+- **Purchase return** (`PharmacyPurchaseReturn`, `PR` series) is posted on save: stock leaves through `IStockPoster` as `PurchaseReturn` and may be expired — that is what most returns are. Quantities are in units; the credit per unit defaults to the batch's purchase rate; GST is added on top. The receipt lines the batch came in on are marked with what went back (`ReturnedUnits`), newest first, as bookkeeping only.
+- **Supplier account** is a running account, not invoice-by-invoice settlement: goods receipts add to what is owed, returns and payments (`PharmacySupplierPayment`, `SP` series) take off it. The statement is those three in date order with a running balance and an opening balance for a date range — the shape of the distributor's own statement, which is what it gets reconciled against. Nothing is stored per balance; it is summed from the documents.
+- **Purchase entry** can load an invoice's lines from the supplier's Excel/CSV export. Products are matched by exact name; rows that do not match or are incomplete are listed, never guessed. The spreadsheet reader was generalised (`readMappedFile`) and now skips a bare "Total" row.
+- **Permissions:** the reorder list and orders need `pharmacy.view`; anything showing what was paid (return list, supplier accounts, rates on the reorder list) needs `pharmacy.view-cost`.
+
+**Consequences**
+New tables `pharmacy_purchase_orders`, `pharmacy_purchase_order_lines`, `pharmacy_purchase_returns`, `pharmacy_purchase_return_lines`, `pharmacy_supplier_payments` (migration `AddProcurement`, additive). Payments are not allocated to invoices, so "which invoices are unpaid" and ageing by invoice are not available — only the balance and the statement. Purchases entered before this phase count towards supplier balances from the start, since balances are summed from goods receipts.
+
 ### ADR-094: Pharmacy Phase 2 — the pharmacy bill is its own document; counter sales are not mirrored into Billing
 **Date:** 2026-10-14
 **Status:** Accepted

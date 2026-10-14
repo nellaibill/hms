@@ -1,4 +1,4 @@
-import type { DrugSchedule, StockSourceType, TransactionType } from '@hms/shared';
+import type { DrugSchedule, PurchaseOrderStatus, PurchaseReturnReason, StockSourceType, SupplierPaymentMethod, TransactionType } from '@hms/shared';
 
 /** How each kind of stock movement reads on screen, and which way it moves stock. */
 export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
@@ -46,4 +46,31 @@ export const SCHEDULE_BADGE: Record<DrugSchedule, { label: string; className: st
   H1: { label: 'H1', className: 'bg-destructive/15 text-destructive' },
   X: { label: 'X', className: 'bg-destructive/15 text-destructive' },
   Narcotic: { label: 'NDPS', className: 'bg-destructive/15 text-destructive' },
+};
+
+type BadgeVariant = 'success' | 'warning' | 'destructive' | 'secondary';
+
+export const ORDER_STATUS: Record<PurchaseOrderStatus, { label: string; variant: BadgeVariant }> = {
+  Draft: { label: 'Draft', variant: 'secondary' },
+  Ordered: { label: 'Ordered', variant: 'warning' },
+  PartlyReceived: { label: 'Partly received', variant: 'warning' },
+  Received: { label: 'Received', variant: 'success' },
+  Cancelled: { label: 'Cancelled', variant: 'destructive' },
+};
+
+export const RETURN_REASON_LABELS: Record<PurchaseReturnReason, string> = {
+  Expired: 'Expired',
+  NearExpiry: 'Near expiry',
+  Damaged: 'Damaged',
+  Excess: 'Excess stock',
+  WrongItem: 'Wrong item supplied',
+  RateDifference: 'Rate difference',
+  Other: 'Other',
+};
+
+export const SUPPLIER_PAYMENT_LABELS: Record<SupplierPaymentMethod, string> = {
+  Cash: 'Cash',
+  Cheque: 'Cheque',
+  BankTransfer: 'Bank transfer',
+  Upi: 'UPI',
 };

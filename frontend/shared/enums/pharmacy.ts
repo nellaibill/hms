@@ -36,3 +36,15 @@ export type SalePaymentMethod = (typeof SALE_PAYMENT_METHODS)[number];
 /** The paper a pharmacy bill is printed on. */
 export const BILL_PRINT_FORMATS = ['A5', 'A4', 'Thermal80'] as const;
 export type BillPrintFormat = (typeof BILL_PRINT_FORMATS)[number];
+
+export const PURCHASE_ORDER_STATUSES = ['Draft', 'Ordered', 'PartlyReceived', 'Received', 'Cancelled'] as const;
+export type PurchaseOrderStatus = (typeof PURCHASE_ORDER_STATUSES)[number];
+
+export const PURCHASE_RETURN_REASONS = ['Expired', 'NearExpiry', 'Damaged', 'Excess', 'WrongItem', 'RateDifference', 'Other'] as const;
+export type PurchaseReturnReason = (typeof PURCHASE_RETURN_REASONS)[number];
+
+export const SUPPLIER_PAYMENT_METHODS = ['Cash', 'Cheque', 'BankTransfer', 'Upi'] as const;
+export type SupplierPaymentMethod = (typeof SUPPLIER_PAYMENT_METHODS)[number];
+
+export const SUPPLIER_ENTRY_TYPES = ['Purchase', 'Return', 'Payment'] as const;
+export type SupplierEntryType = (typeof SUPPLIER_ENTRY_TYPES)[number];

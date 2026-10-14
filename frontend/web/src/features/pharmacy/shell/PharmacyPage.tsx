@@ -35,7 +35,7 @@ const SECTIONS: PharmacySection[] = [
   { key: 'sales', label: 'Sales & returns', icon: Undo2, to: '/pharmacy/sales' },
   { key: 'prescriptions', label: 'Prescriptions', icon: Stethoscope, to: '/pharmacy/prescriptions' },
   { key: 'indents', label: 'IP indents', icon: ClipboardList, to: '/pharmacy/indents' },
-  { key: 'purchases', label: 'Purchases', icon: PackagePlus, to: '/pharmacy/purchases', also: ['/pharmacy/purchase-orders', '/pharmacy/purchase-returns', '/pharmacy/suppliers'] },
+  { key: 'purchases', label: 'Purchases', icon: PackagePlus, to: '/pharmacy/purchases', also: ['/pharmacy/purchase-orders', '/pharmacy/purchase-returns', '/pharmacy/suppliers', '/pharmacy/reorder'] },
   { key: 'stock', label: 'Stock', icon: Boxes, to: '/pharmacy', exact: true, also: ['/pharmacy/stock-ledger', '/pharmacy/transfers', '/pharmacy/adjustments', '/pharmacy/stock-counts', '/pharmacy/expiry'] },
   { key: 'registers', label: 'Registers', icon: ShieldCheck, to: '/pharmacy/registers' },
   { key: 'reports', label: 'Reports', icon: BarChart3, to: '/pharmacy/reports' },

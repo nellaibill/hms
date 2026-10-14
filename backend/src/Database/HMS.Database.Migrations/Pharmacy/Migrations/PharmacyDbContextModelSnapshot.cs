@@ -408,6 +408,415 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                     b.ToTable("pharmacy_held_bills", "pharmacy");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateOnly?>("ExpectedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expected_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateOnly>("OrderDate")
+                        .HasColumnType("date")
+                        .HasColumnName("order_date");
+
+                    b.Property<string>("OrderNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("order_no");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<string>("SupplierName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("supplier_name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_purchase_orders");
+
+                    b.HasIndex("OrderNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_purchase_orders_order_no");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_pharmacy_purchase_orders_status");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_pharmacy_purchase_orders_supplier_id");
+
+                    b.ToTable("pharmacy_purchase_orders", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<decimal>("ExpectedRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("expected_rate");
+
+                    b.Property<decimal>("GstRatePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("gst_rate_percent");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("product_name");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchase_order_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("ReceivedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("received_quantity");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_purchase_order_lines");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_pharmacy_purchase_order_lines_product_id");
+
+                    b.HasIndex("PurchaseOrderId")
+                        .HasDatabaseName("ix_pharmacy_purchase_order_lines_purchase_order_id");
+
+                    b.ToTable("pharmacy_purchase_order_lines", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CreditNoteNo")
+                        .HasColumnType("text")
+                        .HasColumnName("credit_note_no");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("net_amount");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<DateOnly>("ReturnDate")
+                        .HasColumnType("date")
+                        .HasColumnName("return_date");
+
+                    b.Property<string>("ReturnNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("return_no");
+
+                    b.Property<decimal>("RoundOff")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("round_off");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<string>("SupplierName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("supplier_name");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<decimal>("TaxableAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("taxable_amount");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_purchase_returns");
+
+                    b.HasIndex("ReturnDate")
+                        .HasDatabaseName("ix_pharmacy_purchase_returns_return_date");
+
+                    b.HasIndex("ReturnNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_purchase_returns_return_no");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_pharmacy_purchase_returns_supplier_id");
+
+                    b.ToTable("pharmacy_purchase_returns", "pharmacy");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseReturnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BatchNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("batch_no");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<decimal>("GstRatePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("gst_rate_percent");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("ProductBatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_batch_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("product_name");
+
+                    b.Property<Guid>("PurchaseReturnId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchase_return_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<decimal>("TaxableAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("taxable_amount");
+
+                    b.Property<decimal>("UnitRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("unit_rate");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_purchase_return_lines");
+
+                    b.HasIndex("PurchaseReturnId")
+                        .HasDatabaseName("ix_pharmacy_purchase_return_lines_purchase_return_id");
+
+                    b.ToTable("pharmacy_purchase_return_lines", "pharmacy");
+                });
+
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacySale", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1400,6 +1809,98 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                     b.ToTable("pharmacy_stores", "pharmacy");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacySupplierPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("method");
+
+                    b.Property<DateOnly>("PaymentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("payment_date");
+
+                    b.Property<string>("PaymentNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payment_no");
+
+                    b.Property<string>("ReferenceNo")
+                        .HasColumnType("text")
+                        .HasColumnName("reference_no");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<string>("SupplierName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("supplier_name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pharmacy_supplier_payments");
+
+                    b.HasIndex("PaymentNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pharmacy_supplier_payments_payment_no");
+
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_pharmacy_supplier_payments_supplier_id");
+
+                    b.ToTable("pharmacy_supplier_payments", "pharmacy");
+                });
+
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyGoodsReceipt", b =>
                 {
                     b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
@@ -1418,6 +1919,46 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_pharmacy_goods_receipt_lines_goods_receipt_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrder", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_purchase_orders_pharmacy_stores_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrderLine", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrder", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_purchase_order_lines_purchase_order_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseReturn", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyStore", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_purchase_returns_pharmacy_stores_store_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseReturnLine", b =>
+                {
+                    b.HasOne("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseReturn", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("PurchaseReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pharmacy_purchase_return_lines_purchase_return_id");
                 });
 
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacySale", b =>
@@ -1491,6 +2032,16 @@ namespace HMS.Database.Migrations.Pharmacy.Migrations
                 });
 
             modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyGoodsReceipt", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseOrder", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Pharmacy.Domain.PharmacyPurchaseReturn", b =>
                 {
                     b.Navigation("Lines");
                 });

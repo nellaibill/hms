@@ -33,6 +33,7 @@ internal class GoodsReceiptService : IGoodsReceiptService
     private readonly IProductService _productService;
     private readonly IProductBatchService _productBatchService;
     private readonly ISupplierService _supplierService;
+    private readonly IPharmacyProcurementRepository _procurementRepository;
 
     public GoodsReceiptService(
         IPharmacyGoodsReceiptRepository repository,
@@ -41,8 +42,10 @@ internal class GoodsReceiptService : IGoodsReceiptService
         IStockPoster stockPoster,
         IProductService productService,
         IProductBatchService productBatchService,
-        ISupplierService supplierService)
+        ISupplierService supplierService,
+        IPharmacyProcurementRepository procurementRepository)
     {
+        _procurementRepository = procurementRepository;
         _repository = repository;
         _storeRepository = storeRepository;
         _unitOfWork = unitOfWork;
@@ -79,6 +82,25 @@ internal class GoodsReceiptService : IGoodsReceiptService
             return Failure(
                 PharmacyErrorCodes.DuplicateSupplierInvoice,
                 $"Invoice '{request.SupplierInvoiceNo.Trim()}' from {supplier.SupplierName} has already been entered.");
+        }
+
+        if (request.PurchaseOrderId is { } orderId)
+        {
+            var order = await _procurementRepository.GetOrderAsync(orderId, cancellationToken);
+            if (order is null)
+            {
+                return Failure(PharmacyErrorCodes.NotFound, "The purchase order was not found.");
+            }
+
+            if (order.SupplierId != supplier.Id)
+            {
+                return Failure(PharmacyErrorCodes.InvalidState, $"Order {order.OrderNo} was placed with {order.SupplierName}, not {supplier.SupplierName}.");
+            }
+
+            if (!order.IsOpen)
+            {
+                return Failure(PharmacyErrorCodes.InvalidState, $"Order {order.OrderNo} is {order.Status.ToString().ToLowerInvariant()} and cannot be received against.");
+            }
         }
 
         var products = await _productService.GetLookupAsync(request.Lines.Select(l => l.ProductId), cancellationToken);
@@ -166,6 +188,19 @@ internal class GoodsReceiptService : IGoodsReceiptService
                     if (!posted.IsSuccess)
                     {
                         return Result<PharmacyGoodsReceipt>.Failure(posted.ErrorCode!, posted.Error!);
+                    }
+                }
+
+                if (request.PurchaseOrderId is { } purchaseOrderId)
+                {
+                    // Read inside the unit of work: on a retry the tracked order is gone.
+                    var order = await _procurementRepository.GetOrderAsync(purchaseOrderId, cancellationToken);
+                    if (order is { IsOpen: true })
+                    {
+                        foreach (var received in receipt.Lines)
+                        {
+                            order.RecordReceipt(received.ProductId, received.Quantity, actorId);
+                        }
                     }
                 }
 

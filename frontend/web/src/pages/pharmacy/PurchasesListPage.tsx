@@ -121,7 +121,7 @@ export default function PurchasesListPage() {
                     )}
                     {data.items.map((receipt) => (
                       <tr key={receipt.id} onClick={() => navigate(`/pharmacy/purchases/${receipt.id}`)} className="cursor-pointer hover:bg-muted/40">
-                        <td className="px-3 py-2 font-mono text-xs font-medium text-primary">{receipt.receiptNo}</td>
+                        <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-medium text-primary">{receipt.receiptNo}</td>
                         <td className="px-3 py-2">{dateLabel(receipt.receivedDate)}</td>
                         <td className="px-3 py-2 font-medium text-foreground">{receipt.supplierName}</td>
                         <td className="px-3 py-2">{receipt.supplierInvoiceNo}</td>
