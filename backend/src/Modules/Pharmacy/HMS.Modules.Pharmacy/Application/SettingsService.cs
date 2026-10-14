@@ -5,6 +5,14 @@ using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Pharmacy.Application;
 
+internal static class PharmacySettingsReader
+{
+    /// <summary>The expiry alert window in force: the saved setting, or — until one is saved —
+    /// the same default the settings screen shows.</summary>
+    public static async Task<int> ExpiryAlertDaysAsync(this IPharmacySettingsRepository repository, CancellationToken cancellationToken)
+        => (await repository.GetAsync(cancellationToken))?.ExpiryAlertDays ?? PharmacySettingsDefaults.ExpiryAlertDays;
+}
+
 public interface ISettingsService
 {
     Task<PharmacySettingsResponse> GetAsync(CancellationToken cancellationToken);

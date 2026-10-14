@@ -360,11 +360,11 @@ public class PharmacyReportServiceTests
 
         var dashboard = await _sut.GetDashboardAsync(null, includeCost: true, CancellationToken.None);
 
-        // Default alert window (no settings saved) is 30 days: only the 20-day batch is "soon".
+        // No settings saved: the window is the settings default (90 days), so only the 20-day batch is "soon".
         dashboard.Stock.Should().BeEquivalentTo(new StockAlertFigures
         {
             ProductsInStock = 1, LowStock = 2, OutOfStock = 1, ExpiredBatches = 1, ExpiringSoonBatches = 1,
-            ExpiryAlertDays = PharmacyClock.ExpiringSoonWindowDays, StockValue = 130m, ExpiredValue = 10m,
+            ExpiryAlertDays = PharmacySettingsDefaults.ExpiryAlertDays, StockValue = 130m, ExpiredValue = 10m,
         });
         dashboard.Pending.Should().BeEquivalentTo(new PendingWorkFigures { PendingIndents = 4, OpenPurchaseOrders = 2, BillsWithDues = 3, CustomerDues = 1250m, SupplierPayable = 48000m });
     }

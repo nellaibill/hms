@@ -10,6 +10,7 @@ namespace HMS.UnitTests.Modules.Pharmacy.Application;
 public class StockSummaryCalculatorTests
 {
     private static readonly DateOnly Today = new(2026, 10, 13);
+    private const int Window = 30;
 
     private readonly Guid _productId = Guid.NewGuid();
     private readonly Dictionary<Guid, ProductBatchResponse> _batches = [];
@@ -32,7 +33,7 @@ public class StockSummaryCalculatorTests
     }
 
     private StockSummaryResponse Build(decimal reorderLevel = 0m) =>
-        StockSummaryCalculator.Build(Product(reorderLevel), _lines, _batches, Today);
+        StockSummaryCalculator.Build(Product(reorderLevel), _lines, _batches, Today, Window);
 
     [Fact]
     public void Build_SumsAvailableStockAcrossBatches_SoSeveralSmallBatchesAreNotEachJudgedLow()
@@ -108,14 +109,14 @@ public class StockSummaryCalculatorTests
     [Fact]
     public void Build_CountsOnlyStockInsideTheWindowAsExpiringSoon_AndReportsTheNearestExpiry()
     {
-        AddBatch(4m, Today.AddDays(PharmacyClock.ExpiringSoonWindowDays));
-        AddBatch(6m, Today.AddDays(PharmacyClock.ExpiringSoonWindowDays + 1));
+        AddBatch(4m, Today.AddDays(Window));
+        AddBatch(6m, Today.AddDays(Window + 1));
 
         var summary = Build();
 
         summary.AvailableQuantity.Should().Be(10m);
         summary.ExpiringSoonQuantity.Should().Be(4m);
-        summary.NearestExpiry.Should().Be(Today.AddDays(PharmacyClock.ExpiringSoonWindowDays));
+        summary.NearestExpiry.Should().Be(Today.AddDays(Window));
     }
 
     [Fact]

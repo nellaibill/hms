@@ -168,10 +168,9 @@ internal class StockBalanceService : IStockBalanceService
             .ToList();
     }
 
-    /// <summary>How many days ahead counts as "expiring soon": the pharmacy's own setting,
-    /// or 30 days until one is saved.</summary>
-    private async Task<int> ExpiryWindowDaysAsync(CancellationToken cancellationToken)
-        => (await _settingsRepository.GetAsync(cancellationToken))?.ExpiryAlertDays ?? PharmacyClock.ExpiringSoonWindowDays;
+    /// <summary>How many days ahead counts as "expiring soon": the pharmacy's own setting.</summary>
+    private Task<int> ExpiryWindowDaysAsync(CancellationToken cancellationToken)
+        => _settingsRepository.ExpiryAlertDaysAsync(cancellationToken);
 
     private async Task<List<StockSummaryResponse>> BuildSummariesAsync(
         IReadOnlyList<ProductStockProfileResponse> products,

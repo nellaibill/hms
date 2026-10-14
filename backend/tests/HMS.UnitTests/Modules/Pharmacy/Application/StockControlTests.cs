@@ -261,6 +261,21 @@ public class StockControlServiceTests
     }
 
     [Fact]
+    public async Task GetExpiringAsync_BeforeAnySettingsAreSaved_UsesTheDefaultTheSettingsScreenShows()
+    {
+        // Settings never saved (the constructor's GetAsync returns null). The settings screen
+        // shows 90 days then, so a batch 60 days from expiry must be on the list.
+        var sixtyDays = new ProductBatchResponse { Id = Guid.NewGuid(), ProductId = _product.Id, BatchNo = "SIXTY", ExpiryDate = PharmacyClock.Today().AddDays(60), IsActive = true, PurchaseRate = 14.5m };
+        _productBatchService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([sixtyDays]);
+        Books((sixtyDays.Id, 15m));
+
+        var expiring = await _sut.GetExpiringAsync(null, days: null, includeCost: false, CancellationToken.None);
+
+        PharmacySettingsDefaults.ExpiryAlertDays.Should().Be(90);
+        expiring.Should().ContainSingle().Which.BatchNo.Should().Be("SIXTY");
+    }
+
+    [Fact]
     public async Task GetExpiringAsync_SaysWhoTheBatchWasBoughtFrom()
     {
         Books((_oldBatch.Id, 20m));
@@ -287,7 +302,7 @@ public class StockSummaryExpiryWindowTests
         var lines = new[] { new StockBalanceLine(productId, batchId, 40m) };
         var batches = new Dictionary<Guid, ProductBatchResponse> { [batchId] = new() { Id = batchId, ProductId = productId, BatchNo = "B1", ExpiryDate = today.AddDays(60), IsActive = true } };
 
-        StockSummaryCalculator.Build(product, lines, batches, today).ExpiringSoonQuantity.Should().Be(0m, "60 days is outside the default 30");
+        StockSummaryCalculator.Build(product, lines, batches, today, expiringSoonWindowDays: 30).ExpiringSoonQuantity.Should().Be(0m, "60 days is outside a 30-day window");
         StockSummaryCalculator.Build(product, lines, batches, today, expiringSoonWindowDays: 90).ExpiringSoonQuantity.Should().Be(40m);
     }
 }
