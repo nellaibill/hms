@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ApiError } from '@hms/shared';
+import { ApiError, NetworkError } from '@hms/shared';
 import { consumeSessionExpiredFlag } from '@/lib/sessionExpiry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,7 +76,12 @@ export default function LoginPage() {
       const from = (location.state as LocationState | null)?.from ?? '/dashboard';
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.');
+      // The API words every refusal for the person at the desk (wrong details, a locked or
+      // deactivated account, the wrong "Sign in as"), so its message is shown as-is.
+      if (err instanceof ApiError) setError(err.message);
+      else if (err instanceof NetworkError)
+        setError('Can’t reach the HMS server. Check this computer’s network connection; if it keeps happening, ask IT to check that the server is running.');
+      else setError('Unable to sign in. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

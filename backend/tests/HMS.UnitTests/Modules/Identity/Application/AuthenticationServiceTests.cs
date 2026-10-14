@@ -81,7 +81,7 @@ public class AuthenticationServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidLogin);
-        result.Error.Should().Be("Invalid username or password.");
+        result.Error.Should().Be(LoginMessages.InvalidCredentials);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class AuthenticationServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync_WhenUserIsInactive_ReturnsGenericInvalidLoginFailure()
+    public async Task LoginAsync_WhenUserIsInactive_SaysTheAccountIsDeactivated()
     {
         var (user, _) = SeedActiveUserWithMatchingRole();
         user.Deactivate(null);
@@ -121,11 +121,26 @@ public class AuthenticationServiceTests
         var result = await _sut.LoginAsync(request, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.AccountInactive);
+        result.Error.Should().Contain("deactivated");
+    }
+
+    [Fact]
+    public async Task LoginAsync_WhenUserIsInactiveAndThePasswordIsWrong_StaysGeneric()
+    {
+        // Deactivation is only revealed to someone who knows the password.
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        user.Deactivate(null);
+        _passwordHasher.VerifyPassword("wrong-password", "stored-hash").Returns(false);
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "wrong-password" };
+
+        var result = await _sut.LoginAsync(request, CancellationToken.None);
+
         result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidLogin);
     }
 
     [Fact]
-    public async Task LoginAsync_WhenLoginTypeDoesNotMatchAssignedRole_ReturnsGenericInvalidLoginFailure()
+    public async Task LoginAsync_WhenLoginTypeDoesNotMatchAssignedRole_NamesTheSignInAsOptionToChoose()
     {
         // Seeded role is "Doctor / Consultant", but the caller selects "nurse".
         SeedActiveUserWithMatchingRole();
@@ -134,8 +149,21 @@ public class AuthenticationServiceTests
         var result = await _sut.LoginAsync(request, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidLogin);
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.LoginTypeMismatch);
+        result.Error.Should().Be("This account can't sign in as Nurse. Choose \"Doctor / Consultant\" under \"Sign in as\" and try again.");
         await _userRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LoginAsync_WhenTheRoleMatchesNoSignInAsOption_SaysToAskTheAdministrator()
+    {
+        SeedActiveUserWithMatchingRole(roleName: "Ward Clerk");
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "correct-password" };
+
+        var result = await _sut.LoginAsync(request, CancellationToken.None);
+
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.LoginTypeMismatch);
+        result.Error.Should().Contain("Ask your hospital administrator to check its role");
     }
 
     [Fact]
@@ -180,17 +208,94 @@ public class AuthenticationServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync_WhenAccountIsLockedOut_ReturnsGenericFailureWithoutCheckingThePassword()
+    public async Task LoginAsync_WrongPasswordsBeforeTheFifth_GetTheGenericMessageStatingTheLockoutRule()
+    {
+        SeedActiveUserWithMatchingRole();
+        _passwordHasher.VerifyPassword("wrong-password", "stored-hash").Returns(false);
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "wrong-password" };
+
+        for (var i = 0; i < 4; i++)
+        {
+            var result = await _sut.LoginAsync(request, CancellationToken.None);
+            result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidLogin);
+            result.Error.Should().Be(LoginMessages.InvalidCredentials);
+        }
+    }
+
+    [Fact]
+    public async Task LoginAsync_TheFifthWrongPassword_SaysTheAccountIsNowLocked()
+    {
+        SeedActiveUserWithMatchingRole();
+        _passwordHasher.VerifyPassword("wrong-password", "stored-hash").Returns(false);
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "wrong-password" };
+
+        Result<LoginResponse> result = null!;
+        for (var i = 0; i < 5; i++)
+        {
+            result = await _sut.LoginAsync(request, CancellationToken.None);
+        }
+
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.AccountLocked);
+        result.Error.Should().Contain("Try again in 15 minutes");
+    }
+
+    [Fact]
+    public async Task LoginAsync_WhenAccountIsLockedOut_SaysHowLongWithoutCheckingThePassword()
     {
         var (user, _) = SeedActiveUserWithMatchingRole();
-        user.RecordFailedLogin(DateTime.UtcNow, maxAttempts: 1, lockoutDuration: TimeSpan.FromMinutes(15));
+        user.RecordFailedLogin(DateTime.UtcNow.AddMinutes(-3), maxAttempts: 1, lockoutDuration: TimeSpan.FromMinutes(15));
         var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "correct-password" };
 
         var result = await _sut.LoginAsync(request, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidLogin);
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.AccountLocked);
+        result.Error.Should().Contain("Try again in 12 minutes");
         _passwordHasher.DidNotReceive().VerifyPassword(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task LoginAsync_WithUnderAMinuteOfLockoutLeft_SaysOneMinute()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        user.RecordFailedLogin(DateTime.UtcNow.AddMinutes(-14.9), maxAttempts: 1, lockoutDuration: TimeSpan.FromMinutes(15));
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "correct-password" };
+
+        var result = await _sut.LoginAsync(request, CancellationToken.None);
+
+        result.Error.Should().Contain("Try again in 1 minute,");
+    }
+
+    [Fact]
+    public async Task LoginAsync_AWrongPasswordAfterALockoutRunsOut_StartsAFreshCount()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        // Five wrong attempts 20 minutes ago: the 15-minute lockout has already run out.
+        for (var i = 0; i < 5; i++)
+        {
+            user.RecordFailedLogin(DateTime.UtcNow.AddMinutes(-20), maxAttempts: 5, lockoutDuration: TimeSpan.FromMinutes(15));
+        }
+
+        _passwordHasher.VerifyPassword("wrong-password", "stored-hash").Returns(false);
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "wrong-password" };
+
+        var result = await _sut.LoginAsync(request, CancellationToken.None);
+
+        result.ErrorCode.Should().Be(AuthenticationErrorCodes.InvalidLogin);
+        user.FailedLoginAttempts.Should().Be(1);
+        user.IsLockedOut(DateTime.UtcNow).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnAdministratorPasswordReset_LiftsTheLockout()
+    {
+        var (user, _) = SeedActiveUserWithMatchingRole();
+        user.RecordFailedLogin(DateTime.UtcNow, maxAttempts: 1, lockoutDuration: TimeSpan.FromMinutes(15));
+
+        user.SetPasswordHash("new-hash", null);
+
+        user.IsLockedOut(DateTime.UtcNow).Should().BeFalse();
+        user.FailedLoginAttempts.Should().Be(0);
     }
 
     [Fact]

@@ -41,7 +41,9 @@ public class AuthenticationController : ControllerBase
     /// <summary>Authenticates a user and issues a JWT.</summary>
     /// <response code="200">Login succeeded; the response contains a bearer token.</response>
     /// <response code="400">The request failed validation.</response>
-    /// <response code="401">The login type, username, or password was invalid.</response>
+    /// <response code="401">Login was refused: wrong credentials (IDENTITY.INVALID_LOGIN), a locked
+    /// account (IDENTITY.ACCOUNT_LOCKED), a deactivated account (IDENTITY.ACCOUNT_INACTIVE) or a
+    /// "Sign in as" that doesn't match the account's role (IDENTITY.LOGIN_TYPE_MISMATCH).</response>
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitingPolicyNames.Login)]
     [HttpPost("login")]
@@ -106,7 +108,10 @@ public class AuthenticationController : ControllerBase
     {
         var status = errorCode switch
         {
-            AuthenticationErrorCodes.InvalidLogin => StatusCodes.Status401Unauthorized,
+            AuthenticationErrorCodes.InvalidLogin or
+                AuthenticationErrorCodes.AccountLocked or
+                AuthenticationErrorCodes.AccountInactive or
+                AuthenticationErrorCodes.LoginTypeMismatch => StatusCodes.Status401Unauthorized,
             AuthenticationErrorCodes.InvalidCurrentPassword => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,
         };

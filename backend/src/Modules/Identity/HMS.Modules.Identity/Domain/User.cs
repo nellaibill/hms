@@ -67,8 +67,8 @@ internal class User : Entity
     /// <summary>
     /// Set by <see cref="RecordFailedLogin"/> once <see cref="FailedLoginAttempts"/> reaches
     /// <c>AuthenticationService.MaxFailedLoginAttempts</c>. While in the future, login is
-    /// rejected outright (same generic message as every other rejection reason — see
-    /// AuthenticationService's own doc comment) without even checking the password.
+    /// rejected outright with IDENTITY.ACCOUNT_LOCKED (see ADR-099) without even checking the
+    /// password. Cleared by a successful login or an administrator's password reset.
     /// </summary>
     public DateTime? LockedOutUntil { get; private set; }
 
@@ -195,13 +195,17 @@ internal class User : Entity
     /// Identity admin's reset via UsersController.SetPassword. Always sets
     /// <see cref="MustChangePassword"/>, since the person who just set this hash now knows
     /// the plaintext. Self-service password changes go through
-    /// <see cref="ChangeOwnPassword"/> instead, which clears that flag.
+    /// <see cref="ChangeOwnPassword"/> instead, which clears that flag. Also lifts any
+    /// lockout: the wrong guesses were against the old password, and "ask your administrator
+    /// to reset the password" is what the locked-out message tells the user to do.
     /// </summary>
     public void SetPasswordHash(string passwordHash, Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(passwordHash, nameof(passwordHash));
         PasswordHash = passwordHash;
         MustChangePassword = true;
+        FailedLoginAttempts = 0;
+        LockedOutUntil = null;
         MarkUpdated(updatedBy);
     }
 
@@ -250,6 +254,15 @@ internal class User : Entity
     /// </summary>
     public void RecordFailedLogin(DateTime attemptedAt, int maxAttempts, TimeSpan lockoutDuration)
     {
+        // A lockout that has run out starts a fresh count, as FailedLoginAttempts' doc says.
+        // Without this the counter stayed at the limit, so the first typo after a lockout
+        // ended locked the account for another full period.
+        if (LockedOutUntil.HasValue && LockedOutUntil.Value <= attemptedAt)
+        {
+            FailedLoginAttempts = 0;
+            LockedOutUntil = null;
+        }
+
         FailedLoginAttempts++;
         if (FailedLoginAttempts >= maxAttempts)
         {
