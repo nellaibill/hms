@@ -45,6 +45,7 @@ public static class PharmacyModule
         services.AddScoped<IPharmacyProcurementRepository, PharmacyProcurementRepository>();
         services.AddScoped<IPharmacyIndentRepository, PharmacyIndentRepository>();
         services.AddScoped<IPharmacyStockControlRepository, PharmacyStockControlRepository>();
+        services.AddScoped<IPharmacyReportRepository, PharmacyReportRepository>();
         services.AddScoped<IStockPoster, StockPoster>();
         services.AddScoped<ISellableStockReader, SellableStockReader>();
         services.AddScoped<IAdmissionChargePoster, AdmissionChargePoster>();
@@ -62,6 +63,7 @@ public static class PharmacyModule
         services.AddScoped<IPrescriptionQueueService, PrescriptionQueueService>();
         services.AddScoped<IIndentService, IndentService>();
         services.AddScoped<IStockControlService, StockControlService>();
+        services.AddScoped<IPharmacyReportService, PharmacyReportService>();
         services.AddScoped<IStockReceiptService, StockReceiptService>();
         services.AddScoped<IDispenseService, DispenseService>();
         services.AddScoped<IStockBalanceService, StockBalanceService>();

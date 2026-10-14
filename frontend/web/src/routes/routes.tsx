@@ -50,6 +50,7 @@ const ProfitReportPage = lazy(() => import('../pages/finance/ProfitReportPage'))
 const LaboratoryReportPage = lazy(() => import('../pages/finance/LaboratoryReportPage'));
 const RadiologyReportPage = lazy(() => import('../pages/finance/RadiologyReportPage'));
 const ConsultantReportPage = lazy(() => import('../pages/finance/ConsultantReportPage'));
+const PharmacyFinanceReportPage = lazy(() => import('../pages/finance/PharmacyReportPage'));
 const HrHubPage = lazy(() => import('../pages/hr/HrHubPage'));
 const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
 const ShiftCreatePage = lazy(() => import('../pages/hr/ShiftCreatePage'));
@@ -96,7 +97,9 @@ const BedOccupancyPage = lazy(() => import('../pages/ipd/BedOccupancyPage'));
 const AdmissionsListPage = lazy(() => import('../pages/ipd/AdmissionsListPage'));
 const AdmissionCreatePage = lazy(() => import('../pages/ipd/AdmissionCreatePage'));
 const AdmissionViewPage = lazy(() => import('../pages/ipd/AdmissionViewPage'));
-const PharmacyHubPage = lazy(() => import('../pages/pharmacy/PharmacyHubPage'));
+const PharmacyDashboardPage = lazy(() => import('../pages/pharmacy/PharmacyDashboardPage'));
+const PharmacyCurrentStockPage = lazy(() => import('../pages/pharmacy/CurrentStockPage'));
+const PharmacyReportsPage = lazy(() => import('../pages/pharmacy/ReportsPage'));
 const StockReceiptsListPage = lazy(() => import('../pages/pharmacy/StockReceiptsListPage'));
 const StockReceiptCreatePage = lazy(() => import('../pages/pharmacy/StockReceiptCreatePage'));
 const DispensesListPage = lazy(() => import('../pages/pharmacy/DispensesListPage'));
@@ -172,7 +175,7 @@ const specialPages: Record<string, React.ReactNode> = {
   '/engagement/messages': withSuspense(<MessagesAndNotificationsPage />),
   '/clinical/opd': withSuspense(<OpdPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
-  '/pharmacy': withSuspense(<PharmacyHubPage />),
+  '/pharmacy': withSuspense(<PharmacyDashboardPage />),
   '/diagnostics/lab': withSuspense(<CentralLaboratoryHubPage />),
 };
 
@@ -352,6 +355,7 @@ const financeRoutes = [
       { path: 'finance/accounts/reports/laboratory', element: withSuspense(<LaboratoryReportPage />) },
       { path: 'finance/accounts/reports/radiology', element: withSuspense(<RadiologyReportPage />) },
       { path: 'finance/accounts/reports/consultant', element: withSuspense(<ConsultantReportPage />) },
+      { path: 'finance/accounts/reports/pharmacy', element: withSuspense(<PharmacyFinanceReportPage />) },
       { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
     ],
   },
@@ -479,6 +483,8 @@ const pharmacyRoutes = [
           { path: 'pharmacy/stock-counts/:id', element: withSuspense(<PharmacyStockCountPage />) },
           { path: 'pharmacy/expiry', element: withSuspense(<PharmacyExpiryPage />) },
           { path: 'pharmacy/registers', element: withSuspense(<PharmacyRegistersPage />) },
+          { path: 'pharmacy/stock', element: withSuspense(<PharmacyCurrentStockPage />) },
+          { path: 'pharmacy/reports', element: withSuspense(<PharmacyReportsPage />) },
         ],
       },
     ],

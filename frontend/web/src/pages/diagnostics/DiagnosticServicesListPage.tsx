@@ -38,7 +38,7 @@ export default function DiagnosticServicesListPage() {
   });
   // Resolved client-side against these two ~100-row lookup queries so the table can show
   // Category/Provider names instead of raw ids — same "prime a 100-row lookup query" pattern
-  // PharmacyHubPage uses for reorder levels.
+  // CurrentStockPage uses for reorder levels.
   const categoriesQuery = useDiagnosticCategoriesQuery({ pageSize: 200, sort: 'name' });
   const providersQuery = useDiagnosticProvidersQuery({ pageSize: 200, sort: 'name' });
   const deleteMutation = useDeleteDiagnosticServiceMutation();

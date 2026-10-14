@@ -1,5 +1,15 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  CollectionRow,
+  DailySalesRow,
+  GstSummaryResponse,
+  NonMovingStockRow,
+  PharmacyDashboardResponse,
+  PharmacyReportPeriod,
+  ProductSalesRow,
+  PurchaseRegisterResponse,
+  SalesRegisterResponse,
+  StockValuationResponse,
   AvailableBatchResponse,
   CollectSalePaymentRequest,
   CounterItemResponse,
@@ -515,6 +525,55 @@ export class PharmacyApi {
     schedules?.forEach((schedule) => params.append('schedule', schedule));
     if (storeId) params.set('storeId', storeId);
     const response = await this.client.get<ScheduleRegisterEntry[]>(`${API_ROUTES.pharmacy.stockControl.scheduleRegister}?${params.toString()}`);
+    return response.data;
+  }
+
+  // ---- Reports and dashboard (read-only; cost figures come back null without the right to see them)
+
+  async getDashboard(storeId?: string): Promise<PharmacyDashboardResponse> {
+    const response = await this.client.get<PharmacyDashboardResponse>(API_ROUTES.pharmacy.reports.dashboard, { query: { storeId } });
+    return response.data;
+  }
+
+  async getDailySalesReport(period: PharmacyReportPeriod): Promise<DailySalesRow[]> {
+    const response = await this.client.get<DailySalesRow[]>(API_ROUTES.pharmacy.reports.dailySales, { query: { ...period } });
+    return response.data;
+  }
+
+  /** Every bill and sale return in a period of up to three months. */
+  async getSalesRegister(period: PharmacyReportPeriod): Promise<SalesRegisterResponse> {
+    const response = await this.client.get<SalesRegisterResponse>(API_ROUTES.pharmacy.reports.salesRegister, { query: { ...period } });
+    return response.data;
+  }
+
+  async getProductSalesReport(period: PharmacyReportPeriod): Promise<ProductSalesRow[]> {
+    const response = await this.client.get<ProductSalesRow[]>(API_ROUTES.pharmacy.reports.productSales, { query: { ...period } });
+    return response.data;
+  }
+
+  async getCollectionsReport(period: PharmacyReportPeriod): Promise<CollectionRow[]> {
+    const response = await this.client.get<CollectionRow[]>(API_ROUTES.pharmacy.reports.collections, { query: { ...period } });
+    return response.data;
+  }
+
+  async getGstSummary(period: PharmacyReportPeriod): Promise<GstSummaryResponse> {
+    const response = await this.client.get<GstSummaryResponse>(API_ROUTES.pharmacy.reports.gst, { query: { ...period } });
+    return response.data;
+  }
+
+  async getPurchaseRegister(period: PharmacyReportPeriod): Promise<PurchaseRegisterResponse> {
+    const response = await this.client.get<PurchaseRegisterResponse>(API_ROUTES.pharmacy.reports.purchaseRegister, { query: { ...period } });
+    return response.data;
+  }
+
+  async getStockValuation(storeId?: string): Promise<StockValuationResponse> {
+    const response = await this.client.get<StockValuationResponse>(API_ROUTES.pharmacy.reports.stockValuation, { query: { storeId } });
+    return response.data;
+  }
+
+  /** Stock not billed for `days` days (90 when omitted). */
+  async getNonMovingStock(storeId?: string, days?: number): Promise<NonMovingStockRow[]> {
+    const response = await this.client.get<NonMovingStockRow[]>(API_ROUTES.pharmacy.reports.nonMoving, { query: { storeId, days } });
     return response.data;
   }
 }

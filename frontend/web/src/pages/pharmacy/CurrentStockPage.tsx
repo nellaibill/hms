@@ -7,11 +7,11 @@ import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { StockSummaryPanel } from '@/features/pharmacy/stock-balances';
 
 /**
- * Pharmacy's landing page ('/pharmacy') — current stock per product, searchable, with the
- * needs-reorder and expiry views. Everything else in the module is reached from the pharmacy
- * menu across the top.
+ * Current stock ('/pharmacy/stock') — stock per product, searchable, with the needs-reorder and
+ * expiry views. The pharmacy's landing page is the dashboard; everything else in the module is
+ * reached from the pharmacy menu across the top.
  */
-export default function PharmacyHubPage() {
+export default function CurrentStockPage() {
   const { hasPermission } = useAuth();
   const canCreate = hasPermission('pharmacy.create');
 

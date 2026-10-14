@@ -1,4 +1,4 @@
-import type { AdjustmentReason, DrugSchedule, IndentStatus, PurchaseOrderStatus, PurchaseReturnReason, StockCountStatus, StockSourceType, SupplierPaymentMethod, TransactionType } from '@hms/shared';
+import type { AdjustmentReason, DrugSchedule, IndentStatus, PurchaseOrderStatus, PurchaseReturnReason, SalePaymentMethod, StockCountStatus, StockSourceType, SupplierPaymentMethod, TransactionType } from '@hms/shared';
 
 /** How each kind of stock movement reads on screen, and which way it moves stock. */
 export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
@@ -68,6 +68,13 @@ export const RETURN_REASON_LABELS: Record<PurchaseReturnReason, string> = {
   WrongItem: 'Wrong item supplied',
   RateDifference: 'Rate difference',
   Other: 'Other',
+};
+
+export const PAYMENT_METHOD_LABELS: Record<SalePaymentMethod, string> = {
+  Cash: 'Cash',
+  Card: 'Card',
+  Upi: 'UPI',
+  BankTransfer: 'Bank transfer',
 };
 
 export const SUPPLIER_PAYMENT_LABELS: Record<SupplierPaymentMethod, string> = {

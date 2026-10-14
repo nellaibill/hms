@@ -37,6 +37,25 @@ _To be documented._
 
 ## Decisions
 
+### ADR-098: Pharmacy Phase 6 — reports and the dashboard are summed from the documents; finance reads pharmacy revenue there
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+The pharmacy could bill, buy and keep stock, but could not answer the questions asked of it every day and every month: how much was sold and collected today, what the margin is, what GST is owed on sales and claimable on purchases, what the stock is worth, and what is not selling. Because pharmacy bills are not hospital invoices (ADR-094), none of this appeared in Accounts and Finance either.
+
+**Decision**
+- **Nothing is stored for reporting.** Every figure is summed on request from the bills, sale returns, payments, goods receipts, purchase returns, supplier payments and stock balances. A report cannot drift from the documents, and there is no second set of numbers to reconcile.
+- **Days are hospital-local.** Bills, returns and payments are stamped in UTC; a period is the UTC span from the start of its first local day to the end of its last, and day-wise figures are grouped by local date — a bill at 00:30 in India belongs to that day, not the one before.
+- **What counts where.** A return reduces sales on the day it came back, not the day of the bill. Money counts on the day it was taken or refunded, in the mode it was taken or refunded in, so *collected* differs from *net sales* by credit and inpatient bills. Margin is taxable value less cost of goods (each bill line carries its batch's unit cost at sale), both net of returns; a line with no recorded cost counts as zero cost.
+- **GST** is reported by HSN code and rate: sales less sale returns (output tax) and purchases less purchase returns (input tax). Counter sales are treated as within the state (CGST + SGST split evenly, any odd paisa to SGST); purchases follow each invoice's inter-state flag (IGST). A purchase-return line takes its HSN code and inter-state flag from the goods receipt its batch last came in on. Whether inpatient pharmacy sales are taxed the same way is for the hospital's accountant to confirm.
+- **Reports** (`api/v1/pharmacy/reports/…`): dashboard, day-wise sales, sales register (bill-wise, up to three months), item-wise sales and margin, collections by payment mode, GST summary, purchase register, stock valuation (at cost and at MRP, expired stock set apart) and non-moving stock (no sale for N days; a product never sold is measured from when its oldest batch on the shelf was recorded). Other periods are capped at a year.
+- **Dashboard** is the pharmacy's landing page (`/pharmacy`; current stock moved to `/pharmacy/stock`): today against yesterday and the month, fourteen days of sales and collections, shelf alerts (low and out of stock, expired and expiring batches), work waiting (IP indents, today's unbilled prescriptions, awaited orders, customer dues, supplier payable) and the month's best sellers.
+- **Who sees what.** Reports are open to `pharmacy.view` and to `finance-billing.view`. Cost, margin, stock value at cost, purchase GST and the purchase register need `pharmacy.view-cost` or `finance-billing.view` — accounts already see the hospital's profit, and need input tax to file. Accounts and Finance gets a **Pharmacy** tab (day-wise sales, collections, GST, item-wise margin) reading the same endpoints.
+
+**Consequences**
+No new tables or migrations. Report cost grows with the period: a year of day-wise figures reads a year of bill headers and payments into memory, which suits a single hospital pharmacy but would need SQL-side grouping at chain scale. The hospital dashboard's revenue charts still come from Billing and so still exclude the pharmacy; finance sees pharmacy revenue on its own tab, not merged into the hospital totals. GST figures are a working summary, not a filed return — there is no GSTR-1 JSON export, no B2B/B2C split (all counter sales are treated as B2C) and no e-invoicing.
+
 ### ADR-097: Pharmacy Phase 5 — adjustments, transfers, stock counts, expiry and the schedule registers
 **Date:** 2026-10-14
 **Status:** Accepted

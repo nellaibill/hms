@@ -2,6 +2,7 @@ import {
   BarChart3,
   Boxes,
   ClipboardList,
+  LayoutDashboard,
   type LucideIcon,
   PackagePlus,
   ReceiptText,
@@ -23,7 +24,7 @@ interface PharmacySection {
   to: string;
   /** Paths (prefixes) that belong to this section, beyond `to` itself. */
   also?: string[];
-  /** Exact-match only — for the stock hub at '/pharmacy', which is a prefix of everything. */
+  /** Exact-match only — for the dashboard at '/pharmacy', which is a prefix of everything. */
   exact?: boolean;
   permission?: string;
 }
@@ -31,12 +32,13 @@ interface PharmacySection {
 /** The pharmacy's own menu, in the order a working day uses it: sell, fulfil, buy, look after
  * stock, then the paperwork. */
 const SECTIONS: PharmacySection[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/pharmacy', exact: true },
   { key: 'counter', label: 'Billing counter', icon: ReceiptText, to: '/pharmacy/counter', permission: 'pharmacy.create' },
   { key: 'sales', label: 'Sales & returns', icon: Undo2, to: '/pharmacy/sales' },
   { key: 'prescriptions', label: 'Prescriptions', icon: Stethoscope, to: '/pharmacy/prescriptions' },
   { key: 'indents', label: 'IP indents', icon: ClipboardList, to: '/pharmacy/indents' },
   { key: 'purchases', label: 'Purchases', icon: PackagePlus, to: '/pharmacy/purchases', also: ['/pharmacy/purchase-orders', '/pharmacy/purchase-returns', '/pharmacy/suppliers', '/pharmacy/reorder'] },
-  { key: 'stock', label: 'Stock', icon: Boxes, to: '/pharmacy', exact: true, also: ['/pharmacy/stock-ledger', '/pharmacy/transfers', '/pharmacy/adjustments', '/pharmacy/stock-counts', '/pharmacy/expiry'] },
+  { key: 'stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock', also: ['/pharmacy/stock-ledger', '/pharmacy/transfers', '/pharmacy/adjustments', '/pharmacy/stock-counts', '/pharmacy/expiry'] },
   { key: 'registers', label: 'Registers', icon: ShieldCheck, to: '/pharmacy/registers' },
   { key: 'reports', label: 'Reports', icon: BarChart3, to: '/pharmacy/reports' },
   { key: 'setup', label: 'Setup', icon: Settings2, to: '/pharmacy/setup', also: ['/pharmacy/stores', '/pharmacy/import', '/pharmacy/settings'] },
@@ -44,7 +46,7 @@ const SECTIONS: PharmacySection[] = [
 
 /** Sections whose screens exist. The menu lists only these, so it never offers a dead link
  * while the module is being built out phase by phase. */
-const LIVE_SECTIONS = new Set(['counter', 'sales', 'prescriptions', 'indents', 'purchases', 'stock', 'registers', 'setup']);
+const LIVE_SECTIONS = new Set(['dashboard', 'counter', 'sales', 'prescriptions', 'indents', 'purchases', 'stock', 'registers', 'reports', 'setup']);
 
 interface PharmacyPageProps {
   title: string;

@@ -410,6 +410,17 @@ export const API_ROUTES = {
       expiring: '/api/v1/pharmacy/stock-control/expiring',
       scheduleRegister: '/api/v1/pharmacy/stock-control/schedule-register',
     },
+    reports: {
+      dashboard: '/api/v1/pharmacy/reports/dashboard',
+      dailySales: '/api/v1/pharmacy/reports/daily-sales',
+      salesRegister: '/api/v1/pharmacy/reports/sales-register',
+      productSales: '/api/v1/pharmacy/reports/product-sales',
+      collections: '/api/v1/pharmacy/reports/collections',
+      gst: '/api/v1/pharmacy/reports/gst',
+      purchaseRegister: '/api/v1/pharmacy/reports/purchase-register',
+      stockValuation: '/api/v1/pharmacy/reports/stock-valuation',
+      nonMoving: '/api/v1/pharmacy/reports/non-moving',
+    },
     prescriptions: '/api/v1/pharmacy/prescriptions',
     catalog: '/api/v1/pharmacy/catalog',
     indents: {

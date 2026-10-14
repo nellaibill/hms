@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '@/features/auth/AuthContext';
 import { cn } from '@/lib/utils';
 
-const TABS = [
+const TABS: { to: string; label: string; feature?: string }[] = [
   { to: '/finance/accounts', label: 'Recent Bills' },
   { to: '/finance/accounts/invoices', label: 'All Invoices' },
   { to: '/finance/accounts/reports', label: 'Income & Expense' },
@@ -9,6 +10,8 @@ const TABS = [
   { to: '/finance/accounts/reports/laboratory', label: 'Laboratory' },
   { to: '/finance/accounts/reports/radiology', label: 'Radiology' },
   { to: '/finance/accounts/reports/consultant', label: 'Consultant' },
+  // Pharmacy bills are not hospital invoices (ADR-094); this tab is where finance reads them.
+  { to: '/finance/accounts/reports/pharmacy', label: 'Pharmacy', feature: 'pharmacy' },
 ];
 
 /** One shared tab bar across the whole Accounts & Finance section — the Ledger (Recent Bills,
@@ -21,9 +24,12 @@ const TABS = [
  * report route shares the `/finance/accounts` prefix). `flex-wrap` so seven tabs don't
  * overflow/clip on narrow widths. */
 export function AccountsNavTabs() {
+  const { hasFeature } = useAuth();
+  const tabs = TABS.filter((tab) => !tab.feature || hasFeature(tab.feature));
+
   return (
     <div className="flex flex-wrap items-center gap-1 overflow-x-auto border-b border-border">
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
