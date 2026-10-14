@@ -7,6 +7,54 @@ public enum TransactionType
 {
     Receipt,
     Dispense,
+
+    /// <summary>Stock already on the shelf when the system went live — entered once, not
+    /// bought through it.</summary>
+    OpeningStock,
+
+    /// <summary>Stock sent back to a supplier.</summary>
+    PurchaseReturn,
+
+    /// <summary>Sold on a pharmacy bill at the counter.</summary>
+    Sale,
+
+    /// <summary>Brought back by a customer against a pharmacy bill.</summary>
+    SaleReturn,
+
+    /// <summary>The two halves of a move between stores.</summary>
+    TransferOut,
+    TransferIn,
+
+    /// <summary>A correction to the book quantity — a count variance, damage, expiry write-off.</summary>
+    AdjustmentIn,
+    AdjustmentOut,
+}
+
+/// <summary>The kind of document a stock movement was posted from. With the document's id and
+/// number on the ledger row, every movement can be traced back to the paper behind it.</summary>
+public enum StockSourceType
+{
+    GoodsReceipt,
+    PurchaseReturn,
+    Sale,
+    SaleReturn,
+    Transfer,
+    Adjustment,
+    StockCount,
+    Import,
+}
+
+/// <summary>What kind of place a pharmacy store is.</summary>
+public enum StoreType
+{
+    /// <summary>Bulk store that receives purchases and supplies the others.</summary>
+    MainStore,
+
+    /// <summary>A dispensing counter — OP pharmacy, IP pharmacy.</summary>
+    Pharmacy,
+
+    /// <summary>Stock held at the point of use — a ward, a theatre, ICU.</summary>
+    SubStore,
 }
 
 /// <summary>A product's stock position, judged on what can actually be dispensed (see

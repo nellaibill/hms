@@ -6,6 +6,8 @@ export interface CreateStockReceiptRequest {
   productBatchId: string;
   quantity: number;
   remarks?: string;
+  /** The store this applies to. Omitted, it is the default store. */
+  storeId?: string;
 }
 
 /**
@@ -15,6 +17,7 @@ export interface CreateStockReceiptRequest {
  */
 export interface StockReceiptResponse {
   id: string;
+  storeId: string;
   productId: string;
   productName: string;
   productBatchId: string;
@@ -29,4 +32,6 @@ export interface StockReceiptResponse {
 /** Mirrors HMS.Modules.Pharmacy.Contracts.StockReceiptListQuery. */
 export interface StockReceiptListQuery extends PagedQuery {
   productId?: string;
+  /** Limits the list to one store. Omitted, every store is included. */
+  storeId?: string;
 }

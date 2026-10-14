@@ -24,7 +24,7 @@ internal static class StockSummaryCalculator
         var expiringSoon = 0m;
         var expired = 0m;
         var onHold = 0m;
-        var batchCount = 0;
+        var batchesInStock = new HashSet<Guid>();
         DateOnly? nearestExpiry = null;
 
         foreach (var line in lines)
@@ -37,7 +37,9 @@ internal static class StockSummaryCalculator
                 continue;
             }
 
-            batchCount++;
+            // A set, not a counter: across all stores the same batch arrives as one line per
+            // store holding it.
+            batchesInStock.Add(line.ProductBatchId);
 
             if (batch.ExpiryDate < today)
             {
@@ -74,7 +76,7 @@ internal static class StockSummaryCalculator
             ExpiringSoonQuantity = expiringSoon,
             ExpiredQuantity = expired,
             OnHoldQuantity = onHold,
-            BatchCount = batchCount,
+            BatchCount = batchesInStock.Count,
             NearestExpiry = nearestExpiry,
             Status = ResolveStatus(available, product.ReorderLevel, hasBeenStocked: lines.Count > 0),
         };

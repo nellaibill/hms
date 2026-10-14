@@ -28,6 +28,16 @@ public record CreateProductRequest
     public string? HsnCode { get; init; }
     public decimal? Weight { get; init; }
     public decimal? Volume { get; init; }
+
+    // Drug profile — see Product.SetDrugProfile. Defaults keep a request that omits them
+    // (every client written before these existed) behaving exactly as it did.
+    public DosageForm? DosageForm { get; init; }
+    public string? Strength { get; init; }
+    public decimal UnitsPerPack { get; init; } = 1m;
+    public DrugSchedule Schedule { get; init; } = DrugSchedule.None;
+    public StorageCondition StorageCondition { get; init; } = StorageCondition.RoomTemperature;
+    public string? RackLocation { get; init; }
+    public decimal? GstRatePercent { get; init; }
 }
 
 public record UpdateProductRequest
@@ -54,6 +64,16 @@ public record UpdateProductRequest
     public string? HsnCode { get; init; }
     public decimal? Weight { get; init; }
     public decimal? Volume { get; init; }
+
+    // Drug profile — see Product.SetDrugProfile. Defaults keep a request that omits them
+    // (every client written before these existed) behaving exactly as it did.
+    public DosageForm? DosageForm { get; init; }
+    public string? Strength { get; init; }
+    public decimal UnitsPerPack { get; init; } = 1m;
+    public DrugSchedule Schedule { get; init; } = DrugSchedule.None;
+    public StorageCondition StorageCondition { get; init; } = StorageCondition.RoomTemperature;
+    public string? RackLocation { get; init; }
+    public decimal? GstRatePercent { get; init; }
 }
 
 public record ProductResponse
@@ -83,6 +103,13 @@ public record ProductResponse
     public string? HsnCode { get; init; }
     public decimal? Weight { get; init; }
     public decimal? Volume { get; init; }
+    public DosageForm? DosageForm { get; init; }
+    public string? Strength { get; init; }
+    public decimal UnitsPerPack { get; init; } = 1m;
+    public DrugSchedule Schedule { get; init; }
+    public StorageCondition StorageCondition { get; init; }
+    public string? RackLocation { get; init; }
+    public decimal? GstRatePercent { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

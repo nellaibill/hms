@@ -8,6 +8,8 @@ export interface CreateDispenseRequest {
   admissionId?: string;
   quantity: number;
   remarks?: string;
+  /** The store this applies to. Omitted, it is the default store. */
+  storeId?: string;
 }
 
 /**
@@ -17,6 +19,7 @@ export interface CreateDispenseRequest {
  */
 export interface DispenseResponse {
   id: string;
+  storeId: string;
   productId: string;
   productName: string;
   productBatchId: string;
@@ -25,6 +28,8 @@ export interface DispenseResponse {
   patientName: string;
   admissionId?: string;
   quantity: number;
+  /** What one unit was sold for. Null on a dispense recorded before prices were kept on the ledger. */
+  unitPrice?: number | null;
   balanceAfter: number;
   transactionDate: string;
   remarks?: string;
@@ -47,4 +52,6 @@ export interface DispenseResponse {
 export interface DispenseListQuery extends PagedQuery {
   patientId?: string;
   productId?: string;
+  /** Limits the list to one store. Omitted, every store is included. */
+  storeId?: string;
 }

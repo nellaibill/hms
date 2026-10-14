@@ -17,6 +17,8 @@ export interface DispenseCartLineRequest {
 export interface CreateDispenseCartRequest {
   patientId: string;
   admissionId?: string;
+  /** The store this applies to. Omitted, it is the default store. */
+  storeId?: string;
   lines: DispenseCartLineRequest[];
 }
 

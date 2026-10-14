@@ -17,6 +17,7 @@ internal static class PharmacyMappingExtensions
     public static StockReceiptResponse ToReceiptResponse(this PharmacyStockTransaction transaction, string productName, string batchNo) => new()
     {
         Id = transaction.Id,
+        StoreId = transaction.StoreId,
         ProductId = transaction.ProductId,
         ProductName = productName,
         ProductBatchId = transaction.ProductBatchId,
@@ -38,6 +39,7 @@ internal static class PharmacyMappingExtensions
         string? billingError = null) => new()
     {
         Id = transaction.Id,
+        StoreId = transaction.StoreId,
         ProductId = transaction.ProductId,
         ProductName = productName,
         ProductBatchId = transaction.ProductBatchId,
@@ -46,6 +48,7 @@ internal static class PharmacyMappingExtensions
         PatientName = patientName,
         AdmissionId = transaction.AdmissionId,
         Quantity = transaction.Quantity,
+        UnitPrice = transaction.UnitPrice,
         BalanceAfter = transaction.BalanceAfter,
         TransactionDate = transaction.TransactionDate,
         Remarks = transaction.Remarks,
@@ -61,6 +64,7 @@ internal static class PharmacyMappingExtensions
     public static StockBalanceResponse ToResponse(this PharmacyStockBalance balance, ProductResponse? product, ProductBatchResponse? batch) => new()
     {
         Id = balance.Id,
+        StoreId = balance.StoreId,
         ProductId = balance.ProductId,
         ProductName = product?.ProductName ?? string.Empty,
         ProductBatchId = balance.ProductBatchId,
@@ -75,18 +79,23 @@ internal static class PharmacyMappingExtensions
     public static StockTransactionResponse ToLedgerResponse(this PharmacyStockTransaction transaction, string productName, string batchNo, string? patientName) => new()
     {
         Id = transaction.Id,
+        StoreId = transaction.StoreId,
         ProductId = transaction.ProductId,
         ProductName = productName,
         ProductBatchId = transaction.ProductBatchId,
         BatchNo = batchNo,
         TransactionType = transaction.TransactionType,
         Quantity = transaction.Quantity,
+        UnitPrice = transaction.UnitPrice,
         BalanceAfter = transaction.BalanceAfter,
         TransactionDate = transaction.TransactionDate,
         PatientId = transaction.PatientId,
         PatientName = patientName,
         AdmissionId = transaction.AdmissionId,
         Remarks = transaction.Remarks,
+        SourceType = transaction.SourceType,
+        SourceId = transaction.SourceId,
+        SourceNo = transaction.SourceNo,
         CreatedAt = transaction.CreatedAt,
     };
 }

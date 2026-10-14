@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ProductSelect } from '@/components/ProductSelect';
 import { ProductBatchSelect } from '@/components/ProductBatchSelect';
 import { useCreateProductBatchMutation } from '@/features/pharmacy/product-lookup';
+import { StoreSelect } from '@/features/pharmacy/stores';
 
 interface NewBatchInlineFormProps {
   productId: string;
@@ -104,6 +105,7 @@ export function StockReceiptForm({ onSubmit, isSubmitting, apiError }: StockRece
       productBatchId: '',
       quantity: 0,
       remarks: '',
+      storeId: '',
     },
   });
 
@@ -164,6 +166,12 @@ export function StockReceiptForm({ onSubmit, isSubmitting, apiError }: StockRece
           {generalError}
         </p>
       )}
+
+      <Controller
+        control={control}
+        name="storeId"
+        render={({ field }) => <StoreSelect id="storeId" label="Receive into" value={field.value ?? ''} onValueChange={field.onChange} />}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">

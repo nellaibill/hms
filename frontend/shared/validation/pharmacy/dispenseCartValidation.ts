@@ -16,6 +16,7 @@ export const createDispenseCartSchema = z
   .object({
     patientId: z.string().trim().min(1, 'Patient is required'),
     admissionId: z.string().trim().optional().or(z.literal('')),
+    storeId: z.string().trim().optional().or(z.literal('')),
     lines: z.array(dispenseCartLineSchema).min(1, 'Add at least one item'),
   })
   .refine(

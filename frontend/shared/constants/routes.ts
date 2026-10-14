@@ -362,6 +362,10 @@ export const API_ROUTES = {
   },
   /** Mirrors HMS.Modules.Pharmacy.Endpoints.*Controller — no PUT/DELETE anywhere, every list is append-only history. */
   pharmacy: {
+    stores: {
+      base: '/api/v1/pharmacy/stores',
+      byId: (id: string) => `/api/v1/pharmacy/stores/${id}`,
+    },
     stockReceipts: {
       base: '/api/v1/pharmacy/stock-receipts',
       byId: (id: string) => `/api/v1/pharmacy/stock-receipts/${id}`,
@@ -378,6 +382,13 @@ export const API_ROUTES = {
       byProductBatch: (productId: string, productBatchId: string) => `/api/v1/pharmacy/stock-balances/${productId}/${productBatchId}`,
     },
     stockLedger: '/api/v1/pharmacy/stock-ledger',
+    goodsReceipts: {
+      base: '/api/v1/pharmacy/goods-receipts',
+      byId: (id: string) => `/api/v1/pharmacy/goods-receipts/${id}`,
+    },
+    imports: {
+      products: '/api/v1/pharmacy/imports/products',
+    },
   },
   /** Mirrors HMS.Modules.ActivityLog.Endpoints.ActivityLogsController (read-only). */
   activityLogs: {

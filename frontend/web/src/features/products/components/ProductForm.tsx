@@ -1,4 +1,11 @@
-import { ApiError, productProfileSchema, type ProductProfileFormValues } from '@hms/shared';
+import {
+  ApiError,
+  DOSAGE_FORMS,
+  DRUG_SCHEDULES,
+  STORAGE_CONDITIONS,
+  productProfileSchema,
+  type ProductProfileFormValues,
+} from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
@@ -9,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { getDisplayLabel, getMasterConfig, useMasterOptionsQuery } from '@/features/masters';
+import { DRUG_SCHEDULE_LABELS, STORAGE_CONDITION_LABELS } from '../drugProfile';
 
 interface ProductFormProps {
   defaultValues?: Partial<ProductProfileFormValues>;
@@ -99,6 +107,54 @@ function ReferenceSelect({ name, label, entityKey, control, errors, readOnly }: 
   );
 }
 
+/** Radix Select can't hold an empty-string item value, so the "nothing chosen" option is
+ * carried as this sentinel in the control and translated back to '' in the form. */
+const NONE_VALUE = '__none__';
+
+interface EnumSelectProps {
+  name: keyof ProductProfileFormValues;
+  label: string;
+  options: { value: string; label: string }[];
+  control: Control<ProductProfileFormValues>;
+  errors: FieldErrors<ProductProfileFormValues>;
+  readOnly?: boolean;
+}
+
+/** A select over a fixed set of values (an enum), as opposed to ReferenceSelect's Masters records. */
+function EnumSelect({ name, label, options, control, errors, readOnly }: EnumSelectProps) {
+  const error = errors[name];
+  const inputId = `product-field-${name}`;
+
+  return (
+    <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+      <Label htmlFor={inputId}>{label}</Label>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <Select
+            value={String(field.value ?? '') || NONE_VALUE}
+            onValueChange={(value) => field.onChange(value === NONE_VALUE ? '' : value)}
+            disabled={readOnly}
+          >
+            <SelectTrigger id={inputId} aria-label={label}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={option.value || NONE_VALUE} value={option.value || NONE_VALUE}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
+      {error && <p className="text-sm text-destructive">{String(error.message)}</p>}
+    </div>
+  );
+}
+
 export function ProductForm({ defaultValues, mode, onSubmit, isSubmitting, submitLabel, apiError }: ProductFormProps) {
   const readOnly = mode === 'view';
   const codeReadOnly = readOnly || mode === 'edit';
@@ -136,6 +192,13 @@ export function ProductForm({ defaultValues, mode, onSubmit, isSubmitting, submi
       hsnCode: '',
       weight: undefined,
       volume: undefined,
+      dosageForm: '',
+      strength: '',
+      unitsPerPack: 1,
+      schedule: 'None',
+      storageCondition: 'RoomTemperature',
+      rackLocation: '',
+      gstRatePercent: undefined,
       ...defaultValues,
     },
   });
@@ -274,6 +337,48 @@ export function ProductForm({ defaultValues, mode, onSubmit, isSubmitting, submi
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Drug Details</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-4">
+            <EnumSelect
+              name="dosageForm"
+              label="Dosage Form"
+              options={[{ value: '', label: 'Not a drug' }, ...DOSAGE_FORMS.map((form) => ({ value: form, label: form }))]}
+              control={control}
+              errors={errors}
+              readOnly={readOnly}
+            />
+            <TextField name="strength" label="Strength" register={register} errors={errors} readOnly={readOnly} />
+            <EnumSelect
+              name="schedule"
+              label="Schedule"
+              options={DRUG_SCHEDULES.map((schedule) => ({ value: schedule, label: DRUG_SCHEDULE_LABELS[schedule] }))}
+              control={control}
+              errors={errors}
+              readOnly={readOnly}
+            />
+            <EnumSelect
+              name="storageCondition"
+              label="Storage"
+              options={STORAGE_CONDITIONS.map((condition) => ({ value: condition, label: STORAGE_CONDITION_LABELS[condition] }))}
+              control={control}
+              errors={errors}
+              readOnly={readOnly}
+            />
+            <TextField name="rackLocation" label="Rack Location" register={register} errors={errors} readOnly={readOnly} />
+            <TextField name="unitsPerPack" label="Units per Pack" type="number" step="any" register={register} errors={errors} readOnly={readOnly} required />
+            <TextField name="gstRatePercent" label="GST Rate (%)" type="number" step="any" register={register} errors={errors} readOnly={readOnly} />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Units per pack is how many stock units make one pack as bought and priced — 10 for a strip of ten tablets, 1 for a bottle. Stock is
+            counted in units; MRP and rates are per pack.
+          </p>
         </CardContent>
       </Card>
 

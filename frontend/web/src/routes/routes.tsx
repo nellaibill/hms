@@ -102,6 +102,12 @@ const StockReceiptCreatePage = lazy(() => import('../pages/pharmacy/StockReceipt
 const DispensesListPage = lazy(() => import('../pages/pharmacy/DispensesListPage'));
 const DispenseCreatePage = lazy(() => import('../pages/pharmacy/DispenseCreatePage'));
 const StockLedgerPage = lazy(() => import('../pages/pharmacy/StockLedgerPage'));
+const StoresPage = lazy(() => import('../pages/pharmacy/StoresPage'));
+const PurchasesListPage = lazy(() => import('../pages/pharmacy/PurchasesListPage'));
+const PurchaseEntryPage = lazy(() => import('../pages/pharmacy/PurchaseEntryPage'));
+const PurchaseDetailPage = lazy(() => import('../pages/pharmacy/PurchaseDetailPage'));
+const PharmacyImportPage = lazy(() => import('../pages/pharmacy/ImportPage'));
+const PharmacySetupPage = lazy(() => import('../pages/pharmacy/SetupPage'));
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
@@ -427,6 +433,12 @@ const pharmacyRoutes = [
           { path: 'pharmacy/dispenses', element: withSuspense(<DispensesListPage />) },
           { path: 'pharmacy/dispenses/new', element: withSuspense(<DispenseCreatePage />) },
           { path: 'pharmacy/stock-ledger', element: withSuspense(<StockLedgerPage />) },
+          { path: 'pharmacy/stores', element: withSuspense(<StoresPage />) },
+          { path: 'pharmacy/purchases', element: withSuspense(<PurchasesListPage />) },
+          { path: 'pharmacy/purchases/new', element: withSuspense(<PurchaseEntryPage />) },
+          { path: 'pharmacy/purchases/:id', element: withSuspense(<PurchaseDetailPage />) },
+          { path: 'pharmacy/import', element: withSuspense(<PharmacyImportPage />) },
+          { path: 'pharmacy/setup', element: withSuspense(<PharmacySetupPage />) },
         ],
       },
     ],

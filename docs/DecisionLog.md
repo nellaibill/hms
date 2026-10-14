@@ -37,6 +37,76 @@ _To be documented._
 
 ## Decisions
 
+### ADR-093: Pharmacy Phase 1 (slices 3–4) — documents post stock through one engine; goods receipt and spreadsheet import
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+Stock came in one batch at a time through a form that knew nothing about who it was bought from or what it cost, and the ledger could not say which paper a movement came from. Every later phase adds another document that moves stock (a bill, a return, a transfer, an adjustment); writing the "balance and ledger move together, never below zero, retry on a concurrent change" logic once per document is how it goes wrong. A new pharmacy also arrives with thousands of products and a shelf of stock, and Product requires seven Masters references before one can be saved.
+
+**Decision**
+- **One posting engine.** `IStockPoster` is the only code that changes a balance for a document. It holds the request's balances so two lines on one batch see each other, and refuses an outward movement larger than what the store holds. `IPharmacyUnitOfWork.ExecuteAsync` commits a document with its movements in one save and, on a concurrent change to a balance, clears tracking and re-runs the work (three attempts, then `PHARMACY.STOCK_CONFLICT`). The old single-line receive and dispense keep their own code path.
+- **Ledger rows name their document.** `SourceType`, `SourceId`, `SourceNo` on `PharmacyStockTransaction`. `TransactionType` gains `PurchaseReturn`, `Sale`, `SaleReturn`, `TransferOut/In`, `AdjustmentIn/Out` now, since it is stored as text and costs nothing.
+- **Document numbers** come from one Postgres sequence per series (`DocumentSeries`: GRN, PH, SR, PO, PR, SP, ST, ADJ, SC, IND), all created in this migration, formatted `GRN-2026-000001` on the hospital-local year. The number is taken before the retry loop so a retry does not burn one.
+- **Goods receipt** (`PharmacyGoodsReceipt` + lines): supplier (Masters), supplier invoice number and date, quantities in packs with free quantity, purchase rate before tax, MRP, discount %, GST %. Posted on save and never edited. Each line upserts its batch in Products by batch number (`IProductBatchService.UpsertAsync`) and receives `(quantity + free) × units per pack`. Unit cost on the ledger is taxable amount ÷ units received, so free goods and discount lower it and tax is not counted as cost. The same supplier invoice number twice is refused (`PHARMACY.DUPLICATE_SUPPLIER_INVOICE`). Totals are worked out by `GstMath` (tax-exclusive for purchases, tax-inclusive for sales, round-off to the rupee).
+- **Batches are saved before the receipt**, in Products' own transaction. A batch with no stock is harmless; stock pointing at a batch that failed to save would not be.
+- **Import** (`POST pharmacy/imports/products`, 200 rows a call, `ValidateOnly` for a dry run): rows are independent and reported one by one. A product is matched by name (then SKU) and never duplicated; category, manufacturer, brand and unit are matched by name, created when new, defaulted when blank, with the catalog's lower two levels filled by a "General". Stock goes in as `OpeningStock`; a batch that already has opening stock in the store is skipped, so a file can be run twice. The spreadsheet is read in the browser (exceljs), with loose heading matching.
+- **Reading purchases needs `pharmacy.view-cost`**; entering one needs `pharmacy.create`.
+- **Frontend:** a pharmacy menu frame (`PharmacyPage`) replaces the tall page banner on pharmacy screens; `LookupInput` is the keyboard-first search box the entry screens share.
+
+**Consequences**
+New tables `pharmacy_goods_receipts`, `pharmacy_goods_receipt_lines`; three nullable columns and an index on the ledger; ten sequences. Additive: existing rows are untouched and older ledger rows simply have no source document. New configurations use `MapDocument`, which maps audit columns, xmin and snake_case names by convention. Pharmacy now references Masters (suppliers and the catalog masters). The receive-stock screen is no longer linked from the menu; its endpoint still exists.
+
+### ADR-092: Pharmacy Phase 1 (slice 2) — stores, and store / unit cost / unit price on every stock movement
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+A hospital pharmacy is several places — a main store, OP and IP counters, ward and theatre sub-stores — and the module had one implicit one. Every later phase writes ledger rows; adding a store to them afterwards would mean rewriting every row already written, so the dimension goes in now. The ledger also recorded quantity only: what a unit cost and sold for was recomputed from whatever the product's price happened to be when read, which makes margin and stock valuation for a past period wrong the moment a price changes. ADR-091 added per-batch, per-pack prices that nothing yet read.
+
+**Decision**
+- **`PharmacyStore`** (`pharmacy.pharmacy_stores`): code, name, `StoreType` (`MainStore/Pharmacy/SubStore`), `IsDefault`, `IsActive`. Owned by Pharmacy rather than reusing Masters' `Warehouse`: a store carries pharmacy meaning a generic address record doesn't, and being in this schema lets balances and the ledger hold a real foreign key to it. CRUD at `api/v1/pharmacy/stores` (no delete — a store with history is deactivated).
+- **Exactly one default store**, used whenever a request names none; kept by `StoreService`, which moves the flag in one save, never switches it off, and refuses to deactivate the default. Deliberately not a unique index on `is_default`: EF orders a swap's two UPDATEs by index values, cannot see that a filter exempts the `false` rows, and reads the swap as a circular dependency.
+- **Balance and ledger gain `StoreId`**; the balance's unique key becomes (store, product, batch). Every stock request takes an optional `StoreId`; every list an optional `StoreId` filter (omitted = all stores, where the by-product summary adds a batch held in two stores together but counts it once).
+- **Ledger rows snapshot `UnitCost` and `UnitPrice`** at write time. New `TransactionType.OpeningStock` for stock entered at go-live.
+- **`PharmacyPricing` is the one place a per-unit figure is worked out**: unit price = (batch selling rate, else batch MRP, else product selling price) ÷ units per pack; unit cost = (batch purchase rate, else product cost price) ÷ units per pack, null when neither is recorded. Unit figures keep four decimals; a line amount rounds to paise. Dispense bills from it, and `available-batches` returns the same `UnitPrice` so the counter shows what will be billed instead of recomputing it.
+- **Migration `AddStoresAndLedgerPricing`**: `dotnet ef`-generated, plus one hand-written block that seeds a default store (`MAIN`, "Main Pharmacy") in every tenant, assigns all existing balances and ledger rows to it, and drops the generated all-zero column default — run before the foreign keys are added.
+- The store picker stays hidden while a hospital has a single store.
+
+**Consequences**
+- Existing tenants must be migrated before Pharmacy runs on this build. Once migrated, an older build can no longer write stock (`store_id` is required and has no default).
+- Ledger rows written before this have no unit cost or price; nothing backfills them.
+- `UnitCost` is stored but not yet returned by any endpoint — it is the same sensitive figure as `CostPrice` and will be exposed with the reports, behind `pharmacy.view-cost`.
+- No transfers between stores yet: stock reaches a second store only by receiving into it. Transfers and indents are Phase 5.
+- A user is not tied to a store; anyone with `pharmacy.create` can receive into or dispense from any of them.
+- The single-line, quantity-only stock receipt still exists and now records unit cost from the batch's purchase rate. The multi-line goods receipt that sets those rates is the next slice.
+
+---
+
+### ADR-091: Pharmacy Phase 1 (slice 1) — drug profile on the product, MRP and rates per batch, priced per pack
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+Phase 1 of the Pharmacy build-out is the data foundation the billing counter, procurement and compliance phases all stand on. A product carried nothing a pharmacy needs beyond name, generic name and one MRP/cost/selling price; a batch carried only number and dates. In India MRP is printed per batch and the same medicine is routinely on the shelf at two MRPs, medicines are bought by the strip and sold by the tablet, and the schedule a drug falls under decides whether a sale needs a prescription and a register entry.
+
+**Decision**
+- **`Product` gains a drug profile**, set through `SetDrugProfile` rather than by growing `Create`/`Update` (same shape as `PatientVisit.SetAdmissionDetails`): `DosageForm?` (null = not a drug), `Strength`, `UnitsPerPack`, `Schedule` (`None/G/H/H1/X/Narcotic`), `StorageCondition`, `RackLocation`, `GstRatePercent?`. Enums are stored by name.
+- **One pack/unit rule for the whole module:** stock quantities are in units, MRP and rates are per pack, a unit's price is the pack price ÷ `UnitsPerPack`. `UnitsPerPack` defaults to 1, where pack and unit coincide — exactly how every existing product already behaves, so no data needs converting.
+- **`ProductBatch` gains `Mrp`, `PurchaseRate`, `SellingRate`**, all nullable and per pack. A batch without them falls back to the product's own prices. A selling rate above MRP is rejected in the validator and the domain.
+- **GST is a rate on the product**, not a `ProductTaxMapping` row. That entity (many taxes per product, each inclusive or not) stays in place but unused: one rate per HSN is how medicines are taxed, and a single field is what a purchase or sale line can snapshot.
+- **A batch's purchase rate is withheld like `CostPrice`** (ADR-077): null in every `ProductBatchesController` response for a caller without `pharmacy.view-cost`. Unlike ADR-077's accepted asymmetry, an update from such a caller keeps the stored rate (`keepPurchaseRate`), so saving back a form that was shown a withheld rate cannot wipe the real one.
+- Migration `AddDrugProfileAndBatchPrices` (`dotnet ef`-generated): additive columns only, defaults `None` / `RoomTemperature` / `1`.
+
+**Consequences**
+- Existing tenants must be migrated before the Products API runs on this build.
+- Nothing reads the new fields yet: dispense still prices from `Product.SellingPrice`. Pricing by batch and by unit arrives with the store and ledger changes in the next slice.
+- Rack location is one value per product, not per store.
+- The product-level `CostPrice` still has ADR-077's write-back problem (an editor without view-cost saves 0 over the real cost); not changed here.
+- Remaining Phase 1 slices: stores and cost/price on the ledger; multi-line goods receipt with supplier and rates; Excel import of products and opening stock.
+
+---
+
 ### ADR-090: Pharmacy Phase 0 — stock is judged per product, pickers search and filter on the server, no schema change
 **Date:** 2026-10-13
 **Status:** Accepted

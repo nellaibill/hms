@@ -47,6 +47,7 @@ internal class DispenseService : IDispenseService
 
     private readonly IPharmacyStockBalanceRepository _balanceRepository;
     private readonly IPharmacyStockTransactionRepository _transactionRepository;
+    private readonly IPharmacyStoreRepository _storeRepository;
     private readonly IProductService _productService;
     private readonly IProductBatchService _productBatchService;
     private readonly IPatientService _patientService;
@@ -55,6 +56,7 @@ internal class DispenseService : IDispenseService
     public DispenseService(
         IPharmacyStockBalanceRepository balanceRepository,
         IPharmacyStockTransactionRepository transactionRepository,
+        IPharmacyStoreRepository storeRepository,
         IProductService productService,
         IProductBatchService productBatchService,
         IPatientService patientService,
@@ -62,6 +64,7 @@ internal class DispenseService : IDispenseService
     {
         _balanceRepository = balanceRepository;
         _transactionRepository = transactionRepository;
+        _storeRepository = storeRepository;
         _productService = productService;
         _productBatchService = productBatchService;
         _patientService = patientService;
@@ -84,7 +87,7 @@ internal class DispenseService : IDispenseService
             Remarks = request.Remarks,
         };
 
-        var dispenseResult = await DispenseLinesAsync([lineRequest], request.PatientId, request.AdmissionId, actorId, cancellationToken);
+        var dispenseResult = await DispenseLinesAsync([lineRequest], request.StoreId, request.PatientId, request.AdmissionId, actorId, cancellationToken);
         if (!dispenseResult.IsSuccess)
         {
             return Result<DispenseResponse>.Failure(dispenseResult.ErrorCode!, dispenseResult.Error!);
@@ -109,7 +112,7 @@ internal class DispenseService : IDispenseService
             return Result<DispenseCartResponse>.Failure(PharmacyErrorCodes.InvalidPatient, $"Patient '{request.PatientId}' was not found.");
         }
 
-        var dispenseResult = await DispenseLinesAsync(request.Lines, request.PatientId, request.AdmissionId, actorId, cancellationToken);
+        var dispenseResult = await DispenseLinesAsync(request.Lines, request.StoreId, request.PatientId, request.AdmissionId, actorId, cancellationToken);
         if (!dispenseResult.IsSuccess)
         {
             return Result<DispenseCartResponse>.Failure(dispenseResult.ErrorCode!, dispenseResult.Error!);
@@ -136,7 +139,7 @@ internal class DispenseService : IDispenseService
         });
     }
 
-    private sealed record DispensedLine(PharmacyStockTransaction Transaction, ProductResponse Product, ProductBatchResponse Batch, decimal Quantity);
+    private sealed record DispensedLine(PharmacyStockTransaction Transaction, ProductResponse Product, ProductBatchResponse Batch, decimal Quantity, decimal UnitPrice);
 
     /// <summary>
     /// Shared by CreateAsync (a 1-line cart) and CreateCartAsync (N lines): validates every
@@ -149,11 +152,18 @@ internal class DispenseService : IDispenseService
     /// </summary>
     private async Task<Result<List<DispensedLine>>> DispenseLinesAsync(
         IReadOnlyList<DispenseCartLineRequest> lines,
+        Guid? storeId,
         Guid patientId,
         Guid? admissionId,
         Guid? actorId,
         CancellationToken cancellationToken)
     {
+        var store = await _storeRepository.ResolveAsync(storeId, cancellationToken);
+        if (store is null)
+        {
+            return Result<List<DispensedLine>>.Failure(PharmacyErrorCodes.InvalidStore, "The store was not found or is inactive.");
+        }
+
         var multiLine = lines.Count > 1;
         var contexts = new List<(DispenseCartLineRequest Line, ProductResponse Product, ProductBatchResponse Batch)>(lines.Count);
         var today = PharmacyClock.Today();
@@ -209,7 +219,7 @@ internal class DispenseService : IDispenseService
             for (var i = 0; i < contexts.Count; i++)
             {
                 var line = contexts[i].Line;
-                var balance = await _balanceRepository.GetByProductAndBatchAsync(line.ProductId, line.ProductBatchId, cancellationToken);
+                var balance = await _balanceRepository.GetAsync(store.Id, line.ProductId, line.ProductBatchId, cancellationToken);
                 var quantityOnHand = balance?.QuantityOnHand ?? 0m;
 
                 if (line.Quantity > quantityOnHand)
@@ -217,7 +227,7 @@ internal class DispenseService : IDispenseService
                     var linePrefix = multiLine ? $"Line {i + 1}: " : string.Empty;
                     return Result<List<DispensedLine>>.Failure(
                         PharmacyErrorCodes.InsufficientStock,
-                        $"{linePrefix}Cannot dispense {line.Quantity} — only {quantityOnHand} available for this product/batch.");
+                        $"{linePrefix}Cannot dispense {line.Quantity} — only {quantityOnHand:0.####} available for this product/batch in {store.Name}.");
                 }
 
                 balances.Add(balance!);
@@ -231,13 +241,19 @@ internal class DispenseService : IDispenseService
 
                 balance.Dispense(line.Quantity, actorId);
 
+                // Priced here, from the batch, and written onto the ledger row — so what was
+                // charged and what it cost are a matter of record, not something recomputed
+                // later from prices that may have changed.
+                var unitPrice = PharmacyPricing.UnitPrice(product, batch);
+
                 // Added alongside the balance mutation and saved together below so every
                 // line's decrement and its ledger record commit as one atomic transaction.
                 var transaction = PharmacyStockTransaction.CreateDispense(
-                    line.ProductId, line.ProductBatchId, line.Quantity, balance.QuantityOnHand, patientId, admissionId, line.Remarks, actorId);
+                    store.Id, line.ProductId, line.ProductBatchId, line.Quantity, balance.QuantityOnHand, patientId, admissionId,
+                    PharmacyPricing.UnitCost(product, batch), unitPrice, line.Remarks, actorId);
 
                 await _transactionRepository.AddAsync(transaction, cancellationToken);
-                dispensed.Add(new DispensedLine(transaction, product, batch, line.Quantity));
+                dispensed.Add(new DispensedLine(transaction, product, batch, line.Quantity, unitPrice));
             }
 
             try
@@ -287,7 +303,7 @@ internal class DispenseService : IDispenseService
 
         foreach (var line in lines)
         {
-            var lineTotal = line.Quantity * line.Product.SellingPrice;
+            var lineTotal = PharmacyPricing.LineTotal(line.Quantity, line.UnitPrice);
             totalAmount += lineTotal;
             items.Add(new CreateInvoiceLineItemRequest
             {
@@ -362,6 +378,7 @@ internal class DispenseService : IDispenseService
             PageSize = query.PageSize,
             Sort = query.Sort,
             ProductId = query.ProductId,
+            StoreId = query.StoreId,
             PatientId = query.PatientId,
             TransactionType = TransactionType.Dispense,
         };

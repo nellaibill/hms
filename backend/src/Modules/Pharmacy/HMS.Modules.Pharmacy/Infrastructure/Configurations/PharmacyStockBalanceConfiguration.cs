@@ -13,6 +13,7 @@ internal class PharmacyStockBalanceConfiguration : IEntityTypeConfiguration<Phar
         builder.HasKey(b => b.Id).HasName("pk_pharmacy_stock_balances");
         builder.Property(b => b.Id).HasColumnName("id").ValueGeneratedNever();
 
+        builder.Property(b => b.StoreId).HasColumnName("store_id").IsRequired();
         builder.Property(b => b.ProductId).HasColumnName("product_id").IsRequired();
         builder.Property(b => b.ProductBatchId).HasColumnName("product_batch_id").IsRequired();
         // 18,4 precision matches Products' own stock-quantity fields (ReorderLevel/
@@ -37,11 +38,20 @@ internal class PharmacyStockBalanceConfiguration : IEntityTypeConfiguration<Phar
 
         builder.HasQueryFilter(b => !b.IsDeleted);
 
-        // One balance row per product/batch — StockReceiptService/DispenseService's
+        // One balance row per batch per store — StockReceiptService/DispenseService's
         // get-or-create lookup relies on this being unique.
-        builder.HasIndex(b => new { b.ProductId, b.ProductBatchId })
+        builder.HasIndex(b => new { b.StoreId, b.ProductId, b.ProductBatchId })
             .IsUnique()
-            .HasDatabaseName("ux_pharmacy_stock_balances_product_batch")
+            .HasDatabaseName("ux_pharmacy_stock_balances_store_product_batch")
             .HasFilter("is_deleted = false");
+
+        // The by-product stock summary reads balances by product across every store.
+        builder.HasIndex(b => b.ProductId).HasDatabaseName("ix_pharmacy_stock_balances_product_id");
+
+        builder.HasOne<PharmacyStore>()
+            .WithMany()
+            .HasForeignKey(b => b.StoreId)
+            .HasConstraintName("fk_pharmacy_stock_balances_pharmacy_stores_store_id")
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

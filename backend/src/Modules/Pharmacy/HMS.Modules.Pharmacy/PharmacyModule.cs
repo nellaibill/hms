@@ -35,9 +35,17 @@ public static class PharmacyModule
             });
         });
 
+        services.AddScoped<IPharmacyStoreRepository, PharmacyStoreRepository>();
         services.AddScoped<IPharmacyStockBalanceRepository, PharmacyStockBalanceRepository>();
         services.AddScoped<IPharmacyStockTransactionRepository, PharmacyStockTransactionRepository>();
 
+        services.AddScoped<IPharmacyGoodsReceiptRepository, PharmacyGoodsReceiptRepository>();
+        services.AddScoped<IStockPoster, StockPoster>();
+        services.AddScoped<IPharmacyUnitOfWork, PharmacyUnitOfWork>();
+
+        services.AddScoped<IStoreService, StoreService>();
+        services.AddScoped<IGoodsReceiptService, GoodsReceiptService>();
+        services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IStockReceiptService, StockReceiptService>();
         services.AddScoped<IDispenseService, DispenseService>();
         services.AddScoped<IStockBalanceService, StockBalanceService>();
@@ -48,7 +56,11 @@ public static class PharmacyModule
         // internal by design, so it would silently register nothing
         // (docs/DeveloperHandbook.md §8/§20 — the single highest-impact bug hit building the
         // Users module).
+        services.AddScoped<IValidator<CreateStoreRequest>, CreateStoreRequestValidator>();
+        services.AddScoped<IValidator<UpdateStoreRequest>, UpdateStoreRequestValidator>();
         services.AddScoped<IValidator<CreateStockReceiptRequest>, CreateStockReceiptRequestValidator>();
+        services.AddScoped<IValidator<CreateGoodsReceiptRequest>, CreateGoodsReceiptRequestValidator>();
+        services.AddScoped<IValidator<ImportProductsRequest>, ImportProductsRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseRequest>, CreateDispenseRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseCartRequest>, CreateDispenseCartRequestValidator>();
 

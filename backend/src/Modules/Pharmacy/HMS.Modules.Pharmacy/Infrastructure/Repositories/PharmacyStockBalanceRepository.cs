@@ -20,10 +20,10 @@ internal class PharmacyStockBalanceRepository : IPharmacyStockBalanceRepository
     public Task<PharmacyStockBalance?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.StockBalances.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
-    public async Task<PharmacyStockBalance?> GetByProductAndBatchAsync(Guid productId, Guid productBatchId, CancellationToken cancellationToken)
+    public async Task<PharmacyStockBalance?> GetAsync(Guid storeId, Guid productId, Guid productBatchId, CancellationToken cancellationToken)
     {
         var balance = await _dbContext.StockBalances
-            .FirstOrDefaultAsync(b => b.ProductId == productId && b.ProductBatchId == productBatchId, cancellationToken);
+            .FirstOrDefaultAsync(b => b.StoreId == storeId && b.ProductId == productId && b.ProductBatchId == productBatchId, cancellationToken);
 
         if (balance is not null && _dbContext.Entry(balance).State != EntityState.Detached)
         {
@@ -50,6 +50,11 @@ internal class PharmacyStockBalanceRepository : IPharmacyStockBalanceRepository
             balances = balances.Where(b => b.ProductId == query.ProductId.Value);
         }
 
+        if (query.StoreId.HasValue)
+        {
+            balances = balances.Where(b => b.StoreId == query.StoreId.Value);
+        }
+
         if (query.InStockOnly == true)
         {
             balances = balances.Where(b => b.QuantityOnHand > 0);
@@ -63,9 +68,14 @@ internal class PharmacyStockBalanceRepository : IPharmacyStockBalanceRepository
         return (items, totalCount);
     }
 
-    public async Task<IReadOnlyList<StockBalanceLine>> GetLinesAsync(IReadOnlyCollection<Guid>? productIds, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<StockBalanceLine>> GetLinesAsync(IReadOnlyCollection<Guid>? productIds, Guid? storeId, CancellationToken cancellationToken)
     {
         var balances = _dbContext.StockBalances.AsNoTracking();
+
+        if (storeId.HasValue)
+        {
+            balances = balances.Where(b => b.StoreId == storeId.Value);
+        }
 
         if (productIds is not null)
         {

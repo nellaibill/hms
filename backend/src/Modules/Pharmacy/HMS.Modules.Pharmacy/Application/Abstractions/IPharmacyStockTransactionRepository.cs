@@ -27,6 +27,10 @@ internal interface IPharmacyStockTransactionRepository
 
     Task<PharmacyStockTransaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Whether a store already has a movement of this type for a batch — how the
+    /// opening-stock import knows not to stock the same batch twice.</summary>
+    Task<bool> ExistsAsync(Guid storeId, Guid productBatchId, TransactionType transactionType, CancellationToken cancellationToken);
+
     /// <summary>
     /// Shared paged/filtered query backing StockLedgerService directly, and reused by
     /// StockReceiptService/DispenseService (which each build a StockLedgerListQuery scoped to

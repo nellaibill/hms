@@ -10,6 +10,7 @@ export const createStockReceiptSchema = z.object({
   productBatchId: z.string().trim().min(1, 'Batch is required'),
   quantity: z.coerce.number().positive('Quantity must be greater than 0'),
   remarks: z.string().trim().max(500).optional().or(z.literal('')),
+  storeId: z.string().trim().optional().or(z.literal('')),
 });
 
 export type StockReceiptFormValues = z.infer<typeof createStockReceiptSchema>;

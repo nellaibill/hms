@@ -1,9 +1,10 @@
-import type { TransactionType } from '@hms/shared';
+import { TRANSACTION_TYPES, type TransactionType } from '@hms/shared';
 import { ListFilter } from 'lucide-react';
 import { ProductSelect } from '@/components/ProductSelect';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TRANSACTION_TYPE_LABELS } from '@/features/pharmacy/common/labels';
 
 export interface StockLedgerFilters {
   productId: string;
@@ -40,8 +41,11 @@ export function StockLedgerToolbar({ filters, onChange }: StockLedgerToolbarProp
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="Receipt">Receipt only</SelectItem>
-            <SelectItem value="Dispense">Dispense only</SelectItem>
+            {TRANSACTION_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {TRANSACTION_TYPE_LABELS[type]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

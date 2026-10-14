@@ -6,6 +6,8 @@ import { useAvailableBatchesQuery } from '@/features/pharmacy/stock-balances';
 interface AvailableBatchSelectProps {
   id: string;
   productId: string | undefined;
+  /** The store being dispensed from; omitted, the default store. */
+  storeId?: string;
   value: string;
   onBatchChange: (batch: AvailableBatchResponse | null) => void;
   /** Batches of this product already in the cart — a product/batch can only be one cart
@@ -20,8 +22,8 @@ interface AvailableBatchSelectProps {
  * deliberately chooses otherwise. Stock Receipt keeps the plain ProductBatchSelect, since
  * stock can be received into any batch, including an empty one.
  */
-export function AvailableBatchSelect({ id, productId, value, onBatchChange, excludeBatchIds = [] }: AvailableBatchSelectProps) {
-  const { data, isPending } = useAvailableBatchesQuery(productId);
+export function AvailableBatchSelect({ id, productId, storeId, value, onBatchChange, excludeBatchIds = [] }: AvailableBatchSelectProps) {
+  const { data, isPending } = useAvailableBatchesQuery(productId, storeId);
   const batches = (data ?? []).filter((batch) => !excludeBatchIds.includes(batch.productBatchId));
   const firstBatchId = batches[0]?.productBatchId;
 

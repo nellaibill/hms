@@ -3,17 +3,19 @@ using HMS.Shared.Kernel;
 namespace HMS.Modules.Pharmacy.Domain;
 
 /// <summary>
-/// Current on-hand quantity for one (ProductId, ProductBatchId) pair — one row per
-/// product/batch, mutated in place by Receive/Dispense. The authoritative running total;
+/// Current on-hand quantity for one (StoreId, ProductId, ProductBatchId) — one row per
+/// batch per store, mutated in place by Receive/Dispense. The authoritative running total;
 /// PharmacyStockTransaction is the append-only ledger of how it got there.
 /// ProductId/ProductBatchId reference the Products module's own aggregates — validated via
 /// IProductService/IProductBatchService in Application (docs/DeveloperHandbook.md's
 /// module-boundary rule: depend only on another module's public Contracts/Application seam,
 /// never its Domain/Infrastructure) — so there is no local FK, same as Admission's
-/// PatientId/DepartmentId/ConsultantId in the IPD module.
+/// PatientId/DepartmentId/ConsultantId in the IPD module. StoreId is this module's own
+/// PharmacyStore and does carry one.
 /// </summary>
 internal class PharmacyStockBalance : Entity
 {
+    public Guid StoreId { get; private set; }
     public Guid ProductId { get; private set; }
     public Guid ProductBatchId { get; private set; }
     public decimal QuantityOnHand { get; private set; }
@@ -23,16 +25,17 @@ internal class PharmacyStockBalance : Entity
     {
     }
 
-    private PharmacyStockBalance(Guid id, Guid productId, Guid productBatchId, Guid? createdBy)
+    private PharmacyStockBalance(Guid id, Guid storeId, Guid productId, Guid productBatchId, Guid? createdBy)
         : base(id, createdBy)
     {
+        StoreId = storeId;
         ProductId = productId;
         ProductBatchId = productBatchId;
         QuantityOnHand = 0m;
     }
 
-    public static PharmacyStockBalance Create(Guid productId, Guid productBatchId, Guid? createdBy)
-        => new(Guid.CreateVersion7(), productId, productBatchId, createdBy);
+    public static PharmacyStockBalance Create(Guid storeId, Guid productId, Guid productBatchId, Guid? createdBy)
+        => new(Guid.CreateVersion7(), storeId, productId, productBatchId, createdBy);
 
     public void Receive(decimal quantity, Guid? updatedBy)
     {

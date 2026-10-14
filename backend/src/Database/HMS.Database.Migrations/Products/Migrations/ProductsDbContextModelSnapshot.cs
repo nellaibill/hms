@@ -18,7 +18,7 @@ namespace HMS.Database.Migrations.Products.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("products")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -68,6 +68,11 @@ namespace HMS.Database.Migrations.Products.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<string>("DosageForm")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("dosage_form");
+
                     b.Property<string>("GenericName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -76,6 +81,11 @@ namespace HMS.Database.Migrations.Products.Migrations
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
+
+                    b.Property<decimal?>("GstRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("gst_rate_percent");
 
                     b.Property<string>("HsnCode")
                         .HasMaxLength(50)
@@ -143,12 +153,25 @@ namespace HMS.Database.Migrations.Products.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("product_name");
 
+                    b.Property<string>("RackLocation")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("rack_location");
+
                     b.Property<decimal>("ReorderLevel")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)")
                         .HasDefaultValue(0m)
                         .HasColumnName("reorder_level");
+
+                    b.Property<string>("Schedule")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("None")
+                        .HasColumnName("schedule");
 
                     b.Property<decimal>("SellingPrice")
                         .ValueGeneratedOnAdd()
@@ -163,9 +186,29 @@ namespace HMS.Database.Migrations.Products.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("sku");
 
+                    b.Property<string>("StorageCondition")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("RoomTemperature")
+                        .HasColumnName("storage_condition");
+
+                    b.Property<string>("Strength")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("strength");
+
                     b.Property<Guid>("SubCategoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("sub_category_id");
+
+                    b.Property<decimal>("UnitsPerPack")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasDefaultValue(1m)
+                        .HasColumnName("units_per_pack");
 
                     b.Property<Guid>("UomId")
                         .HasColumnType("uuid")
@@ -526,9 +569,24 @@ namespace HMS.Database.Migrations.Products.Migrations
                         .HasColumnType("date")
                         .HasColumnName("manufacture_date");
 
+                    b.Property<decimal?>("Mrp")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("mrp");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid")
                         .HasColumnName("product_id");
+
+                    b.Property<decimal?>("PurchaseRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("purchase_rate");
+
+                    b.Property<decimal?>("SellingRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("selling_rate");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

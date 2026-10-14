@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ProductSelect } from '@/components/ProductSelect';
 import { useProductsQuery } from '@/features/pharmacy/product-lookup';
+import { StoreSelect } from '@/features/pharmacy/stores';
 import { AvailableBatchSelect } from './AvailableBatchSelect';
 import { QuickPickPanel } from './QuickPickPanel';
 import { PatientNameLink } from '@/components/PatientNameLink';
@@ -65,13 +66,26 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
     register,
     handleSubmit,
     setError,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<DispenseCartFormValues>({
     resolver: zodResolver(createDispenseCartSchema),
-    defaultValues: { patientId: patient.id, admissionId: '', lines: [] },
+    defaultValues: { patientId: patient.id, admissionId: '', storeId: '', lines: [] },
   });
 
-  const { fields, append, remove, update } = useFieldArray({ control, name: 'lines' });
+  const { fields, append, remove, update, replace } = useFieldArray({ control, name: 'lines' });
+  const storeId = watch('storeId') || undefined;
+
+  function handleStoreChange(nextStoreId: string) {
+    // Every cart line names a batch as held in the store it was picked from; another store
+    // holds different batches and quantities, so the cart can't carry over.
+    setValue('storeId', nextStoreId);
+    replace([]);
+    setLineDetails({});
+    setStaging(emptyStagingLine);
+    setStagingError(null);
+  }
 
   const [staging, setStaging] = useState<StagingLine>(emptyStagingLine);
   const [stagingError, setStagingError] = useState<string | null>(null);
@@ -158,7 +172,9 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
       [lineKey(line)]: {
         productName: product.productName,
         batchNo: batch.batchNo,
-        unitPrice: product.sellingPrice,
+        // The server's figure for this batch (its own MRP or rate, per unit) — the same one
+        // the dispense will bill, rather than a price worked out again here.
+        unitPrice: batch.unitPrice,
         availableQuantity: batch.quantityOnHand,
       },
     }));
@@ -212,6 +228,7 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
                   <AvailableBatchSelect
                     id="staging-batch"
                     productId={staging.product?.id}
+                    storeId={storeId}
                     value={staging.batch?.productBatchId ?? ''}
                     onBatchChange={(batch) => setStaging((s) => ({ ...s, batch }))}
                     excludeBatchIds={fields.filter((f) => f.productId === staging.product?.id).map((f) => f.productBatchId)}
@@ -277,6 +294,8 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
                 Change
               </Button>
             </div>
+
+            <StoreSelect id="dispense-store" label="Dispense from" value={storeId ?? ''} onValueChange={handleStoreChange} />
 
             {/* Checkout-level (not per-item), so it lives in the cart beside the patient rather
                 than floating loose under the Add Item card in a fixed-width box. */}

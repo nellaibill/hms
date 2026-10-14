@@ -20,6 +20,8 @@ public class DispenseServiceTests
 {
     private readonly IPharmacyStockBalanceRepository _balanceRepository = Substitute.For<IPharmacyStockBalanceRepository>();
     private readonly IPharmacyStockTransactionRepository _transactionRepository = Substitute.For<IPharmacyStockTransactionRepository>();
+    private readonly IPharmacyStoreRepository _storeRepository = Substitute.For<IPharmacyStoreRepository>();
+    private readonly PharmacyStore _store = PharmacyStore.Create("MAIN", "Main Pharmacy", StoreType.Pharmacy, null);
     private readonly IProductService _productService = Substitute.For<IProductService>();
     private readonly IProductBatchService _productBatchService = Substitute.For<IProductBatchService>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
@@ -32,7 +34,13 @@ public class DispenseServiceTests
 
     public DispenseServiceTests()
     {
-        _sut = new DispenseService(_balanceRepository, _transactionRepository, _productService, _productBatchService, _patientService, _invoiceService);
+        _sut = new DispenseService(_balanceRepository, _transactionRepository, _storeRepository, _productService, _productBatchService, _patientService, _invoiceService);
+
+        // One store, the default — what every tenant has until it adds more. Requests in
+        // these tests name no store, so they resolve to it.
+        _store.MakeDefault(null);
+        _storeRepository.GetDefaultAsync(Arg.Any<CancellationToken>()).Returns(_store);
+        _storeRepository.GetByIdAsync(_store.Id, Arg.Any<CancellationToken>()).Returns(_store);
 
         // Happy-path defaults: a valid patient, product, and a non-expired batch with 10 on
         // hand. Each failure-path test overrides the relevant substitute.
@@ -47,9 +55,9 @@ public class DispenseServiceTests
         _invoiceService.CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(Result<InvoiceResponse>.Success(new InvoiceResponse { Id = Guid.NewGuid(), InvoiceNumber = "INV-2026-000001" }));
 
-        var balance = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var balance = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         balance.Receive(10m, null);
-        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>()).Returns(balance);
+        _balanceRepository.GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>()).Returns(balance);
     }
 
     private CreateDispenseRequest NewRequest() => new()
@@ -211,6 +219,46 @@ public class DispenseServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PricesFromTheBatchAndPerUnit_AndRecordsPriceAndCostOnTheLedger()
+    {
+        // A strip of 10 whose batch carries MRP 24 and purchase rate 15: a tablet sells for
+        // 2.40 and cost 1.50 — not the product-level 20 the request would otherwise bill.
+        _productService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = _productId, ProductName = "Paracetamol 500mg", SellingPrice = 20m, UnitsPerPack = 10m }));
+        _productBatchService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse
+            {
+                IsActive = true, Id = _productBatchId, ProductId = _productId, BatchNo = "B-2026-001",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1), Mrp = 24m, PurchaseRate = 15m,
+            }));
+        PharmacyStockTransaction? written = null;
+        await _transactionRepository.AddAsync(Arg.Do<PharmacyStockTransaction>(t => written = t), Arg.Any<CancellationToken>());
+
+        var result = await _sut.CreateAsync(NewRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.UnitPrice.Should().Be(2.4m);
+        result.Value.StoreId.Should().Be(_store.Id);
+        written!.UnitPrice.Should().Be(2.4m);
+        written.UnitCost.Should().Be(1.5m);
+        written.StoreId.Should().Be(_store.Id);
+        await _invoiceService.Received(1).CreateAsync(
+            Arg.Is<CreateInvoiceRequest>(r => r.Items[0].UnitPrice == 9.6m), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_ForAnUnknownOrInactiveStore_ReturnsInvalidStoreFailure()
+    {
+        var request = NewRequest() with { StoreId = Guid.NewGuid() };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.InvalidStore);
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenProductIsInactive_ReturnsProductInactiveFailure()
     {
         _productService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -250,9 +298,9 @@ public class DispenseServiceTests
         var otherBatchId = Guid.NewGuid();
         var rows = new List<PharmacyStockTransaction>
         {
-            PharmacyStockTransaction.CreateDispense(_productId, _productBatchId, 1m, 9m, _patientId, null, null, null),
-            PharmacyStockTransaction.CreateDispense(_productId, _productBatchId, 2m, 7m, _patientId, null, null, null),
-            PharmacyStockTransaction.CreateDispense(otherProductId, otherBatchId, 3m, 0m, _patientId, null, null, null),
+            PharmacyStockTransaction.CreateDispense(_store.Id, _productId, _productBatchId, 1m, 9m, _patientId, null, null, 20m, null, null),
+            PharmacyStockTransaction.CreateDispense(_store.Id, _productId, _productBatchId, 2m, 7m, _patientId, null, null, 20m, null, null),
+            PharmacyStockTransaction.CreateDispense(_store.Id, otherProductId, otherBatchId, 3m, 0m, _patientId, null, null, 20m, null, null),
         };
         _transactionRepository.GetPagedAsync(Arg.Any<StockLedgerListQuery>(), Arg.Any<CancellationToken>())
             .Returns((rows, rows.Count));
@@ -300,7 +348,7 @@ public class DispenseServiceTests
     [Fact]
     public async Task CreateAsync_WhenNoBalanceRowExists_TreatsQuantityOnHandAsZeroAndReturnsInsufficientStock()
     {
-        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>())
+        _balanceRepository.GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>())
             .Returns((PharmacyStockBalance?)null);
 
         var result = await _sut.CreateAsync(NewRequest(), actorId: null, CancellationToken.None);
@@ -316,13 +364,13 @@ public class DispenseServiceTests
         // SaveChangesAsync commits, a concurrent dispense wins the race and takes it to 6 —
         // simulated here by the repository returning a second, already-fresher balance
         // instance on the retry's re-fetch.
-        var staleBalance = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var staleBalance = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         staleBalance.Receive(10m, null);
 
-        var refreshedBalance = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var refreshedBalance = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         refreshedBalance.Receive(6m, null);
 
-        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>())
+        _balanceRepository.GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>())
             .Returns(staleBalance, refreshedBalance);
 
         var saveAttempt = 0;
@@ -344,7 +392,7 @@ public class DispenseServiceTests
         // Re-validated against the refreshed balance (6), not the stale one (10): 6 - 5 = 1.
         result.Value!.BalanceAfter.Should().Be(1m);
 
-        await _balanceRepository.Received(2).GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>());
+        await _balanceRepository.Received(2).GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>());
         // 3 SaveChangesAsync calls: the failed attempt 1 (balance decrement + candidate ledger
         // row together, rolled back), the successful attempt 2 (fresh balance + a fresh ledger
         // row, committed together), and the billing follow-up's InvoiceId link (default mock
@@ -381,9 +429,9 @@ public class DispenseServiceTests
             .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
             .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
-        var secondBalance = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        var secondBalance = PharmacyStockBalance.Create(_store.Id, secondProductId, secondBatchId, null);
         secondBalance.Receive(20m, null);
-        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
+        _balanceRepository.GetAsync(_store.Id, secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
 
         var invoiceId = Guid.NewGuid();
         _invoiceService.CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -457,9 +505,9 @@ public class DispenseServiceTests
             .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
             .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
-        var secondBalance = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        var secondBalance = PharmacyStockBalance.Create(_store.Id, secondProductId, secondBatchId, null);
         secondBalance.Receive(2m, null);
-        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
+        _balanceRepository.GetAsync(_store.Id, secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
 
         // First line has plenty of stock (10 on hand, wants 4) — the check must still fail the
         // whole cart because the SECOND line only has 2 on hand but wants 3.
@@ -522,18 +570,18 @@ public class DispenseServiceTests
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
             .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
 
-        var staleFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var staleFirst = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         staleFirst.Receive(10m, null);
-        var refreshedFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var refreshedFirst = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         refreshedFirst.Receive(10m, null);
-        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>())
+        _balanceRepository.GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>())
             .Returns(staleFirst, refreshedFirst);
 
-        var staleSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        var staleSecond = PharmacyStockBalance.Create(_store.Id, secondProductId, secondBatchId, null);
         staleSecond.Receive(20m, null);
-        var refreshedSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        var refreshedSecond = PharmacyStockBalance.Create(_store.Id, secondProductId, secondBatchId, null);
         refreshedSecond.Receive(20m, null);
-        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+        _balanceRepository.GetAsync(_store.Id, secondProductId, secondBatchId, Arg.Any<CancellationToken>())
             .Returns(staleSecond, refreshedSecond);
 
         var saveAttempt = 0;
@@ -556,8 +604,8 @@ public class DispenseServiceTests
         result.Value.Lines[1].BalanceAfter.Should().Be(17m);
 
         // Both balances re-fetched (and thus reloaded) on both attempts.
-        await _balanceRepository.Received(2).GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>());
-        await _balanceRepository.Received(2).GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>());
+        await _balanceRepository.Received(2).GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>());
+        await _balanceRepository.Received(2).GetAsync(_store.Id, secondProductId, secondBatchId, Arg.Any<CancellationToken>());
         // Attempt 1 adds 2 candidate rows (both detached on conflict), attempt 2 adds 2 more
         // that persist = 4 total AddAsync calls, 2 Detach calls.
         await _transactionRepository.Received(4).AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
@@ -567,14 +615,14 @@ public class DispenseServiceTests
     [Fact]
     public async Task CreateAsync_WhenRetryFindsInsufficientRefreshedStock_ReturnsInsufficientStockAndDetachesTheAbandonedTransaction()
     {
-        var staleBalance = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var staleBalance = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         staleBalance.Receive(10m, null);
 
         // The winner of the race dispensed enough that our loser's request no longer fits.
-        var refreshedBalance = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var refreshedBalance = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         refreshedBalance.Receive(3m, null);
 
-        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>())
+        _balanceRepository.GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>())
             .Returns(staleBalance, refreshedBalance);
 
         var saveAttempt = 0;
@@ -611,20 +659,20 @@ public class DispenseServiceTests
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
             .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
 
-        var staleFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var staleFirst = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         staleFirst.Receive(10m, null);
         // The winner of the race dispensed enough of the FIRST product/batch that, once
         // re-fetched on the retry, this cart's request for it no longer fits.
-        var refreshedFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
+        var refreshedFirst = PharmacyStockBalance.Create(_store.Id, _productId, _productBatchId, null);
         refreshedFirst.Receive(3m, null);
-        _balanceRepository.GetByProductAndBatchAsync(_productId, _productBatchId, Arg.Any<CancellationToken>())
+        _balanceRepository.GetAsync(_store.Id, _productId, _productBatchId, Arg.Any<CancellationToken>())
             .Returns(staleFirst, refreshedFirst);
 
-        var staleSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        var staleSecond = PharmacyStockBalance.Create(_store.Id, secondProductId, secondBatchId, null);
         staleSecond.Receive(20m, null);
-        var refreshedSecond = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
+        var refreshedSecond = PharmacyStockBalance.Create(_store.Id, secondProductId, secondBatchId, null);
         refreshedSecond.Receive(20m, null);
-        _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
+        _balanceRepository.GetAsync(_store.Id, secondProductId, secondBatchId, Arg.Any<CancellationToken>())
             .Returns(staleSecond, refreshedSecond);
 
         var saveAttempt = 0;

@@ -27,23 +27,32 @@ internal class StockReceiptService : IStockReceiptService
 {
     private readonly IPharmacyStockBalanceRepository _balanceRepository;
     private readonly IPharmacyStockTransactionRepository _transactionRepository;
+    private readonly IPharmacyStoreRepository _storeRepository;
     private readonly IProductService _productService;
     private readonly IProductBatchService _productBatchService;
 
     public StockReceiptService(
         IPharmacyStockBalanceRepository balanceRepository,
         IPharmacyStockTransactionRepository transactionRepository,
+        IPharmacyStoreRepository storeRepository,
         IProductService productService,
         IProductBatchService productBatchService)
     {
         _balanceRepository = balanceRepository;
         _transactionRepository = transactionRepository;
+        _storeRepository = storeRepository;
         _productService = productService;
         _productBatchService = productBatchService;
     }
 
     public async Task<Result<StockReceiptResponse>> CreateAsync(CreateStockReceiptRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
+        var store = await _storeRepository.ResolveAsync(request.StoreId, cancellationToken);
+        if (store is null)
+        {
+            return Result<StockReceiptResponse>.Failure(PharmacyErrorCodes.InvalidStore, "The store was not found or is inactive.");
+        }
+
         var productResult = await _productService.GetByIdAsync(request.ProductId, cancellationToken);
         if (!productResult.IsSuccess)
         {
@@ -68,20 +77,22 @@ internal class StockReceiptService : IStockReceiptService
             return Result<StockReceiptResponse>.Failure(PharmacyErrorCodes.BatchInactive, $"Batch '{batchResult.Value.BatchNo}' is inactive.");
         }
 
-        var balance = await _balanceRepository.GetByProductAndBatchAsync(request.ProductId, request.ProductBatchId, cancellationToken);
+        var balance = await _balanceRepository.GetAsync(store.Id, request.ProductId, request.ProductBatchId, cancellationToken);
         if (balance is null)
         {
-            balance = PharmacyStockBalance.Create(request.ProductId, request.ProductBatchId, actorId);
+            balance = PharmacyStockBalance.Create(store.Id, request.ProductId, request.ProductBatchId, actorId);
             await _balanceRepository.AddAsync(balance, cancellationToken);
         }
 
         balance.Receive(request.Quantity, actorId);
 
         var transaction = PharmacyStockTransaction.CreateReceipt(
+            store.Id,
             request.ProductId,
             request.ProductBatchId,
             request.Quantity,
             balance.QuantityOnHand,
+            PharmacyPricing.UnitCost(productResult.Value, batchResult.Value),
             request.Remarks,
             actorId);
 
@@ -111,6 +122,7 @@ internal class StockReceiptService : IStockReceiptService
             PageSize = query.PageSize,
             Sort = query.Sort,
             ProductId = query.ProductId,
+            StoreId = query.StoreId,
             TransactionType = TransactionType.Receipt,
         };
 

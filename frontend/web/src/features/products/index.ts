@@ -4,6 +4,7 @@ export * from './components/ProductForm';
 export * from './components/ProductListToolbar';
 export * from './components/ProductTable';
 export * from './components/StatusBadge';
+export * from './drugProfile';
 export * from './hooks/useProductMutations';
 export * from './hooks/useProductQuery';
 export * from './hooks/useProductsQuery';

@@ -8,6 +8,9 @@ public record CreateStockReceiptRequest
     public Guid ProductBatchId { get; init; }
     public decimal Quantity { get; init; }
     public string? Remarks { get; init; }
+
+    /// <summary>The store this applies to. Omitted, it is the default store.</summary>
+    public Guid? StoreId { get; init; }
 }
 
 /// <summary>
@@ -18,6 +21,7 @@ public record CreateStockReceiptRequest
 public record StockReceiptResponse
 {
     public Guid Id { get; init; }
+    public Guid StoreId { get; init; }
     public Guid ProductId { get; init; }
     public string ProductName { get; init; } = string.Empty;
     public Guid ProductBatchId { get; init; }
@@ -32,4 +36,7 @@ public record StockReceiptResponse
 public class StockReceiptListQuery : PagedRequest
 {
     public Guid? ProductId { get; set; }
+
+    /// <summary>Limits the list to one store. Omitted, every store is included.</summary>
+    public Guid? StoreId { get; set; }
 }

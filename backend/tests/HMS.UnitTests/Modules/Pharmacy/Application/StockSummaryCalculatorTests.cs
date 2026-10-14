@@ -51,6 +51,19 @@ public class StockSummaryCalculatorTests
     }
 
     [Fact]
+    public void Build_AcrossStores_AddsTheSameBatchUpButCountsItOnce()
+    {
+        // Rolled up over every store, a batch held in two of them arrives as two lines.
+        AddBatch(8m, Today.AddMonths(6));
+        _lines.Add(_lines[0] with { QuantityOnHand = 5m });
+
+        var summary = Build();
+
+        summary.AvailableQuantity.Should().Be(13m);
+        summary.BatchCount.Should().Be(1);
+    }
+
+    [Fact]
     public void Build_WhenAvailableIsAtOrBelowReorderLevel_IsLowStock()
     {
         AddBatch(10m, Today.AddMonths(6));

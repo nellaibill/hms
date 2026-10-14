@@ -2,6 +2,12 @@ import { API_ROUTES } from '../../constants';
 import type {
   AvailableBatchResponse,
   CreateDispenseCartRequest,
+  CreateGoodsReceiptRequest,
+  GoodsReceiptListQuery,
+  GoodsReceiptResponse,
+  ImportProductsRequest,
+  ImportProductsResponse,
+  CreateStoreRequest,
   CreateDispenseRequest,
   CreateStockReceiptRequest,
   DispenseCartResponse,
@@ -15,9 +21,17 @@ import type {
   StockSummaryListQuery,
   StockSummaryResponse,
   StockTransactionResponse,
+  StoreResponse,
+  UpdateStoreRequest,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { HttpClient } from '../httpClient';
+
+/** A page of any pharmacy list. */
+export interface Paged<T> {
+  items: T[];
+  meta: PaginationMeta;
+}
 
 export interface PagedStockReceipts {
   items: StockReceiptResponse[];
@@ -53,6 +67,22 @@ export interface PagedStockTransactions {
 export class PharmacyApi {
   constructor(private readonly client: HttpClient) {}
 
+  /** Every store, the default first. Unpaged — a hospital has a handful. */
+  async getStores(): Promise<StoreResponse[]> {
+    const response = await this.client.get<StoreResponse[]>(API_ROUTES.pharmacy.stores.base);
+    return response.data;
+  }
+
+  async createStore(request: CreateStoreRequest): Promise<StoreResponse> {
+    const response = await this.client.post<StoreResponse>(API_ROUTES.pharmacy.stores.base, request);
+    return response.data;
+  }
+
+  async updateStore(id: string, request: UpdateStoreRequest): Promise<StoreResponse> {
+    const response = await this.client.put<StoreResponse>(API_ROUTES.pharmacy.stores.byId(id), request);
+    return response.data;
+  }
+
   async getStockReceipts(query: StockReceiptListQuery = {}): Promise<PagedStockReceipts> {
     const response = await this.client.get<StockReceiptResponse[]>(API_ROUTES.pharmacy.stockReceipts.base, {
       query: {
@@ -61,6 +91,7 @@ export class PharmacyApi {
         sort: query.sort,
         search: query.search,
         productId: query.productId,
+        storeId: query.storeId,
       },
     });
     return { items: response.data, meta: response.meta as PaginationMeta };
@@ -85,6 +116,7 @@ export class PharmacyApi {
         search: query.search,
         patientId: query.patientId,
         productId: query.productId,
+        storeId: query.storeId,
       },
     });
     return { items: response.data, meta: response.meta as PaginationMeta };
@@ -113,6 +145,7 @@ export class PharmacyApi {
         sort: query.sort,
         search: query.search,
         productId: query.productId,
+        storeId: query.storeId,
         inStockOnly: query.inStockOnly,
       },
     });
@@ -127,14 +160,18 @@ export class PharmacyApi {
         pageSize: query.pageSize,
         search: query.search,
         filter: query.filter,
+        storeId: query.storeId,
       },
     });
     return { items: response.data, meta: response.meta as PaginationMeta };
   }
 
-  /** The batches of a product that can be dispensed right now, earliest expiry first. */
-  async getAvailableBatches(productId: string): Promise<AvailableBatchResponse[]> {
-    const response = await this.client.get<AvailableBatchResponse[]>(API_ROUTES.pharmacy.stockBalances.availableBatches(productId));
+  /** The batches of a product that can be dispensed right now from one store (the default when
+   * none is named), earliest expiry first, each with its unit price. */
+  async getAvailableBatches(productId: string, storeId?: string): Promise<AvailableBatchResponse[]> {
+    const response = await this.client.get<AvailableBatchResponse[]>(API_ROUTES.pharmacy.stockBalances.availableBatches(productId), {
+      query: { storeId },
+    });
     return response.data;
   }
 
@@ -151,6 +188,7 @@ export class PharmacyApi {
         sort: query.sort,
         search: query.search,
         productId: query.productId,
+        storeId: query.storeId,
         productBatchId: query.productBatchId,
         transactionType: query.transactionType,
         patientId: query.patientId,
@@ -159,5 +197,27 @@ export class PharmacyApi {
       },
     });
     return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getGoodsReceipts(query: GoodsReceiptListQuery = {}): Promise<Paged<GoodsReceiptResponse>> {
+    const response = await this.client.get<GoodsReceiptResponse[]>(API_ROUTES.pharmacy.goodsReceipts.base, { query: { ...query } });
+    return { items: response.data, meta: response.meta as PaginationMeta };
+  }
+
+  async getGoodsReceiptById(id: string): Promise<GoodsReceiptResponse> {
+    const response = await this.client.get<GoodsReceiptResponse>(API_ROUTES.pharmacy.goodsReceipts.byId(id));
+    return response.data;
+  }
+
+  /** Books a supplier invoice into stock. Posted on save — there is no draft and no edit. */
+  async createGoodsReceipt(request: CreateGoodsReceiptRequest): Promise<GoodsReceiptResponse> {
+    const response = await this.client.post<GoodsReceiptResponse>(API_ROUTES.pharmacy.goodsReceipts.base, request);
+    return response.data;
+  }
+
+  /** Imports up to 200 spreadsheet rows; with `validateOnly`, reports what would happen without saving. */
+  async importProducts(request: ImportProductsRequest): Promise<ImportProductsResponse> {
+    const response = await this.client.post<ImportProductsResponse>(API_ROUTES.pharmacy.imports.products, request);
+    return response.data;
   }
 }

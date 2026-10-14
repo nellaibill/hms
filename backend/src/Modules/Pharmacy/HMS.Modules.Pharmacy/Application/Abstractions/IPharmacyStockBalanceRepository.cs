@@ -21,14 +21,15 @@ internal interface IPharmacyStockBalanceRepository
 
     Task<PharmacyStockBalance?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
-    Task<PharmacyStockBalance?> GetByProductAndBatchAsync(Guid productId, Guid productBatchId, CancellationToken cancellationToken);
+    Task<PharmacyStockBalance?> GetAsync(Guid storeId, Guid productId, Guid productBatchId, CancellationToken cancellationToken);
 
     Task<(IReadOnlyList<PharmacyStockBalance> Items, int TotalCount)> GetPagedAsync(StockBalanceListQuery query, CancellationToken cancellationToken);
 
     /// <summary>Every balance row (zero-quantity ones included — a zero row still says the
     /// product has been stocked before) for the given products, or for all products when
-    /// <paramref name="productIds"/> is null.</summary>
-    Task<IReadOnlyList<StockBalanceLine>> GetLinesAsync(IReadOnlyCollection<Guid>? productIds, CancellationToken cancellationToken);
+    /// <paramref name="productIds"/> is null — in one store, or across all of them when
+    /// <paramref name="storeId"/> is null (a batch held in two stores is then two lines).</summary>
+    Task<IReadOnlyList<StockBalanceLine>> GetLinesAsync(IReadOnlyCollection<Guid>? productIds, Guid? storeId, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

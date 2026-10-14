@@ -13,7 +13,7 @@ namespace HMS.Modules.Pharmacy.Application;
 /// </summary>
 public interface IStockBalanceService
 {
-    Task<Result<StockBalanceResponse>> GetAsync(Guid productId, Guid productBatchId, CancellationToken cancellationToken);
+    Task<Result<StockBalanceResponse>> GetAsync(Guid productId, Guid productBatchId, Guid? storeId, CancellationToken cancellationToken);
 
     Task<PagedResult<StockBalanceResponse>> GetPagedAsync(StockBalanceListQuery query, CancellationToken cancellationToken);
 
@@ -21,29 +21,34 @@ public interface IStockBalanceService
     /// optionally narrowed to the products needing attention.</summary>
     Task<PagedResult<StockSummaryResponse>> GetSummaryPagedAsync(StockSummaryListQuery query, CancellationToken cancellationToken);
 
-    /// <summary>The batches of a product a dispense can draw on right now, earliest expiry first.</summary>
-    Task<IReadOnlyList<AvailableBatchResponse>> GetAvailableBatchesAsync(Guid productId, CancellationToken cancellationToken);
+    /// <summary>The batches of a product a dispense can draw on right now in one store (the
+    /// default store when none is named), earliest expiry first, each with its unit price.</summary>
+    Task<IReadOnlyList<AvailableBatchResponse>> GetAvailableBatchesAsync(Guid productId, Guid? storeId, CancellationToken cancellationToken);
 }
 
 internal class StockBalanceService : IStockBalanceService
 {
     private readonly IPharmacyStockBalanceRepository _balanceRepository;
+    private readonly IPharmacyStoreRepository _storeRepository;
     private readonly IProductService _productService;
     private readonly IProductBatchService _productBatchService;
 
     public StockBalanceService(
         IPharmacyStockBalanceRepository balanceRepository,
+        IPharmacyStoreRepository storeRepository,
         IProductService productService,
         IProductBatchService productBatchService)
     {
         _balanceRepository = balanceRepository;
+        _storeRepository = storeRepository;
         _productService = productService;
         _productBatchService = productBatchService;
     }
 
-    public async Task<Result<StockBalanceResponse>> GetAsync(Guid productId, Guid productBatchId, CancellationToken cancellationToken)
+    public async Task<Result<StockBalanceResponse>> GetAsync(Guid productId, Guid productBatchId, Guid? storeId, CancellationToken cancellationToken)
     {
-        var balance = await _balanceRepository.GetByProductAndBatchAsync(productId, productBatchId, cancellationToken);
+        var store = await _storeRepository.ResolveAsync(storeId, cancellationToken);
+        var balance = store is null ? null : await _balanceRepository.GetAsync(store.Id, productId, productBatchId, cancellationToken);
         if (balance is null)
         {
             return Result<StockBalanceResponse>.Failure(
@@ -86,7 +91,7 @@ internal class StockBalanceService : IStockBalanceService
         if (query.Filter is { } filter)
         {
             var allProducts = await _productService.GetStockProfilesAsync(query.Search, cancellationToken);
-            var matching = (await BuildSummariesAsync(allProducts, productIds: null, cancellationToken))
+            var matching = (await BuildSummariesAsync(allProducts, productIds: null, query.StoreId, cancellationToken))
                 .Where(s => StockSummaryCalculator.Matches(s, filter))
                 .ToList();
 
@@ -109,13 +114,20 @@ internal class StockBalanceService : IStockBalanceService
             })
             .ToList();
 
-        var summaries = await BuildSummariesAsync(profiles, profiles.Select(p => p.Id).ToList(), cancellationToken);
+        var summaries = await BuildSummariesAsync(profiles, profiles.Select(p => p.Id).ToList(), query.StoreId, cancellationToken);
         return new PagedResult<StockSummaryResponse>(summaries, query.Page, query.PageSize, productPage.TotalCount);
     }
 
-    public async Task<IReadOnlyList<AvailableBatchResponse>> GetAvailableBatchesAsync(Guid productId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<AvailableBatchResponse>> GetAvailableBatchesAsync(Guid productId, Guid? storeId, CancellationToken cancellationToken)
     {
-        var inStock = (await _balanceRepository.GetLinesAsync([productId], cancellationToken))
+        var store = await _storeRepository.ResolveAsync(storeId, cancellationToken);
+        var product = (await _productService.GetByIdAsync(productId, cancellationToken)).Value;
+        if (store is null || product is null)
+        {
+            return [];
+        }
+
+        var inStock = (await _balanceRepository.GetLinesAsync([productId], store.Id, cancellationToken))
             .Where(l => l.QuantityOnHand > 0)
             .ToList();
 
@@ -135,6 +147,8 @@ internal class StockBalanceService : IStockBalanceService
                 ExpiryDate = x.Batch.ExpiryDate,
                 QuantityOnHand = x.Line.QuantityOnHand,
                 IsExpiringSoon = x.Batch.ExpiryDate <= expiringSoonCutoff,
+                Mrp = x.Batch.Mrp,
+                UnitPrice = PharmacyPricing.UnitPrice(product, x.Batch),
             })
             .ToList();
     }
@@ -142,6 +156,7 @@ internal class StockBalanceService : IStockBalanceService
     private async Task<List<StockSummaryResponse>> BuildSummariesAsync(
         IReadOnlyList<ProductStockProfileResponse> products,
         IReadOnlyCollection<Guid>? productIds,
+        Guid? storeId,
         CancellationToken cancellationToken)
     {
         if (products.Count == 0)
@@ -149,7 +164,7 @@ internal class StockBalanceService : IStockBalanceService
             return [];
         }
 
-        var lines = await _balanceRepository.GetLinesAsync(productIds, cancellationToken);
+        var lines = await _balanceRepository.GetLinesAsync(productIds, storeId, cancellationToken);
         var batches = await _productBatchService.GetLookupAsync(
             lines.Where(l => l.QuantityOnHand > 0).Select(l => l.ProductBatchId), cancellationToken);
 

@@ -26,6 +26,8 @@ export interface StockSummaryResponse {
 /** Mirrors HMS.Modules.Pharmacy.Contracts.StockSummaryListQuery. */
 export interface StockSummaryListQuery extends PagedQuery {
   filter?: StockSummaryFilter;
+  /** Limits the roll-up to one store. Omitted, a product shows its stock across every store. */
+  storeId?: string;
 }
 
 /**
@@ -38,4 +40,8 @@ export interface AvailableBatchResponse {
   expiryDate: string;
   quantityOnHand: number;
   isExpiringSoon: boolean;
+  /** The MRP printed on this batch, per pack. */
+  mrp?: number | null;
+  /** What one unit of this batch sells for — the figure the dispense will bill. */
+  unitPrice: number;
 }

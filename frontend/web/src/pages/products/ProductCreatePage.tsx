@@ -2,7 +2,7 @@ import { ApiError, type ProductProfileFormValues } from '@hms/shared';
 import { PackagePlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
-import { ProductForm, useCreateProductMutation } from '@/features/products';
+import { ProductForm, useCreateProductMutation, toDrugProfileRequest } from '@/features/products';
 import { RequirePermission } from '@/features/auth/RequirePermission';
 
 export default function ProductCreatePage() {
@@ -36,6 +36,7 @@ export default function ProductCreatePage() {
         hsnCode: values.hsnCode || undefined,
         weight: values.weight,
         volume: values.volume,
+        ...toDrugProfileRequest(values),
       },
       {
         onSuccess: (product) => navigate(`/support/inventory/${product.id}`),
