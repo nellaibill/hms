@@ -34,7 +34,7 @@ public class DispensesController : ControllerBase
     /// <summary>Dispenses stock from a product/batch to a patient, decreasing its on-hand balance.</summary>
     /// <response code="201">The dispense was recorded.</response>
     /// <response code="400">The request failed validation.</response>
-    /// <response code="409">The product/batch/patient reference is invalid, the batch has expired, or there is not enough stock on hand.</response>
+    /// <response code="409">The product/batch/patient reference is invalid, the product or batch is inactive, the batch has expired, or there is not enough stock on hand.</response>
     [Authorize]
     [RequirePermission("pharmacy.create")]
     [HttpPost]
@@ -55,7 +55,7 @@ public class DispensesController : ControllerBase
     /// call, dispensing all of them and billing them as ONE invoice with N line items.</summary>
     /// <response code="201">The cart was dispensed.</response>
     /// <response code="400">The request failed validation (including an empty cart or a duplicate product/batch line).</response>
-    /// <response code="409">A line's product/batch/patient reference is invalid, a batch has expired, or there is not enough stock on hand — nothing in the cart is dispensed.</response>
+    /// <response code="409">A line's product/batch/patient reference is invalid, its product or batch is inactive, a batch has expired, or there is not enough stock on hand — nothing in the cart is dispensed.</response>
     [Authorize]
     [RequirePermission("pharmacy.create")]
     [HttpPost("cart")]
@@ -106,6 +106,8 @@ public class DispensesController : ControllerBase
             PharmacyErrorCodes.InvalidProduct => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.InvalidBatch => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.InvalidPatient => StatusCodes.Status409Conflict,
+            PharmacyErrorCodes.ProductInactive => StatusCodes.Status409Conflict,
+            PharmacyErrorCodes.BatchInactive => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.BatchExpired => StatusCodes.Status409Conflict,
             PharmacyErrorCodes.InsufficientStock => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,

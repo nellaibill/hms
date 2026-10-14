@@ -1,7 +1,6 @@
 using HMS.Modules.Pharmacy.Application.Abstractions;
 using HMS.Modules.Pharmacy.Application.Mapping;
 using HMS.Modules.Pharmacy.Contracts;
-using HMS.Modules.Pharmacy.Domain;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Products.Application;
 using HMS.Shared.Kernel;
@@ -40,34 +39,17 @@ internal class StockLedgerService : IStockLedgerService
     {
         var (items, totalCount) = await _transactionRepository.GetPagedAsync(query, cancellationToken);
 
-        // MVP-scale N+1 lookups (one Product/ProductBatch/Patient round-trip per row) to
-        // denormalize display fields — same trade-off IPD's AdmissionService.GetPagedAsync
-        // documents; revisit with a bulk lookup if this list grows large enough to matter.
-        var responses = new List<StockTransactionResponse>(items.Count);
-        foreach (var item in items)
-        {
-            responses.Add(await BuildResponseAsync(item, cancellationToken));
-        }
+        var products = await _productService.GetLookupAsync(items.Select(t => t.ProductId), cancellationToken);
+        var batches = await _productBatchService.GetLookupAsync(items.Select(t => t.ProductBatchId), cancellationToken);
+        var patientNames = await _patientService.GetNameLookupAsync(items.Select(t => t.PatientId), cancellationToken);
+
+        var responses = items
+            .Select(t => t.ToLedgerResponse(
+                products.GetValueOrDefault(t.ProductId)?.ProductName ?? string.Empty,
+                batches.GetValueOrDefault(t.ProductBatchId)?.BatchNo ?? string.Empty,
+                t.PatientId is { } patientId ? patientNames.GetValueOrDefault(patientId) : null))
+            .ToList();
 
         return new PagedResult<StockTransactionResponse>(responses, query.Page, query.PageSize, totalCount);
-    }
-
-    private async Task<StockTransactionResponse> BuildResponseAsync(PharmacyStockTransaction transaction, CancellationToken cancellationToken)
-    {
-        var productResult = await _productService.GetByIdAsync(transaction.ProductId, cancellationToken);
-        var batchResult = await _productBatchService.GetByIdAsync(transaction.ProductId, transaction.ProductBatchId, cancellationToken);
-
-        string? patientName = null;
-        if (transaction.PatientId.HasValue)
-        {
-            var patientResult = await _patientService.GetByIdAsync(transaction.PatientId.Value, cancellationToken);
-            var patient = patientResult.Value;
-            patientName = patient is null ? null : $"{patient.FirstName} {patient.LastName}";
-        }
-
-        return transaction.ToLedgerResponse(
-            productResult.Value?.ProductName ?? string.Empty,
-            batchResult.Value?.BatchNo ?? string.Empty,
-            patientName);
     }
 }

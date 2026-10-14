@@ -1,10 +1,9 @@
-import { ArrowRight, Loader2, PackagePlus, Pill, Receipt } from 'lucide-react';
+import { ArrowRight, PackagePlus, Pill, Receipt } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
-import { useProductsQuery } from '@/features/pharmacy/product-lookup';
-import { StockBalanceTable, useStockBalancesQuery } from '@/features/pharmacy/stock-balances';
+import { StockSummaryPanel } from '@/features/pharmacy/stock-balances';
 
 interface HubCard {
   key: string;
@@ -15,21 +14,12 @@ interface HubCard {
 }
 
 /**
- * Pharmacy's landing page ('/pharmacy') — current stock balances (flagging low/zero
- * stock), plus links into Receive Stock, Dispense, and the combined Stock Ledger. Mirrors
- * IpdDashboardPage's hub shape.
+ * Pharmacy's landing page ('/pharmacy') — current stock per product (searchable, with
+ * needs-reorder and expiry views), plus links into Receive Stock, Dispense, and the combined
+ * Stock Ledger. Mirrors IpdDashboardPage's hub shape.
  */
 export default function PharmacyHubPage() {
   const { hasPermission } = useAuth();
-  const balancesQuery = useStockBalancesQuery({ page: 1, pageSize: 50, sort: 'productName' });
-
-  // Loaded once for the whole list (not per-row) to resolve ProductId -> reorderLevel for
-  // the low-stock flag, the same "resolve via a separate 100-row lookup query" pattern
-  // BedsListPage uses for ward labels.
-  const productsForReorderLevels = useProductsQuery({ pageSize: 100, isActive: true });
-  const reorderLevelsByProductId = Object.fromEntries(
-    (productsForReorderLevels.data?.items ?? []).map((product) => [product.id, product.reorderLevel]),
-  );
 
   const cards: HubCard[] = [
     { key: 'receive', label: 'Receive Stock', description: 'Record newly received stock against a product/batch.', icon: PackagePlus, path: '/pharmacy/stock-receipts/new' },
@@ -101,33 +91,8 @@ export default function PharmacyHubPage() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Current Stock Balances</h2>
-
-          {balancesQuery.isPending && (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading stock balances…
-            </div>
-          )}
-
-          {balancesQuery.isError && (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {balancesQuery.error instanceof Error ? balancesQuery.error.message : 'Failed to load stock balances.'}
-            </p>
-          )}
-
-          {!balancesQuery.isPending && !balancesQuery.isError && balancesQuery.data && balancesQuery.data.items.length === 0 && (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-                <p className="text-sm font-medium text-foreground">No stock balances yet</p>
-                <p className="text-sm text-muted-foreground">Record a stock receipt to get started.</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {!balancesQuery.isPending && !balancesQuery.isError && balancesQuery.data && balancesQuery.data.items.length > 0 && (
-            <StockBalanceTable balances={balancesQuery.data.items} reorderLevelsByProductId={reorderLevelsByProductId} />
-          )}
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Current Stock</h2>
+          <StockSummaryPanel />
         </section>
       </div>
     </div>

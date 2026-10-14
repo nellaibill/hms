@@ -87,6 +87,21 @@ public record ProductResponse
     public DateTime? UpdatedAt { get; init; }
 }
 
+/// <summary>
+/// Lean, unpaged projection of an active product — just what a stock view needs to name a
+/// product and judge its on-hand quantity against <see cref="ReorderLevel"/>. Exists so a
+/// caller that has to consider the whole catalog at once (Pharmacy's low-stock/expiry
+/// filters) doesn't page full <see cref="ProductResponse"/>s 100 at a time.
+/// </summary>
+public record ProductStockProfileResponse
+{
+    public Guid Id { get; init; }
+    public string Sku { get; init; } = string.Empty;
+    public string ProductName { get; init; } = string.Empty;
+    public string? GenericName { get; init; }
+    public decimal ReorderLevel { get; init; }
+}
+
 public class ProductListQuery : PagedRequest
 {
     public bool? IsActive { get; set; }

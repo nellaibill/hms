@@ -39,9 +39,9 @@ public class DispenseServiceTests
         _patientService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Result<PatientResponse>.Success(new PatientResponse { Uhid = "P-2026-000001", FirstName = "Jane", LastName = "Doe" }));
         _productService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = _productId, ProductName = "Paracetamol 500mg", SellingPrice = 20m }));
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = _productId, ProductName = "Paracetamol 500mg", SellingPrice = 20m }));
         _productBatchService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = _productBatchId, ProductId = _productId, BatchNo = "B-2026-001", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = _productBatchId, ProductId = _productId, BatchNo = "B-2026-001", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
         // Billing succeeds by default — the specific billing-failure/exception tests below
         // override this to exercise DispenseService's best-effort handling (ADR-028).
         _invoiceService.CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -200,6 +200,7 @@ public class DispenseServiceTests
                 ProductId = _productId,
                 BatchNo = "B-2025-999",
                 ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1),
+                IsActive = true,
             }));
 
         var result = await _sut.CreateAsync(NewRequest(), actorId: null, CancellationToken.None);
@@ -207,6 +208,80 @@ public class DispenseServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PharmacyErrorCodes.BatchExpired);
         await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenProductIsInactive_ReturnsProductInactiveFailure()
+    {
+        _productService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = _productId, ProductName = "Paracetamol 500mg", SellingPrice = 20m, IsActive = false }));
+
+        var result = await _sut.CreateAsync(NewRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.ProductInactive);
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenBatchIsInactive_ReturnsBatchInactiveFailure()
+    {
+        _productBatchService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse
+            {
+                Id = _productBatchId,
+                ProductId = _productId,
+                BatchNo = "B-2026-001",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1),
+                IsActive = false,
+            }));
+
+        var result = await _sut.CreateAsync(NewRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PharmacyErrorCodes.BatchInactive);
+        await _transactionRepository.DidNotReceive().AddAsync(Arg.Any<PharmacyStockTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_ResolvesDisplayFieldsWithOneBulkLookupPerModuleNotOnePerRow()
+    {
+        var otherProductId = Guid.NewGuid();
+        var otherBatchId = Guid.NewGuid();
+        var rows = new List<PharmacyStockTransaction>
+        {
+            PharmacyStockTransaction.CreateDispense(_productId, _productBatchId, 1m, 9m, _patientId, null, null, null),
+            PharmacyStockTransaction.CreateDispense(_productId, _productBatchId, 2m, 7m, _patientId, null, null, null),
+            PharmacyStockTransaction.CreateDispense(otherProductId, otherBatchId, 3m, 0m, _patientId, null, null, null),
+        };
+        _transactionRepository.GetPagedAsync(Arg.Any<StockLedgerListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((rows, rows.Count));
+        _productService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProductResponse>
+            {
+                new() { Id = _productId, ProductName = "Paracetamol 500mg" },
+                new() { Id = otherProductId, ProductName = "Amoxicillin 250mg" },
+            });
+        _productBatchService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProductBatchResponse>
+            {
+                new() { Id = _productBatchId, BatchNo = "B-2026-001" },
+                new() { Id = otherBatchId, BatchNo = "B-2026-777" },
+            });
+
+        var page = await _sut.GetPagedAsync(new DispenseListQuery(), CancellationToken.None);
+
+        page.Items.Select(d => d.ProductName).Should().Equal("Paracetamol 500mg", "Paracetamol 500mg", "Amoxicillin 250mg");
+        page.Items.Select(d => d.BatchNo).Should().Equal("B-2026-001", "B-2026-001", "B-2026-777");
+        page.Items.Should().OnlyContain(d => d.PatientName == "Jane Doe");
+
+        await _productService.Received(1).GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
+        await _productBatchService.Received(1).GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
+        await _productService.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        // Three rows, one patient — looked up once, not three times.
+        await _patientService.Received(1).GetByIdAsync(_patientId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -303,9 +378,9 @@ public class DispenseServiceTests
         var secondProductId = Guid.NewGuid();
         var secondBatchId = Guid.NewGuid();
         _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
         var secondBalance = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
         secondBalance.Receive(20m, null);
         _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
@@ -356,9 +431,9 @@ public class DispenseServiceTests
         var secondProductId = Guid.NewGuid();
         var secondBatchId = Guid.NewGuid();
         _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2025-999", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1) }));
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2025-999", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1) }));
 
         var request = NewCartRequest(NewLine(_productId, _productBatchId, 4m), NewLine(secondProductId, secondBatchId, 3m));
 
@@ -379,9 +454,9 @@ public class DispenseServiceTests
         var secondProductId = Guid.NewGuid();
         var secondBatchId = Guid.NewGuid();
         _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
         var secondBalance = PharmacyStockBalance.Create(secondProductId, secondBatchId, null);
         secondBalance.Receive(2m, null);
         _balanceRepository.GetByProductAndBatchAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>()).Returns(secondBalance);
@@ -443,9 +518,9 @@ public class DispenseServiceTests
         var secondProductId = Guid.NewGuid();
         var secondBatchId = Guid.NewGuid();
         _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
 
         var staleFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
         staleFirst.Receive(10m, null);
@@ -532,9 +607,9 @@ public class DispenseServiceTests
         var secondProductId = Guid.NewGuid();
         var secondBatchId = Guid.NewGuid();
         _productService.GetByIdAsync(secondProductId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductResponse>.Success(new ProductResponse { Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
+            .Returns(Result<ProductResponse>.Success(new ProductResponse { IsActive = true, Id = secondProductId, ProductName = "Amoxicillin 250mg", SellingPrice = 5m }));
         _productBatchService.GetByIdAsync(secondProductId, secondBatchId, Arg.Any<CancellationToken>())
-            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
+            .Returns(Result<ProductBatchResponse>.Success(new ProductBatchResponse { IsActive = true, Id = secondBatchId, ProductId = secondProductId, BatchNo = "B-2026-777", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1) }));
 
         var staleFirst = PharmacyStockBalance.Create(_productId, _productBatchId, null);
         staleFirst.Receive(10m, null);

@@ -20,6 +20,13 @@ internal class ProductBatchRepository : IProductBatchRepository
     public Task<ProductBatch?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.ProductBatches.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<ProductBatch>> GetManyByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        // See ProductRepository.GetManyByIdsAsync for why this is copied to a List.
+        var distinctIds = ids.Distinct().ToList();
+        return await _dbContext.ProductBatches.Where(b => distinctIds.Contains(b.Id)).ToListAsync(cancellationToken);
+    }
+
     public Task<bool> ExistsByBatchNoAsync(Guid productId, string batchNo, Guid? excludingId, CancellationToken cancellationToken)
         => _dbContext.ProductBatches.AnyAsync(b => b.ProductId == productId && b.BatchNo == batchNo && b.Id != excludingId, cancellationToken);
 

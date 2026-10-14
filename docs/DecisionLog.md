@@ -37,6 +37,31 @@ _To be documented._
 
 ## Decisions
 
+### ADR-090: Pharmacy Phase 0 — stock is judged per product, pickers search and filter on the server, no schema change
+**Date:** 2026-10-13
+**Status:** Accepted
+
+**Context**
+First step of the Pharmacy build-out agreed on 2026-10-13 (Phase 0 "fix foundations", ahead of the data-model work in Phase 1). A code review of the ADR-027/028 module found it would fail at a real catalog's size: the product picker loaded one page of 100 products and searched inside it; the hub listed 50 batches with no paging and asked for a `productName` sort the repository silently ignored; "low stock" compared each batch, not the product's total, against the reorder level, and only for the first 100 products; the dispense batch picker listed expired and empty batches with no quantities. Smaller defects: expiry was checked against the UTC date, inactive products and batches could be dispensed, and every list did one Products/Patients lookup per row.
+
+**Decision**
+- **No migration.** Everything here is queries, rules and UI, so it deploys without a per-tenant database step. Denormalizing expiry/price onto Pharmacy's own rows is Phase 1's job.
+- **Product-level stock summary** (`GET /pharmacy/stock-balances/summary`). One row per active product: available (active, unexpired batches), expiring soon, expired, on hold (inactive batch), nearest expiry, and a `StockStatus` judged on available stock only. `OutOfStock` needs the product to have been stocked before or to have a reorder level; otherwise it is `NotStocked`, so a reorder list is not filled with catalog items the pharmacy never carries.
+- **Two paging paths, because product names live in Products and quantities in Pharmacy with no SQL join across modules.** Unfiltered, Products pages/searches/orders in SQL and only that page's balances are loaded. With a filter (`NeedsReorder`, `ExpiringSoon`, `Expired`) the status is only known after roll-up, so every active product is rolled up from lean unpaged projections (`IProductService.GetStockProfilesAsync`, `IPharmacyStockBalanceRepository.GetLinesAsync`) and paged in memory — bounded by catalog size, not transaction history.
+- **Dispensable batches** (`GET /pharmacy/stock-balances/{productId}/available-batches`): active, unexpired, in stock, earliest expiry first. The dispense form defaults to the first one (FEFO) and refuses a quantity above the batch's on-hand before checkout. Stock Receipt keeps the all-batches picker.
+- **Product picker searches on the server**, 25 matches at a time; Products' search now also matches `GenericName`.
+- **Rules tightened:** dispense and receipt reject inactive products/batches (`PHARMACY.PRODUCT_INACTIVE`, `PHARMACY.BATCH_INACTIVE`, 409). "Today" for expiry is the hospital's date (`MonthlySeries.HospitalTimeZone`), not UTC's.
+- **Bulk lookups** `IProductService.GetByIdsAsync` / `IProductBatchService.GetByIdsAsync` replace per-row calls on all four Pharmacy lists. Patients has no bulk lookup on its seam, so patient names are resolved once per distinct patient on the page.
+
+**Consequences**
+- The filtered summary costs three unpaged queries per request. Acceptable for one hospital's catalog; Phase 1's denormalized columns let it move into SQL.
+- An inactive product is absent from the summary even if it still has stock; that stock stays visible in the per-batch list and the ledger.
+- A cart line still draws on one batch; a quantity larger than the earliest batch holds needs a second line (the picker then offers the next batch). Splitting automatically is left to the counter-sale rebuild.
+- The expiring-soon window (30 days) is a constant on both sides (`PharmacyClock.ExpiringSoonWindowDays`, `StockBalanceTable`).
+- Still open from the review and unchanged here: no payment at the counter, one price per product, no tax, no returns, free-text admission reference.
+
+---
+
 ### ADR-089: Every visit gets an auto-generated OP No / IP No; non-OP visits record admission details
 **Date:** 2026-10-13
 **Status:** Accepted

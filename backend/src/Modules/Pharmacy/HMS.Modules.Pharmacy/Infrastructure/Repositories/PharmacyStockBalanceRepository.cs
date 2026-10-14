@@ -50,12 +50,34 @@ internal class PharmacyStockBalanceRepository : IPharmacyStockBalanceRepository
             balances = balances.Where(b => b.ProductId == query.ProductId.Value);
         }
 
+        if (query.InStockOnly == true)
+        {
+            balances = balances.Where(b => b.QuantityOnHand > 0);
+        }
+
         balances = ApplySort(balances, query.Sort);
 
         var totalCount = await balances.CountAsync(cancellationToken);
         var items = await balances.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
 
         return (items, totalCount);
+    }
+
+    public async Task<IReadOnlyList<StockBalanceLine>> GetLinesAsync(IReadOnlyCollection<Guid>? productIds, CancellationToken cancellationToken)
+    {
+        var balances = _dbContext.StockBalances.AsNoTracking();
+
+        if (productIds is not null)
+        {
+            // Copied to a List so the SQL parameter is a type Npgsql maps to an array whatever
+            // collection the caller passed (same as RoleRepository.GetManyByIdsAsync).
+            var ids = productIds.Distinct().ToList();
+            balances = balances.Where(b => ids.Contains(b.ProductId));
+        }
+
+        return await balances
+            .Select(b => new StockBalanceLine(b.ProductId, b.ProductBatchId, b.QuantityOnHand))
+            .ToListAsync(cancellationToken);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
@@ -71,6 +93,8 @@ internal class PharmacyStockBalanceRepository : IPharmacyStockBalanceRepository
         var descending = sort.StartsWith('-');
         var field = descending ? sort[1..] : sort;
 
+        // No "productName" here: the name lives in the Products module, so this list can't be
+        // ordered by it in SQL — the by-product stock summary is the name-ordered view.
         return field.ToLowerInvariant() switch
         {
             "quantityonhand" => descending ? balances.OrderByDescending(b => b.QuantityOnHand) : balances.OrderBy(b => b.QuantityOnHand),

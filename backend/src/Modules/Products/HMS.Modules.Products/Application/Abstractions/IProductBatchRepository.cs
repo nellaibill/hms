@@ -9,6 +9,9 @@ internal interface IProductBatchRepository
 
     Task<ProductBatch?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Bulk lookup across products — see IProductRepository.GetManyByIdsAsync.</summary>
+    Task<IReadOnlyList<ProductBatch>> GetManyByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
     Task<bool> ExistsByBatchNoAsync(Guid productId, string batchNo, Guid? excludingId, CancellationToken cancellationToken);
 
     Task<(IReadOnlyList<ProductBatch> Items, int TotalCount)> GetPagedByProductAsync(Guid productId, ProductBatchListQuery query, CancellationToken cancellationToken);

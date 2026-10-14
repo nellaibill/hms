@@ -1,4 +1,11 @@
-import { ApiError, createDispenseCartSchema, type DispenseCartFormValues, type Patient } from '@hms/shared';
+import {
+  ApiError,
+  createDispenseCartSchema,
+  type AvailableBatchResponse,
+  type DispenseCartFormValues,
+  type Patient,
+  type Product,
+} from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Minus, Plus, ShoppingCart, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -9,8 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ProductSelect } from '@/components/ProductSelect';
-import { ProductBatchSelect } from '@/components/ProductBatchSelect';
 import { useProductsQuery } from '@/features/pharmacy/product-lookup';
+import { AvailableBatchSelect } from './AvailableBatchSelect';
 import { QuickPickPanel } from './QuickPickPanel';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
@@ -23,13 +30,24 @@ interface DispenseCartFormProps {
 }
 
 interface StagingLine {
-  productId: string;
-  productBatchId: string;
+  product: Product | null;
+  batch: AvailableBatchResponse | null;
   quantity: number;
   remarks: string;
 }
 
-const emptyStagingLine: StagingLine = { productId: '', productBatchId: '', quantity: 1, remarks: '' };
+const emptyStagingLine: StagingLine = { product: null, batch: null, quantity: 1, remarks: '' };
+
+/** What the cart shows for a line beyond the ids the form submits — captured when the line
+ * is added, so a cart row never depends on its product still being in some loaded list. */
+interface CartLineDetail {
+  productName: string;
+  batchNo: string;
+  unitPrice: number;
+  availableQuantity: number;
+}
+
+const lineKey = (line: { productId: string; productBatchId: string }) => `${line.productId}|${line.productBatchId}`;
 
 /**
  * POS-style checkout: a single "Add Item" builder feeds a running cart shown in a sticky
@@ -57,13 +75,15 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
 
   const [staging, setStaging] = useState<StagingLine>(emptyStagingLine);
   const [stagingError, setStagingError] = useState<string | null>(null);
+  const [lineDetails, setLineDetails] = useState<Record<string, CartLineDetail>>({});
 
-  const { data: productsData } = useProductsQuery({ pageSize: 100, isActive: true, sort: 'productName' });
-  const products = productsData?.items ?? [];
+  // Only the Quick Pick tiles — a fixed first page, not the catalog. Anything beyond it is
+  // reached through the Product field's server-side search.
+  const { data: quickPickData } = useProductsQuery({ pageSize: 100, isActive: true, sort: 'productName' });
+  const quickPickProducts = quickPickData?.items ?? [];
 
-  function lineTotal(line: { productId: string; quantity: number }) {
-    const product = products.find((p) => p.id === line.productId);
-    return product ? (Number(line.quantity) || 0) * product.sellingPrice : 0;
+  function lineTotal(line: { productId: string; productBatchId: string; quantity: number }) {
+    return (Number(line.quantity) || 0) * (lineDetails[lineKey(line)]?.unitPrice ?? 0);
   }
 
   const total = fields.reduce((sum, field) => sum + lineTotal(field), 0);
@@ -106,26 +126,43 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
     onSubmit(values);
   }
 
+  function selectProduct(product: Product) {
+    // A batch picked under the previous product is meaningless once the product changes;
+    // clearing it lets AvailableBatchSelect default to the new product's earliest expiry.
+    setStaging((s) => ({ ...s, product, batch: null }));
+    setStagingError(null);
+  }
+
   function handleAddToCart() {
-    if (!staging.productId) {
+    const { product, batch, quantity, remarks } = staging;
+    if (!product) {
       setStagingError('Choose a product.');
       return;
     }
-    if (!staging.productBatchId) {
+    if (!batch) {
       setStagingError('Choose a batch.');
       return;
     }
-    if (!staging.quantity || staging.quantity <= 0) {
+    if (!quantity || quantity <= 0) {
       setStagingError('Quantity must be greater than 0.');
       return;
     }
-    const isDuplicate = fields.some((f) => f.productId === staging.productId && f.productBatchId === staging.productBatchId);
-    if (isDuplicate) {
-      setStagingError('That product/batch is already in the cart — remove it there to change the quantity.');
+    if (quantity > batch.quantityOnHand) {
+      setStagingError(`Only ${batch.quantityOnHand} on hand in batch ${batch.batchNo}. Add the rest from another batch.`);
       return;
     }
 
-    append({ ...staging });
+    const line = { productId: product.id, productBatchId: batch.productBatchId, quantity, remarks };
+    setLineDetails((details) => ({
+      ...details,
+      [lineKey(line)]: {
+        productName: product.productName,
+        batchNo: batch.batchNo,
+        unitPrice: product.sellingPrice,
+        availableQuantity: batch.quantityOnHand,
+      },
+    }));
+    append(line);
     setStaging(emptyStagingLine);
     setStagingError(null);
   }
@@ -152,11 +189,7 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-4">
-          <QuickPickPanel
-            products={products}
-            selectedProductId={staging.productId}
-            onSelectProduct={(productId) => setStaging((s) => ({ ...s, productId, productBatchId: '' }))}
-          />
+          <QuickPickPanel products={quickPickProducts} selectedProductId={staging.product?.id ?? ''} onSelectProduct={selectProduct} />
 
           <Card>
             <CardHeader className="flex-row items-center gap-3 space-y-0 p-4">
@@ -169,20 +202,19 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
               <div className="flex flex-wrap items-end gap-3">
                 <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
                   <Label htmlFor="staging-product">Product</Label>
-                  <ProductSelect
-                    id="staging-product"
-                    value={staging.productId}
-                    onValueChange={(value) => setStaging((s) => ({ ...s, productId: value, productBatchId: '' }))}
-                  />
+                  {/* onProductChange carries the whole product (name and price for the cart);
+                      the id-only onValueChange has nothing left to do here. */}
+                  <ProductSelect id="staging-product" value={staging.product?.id ?? ''} onValueChange={() => {}} onProductChange={selectProduct} />
                 </div>
 
-                <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
+                <div className="flex min-w-[260px] flex-1 flex-col gap-1.5">
                   <Label htmlFor="staging-batch">Batch</Label>
-                  <ProductBatchSelect
+                  <AvailableBatchSelect
                     id="staging-batch"
-                    value={staging.productBatchId}
-                    onValueChange={(value) => setStaging((s) => ({ ...s, productBatchId: value }))}
-                    productId={staging.productId}
+                    productId={staging.product?.id}
+                    value={staging.batch?.productBatchId ?? ''}
+                    onBatchChange={(batch) => setStaging((s) => ({ ...s, batch }))}
+                    excludeBatchIds={fields.filter((f) => f.productId === staging.product?.id).map((f) => f.productBatchId)}
                   />
                 </div>
 
@@ -192,6 +224,7 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
                     id="staging-quantity"
                     type="number"
                     min="0"
+                    max={staging.batch?.quantityOnHand}
                     step="any"
                     value={staging.quantity}
                     onChange={(e) => setStaging((s) => ({ ...s, quantity: Number(e.target.value) }))}
@@ -259,16 +292,21 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
               <p className="py-2 text-center text-sm text-muted-foreground">No items added yet.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {fields.map((field, index) => (
-                  <CartLineRow
-                    key={field.id}
-                    productName={products.find((p) => p.id === field.productId)?.productName ?? 'Unknown product'}
-                    quantity={field.quantity}
-                    lineTotal={lineTotal(field)}
-                    onQuantityChange={(quantity) => update(index, { ...field, quantity })}
-                    onRemove={() => remove(index)}
-                  />
-                ))}
+                {fields.map((field, index) => {
+                  const detail = lineDetails[lineKey(field)];
+                  return (
+                    <CartLineRow
+                      key={field.id}
+                      productName={detail?.productName ?? 'Unknown product'}
+                      batchNo={detail?.batchNo ?? ''}
+                      quantity={field.quantity}
+                      availableQuantity={detail?.availableQuantity ?? field.quantity}
+                      lineTotal={lineTotal(field)}
+                      onQuantityChange={(quantity) => update(index, { ...field, quantity })}
+                      onRemove={() => remove(index)}
+                    />
+                  );
+                })}
               </div>
             )}
 
@@ -297,7 +335,10 @@ export function DispenseCartForm({ patient, onChangePatient, onSubmit, isSubmitt
 
 interface CartLineRowProps {
   productName: string;
+  batchNo: string;
   quantity: number;
+  /** On hand in this line's batch when it was added — the most the line can be raised to. */
+  availableQuantity: number;
   lineTotal: number;
   onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
@@ -308,9 +349,10 @@ interface CartLineRowProps {
  * field, so a keystroke that momentarily isn't a valid positive number (e.g. clearing the
  * field to retype) doesn't get instantly overwritten by the last-committed form value on
  * every render — commits happen on blur/Enter, and the +/- buttons commit immediately since
- * they always compute from the last-committed quantity.
+ * they always compute from the last-committed quantity. A quantity above what the batch
+ * holds is refused here rather than left for checkout to reject the whole cart over.
  */
-function CartLineRow({ productName, quantity, lineTotal, onQuantityChange, onRemove }: CartLineRowProps) {
+function CartLineRow({ productName, batchNo, quantity, availableQuantity, lineTotal, onQuantityChange, onRemove }: CartLineRowProps) {
   const [text, setText] = useState(String(quantity));
 
   useEffect(() => {
@@ -319,7 +361,7 @@ function CartLineRow({ productName, quantity, lineTotal, onQuantityChange, onRem
 
   function commit() {
     const parsed = Number(text);
-    if (Number.isFinite(parsed) && parsed > 0) {
+    if (Number.isFinite(parsed) && parsed > 0 && parsed <= availableQuantity) {
       onQuantityChange(parsed);
     } else {
       setText(String(quantity));
@@ -330,6 +372,9 @@ function CartLineRow({ productName, quantity, lineTotal, onQuantityChange, onRem
     <div className="flex items-start justify-between gap-2 text-sm">
       <div className="flex flex-1 flex-col gap-1">
         <span className="font-medium text-foreground">{productName}</span>
+        <span className="text-xs text-muted-foreground">
+          Batch {batchNo} · {availableQuantity} on hand
+        </span>
         <div className="flex items-center gap-1.5">
           <Button
             type="button"
@@ -355,7 +400,14 @@ function CartLineRow({ productName, quantity, lineTotal, onQuantityChange, onRem
             }}
             className="h-6 w-12 rounded border border-input bg-background text-center text-xs text-foreground"
           />
-          <Button type="button" variant="outline" size="icon" className="h-6 w-6" onClick={() => onQuantityChange(quantity + 1)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-6 w-6"
+            disabled={quantity + 1 > availableQuantity}
+            onClick={() => onQuantityChange(quantity + 1)}
+          >
             <Plus className="h-3 w-3" />
           </Button>
         </div>
