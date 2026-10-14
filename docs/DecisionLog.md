@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-099: Login failures say what went wrong, except where that would confirm a username exists
+**Date:** 2026-10-14
+**Status:** Accepted (revisits the "every rejection looks identical" part of the account-lockout entry below)
+
+**Context**
+Every hospital login refusal returned the same "Invalid username or password." That covered a wrong hospital code, an unknown user, a wrong password, a locked account, a deactivated account and a wrong "Sign in as". On 2026-10-14 a Super Admin trying to sign in to a local build hit the lockout. The page went on saying "Invalid username or password" for the full 15 minutes, even with the right password. They concluded the backend was down. Staff at a hospital desk can't tell any of those cases apart, so they can't fix the one they hit.
+
+**Decision**
+- Wrong hospital code, unknown user or wrong password: still one message and one code (`IDENTITY.INVALID_LOGIN`). The wording now names all three and states the rule up front (5 wrong attempts in a row lock the account for 15 minutes). The text is in `LoginMessages.InvalidCredentials`, which `TenantResolutionMiddleware` also uses.
+- Locked out: `IDENTITY.ACCOUNT_LOCKED`, "This account is locked after 5 wrong password attempts. Try again in N minutes, or ask your hospital administrator to reset the password." The 5th wrong attempt returns it straight away. The time left is given in minutes because the server's time zone isn't the user's. An administrator's password reset (`User.SetPasswordHash`) now clears the lockout, so that advice works.
+- After a correct password: `IDENTITY.ACCOUNT_INACTIVE` for a deactivated account, and `IDENTITY.LOGIN_TYPE_MISMATCH` for the wrong "Sign in as", naming the option to choose. Whoever sees these already proved the password, so nothing leaks.
+- All four stay HTTP 401. The web login page already shows the API's message as-is, and now also says when the server can't be reached at all.
+
+**Consequences**
+`ACCOUNT_LOCKED` confirms a username exists to someone who guesses 5 wrong passwords for it. That probe is noisy (it locks the real user out and logs a warning) and needs the hospital code too. A hospital desk app accepts that cost in return for staff knowing why they can't sign in. Unknown usernames never lock, so the other pre-password failures still don't reveal which usernames exist. Platform Admin login (`PlatformAuthenticationService`) is unchanged.
+
 ### ADR-098: Pharmacy Phase 6 — reports and the dashboard are summed from the documents; finance reads pharmacy revenue there
 **Date:** 2026-10-14
 **Status:** Accepted
