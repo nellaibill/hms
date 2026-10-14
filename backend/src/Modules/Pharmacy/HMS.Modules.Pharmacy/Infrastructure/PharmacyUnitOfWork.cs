@@ -56,6 +56,8 @@ internal class PharmacyUnitOfWork : IPharmacyUnitOfWork
         }
     }
 
+    public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
+
     private void Reset()
     {
         _dbContext.ChangeTracker.Clear();

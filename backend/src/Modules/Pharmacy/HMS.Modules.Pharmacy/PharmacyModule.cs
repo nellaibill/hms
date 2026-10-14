@@ -40,12 +40,19 @@ public static class PharmacyModule
         services.AddScoped<IPharmacyStockTransactionRepository, PharmacyStockTransactionRepository>();
 
         services.AddScoped<IPharmacyGoodsReceiptRepository, PharmacyGoodsReceiptRepository>();
+        services.AddScoped<IPharmacySaleRepository, PharmacySaleRepository>();
+        services.AddScoped<IPharmacySettingsRepository, PharmacySettingsRepository>();
         services.AddScoped<IStockPoster, StockPoster>();
+        services.AddScoped<ISellableStockReader, SellableStockReader>();
+        services.AddScoped<IAdmissionChargePoster, AdmissionChargePoster>();
         services.AddScoped<IPharmacyUnitOfWork, PharmacyUnitOfWork>();
 
         services.AddScoped<IStoreService, StoreService>();
         services.AddScoped<IGoodsReceiptService, GoodsReceiptService>();
         services.AddScoped<IProductImportService, ProductImportService>();
+        services.AddScoped<ICounterService, CounterService>();
+        services.AddScoped<ISaleService, SaleService>();
+        services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<IStockReceiptService, StockReceiptService>();
         services.AddScoped<IDispenseService, DispenseService>();
         services.AddScoped<IStockBalanceService, StockBalanceService>();
@@ -61,6 +68,11 @@ public static class PharmacyModule
         services.AddScoped<IValidator<CreateStockReceiptRequest>, CreateStockReceiptRequestValidator>();
         services.AddScoped<IValidator<CreateGoodsReceiptRequest>, CreateGoodsReceiptRequestValidator>();
         services.AddScoped<IValidator<ImportProductsRequest>, ImportProductsRequestValidator>();
+        services.AddScoped<IValidator<CreateSaleRequest>, CreateSaleRequestValidator>();
+        services.AddScoped<IValidator<CollectSalePaymentRequest>, CollectSalePaymentRequestValidator>();
+        services.AddScoped<IValidator<CreateSaleReturnRequest>, CreateSaleReturnRequestValidator>();
+        services.AddScoped<IValidator<HoldBillRequest>, HoldBillRequestValidator>();
+        services.AddScoped<IValidator<UpdatePharmacySettingsRequest>, UpdatePharmacySettingsRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseRequest>, CreateDispenseRequestValidator>();
         services.AddScoped<IValidator<CreateDispenseCartRequest>, CreateDispenseCartRequestValidator>();
 

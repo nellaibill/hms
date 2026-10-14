@@ -23,6 +23,13 @@ public class PharmacyDbContext : DbContext
     internal DbSet<PharmacyStockTransaction> StockTransactions => Set<PharmacyStockTransaction>();
     internal DbSet<PharmacyGoodsReceipt> GoodsReceipts => Set<PharmacyGoodsReceipt>();
     internal DbSet<PharmacyGoodsReceiptLine> GoodsReceiptLines => Set<PharmacyGoodsReceiptLine>();
+    internal DbSet<PharmacySale> Sales => Set<PharmacySale>();
+    internal DbSet<PharmacySaleLine> SaleLines => Set<PharmacySaleLine>();
+    internal DbSet<PharmacySalePayment> SalePayments => Set<PharmacySalePayment>();
+    internal DbSet<PharmacySaleReturn> SaleReturns => Set<PharmacySaleReturn>();
+    internal DbSet<PharmacySaleReturnLine> SaleReturnLines => Set<PharmacySaleReturnLine>();
+    internal DbSet<PharmacyHeldBill> HeldBills => Set<PharmacyHeldBill>();
+    internal DbSet<PharmacySettings> Settings => Set<PharmacySettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -37,6 +37,28 @@ _To be documented._
 
 ## Decisions
 
+### ADR-094: Pharmacy Phase 2 — the pharmacy bill is its own document; counter sales are not mirrored into Billing
+**Date:** 2026-10-14
+**Status:** Accepted
+
+**Context**
+"Dispense" moved stock and then, best-effort, raised a pending Billing invoice for a cashier to collect on. That is not how a pharmacy counter works: it bills, takes the money and prints in one step, sells to people who are not registered patients, gives line and bill discounts, charges GST inside MRP, and takes goods back. Billing's invoice cannot hold that: it needs a patient, its quantity is an integer, it has no tax fields, a line is paid or not paid, and the only reversal is voiding the whole invoice. ADR-028 already had to fold a dispense's quantity into the unit price to fit.
+
+**Decision**
+- **`PharmacySale` is the bill and the book of record** — header, lines (one batch each, with the product's schedule on the day), payments. Numbered from the `PH` series. Posted on save, never edited. Stock leaves through `IStockPoster` with the bill as the source document, at the unit price and cost of the batch sold.
+- **Counter sales are not written to Billing.** A second copy would be wrong for walk-ins (no patient) and could not show a partial return. Pharmacy revenue is reported from Pharmacy (Phase 6); the old dispense endpoints and their Billing invoices are left as they were, but the screens are no longer linked.
+- **Inpatients:** a bill can be charged to the patient's admission instead of paid at the counter. The unpaid amount is posted to IPD as `ChargeType.PharmacyCharge`, and a return against such a bill posts a negative charge. `IPDBillingService.GenerateFinalBillAsync` bills pharmacy charges as one line, net of returns, because an invoice line's total clamps at zero and separate negative lines would silently drop every return. Posting the charge is best-effort after the bill is saved (the medicine has left either way); the bill stays marked `ChargedToAdmission`.
+- **Batches:** a line that names no batch is filled earliest-expiry-first across as many batches as it needs; each batch is its own bill line at its own price. `SalePlanner` does this, the discount and the GST as pure functions, and `ISellableStockReader` is the single read of "what can this store sell" used by both the item search and the sale.
+- **Money:** MRP includes tax, so GST is found inside the discounted amount (`GstMath.Inclusive`); the bill is settled in whole rupees with the paise shown as round-off. Cash over the amount due is change and is not recorded; card, UPI and bank payments may not exceed the bill. A balance may be left only for a registered patient (`AllowCredit`) or on an admission; a walk-in pays in full.
+- **Scheduled drugs:** a bill with an H1, X or narcotic line is refused without a patient name and a prescribing doctor — those are the columns of the statutory register (Phase 5 reads them from the sale lines).
+- **Returns** (`PharmacySaleReturn`, `SR` series) are entered against the bill's own lines, credited at the share of taxable amount and tax actually charged, settled in whole rupees and never for more than is left of the bill. The value comes off any balance due first; only the remainder is refunded. `Restock = false` credits the customer without putting unfit goods back on the shelf.
+- **Held bills** store the counter's cart as opaque JSON and post nothing; recalling one re-reads every item against current stock.
+- **`PharmacySettings`** (one row): GSTIN, drug licence number, name/address/footer for the bill, bill paper (A5, A4, 80 mm thermal), the counter's maximum discount, and the expiry-alert window. A bill prints as a tax invoice when a GSTIN is set.
+- **Product search matches an exact barcode** (`ProductBarcode.BarcodeValue`) as well as name, generic and code, so a scanner works in the item box unaided.
+
+**Consequences**
+New tables `pharmacy_sales`, `pharmacy_sale_lines`, `pharmacy_sale_payments`, `pharmacy_sale_returns`, `pharmacy_sale_return_lines`, `pharmacy_held_bills`, `pharmacy_settings` (migration `AddSalesAndSettings`, additive). Pharmacy now references IPD. Hospital finance reports built on Billing invoices do not include counter sales until Phase 6 adds the pharmacy's own figures; inpatient pharmacy charges still reach the hospital bill through the admission. `ExpiryAlertDays` is stored but the stock summary still uses its 30-day constant until Phase 5 wires it in.
+
 ### ADR-093: Pharmacy Phase 1 (slices 3–4) — documents post stock through one engine; goods receipt and spreadsheet import
 **Date:** 2026-10-13
 **Status:** Accepted

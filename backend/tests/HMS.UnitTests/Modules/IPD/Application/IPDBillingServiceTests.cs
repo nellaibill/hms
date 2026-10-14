@@ -130,6 +130,55 @@ public class IPDBillingServiceTests
     }
 
     [Fact]
+    public async Task GenerateFinalBillAsync_BillsPharmacyChargesAsOneLineNetOfReturns()
+    {
+        _admissionRepository.GetByIdAsync(_admissionId, Arg.Any<CancellationToken>()).Returns(DischargedAdmission());
+        _admissionChargeService.GetByAdmissionIdAsync(_admissionId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<AdmissionChargeResponse>>.Success(
+            [
+                new AdmissionChargeResponse { ChargeType = ChargeType.BedCharge, Amount = 500m, Remarks = "Bed charge" },
+                new AdmissionChargeResponse { ChargeType = ChargeType.PharmacyCharge, Amount = 315m, Remarks = "Pharmacy bill PH-2026-000005" },
+                new AdmissionChargeResponse { ChargeType = ChargeType.PharmacyCharge, Amount = -158m, Remarks = "Pharmacy return SR-2026-000002 against PH-2026-000005" },
+                new AdmissionChargeResponse { ChargeType = ChargeType.PharmacyCharge, Amount = 84m, Remarks = "Pharmacy bill PH-2026-000009" },
+            ]));
+        _invoiceService.CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(SuccessfulInvoice(741m));
+
+        var result = await _sut.GenerateFinalBillAsync(_admissionId, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        // A negative invoice line would be clamped to zero and the return lost, so the three
+        // pharmacy charges go on the bill as their net: 315 - 158 + 84.
+        await _invoiceService.Received(1).CreateAsync(
+            Arg.Is<CreateInvoiceRequest>(r =>
+                r.Items.Count == 2 &&
+                r.Items.Any(i => i.ServiceId == "BedCharge: Bed charge" && i.UnitPrice == 500m) &&
+                r.Items.Any(i => i.ServiceId!.StartsWith("PharmacyCharge:") && i.UnitPrice == 241m) &&
+                r.Items.All(i => i.UnitPrice > 0)),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GenerateFinalBillAsync_WhenEveryPharmacyChargeWasReturned_HasNothingToBill()
+    {
+        _admissionRepository.GetByIdAsync(_admissionId, Arg.Any<CancellationToken>()).Returns(DischargedAdmission());
+        _admissionChargeService.GetByAdmissionIdAsync(_admissionId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<AdmissionChargeResponse>>.Success(
+            [
+                new AdmissionChargeResponse { ChargeType = ChargeType.PharmacyCharge, Amount = 84m, Remarks = "Pharmacy bill PH-2026-000009" },
+                new AdmissionChargeResponse { ChargeType = ChargeType.PharmacyCharge, Amount = -84m, Remarks = "Pharmacy return SR-2026-000004 against PH-2026-000009" },
+            ]));
+
+        var result = await _sut.GenerateFinalBillAsync(_admissionId, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.NoChargesToBill);
+        await _invoiceService.DidNotReceive().CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task GenerateFinalBillAsync_WhenPatientCannotBeResolved_ReturnsInvalidPatientFailure()
     {
         var admission = DischargedAdmission();

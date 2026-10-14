@@ -15,6 +15,10 @@ internal static class PharmacyPricing
     public static decimal UnitPrice(ProductResponse product, ProductBatchResponse batch)
         => PerUnit(batch.SellingRate ?? batch.Mrp ?? product.SellingPrice, product);
 
+    /// <summary>The printed MRP of one unit: the batch's MRP, else the product's.</summary>
+    public static decimal UnitMrp(ProductResponse product, ProductBatchResponse batch)
+        => PerUnit(batch.Mrp ?? product.Mrp, product);
+
     /// <summary>What one unit cost: the batch's purchase rate, else the product's cost price.
     /// Null when neither is recorded — an unknown cost is not a cost of zero.</summary>
     public static decimal? UnitCost(ProductResponse product, ProductBatchResponse batch)

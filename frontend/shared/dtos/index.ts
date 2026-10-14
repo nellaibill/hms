@@ -61,6 +61,8 @@ export * from './pharmacy/stockSummary';
 export * from './pharmacy/stockLedger';
 export * from './pharmacy/goodsReceipt';
 export * from './pharmacy/productImport';
+export * from './pharmacy/sale';
+export * from './pharmacy/settings';
 export * from './notifications/notification';
 export * from './notifications/notificationTemplate';
 export * from './notifications/notificationPreference';

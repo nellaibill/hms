@@ -11,6 +11,12 @@ internal static class PharmacyErrorCodes
     public const string StockConflict = "PHARMACY.STOCK_CONFLICT";
     public const string InvalidState = "PHARMACY.INVALID_STATE";
     public const string InvalidQuantity = "PHARMACY.INVALID_QUANTITY";
+    public const string InvalidPayment = "PHARMACY.INVALID_PAYMENT";
+    public const string PaymentShort = "PHARMACY.PAYMENT_SHORT";
+    public const string PrescriptionDetailsRequired = "PHARMACY.PRESCRIPTION_DETAILS_REQUIRED";
+    public const string CustomerRequired = "PHARMACY.CUSTOMER_REQUIRED";
+    public const string InvalidAdmission = "PHARMACY.INVALID_ADMISSION";
+    public const string DiscountLimit = "PHARMACY.DISCOUNT_LIMIT";
     public const string DuplicateStoreCode = "PHARMACY.DUPLICATE_STORE_CODE";
     public const string DefaultStoreRequired = "PHARMACY.DEFAULT_STORE_REQUIRED";
     public const string ProductInactive = "PHARMACY.PRODUCT_INACTIVE";

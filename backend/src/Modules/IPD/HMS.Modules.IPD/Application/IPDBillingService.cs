@@ -79,13 +79,36 @@ internal class IPDBillingService : IIPDBillingService
             return Result<GenerateFinalBillResponse>.Failure(IPDErrorCodes.InvalidPatient, $"Patient '{admission.PatientId}' was not found.");
         }
 
-        var lines = charges.Select(charge => new CreateInvoiceLineItemRequest
+        var lines = charges
+            .Where(charge => charge.ChargeType != ChargeType.PharmacyCharge)
+            .Select(charge => new CreateInvoiceLineItemRequest
+            {
+                BillingType = BillingType.InpatientCharge,
+                ServiceId = string.IsNullOrWhiteSpace(charge.Remarks) ? charge.ChargeType.ToString() : $"{charge.ChargeType}: {charge.Remarks}",
+                Quantity = 1,
+                UnitPrice = charge.Amount,
+            })
+            .ToList();
+
+        // Pharmacy charges are billed as their net: a medicine returned to the pharmacy is a
+        // negative charge, and an invoice line cannot be negative (its total clamps at zero),
+        // so billing each one separately would silently drop every return.
+        var pharmacyNet = charges.Where(charge => charge.ChargeType == ChargeType.PharmacyCharge).Sum(charge => charge.Amount);
+        if (pharmacyNet > 0)
         {
-            BillingType = BillingType.InpatientCharge,
-            ServiceId = string.IsNullOrWhiteSpace(charge.Remarks) ? charge.ChargeType.ToString() : $"{charge.ChargeType}: {charge.Remarks}",
-            Quantity = 1,
-            UnitPrice = charge.Amount,
-        }).ToList();
+            lines.Add(new CreateInvoiceLineItemRequest
+            {
+                BillingType = BillingType.InpatientCharge,
+                ServiceId = "PharmacyCharge: Medicines and consumables (net of returns)",
+                Quantity = 1,
+                UnitPrice = pharmacyNet,
+            });
+        }
+
+        if (lines.Count == 0)
+        {
+            return Result<GenerateFinalBillResponse>.Failure(IPDErrorCodes.NoChargesToBill, "This admission has no charges to bill.");
+        }
 
         var invoiceResult = await _invoiceService.CreateAsync(
             new CreateInvoiceRequest

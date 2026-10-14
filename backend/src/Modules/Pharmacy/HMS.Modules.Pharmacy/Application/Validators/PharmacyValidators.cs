@@ -114,3 +114,85 @@ internal class ImportProductsRequestValidator : AbstractValidator<ImportProducts
         RuleFor(x => x.Rows).Must(r => r.Count <= 200).WithMessage("Send at most 200 rows at a time.");
     }
 }
+
+internal class CreateSaleRequestValidator : AbstractValidator<CreateSaleRequest>
+{
+    public CreateSaleRequestValidator()
+    {
+        RuleFor(x => x.CustomerName).MaximumLength(150);
+        RuleFor(x => x.CustomerPhone).MaximumLength(20);
+        RuleFor(x => x.DoctorName).MaximumLength(150);
+        RuleFor(x => x.DiscountPercent).InclusiveBetween(0, 100);
+        RuleFor(x => x.Remarks).MaximumLength(500);
+        RuleFor(x => x.Lines).NotEmpty().WithMessage("Add at least one item.");
+        RuleFor(x => x.Lines).Must(l => l.Count <= 200).WithMessage("A bill can hold at most 200 lines.");
+        RuleForEach(x => x.Lines).ChildRules(line =>
+        {
+            line.RuleFor(l => l.ProductId).NotEmpty();
+            line.RuleFor(l => l.Quantity).GreaterThan(0);
+            line.RuleFor(l => l.DiscountPercent).InclusiveBetween(0, 100).When(l => l.DiscountPercent.HasValue);
+        });
+        RuleForEach(x => x.Payments).ChildRules(payment =>
+        {
+            payment.RuleFor(p => p.Method).IsInEnum();
+            payment.RuleFor(p => p.Amount).GreaterThanOrEqualTo(0);
+            payment.RuleFor(p => p.ReferenceNo).MaximumLength(100);
+        });
+        RuleFor(x => x.AdmissionId).NotEmpty().When(x => x.ChargeToAdmission).WithMessage("Choose the admission to charge.");
+    }
+}
+
+internal class CollectSalePaymentRequestValidator : AbstractValidator<CollectSalePaymentRequest>
+{
+    public CollectSalePaymentRequestValidator()
+    {
+        RuleFor(x => x.Method).IsInEnum();
+        RuleFor(x => x.Amount).GreaterThan(0);
+        RuleFor(x => x.ReferenceNo).MaximumLength(100);
+    }
+}
+
+internal class CreateSaleReturnRequestValidator : AbstractValidator<CreateSaleReturnRequest>
+{
+    public CreateSaleReturnRequestValidator()
+    {
+        RuleFor(x => x.RefundMethod).IsInEnum();
+        RuleFor(x => x.Reason).MaximumLength(500);
+        RuleFor(x => x.Lines).NotEmpty().WithMessage("Choose at least one item to return.");
+        RuleForEach(x => x.Lines).ChildRules(line =>
+        {
+            line.RuleFor(l => l.SaleLineId).NotEmpty();
+            line.RuleFor(l => l.Quantity).GreaterThan(0);
+        });
+        RuleFor(x => x.Lines).Must(lines => lines.Select(l => l.SaleLineId).Distinct().Count() == lines.Count)
+            .WithMessage("Each bill line can appear once on a return.");
+    }
+}
+
+internal class HoldBillRequestValidator : AbstractValidator<HoldBillRequest>
+{
+    public HoldBillRequestValidator()
+    {
+        RuleFor(x => x.Label).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.Payload).NotEmpty().MaximumLength(200_000);
+        RuleFor(x => x.ItemCount).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Amount).GreaterThanOrEqualTo(0);
+    }
+}
+
+internal class UpdatePharmacySettingsRequestValidator : AbstractValidator<UpdatePharmacySettingsRequest>
+{
+    public UpdatePharmacySettingsRequestValidator()
+    {
+        RuleFor(x => x.PharmacyName).MaximumLength(150);
+        RuleFor(x => x.Gstin).Matches("^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z][0-9A-Za-z]Z[0-9A-Za-z]$").When(x => !string.IsNullOrWhiteSpace(x.Gstin))
+            .WithMessage("GSTIN must be 15 characters, like 33ABCDE1234F1Z5.");
+        RuleFor(x => x.DrugLicenceNo).MaximumLength(200);
+        RuleFor(x => x.Address).MaximumLength(500);
+        RuleFor(x => x.Phone).MaximumLength(50);
+        RuleFor(x => x.BillFooter).MaximumLength(500);
+        RuleFor(x => x.PrintFormat).IsInEnum();
+        RuleFor(x => x.MaxDiscountPercent).InclusiveBetween(0, 100);
+        RuleFor(x => x.ExpiryAlertDays).InclusiveBetween(1, 730);
+    }
+}

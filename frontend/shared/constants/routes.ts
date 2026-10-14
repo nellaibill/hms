@@ -389,6 +389,22 @@ export const API_ROUTES = {
     imports: {
       products: '/api/v1/pharmacy/imports/products',
     },
+    sales: {
+      base: '/api/v1/pharmacy/sales',
+      byId: (id: string) => `/api/v1/pharmacy/sales/${id}`,
+      payments: (id: string) => `/api/v1/pharmacy/sales/${id}/payments`,
+      returnsFor: (id: string) => `/api/v1/pharmacy/sales/${id}/returns`,
+      returns: '/api/v1/pharmacy/sales/returns',
+      returnById: (id: string) => `/api/v1/pharmacy/sales/returns/${id}`,
+    },
+    settings: '/api/v1/pharmacy/settings',
+    counter: {
+      items: '/api/v1/pharmacy/counter/items',
+      itemsLookup: '/api/v1/pharmacy/counter/items/lookup',
+      substitutes: (productId: string) => `/api/v1/pharmacy/counter/items/${productId}/substitutes`,
+      heldBills: '/api/v1/pharmacy/counter/held-bills',
+      heldBillById: (id: string) => `/api/v1/pharmacy/counter/held-bills/${id}`,
+    },
   },
   /** Mirrors HMS.Modules.ActivityLog.Endpoints.ActivityLogsController (read-only). */
   activityLogs: {

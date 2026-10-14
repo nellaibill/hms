@@ -28,3 +28,11 @@ export type StockSourceType = (typeof STOCK_SOURCE_TYPES)[number];
 
 export const PRODUCT_IMPORT_ROW_STATUSES = ['Created', 'Matched', 'Error'] as const;
 export type ProductImportRowStatus = (typeof PRODUCT_IMPORT_ROW_STATUSES)[number];
+
+/** How money changed hands at the pharmacy counter. */
+export const SALE_PAYMENT_METHODS = ['Cash', 'Card', 'Upi', 'BankTransfer'] as const;
+export type SalePaymentMethod = (typeof SALE_PAYMENT_METHODS)[number];
+
+/** The paper a pharmacy bill is printed on. */
+export const BILL_PRINT_FORMATS = ['A5', 'A4', 'Thermal80'] as const;
+export type BillPrintFormat = (typeof BILL_PRINT_FORMATS)[number];

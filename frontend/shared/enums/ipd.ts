@@ -26,7 +26,7 @@ export type DischargeType = (typeof DISCHARGE_TYPES)[number];
 // LabCharge/DoctorOrderCharge are auto-posted (by IPDLabOrderService / DoctorOrderService)
 // when an order with a resolvable price is placed — never picked manually in the Charges tab's
 // own add-charge form.
-export const CHARGE_TYPES = ['AdmissionCharge', 'BedCharge', 'NursingCharge', 'LabCharge', 'DoctorOrderCharge'] as const;
+export const CHARGE_TYPES = ['AdmissionCharge', 'BedCharge', 'NursingCharge', 'LabCharge', 'DoctorOrderCharge', 'PharmacyCharge'] as const;
 export type ChargeType = (typeof CHARGE_TYPES)[number];
 
 // Named NursingShift (not Shift) to avoid confusion with HR's unrelated Shift/ShiftAssignment.

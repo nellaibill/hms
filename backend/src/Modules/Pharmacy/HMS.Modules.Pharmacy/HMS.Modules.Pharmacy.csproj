@@ -31,6 +31,8 @@
     <ProjectReference Include="..\..\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
     <!-- ISupplierService — the supplier on a goods receipt, purchase order or purchase return. -->
     <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
+    <!-- IAdmissionService / IAdmissionChargeService — pharmacy bills charged to an admission. -->
+    <ProjectReference Include="..\..\IPD\HMS.Modules.IPD\HMS.Modules.IPD.csproj" />
     <!-- IInvoiceService — best-effort dispense billing (ADR-028). -->
     <ProjectReference Include="..\..\Billing\HMS.Modules.Billing\HMS.Modules.Billing.csproj" />
   </ItemGroup>

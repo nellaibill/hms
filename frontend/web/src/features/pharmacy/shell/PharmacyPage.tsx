@@ -39,12 +39,12 @@ const SECTIONS: PharmacySection[] = [
   { key: 'stock', label: 'Stock', icon: Boxes, to: '/pharmacy', exact: true, also: ['/pharmacy/stock-ledger', '/pharmacy/transfers', '/pharmacy/adjustments', '/pharmacy/stock-counts', '/pharmacy/expiry'] },
   { key: 'registers', label: 'Registers', icon: ShieldCheck, to: '/pharmacy/registers' },
   { key: 'reports', label: 'Reports', icon: BarChart3, to: '/pharmacy/reports' },
-  { key: 'setup', label: 'Setup', icon: Settings2, to: '/pharmacy/setup', also: ['/pharmacy/stores', '/pharmacy/import'] },
+  { key: 'setup', label: 'Setup', icon: Settings2, to: '/pharmacy/setup', also: ['/pharmacy/stores', '/pharmacy/import', '/pharmacy/settings'] },
 ];
 
 /** Sections whose screens exist. The menu lists only these, so it never offers a dead link
  * while the module is being built out phase by phase. */
-const LIVE_SECTIONS = new Set(['purchases', 'stock', 'setup']);
+const LIVE_SECTIONS = new Set(['counter', 'sales', 'purchases', 'stock', 'setup']);
 
 interface PharmacyPageProps {
   title: string;

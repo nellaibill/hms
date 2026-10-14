@@ -31,6 +31,12 @@ internal sealed class FakePharmacyUnitOfWork : IPharmacyUnitOfWork
 
         return result;
     }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        Saves++;
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>
