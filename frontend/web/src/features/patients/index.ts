@@ -7,6 +7,7 @@ export * from './components/PatientDetails';
 export * from './components/PatientDocumentUpload';
 export * from './components/PatientEditForm';
 export * from './components/PatientListToolbar';
+export * from './components/PatientPrintTemplate';
 export * from './components/PatientRegistrationForm';
 export * from './components/PatientSummaryCard';
 export * from './components/PatientTable';

@@ -4,6 +4,7 @@ import { Download, Loader2, Printer } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { dateTimeLabel, expiryLabel, quantity, todayIso } from '@/features/pharmacy/common/format';
 import { SCHEDULE_BADGE } from '@/features/pharmacy/common/labels';
 import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
@@ -116,6 +117,7 @@ export default function RegistersPage() {
 
       {data && data.length > 0 && (
         <div className="print-target overflow-x-auto rounded-lg border border-border bg-background print:border-0">
+          <PrintPageStyle document="report" />
           <p className="hidden px-3 py-2 text-sm font-semibold print:block">
             {register.title} · {fromDate.split('-').reverse().join('-')} to {toDate.split('-').reverse().join('-')}
           </p>

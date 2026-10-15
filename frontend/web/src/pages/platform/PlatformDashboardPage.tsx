@@ -1,15 +1,23 @@
 import type { TenantListItemResponse } from '@hms/shared';
-import { AlertTriangle, Building2, CheckCircle2, DatabaseBackup, Loader2, LogOut, ShieldCheck, XCircle } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/components/ui/toast-context';
-import { Pagination } from '@/components/Pagination';
-import { ThemeToggle } from '@/components/shell/ThemeToggle';
-import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
 import {
-  HospitalFeaturesDialog,
+  AlertTriangle,
+  BadgeCheck,
+  Building2,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  XCircle,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useToast } from '@/components/ui/toast-context';
+import { PageBanner } from '@/components/PageBanner';
+import { Pagination } from '@/components/Pagination';
+import { PlatformTopBar } from '@/features/platformAuth/PlatformTopBar';
+import { PLATFORM_CONTAINER } from '@/features/platformAuth/platformLayout';
+import {
   HospitalListToolbar,
   HospitalTable,
   useHospitalsQuery,
@@ -18,45 +26,94 @@ import {
   useUpdateHospitalStatusMutation,
 } from '@/features/platformHospitals';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { cn } from '@/lib/utils';
 
-interface StatTile {
-  key: string;
+/** Colour role of a stat card — its left accent, icon tile and progress bar. */
+type StatTone = 'primary' | 'success' | 'muted' | 'warning' | 'danger';
+
+const TONE_CLASSES: Record<StatTone, { accent: string; tile: string; bar: string }> = {
+  primary: { accent: 'border-l-primary', tile: 'bg-primary/10 text-primary', bar: 'bg-primary' },
+  success: { accent: 'border-l-success', tile: 'bg-success/10 text-success', bar: 'bg-success' },
+  muted: {
+    accent: 'border-l-border',
+    tile: 'bg-muted text-muted-foreground',
+    bar: 'bg-muted-foreground',
+  },
+  warning: { accent: 'border-l-warning', tile: 'bg-warning/15 text-warning', bar: 'bg-warning' },
+  danger: {
+    accent: 'border-l-destructive',
+    tile: 'bg-destructive/10 text-destructive',
+    bar: 'bg-destructive',
+  },
+};
+
+interface StatCardProps {
   label: string;
-  value: string;
+  value: number | undefined;
+  /** One line saying what the number means right now (e.g. "All clear"). */
+  hint: string;
   icon: typeof Building2;
-  /** 'alert' highlights the tile in a warning color — used for the provisioning-alert
-   * count, which should stand out from the ground-truth hospital counts when nonzero. */
-  variant?: 'default' | 'alert';
+  tone: StatTone;
+  /** 0–100: draws a thin bar along the bottom (the active share of all hospitals). */
+  progress?: number;
+  loading: boolean;
+}
+
+function StatCard({ label, value, hint, icon: Icon, tone, progress, loading }: StatCardProps) {
+  const classes = TONE_CLASSES[tone];
+  return (
+    <Card
+      className={cn('relative flex flex-col overflow-hidden border-l-4 shadow-sm', classes.accent)}
+    >
+      <div className="flex items-start justify-between gap-3 p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </span>
+          <span className="text-3xl font-semibold leading-none tabular-nums text-foreground">
+            {loading || value === undefined ? '–' : value}
+          </span>
+          <span className="text-xs text-muted-foreground">{loading ? 'Loading…' : hint}</span>
+        </div>
+        <span
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+            classes.tile,
+          )}
+        >
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
+        </span>
+      </div>
+      {progress !== undefined && (
+        <div className="mt-auto h-1 w-full bg-muted">
+          <div
+            className={cn('h-full transition-all', classes.bar)}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+    </Card>
+  );
 }
 
 export default function PlatformDashboardPage() {
-  const { user, logout } = usePlatformAuth();
-  const navigate = useNavigate();
-
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search);
-  const [hospitalToManageFeatures, setHospitalToManageFeatures] = useState<TenantListItemResponse | null>(null);
 
   const { toast } = useToast();
   const statsQuery = useHospitalStatsQuery();
-  const hospitalsQuery = useHospitalsQuery({ page, pageSize: 20, search: debouncedSearch || undefined });
+  const hospitalsQuery = useHospitalsQuery({
+    page,
+    pageSize: 20,
+    search: debouncedSearch || undefined,
+  });
   const statusMutation = useUpdateHospitalStatusMutation();
   const migrateMutation = useMigrateHospitalMutation();
 
   const stats = statsQuery.data;
-  const tiles: StatTile[] = [
-    { key: 'total', label: 'Total Hospitals', value: stats ? String(stats.total) : '…', icon: Building2 },
-    { key: 'active', label: 'Active', value: stats ? String(stats.active) : '…', icon: CheckCircle2 },
-    { key: 'inactive', label: 'Inactive', value: stats ? String(stats.inactive) : '…', icon: XCircle },
-    {
-      key: 'provisioningAlerts',
-      label: 'Provisioning Alerts',
-      value: stats ? String(stats.provisioningAlertCount) : '…',
-      icon: AlertTriangle,
-      variant: stats && stats.provisioningAlertCount > 0 ? 'alert' : 'default',
-    },
-  ];
+  const activeShare = stats && stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0;
+  const alerts = stats?.provisioningAlertCount ?? 0;
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -79,109 +136,141 @@ export default function PlatformDashboardPage() {
       onError: (err) =>
         toast({
           title: 'Migration failed',
-          description: err instanceof Error ? err.message : `Could not migrate ${hospital.hospitalName}.`,
+          description:
+            err instanceof Error ? err.message : `Could not migrate ${hospital.hospitalName}.`,
           variant: 'error',
         }),
     });
   }
 
+  const container = PLATFORM_CONTAINER;
+
   return (
     <div className="min-h-screen bg-muted/30">
-      <header className="flex items-center justify-between border-b bg-background px-6 py-4">
-        <div className="flex items-center gap-2 font-semibold">
-          <Building2 className="size-5 text-primary" />
-          Platform Portal
+      <PlatformTopBar />
+
+      {/* Same brand banner every hospital-app page opens with, so the portal reads as part of HMS.
+          The colour spans the screen; its content lines up with the cards below. */}
+      <div className="bg-page-banner">
+        <PageBanner
+          className={container}
+          icon={Building2}
+          title="Hospitals"
+          subtitle="Register hospitals, choose the features each one can use, and keep their databases up to date."
+          rightActions={
+            <Button
+              asChild
+              className="gap-1.5 bg-page-banner-foreground font-semibold text-page-banner shadow-sm hover:bg-page-banner-foreground/90"
+            >
+              <Link to="/platform/hospitals/new">
+                <Plus className="h-4 w-4" />
+                Register hospital
+              </Link>
+            </Button>
+          }
+        />
+      </div>
+
+      <main className={cn(container, 'flex flex-col gap-6 py-6')}>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <StatCard
+            label="Total hospitals"
+            value={stats?.total}
+            hint={stats ? `${stats.active} active · ${stats.inactive} inactive` : ''}
+            icon={Building2}
+            tone="primary"
+            loading={statsQuery.isPending}
+          />
+          <StatCard
+            label="Active"
+            value={stats?.active}
+            hint={`${activeShare}% of hospitals can sign in`}
+            icon={CheckCircle2}
+            tone="success"
+            progress={activeShare}
+            loading={statsQuery.isPending}
+          />
+          <StatCard
+            label="Inactive"
+            value={stats?.inactive}
+            hint={
+              stats && stats.inactive > 0
+                ? 'Sign-in is blocked for these'
+                : 'No hospital is disabled'
+            }
+            icon={XCircle}
+            tone={stats && stats.inactive > 0 ? 'warning' : 'muted'}
+            loading={statsQuery.isPending}
+          />
+          <StatCard
+            label="Provisioning alerts"
+            value={stats?.provisioningAlertCount}
+            hint={alerts > 0 ? 'A failed setup may have left a database behind' : 'All clear'}
+            icon={alerts > 0 ? AlertTriangle : BadgeCheck}
+            tone={alerts > 0 ? 'danger' : 'success'}
+            loading={statsQuery.isPending}
+          />
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Button variant="outline" size="sm" onClick={() => navigate('/platform/backups')}>
-            <DatabaseBackup className="mr-2 size-4" />
-            Backups
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/platform/security')}>
-            <ShieldCheck className="mr-2 size-4" />
-            Security
-          </Button>
-          <Button variant="outline" size="sm" onClick={logout}>
-            <LogOut className="mr-2 size-4" />
-            Sign out
-          </Button>
-        </div>
-      </header>
 
-      <main className="flex flex-col gap-6 p-6 lg:p-8">
-        <p className="text-sm text-muted-foreground">Signed in as {user?.fullName ?? user?.email}</p>
+        <Card className="overflow-hidden shadow-sm">
+          <HospitalListToolbar
+            search={search}
+            onSearchChange={handleSearchChange}
+            totalCount={hospitalsQuery.data?.meta.totalCount}
+          />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {tiles.map((tile) => {
-            const Icon = tile.icon;
-            const isAlert = tile.variant === 'alert';
-            return (
-              <Card key={tile.key} className={isAlert ? 'border-destructive/50' : undefined}>
-                <CardContent className="flex flex-col gap-2 py-4">
-                  <span
-                    className={
-                      isAlert
-                        ? 'flex h-8 w-8 items-center justify-center rounded-md bg-destructive/10 text-destructive'
-                        : 'flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary'
-                    }
-                  >
-                    {statsQuery.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
-                  </span>
-                  <span className={isAlert ? 'text-2xl font-semibold tabular-nums text-destructive' : 'text-2xl font-semibold tabular-nums text-foreground'}>
-                    {tile.value}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{tile.label}</span>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+          {hospitalsQuery.isPending && (
+            <div className="flex items-center justify-center gap-2 border-t border-border py-16 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading hospitals…
+            </div>
+          )}
 
-        <HospitalListToolbar search={search} onSearchChange={handleSearchChange} />
+          {hospitalsQuery.isError && (
+            <p
+              role="alert"
+              className="mx-5 mb-5 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              Failed to load hospitals.
+            </p>
+          )}
 
-        {hospitalsQuery.isPending && (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading hospitals…
-          </div>
-        )}
+          {!hospitalsQuery.isPending &&
+            !hospitalsQuery.isError &&
+            hospitalsQuery.data &&
+            hospitalsQuery.data.items.length === 0 && (
+              <div className="flex flex-col items-center gap-2 border-t border-border py-16 text-center">
+                <Building2 className="h-8 w-8 text-muted-foreground/60" />
+                <p className="text-sm font-medium text-foreground">No hospitals found</p>
+                <p className="text-sm text-muted-foreground">
+                  {debouncedSearch
+                    ? `No results for "${debouncedSearch}".`
+                    : 'Register the first hospital to get started.'}
+                </p>
+              </div>
+            )}
 
-        {hospitalsQuery.isError && (
-          <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Failed to load hospitals.
-          </p>
-        )}
-
-        {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length === 0 && (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-              <p className="text-sm font-medium text-foreground">No hospitals found</p>
-              <p className="text-sm text-muted-foreground">
-                {debouncedSearch ? `No results for "${debouncedSearch}".` : 'Register the first hospital to get started.'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!hospitalsQuery.isPending && !hospitalsQuery.isError && hospitalsQuery.data && hospitalsQuery.data.items.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <HospitalTable
-              hospitals={hospitalsQuery.data.items}
-              onToggleStatus={handleToggleStatus}
-              isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
-              onManageFeatures={setHospitalToManageFeatures}
-              onMigrate={handleMigrate}
-              isMigratingId={migrateMutation.isPending ? migrateMutation.variables : undefined}
-            />
-            <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
-          </div>
-        )}
+          {!hospitalsQuery.isPending &&
+            !hospitalsQuery.isError &&
+            hospitalsQuery.data &&
+            hospitalsQuery.data.items.length > 0 && (
+              <>
+                <HospitalTable
+                  hospitals={hospitalsQuery.data.items}
+                  onToggleStatus={handleToggleStatus}
+                  isTogglingId={statusMutation.isPending ? statusMutation.variables?.id : undefined}
+                  onMigrate={handleMigrate}
+                  isMigratingId={migrateMutation.isPending ? migrateMutation.variables : undefined}
+                />
+                {hospitalsQuery.data.meta.totalPages > 1 && (
+                  <div className="border-t border-border px-5 py-3">
+                    <Pagination meta={hospitalsQuery.data.meta} onPageChange={setPage} />
+                  </div>
+                )}
+              </>
+            )}
+        </Card>
       </main>
-
-      {hospitalToManageFeatures && (
-        <HospitalFeaturesDialog hospital={hospitalToManageFeatures} onClose={() => setHospitalToManageFeatures(null)} />
-      )}
     </div>
   );
 }

@@ -21,12 +21,15 @@ import {
   ICON_SIZE_SCALES,
   ICON_SIZE_SCALE_LABELS,
   DEFAULT_LOGO_DISPLAY,
+  DEFAULT_PRINT_SETTINGS,
   TOKEN_GROUPS,
   type BrandingConfig,
   type LogoDisplaySettings,
+  type PrintSettings,
 } from '../types';
 import { BrandingLivePreview } from './BrandingLivePreview';
 import { LogoConfigurationSection } from './LogoConfigurationSection';
+import { PrintSettingsSection } from './PrintSettingsSection';
 
 const identitySchema = z.object({
   hospitalName: z.string().trim().min(1, 'Hospital name is required'),
@@ -129,6 +132,7 @@ export function BrandingForm() {
   const [draftTokensLight, setDraftTokensLight] = useState<Record<string, string>>({});
   const [draftTokensDark, setDraftTokensDark] = useState<Record<string, string>>({});
   const [draftLogoDisplay, setDraftLogoDisplay] = useState<LogoDisplaySettings>(DEFAULT_LOGO_DISPLAY);
+  const [draftPrintSettings, setDraftPrintSettings] = useState<PrintSettings>(DEFAULT_PRINT_SETTINGS);
   const [savedMessage, setSavedMessage] = useState(false);
   // A logo Replace/Remove applies immediately and writes the server's full response into the
   // query cache — this skips the one re-sync that follows, so the admin's other unsaved edits
@@ -160,6 +164,7 @@ export function BrandingForm() {
     setDraftTokensLight(query.data.tokensLight);
     setDraftTokensDark(query.data.tokensDark);
     setDraftLogoDisplay(query.data.logoDisplay);
+    setDraftPrintSettings(query.data.printSettings);
     reset({
       hospitalName: query.data.hospitalName,
       appTitle: query.data.appTitle,
@@ -200,6 +205,7 @@ export function BrandingForm() {
       tokensLight: draftTokensLight,
       tokensDark: draftTokensDark,
       logoDisplay: draftLogoDisplay,
+      printSettings: draftPrintSettings,
     };
     updateMutation.mutate(patch, {
       onSuccess: () => {
@@ -233,6 +239,7 @@ export function BrandingForm() {
             <TabsTrigger value="headers">Section headers</TabsTrigger>
             <TabsTrigger value="buttons">Buttons</TabsTrigger>
             <TabsTrigger value="typography">Typography</TabsTrigger>
+            <TabsTrigger value="print">Print</TabsTrigger>
           </TabsList>
 
           <TabsContent value="identity">
@@ -374,6 +381,18 @@ export function BrandingForm() {
                 </Select>
                 <p className="text-xs text-muted-foreground">Language, Notifications, Calendar, Tools, Tasks, and Documents icons in the top bar.</p>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="print">
+            <div className="rounded-lg border border-border p-4">
+              <PrintSettingsSection
+                value={draftPrintSettings}
+                onChange={(next) => {
+                  setDraftPrintSettings(next);
+                  setSavedMessage(false);
+                }}
+              />
             </div>
           </TabsContent>
         </Tabs>

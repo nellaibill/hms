@@ -2,6 +2,7 @@ import { ApiError } from '@hms/shared';
 import { Download, Loader2, Printer } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { exportReportToExcel, type ReportSection } from '@/features/reports/exportUtils';
 
 interface ReportFrameProps {
@@ -27,6 +28,7 @@ export function ReportFrame({ title, caption, sections, filename, isPending, err
 
   return (
     <section className="print-target flex min-w-0 flex-1 flex-col gap-3">
+      <PrintPageStyle document="report" />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-foreground">{title}</h2>

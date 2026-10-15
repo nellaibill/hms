@@ -1,15 +1,15 @@
 import type { StockBalanceResponse } from '@hms/shared';
+import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
+import { pharmacyApi } from '@/services/apiClient';
 
 interface StockBalanceTableProps {
   balances: StockBalanceResponse[];
 }
 
-/** A batch within this many days of its expiry date is flagged "Expiring soon" — chosen to
- * give a real pharmacy user enough lead time to prioritize dispensing it or writing it off
- * before it's unusable. Mirrors the backend's PharmacyClock.ExpiringSoonWindowDays, which the
- * product-level stock summary uses for the same judgement. */
-const EXPIRING_SOON_WINDOW_DAYS = 30;
+/** Until the settings load: the same default the settings screen shows before they are
+ * first saved (PharmacySettingsDefaults.ExpiryAlertDays on the server). */
+const DEFAULT_EXPIRY_ALERT_DAYS = 90;
 
 function daysUntil(dateString: string): number {
   const msPerDay = 1000 * 60 * 60 * 24;
@@ -22,6 +22,10 @@ function daysUntil(dateString: string): number {
  * here is only ever in stock, empty, expired, or on hold.
  */
 export function StockBalanceTable({ balances }: StockBalanceTableProps) {
+  // "Expiring soon" uses the pharmacy's own alert window, as the product summary above does.
+  const { data: settings } = useQuery({ queryKey: ['pharmacy', 'settings'], queryFn: () => pharmacyApi.getSettings(), staleTime: 300_000 });
+  const expiringSoonDays = settings?.expiryAlertDays ?? DEFAULT_EXPIRY_ALERT_DAYS;
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-background">
       <table className="w-full text-sm">
@@ -39,7 +43,7 @@ export function StockBalanceTable({ balances }: StockBalanceTableProps) {
             const isZero = balance.quantityOnHand === 0;
             const daysToExpiry = daysUntil(balance.expiryDate);
             const isExpired = daysToExpiry < 0;
-            const isExpiringSoon = !isExpired && daysToExpiry <= EXPIRING_SOON_WINDOW_DAYS;
+            const isExpiringSoon = !isExpired && daysToExpiry <= expiringSoonDays;
             const isOnHold = !isExpired && !balance.batchIsActive;
             const rowClassName =
               isZero || isExpired ? 'bg-destructive/5 hover:bg-destructive/10' : isExpiringSoon ? 'bg-warning/5 hover:bg-warning/10' : 'hover:bg-muted/30';

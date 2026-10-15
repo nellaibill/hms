@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/AuthContext';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { dateLabel, money, quantity, toNumber } from '@/features/pharmacy/common/format';
 import { ORDER_STATUS } from '@/features/pharmacy/common/labels';
 import { LookupInput, type LookupInputHandle } from '@/features/pharmacy/common/LookupInput';
@@ -170,6 +171,7 @@ export default function PurchaseOrderPage() {
         </div>
       ) : (
         <div className="print-target flex flex-col gap-4">
+          <PrintPageStyle document="report" />
           <section className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-[minmax(0,2fr)_180px_minmax(0,2fr)]">
             <label className="flex flex-col gap-1">
               <span className={caption}>Supplier</span>

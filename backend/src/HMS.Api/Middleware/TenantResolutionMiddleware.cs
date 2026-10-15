@@ -1,3 +1,4 @@
+using HMS.Modules.Identity.Contracts;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Shared.Kernel;
 
@@ -84,10 +85,9 @@ public sealed class TenantResolutionMiddleware
             var tenant = await tenantDirectory.FindByHospitalCodeAsync(hospitalCode, context.RequestAborted);
             if (tenant is null || !tenant.IsActive)
             {
-                // Same generic wording AuthenticationService uses for every other login
-                // failure reason — never reveal whether the hospital code itself was wrong
-                // versus some other rule, per the existing login-security convention.
-                await WriteRejectionAsync(context, "Invalid username or password.");
+                // Exactly what a wrong username or password says (LoginMessages), so the
+                // response never confirms whether the hospital code itself exists.
+                await WriteRejectionAsync(context, LoginMessages.InvalidCredentials);
                 return;
             }
 

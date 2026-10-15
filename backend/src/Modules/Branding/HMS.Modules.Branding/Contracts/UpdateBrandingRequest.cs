@@ -13,4 +13,6 @@ public record UpdateBrandingRequest
     public Dictionary<string, string> TokensDark { get; init; } = new();
     /// <summary>Null leaves the stored logo display settings unchanged (e.g. an older client).</summary>
     public LogoDisplaySettings? LogoDisplay { get; init; }
+    /// <summary>Null leaves the stored print settings unchanged (e.g. an older client).</summary>
+    public PrintSettings? PrintSettings { get; init; }
 }

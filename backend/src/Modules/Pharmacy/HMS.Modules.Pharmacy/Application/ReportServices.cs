@@ -476,7 +476,7 @@ internal class PharmacyReportService : IPharmacyReportService
     private async Task<StockAlertFigures> GetStockAlertsAsync(Guid? storeId, DateOnly today, bool includeCost, CancellationToken cancellationToken)
     {
         var (stock, products, batches) = await LoadStockAsync(storeId, cancellationToken);
-        var alertDays = (await _settingsRepository.GetAsync(cancellationToken))?.ExpiryAlertDays ?? PharmacyClock.ExpiringSoonWindowDays;
+        var alertDays = await _settingsRepository.ExpiryAlertDaysAsync(cancellationToken);
         var cutoff = today.AddDays(alertDays);
 
         var known = stock.Where(s => batches.ContainsKey(s.ProductBatchId)).ToList();

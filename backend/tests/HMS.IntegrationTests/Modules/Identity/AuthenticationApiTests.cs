@@ -96,7 +96,7 @@ public class AuthenticationApiTests : IClassFixture<UsersApiFactory>
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
         error!.ErrorCode.Should().Be("IDENTITY.INVALID_LOGIN");
-        error.Message.Should().Be("Invalid username or password.");
+        error.Message.Should().Be(LoginMessages.InvalidCredentials);
     }
 
     [Fact]
@@ -127,6 +127,9 @@ public class AuthenticationApiTests : IClassFixture<UsersApiFactory>
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+        error!.ErrorCode.Should().Be("IDENTITY.LOGIN_TYPE_MISMATCH");
+        error.Message.Should().Contain("\"Doctor / Consultant\"");
     }
 
     [Fact]
@@ -143,6 +146,8 @@ public class AuthenticationApiTests : IClassFixture<UsersApiFactory>
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+        error!.ErrorCode.Should().Be("IDENTITY.ACCOUNT_INACTIVE");
     }
 
     [Theory]

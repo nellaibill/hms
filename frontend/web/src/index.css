@@ -187,6 +187,15 @@
  * hidden around it; the final rule then pulls it out of that (now invisible) flow so it
  * isn't offset by whatever space its hidden ancestors would have occupied. Reusable by any
  * future "Print this" feature — not specific to invoices.
+ *
+ * `visibility: hidden` still keeps the hidden content's height, so on a long page (a patient's
+ * tabs, a busy dashboard) the browser printed that height as extra blank sheets after the
+ * target. The last two rules fix that: everything that neither is, contains, nor sits inside
+ * the target leaves the layout, and the target's ancestors drop their height (e.g. the app
+ * shell's min-h-screen) and stop clipping, so the printout is only as long as the target.
+ *
+ * The @page margin here is only a fallback: AppLayout's PrintPageStyle replaces it with the
+ * hospital's print settings (Theme & Branding → Print).
  */
 @media print {
   @page {
@@ -207,5 +216,15 @@
     left: 0;
     top: 0;
     width: 100%;
+  }
+
+  body:has(.print-target) *:not(.print-target, .print-target *, :has(.print-target)) {
+    display: none !important;
+  }
+
+  body:has(.print-target) *:has(.print-target) {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 }

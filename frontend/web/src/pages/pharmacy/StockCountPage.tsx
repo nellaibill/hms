@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/AuthContext';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { dateTimeLabel, expiryLabel, quantity, toNumber } from '@/features/pharmacy/common/format';
 import { STOCK_LINKS } from '@/features/pharmacy/shell/links';
 import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
@@ -227,6 +228,7 @@ function CountSheet({ id }: { id: string }) {
           </label>
 
           <div className="print-target overflow-x-auto rounded-lg border border-border bg-background">
+            <PrintPageStyle document="report" />
             <p className="hidden px-3 py-2 text-sm font-semibold print:block">
               Stock count {count.countNo} · {count.storeName} · {dateTimeLabel(count.startedAt)}
             </p>

@@ -6,12 +6,13 @@ using Microsoft.Extensions.Logging;
 namespace HMS.Modules.Identity.Application;
 
 /// <summary>
-/// Orchestrates the Login use case. Every rejection reason (rules 1-5 below) returns the
-/// same generic <see cref="AuthenticationErrorCodes.InvalidLogin"/> failure — never
-/// revealing which check failed, per standard login-security practice (docs/ApiStandards.md
-/// §8). Soft-deleted users need no special handling: IUserRepository.GetByUsernameAsync
-/// already excludes them via User's EF global query filter, so they naturally fail rule 1
-/// exactly like a username that never existed.
+/// Orchestrates the Login use case. Rules 1 and 3 (unknown user, wrong password) share one
+/// <see cref="AuthenticationErrorCodes.InvalidLogin"/> failure, so the API never confirms which
+/// usernames exist. Rule 2 (locked out) says so and for how long. Rules 4 and 5 run only after
+/// the password is proven correct, so they name the exact problem (deactivated account, wrong
+/// "Sign in as"). See ADR-099. Soft-deleted users need no special handling:
+/// IUserRepository.GetByUsernameAsync already excludes them via User's EF global query filter,
+/// so they naturally fail rule 1 exactly like a username that never existed.
 ///
 /// HMS Multi-Tenancy Phase C: by the time this runs, <see cref="ITenantContext"/> has
 /// already been resolved and populated by HMS.Api's TenantResolutionMiddleware (from the
@@ -22,13 +23,12 @@ namespace HMS.Modules.Identity.Application;
 /// </summary>
 internal class AuthenticationService : IAuthenticationService
 {
-    private const string GenericInvalidLoginMessage = "Invalid username or password.";
-
     /// <summary>Brute-force throttling thresholds (HMS Security Hardening: login had no
     /// account lockout at all). Not user-configurable — a single deployment target, no
-    /// evidence yet of needing per-environment tuning.</summary>
-    private const int MaxFailedLoginAttempts = 5;
-    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+    /// evidence yet of needing per-environment tuning. LoginMessages.InvalidCredentials
+    /// states them to the user, so they live there.</summary>
+    private const int MaxFailedLoginAttempts = LoginMessages.MaxFailedAttempts;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(LoginMessages.LockoutMinutes);
 
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
@@ -79,7 +79,7 @@ internal class AuthenticationService : IAuthenticationService
         if (user.IsLockedOut(now))
         {
             _logger.LogWarning("Login failed for {Username}: account is locked out until {LockedOutUntil}", request.Username, user.LockedOutUntil);
-            return Fail();
+            return Locked(user.LockedOutUntil!.Value - now);
         }
 
         // Rule 3: password matches. A user created before a password was ever set has a
@@ -94,14 +94,20 @@ internal class AuthenticationService : IAuthenticationService
                 request.Username,
                 user.FailedLoginAttempts,
                 MaxFailedLoginAttempts);
-            return Fail();
+            // The attempt that trips the lockout says so, rather than leaving the user to find
+            // out on their next try.
+            return user.IsLockedOut(now) ? Locked(LockoutDuration) : Fail();
         }
+
+        // Rules 4 and 5 run only after a correct password, so their messages can be exact.
 
         // Rule 4: account is active.
         if (!user.IsActive)
         {
             _logger.LogInformation("Login failed for {Username}: inactive account", request.Username);
-            return Fail();
+            return Result<LoginResponse>.Failure(
+                AuthenticationErrorCodes.AccountInactive,
+                "This account has been deactivated. Ask your hospital administrator to reactivate it.");
         }
 
         // Rule 5: the selected Login Type matches the user's assigned role.
@@ -109,7 +115,7 @@ internal class AuthenticationService : IAuthenticationService
         if (role is null || !LoginTypes.RoleMatches(request.LoginType, role.Name))
         {
             _logger.LogInformation("Login failed for {Username}: login type does not match assigned role", request.Username);
-            return Fail();
+            return Result<LoginResponse>.Failure(AuthenticationErrorCodes.LoginTypeMismatch, LoginTypeMismatchMessage(request.LoginType, role?.Name));
         }
 
         user.RecordLogin(now);
@@ -167,7 +173,32 @@ internal class AuthenticationService : IAuthenticationService
         });
 
         static Result<LoginResponse> Fail() =>
-            Result<LoginResponse>.Failure(AuthenticationErrorCodes.InvalidLogin, GenericInvalidLoginMessage);
+            Result<LoginResponse>.Failure(AuthenticationErrorCodes.InvalidLogin, LoginMessages.InvalidCredentials);
+    }
+
+    /// <summary>Minutes rather than a clock time: the server's clock and time zone aren't the
+    /// user's, and "try again in 12 minutes" reads the same everywhere.</summary>
+    private static Result<LoginResponse> Locked(TimeSpan remaining)
+    {
+        var minutes = Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes));
+        return Result<LoginResponse>.Failure(
+            AuthenticationErrorCodes.AccountLocked,
+            $"This account is locked after {MaxFailedLoginAttempts} wrong password attempts. Try again in {minutes} minute{(minutes == 1 ? "" : "s")}, " +
+            "or ask your hospital administrator to reset the password.");
+    }
+
+    /// <summary>Names the "Sign in as" option that would work. LoginTypes' role names are the
+    /// dropdown's own labels, so the user sees the exact words on screen.</summary>
+    private static string LoginTypeMismatchMessage(string selectedLoginType, string? roleName)
+    {
+        var selected = LoginTypes.RoleNameByLoginType.TryGetValue(selectedLoginType, out var selectedLabel) ? selectedLabel : selectedLoginType;
+        var matching = roleName is null
+            ? null
+            : LoginTypes.RoleNameByLoginType.Values.FirstOrDefault(label => string.Equals(label, roleName, StringComparison.OrdinalIgnoreCase));
+
+        return matching is null
+            ? $"This account can't sign in as {selected}, and its role doesn't match any \"Sign in as\" option. Ask your hospital administrator to check its role."
+            : $"This account can't sign in as {selected}. Choose \"{matching}\" under \"Sign in as\" and try again.";
     }
 
     /// <summary>

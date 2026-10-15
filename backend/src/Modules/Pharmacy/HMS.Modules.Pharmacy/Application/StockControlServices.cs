@@ -586,7 +586,7 @@ internal class StockControlService : IStockControlService
 
     public async Task<IReadOnlyList<ExpiringBatchResponse>> GetExpiringAsync(Guid? storeId, int? days, bool includeCost, CancellationToken cancellationToken)
     {
-        var window = days ?? (await _settingsRepository.GetAsync(cancellationToken))?.ExpiryAlertDays ?? PharmacyClock.ExpiringSoonWindowDays;
+        var window = days ?? await _settingsRepository.ExpiryAlertDaysAsync(cancellationToken);
         var today = PharmacyClock.Today();
         var cutoff = today.AddDays(Math.Clamp(window, 0, 730));
 

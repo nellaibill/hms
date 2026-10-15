@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/AuthContext';
+import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { dateLabel, money, toNumber } from '@/features/pharmacy/common/format';
 import { SUPPLIER_PAYMENT_LABELS } from '@/features/pharmacy/common/labels';
 import { PURCHASE_LINKS } from '@/features/pharmacy/shell/links';
@@ -109,6 +110,7 @@ export default function SupplierAccountsPage() {
         </section>
 
         <section className="print-target rounded-lg border border-border bg-background">
+          <PrintPageStyle document="report" />
           {!selected ? (
             <p className="p-10 text-center text-sm text-muted-foreground">Choose a supplier to see their statement.</p>
           ) : (
