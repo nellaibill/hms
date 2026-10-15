@@ -593,7 +593,8 @@ internal sealed class AppointmentService : IAppointmentService
 
     private static string FormatDate(DateOnly date) => date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
 
-    private static string FormatTime(TimeOnly time) => time.ToString("HH:mm", CultureInfo.InvariantCulture);
+    // 12-hour, like the screens ("3:52 PM"), so a message reads the same as the slot it names.
+    private static string FormatTime(TimeOnly time) => time.ToString("h:mm tt", CultureInfo.InvariantCulture);
 
     private static string FormatSlot(Appointment appointment) => $"{FormatDate(appointment.AppointmentDate)} {FormatTime(appointment.StartTime)}";
 

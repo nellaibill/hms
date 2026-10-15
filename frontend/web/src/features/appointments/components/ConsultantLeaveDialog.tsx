@@ -196,7 +196,7 @@ export function ConsultantLeaveDialog({ departmentId: initialDepartmentId, consu
             ) : (
               <>
                 <p className="rounded-md bg-warning/10 px-3 py-2 text-sm text-foreground">
-                  Leave saved. {affected.length} booking{affected.length === 1 ? '' : 's'} fall inside it — call these patients and reschedule or cancel from the
+                  Leave saved. {affected.length === 1 ? '1 booking falls' : `${affected.length} bookings fall`} inside it — call these patients and reschedule or cancel from the
                   appointment list:
                 </p>
                 <ul className="divide-y divide-border rounded-md border border-border text-sm">

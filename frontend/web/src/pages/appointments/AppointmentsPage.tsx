@@ -131,7 +131,11 @@ export default function AppointmentsPage() {
         rightActions={
           <div className="flex gap-2">
             {canEdit && (
-              <Button variant="outline" className="gap-1.5" onClick={() => setDialog({ kind: 'leave' })}>
+              <Button
+                variant="outline"
+                className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+                onClick={() => setDialog({ kind: 'leave' })}
+              >
                 <CalendarOff className="h-4 w-4" />
                 Doctor leave
               </Button>

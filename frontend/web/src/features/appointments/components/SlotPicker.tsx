@@ -1,5 +1,6 @@
 import type { AppointmentSlot } from '@hms/shared';
 import { CalendarOff, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { formatSlotRange, formatSlotTime } from '../format';
 import { useAppointmentSlotsQuery } from '../hooks';
@@ -30,6 +31,9 @@ function slotHint(slot: AppointmentSlot): string {
  * see the whole day at a glance. */
 export function SlotPicker({ consultantId, date, value, onChange, currentStartTime, compact }: SlotPickerProps) {
   const { data, isPending, isError, error } = useAppointmentSlotsQuery(consultantId, date);
+  // Today, the slots already gone are folded away — on a long clinic day they'd otherwise fill
+  // most of the grid with nothing anyone can pick.
+  const [showPast, setShowPast] = useState(false);
 
   if (!consultantId || !date) {
     return <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">Pick a consultant and a date to see the free slots.</p>;
@@ -61,9 +65,15 @@ export function SlotPicker({ consultantId, date, value, onChange, currentStartTi
     );
   }
 
+  const pastCount = data.slots.filter((slot) => slot.isPast).length;
+  const allPast = pastCount === data.slots.length;
+  const hidePast = !showPast && !allPast;
   const sessions = [1, 2]
-    .map((session) => ({ session, slots: data.slots.filter((slot) => slot.session === session) }))
-    .filter((group) => group.slots.length > 0);
+    .map((session) => {
+      const all = data.slots.filter((slot) => slot.session === session);
+      return { session, all, slots: hidePast ? all.filter((slot) => !slot.isPast) : all };
+    })
+    .filter((group) => group.all.length > 0);
   const freeCount = data.slots.filter((slot) => slot.isBookable).length;
 
   return (
@@ -74,13 +84,21 @@ export function SlotPicker({ consultantId, date, value, onChange, currentStartTi
           {data.message}
         </p>
       )}
-      <p className="text-xs text-muted-foreground">
-        {data.slotMinutes}-minute slots{data.patientsPerSlot > 1 ? `, ${data.patientsPerSlot} patients each` : ''} · {freeCount} free
+      <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+        <span>
+          {data.slotMinutes}-minute slots{data.patientsPerSlot > 1 ? `, ${data.patientsPerSlot} patients each` : ''} · {freeCount} free
+        </span>
+        {pastCount > 0 && !allPast && (
+          <button type="button" className="font-medium text-link hover:underline" onClick={() => setShowPast((shown) => !shown)}>
+            {showPast ? 'Hide earlier slots' : `Show ${pastCount} earlier slot${pastCount === 1 ? '' : 's'}`}
+          </button>
+        )}
       </p>
-      {sessions.map(({ session, slots }) => (
+      {sessions.map(({ session, all, slots }) => (
         <div key={session} className="flex flex-col gap-1.5">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Session {session} · {formatSlotRange(slots[0].startTime, slots[slots.length - 1].endTime)}
+            Session {session} · {formatSlotRange(all[0].startTime, all[all.length - 1].endTime)}
+            {slots.length === 0 && ' · over'}
           </p>
           <div className={cn('grid gap-1.5', compact ? 'grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))]' : 'grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]')}>
             {slots.map((slot) => {

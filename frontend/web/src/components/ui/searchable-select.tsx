@@ -110,7 +110,12 @@ export function SearchableSelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    // modal: inside a Dialog, a non-modal popover leaves the Dialog's focus trap and scroll lock
+    // in charge, so its search box can't take focus (typing went nowhere) and its list wouldn't
+    // scroll — only clicking worked (the pointer-events half was fixed in popover.tsx). A modal
+    // popover pushes its own focus scope and scroll lock on top while it's open, like Radix
+    // Select does. Outside a Dialog the only difference is the page can't scroll while it's open.
+    <Popover modal open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"

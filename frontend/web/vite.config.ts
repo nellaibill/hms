@@ -11,6 +11,12 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // npm installed @radix-ui/react-popover with its own nested copies of these (same
+    // versions), while Dialog/Select use the hoisted ones. Each copy keeps its own module-level
+    // stack of open layers and focus traps, so a SearchableSelect opened inside a Dialog was
+    // invisible to the Dialog: its search box couldn't take focus, and one Escape closed both.
+    // One copy restores Radix's normal nesting.
+    dedupe: ['@radix-ui/react-dismissable-layer', '@radix-ui/react-focus-scope', '@radix-ui/react-focus-guards'],
   },
   server: {
     port: Number(process.env.PORT) || 5173,
