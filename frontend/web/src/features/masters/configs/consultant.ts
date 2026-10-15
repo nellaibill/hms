@@ -1,4 +1,4 @@
-import { Calendar, ClipboardList, Stethoscope, User } from 'lucide-react';
+import { Calendar, CalendarClock, ClipboardList, Stethoscope, User } from 'lucide-react';
 import { formatConsultantAvailability } from '../formatConsultantAvailability';
 import type { MasterEntityConfig } from '../engine/types';
 
@@ -74,6 +74,26 @@ export const consultantConfig: MasterEntityConfig = {
       helpText: 'Optional — e.g. an evening clinic on the same days. Leave both blank if there is no second session.',
     },
     { key: 'visitEndTime2', label: 'Second Session End Time', type: 'time', showInTable: false },
+    {
+      key: 'appointmentSlotMinutes',
+      label: 'Slot Length (minutes)',
+      type: 'number',
+      min: 5,
+      max: 240,
+      showInTable: false,
+      placeholder: '15',
+      helpText: 'How long each appointment slot is. Leave blank for 15 minutes.',
+    },
+    {
+      key: 'patientsPerSlot',
+      label: 'Patients per Slot',
+      type: 'number',
+      min: 1,
+      max: 50,
+      showInTable: false,
+      placeholder: '1',
+      helpText: 'How many patients can be booked into the same slot. Leave blank for 1.',
+    },
   ],
   fieldGroups: [
     { key: 'info', label: 'Consultant Information', icon: User, fieldKeys: ['name', 'departmentId', 'specialization', 'priority'] },
@@ -91,6 +111,13 @@ export const consultantConfig: MasterEntityConfig = {
       fieldKeys: ['availableDays', 'visitStartTime', 'visitEndTime', 'visitStartTime2', 'visitEndTime2'],
       dividedColumns: true,
       infoText: 'This schedule will be shown to receptionists when selecting a consultant (for appointment registration, OPD, etc.).',
+    },
+    {
+      key: 'appointmentSlots',
+      label: 'Appointment Slots',
+      icon: CalendarClock,
+      fieldKeys: ['appointmentSlotMinutes', 'patientsPerSlot'],
+      infoText: 'Appointments divide the visiting hours above into slots of this length. Token numbers follow slot order through the day.',
     },
   ],
 };

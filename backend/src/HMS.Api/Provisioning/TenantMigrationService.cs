@@ -1,4 +1,5 @@
 using HMS.Modules.ActivityLog.Infrastructure;
+using HMS.Modules.Appointments.Infrastructure;
 using HMS.Modules.Billing.Infrastructure;
 using HMS.Modules.Branding.Infrastructure;
 using HMS.Modules.Calendar.Infrastructure;
@@ -171,6 +172,15 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("opd-consultation"))
         {
             await using var db = new OpdConsultationDbContext(BuildOptions<OpdConsultationDbContext>(tenantConnectionString, OpdConsultationDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // Appointment booking (HMS.Modules.Appointments, schema "appointments"). Optional: only
+        // tenants with the "appointments" feature get the schema. It refers to patients, visits
+        // and consultants by app-level Guids only.
+        if (resolved.Contains("appointments"))
+        {
+            await using var db = new AppointmentsDbContext(BuildOptions<AppointmentsDbContext>(tenantConnectionString, AppointmentsDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
     }

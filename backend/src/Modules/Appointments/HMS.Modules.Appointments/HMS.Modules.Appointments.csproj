@@ -1,8 +1,39 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <!-- Controllers live in this module (not HMS.Api), so their <summary> comments must
+         be generated here for Swashbuckle to include them in Swagger UI. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment on a public member) is not useful here: this module is
+         internal-by-default (see docs/DeveloperHandbook.md §4), so its few public members
+         are a deliberate narrow seam, not a fully-documented public API. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needed for ControllerBase/[ApiController]/IActionResult in Endpoints/, since this
+         module is a plain class library, not an ASP.NET Core Web SDK project. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- Public service seams only: IConsultantService (the consultant's clinic days, hours and
+         slot settings that bookable slots are built from), IDepartmentService and
+         IAppointmentTypeService (reference checks). -->
+    <ProjectReference Include="..\..\Masters\HMS.Modules.Masters\HMS.Modules.Masters.csproj" />
+    <!-- IPatientService (the booked patient's name/phone/UHID snapshot) and IPatientVisitService
+         (confirming the visit recorded at check-in). Patients never references this module, so
+         there is no cycle. -->
+    <ProjectReference Include="..\..\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
+    <ProjectReference Include="..\..\ActivityLog\HMS.Modules.ActivityLog\HMS.Modules.ActivityLog.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
 import type { Allergy, AllergyInput, CreatePatientRequest, Patient, PatientRegistrationCoreUiFormValues, PatientRegistrationUiFormValues } from '@hms/shared';
-import { UserPlus } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
@@ -7,6 +7,8 @@ import { PageBanner } from '@/components/PageBanner';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
+import { AppointmentCheckInBanner } from '../../features/appointments/components/AppointmentCheckInBanner';
+import { registrationPrefill, useAppointmentCheckIn } from '../../features/appointments/checkIn';
 import {
   PatientRegistrationForm,
   useAddPatientAllergyMutation,
@@ -98,6 +100,9 @@ function toRequest(values: PatientRegistrationCoreUiFormValues, documents: Stage
 
 export default function PatientRegistrationCreatePage() {
   const navigate = useNavigate();
+  // ?appointmentId= — a booked first-time caller being registered at check-in.
+  const checkIn = useAppointmentCheckIn();
+  const appointment = checkIn.appointment && !checkIn.appointment.patientId ? checkIn.appointment : null;
   const createMutation = useCreatePatientMutation();
   const updateMutation = useUpdatePatientMutation();
   const photoMutation = useUploadPatientPhotoMutation();
@@ -222,6 +227,11 @@ export default function PatientRegistrationCreatePage() {
   // its failure keeps the user on the form (apiError prop) instead of navigating past a lost
   // visit record — Registration Details is the whole point of this tab, so failing to save it
   // shouldn't look like success.
+  function visitRequest(values: PatientRegistrationUiFormValues) {
+    const request = toCreatePatientVisitRequest(values.registration);
+    return appointment ? checkIn.applyToVisitRequest(request) : request;
+  }
+
   async function handleSubmit(values: PatientRegistrationUiFormValues, documents: StagedDocuments) {
     if (savedPatient) {
       const payload = toRequest(values, documents);
@@ -237,7 +247,8 @@ export default function PatientRegistrationCreatePage() {
           setLastSavedPayloadJson(payloadJson);
           patientId = patient.id;
         }
-        await createVisitMutation.mutateAsync({ id: patientId, request: toCreatePatientVisitRequest(values.registration) });
+        const visit = await createVisitMutation.mutateAsync({ id: patientId, request: visitRequest(values) });
+        await checkIn.complete(patientId, visit.visitId);
       } catch {
         // Surfaced via the existing apiError prop — stay on the form.
         return;
@@ -259,7 +270,8 @@ export default function PatientRegistrationCreatePage() {
       setSavedPatient(patient);
       setLastSavedPayloadJson(JSON.stringify(toRequest(values, documents)));
       uploadStagedDocuments(patient.id, documents);
-      await createVisitMutation.mutateAsync({ id: patient.id, request: toCreatePatientVisitRequest(values.registration) });
+      const visit = await createVisitMutation.mutateAsync({ id: patient.id, request: visitRequest(values) });
+      await checkIn.complete(patient.id, visit.visitId);
       markSaved();
       navigate(`/patients/registration/${patient.id}`);
     } catch {
@@ -278,8 +290,16 @@ export default function PatientRegistrationCreatePage() {
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
+      <AppointmentCheckInBanner appointment={appointment} staleAppointment={checkIn.staleAppointment} />
+      {checkIn.isLoading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading appointment…
+        </div>
+      ) : (
       <RequirePermission permission="patient-management.create">
         <PatientRegistrationForm
+          initialValues={appointment ? registrationPrefill(appointment) : undefined}
           isSubmitting={createMutation.isPending || updateMutation.isPending || createVisitMutation.isPending}
           isSavingAndProceeding={createMutation.isPending || updateMutation.isPending}
           apiError={toDisplayError(createMutation.error ?? updateMutation.error ?? createVisitMutation.error)}
@@ -289,6 +309,7 @@ export default function PatientRegistrationCreatePage() {
           onDirtyChange={setIsDirty}
         />
       </RequirePermission>
+      )}
       </div>
 
       <UnsavedChangesDialog open={showUnsavedDialog} onConfirmDiscard={confirmDiscard} onCancel={cancelDiscard} />

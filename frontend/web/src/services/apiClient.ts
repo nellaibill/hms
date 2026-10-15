@@ -1,6 +1,7 @@
 import {
   ActivityLogApi,
   AdmissionsApi,
+  AppointmentsApi,
   AppointmentTypesApi,
   AttendanceApi,
   AuthApi,
@@ -130,6 +131,7 @@ export const weeklyRostersApi = new WeeklyRostersApi(httpClient);
 export const shiftAssignmentsApi = new ShiftAssignmentsApi(httpClient);
 export const shiftSwapRequestsApi = new ShiftSwapRequestsApi(httpClient);
 export const eventsApi = new EventsApi(httpClient);
+export const appointmentsApi = new AppointmentsApi(httpClient);
 export const wardsApi = new WardsApi(httpClient);
 export const bedsApi = new BedsApi(httpClient);
 export const admissionsApi = new AdmissionsApi(httpClient);

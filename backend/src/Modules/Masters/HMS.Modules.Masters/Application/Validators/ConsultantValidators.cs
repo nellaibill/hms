@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.Masters.Contracts;
+using HMS.Modules.Masters.Domain;
 
 namespace HMS.Modules.Masters.Application.Validators;
 
@@ -28,6 +29,15 @@ internal class CreateConsultantRequestValidator : AbstractValidator<CreateConsul
             .GreaterThan(x => x.VisitStartTime2)
             .When(x => x.VisitStartTime2.HasValue && x.VisitEndTime2.HasValue)
             .WithMessage("Second visit end time must be after its start time.");
+
+        RuleFor(x => x.AppointmentSlotMinutes)
+            .InclusiveBetween(Consultant.MinAppointmentSlotMinutes, Consultant.MaxAppointmentSlotMinutes)
+            .When(x => x.AppointmentSlotMinutes.HasValue)
+            .WithMessage($"Appointment slot length must be between {Consultant.MinAppointmentSlotMinutes} and {Consultant.MaxAppointmentSlotMinutes} minutes.");
+        RuleFor(x => x.PatientsPerSlot)
+            .InclusiveBetween(1, Consultant.MaxPatientsPerSlot)
+            .When(x => x.PatientsPerSlot.HasValue)
+            .WithMessage($"Patients per slot must be between 1 and {Consultant.MaxPatientsPerSlot}.");
 
         RuleFor(x => x.ConsultationTypeCharges).NotEmpty().WithMessage("Select at least one consultation type.");
         RuleForEach(x => x.ConsultationTypeCharges)
@@ -62,6 +72,15 @@ internal class UpdateConsultantRequestValidator : AbstractValidator<UpdateConsul
             .GreaterThan(x => x.VisitStartTime2)
             .When(x => x.VisitStartTime2.HasValue && x.VisitEndTime2.HasValue)
             .WithMessage("Second visit end time must be after its start time.");
+
+        RuleFor(x => x.AppointmentSlotMinutes)
+            .InclusiveBetween(Consultant.MinAppointmentSlotMinutes, Consultant.MaxAppointmentSlotMinutes)
+            .When(x => x.AppointmentSlotMinutes.HasValue)
+            .WithMessage($"Appointment slot length must be between {Consultant.MinAppointmentSlotMinutes} and {Consultant.MaxAppointmentSlotMinutes} minutes.");
+        RuleFor(x => x.PatientsPerSlot)
+            .InclusiveBetween(1, Consultant.MaxPatientsPerSlot)
+            .When(x => x.PatientsPerSlot.HasValue)
+            .WithMessage($"Patients per slot must be between 1 and {Consultant.MaxPatientsPerSlot}.");
 
         RuleFor(x => x.ConsultationTypeCharges).NotEmpty().WithMessage("Select at least one consultation type.");
         RuleForEach(x => x.ConsultationTypeCharges)

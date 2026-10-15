@@ -68,6 +68,11 @@ interface PatientRegistrationFormProps {
    * unsaved-changes navigation guard (useUnsavedChangesGuard) — see that hook's own comment
    * for why the guard itself has to live where the post-save navigate() call does. */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Pre-fills the form — e.g. a booked first-time caller's name, phone and doctor when they
+   * are checked in. Read once, on mount. */
+  initialValues?: Partial<Omit<PatientRegistrationUiFormValues, 'registration'>> & {
+    registration?: Partial<PatientRegistrationUiFormValues['registration']>;
+  };
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details'] as const;
@@ -187,6 +192,7 @@ export function PatientRegistrationForm({
   onSaveAndProceed,
   onSubmit,
   onDirtyChange,
+  initialValues,
 }: PatientRegistrationFormProps) {
   const navigate = useNavigate();
 
@@ -203,7 +209,9 @@ export function PatientRegistrationForm({
     formState: { errors, isDirty },
   } = useForm<PatientRegistrationUiFormValues>({
     resolver: zodResolver(patientRegistrationUiSchema),
-    defaultValues,
+    defaultValues: initialValues
+      ? { ...defaultValues, ...initialValues, registration: { ...defaultValues.registration, ...initialValues.registration } }
+      : defaultValues,
     // Deliberately not `mode: 'onChange'` — that ran a full schema validation pass on every
     // keystroke/selection, overlapping with goToTab's own explicit `trigger()` call on Next.
     // Two independent async validation passes writing to the same formState.errors can resolve

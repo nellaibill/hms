@@ -37,6 +37,31 @@ _To be documented._
 
 ## Decisions
 
+### ADR-100: Appointments — book ahead into consultant slots; check-in records a normal OPD visit
+**Date:** 2026-10-15
+**Status:** Accepted
+
+**Context**
+Reception could only record a visit for a patient who was already at the desk. `PatientVisitConsultation.AppointmentTime` was "now" for every walk-in, and `HMS.Modules.Appointments` was an empty placeholder project. Hospitals take phone bookings, give each patient a token, block a doctor's clinic for leave, and need to see who didn't come.
+
+**Decision**
+- A new `appointments` schema owns `Appointment` (one booking) and `ConsultantBlock` (doctor leave). It is an optional, per-hospital feature (`FeatureCatalog` key `appointments`); switching it on migrates the schema.
+- Slots are not stored. `SlotPlanner` cuts the consultant master's clinic days and one or two visiting sessions into fixed slots, using two new optional consultant fields: `AppointmentSlotMinutes` (blank = 15) and `PatientsPerSlot` (blank = 1). The slot grid and the save-time check use the same planner, so they always agree.
+- Token numbers follow slot order through the day: the slot's position × patients per slot + the seat taken. Session 2 carries on after session 1. A token is fixed when the booking is made and changes only on reschedule.
+- A booking holds a seat (`SeatNumber`). A unique index over consultant, date, start time and seat, filtered to Booked/Arrived rows, is what stops two desks taking the same seat at the same moment. The losing save gets `APPOINTMENTS.SLOT_FULL`.
+- A booking is for a registered patient (name, phone and UHID copied from the record) or for a first-time caller known only by name and phone. Duplicates (same consultant, same day) are matched by PatientId, or by phone and name together for callers, since families share phones.
+- Check-in is not a separate clinical record. "Check in" opens the existing Add Visit page, or New Patient Registration for a caller, pre-filled from the booking. Saving records an ordinary OPD visit at the slot's start time, then `POST /appointments/{id}/arrive` links the visit and, for a caller, the newly registered patient. Patients never references Appointments, so there is no cycle; if the second call fails the visit still stands and reception is told to finish check-in from the diary.
+- Only Booked can change. Reschedule (same consultant), cancel (reason required), no-show (on or after the day) and arrive (on the day only) are the only transitions.
+- Leave blocks close a whole day or one session over a date range. Existing bookings inside a new block are listed back to reception, not cancelled.
+- Permissions reuse `patient-management.*` (create to book, edit for everything else), so no new permission keys need seeding into existing hospitals. `clinical-care.view` can also read.
+- Every change writes to the Activity Log under module `Appointments`.
+
+**Consequences**
+- Changing a consultant's slot length or patients per slot affects new bookings only; existing ones keep their times and tokens, so a day booked across a change can show a repeated token number. Reception should change slot settings when the diary is empty.
+- No SMS confirmation or reminder yet: it needs an SMS provider and DLT-registered templates. The booking keeps the phone number to add this later.
+- No online self-booking or patient portal; bookings are made by staff.
+- Dates and times are hospital-local (`DateOnly`/`TimeOnly`, India Standard Time via `MonthlySeries.HospitalTimeZone`), not instants.
+
 ### ADR-099: Login failures say what went wrong, except where that would confirm a username exists
 **Date:** 2026-10-14
 **Status:** Accepted (revisits the "every rejection looks identical" part of the account-lockout entry below)

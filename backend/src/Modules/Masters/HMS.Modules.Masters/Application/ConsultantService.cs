@@ -84,7 +84,9 @@ internal class ConsultantService : IConsultantService
             ToSelections(request.ConsultationTypeCharges),
             actorId,
             request.VisitStartTime2,
-            request.VisitEndTime2);
+            request.VisitEndTime2,
+            request.AppointmentSlotMinutes,
+            request.PatientsPerSlot);
 
         await _repository.AddAsync(consultant, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -123,7 +125,9 @@ internal class ConsultantService : IConsultantService
             ToSelections(request.ConsultationTypeCharges),
             actorId,
             request.VisitStartTime2,
-            request.VisitEndTime2);
+            request.VisitEndTime2,
+            request.AppointmentSlotMinutes,
+            request.PatientsPerSlot);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<ConsultantResponse>.Success(consultant.ToResponse());

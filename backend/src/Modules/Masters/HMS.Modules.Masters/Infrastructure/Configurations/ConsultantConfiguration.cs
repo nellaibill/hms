@@ -36,6 +36,8 @@ internal class ConsultantConfiguration : IEntityTypeConfiguration<Consultant>
         builder.Property(c => c.VisitEndTime).HasColumnName("visit_end_time");
         builder.Property(c => c.VisitStartTime2).HasColumnName("visit_start_time_2");
         builder.Property(c => c.VisitEndTime2).HasColumnName("visit_end_time_2");
+        builder.Property(c => c.AppointmentSlotMinutes).HasColumnName("appointment_slot_minutes");
+        builder.Property(c => c.PatientsPerSlot).HasColumnName("patients_per_slot");
 
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(c => c.CreatedBy).HasColumnName("created_by");

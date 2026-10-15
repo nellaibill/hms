@@ -5,7 +5,7 @@ import { defaultReportDateRange } from '@/lib/reportDateRange';
  * ActivityLogModules / ActivityLogActions) — the API has no "list distinct values" endpoint,
  * so the filter dropdowns mirror those contract constants. Add a value here when a new module
  * or action starts logging. */
-export const ACTIVITY_MODULES = ['Patients', 'Identity', 'Billing'] as const;
+export const ACTIVITY_MODULES = ['Patients', 'Identity', 'Billing', 'Appointments'] as const;
 export const ACTIVITY_ACTIONS = ['Create', 'Update', 'Delete', 'Payment', 'Void'] as const;
 
 const ACTION_LABELS: Record<string, string> = {

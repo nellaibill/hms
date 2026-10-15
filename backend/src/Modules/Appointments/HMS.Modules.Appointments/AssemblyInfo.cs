@@ -1,0 +1,11 @@
+using System.Runtime.CompilerServices;
+
+// Everything outside Contracts/ is internal to this module (docs/Architecture.md §4).
+// The unit test project is the one sanctioned friend assembly, so tests can exercise
+// Domain/Application/Infrastructure directly instead of only through the public API.
+[assembly: InternalsVisibleTo("HMS.UnitTests")]
+
+// NSubstitute (via Castle.Core's DynamicProxy) generates mock implementations of internal
+// interfaces such as IAppointmentRepository in a dynamically emitted assembly named
+// "DynamicProxyGenAssembly2".
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

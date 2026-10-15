@@ -4,6 +4,7 @@ import {
   BarChart3,
   BedDouble,
   Briefcase,
+  CalendarClock,
   CalendarDays,
   ClipboardList,
   Database,
@@ -76,6 +77,7 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   branding: { label: 'Branding', description: 'Logo, theme, hospital settings', icon: Palette, category: 'core' },
 
   opd: { label: 'Out Patient Department (OPD)', description: 'Outpatient queue and scheduling', icon: Stethoscope, category: 'clinical' },
+  appointments: { label: 'Appointments', description: 'Book ahead by consultant slot, tokens, doctor leave', icon: CalendarClock, category: 'clinical' },
   'opd-consultation': { label: 'OPD Consultation', description: 'Consultation notes, diagnosis, plan', icon: ClipboardList, category: 'clinical' },
   ipd: { label: 'IPD (In-Patient Department)', description: 'Admissions, beds, nursing, orders', icon: BedDouble, category: 'clinical' },
   'discharge-summary': { label: 'Discharge Summary', description: 'Clinical discharge documents', icon: FileCheck, category: 'clinical' },

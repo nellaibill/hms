@@ -34,6 +34,7 @@ export * from './hr/leaveType';
 export * from './hr/leaveRequest';
 export * from './hr/hrDashboard';
 export * from './calendar/event';
+export * from './appointments/appointment';
 export * from './ipd/ward';
 export * from './ipd/bed';
 export * from './ipd/admission';
