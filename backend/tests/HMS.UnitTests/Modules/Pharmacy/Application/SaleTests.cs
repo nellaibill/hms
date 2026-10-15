@@ -396,6 +396,37 @@ public class SaleServiceTests
     }
 
     [Fact]
+    public async Task GetPatientBillsAsync_GivesTheBillsWithTheirLinesAndTheReturnsAgainstThem()
+    {
+        var bill = (await _sut.CreateAsync(Cart() with { PatientId = _patientId }, null, CancellationToken.None)).Value!;
+        var saleReturn = (await _sut.CreateReturnAsync(bill.Id, new CreateSaleReturnRequest { Lines = [new SaleReturnLineRequest { SaleLineId = bill.Lines[0].Id, Quantity = 10m }] }, null, CancellationToken.None)).Value!;
+        PharmacySaleReturn? savedReturn = null;
+        _repository.When(r => r.AddReturnAsync(Arg.Any<PharmacySaleReturn>(), Arg.Any<CancellationToken>())).Do(call => savedReturn = call.Arg<PharmacySaleReturn>());
+        await _sut.CreateReturnAsync(bill.Id, new CreateSaleReturnRequest { Lines = [new SaleReturnLineRequest { SaleLineId = bill.Lines[0].Id, Quantity = 5m }] }, null, CancellationToken.None);
+        _repository.GetForPatientAsync(_patientId, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([_saved!]);
+        _repository.GetReturnsForSalesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([savedReturn!]);
+
+        var result = await _sut.GetPatientBillsAsync(_patientId, CancellationToken.None);
+
+        result.Bills.Should().ContainSingle().Which.Should().Match<SaleResponse>(b => b.BillNo == bill.BillNo && b.Lines.Count == 1 && b.StoreName == _store.Name);
+        result.Bills[0].Lines[0].ReturnedQuantity.Should().Be(15m);
+        result.Returns.Should().ContainSingle().Which.SaleId.Should().Be(bill.Id);
+        saleReturn.SaleId.Should().Be(bill.Id);
+    }
+
+    [Fact]
+    public async Task GetPatientBillsAsync_ForAPatientWithNoBills_IsEmpty_AndLooksUpNothingElse()
+    {
+        _repository.GetForPatientAsync(_patientId, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _sut.GetPatientBillsAsync(_patientId, CancellationToken.None);
+
+        result.Bills.Should().BeEmpty();
+        result.Returns.Should().BeEmpty();
+        await _repository.DidNotReceiveWithAnyArgs().GetReturnsForSalesAsync(default!, default);
+    }
+
+    [Fact]
     public async Task CreateReturnAsync_PutsTheGoodsBackAndRefundsWhatWasPaidForThem()
     {
         var bill = (await _sut.CreateAsync(Cart(), null, CancellationToken.None)).Value!;

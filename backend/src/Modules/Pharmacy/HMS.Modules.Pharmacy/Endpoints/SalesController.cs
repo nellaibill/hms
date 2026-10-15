@@ -51,6 +51,16 @@ public class SalesController : PharmacyControllerBase
     public async Task<IActionResult> GetPaged([FromQuery] SaleListQuery query, CancellationToken cancellationToken)
         => Paged(await _service.GetPagedAsync(query, cancellationToken));
 
+    /// <summary>A patient's pharmacy bills with their lines, and the returns against them — the
+    /// patient record's Billing and Timeline read this. Open to pharmacy and billing staff.</summary>
+    [Authorize]
+    [HttpGet("patient/{patientId:guid}")]
+    public async Task<IActionResult> GetForPatient(Guid patientId, CancellationToken cancellationToken)
+    {
+        if (!User.HasPermission("pharmacy.view") && !User.HasPermission("finance-billing.view")) return Forbid();
+        return Data(await _service.GetPatientBillsAsync(patientId, cancellationToken));
+    }
+
     /// <summary>Gets one bill with its lines and payments.</summary>
     [Authorize]
     [RequirePermission("pharmacy.view")]

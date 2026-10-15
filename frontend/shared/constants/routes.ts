@@ -392,6 +392,7 @@ export const API_ROUTES = {
     sales: {
       base: '/api/v1/pharmacy/sales',
       byId: (id: string) => `/api/v1/pharmacy/sales/${id}`,
+      forPatient: (patientId: string) => `/api/v1/pharmacy/sales/patient/${patientId}`,
       payments: (id: string) => `/api/v1/pharmacy/sales/${id}/payments`,
       returnsFor: (id: string) => `/api/v1/pharmacy/sales/${id}/returns`,
       returns: '/api/v1/pharmacy/sales/returns',

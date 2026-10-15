@@ -191,6 +191,12 @@ export interface SaleReturnResponse {
   lines: SaleReturnLineResponse[];
 }
 
+/** A patient's pharmacy bills with their lines, and the returns against them (both newest first). */
+export interface PatientPharmacyBillsResponse {
+  bills: SaleResponse[];
+  returns: SaleReturnResponse[];
+}
+
 export interface SaleReturnListQuery extends PagedQuery {
   storeId?: string;
   saleId?: string;

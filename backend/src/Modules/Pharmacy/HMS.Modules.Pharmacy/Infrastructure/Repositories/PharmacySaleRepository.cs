@@ -76,6 +76,31 @@ internal class PharmacySaleRepository : IPharmacySaleRepository
         return (page.Select(p => (p.Sale, p.LineCount)).ToList(), totalCount);
     }
 
+    public async Task<IReadOnlyList<PharmacySale>> GetForPatientAsync(Guid patientId, int max, CancellationToken cancellationToken)
+        => await _dbContext.Sales.AsNoTracking()
+            .Where(s => s.PatientId == patientId)
+            .OrderByDescending(s => s.SaleDate)
+            .Take(max)
+            .Include(s => s.Lines.OrderBy(l => l.LineNo))
+            .Include(s => s.Payments.OrderBy(p => p.PaidAt))
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<PharmacySaleReturn>> GetReturnsForSalesAsync(IReadOnlyCollection<Guid> saleIds, CancellationToken cancellationToken)
+    {
+        if (saleIds.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = saleIds.Distinct().ToList();
+        return await _dbContext.SaleReturns.AsNoTracking()
+            .Where(r => ids.Contains(r.SaleId))
+            .OrderByDescending(r => r.ReturnDate)
+            .Include(r => r.Lines)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<PrescriptionBillResponse>>> GetBillsForPrescriptionsAsync(IReadOnlyCollection<Guid> prescriptionIds, CancellationToken cancellationToken)
     {
         if (prescriptionIds.Count == 0)
