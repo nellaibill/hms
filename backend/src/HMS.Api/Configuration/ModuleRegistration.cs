@@ -1,5 +1,6 @@
 using HMS.Api.Provisioning;
 using HMS.Modules.ActivityLog;
+using HMS.Modules.Appointments;
 using HMS.Modules.Backups;
 using HMS.Modules.Billing;
 using HMS.Modules.Branding;
@@ -105,6 +106,11 @@ public static class ModuleRegistration
         // this point).
         services.AddOpdConsultationModule(configuration);
 
+        // Appointments depends on Masters' (consultant schedule, department, appointment type),
+        // Patients' (patient and visit lookups) and ActivityLog's public service seams, so it
+        // registers after all three.
+        services.AddAppointmentsModule(configuration);
+
         // Notifications depends on Identity's IUserService public service seam (resolving a
         // recipient's email/phone number for the background Email/Sms delivery pipeline —
         // docs/DecisionLog.md ADR-032), so it must register after AddIdentityModule
@@ -136,9 +142,6 @@ public static class ModuleRegistration
         // Backups depends on Platform's public ITenantDirectory.GetAllActiveTenantsAsync (the
         // daily job's list of what to dump), so it registers after AddPlatformModule above.
         services.AddBackupsModule(configuration);
-
-        // Future modules register here, e.g.:
-        // services.AddAppointmentsModule(configuration);
 
         return services;
     }

@@ -48,6 +48,21 @@ internal class Consultant : Entity
     public TimeOnly? VisitStartTime2 { get; private set; }
     public TimeOnly? VisitEndTime2 { get; private set; }
 
+    /// <summary>Length of one appointment slot, in minutes, when the Appointments module carves
+    /// this consultant's visiting sessions into bookable slots. Null means "use the default"
+    /// (<see cref="DefaultAppointmentSlotMinutes"/>), so consultants created before appointments
+    /// existed keep working without a backfill.</summary>
+    public int? AppointmentSlotMinutes { get; private set; }
+
+    /// <summary>How many patients can be booked into the same slot (e.g. 2 for a clinic that
+    /// sees two patients every 15 minutes). Null means 1.</summary>
+    public int? PatientsPerSlot { get; private set; }
+
+    public const int DefaultAppointmentSlotMinutes = 15;
+    public const int MinAppointmentSlotMinutes = 5;
+    public const int MaxAppointmentSlotMinutes = 240;
+    public const int MaxPatientsPerSlot = 50;
+
     /// <summary>Which consultation types (billing categories, e.g. "Doctor's Consultation
     /// (In-house) - Regular") this consultant offers, and what the hospital pays them for each
     /// (ConsultantConsultationType.ConsultantCharge) — a many-to-many replaced wholesale on
@@ -100,10 +115,13 @@ internal class Consultant : Entity
         IReadOnlyList<ConsultationTypeSelection> consultationTypes,
         Guid? createdBy,
         TimeOnly? visitStartTime2 = null,
-        TimeOnly? visitEndTime2 = null)
+        TimeOnly? visitEndTime2 = null,
+        int? appointmentSlotMinutes = null,
+        int? patientsPerSlot = null)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         GuardAvailability(availableDays, visitStartTime, visitEndTime, visitStartTime2, visitEndTime2);
+        GuardSlotSettings(appointmentSlotMinutes, patientsPerSlot);
 
         var consultant = new Consultant(
             Guid.CreateVersion7(),
@@ -119,6 +137,8 @@ internal class Consultant : Entity
             visitEndTime2,
             createdBy);
 
+        consultant.AppointmentSlotMinutes = appointmentSlotMinutes;
+        consultant.PatientsPerSlot = patientsPerSlot;
         consultant.SetConsultationTypes(consultationTypes);
 
         return consultant;
@@ -136,10 +156,13 @@ internal class Consultant : Entity
         IReadOnlyList<ConsultationTypeSelection> consultationTypes,
         Guid? updatedBy,
         TimeOnly? visitStartTime2 = null,
-        TimeOnly? visitEndTime2 = null)
+        TimeOnly? visitEndTime2 = null,
+        int? appointmentSlotMinutes = null,
+        int? patientsPerSlot = null)
     {
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         GuardAvailability(availableDays, visitStartTime, visitEndTime, visitStartTime2, visitEndTime2);
+        GuardSlotSettings(appointmentSlotMinutes, patientsPerSlot);
 
         Name = name.Trim();
         DepartmentId = departmentId;
@@ -151,6 +174,8 @@ internal class Consultant : Entity
         VisitEndTime = visitEndTime;
         VisitStartTime2 = visitStartTime2;
         VisitEndTime2 = visitEndTime2;
+        AppointmentSlotMinutes = appointmentSlotMinutes;
+        PatientsPerSlot = patientsPerSlot;
         SetConsultationTypes(consultationTypes);
         MarkUpdated(updatedBy);
     }
@@ -169,6 +194,19 @@ internal class Consultant : Entity
         foreach (var selection in consultationTypes.DistinctBy(s => s.ConsultationTypeId))
         {
             _consultationTypes.Add(ConsultantConsultationType.Create(Id, selection.ConsultationTypeId, selection.ConsultantCharge));
+        }
+    }
+
+    private static void GuardSlotSettings(int? appointmentSlotMinutes, int? patientsPerSlot)
+    {
+        if (appointmentSlotMinutes is < MinAppointmentSlotMinutes or > MaxAppointmentSlotMinutes)
+        {
+            throw new ArgumentException($"Appointment slot length must be between {MinAppointmentSlotMinutes} and {MaxAppointmentSlotMinutes} minutes.");
+        }
+
+        if (patientsPerSlot is < 1 or > MaxPatientsPerSlot)
+        {
+            throw new ArgumentException($"Patients per slot must be between 1 and {MaxPatientsPerSlot}.");
         }
     }
 

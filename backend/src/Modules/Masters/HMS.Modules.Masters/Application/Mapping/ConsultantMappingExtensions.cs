@@ -19,6 +19,8 @@ internal static class ConsultantMappingExtensions
         VisitEndTime = consultant.VisitEndTime,
         VisitStartTime2 = consultant.VisitStartTime2,
         VisitEndTime2 = consultant.VisitEndTime2,
+        AppointmentSlotMinutes = consultant.AppointmentSlotMinutes,
+        PatientsPerSlot = consultant.PatientsPerSlot,
         ConsultationTypeCharges = consultant.ConsultationTypes
             .Select(ct => new ConsultationTypeChargeDto(ct.ConsultationTypeId, ct.ConsultantCharge))
             .ToList(),

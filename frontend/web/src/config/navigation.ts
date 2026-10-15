@@ -20,6 +20,7 @@ import {
   CalendarDays,
   MessageSquare,
   BarChart3,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 // Flat, two-section Primary Navigation model — Dashboard stands alone at the
@@ -90,6 +91,17 @@ export const navigationTree: NavNode[] = [
     description: 'Register a new patient or find an existing one to update their registration.',
     permission: 'patient-management',
     feature: 'patients',
+    section: 'Clinical',
+  },
+  {
+    type: 'leaf',
+    label: 'Appointments',
+    path: '/clinical/appointments',
+    icon: CalendarClock,
+    iconColor: 'text-purple-500',
+    description: 'Book patients into consultant slots, reschedule, cancel, block doctor leave and check patients in.',
+    permission: 'patient-management',
+    feature: 'appointments',
     section: 'Clinical',
   },
   {

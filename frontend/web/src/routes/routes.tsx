@@ -28,6 +28,7 @@ const PatientRegistrationCreatePage = lazy(() => import('../pages/patients/Patie
 const PatientViewPage = lazy(() => import('../pages/patients/PatientViewPage'));
 const PatientEditPage = lazy(() => import('../pages/patients/PatientEditPage'));
 const PatientRecordVisitPage = lazy(() => import('../pages/patients/PatientRecordVisitPage'));
+const AppointmentsPage = lazy(() => import('../pages/appointments/AppointmentsPage'));
 const PatientBulkImportPage = lazy(() => import('../pages/patients/PatientBulkImportPage'));
 const PatientImportHistoryPage = lazy(() => import('../pages/patients/PatientImportHistoryPage'));
 const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
@@ -192,7 +193,15 @@ const specialPages: Record<string, React.ReactNode> = {
 // previously relied on nav-level filtering alone, and '/reports' specifically exposed a full
 // patient PII export (Excel/PDF) with zero permission gate at all. See documentsRoutes/
 // patientReportsRoutes below.
-const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/diagnostics/radiology', '/documents', '/reports', '/admin/activity-log']);
+const routeGatedLeafPaths = new Set([
+  '/finance/accounts',
+  '/diagnostics/lab/dashboard',
+  '/diagnostics/radiology',
+  '/documents',
+  '/reports',
+  '/admin/activity-log',
+  '/clinical/appointments',
+]);
 
 // Document Management — no longer a sidebar item; reachable from TopHeader's Documents icon. Route-gated via
 // RequirePermissionRoute using the nav leaf's own permission ('records-compliance',
@@ -530,6 +539,21 @@ const diagnosticsRoutes = [
 // 'central-laboratory': that one gates Masters' pre-existing diagnostics-admin catalog pages, a
 // separate concern from this real backend workflow module (see FeatureCatalog.cs's own doc
 // comment on the two keys).
+// Appointments (HMS.Modules.Appointments) — the '/clinical/appointments' nav leaf. Guarded like
+// labWorkflowRoutes: the 'appointments' tenant feature, then 'patient-management.view', matching
+// AppointmentsController's server-side check for reception.
+const appointmentsRoutes = [
+  {
+    element: <RequireFeatureRoute feature="appointments" />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="patient-management.view" />,
+        children: [{ path: 'clinical/appointments', element: withSuspense(<AppointmentsPage />) }],
+      },
+    ],
+  },
+];
+
 const labWorkflowRoutes = [
   {
     element: <RequireFeatureRoute feature="laboratory" />,
@@ -639,6 +663,7 @@ export const router = createBrowserRouter(
             ...pharmacyRoutes,
             ...diagnosticsRoutes,
             ...labWorkflowRoutes,
+            ...appointmentsRoutes,
             ...radiologyRoutes,
             ...dischargeSummaryRoutes,
             ...opdConsultationRoutes,

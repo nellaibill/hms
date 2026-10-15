@@ -14,9 +14,7 @@ namespace HMS.Shared.Kernel;
 ///   this list never provisions or migrates anything (see that interface's own doc comment).
 /// - <see cref="UiOnly"/>: modules with a frontend page today but no backend module/schema yet
 ///   (e.g. OPD, Central Laboratory) — toggling these only controls sidebar/route visibility;
-///   there's nothing server-side to provision or enforce for them. Appointments remains
-///   excluded entirely — a placeholder project with no DbContext/migrations and no frontend
-///   page either. "finance" (UiOnly, below) is a distinct, broader nav-level key for the
+///   there's nothing server-side to provision or enforce for them. "finance" (UiOnly, below) is a distinct, broader nav-level key for the
 ///   Accounts/Finance section and is NOT the same thing as "billing" here — Billing
 ///   (HMS.Modules.Billing, schema "billing") is the real Invoice/InvoiceLineItem module,
 ///   already used unconditionally by Patient Registration's own Billing step and by every
@@ -84,6 +82,11 @@ public static class FeatureCatalog
         // schema, so toggling it on provisions that schema. Optional, not Mandatory: nothing else
         // depends on it.
         "radiology",
+
+        // HMS.Modules.Appointments, schema "appointments" — booking ahead into a consultant's
+        // slots, rescheduling, cancelling, no-shows, leave blocks and check-in. Optional: a
+        // hospital that only takes walk-ins doesn't need it, and nothing else depends on it.
+        "appointments",
     ];
 
     /// <summary>UI-only — no real backend module/schema behind these yet. Kept as a separate

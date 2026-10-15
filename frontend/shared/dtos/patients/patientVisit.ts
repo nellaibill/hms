@@ -23,6 +23,9 @@ export interface VisitConsultation {
   departmentId: string;
   consultantId: string;
   consultationTypeId?: string | null;
+  /** ISO instant the patient is expected; the API defaults it to "now" (a walk-in). Check-in
+   * from a booked appointment sends the slot's start time instead. */
+  appointmentTime?: string | null;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.PatientVisitResponse. All consultation lines

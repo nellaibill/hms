@@ -29,6 +29,8 @@ interface RecordVisitFormProps {
   /** Mirrors the form's own dirty state up to the parent page, which owns the actual
    * unsaved-changes navigation guard (useUnsavedChangesGuard). */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Pre-fills the form — e.g. from a booked appointment being checked in. Read once, on mount. */
+  initialValues?: Partial<RecordVisitFormValues>;
 }
 
 const defaultValues: RecordVisitFormValues = {
@@ -53,7 +55,7 @@ const defaultValues: RecordVisitFormValues = {
  * Control<PatientRegistrationUiFormValues> and `registration.*` field paths, which don't
  * apply here. Every encounter type except OP also gets a second row of admission fields — see
  * recordVisitFormSchema's own doc comment for what they are. */
-export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, onDirtyChange }: RecordVisitFormProps) {
+export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, onDirtyChange, initialValues }: RecordVisitFormProps) {
   const {
     control,
     handleSubmit,
@@ -63,7 +65,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
     formState: { errors, isDirty },
   } = useForm<RecordVisitFormValues>({
     resolver: zodResolver(recordVisitFormSchema),
-    defaultValues,
+    defaultValues: { ...defaultValues, ...initialValues },
   });
 
   useEffect(() => {

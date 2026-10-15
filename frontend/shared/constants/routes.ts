@@ -301,6 +301,19 @@ export const API_ROUTES = {
       dashboardSummary: '/api/v1/billing/invoices/dashboard-summary',
     },
   },
+  /** Mirrors HMS.Modules.Appointments.Endpoints.AppointmentsController — see appointmentsApi.ts. */
+  appointments: {
+    base: '/api/v1/appointments',
+    byId: (id: string) => `/api/v1/appointments/${id}`,
+    slots: '/api/v1/appointments/slots',
+    summary: '/api/v1/appointments/summary',
+    reschedule: (id: string) => `/api/v1/appointments/${id}/reschedule`,
+    cancel: (id: string) => `/api/v1/appointments/${id}/cancel`,
+    noShow: (id: string) => `/api/v1/appointments/${id}/no-show`,
+    arrive: (id: string) => `/api/v1/appointments/${id}/arrive`,
+    blocks: '/api/v1/appointments/blocks',
+    blockById: (id: string) => `/api/v1/appointments/blocks/${id}`,
+  },
   /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */
   radiology: {
     aiAnalysis: (documentId: string) => `/api/v1/radiology/ai-analysis/documents/${documentId}`,

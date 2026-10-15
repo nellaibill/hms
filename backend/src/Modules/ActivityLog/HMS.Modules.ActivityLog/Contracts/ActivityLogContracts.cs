@@ -21,6 +21,7 @@ public static class ActivityLogModules
     public const string Patients = "Patients";
     public const string Identity = "Identity";
     public const string Billing = "Billing";
+    public const string Appointments = "Appointments";
 }
 
 /// <summary>What a caller supplies to record one audit event. TenantId, UserId (unless

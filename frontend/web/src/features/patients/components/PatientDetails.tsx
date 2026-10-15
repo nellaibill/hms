@@ -49,6 +49,9 @@ import { PatientTimelineTab } from './PatientTimelineTab';
 import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientMedicalInformationTab } from './PatientMedicalInformationTab';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
+// Direct file import, not the '@/features/appointments' barrel: that barrel imports back into
+// features/patients, and a cycle through two barrels is easy to break by accident.
+import { PatientAppointmentsCard } from '@/features/appointments/components/PatientAppointmentsCard';
 import type { DocumentResponse, PatientVisit, VisitConsultation } from '@hms/shared';
 
 interface PatientDetailsProps {
@@ -637,6 +640,8 @@ function OverviewTab({ patient, onNavigateToTab }: { patient: Patient; onNavigat
       </div>
 
       <AtAGlanceStrip patient={patient} />
+
+      <PatientAppointmentsCard patient={patient} />
 
       <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
         <RecentVisitsCard patient={patient} onViewAll={() => onNavigateToTab('visits')} />

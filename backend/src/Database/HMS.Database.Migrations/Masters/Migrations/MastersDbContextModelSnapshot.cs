@@ -318,6 +318,10 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int?>("AppointmentSlotMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("appointment_slot_minutes");
+
                     b.PrimitiveCollection<string[]>("AvailableDays")
                         .IsRequired()
                         .HasColumnType("text[]")
@@ -360,6 +364,10 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("name");
+
+                    b.Property<int?>("PatientsPerSlot")
+                        .HasColumnType("integer")
+                        .HasColumnName("patients_per_slot");
 
                     b.Property<string>("PhotoUrl")
                         .HasMaxLength(500)

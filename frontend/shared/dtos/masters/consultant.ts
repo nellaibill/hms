@@ -18,6 +18,9 @@ export interface Consultant {
   /** Optional second visiting session on the same days. */
   visitStartTime2?: string | null;
   visitEndTime2?: string | null;
+  /** Appointment slot length in minutes (null = 15) and patients per slot (null = 1). */
+  appointmentSlotMinutes?: number | null;
+  patientsPerSlot?: number | null;
   /** Masters ConsultationType ids this consultant offers, paired with what the hospital pays
    * them for each (nullable — a rate not yet decided). */
   consultationTypeCharges: ConsultationTypeCharge[];
@@ -44,6 +47,9 @@ export interface CreateConsultantRequest {
   /** Optional second visiting session on the same days. */
   visitStartTime2?: string | null;
   visitEndTime2?: string | null;
+  /** Appointment slot length in minutes (null = 15) and patients per slot (null = 1). */
+  appointmentSlotMinutes?: number | null;
+  patientsPerSlot?: number | null;
   consultationTypeCharges: ConsultationTypeCharge[];
 }
 
@@ -60,6 +66,9 @@ export interface UpdateConsultantRequest {
   /** Optional second visiting session on the same days. */
   visitStartTime2?: string | null;
   visitEndTime2?: string | null;
+  /** Appointment slot length in minutes (null = 15) and patients per slot (null = 1). */
+  appointmentSlotMinutes?: number | null;
+  patientsPerSlot?: number | null;
   consultationTypeCharges: ConsultationTypeCharge[];
 }
 
