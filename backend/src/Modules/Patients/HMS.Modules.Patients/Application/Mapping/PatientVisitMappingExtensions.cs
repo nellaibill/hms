@@ -16,6 +16,8 @@ internal static class PatientVisitMappingExtensions
         ArNumber = visit.ArNumber,
         IsReferred = visit.IsReferred,
         ReferredBy = visit.ReferredBy,
+        ReferralName = visit.ReferralName,
+        ReferralMobile = visit.ReferralMobile,
         Category = visit.Category,
         Consultations = visit.Consultations.Select(c => c.ToResponse()).ToList(),
         CreatedAt = visit.CreatedAt,

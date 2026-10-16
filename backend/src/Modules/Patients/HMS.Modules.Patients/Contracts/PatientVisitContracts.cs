@@ -28,6 +28,11 @@ public record CreatePatientVisitRequest
     /// <summary>Required when <see cref="IsReferred"/> is true.</summary>
     public ReferralSource? ReferredBy { get; init; }
 
+    /// <summary>Optional "Referral details" — the referrer's name and 10-digit mobile number.
+    /// Ignored unless <see cref="IsReferred"/> is true.</summary>
+    public string? ReferralName { get; init; }
+    public string? ReferralMobile { get; init; }
+
     public VisitCategory? Category { get; init; }
 }
 
@@ -57,6 +62,8 @@ public record PatientVisitResponse
     public string? ArNumber { get; init; }
     public bool? IsReferred { get; init; }
     public ReferralSource? ReferredBy { get; init; }
+    public string? ReferralName { get; init; }
+    public string? ReferralMobile { get; init; }
     public VisitCategory? Category { get; init; }
     public IReadOnlyList<VisitConsultationResponse> Consultations { get; init; } = [];
     public DateTime CreatedAt { get; init; }

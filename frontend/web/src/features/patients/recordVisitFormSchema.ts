@@ -12,6 +12,13 @@ export function hasAdmissionDetails(encounterType: EncounterTypeUi): boolean {
   return encounterType !== 'OP';
 }
 
+/** An IP admission isn't booked as a consultation, so it has no Consultation Type — every
+ * other encounter type keeps the field. Shared by the Add Visit form and the New Patient
+ * Registration wizard, and applied again in bridging.ts so a value never reaches the request. */
+export function hasConsultationType(encounterType: EncounterTypeUi): boolean {
+  return encounterType !== 'IP';
+}
+
 /** The MLC/NMLC dropdown is one field with two names: an IP or Emergency patient is being
  * admitted, a Day Care or Observation patient is only being observed. */
 export function admissionTypeLabel(encounterType: EncounterTypeUi): string {
@@ -35,6 +42,14 @@ export const recordVisitFormSchema = recordVisitUiSchema
     referral: z.enum(REFERRAL_ANSWERS).optional().or(z.literal('')),
     /** Who referred the patient — only asked for when referral is Yes. */
     referredBy: z.enum(REFERRAL_COLUMN_CATEGORIES).optional().or(z.literal('')),
+    /** "Referral details" — the referrer's name and mobile, optional, asked for when referral is Yes. */
+    referralName: z.string().trim().max(150, 'Referral name must be 150 characters or fewer').optional().or(z.literal('')),
+    referralMobile: z
+      .string()
+      .trim()
+      .regex(/^[0-9]{10}$/, 'Referral mobile number must be exactly 10 digits.')
+      .optional()
+      .or(z.literal('')),
     category: z.enum(VISIT_CATEGORIES).optional().or(z.literal('')),
   })
   .superRefine((data, ctx) => {

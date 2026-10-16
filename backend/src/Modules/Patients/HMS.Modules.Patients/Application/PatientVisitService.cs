@@ -102,7 +102,14 @@ internal class PatientVisitService : IPatientVisitService
         var visitNumber = await _identifierGenerator.NextVisitNumberAsync(request.VisitType, cancellationToken);
 
         var visit = PatientVisit.Create(patientId, request.VisitType, request.AppointmentTypeId, actorId, visitNumber);
-        visit.SetAdmissionDetails(request.AdmissionType, request.ArNumber, request.IsReferred, request.ReferredBy, request.Category);
+        visit.SetAdmissionDetails(
+            request.AdmissionType,
+            request.ArNumber,
+            request.IsReferred,
+            request.ReferredBy,
+            request.ReferralName,
+            request.ReferralMobile,
+            request.Category);
         foreach (var line in request.Consultations)
         {
             visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, line.DepartmentId, line.ConsultantId, line.ConsultationTypeId, line.AppointmentTime), actorId);

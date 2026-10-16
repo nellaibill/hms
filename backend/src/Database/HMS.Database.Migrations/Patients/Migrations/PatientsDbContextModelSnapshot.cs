@@ -539,6 +539,16 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("patient_id");
 
+                    b.Property<string>("ReferralMobile")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("referral_mobile");
+
+                    b.Property<string>("ReferralName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("referral_name");
+
                     b.Property<string>("ReferredBy")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")

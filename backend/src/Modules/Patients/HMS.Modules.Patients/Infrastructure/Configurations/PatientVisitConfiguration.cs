@@ -27,6 +27,8 @@ internal class PatientVisitConfiguration : IEntityTypeConfiguration<PatientVisit
         builder.Property(v => v.ArNumber).HasColumnName("ar_number").HasMaxLength(50);
         builder.Property(v => v.IsReferred).HasColumnName("is_referred");
         builder.Property(v => v.ReferredBy).HasColumnName("referred_by").HasConversion<string>().HasMaxLength(20);
+        builder.Property(v => v.ReferralName).HasColumnName("referral_name").HasMaxLength(150);
+        builder.Property(v => v.ReferralMobile).HasColumnName("referral_mobile").HasMaxLength(20);
         builder.Property(v => v.Category).HasColumnName("category").HasConversion<string>().HasMaxLength(20);
 
         // Standard audit columns.

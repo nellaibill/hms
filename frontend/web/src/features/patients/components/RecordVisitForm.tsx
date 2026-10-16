@@ -15,6 +15,7 @@ import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLab
 import {
   admissionTypeLabel,
   hasAdmissionDetails,
+  hasConsultationType,
   recordVisitFormSchema,
   REFERRAL_ANSWERS,
   VISIT_CATEGORIES,
@@ -42,6 +43,8 @@ const defaultValues: RecordVisitFormValues = {
   arNumber: '',
   referral: '',
   referredBy: '',
+  referralName: '',
+  referralMobile: '',
   category: '',
 };
 
@@ -75,6 +78,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   const consultantId = watch('consultantId');
   const admissionType = watch('admissionType');
   const referral = watch('referral');
+  const showConsultationType = hasConsultationType(encounterType);
   const additionalConsultants = useFieldArray({ control, name: 'additionalConsultants' });
 
   // A consultant picked under the previous department is meaningless once the department
@@ -94,11 +98,18 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
     setValue('arNumber', '');
     setValue('referral', '');
     setValue('referredBy', '');
+    setValue('referralName', '');
+    setValue('referralMobile', '');
     setValue('category', '');
+    // IP hides every Consultation Type picker — don't leave a value set behind them.
+    if (!hasConsultationType(newEncounterType as RecordVisitFormValues['encounterType'])) {
+      setValue('consultationTypeId', '');
+      additionalConsultants.fields.forEach((_, index) => setValue(`additionalConsultants.${index}.consultationTypeId`, ''));
+    }
   }
 
-  // "A.R number" and "Referred by" are each only on screen for one answer of the dropdown before
-  // them (MLC, Yes) — changing that answer clears what was typed/picked under it.
+  // "A.R number" and "Referred by"/"Referral details" are each only on screen for one answer of
+  // the dropdown before them (MLC, Yes) — changing that answer clears what was typed/picked under it.
   function handleAdmissionTypeChange(newAdmissionType: string, onChange: (value: string) => void) {
     onChange(newAdmissionType);
     if (newAdmissionType !== 'MLC') setValue('arNumber', '');
@@ -106,7 +117,11 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 
   function handleReferralChange(newReferral: string, onChange: (value: string) => void) {
     onChange(newReferral);
-    if (newReferral !== 'Yes') setValue('referredBy', '');
+    if (newReferral !== 'Yes') {
+      setValue('referredBy', '');
+      setValue('referralName', '');
+      setValue('referralMobile', '');
+    }
   }
 
   const generalError = apiError?.message ?? null;
@@ -195,25 +210,33 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
               </Button>
             )}
           </Field>
-          <Field label="Consultation Type" htmlFor="consultationType" className="flex min-w-[220px] flex-1 flex-col gap-1">
-            <Controller
-              name="consultationTypeId"
-              control={control}
-              render={({ field }) => (
-                <ConsultationTypeSelect
-                  id="consultationType"
-                  value={field.value ?? ''}
-                  onValueChange={field.onChange}
-                  departmentId={departmentId || undefined}
-                  consultantId={consultantId || undefined}
-                />
-              )}
-            />
-          </Field>
+          {showConsultationType && (
+            <Field label="Consultation Type" htmlFor="consultationType" className="flex min-w-[220px] flex-1 flex-col gap-1">
+              <Controller
+                name="consultationTypeId"
+                control={control}
+                render={({ field }) => (
+                  <ConsultationTypeSelect
+                    id="consultationType"
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                    departmentId={departmentId || undefined}
+                    consultantId={consultantId || undefined}
+                  />
+                )}
+              />
+            </Field>
+          )}
         </div>
 
         {additionalConsultants.fields.map((field, index) => (
-          <AdditionalConsultantRow key={field.id} control={control} index={index} onRemove={() => additionalConsultants.remove(index)} />
+          <AdditionalConsultantRow
+            key={field.id}
+            control={control}
+            index={index}
+            showConsultationType={showConsultationType}
+            onRemove={() => additionalConsultants.remove(index)}
+          />
         ))}
 
         {hasAdmissionDetails(encounterType) && (
@@ -290,6 +313,27 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
                 />
               </Field>
             )}
+            {referral === 'Yes' && (
+              <Field
+                label="Referral details"
+                htmlFor="referralName"
+                error={errors.referralName?.message ?? errors.referralMobile?.message}
+                className="flex w-full flex-col gap-1 sm:w-auto"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input id="referralName" placeholder="Referral name" aria-label="Referral name" className="sm:w-48" {...register('referralName')} />
+                  <Input
+                    id="referralMobile"
+                    placeholder="Mobile number"
+                    aria-label="Referral mobile number"
+                    inputMode="numeric"
+                    maxLength={10}
+                    className="sm:w-36"
+                    {...register('referralMobile')}
+                  />
+                </div>
+              </Field>
+            )}
             <Field label="Category" htmlFor="category" error={errors.category?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Controller
                 name="category"
@@ -329,11 +373,13 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 interface AdditionalConsultantRowProps {
   control: Control<RecordVisitFormValues>;
   index: number;
+  /** False for IP, which has no Consultation Type (see hasConsultationType). */
+  showConsultationType: boolean;
   onRemove: () => void;
 }
 
 /** One "Add another Consultant" row — mirrors PatientRegistrationForm's AdditionalConsultantRow exactly, just against this form's own field paths (no `registration.` prefix). */
-function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsultantRowProps) {
+function AdditionalConsultantRow({ control, index, showConsultationType, onRemove }: AdditionalConsultantRowProps) {
   const departmentField = useController({ control, name: `additionalConsultants.${index}.departmentId` as const });
   const consultantField = useController({ control, name: `additionalConsultants.${index}.consultantId` as const });
   const consultationTypeField = useController({ control, name: `additionalConsultants.${index}.consultationTypeId` as const });
@@ -356,19 +402,21 @@ function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsult
           departmentId={departmentField.field.value || undefined}
         />
       </Field>
-      <Field
-        label={`Consultation Type ${index + 2}`}
-        htmlFor={`additional-consultation-type-${index}`}
-        className="flex min-w-[220px] flex-1 flex-col gap-1"
-      >
-        <ConsultationTypeSelect
-          id={`additional-consultation-type-${index}`}
-          value={consultationTypeField.field.value ?? ''}
-          onValueChange={consultationTypeField.field.onChange}
-          departmentId={departmentField.field.value || undefined}
-          consultantId={consultantField.field.value || undefined}
-        />
-      </Field>
+      {showConsultationType && (
+        <Field
+          label={`Consultation Type ${index + 2}`}
+          htmlFor={`additional-consultation-type-${index}`}
+          className="flex min-w-[220px] flex-1 flex-col gap-1"
+        >
+          <ConsultationTypeSelect
+            id={`additional-consultation-type-${index}`}
+            value={consultationTypeField.field.value ?? ''}
+            onValueChange={consultationTypeField.field.onChange}
+            departmentId={departmentField.field.value || undefined}
+            consultantId={consultantField.field.value || undefined}
+          />
+        </Field>
+      )}
       <Button type="button" variant="ghost" size="icon" aria-label={`Remove consultant ${index + 2}`} onClick={onRemove}>
         <X className="h-4 w-4" />
       </Button>
