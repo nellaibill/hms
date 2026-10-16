@@ -169,8 +169,8 @@ export function fromModeOfArrivalFields(patient: {
  * via "Add another Consultant" but never filled in is silently dropped rather than sent as a
  * malformed line. */
 export function toCreatePatientVisitRequest(registration: RecordVisitUiFormValues): CreatePatientVisitRequest {
-  // IP and Emergency have no Consultation Type field (see hasConsultationType) — dropped here
-  // too, so a value picked before switching the encounter type is never sent.
+  // Only OP has a Consultation Type field (see hasConsultationType) — dropped here for every
+  // other encounter type too, so a value picked before switching away from OP is never sent.
   const withConsultationType = hasConsultationType(registration.encounterType);
   const consultations: VisitConsultation[] = [
     {

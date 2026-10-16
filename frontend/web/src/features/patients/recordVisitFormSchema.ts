@@ -19,11 +19,11 @@ export function hasAdmissionDetails(encounterType: EncounterTypeUi): boolean {
   return encounterType !== 'OP';
 }
 
-/** IP and Emergency aren't booked as consultations, so they have no Consultation Type — OP,
- * Day Care and Observation keep the field. Shared by the Add Visit form and the New Patient
+/** Only an OP visit is booked as a consultation, so only OP has a Consultation Type — IP,
+ * Emergency, Day Care and Observation don't. Shared by the Add Visit form and the New Patient
  * Registration wizard, and applied again in bridging.ts so a value never reaches the request. */
 export function hasConsultationType(encounterType: EncounterTypeUi): boolean {
-  return encounterType !== 'IP' && encounterType !== 'Emergency';
+  return encounterType === 'OP';
 }
 
 /** The MLC/NMLC dropdown is one field with two names: an IP or Emergency patient is being

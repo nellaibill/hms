@@ -103,7 +103,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
     setValue('referralName', '');
     setValue('referralMobile', '');
     setValue('category', '');
-    // IP and Emergency hide every Consultation Type picker — don't leave a value set behind them.
+    // Only OP shows the Consultation Type pickers — don't leave a value set behind them.
     if (!hasConsultationType(newEncounterType as RecordVisitFormValues['encounterType'])) {
       setValue('consultationTypeId', '');
       additionalConsultants.fields.forEach((_, index) => setValue(`additionalConsultants.${index}.consultationTypeId`, ''));
@@ -391,7 +391,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 interface AdditionalConsultantRowProps {
   control: Control<RecordVisitFormValues>;
   index: number;
-  /** False for IP and Emergency, which have no Consultation Type (see hasConsultationType). */
+  /** True only for OP — no other encounter type has a Consultation Type (see hasConsultationType). */
   showConsultationType: boolean;
   onRemove: () => void;
 }
