@@ -33,7 +33,7 @@ internal class PatientVisit : Entity
     public bool? IsReferred { get; private set; }
     public ReferralSource? ReferredBy { get; private set; }
 
-    /// <summary>The referrer's name and mobile number ("Referral details") — kept only on a
+    /// <summary>The referrer's name and mobile number ("Referral name" / "Referral mobile") — kept only on a
     /// referred visit, like <see cref="ReferredBy"/>.</summary>
     public string? ReferralName { get; private set; }
     public string? ReferralMobile { get; private set; }

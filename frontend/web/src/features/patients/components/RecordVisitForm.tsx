@@ -110,7 +110,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
     }
   }
 
-  // "A.R number" and "Referred by"/"Referral details" are each only on screen for one answer of
+  // "A.R number" and "Referred by"/"Referral name"/"Referral mobile" are each only on screen for one answer of
   // the dropdown before them (MLC, Yes) — changing that answer clears what was typed/picked under it.
   function handleAdmissionTypeChange(newAdmissionType: string, onChange: (value: string) => void) {
     onChange(newAdmissionType);
@@ -343,25 +343,14 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
               </Field>
             )}
             {referral === 'Yes' && (
-              <Field
-                label="Referral details"
-                htmlFor="referralName"
-                error={errors.referralName?.message ?? errors.referralMobile?.message}
-                className="flex w-full flex-col gap-1 sm:w-auto"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input id="referralName" placeholder="Referral name" aria-label="Referral name" className="sm:w-48" {...register('referralName')} />
-                  <Input
-                    id="referralMobile"
-                    placeholder="Mobile number"
-                    aria-label="Referral mobile number"
-                    inputMode="numeric"
-                    maxLength={10}
-                    className="sm:w-36"
-                    {...register('referralMobile')}
-                  />
-                </div>
-              </Field>
+              <>
+                <Field label="Referral name" htmlFor="referralName" error={errors.referralName?.message} className="flex w-full flex-col gap-1 sm:w-48">
+                  <Input id="referralName" {...register('referralName')} />
+                </Field>
+                <Field label="Referral mobile" htmlFor="referralMobile" error={errors.referralMobile?.message} className="flex w-full flex-col gap-1 sm:w-36">
+                  <Input id="referralMobile" inputMode="numeric" maxLength={10} {...register('referralMobile')} />
+                </Field>
+              </>
             )}
             <Field label="Category" htmlFor="category" error={errors.category?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Controller

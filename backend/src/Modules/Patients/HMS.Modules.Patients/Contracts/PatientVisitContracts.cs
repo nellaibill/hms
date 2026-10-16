@@ -34,7 +34,7 @@ public record CreatePatientVisitRequest
     /// <summary>Required when <see cref="IsReferred"/> is true.</summary>
     public ReferralSource? ReferredBy { get; init; }
 
-    /// <summary>Optional "Referral details" — the referrer's name and 10-digit mobile number.
+    /// <summary>Optional "Referral name" / "Referral mobile" — the referrer's name and 10-digit mobile number.
     /// Ignored unless <see cref="IsReferred"/> is true.</summary>
     public string? ReferralName { get; init; }
     public string? ReferralMobile { get; init; }

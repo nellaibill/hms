@@ -51,12 +51,12 @@ export const recordVisitFormSchema = recordVisitUiSchema
     referral: z.enum(REFERRAL_ANSWERS).optional().or(z.literal('')),
     /** Who referred the patient — only asked for when referral is Yes. */
     referredBy: z.enum(REFERRAL_COLUMN_CATEGORIES).optional().or(z.literal('')),
-    /** "Referral details" — the referrer's name and mobile, optional, asked for when referral is Yes. */
+    /** "Referral name" / "Referral mobile" — optional, asked for when referral is Yes. */
     referralName: z.string().trim().max(150, 'Referral name must be 150 characters or fewer').optional().or(z.literal('')),
     referralMobile: z
       .string()
       .trim()
-      .regex(/^[0-9]{10}$/, 'Referral mobile number must be exactly 10 digits.')
+      .regex(/^[0-9]{10}$/, 'Referral mobile must be exactly 10 digits.')
       .optional()
       .or(z.literal('')),
     category: z.enum(VISIT_CATEGORIES).optional().or(z.literal('')),

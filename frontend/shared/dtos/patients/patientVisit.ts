@@ -17,7 +17,7 @@ export interface VisitAdmissionDetails {
   isReferred?: boolean | null;
   /** Only when isReferred is true. */
   referredBy?: ReferralColumnCategory | null;
-  /** "Referral details" — the referrer's name and 10-digit mobile number, optional, and only
+  /** "Referral name" / "Referral mobile" — the referrer's name and 10-digit mobile, optional, and only
    * kept when isReferred is true. */
   referralName?: string | null;
   referralMobile?: string | null;

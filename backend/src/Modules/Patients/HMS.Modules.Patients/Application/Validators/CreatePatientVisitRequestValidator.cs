@@ -36,7 +36,7 @@ internal class CreatePatientVisitRequestValidator : AbstractValidator<CreatePati
             .When(x => x.VisitType != VisitType.OP && x.IsReferred == true);
         RuleFor(x => x.ReferralName).MaximumLength(150);
         RuleFor(x => x.ReferralMobile)
-            .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Referral mobile number must be exactly 10 digits.")
+            .Matches(CreatePatientRequestValidator.PhonePattern).WithMessage("Referral mobile must be exactly 10 digits.")
             .When(x => !string.IsNullOrWhiteSpace(x.ReferralMobile));
     }
 }
