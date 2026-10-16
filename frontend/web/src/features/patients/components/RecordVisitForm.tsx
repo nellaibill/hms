@@ -80,6 +80,8 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   const admissionType = watch('admissionType');
   const referral = watch('referral');
   const showConsultationType = hasConsultationType(encounterType);
+  // Label only — every encounter type still saves the visit the same way.
+  const submitLabel = encounterType === 'OP' ? 'Add Visit' : 'Proceed with admission';
   const additionalConsultants = useFieldArray({ control, name: 'additionalConsultants' });
 
   // A consultant picked under the previous department is meaningless once the department
@@ -381,7 +383,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
           Cancel
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving…' : 'Add Visit'}
+          {isSubmitting ? 'Saving…' : submitLabel}
         </Button>
       </div>
     </form>
