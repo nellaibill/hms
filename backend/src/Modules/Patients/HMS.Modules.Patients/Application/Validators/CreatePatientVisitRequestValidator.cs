@@ -23,6 +23,7 @@ internal class CreatePatientVisitRequestValidator : AbstractValidator<CreatePati
         // here even though the Add Visit form requires it: the New Patient Registration wizard
         // records non-OP visits through this same request without collecting these fields yet,
         // and would be locked out. What IS enforced is that an answer is never half-given.
+        RuleFor(x => x.EmergencyType).IsInEnum();
         RuleFor(x => x.AdmissionType).IsInEnum();
         RuleFor(x => x.ReferredBy).IsInEnum();
         RuleFor(x => x.Category).IsInEnum();

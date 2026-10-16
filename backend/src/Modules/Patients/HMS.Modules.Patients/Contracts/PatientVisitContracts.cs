@@ -10,6 +10,12 @@ public record CreatePatientVisitRequest
 {
     public VisitType VisitType { get; init; }
     public Guid? AppointmentTypeId { get; init; }
+
+    /// <summary>ICU / Casualty / LR — Emergency visits only, ignored for every other type.
+    /// Optional on the wire for the same reason as the admission details below: the Add Visit
+    /// form requires it, the New Patient Registration wizard doesn't collect it.</summary>
+    public EmergencyType? EmergencyType { get; init; }
+
     public IReadOnlyList<VisitConsultationRequest> Consultations { get; init; } = [];
 
     // Admission details — recorded for every visit type except OP, where they're ignored.
@@ -58,6 +64,7 @@ public record PatientVisitResponse
     public string? VisitNumber { get; init; }
 
     public Guid? AppointmentTypeId { get; init; }
+    public EmergencyType? EmergencyType { get; init; }
     public MedicoLegalType? AdmissionType { get; init; }
     public string? ArNumber { get; init; }
     public bool? IsReferred { get; init; }

@@ -12,6 +12,7 @@ internal static class PatientVisitMappingExtensions
         VisitType = visit.VisitType,
         VisitNumber = visit.VisitNumber,
         AppointmentTypeId = visit.AppointmentTypeId,
+        EmergencyType = visit.EmergencyType,
         AdmissionType = visit.AdmissionType,
         ArNumber = visit.ArNumber,
         IsReferred = visit.IsReferred,

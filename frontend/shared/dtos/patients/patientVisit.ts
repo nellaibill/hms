@@ -1,5 +1,5 @@
 import type { AdmissionType, VisitType } from '../../enums/patients';
-import type { ReferralColumnCategory } from '../../enums/patientRegistrationUi';
+import type { EmergencyType, ReferralColumnCategory } from '../../enums/patientRegistrationUi';
 
 /** Mirrors HMS.Modules.Patients.Contracts.VisitCategory — a placeholder list until the
  * hospital's real visit categories are decided. */
@@ -9,6 +9,8 @@ export type VisitCategory = 'A' | 'B' | 'C';
  * PatientVisitResponse — always absent/null on an OP visit. `admissionType` mirrors the
  * backend's MedicoLegalType, `referredBy` its ReferralSource. */
 export interface VisitAdmissionDetails {
+  /** ICU / Casualty / LR — Emergency visits only. */
+  emergencyType?: EmergencyType | null;
   admissionType?: AdmissionType | null;
   /** Accident Register number — only with admissionType 'MLC'. */
   arNumber?: string | null;

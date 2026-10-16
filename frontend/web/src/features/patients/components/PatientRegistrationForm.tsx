@@ -443,7 +443,7 @@ export function PatientRegistrationForm({
     setValue('registration.admissionType', '');
     setValue('registration.category', '');
     setValue('registration.referral', undefined);
-    // IP hides every Consultation Type picker — don't leave a value set behind them.
+    // IP and Emergency hide every Consultation Type picker — don't leave a value set behind them.
     if (!hasConsultationType(newEncounterType as EncounterTypeUi)) {
       setValue('registration.consultationTypeId', '');
       additionalConsultants.fields.forEach((_, index) => setValue(`registration.additionalConsultants.${index}.consultationTypeId`, ''));
@@ -1451,7 +1451,7 @@ export function PatientRegistrationForm({
 interface AdditionalConsultantRowProps {
   control: Control<PatientRegistrationUiFormValues>;
   index: number;
-  /** False for IP, which has no Consultation Type (see hasConsultationType). */
+  /** False for IP and Emergency, which have no Consultation Type (see hasConsultationType). */
   showConsultationType: boolean;
   onRemove: () => void;
 }

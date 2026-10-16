@@ -24,6 +24,9 @@ internal class PatientVisit : Entity
 
     public Guid? AppointmentTypeId { get; private set; }
 
+    /// <summary>ICU / Casualty / LR — only ever set on an Emergency visit, see SetEmergencyType.</summary>
+    public EmergencyType? EmergencyType { get; private set; }
+
     // Admission details — only ever set on a non-OP visit, see SetAdmissionDetails.
     public MedicoLegalType? AdmissionType { get; private set; }
     public string? ArNumber { get; private set; }
@@ -84,6 +87,13 @@ internal class PatientVisit : Entity
         ReferralName = isReferred == true && !string.IsNullOrWhiteSpace(referralName) ? referralName.Trim() : null;
         ReferralMobile = isReferred == true && !string.IsNullOrWhiteSpace(referralMobile) ? referralMobile.Trim() : null;
         Category = category;
+    }
+
+    /// <summary>Records where an Emergency patient is being seen. Any other visit type has no
+    /// emergency type, so a value sent with one is dropped rather than stored.</summary>
+    public void SetEmergencyType(EmergencyType? emergencyType)
+    {
+        EmergencyType = VisitType == VisitType.Emergency ? emergencyType : null;
     }
 
     public void AddConsultation(PatientVisitConsultation consultation, Guid? updatedBy)

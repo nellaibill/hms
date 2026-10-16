@@ -123,6 +123,25 @@ public class CreatePatientVisitRequestValidatorTests
     }
 
     [Fact]
+    public void Emergency_WithEmergencyType_Passes()
+    {
+        var request = NewRequest(VisitType.Emergency) with { EmergencyType = EmergencyType.Casualty };
+
+        new CreatePatientVisitRequestValidator().Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void EmergencyType_OutOfRange_Fails()
+    {
+        var request = NewRequest(VisitType.Emergency) with { EmergencyType = (EmergencyType)99 };
+
+        var result = new CreatePatientVisitRequestValidator().Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "EmergencyType");
+    }
+
+    [Fact]
     public void ArNumber_LongerThanFiftyCharacters_Fails()
     {
         var request = NewRequest(VisitType.IP) with { AdmissionType = MedicoLegalType.MLC, ArNumber = new string('9', 51) };

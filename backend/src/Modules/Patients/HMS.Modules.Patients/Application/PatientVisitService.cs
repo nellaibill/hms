@@ -102,6 +102,7 @@ internal class PatientVisitService : IPatientVisitService
         var visitNumber = await _identifierGenerator.NextVisitNumberAsync(request.VisitType, cancellationToken);
 
         var visit = PatientVisit.Create(patientId, request.VisitType, request.AppointmentTypeId, actorId, visitNumber);
+        visit.SetEmergencyType(request.EmergencyType);
         visit.SetAdmissionDetails(
             request.AdmissionType,
             request.ArNumber,

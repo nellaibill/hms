@@ -62,6 +62,11 @@ export type AllergyCategory = (typeof ALLERGY_CATEGORIES)[number];
 export const REFERRAL_COLUMN_CATEGORIES = ['Ambulance', 'Doctor', 'Medicals', 'Others'] as const;
 export type ReferralColumnCategory = (typeof REFERRAL_COLUMN_CATEGORIES)[number];
 
+/** Where an Emergency patient is being seen (LR = Labour Room). Matches the backend's
+ * EmergencyType enum exactly. */
+export const EMERGENCY_TYPES = ['ICU', 'Casualty', 'LR'] as const;
+export type EmergencyType = (typeof EMERGENCY_TYPES)[number];
+
 /**
  * UI-only split of the backend's single "DayCare" EncounterType into two distinct reception
  * choices — "Day Care" and "Observation" — since staff treat them as different visit kinds

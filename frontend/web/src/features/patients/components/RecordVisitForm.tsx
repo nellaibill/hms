@@ -1,4 +1,4 @@
-import { ADMISSION_TYPES, ENCOUNTER_TYPES_UI, REFERRAL_COLUMN_CATEGORIES, type ApiError } from '@hms/shared';
+import { ADMISSION_TYPES, EMERGENCY_TYPES, ENCOUNTER_TYPES_UI, REFERRAL_COLUMN_CATEGORIES, type ApiError } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, X } from 'lucide-react';
 import { useEffect } from 'react';
@@ -39,6 +39,7 @@ const defaultValues: RecordVisitFormValues = {
   additionalConsultants: [],
   appointmentTypeId: '',
   consultationTypeId: '',
+  emergencyType: '',
   admissionType: '',
   arNumber: '',
   referral: '',
@@ -94,6 +95,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   // as the wizard's own handleEncounterTypeChange.
   function handleEncounterTypeChange(newEncounterType: string, onChange: (value: string) => void) {
     onChange(newEncounterType);
+    setValue('emergencyType', '');
     setValue('admissionType', '');
     setValue('arNumber', '');
     setValue('referral', '');
@@ -101,7 +103,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
     setValue('referralName', '');
     setValue('referralMobile', '');
     setValue('category', '');
-    // IP hides every Consultation Type picker — don't leave a value set behind them.
+    // IP and Emergency hide every Consultation Type picker — don't leave a value set behind them.
     if (!hasConsultationType(newEncounterType as RecordVisitFormValues['encounterType'])) {
       setValue('consultationTypeId', '');
       additionalConsultants.fields.forEach((_, index) => setValue(`additionalConsultants.${index}.consultationTypeId`, ''));
@@ -164,6 +166,33 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
               )}
             />
           </Field>
+          {encounterType === 'Emergency' && (
+            <Field
+              label="Emergency type"
+              htmlFor="emergencyType"
+              error={errors.emergencyType?.message}
+              className="flex w-full flex-col gap-1 sm:w-40"
+            >
+              <Controller
+                name="emergencyType"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <SelectTrigger id="emergencyType" aria-label="Emergency type">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMERGENCY_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          )}
           {encounterType === 'OP' && (
             <Field
               label="Appointment type"
@@ -373,7 +402,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 interface AdditionalConsultantRowProps {
   control: Control<RecordVisitFormValues>;
   index: number;
-  /** False for IP, which has no Consultation Type (see hasConsultationType). */
+  /** False for IP and Emergency, which have no Consultation Type (see hasConsultationType). */
   showConsultationType: boolean;
   onRemove: () => void;
 }

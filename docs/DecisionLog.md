@@ -37,21 +37,22 @@ _To be documented._
 
 ## Decisions
 
-### ADR-101: IP visits take no Consultation Type; a referred visit records the referrer's name and mobile
+### ADR-101: IP and Emergency visits take no Consultation Type; Emergency records its type; a referred visit records the referrer's name and mobile
 **Date:** 2026-10-16
 **Status:** Accepted
 
 **Context**
-User request for adding a visit: an IP encounter doesn't need a Consultation Type, and when Referral is Yes, reception should also capture the referrer's name and mobile number ("Referral details", right after "Referred by"). (ADR-100 is reserved by the open Appointments PR.)
+User requests for adding a visit: IP and Emergency encounters don't need a Consultation Type, an Emergency visit should record where the patient is seen (ICU / Casualty / LR), and when Referral is Yes, reception should also capture the referrer's name and mobile number ("Referral details", right after "Referred by"). (ADR-100 is reserved by the open Appointments PR.)
 
 **Decision**
-- **No Consultation Type for IP.** `hasConsultationType(encounterType)` (false only for IP) hides the primary and every "Add another Consultant" Consultation Type picker on both the Add Visit form and the New Patient Registration wizard, and clears any value picked before switching to IP. `toCreatePatientVisitRequest` drops the value for IP too, so it never reaches the API. The backend is unchanged here — `ConsultationTypeId` was already optional.
+- **No Consultation Type for IP or Emergency.** `hasConsultationType(encounterType)` (false for IP and Emergency) hides the primary and every "Add another Consultant" Consultation Type picker on both the Add Visit form and the New Patient Registration wizard, and clears any value picked before switching. `toCreatePatientVisitRequest` drops the value for both too, so it never reaches the API. The backend is unchanged here — `ConsultationTypeId` was already optional.
+- **Emergency type on Add Visit.** A required ICU / Casualty / LR dropdown right after Encounter type, shown only for Emergency. Saved as a new nullable `emergency_type` column (`AddPatientVisitEmergencyType`, new `EmergencyType` enum); `PatientVisit.SetEmergencyType` drops it for any other visit type. Optional on the API, like Admission type, because the New Patient Registration wizard records Emergency visits without it.
 - **Referral details on Add Visit.** Two optional inputs, referral name (≤150) and a 10-digit mobile, shown only when Referral is Yes and cleared when it isn't. Saved on the visit as new nullable `referral_name`/`referral_mobile` columns (`AddPatientVisitReferralDetails`), and kept by `PatientVisit.SetAdmissionDetails` only for a referred visit, like `ReferredBy`. The validator checks the length and the 10-digit pattern.
 
 **Consequences**
-- Deploy needs the Patients migration applied to every hospital (Platform → Hospitals → Migrate).
-- The referral name and mobile are stored and returned by the API but not yet shown anywhere after saving — same as the other admission details.
-- The wizard's own Referral category/Details/Contact number fields are untouched (still UI-only).
+- Deploy needs both Patients migrations applied to every hospital (Platform → Hospitals → Migrate).
+- The emergency type and referral name/mobile are stored and returned by the API but not yet shown anywhere after saving — same as the other admission details.
+- The wizard's own Referral category/Details/Contact number fields are untouched (still UI-only), and it does not ask for Emergency type.
 
 ---
 

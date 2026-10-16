@@ -35,6 +35,30 @@ public class PatientVisitTests
     }
 
     [Fact]
+    public void SetEmergencyType_OnAnEmergencyVisit_StoresIt()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.Emergency, appointmentTypeId: null, createdBy: null);
+
+        visit.SetEmergencyType(EmergencyType.LR);
+
+        visit.EmergencyType.Should().Be(EmergencyType.LR);
+    }
+
+    [Theory]
+    [InlineData(VisitType.OP)]
+    [InlineData(VisitType.IP)]
+    [InlineData(VisitType.DayCare)]
+    [InlineData(VisitType.Observation)]
+    public void SetEmergencyType_OnAnyOtherVisit_StoresNothing(VisitType visitType)
+    {
+        var visit = PatientVisit.Create(PatientId, visitType, appointmentTypeId: null, createdBy: null);
+
+        visit.SetEmergencyType(EmergencyType.ICU);
+
+        visit.EmergencyType.Should().BeNull();
+    }
+
+    [Fact]
     public void SetAdmissionDetails_OnANonOpVisit_StoresEveryAnswer()
     {
         var visit = PatientVisit.Create(PatientId, VisitType.Emergency, appointmentTypeId: null, createdBy: null);
