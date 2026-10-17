@@ -135,6 +135,15 @@ public enum ReferralSource
     Others,
 }
 
+/// <summary>Where an Emergency patient is being seen — the "Emergency type" dropdown. Matches
+/// the frontend's EMERGENCY_TYPES exactly. LR is the Labour Room.</summary>
+public enum EmergencyType
+{
+    ICU,
+    Casualty,
+    LR,
+}
+
 /// <summary>Placeholder list — the hospital's real visit categories aren't decided yet
 /// ("A, B, C as of now"). Matches the frontend's VISIT_CATEGORIES exactly.</summary>
 public enum VisitCategory

@@ -21,12 +21,15 @@ internal class PatientVisitConfiguration : IEntityTypeConfiguration<PatientVisit
         builder.Property(v => v.VisitType).HasColumnName("visit_type").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(v => v.VisitNumber).HasColumnName("visit_number").HasMaxLength(20);
         builder.Property(v => v.AppointmentTypeId).HasColumnName("appointment_type_id");
+        builder.Property(v => v.EmergencyType).HasColumnName("emergency_type").HasConversion<string>().HasMaxLength(20);
 
         // Admission details — all null on an OP visit.
         builder.Property(v => v.AdmissionType).HasColumnName("admission_type").HasConversion<string>().HasMaxLength(10);
         builder.Property(v => v.ArNumber).HasColumnName("ar_number").HasMaxLength(50);
         builder.Property(v => v.IsReferred).HasColumnName("is_referred");
         builder.Property(v => v.ReferredBy).HasColumnName("referred_by").HasConversion<string>().HasMaxLength(20);
+        builder.Property(v => v.ReferralName).HasColumnName("referral_name").HasMaxLength(150);
+        builder.Property(v => v.ReferralMobile).HasColumnName("referral_mobile").HasMaxLength(20);
         builder.Property(v => v.Category).HasColumnName("category").HasConversion<string>().HasMaxLength(20);
 
         // Standard audit columns.

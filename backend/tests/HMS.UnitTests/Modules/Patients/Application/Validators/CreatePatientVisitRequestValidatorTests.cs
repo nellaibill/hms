@@ -84,6 +84,64 @@ public class CreatePatientVisitRequestValidatorTests
     }
 
     [Fact]
+    public void Referred_WithReferralDetails_Passes()
+    {
+        var request = NewRequest(VisitType.IP) with
+        {
+            IsReferred = true,
+            ReferredBy = ReferralSource.Doctor,
+            ReferralName = "Dr. R. Kumar",
+            ReferralMobile = "9876543210",
+        };
+
+        new CreatePatientVisitRequestValidator().Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("98765")]
+    [InlineData("98765432101")]
+    [InlineData("98765abcde")]
+    public void ReferralMobile_NotTenDigits_Fails(string referralMobile)
+    {
+        var request = NewRequest(VisitType.IP) with { IsReferred = true, ReferredBy = ReferralSource.Doctor, ReferralMobile = referralMobile };
+
+        var result = new CreatePatientVisitRequestValidator().Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "ReferralMobile");
+    }
+
+    [Fact]
+    public void ReferralName_LongerThan150Characters_Fails()
+    {
+        var request = NewRequest(VisitType.IP) with { IsReferred = true, ReferredBy = ReferralSource.Doctor, ReferralName = new string('a', 151) };
+
+        var result = new CreatePatientVisitRequestValidator().Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "ReferralName");
+    }
+
+    [Fact]
+    public void Emergency_WithEmergencyType_Passes()
+    {
+        var request = NewRequest(VisitType.Emergency) with { EmergencyType = EmergencyType.Casualty };
+
+        new CreatePatientVisitRequestValidator().Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void EmergencyType_OutOfRange_Fails()
+    {
+        var request = NewRequest(VisitType.Emergency) with { EmergencyType = (EmergencyType)99 };
+
+        var result = new CreatePatientVisitRequestValidator().Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "EmergencyType");
+    }
+
+    [Fact]
     public void ArNumber_LongerThanFiftyCharacters_Fails()
     {
         var request = NewRequest(VisitType.IP) with { AdmissionType = MedicoLegalType.MLC, ArNumber = new string('9', 51) };

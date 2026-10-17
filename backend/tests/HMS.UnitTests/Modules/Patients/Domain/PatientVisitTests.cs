@@ -35,16 +35,42 @@ public class PatientVisitTests
     }
 
     [Fact]
+    public void SetEmergencyType_OnAnEmergencyVisit_StoresIt()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.Emergency, appointmentTypeId: null, createdBy: null);
+
+        visit.SetEmergencyType(EmergencyType.LR);
+
+        visit.EmergencyType.Should().Be(EmergencyType.LR);
+    }
+
+    [Theory]
+    [InlineData(VisitType.OP)]
+    [InlineData(VisitType.IP)]
+    [InlineData(VisitType.DayCare)]
+    [InlineData(VisitType.Observation)]
+    public void SetEmergencyType_OnAnyOtherVisit_StoresNothing(VisitType visitType)
+    {
+        var visit = PatientVisit.Create(PatientId, visitType, appointmentTypeId: null, createdBy: null);
+
+        visit.SetEmergencyType(EmergencyType.ICU);
+
+        visit.EmergencyType.Should().BeNull();
+    }
+
+    [Fact]
     public void SetAdmissionDetails_OnANonOpVisit_StoresEveryAnswer()
     {
         var visit = PatientVisit.Create(PatientId, VisitType.Emergency, appointmentTypeId: null, createdBy: null);
 
-        visit.SetAdmissionDetails(MedicoLegalType.MLC, "  AR/2026/1024  ", isReferred: true, ReferralSource.Ambulance, VisitCategory.B);
+        visit.SetAdmissionDetails(MedicoLegalType.MLC, "  AR/2026/1024  ", isReferred: true, ReferralSource.Ambulance, "  Dr. R. Kumar  ", " 9876543210 ", VisitCategory.B);
 
         visit.AdmissionType.Should().Be(MedicoLegalType.MLC);
         visit.ArNumber.Should().Be("AR/2026/1024");
         visit.IsReferred.Should().BeTrue();
         visit.ReferredBy.Should().Be(ReferralSource.Ambulance);
+        visit.ReferralName.Should().Be("Dr. R. Kumar");
+        visit.ReferralMobile.Should().Be("9876543210");
         visit.Category.Should().Be(VisitCategory.B);
     }
 
@@ -54,12 +80,14 @@ public class PatientVisitTests
         var visit = PatientVisit.Create(PatientId, VisitType.DayCare, appointmentTypeId: null, createdBy: null);
 
         // An A.R number belongs to an MLC, a referrer to a referred patient.
-        visit.SetAdmissionDetails(MedicoLegalType.NMLC, "AR/2026/1024", isReferred: false, ReferralSource.Doctor, category: null);
+        visit.SetAdmissionDetails(MedicoLegalType.NMLC, "AR/2026/1024", isReferred: false, ReferralSource.Doctor, "Dr. R. Kumar", "9876543210", category: null);
 
         visit.AdmissionType.Should().Be(MedicoLegalType.NMLC);
         visit.ArNumber.Should().BeNull();
         visit.IsReferred.Should().BeFalse();
         visit.ReferredBy.Should().BeNull();
+        visit.ReferralName.Should().BeNull();
+        visit.ReferralMobile.Should().BeNull();
     }
 
     [Fact]
@@ -67,7 +95,7 @@ public class PatientVisitTests
     {
         var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null);
 
-        visit.SetAdmissionDetails(MedicoLegalType.MLC, "AR/2026/1024", isReferred: true, ReferralSource.Doctor, VisitCategory.A);
+        visit.SetAdmissionDetails(MedicoLegalType.MLC, "AR/2026/1024", isReferred: true, ReferralSource.Doctor, "Dr. R. Kumar", "9876543210", VisitCategory.A);
 
         visit.AdmissionType.Should().BeNull();
         visit.ArNumber.Should().BeNull();

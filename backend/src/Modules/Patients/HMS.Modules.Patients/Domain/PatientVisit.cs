@@ -24,11 +24,20 @@ internal class PatientVisit : Entity
 
     public Guid? AppointmentTypeId { get; private set; }
 
+    /// <summary>ICU / Casualty / LR — only ever set on an Emergency visit, see SetEmergencyType.</summary>
+    public EmergencyType? EmergencyType { get; private set; }
+
     // Admission details — only ever set on a non-OP visit, see SetAdmissionDetails.
     public MedicoLegalType? AdmissionType { get; private set; }
     public string? ArNumber { get; private set; }
     public bool? IsReferred { get; private set; }
     public ReferralSource? ReferredBy { get; private set; }
+
+    /// <summary>The referrer's name and mobile number ("Referral name" / "Referral mobile") — kept only on a
+    /// referred visit, like <see cref="ReferredBy"/>.</summary>
+    public string? ReferralName { get; private set; }
+    public string? ReferralMobile { get; private set; }
+
     public VisitCategory? Category { get; private set; }
 
     private readonly List<PatientVisitConsultation> _consultations = [];
@@ -57,7 +66,14 @@ internal class PatientVisit : Entity
     /// calls for them — an A.R number belongs to an MLC, a referrer to a referred patient — so a
     /// stale value sent alongside a changed answer is dropped rather than stored.
     /// </summary>
-    public void SetAdmissionDetails(MedicoLegalType? admissionType, string? arNumber, bool? isReferred, ReferralSource? referredBy, VisitCategory? category)
+    public void SetAdmissionDetails(
+        MedicoLegalType? admissionType,
+        string? arNumber,
+        bool? isReferred,
+        ReferralSource? referredBy,
+        string? referralName,
+        string? referralMobile,
+        VisitCategory? category)
     {
         if (VisitType == VisitType.OP)
         {
@@ -68,7 +84,16 @@ internal class PatientVisit : Entity
         ArNumber = admissionType == MedicoLegalType.MLC && !string.IsNullOrWhiteSpace(arNumber) ? arNumber.Trim() : null;
         IsReferred = isReferred;
         ReferredBy = isReferred == true ? referredBy : null;
+        ReferralName = isReferred == true && !string.IsNullOrWhiteSpace(referralName) ? referralName.Trim() : null;
+        ReferralMobile = isReferred == true && !string.IsNullOrWhiteSpace(referralMobile) ? referralMobile.Trim() : null;
         Category = category;
+    }
+
+    /// <summary>Records where an Emergency patient is being seen. Any other visit type has no
+    /// emergency type, so a value sent with one is dropped rather than stored.</summary>
+    public void SetEmergencyType(EmergencyType? emergencyType)
+    {
+        EmergencyType = VisitType == VisitType.Emergency ? emergencyType : null;
     }
 
     public void AddConsultation(PatientVisitConsultation consultation, Guid? updatedBy)

@@ -17,6 +17,7 @@ import {
   REFERRAL_COLUMN_CATEGORIES,
   RELATIONSHIPS,
   TITLES,
+  type EncounterTypeUi,
   type Patient,
   type PatientRegistrationCoreUiFormValues,
   type PatientRegistrationUiFormValues,
@@ -43,6 +44,7 @@ import { TabErrorSummary } from './TabErrorSummary';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
 import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLabel';
+import { hasConsultationType } from '../recordVisitFormSchema';
 import { tabErrorMessages } from '../formErrorSummary';
 import { offlineAdChannelLabel, onlineAdChannelLabel } from '../arrivalChannelLabel';
 import { humanize } from '../humanize';
@@ -411,6 +413,7 @@ export function PatientRegistrationForm({
   // same Observation type/Category/referral fields Day Care already had.
   const isDayCareOrObservation = encounterType === 'DayCare' || encounterType === 'Observation';
   const showReferralColumn = isIpOrEmergency || isDayCareOrObservation;
+  const showConsultationType = hasConsultationType(encounterType);
   const registrationDepartmentId = watch('registration.departmentId');
   const registrationConsultantId = watch('registration.consultantId');
   const state = watch('state');
@@ -440,6 +443,11 @@ export function PatientRegistrationForm({
     setValue('registration.admissionType', '');
     setValue('registration.category', '');
     setValue('registration.referral', undefined);
+    // Only OP shows the Consultation Type pickers — don't leave a value set behind them.
+    if (!hasConsultationType(newEncounterType as EncounterTypeUi)) {
+      setValue('registration.consultationTypeId', '');
+      additionalConsultants.fields.forEach((_, index) => setValue(`registration.additionalConsultants.${index}.consultationTypeId`, ''));
+    }
   }
 
   // Server-side validation errors can't be mapped 1:1 to this form's field paths — the
@@ -1290,25 +1298,27 @@ export function PatientRegistrationForm({
                 </Button>
               )}
             </Field>
-            <Field
-              label="Consultation Type"
-              htmlFor="consultationType"
-              className="flex min-w-[220px] flex-1 flex-col gap-1"
-            >
-              <Controller
-                name="registration.consultationTypeId"
-                control={control}
-                render={({ field }) => (
-                  <ConsultationTypeSelect
-                    id="consultationType"
-                    value={field.value ?? ''}
-                    onValueChange={field.onChange}
-                    departmentId={registrationDepartmentId}
-                    consultantId={registrationConsultantId}
-                  />
-                )}
-              />
-            </Field>
+            {showConsultationType && (
+              <Field
+                label="Consultation Type"
+                htmlFor="consultationType"
+                className="flex min-w-[220px] flex-1 flex-col gap-1"
+              >
+                <Controller
+                  name="registration.consultationTypeId"
+                  control={control}
+                  render={({ field }) => (
+                    <ConsultationTypeSelect
+                      id="consultationType"
+                      value={field.value ?? ''}
+                      onValueChange={field.onChange}
+                      departmentId={registrationDepartmentId}
+                      consultantId={registrationConsultantId}
+                    />
+                  )}
+                />
+              </Field>
+            )}
             {/* Progressive disclosure: Admission (IP/Emergency) / Observation (Day-care) type only applies beyond OP. */}
             {showReferralColumn && (
               <Field
@@ -1349,6 +1359,7 @@ export function PatientRegistrationForm({
               key={field.id}
               control={control}
               index={index}
+              showConsultationType={showConsultationType}
               onRemove={() => additionalConsultants.remove(index)}
             />
           ))}
@@ -1440,6 +1451,8 @@ export function PatientRegistrationForm({
 interface AdditionalConsultantRowProps {
   control: Control<PatientRegistrationUiFormValues>;
   index: number;
+  /** True only for OP — no other encounter type has a Consultation Type (see hasConsultationType). */
+  showConsultationType: boolean;
   onRemove: () => void;
 }
 
@@ -1449,7 +1462,7 @@ interface AdditionalConsultantRowProps {
  * both fields' onChange directly, the same "clear the child when the parent changes"
  * behavior the primary Department/Consultant pair and Ward/Bed already have elsewhere in
  * this app — just without a wrapping component to hang a handler function off of here. */
-function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsultantRowProps) {
+function AdditionalConsultantRow({ control, index, showConsultationType, onRemove }: AdditionalConsultantRowProps) {
   const departmentField = useController({ control, name: `registration.additionalConsultants.${index}.departmentId` as const });
   const consultantField = useController({ control, name: `registration.additionalConsultants.${index}.consultantId` as const });
   const consultationTypeField = useController({ control, name: `registration.additionalConsultants.${index}.consultationTypeId` as const });
@@ -1484,19 +1497,21 @@ function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsult
           departmentId={departmentField.field.value || undefined}
         />
       </Field>
-      <Field
-        label={`Consultation Type ${index + 2}`}
-        htmlFor={`additional-consultation-type-${index}`}
-        className="flex min-w-[220px] flex-1 flex-col gap-1"
-      >
-        <ConsultationTypeSelect
-          id={`additional-consultation-type-${index}`}
-          value={consultationTypeField.field.value ?? ''}
-          onValueChange={consultationTypeField.field.onChange}
-          departmentId={departmentField.field.value || undefined}
-          consultantId={consultantField.field.value || undefined}
-        />
-      </Field>
+      {showConsultationType && (
+        <Field
+          label={`Consultation Type ${index + 2}`}
+          htmlFor={`additional-consultation-type-${index}`}
+          className="flex min-w-[220px] flex-1 flex-col gap-1"
+        >
+          <ConsultationTypeSelect
+            id={`additional-consultation-type-${index}`}
+            value={consultationTypeField.field.value ?? ''}
+            onValueChange={consultationTypeField.field.onChange}
+            departmentId={departmentField.field.value || undefined}
+            consultantId={consultantField.field.value || undefined}
+          />
+        </Field>
+      )}
       <Button type="button" variant="ghost" size="icon" aria-label={`Remove consultant ${index + 2}`} onClick={onRemove}>
         <X className="h-4 w-4" />
       </Button>

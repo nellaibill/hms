@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-101: Only OP visits take a Consultation Type; Emergency records its type; a referred visit records the referrer's name and mobile
+**Date:** 2026-10-16
+**Status:** Accepted
+
+**Context**
+User requests for adding a visit: IP, Emergency, Day Care and Observation encounters don't need a Consultation Type, an Emergency visit should record where the patient is seen (ICU / Casualty / LR), and when Referral is Yes, reception should also capture the referrer's name and mobile number ("Referral name" and "Referral mobile", right after "Referred by"). (ADR-100 is reserved by the open Appointments PR.)
+
+**Decision**
+- **Consultation Type for OP only.** `hasConsultationType(encounterType)` (true only for OP) hides the primary and every "Add another Consultant" Consultation Type picker for every other encounter type, on both the Add Visit form and the New Patient Registration wizard, and clears any value picked before switching. `toCreatePatientVisitRequest` drops the value for non-OP visits too, so it never reaches the API. The backend is unchanged here — `ConsultationTypeId` was already optional.
+- **Emergency type on Add Visit.** A required ICU / Casualty / LR dropdown right after Encounter type, shown only for Emergency. Saved as a new nullable `emergency_type` column (`AddPatientVisitEmergencyType`, new `EmergencyType` enum); `PatientVisit.SetEmergencyType` drops it for any other visit type. Optional on the API, like Admission type, because the New Patient Registration wizard records Emergency visits without it.
+- **Non-OP visits continue to admission.** On Add Visit the submit button reads "Add Visit" for OP and "Proceed with admission" otherwise. After a non-OP visit is saved, the page opens IPD's New Admission screen (`/clinical/ipd/admissions/new?patientId=…&departmentId=…&consultantId=…`, plus `admissionType=Emergency` for an Emergency visit) instead of returning to the patient; New Admission preselects that patient (same `?patientId=` pattern as New Bill) and pre-fills department, consultant and admission type. A user without the IPD feature or `clinical-care` view + create permission still saves the visit and returns to the patient, with a toast saying the IPD desk can admit. The admission itself is still created on that screen — nothing is admitted automatically.
+- **Referral name and mobile on Add Visit.** Two optional fields, "Referral name" (≤150) and "Referral mobile" (10 digits), shown only when Referral is Yes and cleared when it isn't. Saved on the visit as new nullable `referral_name`/`referral_mobile` columns (`AddPatientVisitReferralDetails`), and kept by `PatientVisit.SetAdmissionDetails` only for a referred visit, like `ReferredBy`. The validator checks the length and the 10-digit pattern.
+
+**Consequences**
+- Deploy needs both Patients migrations applied to every hospital (Platform → Hospitals → Migrate).
+- The emergency type and referral name/mobile are stored and returned by the API but not yet shown anywhere after saving — same as the other admission details.
+- The wizard's own Referral category/Details/Contact number fields are untouched (still UI-only), and it does not ask for Emergency type.
+
+---
+
 ### ADR-099: Login failures say what went wrong, except where that would confirm a username exists
 **Date:** 2026-10-14
 **Status:** Accepted (revisits the "every rejection looks identical" part of the account-lockout entry below)
