@@ -11,14 +11,19 @@ import { ConsultantSelect } from '@/components/ConsultantSelect';
 import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { WardSelect } from '@/components/WardSelect';
 
+/** Fields AdmissionCreatePage can pre-fill from the visit just recorded on Add Visit. */
+export type AdmissionFormInitialValues = Partial<Pick<AdmissionFormValues, 'departmentId' | 'consultantId' | 'admissionType'>>;
+
 interface AdmissionFormProps {
   patientId: string;
+  /** Read once, when the form mounts. */
+  initialValues?: AdmissionFormInitialValues;
   onSubmit: (values: AdmissionFormValues) => void;
   isSubmitting: boolean;
   apiError: ApiError | null;
 }
 
-export function AdmissionForm({ patientId, onSubmit, isSubmitting, apiError }: AdmissionFormProps) {
+export function AdmissionForm({ patientId, initialValues, onSubmit, isSubmitting, apiError }: AdmissionFormProps) {
   const {
     control,
     register,
@@ -31,12 +36,12 @@ export function AdmissionForm({ patientId, onSubmit, isSubmitting, apiError }: A
     resolver: zodResolver(createAdmissionSchema),
     defaultValues: {
       patientId,
-      departmentId: '',
-      consultantId: '',
+      departmentId: initialValues?.departmentId ?? '',
+      consultantId: initialValues?.consultantId ?? '',
       wardId: '',
       bedId: '',
       admissionDateTime: '',
-      admissionType: 'Elective',
+      admissionType: initialValues?.admissionType ?? 'Elective',
       reasonForAdmission: '',
     },
   });

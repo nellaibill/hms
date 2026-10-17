@@ -1,4 +1,11 @@
-import { ADMISSION_TYPES, REFERRAL_COLUMN_CATEGORIES, recordVisitUiSchema, type EncounterTypeUi, type VisitCategory } from '@hms/shared';
+import {
+  ADMISSION_TYPES,
+  EMERGENCY_TYPES,
+  REFERRAL_COLUMN_CATEGORIES,
+  recordVisitUiSchema,
+  type EncounterTypeUi,
+  type VisitCategory,
+} from '@hms/shared';
 import { z } from 'zod';
 
 export const REFERRAL_ANSWERS = ['Yes', 'No'] as const;
@@ -10,6 +17,13 @@ export const VISIT_CATEGORIES = ['A', 'B', 'C'] as const satisfies readonly Visi
 /** Every encounter type except OP gets the admission fields below — OP's form is unchanged. */
 export function hasAdmissionDetails(encounterType: EncounterTypeUi): boolean {
   return encounterType !== 'OP';
+}
+
+/** Only an OP visit is booked as a consultation, so only OP has a Consultation Type — IP,
+ * Emergency, Day Care and Observation don't. Shared by the Add Visit form and the New Patient
+ * Registration wizard, and applied again in bridging.ts so a value never reaches the request. */
+export function hasConsultationType(encounterType: EncounterTypeUi): boolean {
+  return encounterType === 'OP';
 }
 
 /** The MLC/NMLC dropdown is one field with two names: an IP or Emergency patient is being
@@ -29,15 +43,28 @@ export function admissionTypeLabel(encounterType: EncounterTypeUi): string {
  */
 export const recordVisitFormSchema = recordVisitUiSchema
   .extend({
+    /** ICU / Casualty / LR — asked for, and mandatory, only for an Emergency visit. */
+    emergencyType: z.enum(EMERGENCY_TYPES).optional().or(z.literal('')),
     admissionType: z.enum(ADMISSION_TYPES).optional().or(z.literal('')),
     /** Accident Register number — asked for, and mandatory, only when admissionType is MLC. */
     arNumber: z.string().trim().max(50, 'A.R number must be 50 characters or fewer').optional().or(z.literal('')),
     referral: z.enum(REFERRAL_ANSWERS).optional().or(z.literal('')),
     /** Who referred the patient — only asked for when referral is Yes. */
     referredBy: z.enum(REFERRAL_COLUMN_CATEGORIES).optional().or(z.literal('')),
+    /** "Referral name" / "Referral mobile" — optional, asked for when referral is Yes. */
+    referralName: z.string().trim().max(150, 'Referral name must be 150 characters or fewer').optional().or(z.literal('')),
+    referralMobile: z
+      .string()
+      .trim()
+      .regex(/^[0-9]{10}$/, 'Referral mobile must be exactly 10 digits.')
+      .optional()
+      .or(z.literal('')),
     category: z.enum(VISIT_CATEGORIES).optional().or(z.literal('')),
   })
   .superRefine((data, ctx) => {
+    if (data.encounterType === 'Emergency' && !data.emergencyType) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['emergencyType'], message: 'Emergency type is required' });
+    }
     // Mandatory under either of its names — stricter than the wizard's registrationDetailsUiSchema,
     // which only requires it for IP and Emergency.
     if (hasAdmissionDetails(data.encounterType) && !data.admissionType) {

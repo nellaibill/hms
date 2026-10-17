@@ -1,4 +1,4 @@
-import { ADMISSION_TYPES, ENCOUNTER_TYPES_UI, REFERRAL_COLUMN_CATEGORIES, type ApiError } from '@hms/shared';
+import { ADMISSION_TYPES, EMERGENCY_TYPES, ENCOUNTER_TYPES_UI, REFERRAL_COLUMN_CATEGORIES, type ApiError } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, X } from 'lucide-react';
 import { useEffect } from 'react';
@@ -15,6 +15,7 @@ import { encounterTypeLabel, encounterTypeShortLabel } from '../encounterTypeLab
 import {
   admissionTypeLabel,
   hasAdmissionDetails,
+  hasConsultationType,
   recordVisitFormSchema,
   REFERRAL_ANSWERS,
   VISIT_CATEGORIES,
@@ -38,10 +39,13 @@ const defaultValues: RecordVisitFormValues = {
   additionalConsultants: [],
   appointmentTypeId: '',
   consultationTypeId: '',
+  emergencyType: '',
   admissionType: '',
   arNumber: '',
   referral: '',
   referredBy: '',
+  referralName: '',
+  referralMobile: '',
   category: '',
 };
 
@@ -75,6 +79,10 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   const consultantId = watch('consultantId');
   const admissionType = watch('admissionType');
   const referral = watch('referral');
+  const showConsultationType = hasConsultationType(encounterType);
+  // Every encounter type saves the visit the same way; for non-OP, PatientRecordVisitPage then
+  // opens IPD's New Admission screen.
+  const submitLabel = encounterType === 'OP' ? 'Add Visit' : 'Proceed with admission';
   const additionalConsultants = useFieldArray({ control, name: 'additionalConsultants' });
 
   // A consultant picked under the previous department is meaningless once the department
@@ -90,15 +98,23 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   // as the wizard's own handleEncounterTypeChange.
   function handleEncounterTypeChange(newEncounterType: string, onChange: (value: string) => void) {
     onChange(newEncounterType);
+    setValue('emergencyType', '');
     setValue('admissionType', '');
     setValue('arNumber', '');
     setValue('referral', '');
     setValue('referredBy', '');
+    setValue('referralName', '');
+    setValue('referralMobile', '');
     setValue('category', '');
+    // Only OP shows the Consultation Type pickers — don't leave a value set behind them.
+    if (!hasConsultationType(newEncounterType as RecordVisitFormValues['encounterType'])) {
+      setValue('consultationTypeId', '');
+      additionalConsultants.fields.forEach((_, index) => setValue(`additionalConsultants.${index}.consultationTypeId`, ''));
+    }
   }
 
-  // "A.R number" and "Referred by" are each only on screen for one answer of the dropdown before
-  // them (MLC, Yes) — changing that answer clears what was typed/picked under it.
+  // "A.R number" and "Referred by"/"Referral name"/"Referral mobile" are each only on screen for one answer of
+  // the dropdown before them (MLC, Yes) — changing that answer clears what was typed/picked under it.
   function handleAdmissionTypeChange(newAdmissionType: string, onChange: (value: string) => void) {
     onChange(newAdmissionType);
     if (newAdmissionType !== 'MLC') setValue('arNumber', '');
@@ -106,7 +122,11 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 
   function handleReferralChange(newReferral: string, onChange: (value: string) => void) {
     onChange(newReferral);
-    if (newReferral !== 'Yes') setValue('referredBy', '');
+    if (newReferral !== 'Yes') {
+      setValue('referredBy', '');
+      setValue('referralName', '');
+      setValue('referralMobile', '');
+    }
   }
 
   const generalError = apiError?.message ?? null;
@@ -149,6 +169,33 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
               )}
             />
           </Field>
+          {encounterType === 'Emergency' && (
+            <Field
+              label="Emergency type"
+              htmlFor="emergencyType"
+              error={errors.emergencyType?.message}
+              className="flex w-full flex-col gap-1 sm:w-40"
+            >
+              <Controller
+                name="emergencyType"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <SelectTrigger id="emergencyType" aria-label="Emergency type">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMERGENCY_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          )}
           {encounterType === 'OP' && (
             <Field
               label="Appointment type"
@@ -195,25 +242,33 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
               </Button>
             )}
           </Field>
-          <Field label="Consultation Type" htmlFor="consultationType" className="flex min-w-[220px] flex-1 flex-col gap-1">
-            <Controller
-              name="consultationTypeId"
-              control={control}
-              render={({ field }) => (
-                <ConsultationTypeSelect
-                  id="consultationType"
-                  value={field.value ?? ''}
-                  onValueChange={field.onChange}
-                  departmentId={departmentId || undefined}
-                  consultantId={consultantId || undefined}
-                />
-              )}
-            />
-          </Field>
+          {showConsultationType && (
+            <Field label="Consultation Type" htmlFor="consultationType" className="flex min-w-[220px] flex-1 flex-col gap-1">
+              <Controller
+                name="consultationTypeId"
+                control={control}
+                render={({ field }) => (
+                  <ConsultationTypeSelect
+                    id="consultationType"
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                    departmentId={departmentId || undefined}
+                    consultantId={consultantId || undefined}
+                  />
+                )}
+              />
+            </Field>
+          )}
         </div>
 
         {additionalConsultants.fields.map((field, index) => (
-          <AdditionalConsultantRow key={field.id} control={control} index={index} onRemove={() => additionalConsultants.remove(index)} />
+          <AdditionalConsultantRow
+            key={field.id}
+            control={control}
+            index={index}
+            showConsultationType={showConsultationType}
+            onRemove={() => additionalConsultants.remove(index)}
+          />
         ))}
 
         {hasAdmissionDetails(encounterType) && (
@@ -290,6 +345,16 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
                 />
               </Field>
             )}
+            {referral === 'Yes' && (
+              <>
+                <Field label="Referral name" htmlFor="referralName" error={errors.referralName?.message} className="flex w-full flex-col gap-1 sm:w-48">
+                  <Input id="referralName" {...register('referralName')} />
+                </Field>
+                <Field label="Referral mobile" htmlFor="referralMobile" error={errors.referralMobile?.message} className="flex w-full flex-col gap-1 sm:w-36">
+                  <Input id="referralMobile" inputMode="numeric" maxLength={10} {...register('referralMobile')} />
+                </Field>
+              </>
+            )}
             <Field label="Category" htmlFor="category" error={errors.category?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Controller
                 name="category"
@@ -319,7 +384,7 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
           Cancel
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving…' : 'Add Visit'}
+          {isSubmitting ? 'Saving…' : submitLabel}
         </Button>
       </div>
     </form>
@@ -329,11 +394,13 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
 interface AdditionalConsultantRowProps {
   control: Control<RecordVisitFormValues>;
   index: number;
+  /** True only for OP — no other encounter type has a Consultation Type (see hasConsultationType). */
+  showConsultationType: boolean;
   onRemove: () => void;
 }
 
 /** One "Add another Consultant" row — mirrors PatientRegistrationForm's AdditionalConsultantRow exactly, just against this form's own field paths (no `registration.` prefix). */
-function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsultantRowProps) {
+function AdditionalConsultantRow({ control, index, showConsultationType, onRemove }: AdditionalConsultantRowProps) {
   const departmentField = useController({ control, name: `additionalConsultants.${index}.departmentId` as const });
   const consultantField = useController({ control, name: `additionalConsultants.${index}.consultantId` as const });
   const consultationTypeField = useController({ control, name: `additionalConsultants.${index}.consultationTypeId` as const });
@@ -356,19 +423,21 @@ function AdditionalConsultantRow({ control, index, onRemove }: AdditionalConsult
           departmentId={departmentField.field.value || undefined}
         />
       </Field>
-      <Field
-        label={`Consultation Type ${index + 2}`}
-        htmlFor={`additional-consultation-type-${index}`}
-        className="flex min-w-[220px] flex-1 flex-col gap-1"
-      >
-        <ConsultationTypeSelect
-          id={`additional-consultation-type-${index}`}
-          value={consultationTypeField.field.value ?? ''}
-          onValueChange={consultationTypeField.field.onChange}
-          departmentId={departmentField.field.value || undefined}
-          consultantId={consultantField.field.value || undefined}
-        />
-      </Field>
+      {showConsultationType && (
+        <Field
+          label={`Consultation Type ${index + 2}`}
+          htmlFor={`additional-consultation-type-${index}`}
+          className="flex min-w-[220px] flex-1 flex-col gap-1"
+        >
+          <ConsultationTypeSelect
+            id={`additional-consultation-type-${index}`}
+            value={consultationTypeField.field.value ?? ''}
+            onValueChange={consultationTypeField.field.onChange}
+            departmentId={departmentField.field.value || undefined}
+            consultantId={consultantField.field.value || undefined}
+          />
+        </Field>
+      )}
       <Button type="button" variant="ghost" size="icon" aria-label={`Remove consultant ${index + 2}`} onClick={onRemove}>
         <X className="h-4 w-4" />
       </Button>

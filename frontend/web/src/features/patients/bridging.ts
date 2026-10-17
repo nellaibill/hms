@@ -15,7 +15,7 @@ import {
   type VisitConsultation,
   type VisitType,
 } from '@hms/shared';
-import { hasAdmissionDetails, type RecordVisitFormValues } from './recordVisitFormSchema';
+import { hasAdmissionDetails, hasConsultationType, type RecordVisitFormValues } from './recordVisitFormSchema';
 
 /**
  * Shared UI-form <-> backend-DTO structural mappers for the Patients feature. Patient
@@ -169,18 +169,21 @@ export function fromModeOfArrivalFields(patient: {
  * via "Add another Consultant" but never filled in is silently dropped rather than sent as a
  * malformed line. */
 export function toCreatePatientVisitRequest(registration: RecordVisitUiFormValues): CreatePatientVisitRequest {
+  // Only OP has a Consultation Type field (see hasConsultationType) — dropped here for every
+  // other encounter type too, so a value picked before switching away from OP is never sent.
+  const withConsultationType = hasConsultationType(registration.encounterType);
   const consultations: VisitConsultation[] = [
     {
       departmentId: registration.departmentId,
       consultantId: registration.consultantId,
-      consultationTypeId: registration.consultationTypeId || undefined,
+      consultationTypeId: withConsultationType ? registration.consultationTypeId || undefined : undefined,
     },
     ...registration.additionalConsultants
       .filter((row) => row.departmentId && row.consultantId)
       .map((row) => ({
         departmentId: row.departmentId!,
         consultantId: row.consultantId!,
-        consultationTypeId: row.consultationTypeId || undefined,
+        consultationTypeId: withConsultationType ? row.consultationTypeId || undefined : undefined,
       })),
   ];
 
@@ -203,10 +206,13 @@ export function toRecordVisitRequest(values: RecordVisitFormValues): CreatePatie
 
   return {
     ...request,
+    emergencyType: values.encounterType === 'Emergency' ? values.emergencyType || undefined : undefined,
     admissionType: values.admissionType || undefined,
     arNumber: values.admissionType === 'MLC' ? values.arNumber || undefined : undefined,
     isReferred: values.referral ? values.referral === 'Yes' : undefined,
     referredBy: values.referral === 'Yes' ? values.referredBy || undefined : undefined,
+    referralName: values.referral === 'Yes' ? values.referralName || undefined : undefined,
+    referralMobile: values.referral === 'Yes' ? values.referralMobile || undefined : undefined,
     category: values.category || undefined,
   };
 }
