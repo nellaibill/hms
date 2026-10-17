@@ -80,7 +80,8 @@ export function RecordVisitForm({ isSubmitting, apiError, onSubmit, onCancel, on
   const admissionType = watch('admissionType');
   const referral = watch('referral');
   const showConsultationType = hasConsultationType(encounterType);
-  // Label only — every encounter type still saves the visit the same way.
+  // Every encounter type saves the visit the same way; for non-OP, PatientRecordVisitPage then
+  // opens IPD's New Admission screen.
   const submitLabel = encounterType === 'OP' ? 'Add Visit' : 'Proceed with admission';
   const additionalConsultants = useFieldArray({ control, name: 'additionalConsultants' });
 
