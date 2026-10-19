@@ -312,7 +312,7 @@ export function exportDischargeSummaryPdf(
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(...COLORS.muted);
-      doc.text(`${patientName}  ·  UHID: ${patient.uhid}  ·  IP No: ${admission.admissionNumber}`, FRAME_LEFT, 31.5);
+      doc.text(`${patientName}  ·  UHID: ${patient.uhid}  ·  Adm No: ${admission.admissionNumber}`, FRAME_LEFT, 31.5);
       doc.text('Discharge Summary', FRAME_RIGHT, 31.5, { align: 'right' });
     }
   }
@@ -351,7 +351,8 @@ export function exportDischargeSummaryPdf(
       ],
       [
         { label: 'Address', value: patientAddress || '—', x: colA, width: colC - colA - 3 },
-        { label: 'IP No', value: admission.admissionNumber, x: colC, width: CONTENT_RIGHT - colC },
+        // The admission's own ADM-… number. The hospital's "IP No" (ADR-089) is the visit's IP-… number, which an admission doesn't record.
+        { label: 'Adm No', value: admission.admissionNumber, x: colC, width: CONTENT_RIGHT - colC },
       ],
       [
         { label: 'DOA', value: formatDateTime(admission.admissionDateTime), x: colA, width: colB - colA - 3 },
