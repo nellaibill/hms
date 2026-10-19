@@ -2,7 +2,7 @@ import { ApiError, type Admission } from '@hms/shared';
 import { Download, FileX, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { exportDischargeSummaryPdf, useStaffDirectoryQuery } from '@/features/dischargeSummary';
+import { useDischargeSummaryPdfExport } from '@/features/dischargeSummary';
 import { dischargeSummaryApi, patientsApi } from '@/services/apiClient';
 
 interface DownloadDischargeSummaryButtonProps {
@@ -16,7 +16,7 @@ interface DownloadDischargeSummaryButtonProps {
  */
 export function DownloadDischargeSummaryButton({ admission }: DownloadDischargeSummaryButtonProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'unavailable'>('idle');
-  const directoryQuery = useStaffDirectoryQuery();
+  const pdfExport = useDischargeSummaryPdfExport();
 
   async function handleDownload() {
     setStatus('loading');
@@ -25,7 +25,7 @@ export function DownloadDischargeSummaryButton({ admission }: DownloadDischargeS
         dischargeSummaryApi.getByAdmissionId(admission.id),
         patientsApi.getPatientById(admission.patientId),
       ]);
-      exportDischargeSummaryPdf(summary, patient, admission, directoryQuery.data ?? []);
+      await pdfExport.exportPdf(summary, patient, admission);
       setStatus('idle');
     } catch (error) {
       setStatus(error instanceof ApiError && error.status === 404 ? 'unavailable' : 'idle');
