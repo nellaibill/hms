@@ -9,6 +9,7 @@ export * from './components/FinalizeConfirmDialog';
 export * from './components/StaffPicker';
 export * from './hooks/useDischargeSummaryByAdmissionQuery';
 export * from './hooks/useDischargeSummaryMutations';
+export * from './hooks/useDischargeSummaryPdfExport';
 export * from './hooks/useStaffDirectoryQuery';
 export * from './exportDischargeSummaryPdf';
 export * from './mapDischargeSummaryForm';
