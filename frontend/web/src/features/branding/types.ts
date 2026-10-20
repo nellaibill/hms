@@ -32,6 +32,18 @@ export interface BrandingConfig {
   tokensDark: Record<string, string>;
 }
 
+/** The part of a BrandingConfig that styles the app — what applyBrandingTokens() writes onto :root. */
+export type BrandingTheme = Pick<BrandingConfig, 'tokensLight' | 'tokensDark' | 'fontFamily' | 'fontSizeScale' | 'iconSizeScale'>;
+
+/** The CSS custom properties a theme's typography settings resolve to. */
+export function typographyCssVars(theme: Pick<BrandingTheme, 'fontFamily' | 'fontSizeScale' | 'iconSizeScale'>): Record<string, string> {
+  return {
+    '--font-sans': FONT_FAMILY_STACKS[theme.fontFamily],
+    '--font-size-base': FONT_SIZE_SCALE_PX[theme.fontSizeScale],
+    '--header-icon-size': ICON_SIZE_SCALE_PX[theme.iconSizeScale],
+  };
+}
+
 /** Mirrors HMS.Modules.Branding.Contracts.BrandingLogoSlots — the `slot` of POST/DELETE
  * api/v1/branding/logo. */
 export const LOGO_SLOTS = ['primary', 'compact', 'login', 'print', 'favicon'] as const;

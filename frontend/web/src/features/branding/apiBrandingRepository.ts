@@ -1,7 +1,7 @@
 import type { BrandingConfigDto, LogoDisplaySettingsDto } from '@hms/shared';
 import { env } from '@/config/env';
 import { brandingApi } from '@/services/apiClient';
-import { mockBrandingStore, readRememberedLogos, rememberLogos } from './mockBrandingStore';
+import { mockBrandingStore, readRememberedLogos, readRememberedTheme, rememberLogos, rememberTheme } from './mockBrandingStore';
 import { normalizePrintSettings } from './printPageSetup';
 import {
   DEFAULT_LOGO_DISPLAY,
@@ -85,15 +85,16 @@ export const apiBrandingRepository = {
       const dto = await brandingApi.getBranding();
       const config = fromDto(dto);
       rememberLogos(config);
+      rememberTheme(config);
       return config;
     } catch {
       // Backend unreachable (down, or the frontend is being run standalone), or — the common
       // case — the pre-login screen, which has no tenant/JWT yet and always gets a 401 here.
       // Falls back to the local mock/localStorage store so the app never renders unstyled,
-      // with the logos last seen on a signed-in session in this browser layered on top, so
-      // the login screen and favicon can still show the hospital's configured Login logo.
+      // with the logos and theme last seen on a signed-in session in this browser layered on
+      // top, so the login screen and favicon still look like that hospital's.
       const fallback = await mockBrandingStore.getBranding();
-      return { ...fallback, ...readRememberedLogos() };
+      return { ...fallback, ...readRememberedLogos(), ...readRememberedTheme() };
     }
   },
 
@@ -123,7 +124,9 @@ export const apiBrandingRepository = {
       logoDisplay: merged.logoDisplay,
       printSettings: merged.printSettings,
     });
-    return fromDto(dto);
+    const config = fromDto(dto);
+    rememberTheme(config);
+    return config;
   },
 
   async uploadLogo(file: File, slot: LogoSlot = 'primary'): Promise<BrandingConfig> {

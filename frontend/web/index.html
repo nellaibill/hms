@@ -33,14 +33,35 @@
         var stored = localStorage.getItem('hms-theme');
         var isDark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (isDark) document.documentElement.classList.add('dark');
+
+        // Paints the theme of the hospital this browser last signed in to (written by
+        // features/branding/mockBrandingStore.ts's rememberTheme()) before the bundle, index.css
+        // or the branding API call have loaded, so a hospital whose theme differs from the
+        // built-in one doesn't flash that built-in theme first on every load. React then keeps
+        // the same values (lib/apply-branding.ts) until the hospital's branding has been fetched.
+        try {
+          var cached = JSON.parse(localStorage.getItem('hms-branding-theme') || 'null');
+          if (!cached) return;
+          var maps = [isDark ? cached.tokensDark : cached.tokensLight, cached.typographyCss];
+          for (var i = 0; i < maps.length; i++) {
+            for (var key in maps[i]) {
+              if (key.indexOf('--') === 0 && typeof maps[i][key] === 'string') {
+                document.documentElement.style.setProperty(key, maps[i][key]);
+              }
+            }
+          }
+        } catch (e) {
+          // Unreadable cache — index.css's built-in theme applies instead.
+        }
       })();
     </script>
     <style>
       /* Self-contained (no Tailwind/index.css dependency) so it paints immediately from raw
          HTML, before the JS bundle has downloaded/parsed/executed — that gap, not the
          already-covered per-route Suspense fallback, is what a slow first load actually spends
-         most of its time in. Colors are hardcoded to match --background/--foreground/--primary
-         in index.css exactly, so there's no visible swap once React mounts and replaces this. */
+         most of its time in. It reads the theme variables the script above set from this
+         browser's remembered theme, falling back to the built-in LHS theme's values from
+         index.css, so there's no visible swap once React mounts and replaces this. */
       #app-splash {
         position: fixed;
         inset: 0;
@@ -49,22 +70,26 @@
         align-items: center;
         justify-content: center;
         gap: 12px;
-        background: hsl(0 0% 100%);
-        color: hsl(215 16% 47%);
-        font-family: Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+        background: hsl(var(--background, 0 0% 100%));
+        color: hsl(var(--muted-foreground, 215 16% 47%));
+        font-family: var(--font-sans, Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif);
         font-size: 14px;
       }
       html.dark #app-splash {
-        background: hsl(222 47% 7%);
-        color: hsl(215 18% 68%);
+        background: hsl(var(--background, 222 47% 7%));
+        color: hsl(var(--muted-foreground, 215 18% 68%));
       }
       #app-splash-spinner {
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        border: 3px solid hsl(210 82% 45% / 0.25);
-        border-top-color: hsl(210 82% 45%);
+        border: 3px solid hsl(var(--primary, 38 93% 57%) / 0.25);
+        border-top-color: hsl(var(--primary, 38 93% 57%));
         animation: app-splash-spin 0.8s linear infinite;
+      }
+      html.dark #app-splash-spinner {
+        border-color: hsl(var(--primary, 210 82% 45%) / 0.25);
+        border-top-color: hsl(var(--primary, 210 82% 45%));
       }
       @keyframes app-splash-spin {
         to {

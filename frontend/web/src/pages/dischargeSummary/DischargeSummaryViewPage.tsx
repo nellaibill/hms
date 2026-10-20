@@ -4,12 +4,13 @@ import { Link, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast-context';
 import { useAdmissionQuery } from '@/features/ipd/admissions';
 import { usePatientQuery } from '@/features/patients';
 import {
   DischargeSummaryDetails,
-  exportDischargeSummaryPdf,
   useDischargeSummaryByAdmissionQuery,
+  useDischargeSummaryPdfExport,
   useStaffDirectoryQuery,
 } from '@/features/dischargeSummary';
 
@@ -20,6 +21,8 @@ export default function DischargeSummaryViewPage() {
   const { data: patient, isPending: isPatientPending } = usePatientQuery(admission?.patientId);
   const summaryQuery = useDischargeSummaryByAdmissionQuery(admissionId);
   const directoryQuery = useStaffDirectoryQuery();
+  const pdfExport = useDischargeSummaryPdfExport();
+  const { toast } = useToast();
 
   if (isAdmissionPending || isPatientPending || summaryQuery.isPending) {
     return (
@@ -60,7 +63,9 @@ export default function DischargeSummaryViewPage() {
 
   function handleDownload() {
     if (!admission || !patient) return;
-    exportDischargeSummaryPdf(summary, patient, admission, staff);
+    pdfExport.exportPdf(summary, patient, admission).catch(() => {
+      toast({ title: 'PDF download failed', description: 'The discharge summary PDF could not be generated.', variant: 'error' });
+    });
   }
 
   return (
@@ -75,8 +80,8 @@ export default function DischargeSummaryViewPage() {
 
       <div className="flex flex-1 flex-col gap-6 p-6 lg:p-8">
         <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="outline" className="gap-1.5" onClick={handleDownload}>
-            <Download className="h-4 w-4" />
+          <Button type="button" variant="outline" className="gap-1.5" onClick={handleDownload} disabled={pdfExport.isExporting}>
+            {pdfExport.isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Download PDF
           </Button>
           {summary.status === 'Draft' && (
