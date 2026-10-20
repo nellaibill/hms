@@ -2,7 +2,12 @@ import { branding } from '@/config/branding';
 import {
   DEFAULT_LOGO_DISPLAY,
   DEFAULT_PRINT_SETTINGS,
+  FONT_FAMILIES,
+  FONT_SIZE_SCALES,
+  ICON_SIZE_SCALES,
+  typographyCssVars,
   type BrandingConfig,
+  type BrandingTheme,
   type FontFamily,
   type FontSizeScale,
   type IconSizeScale,
@@ -188,6 +193,64 @@ export function readRememberedLogos(): Partial<RememberedLogos> {
     return raw ? (JSON.parse(raw) as Partial<RememberedLogos>) : {};
   } catch {
     return {};
+  }
+}
+
+const REMEMBERED_THEME_KEY = 'hms-branding-theme';
+
+/** Remembers the theme from the last signed-in branding fetch or save in this browser, so the
+ * next page load can paint that hospital's theme before its branding is fetched again —
+ * index.html applies it before React loads, then applyBrandingTokens() and the pre-login
+ * fallback keep it on screen until the fetch returns. Without it, every hospital whose theme
+ * differs from the built-in one would flash the built-in theme on every load. `typographyCss`
+ * is the same typography already resolved to CSS values, for index.html's script, which can't
+ * import the scale tables. */
+export function rememberTheme(config: BrandingTheme): void {
+  const remembered: BrandingTheme & { typographyCss: Record<string, string> } = {
+    tokensLight: config.tokensLight,
+    tokensDark: config.tokensDark,
+    fontFamily: config.fontFamily,
+    fontSizeScale: config.fontSizeScale,
+    iconSizeScale: config.iconSizeScale,
+    typographyCss: typographyCssVars(config),
+  };
+  try {
+    localStorage.setItem(REMEMBERED_THEME_KEY, JSON.stringify(remembered));
+  } catch {
+    // localStorage unavailable — the next load just paints the built-in theme first.
+  }
+}
+
+function isTokenMap(value: unknown): value is Record<string, string> {
+  return typeof value === 'object' && value !== null && Object.values(value).every((v) => typeof v === 'string');
+}
+
+/** The theme rememberTheme() stored, or null when there is none (first visit in this browser)
+ * or it is unreadable. */
+export function readRememberedTheme(): BrandingTheme | null {
+  try {
+    const raw = localStorage.getItem(REMEMBERED_THEME_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<Record<keyof BrandingTheme, unknown>>;
+    const { tokensLight, tokensDark, fontFamily, fontSizeScale, iconSizeScale } = parsed;
+    if (
+      !isTokenMap(tokensLight) ||
+      !isTokenMap(tokensDark) ||
+      !(FONT_FAMILIES as readonly unknown[]).includes(fontFamily) ||
+      !(FONT_SIZE_SCALES as readonly unknown[]).includes(fontSizeScale) ||
+      !(ICON_SIZE_SCALES as readonly unknown[]).includes(iconSizeScale)
+    ) {
+      return null;
+    }
+    return {
+      tokensLight,
+      tokensDark,
+      fontFamily: fontFamily as FontFamily,
+      fontSizeScale: fontSizeScale as FontSizeScale,
+      iconSizeScale: iconSizeScale as IconSizeScale,
+    };
+  } catch {
+    return null;
   }
 }
 
