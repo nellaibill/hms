@@ -39,8 +39,9 @@
       /* Self-contained (no Tailwind/index.css dependency) so it paints immediately from raw
          HTML, before the JS bundle has downloaded/parsed/executed — that gap, not the
          already-covered per-route Suspense fallback, is what a slow first load actually spends
-         most of its time in. Colors are hardcoded to match --background/--foreground/--primary
-         in index.css exactly, so there's no visible swap once React mounts and replaces this. */
+         most of its time in. Colors are hardcoded to match --background/--muted-foreground/--primary
+         of the built-in LHS theme in index.css exactly, so there's no visible swap once React
+         mounts and replaces this. */
       #app-splash {
         position: fixed;
         inset: 0;
@@ -62,9 +63,13 @@
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        border: 3px solid hsl(210 82% 45% / 0.25);
-        border-top-color: hsl(210 82% 45%);
+        border: 3px solid hsl(38 93% 57% / 0.25);
+        border-top-color: hsl(38 93% 57%);
         animation: app-splash-spin 0.8s linear infinite;
+      }
+      html.dark #app-splash-spinner {
+        border-color: hsl(210 82% 45% / 0.25);
+        border-top-color: hsl(210 82% 45%);
       }
       @keyframes app-splash-spin {
         to {

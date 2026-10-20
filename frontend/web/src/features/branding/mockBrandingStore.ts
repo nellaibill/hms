@@ -1,58 +1,66 @@
 import { branding } from '@/config/branding';
-import { contrastForeground } from '@/lib/color';
-import { DEFAULT_LOGO_DISPLAY, DEFAULT_PRINT_SETTINGS, type BrandingConfig } from './types';
+import {
+  DEFAULT_LOGO_DISPLAY,
+  DEFAULT_PRINT_SETTINGS,
+  type BrandingConfig,
+  type FontFamily,
+  type FontSizeScale,
+  type IconSizeScale,
+} from './types';
 
 const STORAGE_KEY = 'hms-branding-config';
 
 /**
- * Default token set — a hand-copied snapshot of index.css's :root/.dark blocks
- * plus the primary-derived overrides applyBrandingTokens() used to compute at
- * runtime. This is both the seed for a first-ever load and the target of
- * "Reset to default theme", so the app looks byte-identical to pre-feature
- * HMS until an admin actually changes something.
+ * Default token set — a hand-copied snapshot of the LHS (Lakshmi Hospitals) tenant's saved
+ * theme, taken from production on 2026-10-20. It is the app's built-in theme: index.css's
+ * :root/.dark blocks and applyBrandingTokens()'s loading-state fallback paint exactly these
+ * values, so LHS never sees a different theme flash in while its saved branding is still
+ * being fetched. It is also the seed for a first-ever load and the target of "Reset to
+ * default theme". Kept in exact sync with index.css and the backend's BrandingDefaults.cs —
+ * if one changes, the others should too.
  */
 export const DEFAULT_TOKENS_LIGHT: Record<string, string> = {
   '--background': '0 0% 100%',
-  '--foreground': '222 47% 11%',
+  '--foreground': '0 3% 14%',
   '--card': '0 0% 100%',
   '--card-foreground': '222 47% 11%',
   '--card-header-bg': '0 0% 100%',
   '--card-header-foreground': '222 47% 11%',
-  '--page-banner-bg': '196 86% 58%',
+  '--page-banner-bg': '38 100% 50%',
   '--page-banner-foreground': '0 0% 100%',
   '--popover': '0 0% 100%',
   '--popover-foreground': '222 47% 11%',
-  '--primary': branding.primaryColor.light,
-  '--primary-foreground': contrastForeground(branding.primaryColor.light, '222 47% 11%', '0 0% 100%'),
-  '--secondary': '210 30% 97%',
-  '--secondary-foreground': '215 25% 27%',
+  '--primary': '38 93% 57%',
+  '--primary-foreground': '0 0% 100%',
+  '--secondary': '214 31% 87%',
+  '--secondary-foreground': '220 3% 17%',
   '--muted': '210 30% 97%',
   '--muted-foreground': '215 16% 47%',
-  '--accent': '210 82% 95%',
-  '--accent-foreground': '210 82% 32%',
-  '--link': branding.primaryColor.light,
+  '--accent': '0 0% 90%',
+  '--accent-foreground': '228 7% 59%',
+  '--link': '209 69% 65%',
   '--icon': '215 16% 47%',
-  '--destructive': '356 75% 49%',
+  '--destructive': '356 100% 47%',
   '--destructive-foreground': '0 0% 100%',
-  '--success': '152 56% 34%',
+  '--success': '152 100% 38%',
   '--success-foreground': '0 0% 100%',
-  '--warning': '38 92% 50%',
+  '--warning': '0 76% 77%',
   '--warning-foreground': '222 47% 11%',
   '--info': '199 89% 42%',
   '--info-foreground': '0 0% 100%',
-  '--border': '214 28% 91%',
+  '--border': '0 0% 83%',
   '--input': '214 28% 91%',
-  '--ring': branding.primaryColor.light,
-  '--sidebar': '210 33% 99%',
-  '--sidebar-foreground': '222 40% 18%',
-  '--sidebar-border': '214 28% 91%',
+  '--ring': '210 82% 45%',
+  '--sidebar': '72 100% 99%',
+  '--sidebar-foreground': '222 39% 18%',
+  '--sidebar-border': '0 14% 67%',
   '--sidebar-accent': '210 40% 95%',
-  '--sidebar-odd-bg': '210 33% 99%',
-  '--sidebar-even-bg': '0 0% 100%',
-  '--sidebar-active-bg': '210 82% 95%',
+  '--sidebar-odd-bg': '72 100% 99%',
+  '--sidebar-even-bg': '72 100% 99%',
+  '--sidebar-active-bg': '41 100% 86%',
   '--sidebar-active-fg': '210 82% 40%',
-  '--header-bg': branding.primaryColor.light,
-  '--header-foreground': contrastForeground(branding.primaryColor.light, '222 47% 11%', '0 0% 100%'),
+  '--header-bg': '0 0% 44%',
+  '--header-foreground': '0 0% 100%',
 };
 
 export const DEFAULT_TOKENS_DARK: Record<string, string> = {
@@ -66,15 +74,15 @@ export const DEFAULT_TOKENS_DARK: Record<string, string> = {
   '--page-banner-foreground': '0 0% 100%',
   '--popover': '222 40% 10%',
   '--popover-foreground': '210 40% 98%',
-  '--primary': branding.primaryColor.dark,
-  '--primary-foreground': contrastForeground(branding.primaryColor.dark, '222 47% 9%', '0 0% 100%'),
+  '--primary': '210 82% 45%',
+  '--primary-foreground': '0 0% 100%',
   '--secondary': '217 27% 17%',
   '--secondary-foreground': '210 30% 92%',
   '--muted': '217 27% 17%',
   '--muted-foreground': '215 18% 68%',
   '--accent': '210 60% 20%',
   '--accent-foreground': '210 90% 85%',
-  '--link': branding.primaryColor.dark,
+  '--link': '210 82% 45%',
   '--icon': '215 18% 68%',
   '--destructive': '356 85% 64%',
   '--destructive-foreground': '222 47% 9%',
@@ -86,7 +94,7 @@ export const DEFAULT_TOKENS_DARK: Record<string, string> = {
   '--info-foreground': '222 47% 9%',
   '--border': '217 24% 20%',
   '--input': '217 24% 20%',
-  '--ring': branding.primaryColor.dark,
+  '--ring': '210 82% 45%',
   '--sidebar': '222 44% 8%',
   '--sidebar-foreground': '210 30% 92%',
   '--sidebar-border': '217 24% 20%',
@@ -95,9 +103,14 @@ export const DEFAULT_TOKENS_DARK: Record<string, string> = {
   '--sidebar-even-bg': '222 40% 10%',
   '--sidebar-active-bg': '210 60% 20%',
   '--sidebar-active-fg': '210 90% 72%',
-  '--header-bg': branding.primaryColor.light,
-  '--header-foreground': contrastForeground(branding.primaryColor.light, '222 47% 11%', '0 0% 100%'),
+  '--header-bg': '210 82% 45%',
+  '--header-foreground': '0 0% 100%',
 };
+
+/** LHS's saved typography — Medium text, Large top-bar icons. */
+export const DEFAULT_FONT_FAMILY = 'Inter' satisfies FontFamily;
+export const DEFAULT_FONT_SIZE_SCALE = 'md' satisfies FontSizeScale;
+export const DEFAULT_ICON_SIZE_SCALE = 'lg' satisfies IconSizeScale;
 
 function defaultConfig(): BrandingConfig {
   return {
@@ -112,9 +125,9 @@ function defaultConfig(): BrandingConfig {
     faviconUrl: null,
     logoDisplay: DEFAULT_LOGO_DISPLAY,
     printSettings: DEFAULT_PRINT_SETTINGS,
-    fontFamily: 'Inter',
-    fontSizeScale: 'md',
-    iconSizeScale: 'md',
+    fontFamily: DEFAULT_FONT_FAMILY,
+    fontSizeScale: DEFAULT_FONT_SIZE_SCALE,
+    iconSizeScale: DEFAULT_ICON_SIZE_SCALE,
     tokensLight: { ...DEFAULT_TOKENS_LIGHT },
     tokensDark: { ...DEFAULT_TOKENS_DARK },
   };

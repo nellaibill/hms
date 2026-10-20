@@ -7,11 +7,13 @@
  *
  * Every color-bearing class in this app resolves to one of these variables
  * (via tailwind.config.ts's `hsl(var(--x))` mapping), never a hardcoded hex
- * value in a component. `--primary` / `--ring` / `--accent` / `--sidebar-active-*`
- * are further overridden at runtime by lib/apply-branding.ts from
- * config/branding.ts, so re-branding (e.g. blue → green) is a one-line config
- * edit, not a find-and-replace across components. The values below are the
- * *default* (pre-JS, and design-time reference) blue brand.
+ * value in a component. Every theme token is overridden at runtime by
+ * lib/apply-branding.ts with the hospital's saved Theme & Branding settings.
+ * The values below are the built-in LHS (Lakshmi Hospitals) theme — the same
+ * snapshot as features/branding/mockBrandingStore.ts's DEFAULT_TOKENS_LIGHT/DARK
+ * (keep them in sync) — so the first paint, before the hospital's saved
+ * branding has been fetched, already matches LHS instead of flashing a
+ * different theme.
  *
  * Neutrals use a cool slate hue (≈215°) rather than pure gray so borders,
  * muted text, and surfaces read as one cohesive "calm blue" system rather
@@ -20,7 +22,7 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 0 3% 14%;
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -31,47 +33,46 @@
     --card-header-bg: 0 0% 100%;
     --card-header-foreground: 222 47% 11%;
 
-    /* Page banner (e.g. Reception & Registration hub) — new token, seeded to
-       match the color that page previously hardcoded (bg-[#39bff0]). */
-    --page-banner-bg: 196 86% 58%;
+    /* Page banner (e.g. Reception & Registration hub). */
+    --page-banner-bg: 38 100% 50%;
     --page-banner-foreground: 0 0% 100%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 210 82% 45%;
+    --primary: 38 93% 57%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 30% 97%;
-    --secondary-foreground: 215 25% 27%;
+    --secondary: 214 31% 87%;
+    --secondary-foreground: 220 3% 17%;
 
     --muted: 210 30% 97%;
     --muted-foreground: 215 16% 47%;
     --text-tertiary: 215 14% 60%;
     --text-disabled: 215 15% 78%;
 
-    --accent: 210 82% 95%;
-    --accent-foreground: 210 82% 32%;
+    --accent: 0 0% 90%;
+    --accent-foreground: 228 7% 59%;
 
-    --destructive: 356 75% 49%;
+    --destructive: 356 100% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 56% 34%;
+    --success: 152 100% 38%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 0 76% 77%;
     --warning-foreground: 222 47% 11%;
 
     --info: 199 89% 42%;
     --info-foreground: 0 0% 100%;
 
-    --border: 214 28% 91%;
+    --border: 0 0% 83%;
     --input: 214 28% 91%;
     --ring: 210 82% 45%;
 
     /* Link and generic/neutral chrome icon color — new tokens, seeded to
        match today's hardcoded text-primary / text-muted-foreground usage. */
-    --link: 210 82% 45%;
+    --link: 209 69% 65%;
     --icon: 215 16% 47%;
 
     /* Typography — admin-editable font family/size (Theme & Branding settings). */
@@ -80,24 +81,20 @@
 
     /* Top bar action-icon size (Language/Notifications/Calendar/Calculator/Tasks/Expenses/
        Profile) — admin-editable via Theme & Branding settings, Typography tab. */
-    --header-icon-size: 20px;
+    --header-icon-size: 24px;
 
-    --sidebar: 210 33% 99%;
-    --sidebar-foreground: 222 40% 18%;
-    --sidebar-border: 214 28% 91%;
+    --sidebar: 72 100% 99%;
+    --sidebar-foreground: 222 39% 18%;
+    --sidebar-border: 0 14% 67%;
     --sidebar-accent: 210 40% 95%;
-    /* Alternating row stripe, admin-editable via Theme & Branding's Left nav tab — odd
-       defaults to --sidebar itself (blends in), even defaults to --card (a hair lighter),
-       matching the subtle look SidebarNav.tsx used to hardcode before this became configurable. */
-    --sidebar-odd-bg: 210 33% 99%;
-    --sidebar-even-bg: 0 0% 100%;
-    --sidebar-active-bg: 210 82% 95%;
+    /* Alternating row stripe, admin-editable via Theme & Branding's Left nav tab. */
+    --sidebar-odd-bg: 72 100% 99%;
+    --sidebar-even-bg: 72 100% 99%;
+    --sidebar-active-bg: 41 100% 86%;
     --sidebar-active-fg: 210 82% 40%;
 
-    /* Top app bar keeps a fixed enterprise-blue identity in both themes
-       (set from applyBrandingTokens using the light-mode brand color) —
-       it should never wash out to the paler, dark-theme accent tint. */
-    --header-bg: 210 82% 45%;
+    /* Top app bar — set per theme (see .dark below). */
+    --header-bg: 0 0% 44%;
     --header-foreground: 0 0% 100%;
 
     --radius: 0.625rem;
@@ -160,6 +157,9 @@
     --sidebar-even-bg: 222 40% 10%;
     --sidebar-active-bg: 210 60% 20%;
     --sidebar-active-fg: 210 90% 72%;
+
+    --header-bg: 210 82% 45%;
+    --header-foreground: 0 0% 100%;
   }
 }
 
