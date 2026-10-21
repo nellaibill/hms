@@ -424,20 +424,32 @@ function AtAGlanceStrip({ patient }: { patient: Patient }) {
   const outstanding =
     billings?.reduce((sum, billing) => sum + billing.items.filter((item) => item.paymentStatus === 'Pending').reduce((s, item) => s + item.total, 0), 0) ?? 0;
 
+  // Only stats this patient actually has are shown: a count or amount that loaded as 0 (e.g. Day
+  // Care for a patient never in day care) returns null and its tile is left out, rather than
+  // filling the strip with 0 tiles. Still-loading tiles keep their spinner, and IP Admissions keeps
+  // its '—' for viewers without access — that's "unknown", not 0.
+  const stat = (pending: boolean, amount: number, display: ReactNode = amount): ReactNode => (pending ? dash : amount === 0 ? null : display);
+
+  const stats: [label: string, value: ReactNode][] = [
+    ['Total Visits', stat(visitsPending, visits?.length ?? 0)],
+    ['OP Visits', stat(visitsPending, visitCountByType('OP'))],
+    ['IP Admissions', canViewAdmissions ? stat(admissionsQuery.isPending, admissionCount) : '—'],
+    ['Emergency', stat(visitsPending, visitCountByType('Emergency'))],
+    ['Day Care', stat(visitsPending, visitCountByType('DayCare'))],
+    ['Last Visit', visitsPending ? dash : lastVisit ? new Date(lastVisit.createdAt).toLocaleDateString('en-IN') : null],
+    ['Total Prescriptions', stat(prescriptionsPending, prescriptionCount)],
+    ['Total Bills', stat(billingsPending, totalBills, formatCurrency(totalBills))],
+    ['Outstanding', stat(billingsPending, outstanding, formatCurrency(outstanding))],
+  ];
+  const shownStats = stats.filter(([, value]) => value !== null);
+
+  if (shownStats.length === 0) return null;
+
   return (
     <div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
-      <StatItem label="Total Visits" value={visitsPending ? dash : (visits?.length ?? 0)} />
-      <StatItem label="OP Visits" value={visitsPending ? dash : visitCountByType('OP')} />
-      <StatItem label="IP Admissions" value={!canViewAdmissions ? '—' : admissionsQuery.isPending ? dash : admissionCount} />
-      <StatItem label="Emergency" value={visitsPending ? dash : visitCountByType('Emergency')} />
-      <StatItem label="Day Care" value={visitsPending ? dash : visitCountByType('DayCare')} />
-      <StatItem
-        label="Last Visit"
-        value={visitsPending ? dash : lastVisit ? new Date(lastVisit.createdAt).toLocaleDateString('en-IN') : '—'}
-      />
-      <StatItem label="Total Prescriptions" value={prescriptionsPending ? dash : prescriptionCount} />
-      <StatItem label="Total Bills" value={billingsPending ? dash : formatCurrency(totalBills)} />
-      <StatItem label="Outstanding" value={billingsPending ? dash : formatCurrency(outstanding)} />
+      {shownStats.map(([label, value]) => (
+        <StatItem key={label} label={label} value={value} />
+      ))}
     </div>
   );
 }
