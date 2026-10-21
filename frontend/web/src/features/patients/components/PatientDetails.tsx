@@ -496,6 +496,24 @@ function formatVisitDateTime(iso: string): string {
 function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number }) {
   const rows = limit ? visits.slice(0, limit) : visits;
 
+  // An OP visit gets its OP No only once its consultation fee is paid (ADR-103) — until then
+  // the column says "Fee pending" rather than a bare '—'. Judged from the patient's own
+  // invoices (a consultation line paid, or billed at ₹0, on a live invoice for the visit), so
+  // an old visit from before OP Nos existed whose fee was paid isn't mislabelled; while the
+  // invoices are still loading (or can't be read), the plain '—' stays.
+  const { data: invoices } = usePatientInvoicesQuery(visits[0]?.patientId);
+  const feePaidVisitIds = new Set(
+    invoices
+      ?.filter(
+        (invoice) =>
+          !invoice.isVoided &&
+          invoice.items.some((item) => item.billingType === 'Consultation' && (item.paymentStatus === 'Paid' || item.total === 0)),
+      )
+      .map((invoice) => invoice.visitId),
+  );
+  const isFeePending = (visit: PatientVisit) =>
+    visit.visitType === 'OP' && !visit.visitNumber && invoices !== undefined && !feePaidVisitIds.has(visit.visitId);
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -514,7 +532,15 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
             return (
               <tr key={visit.visitId} className="hover:bg-muted/30">
                 <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{formatVisitDateTime(visit.createdAt)}</td>
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{visit.visitNumber ?? '—'}</td>
+                <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">
+                  {isFeePending(visit) ? (
+                    <Badge variant="warning" className="text-[10px]">
+                      Fee pending
+                    </Badge>
+                  ) : (
+                    (visit.visitNumber ?? '—')
+                  )}
+                </td>
                 <td className="px-3 py-2">
                   <Badge variant="outline" className="text-[10px]">
                     {visit.visitType}

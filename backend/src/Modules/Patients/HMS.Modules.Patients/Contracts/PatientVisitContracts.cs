@@ -60,7 +60,8 @@ public record PatientVisitResponse
     public VisitType VisitType { get; init; }
 
     /// <summary>The auto-generated OP No (OP visits, "OP-…") or IP No (every other visit type,
-    /// "IP-…"). Null only for visits recorded before these numbers existed.</summary>
+    /// "IP-…"). Null on an OP visit whose consultation fee isn't paid yet (ADR-103), and for
+    /// visits recorded before these numbers existed.</summary>
     public string? VisitNumber { get; init; }
 
     public Guid? AppointmentTypeId { get; init; }

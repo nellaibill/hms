@@ -35,6 +35,32 @@ public class PatientVisitTests
     }
 
     [Fact]
+    public void AssignVisitNumber_OnAVisitWithNone_StoresItAndMarksTheVisitUpdated()
+    {
+        var actorId = Guid.NewGuid();
+        var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null);
+
+        var assigned = visit.AssignVisitNumber(" OP-2026-000042 ", actorId);
+
+        assigned.Should().BeTrue();
+        visit.VisitNumber.Should().Be("OP-2026-000042");
+        visit.UpdatedBy.Should().Be(actorId);
+    }
+
+    // ADR-103: a second payment for the same visit must never renumber it.
+    [Fact]
+    public void AssignVisitNumber_OnAVisitThatAlreadyHasOne_KeepsTheFirst()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null);
+        visit.AssignVisitNumber("OP-2026-000042", updatedBy: null);
+
+        var assigned = visit.AssignVisitNumber("OP-2026-000043", updatedBy: null);
+
+        assigned.Should().BeFalse();
+        visit.VisitNumber.Should().Be("OP-2026-000042");
+    }
+
+    [Fact]
     public void SetEmergencyType_OnAnEmergencyVisit_StoresIt()
     {
         var visit = PatientVisit.Create(PatientId, VisitType.Emergency, appointmentTypeId: null, createdBy: null);

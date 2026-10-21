@@ -7,6 +7,8 @@ export function useRecordPaymentMutation() {
   return useMutation({
     mutationFn: async ({ billingId, itemId, method }: { billingId: string; itemId: string; method: PaymentMethod }) =>
       recordPayment(billingId, itemId, method),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['billings'] }),
+    // Same as useCreateInvoiceMutation: paying a consultation can give the visit its OP No.
+    onSuccess: () =>
+      Promise.all([queryClient.invalidateQueries({ queryKey: ['billings'] }), queryClient.invalidateQueries({ queryKey: ['patient-visits'] })]),
   });
 }

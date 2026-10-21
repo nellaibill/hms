@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-103: An OP visit gets its OP No only once its consultation fee is paid
+**Date:** 2026-10-21
+**Status:** Accepted (changes when the OP No is drawn under ADR-089; IP No unchanged)
+
+**Context**
+Client request on Patient Registration (`/patients/registration`): generate the OP number only after the patient pays the consultation fee. Under ADR-089 the OP No was drawn as soon as an OP visit was saved, before any bill existed, so a patient who left without paying still used up an OP number. The fee is billed afterwards, on OPD Billing Entry, against the visit (`Invoice.VisitId`). A bill is paid either in full when it is saved (`InvoiceService.CreateAsync` with `Payments`) or one line at a time later (`RecordPaymentAsync`).
+
+**Decision**
+- `PatientVisitService.CreateAsync` no longer draws a number for an OP visit, which is saved with `VisitNumber` null. IP, Emergency, Day Care and Observation visits still get their IP No when saved.
+- New `IPatientVisitService.AssignOpNumberAsync(patientId, visitId, actorId)`. It locks the visit's row (`SELECT … FOR UPDATE` inside a transaction, `IPatientVisitRepository.LockAndUpdateAsync`) and draws an OP No only if the visit is an OP visit that still has none (`PatientVisit.AssignVisitNumber`). Calling it twice, or for a non-OP visit, changes nothing, and two payments for the same visit arriving together can't both use up a number.
+- `InvoiceService` calls it after both payment paths save, whenever the invoice has a Consultation line that is Paid or billed at ₹0 (nothing to pay, so it counts as paid), unless the bill has no registered visit (`VisitId` equal to the patient id). Like the lab-order hook, the call is best-effort: the payment is already committed and never fails because of it, so a failure is logged. Any later payment on the same invoice asks again, which retries a failed one.
+- With more than one consultant on a visit, the first paid consultation line issues the number.
+- `InvoiceResponse.OpNumber` carries the visit's OP No on the create/record-payment response that issued it. OPD Billing Entry shows it next to "Invoice … saved", and Invoice Detail shows it in a toast after a payment. Both billing mutations now also refresh the patient's visits.
+- The Add Visit toast for an OP visit now says the OP No will be issued once the consultation fee is paid. The patient's Recent Visits and Visits tables show a "Fee pending" badge for an OP visit with no number and no paid (or ₹0) consultation line on a live invoice. The check uses the patient's invoices, so a visit from before OP Nos existed whose fee was paid shows "—" as before.
+- No migration: `visit_number` was already nullable, and its unique index already skips nulls.
+
+**Consequences**
+- OP numbers are no longer used up by visits that are never billed. An OP visit that is never billed never gets an OP No.
+- Existing OP visits keep the numbers they already have; nothing is backfilled or removed. A bill can't be voided once a line is paid, so an issued OP No never needs to be taken back.
+- If issuing fails after a payment, the visit stays without an OP No until another payment is recorded on that invoice; there is no separate retry screen.
+- Not changed: the doctor's OPD queue still lists unpaid OP visits (without an OP No).
+
+---
+
 ### ADR-102: API errors always carry a readable message that says what kind of failure it was
 **Date:** 2026-10-21
 **Status:** Accepted

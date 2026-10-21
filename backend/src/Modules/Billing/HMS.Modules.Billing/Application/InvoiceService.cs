@@ -172,6 +172,45 @@ internal class InvoiceService : IInvoiceService
         return Result.Success();
     }
 
+    /// <summary>
+    /// ADR-103: an OP visit gets its OP No only once its consultation fee is paid. Runs after a
+    /// save that may have paid a Consultation line on this invoice — a ₹0 Consultation line has
+    /// nothing to pay, so it counts as paid. Asking again for a visit that already has its
+    /// number changes nothing, which also means any later payment on the invoice retries one
+    /// that failed. Best-effort like the lab-order hook in CreateAsync: the payment is already
+    /// committed and must never fail because of this, so a failure is logged instead. Returns
+    /// the visit's OP No, or null if it has none (not an OP visit, fee not paid, or failed).
+    /// </summary>
+    private async Task<string?> IssueOpNumberIfConsultationPaidAsync(Invoice invoice, Guid? actorId, CancellationToken cancellationToken)
+    {
+        // A bill with no registered visit carries the patient's own id as its VisitId (see
+        // CreateInvoiceRequest.VisitId) — there's no visit to number.
+        if (invoice.VisitId == invoice.PatientId
+            || !invoice.Items.Any(i => i.BillingType == BillingType.Consultation && (i.PaymentStatus == Contracts.PaymentStatus.Paid || i.Total == 0m)))
+        {
+            return null;
+        }
+
+        try
+        {
+            var result = await _patientVisitService.AssignOpNumberAsync(invoice.PatientId, invoice.VisitId, actorId, cancellationToken);
+            if (result is not { IsSuccess: true, Value: { } visit })
+            {
+                _logger.LogWarning(
+                    "Patients: could not issue an OP No for visit '{VisitId}' after invoice '{InvoiceId}' paid its consultation — {ErrorCode}: {Error}",
+                    invoice.VisitId, invoice.Id, result?.ErrorCode, result?.Error);
+                return null;
+            }
+
+            return visit.VisitType == VisitType.OP ? visit.VisitNumber : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Patients: issuing an OP No for visit '{VisitId}' after invoice '{InvoiceId}' threw unexpectedly — the payment itself still succeeded.", invoice.VisitId, invoice.Id);
+            return null;
+        }
+    }
+
     public async Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, CancellationToken cancellationToken)
     {
         var utcNow = DateTime.UtcNow;
@@ -312,6 +351,8 @@ internal class InvoiceService : IInvoiceService
 
         await LogAsync(ActivityLogActions.Create, invoice, $"Created invoice {invoice.InvoiceNumber}", null, invoice.ToResponse(), actorId, cancellationToken);
 
+        var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
+
         // Best-effort, not part of this invoice's atomic commit — mirrors ADR-028's Pharmacy
         // dispense billing precedent (stock/ledger commits first, billing is attempted only
         // after and never rolled back on failure). Here it's inverted: the invoice is already
@@ -390,7 +431,7 @@ internal class InvoiceService : IInvoiceService
             }
         }
 
-        return Result<InvoiceResponse>.Success(invoice.ToResponse());
+        return Result<InvoiceResponse>.Success(invoice.ToResponse() with { OpNumber = opNumber });
     }
 
     public async Task<Result<InvoiceResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -509,7 +550,9 @@ internal class InvoiceService : IInvoiceService
         var after = invoice.ToResponse();
         await LogAsync(ActivityLogActions.Payment, invoice, $"Recorded {request.Method} payment of {paidItem.Total} on invoice {invoice.InvoiceNumber}", before, after, actorId, cancellationToken);
 
-        return Result<InvoiceResponse>.Success(after);
+        var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
+
+        return Result<InvoiceResponse>.Success(after with { OpNumber = opNumber });
     }
 
     public async Task<Result<InvoiceResponse>> VoidAsync(Guid id, VoidInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)

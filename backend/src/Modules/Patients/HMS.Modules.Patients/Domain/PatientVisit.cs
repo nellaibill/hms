@@ -17,9 +17,10 @@ internal class PatientVisit : Entity
     public VisitType VisitType { get; private set; }
 
     /// <summary>The human-readable OP No ("OP-…", OP visits) or IP No ("IP-…", every other
-    /// visit type), drawn from a sequence when the visit is recorded — see
-    /// IPatientIdentifierGenerator.NextVisitNumberAsync. Null only on visits recorded before
-    /// these numbers existed; they are not backfilled.</summary>
+    /// visit type), drawn from a sequence — see IPatientIdentifierGenerator.NextVisitNumberAsync.
+    /// An IP No is drawn when the visit is recorded; an OP No only once the visit's consultation
+    /// fee is paid (ADR-103, see <see cref="AssignVisitNumber"/>), so it is null on an unpaid OP
+    /// visit. Also null on visits recorded before these numbers existed; they are not backfilled.</summary>
     public string? VisitNumber { get; private set; }
 
     public Guid? AppointmentTypeId { get; private set; }
@@ -94,6 +95,23 @@ internal class PatientVisit : Entity
     public void SetEmergencyType(EmergencyType? emergencyType)
     {
         EmergencyType = VisitType == VisitType.Emergency ? emergencyType : null;
+    }
+
+    /// <summary>Gives a visit recorded without a number its OP No — an OP visit once its
+    /// consultation fee is paid (ADR-103). A visit that already has a number keeps it: returns
+    /// false and changes nothing, so a second payment can never renumber a visit.</summary>
+    public bool AssignVisitNumber(string visitNumber, Guid? updatedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(visitNumber, nameof(visitNumber));
+
+        if (VisitNumber is not null)
+        {
+            return false;
+        }
+
+        VisitNumber = visitNumber.Trim();
+        MarkUpdated(updatedBy);
+        return true;
     }
 
     public void AddConsultation(PatientVisitConsultation consultation, Guid? updatedBy)

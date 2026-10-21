@@ -95,13 +95,90 @@ public class PatientVisitServiceTests
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
+    // ADR-103: an OP visit gets its OP No only once its consultation fee is paid.
     [Fact]
-    public async Task CreateAsync_ForAnOpVisit_AssignsTheGeneratedOpNumber()
+    public async Task CreateAsync_ForAnOpVisit_DoesNotDrawAnOpNumber()
     {
         var result = await _sut.CreateAsync(PatientId, NewRequest(), actorId: null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitNumber.Should().BeNull();
+        await _identifierGenerator.DidNotReceive().NextVisitNumberAsync(Arg.Any<VisitType>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Has the repository's LockAndUpdateAsync run its update on <paramref name="visit"/>,
+    /// the way the real one does once it holds the row lock.</summary>
+    private void GivenLockedVisit(PatientVisit visit) =>
+        _repository.LockAndUpdateAsync(visit.Id, Arg.Any<Func<PatientVisit, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await call.Arg<Func<PatientVisit, Task>>()(visit);
+                return (PatientVisit?)visit;
+            });
+
+    [Fact]
+    public async Task AssignOpNumberAsync_OnAnUnnumberedOpVisit_AssignsTheNextOpNumber()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null);
+        GivenLockedVisit(visit);
+
+        var result = await _sut.AssignOpNumberAsync(PatientId, visit.Id, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
         result.Value!.VisitNumber.Should().Be("OP-2026-000001");
+        visit.VisitNumber.Should().Be("OP-2026-000001");
+    }
+
+    [Fact]
+    public async Task AssignOpNumberAsync_OnAVisitThatAlreadyHasOne_KeepsItAndDrawsNoNumber()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.OP, appointmentTypeId: null, createdBy: null, visitNumber: "OP-2026-000007");
+        GivenLockedVisit(visit);
+
+        var result = await _sut.AssignOpNumberAsync(PatientId, visit.Id, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitNumber.Should().Be("OP-2026-000007");
+        await _identifierGenerator.DidNotReceive().NextVisitNumberAsync(Arg.Any<VisitType>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignOpNumberAsync_OnANonOpVisit_ChangesNothing()
+    {
+        var visit = PatientVisit.Create(PatientId, VisitType.Emergency, appointmentTypeId: null, createdBy: null, visitNumber: "IP-2026-000003");
+        GivenLockedVisit(visit);
+
+        var result = await _sut.AssignOpNumberAsync(PatientId, visit.Id, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitNumber.Should().Be("IP-2026-000003");
+        await _identifierGenerator.DidNotReceive().NextVisitNumberAsync(Arg.Any<VisitType>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignOpNumberAsync_ForAnotherPatientsVisit_FailsWithoutDrawingANumber()
+    {
+        var visit = PatientVisit.Create(Guid.NewGuid(), VisitType.OP, appointmentTypeId: null, createdBy: null);
+        GivenLockedVisit(visit);
+
+        var result = await _sut.AssignOpNumberAsync(PatientId, visit.Id, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.VisitNotFound);
+        visit.VisitNumber.Should().BeNull();
+        await _identifierGenerator.DidNotReceive().NextVisitNumberAsync(Arg.Any<VisitType>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignOpNumberAsync_WhenTheVisitDoesNotExist_ReturnsVisitNotFound()
+    {
+        _repository.LockAndUpdateAsync(Arg.Any<Guid>(), Arg.Any<Func<PatientVisit, Task>>(), Arg.Any<CancellationToken>())
+            .Returns((PatientVisit?)null);
+
+        var result = await _sut.AssignOpNumberAsync(PatientId, Guid.NewGuid(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.VisitNotFound);
     }
 
     [Theory]
@@ -138,7 +215,8 @@ public class PatientVisitServiceTests
     {
         _patientRepository.ExistsAsync(PatientId, Arg.Any<CancellationToken>()).Returns(false);
 
-        await _sut.CreateAsync(PatientId, NewRequest(), actorId: null, CancellationToken.None);
+        // An IP visit, since an OP visit never draws one at creation anyway (ADR-103).
+        await _sut.CreateAsync(PatientId, NewRequest() with { VisitType = VisitType.IP, AppointmentTypeId = null }, actorId: null, CancellationToken.None);
 
         await _identifierGenerator.DidNotReceive().NextVisitNumberAsync(Arg.Any<VisitType>(), Arg.Any<CancellationToken>());
     }

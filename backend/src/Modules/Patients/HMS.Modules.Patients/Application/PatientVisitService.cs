@@ -96,10 +96,13 @@ internal class PatientVisitService : IPatientVisitService
             }
         }
 
-        // Drawn only now, after every check above has passed, so a rejected request doesn't
-        // burn an OP No/IP No. A failed save below still can — sequences are gap-tolerant by
-        // design, same as the UHID.
-        var visitNumber = await _identifierGenerator.NextVisitNumberAsync(request.VisitType, cancellationToken);
+        // An OP visit gets its OP No only once its consultation fee is paid (ADR-103,
+        // AssignOpNumberAsync below), so none is drawn here. An IP No is drawn only now, after
+        // every check above has passed, so a rejected request doesn't burn one. A failed save
+        // below still can — sequences are gap-tolerant by design, same as the UHID.
+        var visitNumber = request.VisitType == VisitType.OP
+            ? null
+            : await _identifierGenerator.NextVisitNumberAsync(request.VisitType, cancellationToken);
 
         var visit = PatientVisit.Create(patientId, request.VisitType, request.AppointmentTypeId, actorId, visitNumber);
         visit.SetEmergencyType(request.EmergencyType);
@@ -132,6 +135,42 @@ internal class PatientVisitService : IPatientVisitService
         if (visit is null || visit.PatientId != patientId)
         {
             return Result<PatientVisitResponse>.Failure(PatientErrorCodes.VisitNotFound, $"Visit '{visitId}' was not found for this patient.");
+        }
+
+        return Result<PatientVisitResponse>.Success(visit.ToResponse());
+    }
+
+    public async Task<Result<PatientVisitResponse>> AssignOpNumberAsync(Guid patientId, Guid visitId, Guid? actorId, CancellationToken cancellationToken)
+    {
+        string? assigned = null;
+
+        // The number is drawn only while the visit's row is locked and still has none, so two
+        // payments for the same visit arriving together can't both use one up.
+        var visit = await _repository.LockAndUpdateAsync(
+            visitId,
+            async locked =>
+            {
+                if (locked.PatientId != patientId || locked.VisitType != VisitType.OP || locked.VisitNumber is not null)
+                {
+                    return;
+                }
+
+                var opNumber = await _identifierGenerator.NextVisitNumberAsync(VisitType.OP, cancellationToken);
+                if (locked.AssignVisitNumber(opNumber, actorId))
+                {
+                    assigned = opNumber;
+                }
+            },
+            cancellationToken);
+
+        if (visit is null || visit.PatientId != patientId)
+        {
+            return Result<PatientVisitResponse>.Failure(PatientErrorCodes.VisitNotFound, $"Visit '{visitId}' was not found for this patient.");
+        }
+
+        if (assigned is not null)
+        {
+            _logger.LogInformation("Assigned OP No {VisitNumber} to visit {VisitId} for patient {PatientId} after its consultation fee was paid", assigned, visitId, patientId);
         }
 
         return Result<PatientVisitResponse>.Success(visit.ToResponse());

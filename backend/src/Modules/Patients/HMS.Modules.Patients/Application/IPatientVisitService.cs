@@ -18,6 +18,11 @@ public interface IPatientVisitService
 
     Task<Result<PatientVisitResponse>> GetByIdAsync(Guid patientId, Guid visitId, CancellationToken cancellationToken);
 
+    /// <summary>Gives an OP visit its OP No once its consultation fee is paid (ADR-103) — called
+    /// by Billing after a consultation line is paid. Safe to call more than once: a visit that
+    /// already has a number, or isn't an OP visit, comes back unchanged.</summary>
+    Task<Result<PatientVisitResponse>> AssignOpNumberAsync(Guid patientId, Guid visitId, Guid? actorId, CancellationToken cancellationToken);
+
     /// <summary>Every visit for the patient, newest first.</summary>
     Task<Result<IReadOnlyList<PatientVisitResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 

@@ -38,7 +38,9 @@ export interface PatientVisit extends VisitAdmissionDetails {
   patientId: string;
   visitType: VisitType;
   /** The auto-generated OP No ("OP-…", OP visits) or IP No ("IP-…", every other visit type).
-   * Missing only on visits recorded before these numbers existed. */
+   * An IP No is given as the visit is recorded; an OP No only once its consultation fee is paid
+   * (ADR-103), so it's missing on an unpaid OP visit — and on visits recorded before these
+   * numbers existed. */
   visitNumber?: string | null;
   appointmentTypeId?: string | null;
   consultations: VisitConsultation[];
