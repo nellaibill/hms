@@ -28,8 +28,9 @@ internal class PatientVisitRepository : IPatientVisitRepository
 
         // Lock first, then load: the row stays locked until CommitAsync below, so a concurrent
         // caller blocks here rather than reading the visit before this one's change is saved.
+        // Table and key column as PatientVisitConfiguration maps them (the key is visit_id).
         await _dbContext.Database.ExecuteSqlRawAsync(
-            "SELECT 1 FROM " + PatientsDbContext.SchemaName + ".patient_visits WHERE id = {0} FOR UPDATE",
+            "SELECT 1 FROM " + PatientsDbContext.SchemaName + ".patient_visits WHERE visit_id = {0} FOR UPDATE",
             [visitId],
             cancellationToken);
 
