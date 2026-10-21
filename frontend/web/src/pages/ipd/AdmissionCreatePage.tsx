@@ -1,7 +1,7 @@
 import { ApiError, IPD_ADMISSION_TYPES, type AdmissionFormValues, type Patient, type PatientVisit } from '@hms/shared';
-import { ClipboardList, Loader2, UserRound } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, ClipboardList, Loader2, UserRound } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,48 @@ function visitLabel(visit: PatientVisit): string {
   const type = visit.visitType === 'DayCare' ? 'Day Care' : visit.visitType;
   const recorded = new Date(visit.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   return `${type} · ${recorded} · ${visit.visitNumber ?? 'IP No pending'}`;
+}
+
+/**
+ * A patient can have only one active (Admitted or Requested) admission — the API refuses a
+ * second one on Save. Checked here as soon as the patient is picked, so staff aren't left to fill
+ * in the whole form only to be told at the very end: with an active admission, the form is
+ * replaced by a warning that links to it. If the check itself fails, the form shows as before and
+ * Save still enforces the rule.
+ */
+function ActiveAdmissionGate({ patientId, children }: { patientId: string; children: ReactNode }) {
+  // Same query (and cache entry) as AdmissionVisitSelect's. isPlaceholderData: right after
+  // "Change patient" the previous patient's admissions are still on screen — wait for this one's.
+  const { data: admissions, isPending, isPlaceholderData } = useAdmissionsQuery({ patientId, pageSize: 100 });
+
+  if (isPending || isPlaceholderData) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Checking the patient's admissions…
+      </div>
+    );
+  }
+
+  const active = admissions?.items.find((admission) => admission.status === 'Admitted' || admission.status === 'Requested');
+  if (!active) return <>{children}</>;
+
+  return (
+    <div role="alert" className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+      <div className="flex flex-col gap-1">
+        <p>
+          <strong>This patient already has an active admission</strong> — {active.admissionNumber},{' '}
+          {active.status === 'Requested'
+            ? 'requested and waiting for a bed. Assign it a bed instead of creating a new admission.'
+            : `admitted on ${new Date(active.admissionDateTime).toLocaleDateString('en-IN')}. Discharge it before admitting the patient again.`}
+        </p>
+        <Link to={`/clinical/ipd/admissions/${active.id}`} className="w-fit font-medium text-primary hover:underline">
+          Open {active.admissionNumber}
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -192,15 +234,17 @@ export default function AdmissionCreatePage() {
 
             <div className="flex flex-col gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Admission Details &amp; Bed Allocation</h2>
-              {/* key: a fresh select (and fresh default) per patient. */}
-              <AdmissionVisitSelect key={patient.id} patientId={patient.id} preferredVisitId={preferredVisitId} value={visitId} onChange={setVisitId} />
-              <AdmissionForm
-                patientId={patient.id}
-                initialValues={prefill}
-                isSubmitting={mutation.isPending}
-                apiError={mutation.error instanceof ApiError ? mutation.error : null}
-                onSubmit={handleSubmit}
-              />
+              <ActiveAdmissionGate key={patient.id} patientId={patient.id}>
+                {/* key (on the gate): a fresh select (and fresh default) per patient. */}
+                <AdmissionVisitSelect patientId={patient.id} preferredVisitId={preferredVisitId} value={visitId} onChange={setVisitId} />
+                <AdmissionForm
+                  patientId={patient.id}
+                  initialValues={prefill}
+                  isSubmitting={mutation.isPending}
+                  apiError={mutation.error instanceof ApiError ? mutation.error : null}
+                  onSubmit={handleSubmit}
+                />
+              </ActiveAdmissionGate>
             </div>
           </>
         )}
