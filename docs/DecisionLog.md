@@ -37,6 +37,27 @@ _To be documented._
 
 ## Decisions
 
+### ADR-102: API errors always carry a readable message that says what kind of failure it was
+**Date:** 2026-10-21
+**Status:** Accepted
+
+**Context**
+A desk PC at LHS showed "Cannot read properties of undefined (reading 'message')" on Patient Enquiry. The nginx access log showed its login token had expired (60-minute JWT, no refresh), so every call got a 401. The API's authentication and authorization middleware answers 401/403 with an empty body, and nginx answers 502/504 with an HTML page. The shared `HttpClient` passed the unparsed body to `new ApiError(status, body)`, whose constructor read `body.message` and crashed. The real cause never reached the screen. The user asked for messages that tell staff what kind of problem it is (session, permission, network, server) so they can troubleshoot a bit.
+
+**Decision**
+- `ApiError` takes an optional body (`ApiErrorBody`). Its message is the server's own `message`, else a ProblemDetails `title`, else `messageForHttpStatus(status)`. That last one is a per-status message ending in "(Error NNN)": 401 session expired, 403 no permission, 404 not found, 409 changed by someone else, 413 too large, 429 too many requests, 502/503 server not responding, 504 too slow, other 5xx server error. `errorCode` falls back to `HTTP.<status>` and `correlationId`/`timestamp` to empty strings.
+- `NetworkError` (no HTTP response at all) defaults to "This device is offline…" when the platform reports `navigator.onLine === false`, otherwise "Can't reach the HMS server…".
+- A 2xx whose body is an HTML page (the web server answered with index.html, e.g. a wrong API address) now throws `ApiError` `HTTP.UNEXPECTED_HTML` instead of returning `undefined`.
+- Server-authored messages (validation, rate limit, the global exception handler's 500) are left untouched.
+- Screens that showed only a fixed "Failed to load…" now append the error's message: the Discharge Summary view and edit pages, and the master photo upload.
+
+**Consequences**
+- Every screen that already renders `error.message` (about 50 in the web app) shows these messages with no change of its own. Mobile gets the same messages through `@hms/shared`.
+- The 401 still triggers the existing logout and redirect to login; staff now see "Your session has expired" in the meantime.
+- Not addressed here: the 60-minute session with no refresh token, and the API's empty 401/403 bodies.
+
+---
+
 ### ADR-101: Only OP visits take a Consultation Type; Emergency records its type; a referred visit records the referrer's name and mobile
 **Date:** 2026-10-16
 **Status:** Accepted

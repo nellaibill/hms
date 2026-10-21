@@ -59,7 +59,9 @@ export default function DischargeSummaryEditPage() {
     return (
       <div className="p-6">
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {is404 ? 'No discharge summary has been created for this admission yet.' : 'Failed to load the discharge summary.'}
+          {is404
+            ? 'No discharge summary has been created for this admission yet.'
+            : `Failed to load the discharge summary. ${summaryQuery.error instanceof Error ? summaryQuery.error.message : ''}`}
         </p>
         <Link to={`/clinical/ipd/admissions/${admission.id}`} className="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
