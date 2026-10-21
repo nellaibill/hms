@@ -487,6 +487,12 @@ function ConsultantsCell({ consultations }: { consultations: VisitConsultation[]
   );
 }
 
+/** The visit's date with its time of day, e.g. "21/10/2026, 10:32 am" — the date part matches
+ * the plain en-IN date shown elsewhere; the time tells apart several visits on one day. */
+function formatVisitDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number }) {
   const rows = limit ? visits.slice(0, limit) : visits;
 
@@ -495,7 +501,7 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
       <table className="w-full text-sm">
         <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
-            <th className="px-3 py-2">Date</th>
+            <th className="px-3 py-2">Date &amp; Time</th>
             <th className="px-3 py-2">OP / IP No</th>
             <th className="px-3 py-2">Visit Type</th>
             <th className="px-3 py-2">Department</th>
@@ -507,7 +513,7 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
             const primary = visit.consultations[0];
             return (
               <tr key={visit.visitId} className="hover:bg-muted/30">
-                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{new Date(visit.createdAt).toLocaleDateString('en-IN')}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{formatVisitDateTime(visit.createdAt)}</td>
                 <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{visit.visitNumber ?? '—'}</td>
                 <td className="px-3 py-2">
                   <Badge variant="outline" className="text-[10px]">
