@@ -33,6 +33,12 @@ internal class Admission : Entity
     public string? DischargeNotes { get; private set; }
     public string? FollowUpAdvice { get; private set; }
 
+    /// <summary>App-level reference to the HMS.Modules.Patients visit (IP/Day Care/Observation/
+    /// Emergency) this admission is for, no DB FK — see <see cref="LinkVisit"/>. Its IP No is
+    /// issued once an advance is paid on this admission (ADR-104). Null on an admission made
+    /// directly in IPD or requested from OPD, which has no visit.</summary>
+    public Guid? VisitId { get; private set; }
+
     /// <summary>App-level reference to HMS.Modules.Billing.Invoice, no DB FK — set once
     /// IPDBillingService.GenerateFinalBillAsync succeeds. Null means no final bill has been
     /// generated yet (only possible once Discharged) — see ADR-066.</summary>
@@ -131,6 +137,19 @@ internal class Admission : Entity
             reasonForAdmission.Trim(),
             AdmissionStatus.Requested,
             createdBy);
+    }
+
+    /// <summary>Records which visit this admission is for, as it is created (ADR-104).
+    /// AdmissionService has already checked the visit is the same patient's, not an OP visit, and
+    /// not linked to another admission.</summary>
+    public void LinkVisit(Guid visitId)
+    {
+        if (visitId == Guid.Empty)
+        {
+            throw new ArgumentException("A visit id is required.", nameof(visitId));
+        }
+
+        VisitId = visitId;
     }
 
     public void Update(

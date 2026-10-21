@@ -37,6 +37,35 @@ _To be documented._
 
 ## Decisions
 
+### ADR-104: An IP/Day Care/Observation visit gets its IP No only once the advance is paid
+**Date:** 2026-10-21
+**Status:** Accepted (follows ADR-103; changes when the IP No is drawn under ADR-089)
+
+**Context**
+Client request: as with the OP No (ADR-103), generate the IP number only after the advance is paid. The IP No lives on the patient's visit (`PatientVisit.VisitNumber`), but an advance is recorded against an IPD **admission** (`AdmissionAdvance`, ADR-067), and nothing linked an admission to the visit it came from. Add Visit's "Proceed with admission" passed only patient, department, consultant and admission type, and admissions made directly in IPD or requested from OPD never involve a visit.
+
+**Decision**
+- `PatientVisitService.CreateAsync` draws a number only for an **Emergency** visit, because emergency care and MLC paperwork can't wait for a deposit. IP, Day Care and Observation visits, like OP visits, are saved without one.
+- `PatientVisit.VisitNumberPending` (column `visit_number_pending`, migration `AddVisitNumberPending`) is true from the moment a visit is saved without a number until it gets one. The patient page shows "Fee pending" (OP) or "Advance pending" (other types) from it. This replaces ADR-103's inference from invoices. Visits saved before this change have it false, so an old visit with no number is never shown as waiting.
+- New `IPatientVisitService.AssignIpNumberAsync(patientId, visitId, IpNumberTrigger, actorId)`. It shares `AssignOpNumberAsync`'s locked path, and each numbers only its own series: a paid consultation never issues an IP No, and an advance never issues an OP No. Both now write an activity-log entry ("Issued IP No … after the advance on its admission was paid" / "… without an advance").
+- `Admission.VisitId` (column `visit_id`, migration `AddAdmissionVisitId`, unique where not null) links an admission to its visit. `CreateAdmissionRequest.VisitId` is optional. When given, it must be the same patient's visit, not OP, and not linked to another admission (`IPD.INVALID_VISIT` / `IPD.VISIT_ALREADY_ADMITTED`). `AdmissionResponse` gains `VisitId` and `IpNumber`.
+- `AdmissionAdvanceService.CreateAsync` asks for the linked visit's IP No after the advance is saved, best-effort as in ADR-103. A failure is logged, and the next advance retries it. Any advance above ₹0 counts, with no minimum. `AdmissionAdvanceResponse.IpNumber` returns it.
+- `POST /api/v1/ipd/admissions/{id}/issue-ip-number` ("Issue IP No without advance", for cashless insurance or a waived deposit) needs `finance-billing.discount-approve`. Waiving the deposit is a billing override, the same as approving a discount; there is no "IPD manage" permission. It fails with `IPD.NO_LINKED_VISIT` when the admission has no visit.
+- Frontend:
+  - Add Visit's success message says the IP No comes after the advance, and its hand-off to New Admission now carries `visitId`.
+  - New Admission has a **Visit** dropdown: the patient's non-OP visits that no other admission has claimed. It defaults to the visit passed in, else the newest, and offers "No visit".
+  - The Advance panel shows the IP No once issued.
+  - The admission page shows the IP No, or "Advance pending" with the supervisor-only **Issue IP No without advance** button behind a confirmation.
+  - Recording an advance or issuing the number refreshes the admission and the patient's visits.
+
+**Consequences**
+- IP numbers are no longer used up by visits that are never admitted and paid for. IP visits that never pay an advance (and aren't waived) never get an IP No.
+- An admission made directly in IPD, requested from OPD, or created with "No visit" gets no IP No, as before; its ADM number identifies it. Linking a Requested admission when its bed is assigned is not covered.
+- Existing IP numbers stay as they are; nothing is backfilled or removed.
+- Possible follow-up: the Discharge Summary PDF can now print the linked visit's real IP No instead of the ADM number.
+
+---
+
 ### ADR-103: An OP visit gets its OP No only once its consultation fee is paid
 **Date:** 2026-10-21
 **Status:** Accepted (changes when the OP No is drawn under ADR-089; IP No unchanged)

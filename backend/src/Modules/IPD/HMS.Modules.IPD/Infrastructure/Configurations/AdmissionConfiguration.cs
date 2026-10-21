@@ -32,6 +32,7 @@ internal class AdmissionConfiguration : IEntityTypeConfiguration<Admission>
         builder.Property(a => a.DischargeNotes).HasColumnName("discharge_notes").HasMaxLength(2000);
         builder.Property(a => a.FollowUpAdvice).HasColumnName("follow_up_advice").HasMaxLength(2000);
         builder.Property(a => a.FinalInvoiceId).HasColumnName("final_invoice_id");
+        builder.Property(a => a.VisitId).HasColumnName("visit_id");
 
         builder.Property(a => a.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(a => a.CreatedBy).HasColumnName("created_by");
@@ -46,6 +47,13 @@ internal class AdmissionConfiguration : IEntityTypeConfiguration<Admission>
         builder.HasQueryFilter(a => !a.IsDeleted);
 
         builder.HasIndex(a => a.AdmissionNumber).IsUnique().HasDatabaseName("ux_admissions_admission_number").HasFilter("is_deleted = false");
+
+        // One admission per visit (ADR-104) — backs AdmissionService's own check, which is the
+        // primary guard, against two admissions for the same visit created at once.
+        builder.HasIndex(a => a.VisitId)
+            .IsUnique()
+            .HasDatabaseName("ux_admissions_visit_id")
+            .HasFilter("visit_id IS NOT NULL AND is_deleted = false");
 
         // Defense-in-depth against a race between two concurrent admissions: the app-level
         // "one active admission per patient" / "bed must be Available" checks in

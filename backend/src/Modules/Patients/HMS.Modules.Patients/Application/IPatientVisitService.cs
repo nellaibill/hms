@@ -23,6 +23,12 @@ public interface IPatientVisitService
     /// already has a number, or isn't an OP visit, comes back unchanged.</summary>
     Task<Result<PatientVisitResponse>> AssignOpNumberAsync(Guid patientId, Guid visitId, Guid? actorId, CancellationToken cancellationToken);
 
+    /// <summary>Gives an IP/Day Care/Observation visit its IP No once the advance on its
+    /// admission is paid, or when a supervisor issues it without one (ADR-104) — called by IPD.
+    /// Safe to call more than once: a visit that already has a number (an Emergency visit always
+    /// does), or is an OP visit, comes back unchanged.</summary>
+    Task<Result<PatientVisitResponse>> AssignIpNumberAsync(Guid patientId, Guid visitId, IpNumberTrigger trigger, Guid? actorId, CancellationToken cancellationToken);
+
     /// <summary>Every visit for the patient, newest first.</summary>
     Task<Result<IReadOnlyList<PatientVisitResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 

@@ -20,6 +20,7 @@ internal class PatientVisitConfiguration : IEntityTypeConfiguration<PatientVisit
         builder.Property(v => v.PatientId).HasColumnName("patient_id").IsRequired();
         builder.Property(v => v.VisitType).HasColumnName("visit_type").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(v => v.VisitNumber).HasColumnName("visit_number").HasMaxLength(20);
+        builder.Property(v => v.VisitNumberPending).HasColumnName("visit_number_pending").IsRequired();
         builder.Property(v => v.AppointmentTypeId).HasColumnName("appointment_type_id");
         builder.Property(v => v.EmergencyType).HasColumnName("emergency_type").HasConversion<string>().HasMaxLength(20);
 

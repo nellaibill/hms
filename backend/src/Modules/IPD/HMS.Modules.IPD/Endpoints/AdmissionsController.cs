@@ -91,6 +91,18 @@ public class AdmissionsController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Issues the linked visit's IP No with no advance paid — cashless insurance, a
+    /// waived deposit (ADR-104). Waiving the deposit is a billing override, so it takes the same
+    /// supervisor permission as approving a discount.</summary>
+    [Authorize]
+    [RequirePermission("finance-billing.discount-approve")]
+    [HttpPost("{id:guid}/issue-ip-number")]
+    public async Task<IActionResult> IssueIpNumberWithoutAdvance(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _service.IssueIpNumberWithoutAdvanceAsync(id, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     [Authorize]
     [RequirePermission("clinical-care.view")]
     [HttpGet]
@@ -195,6 +207,8 @@ public class AdmissionsController : ControllerBase
             IPDErrorCodes.PatientAlreadyAdmitted => StatusCodes.Status409Conflict,
             IPDErrorCodes.AdmissionAlreadyDischarged => StatusCodes.Status409Conflict,
             IPDErrorCodes.AdmissionNotRequested => StatusCodes.Status409Conflict,
+            IPDErrorCodes.VisitAlreadyAdmitted => StatusCodes.Status409Conflict,
+            IPDErrorCodes.NoLinkedVisit => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

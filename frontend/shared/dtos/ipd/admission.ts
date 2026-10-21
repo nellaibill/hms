@@ -11,6 +11,9 @@ export interface CreateAdmissionRequest {
   admissionDateTime?: string | null;
   admissionType: IpdAdmissionType;
   reasonForAdmission: string;
+  /** The patient's IP/Day Care/Observation/Emergency visit this admission is for — optional.
+   * Its IP No is issued once an advance is paid on this admission (ADR-104). */
+  visitId?: string | null;
 }
 
 /** Mirrors HMS.Modules.IPD.Contracts.RequestAdmissionRequest — raises an admission with no
@@ -96,6 +99,12 @@ export interface Admission {
    * admission — decides whether the Billing tab shows "Generate Final Bill" or "View Final
    * Bill". See ADR-066. */
   finalInvoiceId?: string | null;
+
+  /** The linked visit (ADR-104) — null on an admission made directly in IPD or from OPD. */
+  visitId?: string | null;
+  /** The linked visit's IP No — null until the first advance is paid (or it's issued without
+   * one), and always null without a linked visit. */
+  ipNumber?: string | null;
 
   createdAt: string;
   updatedAt?: string | null;

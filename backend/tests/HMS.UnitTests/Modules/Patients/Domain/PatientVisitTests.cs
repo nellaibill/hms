@@ -44,7 +44,18 @@ public class PatientVisitTests
 
         assigned.Should().BeTrue();
         visit.VisitNumber.Should().Be("OP-2026-000042");
+        visit.VisitNumberPending.Should().BeFalse();
         visit.UpdatedBy.Should().Be(actorId);
+    }
+
+    // ADR-104: a visit recorded without a number is waiting for one; one recorded with a number
+    // (an Emergency visit) is not.
+    [Fact]
+    public void Create_WithoutANumber_IsPendingAndWithOne_IsNot()
+    {
+        PatientVisit.Create(PatientId, VisitType.IP, appointmentTypeId: null, createdBy: null).VisitNumberPending.Should().BeTrue();
+        PatientVisit.Create(PatientId, VisitType.Emergency, appointmentTypeId: null, createdBy: null, visitNumber: "IP-2026-000001")
+            .VisitNumberPending.Should().BeFalse();
     }
 
     // ADR-103: a second payment for the same visit must never renumber it.

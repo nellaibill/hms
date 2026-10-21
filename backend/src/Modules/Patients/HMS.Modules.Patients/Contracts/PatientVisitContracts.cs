@@ -60,9 +60,14 @@ public record PatientVisitResponse
     public VisitType VisitType { get; init; }
 
     /// <summary>The auto-generated OP No (OP visits, "OP-…") or IP No (every other visit type,
-    /// "IP-…"). Null on an OP visit whose consultation fee isn't paid yet (ADR-103), and for
-    /// visits recorded before these numbers existed.</summary>
+    /// "IP-…"). Null while <see cref="VisitNumberPending"/> — an OP visit until its consultation
+    /// fee is paid (ADR-103), an IP/Day Care/Observation visit until its admission's advance is
+    /// paid (ADR-104) — and for visits recorded before these numbers existed.</summary>
     public string? VisitNumber { get; init; }
+
+    /// <summary>True while the visit is still waiting for its number — "Fee pending" (OP) or
+    /// "Advance pending" (IP) on the patient page. False on visits recorded before ADR-104.</summary>
+    public bool VisitNumberPending { get; init; }
 
     public Guid? AppointmentTypeId { get; init; }
     public EmergencyType? EmergencyType { get; init; }

@@ -267,6 +267,7 @@ export const API_ROUTES = {
       discharge: (id: string) => `/api/v1/ipd/admissions/${id}/discharge`,
       request: '/api/v1/ipd/admissions/request',
       assignBed: (id: string) => `/api/v1/ipd/admissions/${id}/assign-bed`,
+      issueIpNumber: (id: string) => `/api/v1/ipd/admissions/${id}/issue-ip-number`,
       charges: (id: string) => `/api/v1/ipd/admissions/${id}/charges`,
       advances: (id: string) => `/api/v1/ipd/admissions/${id}/advances`,
       vitals: (id: string) => `/api/v1/ipd/admissions/${id}/vitals`,

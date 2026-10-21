@@ -41,6 +41,20 @@ export function useAssignBedMutation() {
   });
 }
 
+/** "Issue IP No without advance" (ADR-104) — also refreshes the patient's visits, whose
+ * "Advance pending" badge this clears. */
+export function useIssueIpNumberMutation() {
+  const invalidate = useInvalidateAdmissions();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => admissionsApi.issueIpNumber(id),
+    onSuccess: (_data, id) => {
+      invalidate(id);
+      queryClient.invalidateQueries({ queryKey: ['patient-visits'] });
+    },
+  });
+}
+
 export function useTransferBedMutation() {
   const invalidate = useInvalidateAdmissions();
   return useMutation({
