@@ -31,8 +31,12 @@ export function DischargeSummaryEntryCard({ admissionId }: DischargeSummaryEntry
     });
   }
 
-  const notFound = summaryQuery.isError && summaryQuery.error instanceof ApiError && summaryQuery.error.status === 404;
-  const otherError = summaryQuery.isError && !notFound;
+  const errorStatus = summaryQuery.error instanceof ApiError ? summaryQuery.error.status : undefined;
+  const notFound = summaryQuery.isError && errorStatus === 404;
+  // 403 = the signed-in role lacks discharge-summary.view (or the hospital has the feature
+  // off) — retrying won't help, so say so instead of the generic failure message.
+  const forbidden = summaryQuery.isError && errorStatus === 403;
+  const otherError = summaryQuery.isError && !notFound && !forbidden;
 
   return (
     <Card>
@@ -45,6 +49,12 @@ export function DischargeSummaryEntryCard({ admissionId }: DischargeSummaryEntry
             <Loader2 className="h-4 w-4 animate-spin" />
             Checking for an existing discharge summary…
           </div>
+        )}
+
+        {forbidden && (
+          <p className="text-sm text-destructive">
+            You don't have permission to view discharge summaries. Contact an administrator if you believe this is a mistake.
+          </p>
         )}
 
         {otherError && <p className="text-sm text-destructive">Failed to load the discharge summary. Please try again.</p>}

@@ -5,6 +5,7 @@ using HMS.Modules.Calendar.Infrastructure;
 using HMS.Modules.DischargeSummary.Infrastructure;
 using HMS.Modules.Documents.Infrastructure;
 using HMS.Modules.HR.Infrastructure;
+using HMS.Modules.Identity;
 using HMS.Modules.Identity.Infrastructure;
 using HMS.Modules.IPD.Infrastructure;
 using HMS.Modules.Laboratory.Infrastructure;
@@ -51,6 +52,11 @@ public sealed class TenantMigrationService : ITenantMigrationService
         {
             await using var db = new IdentityDbContext(BuildOptions<IdentityDbContext>(tenantConnectionString, IdentityDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
+
+            // A migration that adds permissions (e.g. discharge-summary.*) only inserts the
+            // catalog rows — without this, a hospital provisioned before it keeps a Super Admin
+            // role that gets 403 on the new module. No-op mid-provisioning (no role yet).
+            await IdentityModule.SyncTenantSuperAdminPermissionsAsync(tenantConnectionString, cancellationToken);
         }
 
         if (resolved.Contains("documents"))
