@@ -424,26 +424,25 @@ function AtAGlanceStrip({ patient }: { patient: Patient }) {
   const outstanding =
     billings?.reduce((sum, billing) => sum + billing.items.filter((item) => item.paymentStatus === 'Pending').reduce((s, item) => s + item.total, 0), 0) ?? 0;
 
-  // Only stats this patient actually has are shown: a count or amount that loaded as 0 (e.g. Day
-  // Care for a patient never in day care) returns null and its tile is left out, rather than
-  // filling the strip with 0 tiles. Still-loading tiles keep their spinner, and IP Admissions keeps
-  // its '—' for viewers without access — that's "unknown", not 0.
-  const stat = (pending: boolean, amount: number, display: ReactNode = amount): ReactNode => (pending ? dash : amount === 0 ? null : display);
+  // Visit tiles show only the visit types this patient actually has: a visit count that loaded as 0
+  // (e.g. Day Care for a patient never in day care) returns null and its tile is left out, as is
+  // Last Visit when there are none. Still-loading tiles keep their spinner, and IP Admissions keeps
+  // its '—' for viewers without access — that's "unknown", not 0. Prescriptions, bills and
+  // outstanding always show, 0 included.
+  const visitStat = (pending: boolean, count: number): ReactNode => (pending ? dash : count === 0 ? null : count);
 
   const stats: [label: string, value: ReactNode][] = [
-    ['Total Visits', stat(visitsPending, visits?.length ?? 0)],
-    ['OP Visits', stat(visitsPending, visitCountByType('OP'))],
-    ['IP Admissions', canViewAdmissions ? stat(admissionsQuery.isPending, admissionCount) : '—'],
-    ['Emergency', stat(visitsPending, visitCountByType('Emergency'))],
-    ['Day Care', stat(visitsPending, visitCountByType('DayCare'))],
+    ['Total Visits', visitStat(visitsPending, visits?.length ?? 0)],
+    ['OP Visits', visitStat(visitsPending, visitCountByType('OP'))],
+    ['IP Admissions', canViewAdmissions ? visitStat(admissionsQuery.isPending, admissionCount) : '—'],
+    ['Emergency', visitStat(visitsPending, visitCountByType('Emergency'))],
+    ['Day Care', visitStat(visitsPending, visitCountByType('DayCare'))],
     ['Last Visit', visitsPending ? dash : lastVisit ? new Date(lastVisit.createdAt).toLocaleDateString('en-IN') : null],
-    ['Total Prescriptions', stat(prescriptionsPending, prescriptionCount)],
-    ['Total Bills', stat(billingsPending, totalBills, formatCurrency(totalBills))],
-    ['Outstanding', stat(billingsPending, outstanding, formatCurrency(outstanding))],
+    ['Total Prescriptions', prescriptionsPending ? dash : prescriptionCount],
+    ['Total Bills', billingsPending ? dash : formatCurrency(totalBills)],
+    ['Outstanding', billingsPending ? dash : formatCurrency(outstanding)],
   ];
   const shownStats = stats.filter(([, value]) => value !== null);
-
-  if (shownStats.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
