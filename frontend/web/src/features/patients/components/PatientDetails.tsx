@@ -437,7 +437,16 @@ function AtAGlanceStrip({ patient }: { patient: Patient }) {
     ['IP Admissions', canViewAdmissions ? visitStat(admissionsQuery.isPending, admissionCount) : '—'],
     ['Emergency', visitStat(visitsPending, visitCountByType('Emergency'))],
     ['Day Care', visitStat(visitsPending, visitCountByType('DayCare'))],
-    ['Last Visit', visitsPending ? dash : lastVisit ? new Date(lastVisit.createdAt).toLocaleDateString('en-IN') : null],
+    // "(OP)"/"(IP)" follows the visit number: only an OP visit gets an OP No, every other visit
+    // type (Emergency, Day Care…) an IP No.
+    [
+      'Last Visit',
+      visitsPending
+        ? dash
+        : lastVisit
+          ? `${new Date(lastVisit.createdAt).toLocaleDateString('en-IN')} (${lastVisit.visitType === 'OP' ? 'OP' : 'IP'})`
+          : null,
+    ],
     ['Total Prescriptions', prescriptionsPending ? dash : prescriptionCount],
     ['Total Bills', billingsPending ? dash : formatCurrency(totalBills)],
     ['Outstanding', billingsPending ? dash : formatCurrency(outstanding)],
