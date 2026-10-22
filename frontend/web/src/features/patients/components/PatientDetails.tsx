@@ -48,6 +48,7 @@ import { PatientAiSearchTab } from './PatientAiSearchTab';
 import { PatientTimelineTab } from './PatientTimelineTab';
 import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientMedicalInformationTab } from './PatientMedicalInformationTab';
+import { PatientNextScheduleTab } from './PatientNextScheduleTab';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
 import type { DocumentResponse, PatientVisit, VisitConsultation } from '@hms/shared';
 
@@ -850,6 +851,7 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="billing">Billing</TabsTrigger>
         <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        <TabsTrigger value="next-schedule">Next Schedule</TabsTrigger>
         {canSearchDocuments && (
           <TabsTrigger value="ai-search" className="gap-1">
             <Sparkles className="h-3.5 w-3.5" />
@@ -880,6 +882,10 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
 
       <TabsContent value="timeline" className="pt-2.5">
         <PatientTimelineTab patient={patient} onNavigateToTab={onActiveTabChange} />
+      </TabsContent>
+
+      <TabsContent value="next-schedule" className="pt-2.5">
+        <PatientNextScheduleTab patientId={patient.id} />
       </TabsContent>
 
       {canSearchDocuments && (
