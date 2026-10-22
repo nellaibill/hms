@@ -56,6 +56,9 @@ export interface DocumentUploadFormValues {
   entityId: string;
   documentType: DocumentType | '';
   file: File | null;
+  /** Optional — the patient visit to file the document under (only offered when the upload
+   * dialog is given the patient's visits). */
+  visitId?: string | null;
 }
 
 export interface DocumentFilters {

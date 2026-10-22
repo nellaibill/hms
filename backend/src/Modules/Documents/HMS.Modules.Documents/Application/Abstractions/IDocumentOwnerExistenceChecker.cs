@@ -23,4 +23,9 @@ public interface IDocumentOwnerExistenceChecker
     DocumentOwnerType OwnerType { get; }
 
     Task<bool> ExistsAsync(Guid ownerId, CancellationToken cancellationToken);
+
+    /// <summary>Whether <paramref name="visitId"/> is one of this owner's own visits — how an
+    /// upload filed under a visit (UploadDocumentRequest.VisitId) is checked. An owner type with
+    /// no notion of visits returns false, so such an upload is rejected.</summary>
+    Task<bool> HasVisitAsync(Guid ownerId, Guid visitId, CancellationToken cancellationToken);
 }

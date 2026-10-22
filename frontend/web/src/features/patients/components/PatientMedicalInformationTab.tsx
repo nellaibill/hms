@@ -9,6 +9,7 @@ import { useOpdConsultationsByPatientQuery } from '@/features/opdConsultation';
 import { useAuth } from '../../auth/AuthContext';
 import { usePatientAdmissionsQuery } from '../hooks/usePatientAdmissionsQuery';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { VisitNumberLabel } from './VisitNumberLabel';
 
 function formatDateTime(value?: string | null): string {
   return value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
@@ -178,27 +179,6 @@ function ConsultationCard({ detail, consultationTypeId }: { detail: OpdConsultat
 
 const newestFirst = (a?: string | null, b?: string | null) => (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0);
 
-/** The visit's OP No/IP No, or what it's still waiting for (ADR-103/ADR-104) — nothing for an
- * old visit recorded before these numbers existed. */
-function VisitNumber({ visit }: { visit: PatientVisit }) {
-  const isOp = visit.visitType === 'OP';
-  if (visit.visitNumber) {
-    return (
-      <span className="font-semibold text-foreground">
-        {isOp ? 'OP No' : 'IP No'} <span className="font-mono">{visit.visitNumber}</span>
-      </span>
-    );
-  }
-  if (visit.visitNumberPending) {
-    return (
-      <Badge variant="warning" className="text-[10px]">
-        {isOp ? 'Fee pending' : 'Advance pending'}
-      </Badge>
-    );
-  }
-  return null;
-}
-
 /** One visit's section: its OP/IP No, type and date over the consultation notes recorded on it
  * (newest first), plus a link to its IPD admission when it has one — where an inpatient's progress
  * notes, vitals and discharge details live. */
@@ -216,7 +196,7 @@ function VisitSection({
   return (
     <section className="flex flex-col gap-2" aria-label={`Visit ${visit.visitNumber ?? formatDateTime(visit.createdAt)}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border pb-1.5 text-sm">
-        <VisitNumber visit={visit} />
+        <VisitNumberLabel visit={visit} />
         <Badge variant="outline" className="text-[10px]">
           {visit.visitType === 'DayCare' ? 'Day Care' : visit.visitType}
         </Badge>

@@ -49,6 +49,8 @@ import { PatientTimelineTab } from './PatientTimelineTab';
 import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientMedicalInformationTab } from './PatientMedicalInformationTab';
 import { PatientNextScheduleTab } from './PatientNextScheduleTab';
+import { VisitNumberLabel } from './VisitNumberLabel';
+import { visitNumberText } from '../visitNumberText';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
 import type { DocumentResponse, PatientVisit, VisitConsultation } from '@hms/shared';
 
@@ -711,13 +713,76 @@ function PatientVisitsTab({ patient }: { patient: Patient }) {
 
 /* -------------------------------------------------------------------------- Documents */
 
+/** One visit's documents in the Documents tab: its OP/IP No, type and date, with an Upload
+ * button that files the new document under this visit. */
+function VisitDocumentsSection({
+  visit,
+  documents,
+  onUpload,
+  onDelete,
+}: {
+  visit: PatientVisit;
+  documents: DocumentResponse[];
+  onUpload: () => void;
+  onDelete?: (document: DocumentResponse) => void;
+}) {
+  return (
+    <section className="flex flex-col" aria-label={`Documents for visit ${visit.visitNumber ?? formatVisitDateTime(visit.createdAt)}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-1.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <VisitNumberLabel visit={visit} />
+          <Badge variant="outline" className="text-[10px]">
+            {visit.visitType === 'DayCare' ? 'Day Care' : visit.visitType}
+          </Badge>
+          <span className="text-muted-foreground">{formatVisitDateTime(visit.createdAt)}</span>
+          <span className="text-xs text-muted-foreground">
+            {documents.length} document{documents.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5" onClick={onUpload}>
+          <Upload className="h-3.5 w-3.5" />
+          Upload
+        </Button>
+      </div>
+      {documents.length === 0 ? (
+        <p className="py-1.5 text-sm text-muted-foreground">No documents for this visit.</p>
+      ) : (
+        <div className="flex flex-col divide-y divide-border">
+          {documents.map((document) => (
+            <DocumentRow key={document.id} document={document} onDelete={onDelete} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PatientDocumentsTab({ patient }: { patient: Patient }) {
   const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
   const idProofUrl = usePatientDocumentUrl(patient.id, 'IdProof');
   const { data: documents, isPending } = usePatientDocumentsQuery(patient.id);
-  const sorted = [...(documents ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient.id);
+  const newestFirst = (a: string, b: string) => new Date(b).getTime() - new Date(a).getTime();
+  const sorted = [...(documents ?? [])].sort((a, b) => newestFirst(a.createdAt, b.createdAt));
+  // Visit-wise: every visit, newest first, each with the documents filed under it. Anything not
+  // filed under one of these visits — the photo, ID proof, and uploads from before documents
+  // could be filed by visit — is listed after them.
+  const sortedVisits = [...(visits ?? [])].sort((a, b) => newestFirst(a.createdAt, b.createdAt));
+  const visitIds = new Set(sortedVisits.map((visit) => visit.visitId));
+  const unlinkedDocuments = sorted.filter((document) => !document.visitId || !visitIds.has(document.visitId));
+  const visitOptions = sortedVisits.map((visit) => ({
+    value: visit.visitId,
+    label: [visitNumberText(visit), visit.visitType === 'DayCare' ? 'Day Care' : visit.visitType, formatVisitDateTime(visit.createdAt)]
+      .filter(Boolean)
+      .join(' · '),
+  }));
   const queryClient = useQueryClient();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadVisitId, setUploadVisitId] = useState<string | null>(null);
+  const openUpload = (visitId: string | null) => {
+    setUploadVisitId(visitId);
+    setIsUploadOpen(true);
+  };
   const { hasPermission } = useAuth();
   const canDelete = hasPermission('records-compliance.delete');
   const deleteMutation = useDeletePatientDocumentMutation(patient.id);
@@ -765,24 +830,44 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
 
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-foreground">All documents</h2>
-          <Button type="button" size="sm" className="gap-1.5" onClick={() => setIsUploadOpen(true)}>
+          <h2 className="text-sm font-semibold text-foreground">Documents by visit</h2>
+          {/* Defaults to the most recent visit; the dialog's Visit picker can change it. */}
+          <Button type="button" size="sm" className="gap-1.5" onClick={() => openUpload(sortedVisits[0]?.visitId ?? null)}>
             <Upload className="h-4 w-4" />
             Upload document
           </Button>
         </div>
-        {isPending ? (
+        {isPending || visitsPending ? (
           <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading documents…
           </div>
-        ) : sorted.length === 0 ? (
+        ) : sortedVisits.length === 0 && sorted.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">No documents uploaded for this patient yet.</p>
         ) : (
-          <div className="flex flex-col divide-y divide-border">
-            {sorted.map((document) => (
-              <DocumentRow key={document.id} document={document} onDelete={canDelete ? setPendingDelete : undefined} />
+          <div className="flex flex-col gap-4">
+            {sortedVisits.map((visit) => (
+              <VisitDocumentsSection
+                key={visit.visitId}
+                visit={visit}
+                documents={sorted.filter((document) => document.visitId === visit.visitId)}
+                onUpload={() => openUpload(visit.visitId)}
+                onDelete={canDelete ? setPendingDelete : undefined}
+              />
             ))}
+            {unlinkedDocuments.length > 0 && (
+              <section className="flex flex-col" aria-label="Documents not linked to a visit">
+                <div className="flex flex-wrap items-center gap-x-3 border-b border-border pb-1.5 text-sm">
+                  <span className="font-semibold text-foreground">Not linked to a visit</span>
+                  <span className="text-xs text-muted-foreground">Photo, ID proof and earlier uploads</span>
+                </div>
+                <div className="flex flex-col divide-y divide-border">
+                  {unlinkedDocuments.map((document) => (
+                    <DocumentRow key={document.id} document={document} onDelete={canDelete ? setPendingDelete : undefined} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
@@ -828,6 +913,8 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
         defaultEntityType="Patient"
         defaultEntityId={patient.id}
         lockedEntityLabel={`${patient.title} ${patient.firstName} ${patient.lastName} (${patient.uhid})`}
+        visitOptions={visitOptions}
+        defaultVisitId={uploadVisitId}
       />
     </div>
   );

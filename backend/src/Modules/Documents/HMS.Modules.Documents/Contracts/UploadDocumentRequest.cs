@@ -20,4 +20,9 @@ public record UploadDocumentRequest
     /// ID proof or certification). Null for every owner type with no notion of expiry; see
     /// Domain.Document.ExpiryDate's own remarks.</summary>
     public DateOnly? ExpiryDate { get; init; }
+
+    /// <summary>Optional — the owner's visit to file this document under (a patient's OP/IP
+    /// visit). Must be one of the owner's own visits; rejected for an owner type with no visits.
+    /// See Domain.Document.VisitId.</summary>
+    public Guid? VisitId { get; init; }
 }

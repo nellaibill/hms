@@ -39,6 +39,13 @@ internal class Document : Entity
     /// null, unchanged from before this column existed.</summary>
     public DateOnly? ExpiryDate { get; private set; }
 
+    /// <summary>The owner's visit this document belongs to — a patient's lab report or scan
+    /// filed under the OP/IP visit it came from. Optional, and only ever set for an owner type
+    /// that has visits (a Patient); DocumentService checks it through that owner type's
+    /// IDocumentOwnerExistenceChecker.HasVisitAsync before accepting it. App-level reference to
+    /// HMS.Modules.Patients' visit, no DB FK.</summary>
+    public Guid? VisitId { get; private set; }
+
     // Required by EF Core materialization.
     private Document()
     {
@@ -56,7 +63,8 @@ internal class Document : Entity
         long sizeBytes,
         string checksumSha256,
         Guid? uploadedByUserId,
-        DateOnly? expiryDate)
+        DateOnly? expiryDate,
+        Guid? visitId)
         : base(id, uploadedByUserId)
     {
         OwnerType = ownerType;
@@ -72,6 +80,7 @@ internal class Document : Entity
         Status = DocumentStatus.Pending;
         IsArchived = false;
         ExpiryDate = expiryDate;
+        VisitId = visitId;
     }
 
     public static Document Create(
@@ -85,7 +94,8 @@ internal class Document : Entity
         long sizeBytes,
         string checksumSha256,
         Guid? uploadedByUserId,
-        DateOnly? expiryDate = null)
+        DateOnly? expiryDate = null,
+        Guid? visitId = null)
     {
         Guard.AgainstNullOrWhiteSpace(storageKey, nameof(storageKey));
         Guard.AgainstNullOrWhiteSpace(originalFileName, nameof(originalFileName));
@@ -104,7 +114,8 @@ internal class Document : Entity
             sizeBytes,
             checksumSha256,
             uploadedByUserId,
-            expiryDate);
+            expiryDate,
+            visitId);
     }
 
     /// <summary>Called by the scan pipeline (US-9) once content passes an AV scan.</summary>

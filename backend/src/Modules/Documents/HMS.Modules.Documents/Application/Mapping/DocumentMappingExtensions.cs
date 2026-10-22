@@ -24,6 +24,7 @@ internal static class DocumentMappingExtensions
         IsArchived = document.IsArchived,
         UploadedByUserId = document.UploadedByUserId,
         ExpiryDate = document.ExpiryDate,
+        VisitId = document.VisitId,
         CreatedAt = document.CreatedAt,
         UpdatedAt = document.UpdatedAt,
     };

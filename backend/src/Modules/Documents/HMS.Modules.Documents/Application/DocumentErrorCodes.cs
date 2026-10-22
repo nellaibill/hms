@@ -9,6 +9,7 @@ internal static class DocumentErrorCodes
     public const string NotFound = "DOCUMENTS.DOCUMENT_NOT_FOUND";
     public const string InvalidFile = "DOCUMENTS.INVALID_FILE";
     public const string OwnerNotFound = "DOCUMENTS.OWNER_NOT_FOUND";
+    public const string InvalidVisit = "DOCUMENTS.INVALID_VISIT";
     public const string Forbidden = "DOCUMENTS.FORBIDDEN";
     public const string NotAvailable = "DOCUMENTS.CONTENT_NOT_AVAILABLE";
     public const string InvalidQuery = "DOCUMENTS.INVALID_SEARCH_QUERY";
