@@ -122,15 +122,7 @@ public static class IdentityModule
         string password,
         CancellationToken cancellationToken)
     {
-        var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseNpgsql(connectionString, npgsql =>
-            {
-                npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDbContext.SchemaName);
-                npgsql.MigrationsAssembly("HMS.Database.Migrations");
-            })
-            .Options;
-
-        await using var dbContext = new IdentityDbContext(options);
+        await using var dbContext = new IdentityDbContext(BuildTenantOptions(connectionString));
 
         var permissionRepository = new PermissionRepository(dbContext);
         var roleRepository = new RoleRepository(dbContext);
@@ -140,7 +132,7 @@ public static class IdentityModule
         var permissions = await permissionRepository.GetAllAsync(cancellationToken);
 
         var role = Role.Create(
-            "Super Admin",
+            SuperAdminPermissionSync.SuperAdminRoleName,
             "Full system access with every permission assigned. Created automatically during tenant provisioning.",
             isSystemRole: true,
             displayOrder: 0,
@@ -156,5 +148,35 @@ public static class IdentityModule
 
         await userRepository.AddAsync(user, cancellationToken);
         await userRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Tenant-migration seam: re-syncs a hospital database's existing "Super Admin" role to
+    /// the full permission catalog, the same way <see cref="IdentityDataSeeder"/> already does
+    /// for the legacy database on every startup. Called by HMS.Api.Provisioning.TenantMigrationService
+    /// right after it migrates the identity schema, so permissions a newer migration adds
+    /// (e.g. discharge-summary.*) reach hospitals provisioned before it. A no-op when the role
+    /// doesn't exist yet (provisioning migrates first, then creates it via
+    /// <see cref="ProvisionTenantSuperAdminAsync"/>) or already holds every permission.
+    /// </summary>
+    /// <returns>True when the role was missing permissions and has been re-synced.</returns>
+    public static async Task<bool> SyncTenantSuperAdminPermissionsAsync(string connectionString, CancellationToken cancellationToken)
+    {
+        await using var dbContext = new IdentityDbContext(BuildTenantOptions(connectionString));
+
+        var (_, resynced) = await new SuperAdminPermissionSync(new PermissionRepository(dbContext), new RoleRepository(dbContext))
+            .SyncAsync(cancellationToken);
+        return resynced;
+    }
+
+    private static DbContextOptions<IdentityDbContext> BuildTenantOptions(string connectionString)
+    {
+        return new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseNpgsql(connectionString, npgsql =>
+            {
+                npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDbContext.SchemaName);
+                npgsql.MigrationsAssembly("HMS.Database.Migrations");
+            })
+            .Options;
     }
 }

@@ -7,7 +7,10 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Shared.Kernel;
+using IpNumberTrigger = HMS.Modules.Patients.Contracts.IpNumberTrigger;
 using PatientResponse = HMS.Modules.Patients.Contracts.PatientResponse;
+using PatientVisitResponse = HMS.Modules.Patients.Contracts.PatientVisitResponse;
+using VisitType = HMS.Modules.Patients.Contracts.VisitType;
 using NSubstitute;
 using Xunit;
 
@@ -23,6 +26,7 @@ public class AdmissionServiceTests
     private readonly IAdmissionChargeRepository _chargeRepository = Substitute.For<IAdmissionChargeRepository>();
     private readonly IAdmissionIdentifierGenerator _identifierGenerator = Substitute.For<IAdmissionIdentifierGenerator>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
+    private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly AdmissionService _sut;
@@ -41,6 +45,7 @@ public class AdmissionServiceTests
             _chargeRepository,
             _identifierGenerator,
             _patientService,
+            _patientVisitService,
             _departmentService,
             _consultantService);
 
@@ -90,6 +95,100 @@ public class AdmissionServiceTests
 
         var bed = await _bedRepository.GetByIdAsync(_bedId, CancellationToken.None);
         bed!.Status.Should().Be(BedStatus.Occupied);
+    }
+
+    // ADR-104: an admission can be linked to the visit it is for; that visit's IP No is issued
+    // once an advance is paid on the admission.
+    private void GivenVisit(Guid patientId, Guid visitId, VisitType visitType, string? visitNumber = null) =>
+        _patientVisitService.GetByIdAsync(patientId, visitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitId = visitId, PatientId = patientId, VisitType = visitType, VisitNumber = visitNumber }));
+
+    [Fact]
+    public async Task CreateAsync_WithTheVisitItIsFor_LinksTheVisit()
+    {
+        var visitId = Guid.NewGuid();
+        var request = NewCreateRequest() with { VisitId = visitId };
+        GivenVisit(request.PatientId, visitId, VisitType.IP);
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.VisitId.Should().Be(visitId);
+        result.Value.IpNumber.Should().BeNull();
+        await _repository.Received(1).AddAsync(Arg.Is<Admission>(a => a.VisitId == visitId), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAnOpVisit_FailsWithInvalidVisit()
+    {
+        var visitId = Guid.NewGuid();
+        var request = NewCreateRequest() with { VisitId = visitId };
+        GivenVisit(request.PatientId, visitId, VisitType.OP);
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.InvalidVisit);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Admission>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAVisitThatIsNotThisPatients_FailsWithInvalidVisit()
+    {
+        var request = NewCreateRequest() with { VisitId = Guid.NewGuid() };
+        _patientVisitService.GetByIdAsync(request.PatientId, request.VisitId!.Value, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Failure("PATIENTS.VISIT_NOT_FOUND", "not found"));
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.InvalidVisit);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAVisitAnotherAdmissionAlreadyHas_FailsWithVisitAlreadyAdmitted()
+    {
+        var visitId = Guid.NewGuid();
+        var request = NewCreateRequest() with { VisitId = visitId };
+        GivenVisit(request.PatientId, visitId, VisitType.IP);
+        _repository.IsVisitLinkedAsync(visitId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.VisitAlreadyAdmitted);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Admission>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task IssueIpNumberWithoutAdvanceAsync_OnALinkedAdmission_IssuesTheVisitsIpNumber()
+    {
+        var visitId = Guid.NewGuid();
+        var admission = Admission.Create("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), _wardId, _bedId, DateTime.UtcNow, AdmissionType.Elective, "Observation", null);
+        admission.LinkVisit(visitId);
+        _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
+        _patientVisitService.AssignIpNumberAsync(admission.PatientId, visitId, IpNumberTrigger.IssuedWithoutAdvance, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitId = visitId, VisitType = VisitType.IP, VisitNumber = "IP-2026-000009" }));
+        GivenVisit(admission.PatientId, visitId, VisitType.IP, "IP-2026-000009");
+
+        var result = await _sut.IssueIpNumberWithoutAdvanceAsync(admission.Id, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.IpNumber.Should().Be("IP-2026-000009");
+        await _patientVisitService.Received(1).AssignIpNumberAsync(admission.PatientId, visitId, IpNumberTrigger.IssuedWithoutAdvance, Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task IssueIpNumberWithoutAdvanceAsync_OnAnAdmissionWithNoVisit_FailsWithNoLinkedVisit()
+    {
+        var admission = Admission.Create("ADM-2026-000001", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), _wardId, _bedId, DateTime.UtcNow, AdmissionType.Elective, "Observation", null);
+        _repository.GetByIdAsync(admission.Id, Arg.Any<CancellationToken>()).Returns(admission);
+
+        var result = await _sut.IssueIpNumberWithoutAdvanceAsync(admission.Id, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(IPDErrorCodes.NoLinkedVisit);
+        await _patientVisitService.DidNotReceiveWithAnyArgs().AssignIpNumberAsync(default, default, default, default, default);
     }
 
     [Fact]

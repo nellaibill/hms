@@ -26,4 +26,8 @@ internal class StaffDocumentOwnerExistenceChecker : IDocumentOwnerExistenceCheck
 
     public Task<bool> ExistsAsync(Guid ownerId, CancellationToken cancellationToken)
         => _repository.ExistsAsync(ownerId, cancellationToken);
+
+    /// <summary>Staff have no visits, so a staff document is never filed under one.</summary>
+    public Task<bool> HasVisitAsync(Guid ownerId, Guid visitId, CancellationToken cancellationToken)
+        => Task.FromResult(false);
 }

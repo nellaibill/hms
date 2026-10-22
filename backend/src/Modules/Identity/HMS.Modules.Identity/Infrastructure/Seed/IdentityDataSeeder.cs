@@ -18,7 +18,7 @@ namespace HMS.Modules.Identity.Infrastructure.Seed;
 /// </summary>
 internal sealed class IdentityDataSeeder
 {
-    private const string SuperAdminRoleName = "Super Admin";
+    private const string SuperAdminRoleName = SuperAdminPermissionSync.SuperAdminRoleName;
 
     private readonly IPermissionRepository _permissionRepository;
     private readonly IRoleRepository _roleRepository;
@@ -62,26 +62,23 @@ internal sealed class IdentityDataSeeder
     /// </summary>
     private async Task<Role> EnsureSuperAdminRoleAsync(CancellationToken cancellationToken)
     {
-        var permissions = await _permissionRepository.GetAllAsync(cancellationToken);
-        var permissionIds = permissions.Select(p => p.Id).ToList();
-
-        var existingRole = await _roleRepository.GetByNameAsync(SuperAdminRoleName, cancellationToken);
+        var (existingRole, resynced) = await new SuperAdminPermissionSync(_permissionRepository, _roleRepository)
+            .SyncAsync(cancellationToken);
         if (existingRole is not null)
         {
-            var currentPermissionIds = existingRole.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
-            if (!currentPermissionIds.SetEquals(permissionIds))
+            if (resynced)
             {
-                existingRole.ReplacePermissions(permissionIds);
-                await _roleRepository.SaveChangesAsync(cancellationToken);
-
                 _logger.LogInformation(
                     "Re-synced '{RoleName}' role to {PermissionCount} permission(s)",
                     SuperAdminRoleName,
-                    permissionIds.Count);
+                    existingRole.RolePermissions.Count);
             }
 
             return existingRole;
         }
+
+        var permissions = await _permissionRepository.GetAllAsync(cancellationToken);
+        var permissionIds = permissions.Select(p => p.Id).ToList();
 
         var role = Role.Create(
             SuperAdminRoleName,

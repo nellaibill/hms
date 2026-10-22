@@ -44,6 +44,7 @@ internal class DocumentConfiguration : IEntityTypeConfiguration<Document>
         // docs/DecisionLog.md ADR-036): every owner type other than Staff just leaves this
         // null.
         builder.Property(d => d.ExpiryDate).HasColumnName("expiry_date").HasColumnType("date");
+        builder.Property(d => d.VisitId).HasColumnName("visit_id");
 
         // Standard audit columns (mirrors PatientConfiguration).
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").IsRequired();

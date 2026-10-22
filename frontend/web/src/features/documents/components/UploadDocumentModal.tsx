@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, UploadCloud, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,15 +30,38 @@ interface UploadDocumentModalProps {
    * for uploads started from a record's own page (e.g. Patient Details), where the document
    * must belong to that record and choosing another one would be a mistake. */
   lockedEntityLabel?: string;
+  /** The patient's visits, to file the document under one (a lab report under the OP/IP visit
+   * it came from). Shows a Visit picker only when given; "Not linked to a visit" stays available. */
+  visitOptions?: { value: string; label: string }[];
+  /** The visit picked when the dialog opens — e.g. the visit whose own Upload button opened it. */
+  defaultVisitId?: string | null;
 }
 
-export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityType, defaultEntityId, lockedEntityLabel }: UploadDocumentModalProps) {
+const NO_VISIT = 'none';
+
+export function UploadDocumentModal({
+  open,
+  onClose,
+  onUploaded,
+  defaultEntityType,
+  defaultEntityId,
+  lockedEntityLabel,
+  visitOptions,
+  defaultVisitId,
+}: UploadDocumentModalProps) {
   const entityLocked = Boolean(lockedEntityLabel && defaultEntityType && defaultEntityId);
   const [values, setValues] = useState<DocumentUploadFormValues>({
     ...EMPTY_VALUES,
     entityType: defaultEntityType ?? '',
     entityId: defaultEntityId ?? '',
+    visitId: defaultVisitId ?? null,
   });
+
+  // Each opening starts on the visit the caller asked for — the dialog stays mounted between
+  // openings, so its initial state alone would keep the first visit it was ever opened with.
+  useEffect(() => {
+    if (open) setValues((prev) => ({ ...prev, visitId: defaultVisitId ?? null }));
+  }, [open, defaultVisitId]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { status, progress, error, upload, reset } = useUploadDocumentMutation();
@@ -57,7 +80,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityTy
 
   function handleClose() {
     if (busy) return;
-    setValues({ ...EMPTY_VALUES, entityType: defaultEntityType ?? '', entityId: defaultEntityId ?? '' });
+    setValues({ ...EMPTY_VALUES, entityType: defaultEntityType ?? '', entityId: defaultEntityId ?? '', visitId: defaultVisitId ?? null });
     reset();
     onClose();
   }
@@ -189,6 +212,31 @@ export function UploadDocumentModal({ open, onClose, onUploaded, defaultEntityTy
               )}
             </div>
           </div>
+
+          {visitOptions && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="upload-visit">
+                Visit <span className="font-normal text-muted-foreground">(the visit this document belongs to)</span>
+              </Label>
+              <Select
+                value={values.visitId ?? NO_VISIT}
+                disabled={busy}
+                onValueChange={(value) => setValues((prev) => ({ ...prev, visitId: value === NO_VISIT ? null : value }))}
+              >
+                <SelectTrigger id="upload-visit">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {visitOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={NO_VISIT}>Not linked to a visit</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div>
             <Label>

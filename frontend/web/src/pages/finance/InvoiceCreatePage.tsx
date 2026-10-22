@@ -332,7 +332,14 @@ export default function InvoiceCreatePage() {
     if (!savedInvoice || !itemPendingPayment) return;
     recordPaymentMutation.mutate(
       { billingId: savedInvoice.id, itemId: itemPendingPayment.id, method },
-      { onSuccess: (updated) => { setSavedInvoice(updated); setItemPendingPayment(null); } },
+      {
+        onSuccess: (updated) => {
+          // Keep an OP No issued when the invoice was saved — a later payment's result only
+          // carries one if that payment is what paid the consultation.
+          setSavedInvoice((previous) => ({ ...updated, opNumber: updated.opNumber ?? previous?.opNumber }));
+          setItemPendingPayment(null);
+        },
+      },
     );
   }
 
@@ -397,6 +404,9 @@ export default function InvoiceCreatePage() {
                 <>
                   <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
                     Invoice {savedInvoice.invoiceNumber ?? savedInvoice.id} saved.
+                    {/* An OP visit gets its OP No once its consultation fee is paid (ADR-103) —
+                        this is where reception first sees it. */}
+                    {savedInvoice.opNumber && <> OP No: <span className="font-semibold">{savedInvoice.opNumber}</span></>}
                   </p>
                   {savedInvoice.items.some((item) => item.billingType === 'Laboratory') ? (
                     <Tabs defaultValue="summary">

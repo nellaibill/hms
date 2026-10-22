@@ -65,6 +65,7 @@ function fromDto(dto: InvoiceResponseDto): Billing {
     isVoided: dto.isVoided,
     voidedAt: dto.voidedAt ?? undefined,
     voidReason: dto.voidReason ?? undefined,
+    opNumber: dto.opNumber ?? undefined,
   };
 }
 

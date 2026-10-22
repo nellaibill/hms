@@ -546,4 +546,97 @@ public class OpdConsultationServiceTests
         line.ConsultantId.Should().Be(firstItem.ConsultantId);
         line.Priority.Should().Be(OpdInvestigationPriority.Urgent);
     }
+
+    /* ------------------------------------------------------------ Scheduled visits */
+
+    /// <summary>A note whose consultation has a review date, as the doctor's follow-up sets it.</summary>
+    private static OpdConsultationNote ScheduledNote(Guid consultationId, DateOnly reviewDate, string? followUp = null)
+    {
+        var note = OpdConsultationNote.Create(consultationId, Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.SaveDetails(
+            heightCm: null, weightKg: null, pulseRate: null, bloodPressure: null, temperatureF: null, spO2Percent: null,
+            presentingComplaints: null, clinicalHistory: null, examinationFindings: null, planOfManagement: null,
+            reviewDate: reviewDate, followUpInstructions: followUp, emergencyReviewInstructions: null,
+            referralDepartmentId: null, referralConsultantId: null, referralReason: null, updatedBy: null);
+        return note;
+    }
+
+    private OpdPatientListItem GivenHeader(OpdConsultationNote note, string patientName = "Test Patient", string uhid = "P-2026-000001", Guid? consultantId = null)
+    {
+        var item = NewListItem(note.ConsultationId, note.PatientId, note.VisitId) with { PatientName = patientName, Uhid = uhid };
+        if (consultantId is { } id)
+        {
+            item = item with { ConsultantId = id };
+        }
+
+        _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(Result<OpdPatientListItem>.Success(item));
+        return item;
+    }
+
+    [Fact]
+    public async Task GetScheduledVisitsAsync_ReturnsEachReviewDateWithItsPatientConsultantAndNotes()
+    {
+        var from = new DateOnly(2026, 10, 22);
+        var note = ScheduledNote(Guid.NewGuid(), new DateOnly(2026, 10, 25), followUp: "Review with CBC report");
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        var header = GivenHeader(note, patientName: "Anitha R");
+
+        var result = await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from }, CancellationToken.None);
+
+        var visit = result.Should().ContainSingle().Subject;
+        visit.ScheduledDate.Should().Be(new DateOnly(2026, 10, 25));
+        visit.PatientName.Should().Be("Anitha R");
+        visit.Age.Should().Be(header.Age);
+        visit.Gender.Should().Be("Female");
+        visit.Uhid.Should().Be(header.Uhid);
+        visit.DepartmentName.Should().Be(header.DepartmentName);
+        visit.ConsultantName.Should().Be(header.ConsultantName);
+        visit.Notes.Should().Be("Review with CBC report");
+    }
+
+    // A Consultant's own list: the controller forces their ConsultantId into the query.
+    [Fact]
+    public async Task GetScheduledVisitsAsync_WithAConsultant_ReturnsOnlyThatConsultantsVisits()
+    {
+        var from = new DateOnly(2026, 10, 22);
+        var mine = ScheduledNote(Guid.NewGuid(), from);
+        var theirs = ScheduledNote(Guid.NewGuid(), from);
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([mine, theirs]);
+        var consultantId = Guid.NewGuid();
+        GivenHeader(mine, consultantId: consultantId);
+        GivenHeader(theirs);
+
+        var result = await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from, ConsultantId = consultantId }, CancellationToken.None);
+
+        result.Should().ContainSingle().Which.ConsultationId.Should().Be(mine.ConsultationId);
+    }
+
+    [Fact]
+    public async Task GetScheduledVisitsAsync_WithASearch_MatchesUhid()
+    {
+        var from = new DateOnly(2026, 10, 22);
+        var match = ScheduledNote(Guid.NewGuid(), from);
+        var other = ScheduledNote(Guid.NewGuid(), from);
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([match, other]);
+        GivenHeader(match, uhid: "P-2026-040121");
+        GivenHeader(other, uhid: "P-2026-000777");
+
+        var result = await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from, Search = "040121" }, CancellationToken.None);
+
+        result.Should().ContainSingle().Which.ConsultationId.Should().Be(match.ConsultationId);
+    }
+
+    [Fact]
+    public async Task GetScheduledVisitsAsync_SkipsAConsultationThatCanNoLongerBeFound()
+    {
+        var from = new DateOnly(2026, 10, 22);
+        var note = ScheduledNote(Guid.NewGuid(), from);
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, Arg.Any<CancellationToken>())
+            .Returns(Result<OpdPatientListItem>.Failure(PatientErrorCodes.ConsultationNotFound, "not found"));
+
+        var result = await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from }, CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
 }

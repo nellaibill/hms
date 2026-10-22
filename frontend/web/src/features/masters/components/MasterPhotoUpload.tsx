@@ -67,7 +67,7 @@ export function MasterPhotoUpload({ config, mode, recordId, initialUrl, onFileSt
       { id: recordId, file },
       {
         onSuccess: (updated) => setPreviewUrl((updated[photoConfig!.urlField] as string | null | undefined) ?? null),
-        onError: () => setError('Failed to upload photo — please try again.'),
+        onError: (uploadError) => setError(`Failed to upload photo. ${uploadError instanceof Error ? uploadError.message : 'Please try again.'}`),
       },
     );
   }

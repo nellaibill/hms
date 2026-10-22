@@ -18,7 +18,7 @@ namespace HMS.Database.Migrations.IPD.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("ipd")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -133,6 +133,10 @@ namespace HMS.Database.Migrations.IPD.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
+                    b.Property<Guid?>("VisitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("visit_id");
+
                     b.Property<Guid?>("WardId")
                         .HasColumnType("uuid")
                         .HasColumnName("ward_id");
@@ -160,6 +164,11 @@ namespace HMS.Database.Migrations.IPD.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_admissions_active_patient")
                         .HasFilter("status IN ('Admitted', 'Requested') AND is_deleted = false");
+
+                    b.HasIndex("VisitId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_admissions_visit_id")
+                        .HasFilter("visit_id IS NOT NULL AND is_deleted = false");
 
                     b.ToTable("admissions", "ipd");
                 });

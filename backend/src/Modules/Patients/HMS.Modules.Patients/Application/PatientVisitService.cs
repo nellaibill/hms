@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Application.Mapping;
@@ -23,6 +25,7 @@ internal class PatientVisitService : IPatientVisitService
     private readonly IConsultantService _consultantService;
     private readonly IAppointmentTypeService _appointmentTypeService;
     private readonly IConsultationTypeService _consultationTypeService;
+    private readonly IActivityLogService _activityLog;
     private readonly ILogger<PatientVisitService> _logger;
 
     public PatientVisitService(
@@ -33,8 +36,10 @@ internal class PatientVisitService : IPatientVisitService
         IConsultantService consultantService,
         IAppointmentTypeService appointmentTypeService,
         IConsultationTypeService consultationTypeService,
+        IActivityLogService activityLog,
         ILogger<PatientVisitService> logger)
     {
+        _activityLog = activityLog;
         _repository = repository;
         _patientRepository = patientRepository;
         _identifierGenerator = identifierGenerator;
@@ -96,10 +101,15 @@ internal class PatientVisitService : IPatientVisitService
             }
         }
 
-        // Drawn only now, after every check above has passed, so a rejected request doesn't
-        // burn an OP No/IP No. A failed save below still can — sequences are gap-tolerant by
-        // design, same as the UHID.
-        var visitNumber = await _identifierGenerator.NextVisitNumberAsync(request.VisitType, cancellationToken);
+        // Only an Emergency visit is numbered as it is recorded — its care and MLC paperwork can't
+        // wait for a payment. An OP visit gets its OP No once its consultation fee is paid
+        // (ADR-103, AssignOpNumberAsync), an IP/Day Care/Observation visit its IP No once the
+        // advance on its admission is paid (ADR-104, AssignIpNumberAsync). The Emergency IP No is
+        // drawn only now, after every check above has passed, so a rejected request doesn't burn
+        // one. A failed save below still can — sequences are gap-tolerant by design, same as the UHID.
+        var visitNumber = request.VisitType == VisitType.Emergency
+            ? await _identifierGenerator.NextVisitNumberAsync(request.VisitType, cancellationToken)
+            : null;
 
         var visit = PatientVisit.Create(patientId, request.VisitType, request.AppointmentTypeId, actorId, visitNumber);
         visit.SetEmergencyType(request.EmergencyType);
@@ -132,6 +142,70 @@ internal class PatientVisitService : IPatientVisitService
         if (visit is null || visit.PatientId != patientId)
         {
             return Result<PatientVisitResponse>.Failure(PatientErrorCodes.VisitNotFound, $"Visit '{visitId}' was not found for this patient.");
+        }
+
+        return Result<PatientVisitResponse>.Success(visit.ToResponse());
+    }
+
+    public Task<Result<PatientVisitResponse>> AssignOpNumberAsync(Guid patientId, Guid visitId, Guid? actorId, CancellationToken cancellationToken)
+        => AssignVisitNumberAsync(patientId, visitId, opSeries: true, "after its consultation fee was paid", actorId, cancellationToken);
+
+    public Task<Result<PatientVisitResponse>> AssignIpNumberAsync(Guid patientId, Guid visitId, IpNumberTrigger trigger, Guid? actorId, CancellationToken cancellationToken)
+        => AssignVisitNumberAsync(
+            patientId,
+            visitId,
+            opSeries: false,
+            trigger == IpNumberTrigger.AdvancePaid ? "after the advance on its admission was paid" : "without an advance",
+            actorId,
+            cancellationToken);
+
+    /// <summary>Shared by AssignOpNumberAsync/AssignIpNumberAsync. Each only ever numbers its own
+    /// series — a paid consultation never gives an IP visit its IP No, an advance never gives an
+    /// OP visit its OP No — and only a visit that has none yet. The number is drawn while the
+    /// visit's row is locked, so two payments for the same visit arriving together can't both
+    /// use one up.</summary>
+    private async Task<Result<PatientVisitResponse>> AssignVisitNumberAsync(Guid patientId, Guid visitId, bool opSeries, string reason, Guid? actorId, CancellationToken cancellationToken)
+    {
+        string? assigned = null;
+
+        var visit = await _repository.LockAndUpdateAsync(
+            visitId,
+            async locked =>
+            {
+                if (locked.PatientId != patientId || (locked.VisitType == VisitType.OP) != opSeries || locked.VisitNumber is not null)
+                {
+                    return;
+                }
+
+                var visitNumber = await _identifierGenerator.NextVisitNumberAsync(locked.VisitType, cancellationToken);
+                if (locked.AssignVisitNumber(visitNumber, actorId))
+                {
+                    assigned = visitNumber;
+                }
+            },
+            cancellationToken);
+
+        if (visit is null || visit.PatientId != patientId)
+        {
+            return Result<PatientVisitResponse>.Failure(PatientErrorCodes.VisitNotFound, $"Visit '{visitId}' was not found for this patient.");
+        }
+
+        if (assigned is not null)
+        {
+            _logger.LogInformation("Assigned {VisitNumber} to visit {VisitId} for patient {PatientId} {Reason}", assigned, visitId, patientId, reason);
+
+            // Best-effort audit write (never throws — see IActivityLogService); the number is
+            // already saved.
+            await _activityLog.LogAsync(new ActivityLogRequest
+            {
+                Action = ActivityLogActions.Update,
+                Module = ActivityLogModules.Patients,
+                EntityType = "PatientVisit",
+                EntityId = visit.Id.ToString(),
+                Description = $"Issued {(opSeries ? "OP No" : "IP No")} {assigned} {reason}",
+                NewValues = new { VisitNumber = assigned },
+                UserId = actorId,
+            }, cancellationToken);
         }
 
         return Result<PatientVisitResponse>.Success(visit.ToResponse());

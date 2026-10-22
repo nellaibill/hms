@@ -4,6 +4,8 @@ using HMS.Modules.IPD.Domain;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application;
 using HMS.Shared.Kernel;
+using IpNumberTrigger = HMS.Modules.Patients.Contracts.IpNumberTrigger;
+using PatientVisitType = HMS.Modules.Patients.Contracts.VisitType;
 
 namespace HMS.Modules.IPD.Application;
 
@@ -41,6 +43,11 @@ public interface IAdmissionService
     /// existence/availability checks and bed-occupied/bed-stay side effects CreateAsync already
     /// runs for a direct admission, just triggered here instead once IPD has a bed to offer.</summary>
     Task<Result<AdmissionResponse>> AssignBedAsync(Guid id, AssignBedRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Issues the linked visit's IP No with no advance paid — cashless insurance, a
+    /// waived deposit (ADR-104). A supervisor action; the Patients module records it in the
+    /// activity log. Fails if the admission has no linked visit.</summary>
+    Task<Result<AdmissionResponse>> IssueIpNumberWithoutAdvanceAsync(Guid id, Guid? actorId, CancellationToken cancellationToken);
 }
 
 internal class AdmissionService : IAdmissionService
@@ -53,6 +60,7 @@ internal class AdmissionService : IAdmissionService
     private readonly IAdmissionChargeRepository _chargeRepository;
     private readonly IAdmissionIdentifierGenerator _identifierGenerator;
     private readonly IPatientService _patientService;
+    private readonly IPatientVisitService _patientVisitService;
     private readonly IDepartmentService _departmentService;
     private readonly IConsultantService _consultantService;
 
@@ -65,9 +73,11 @@ internal class AdmissionService : IAdmissionService
         IAdmissionChargeRepository chargeRepository,
         IAdmissionIdentifierGenerator identifierGenerator,
         IPatientService patientService,
+        IPatientVisitService patientVisitService,
         IDepartmentService departmentService,
         IConsultantService consultantService)
     {
+        _patientVisitService = patientVisitService;
         _repository = repository;
         _wardRepository = wardRepository;
         _bedRepository = bedRepository;
@@ -119,6 +129,25 @@ internal class AdmissionService : IAdmissionService
             return Result<AdmissionResponse>.Failure(IPDErrorCodes.PatientAlreadyAdmitted, "This patient already has an active admission.");
         }
 
+        // ADR-104: the linked visit gets its IP No once an advance is paid on this admission, so
+        // it must be a visit that has one to give — this patient's, not OP — and not one another
+        // admission already claimed.
+        if (request.VisitId is { } visitId)
+        {
+            var visit = await _patientVisitService.GetByIdAsync(request.PatientId, visitId, cancellationToken);
+            if (!visit.IsSuccess || visit.Value!.VisitType == PatientVisitType.OP)
+            {
+                return Result<AdmissionResponse>.Failure(
+                    IPDErrorCodes.InvalidVisit,
+                    $"Visit '{visitId}' is not one of this patient's IP, Day Care, Observation or Emergency visits.");
+            }
+
+            if (await _repository.IsVisitLinkedAsync(visitId, cancellationToken))
+            {
+                return Result<AdmissionResponse>.Failure(IPDErrorCodes.VisitAlreadyAdmitted, "This visit already has an admission.");
+            }
+        }
+
         var admissionNumber = await _identifierGenerator.NextAdmissionNumberAsync(cancellationToken);
         var admissionDateTime = request.AdmissionDateTime ?? DateTime.UtcNow;
 
@@ -133,6 +162,11 @@ internal class AdmissionService : IAdmissionService
             request.AdmissionType,
             request.ReasonForAdmission,
             actorId);
+
+        if (request.VisitId is { } linkedVisitId)
+        {
+            admission.LinkVisit(linkedVisitId);
+        }
 
         bed.SetStatus(BedStatus.Occupied, actorId);
 
@@ -475,12 +509,37 @@ internal class AdmissionService : IAdmissionService
         }
     }
 
+    public async Task<Result<AdmissionResponse>> IssueIpNumberWithoutAdvanceAsync(Guid id, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var admission = await _repository.GetByIdAsync(id, cancellationToken);
+        if (admission is null)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.NotFound, $"Admission '{id}' was not found.");
+        }
+
+        if (admission.VisitId is not { } visitId)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.NoLinkedVisit, "This admission isn't linked to a visit, so there is no IP No to issue.");
+        }
+
+        var assigned = await _patientVisitService.AssignIpNumberAsync(admission.PatientId, visitId, IpNumberTrigger.IssuedWithoutAdvance, actorId, cancellationToken);
+        if (!assigned.IsSuccess)
+        {
+            return Result<AdmissionResponse>.Failure(IPDErrorCodes.IpNumberNotIssued, $"The IP No could not be issued: {assigned.Error}");
+        }
+
+        return Result<AdmissionResponse>.Success(await BuildResponseAsync(admission, cancellationToken));
+    }
+
     private async Task<AdmissionResponse> BuildResponseAsync(Admission admission, CancellationToken cancellationToken)
     {
         var patientResult = await _patientService.GetByIdAsync(admission.PatientId, cancellationToken);
         var consultantResult = await _consultantService.GetByIdAsync(admission.ConsultantId, cancellationToken);
         var ward = admission.WardId.HasValue ? await _wardRepository.GetByIdAsync(admission.WardId.Value, cancellationToken) : null;
         var bed = admission.BedId.HasValue ? await _bedRepository.GetByIdAsync(admission.BedId.Value, cancellationToken) : null;
+        var visitResult = admission.VisitId.HasValue
+            ? await _patientVisitService.GetByIdAsync(admission.PatientId, admission.VisitId.Value, cancellationToken)
+            : null;
 
         var patient = patientResult.Value;
 
@@ -510,6 +569,8 @@ internal class AdmissionService : IAdmissionService
             DischargeNotes = admission.DischargeNotes,
             FollowUpAdvice = admission.FollowUpAdvice,
             FinalInvoiceId = admission.FinalInvoiceId,
+            VisitId = admission.VisitId,
+            IpNumber = visitResult is { IsSuccess: true, Value: { } visit } ? visit.VisitNumber : null,
             CreatedAt = admission.CreatedAt,
             UpdatedAt = admission.UpdatedAt,
         };

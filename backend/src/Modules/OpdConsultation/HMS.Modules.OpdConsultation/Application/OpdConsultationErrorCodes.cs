@@ -50,4 +50,8 @@ internal static class OpdConsultationErrorCodes
     /// <summary>The call to the AI provider failed (network error, non-success response, or an
     /// unparseable/incomplete tool-use result).</summary>
     public const string AiRequestFailed = "OPD_CONSULTATION.AI_REQUEST_FAILED";
+
+    /// <summary>The caller's role isn't one the Scheduled Visits list is for (Receptionist,
+    /// Admin, Super Admin, Consultant).</summary>
+    public const string ScheduledVisitsForbidden = "OPD_CONSULTATION.SCHEDULED_VISITS_FORBIDDEN";
 }

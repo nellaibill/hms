@@ -28,6 +28,9 @@ internal class AdmissionRepository : IAdmissionRepository
             a => a.PatientId == patientId && (a.Status == AdmissionStatus.Admitted || a.Status == AdmissionStatus.Requested),
             cancellationToken);
 
+    public Task<bool> IsVisitLinkedAsync(Guid visitId, CancellationToken cancellationToken)
+        => _dbContext.Admissions.AnyAsync(a => a.VisitId == visitId, cancellationToken);
+
     public async Task<(IReadOnlyList<Admission> Items, int TotalCount)> GetPagedAsync(AdmissionListQuery query, CancellationToken cancellationToken)
     {
         var admissions = _dbContext.Admissions.AsQueryable();

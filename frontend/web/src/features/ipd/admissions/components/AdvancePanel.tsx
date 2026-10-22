@@ -1,6 +1,7 @@
 import { ApiError, createAdmissionAdvanceSchema, PAYMENT_METHODS, type AdmissionAdvanceFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,9 @@ interface AdvancePanelProps {
 export function AdvancePanel({ admissionId }: AdvancePanelProps) {
   const { data: advances, isPending, isError } = useAdmissionAdvancesQuery(admissionId);
   const mutation = usePostAdmissionAdvanceMutation(admissionId);
+  // The linked visit's IP No, from the last advance recorded here — a paid advance is what
+  // issues it (ADR-104), so this is where the IPD desk first sees it.
+  const [ipNumber, setIpNumber] = useState<string | null>(null);
 
   const {
     control,
@@ -36,7 +40,12 @@ export function AdvancePanel({ admissionId }: AdvancePanelProps) {
   function onSubmit(values: AdmissionAdvanceFormValues) {
     mutation.mutate(
       { amount: values.amount, method: values.method, referenceNumber: values.referenceNumber || null, remarks: values.remarks || null },
-      { onSuccess: () => reset({ amount: 0, method: 'Cash', referenceNumber: '', remarks: '' }) },
+      {
+        onSuccess: (advance) => {
+          setIpNumber(advance.ipNumber ?? null);
+          reset({ amount: 0, method: 'Cash', referenceNumber: '', remarks: '' });
+        },
+      },
     );
   }
 
@@ -45,6 +54,12 @@ export function AdvancePanel({ admissionId }: AdvancePanelProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      {ipNumber && (
+        <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
+          Advance recorded. IP No: <span className="font-semibold">{ipNumber}</span>
+        </p>
+      )}
+
       {isPending && (
         <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />

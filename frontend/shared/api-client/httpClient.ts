@@ -1,4 +1,4 @@
-import { ApiError, NetworkError, type ApiErrorResponse } from '../errors';
+import { ApiError, NetworkError, type ApiErrorBody } from '../errors';
 
 /** Mirrors HMS.Shared.Kernel.ApiResponse<T> — see docs/ApiStandards.md §4. */
 export interface ApiResponseEnvelope<T> {
@@ -46,6 +46,21 @@ function buildUrl(baseUrl: string, path: string, query?: RequestOptions['query']
   }
 
   return url.toString();
+}
+
+/**
+ * A 2xx that is an HTML page rather than JSON means the request never reached the API: the
+ * web server answered with the app's own index.html (wrong API address, or a proxy rule
+ * missing). Without this check the caller gets `undefined` and fails later with an unreadable
+ * "Cannot read properties of undefined".
+ */
+function assertNotHtmlPage(response: Response, payload: unknown): void {
+  if (payload === undefined && (response.headers.get('Content-Type') ?? '').includes('text/html')) {
+    throw new ApiError(response.status, {
+      errorCode: 'HTTP.UNEXPECTED_HTML',
+      message: 'The HMS server sent a web page instead of data, so the app may be set up with the wrong server address. Contact IT.',
+    });
+  }
 }
 
 /**
@@ -112,9 +127,10 @@ export class HttpClient {
       if (response.status === 401) {
         this.config.onUnauthorized?.();
       }
-      throw new ApiError(response.status, payload as ApiErrorResponse);
+      throw new ApiError(response.status, payload as ApiErrorBody);
     }
 
+    assertNotHtmlPage(response, payload);
     return payload as ApiResponseEnvelope<T>;
   }
 
@@ -152,7 +168,7 @@ export class HttpClient {
         this.config.onUnauthorized?.();
       }
       const payload = await response.json().catch(() => undefined);
-      throw new ApiError(response.status, payload as ApiErrorResponse);
+      throw new ApiError(response.status, payload as ApiErrorBody);
     }
 
     return response.blob();
@@ -219,9 +235,10 @@ export class HttpClient {
       if (response.status === 401 && !options?.skipUnauthorizedHandling) {
         this.config.onUnauthorized?.();
       }
-      throw new ApiError(response.status, payload as ApiErrorResponse);
+      throw new ApiError(response.status, payload as ApiErrorBody);
     }
 
+    assertNotHtmlPage(response, payload);
     return payload as ApiResponseEnvelope<T>;
   }
 }

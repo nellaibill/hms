@@ -44,6 +44,9 @@ export class DocumentsApi {
     if (request.expiryDate) {
       formData.append('expiryDate', request.expiryDate);
     }
+    if (request.visitId) {
+      formData.append('visitId', request.visitId);
+    }
     const response = await this.client.postFormData<DocumentResponse>(API_ROUTES.documents.base, formData);
     return response.data;
   }

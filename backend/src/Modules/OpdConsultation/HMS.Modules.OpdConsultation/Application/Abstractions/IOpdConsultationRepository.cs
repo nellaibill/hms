@@ -21,5 +21,9 @@ internal interface IOpdConsultationRepository
     /// in the given window, newest first — the pharmacy's prescription queue.</summary>
     Task<IReadOnlyList<Domain.OpdConsultationNote>> GetCompletedWithPrescriptionsAsync(DateTime fromUtc, DateTime toUtc, int take, CancellationToken cancellationToken);
 
+    /// <summary>Notes (Draft or Completed) whose review date is on or after <paramref name="from"/>,
+    /// soonest first — the OPD page's Scheduled Visits list. Untracked.</summary>
+    Task<IReadOnlyList<Domain.OpdConsultationNote>> GetWithReviewDateFromAsync(DateOnly from, int take, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

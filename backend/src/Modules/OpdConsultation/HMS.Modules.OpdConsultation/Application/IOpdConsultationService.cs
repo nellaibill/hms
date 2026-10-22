@@ -35,6 +35,11 @@ public interface IOpdConsultationService
     /// for the pharmacy's prescription queue. Capped at 200.</summary>
     Task<IReadOnlyList<OpdPrescriptionQueueItemResponse>> GetPrescriptionQueueAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken);
 
+    /// <summary>Upcoming scheduled visits across every patient — each consultation's review
+    /// date from <see cref="ScheduledVisitQuery.From"/> on, soonest first, filtered by
+    /// department/consultant/search. Capped at the 500 soonest review dates.</summary>
+    Task<IReadOnlyList<ScheduledVisitResponse>> GetScheduledVisitsAsync(ScheduledVisitQuery query, CancellationToken cancellationToken);
+
     /// <summary>Full-record save with no required fields. Fails with NotDraft once
     /// Completed.</summary>
     Task<Result<OpdConsultationNoteResponse>> SaveDraftAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken);
@@ -148,6 +153,56 @@ internal class OpdConsultationService : IOpdConsultationService
         }
 
         return Result<IReadOnlyList<OpdConsultationDetailResponse>>.Success(details);
+    }
+
+    public async Task<IReadOnlyList<ScheduledVisitResponse>> GetScheduledVisitsAsync(ScheduledVisitQuery query, CancellationToken cancellationToken)
+    {
+        var from = query.From ?? DateOnly.FromDateTime(DateTime.Now);
+        var notes = await _repository.GetWithReviewDateFromAsync(from, take: 500, cancellationToken);
+        var search = query.Search?.Trim();
+
+        // The note itself carries no patient/department/consultant — those come from the
+        // consultation's header (Patients' OPD read side), so the filters apply after the lookup.
+        var visits = new List<ScheduledVisitResponse>(notes.Count);
+        foreach (var note in notes)
+        {
+            var detailResult = await _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, cancellationToken);
+            if (!detailResult.IsSuccess)
+            {
+                continue;
+            }
+
+            var item = detailResult.Value!;
+            if ((query.DepartmentId is { } departmentId && item.DepartmentId != departmentId)
+                || (query.ConsultantId is { } consultantId && item.ConsultantId != consultantId)
+                || (!string.IsNullOrEmpty(search)
+                    && !item.PatientName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    && !item.Uhid.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    && !item.PhoneNumber.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            visits.Add(new ScheduledVisitResponse
+            {
+                ConsultationId = note.ConsultationId,
+                PatientId = note.PatientId,
+                VisitId = note.VisitId,
+                ScheduledDate = note.ReviewDate!.Value,
+                PatientName = item.PatientName,
+                Age = item.Age,
+                Gender = item.Gender.ToString(),
+                Uhid = item.Uhid,
+                PhoneNumber = item.PhoneNumber,
+                DepartmentId = item.DepartmentId,
+                DepartmentName = item.DepartmentName,
+                ConsultantId = item.ConsultantId,
+                ConsultantName = item.ConsultantName,
+                Notes = note.FollowUpInstructions,
+            });
+        }
+
+        return visits;
     }
 
     public async Task<IReadOnlyList<OpdPrescriptionQueueItemResponse>> GetPrescriptionQueueAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)

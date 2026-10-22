@@ -12,6 +12,12 @@ public record CreateAdmissionRequest
     public DateTime? AdmissionDateTime { get; init; }
     public AdmissionType AdmissionType { get; init; }
     public string ReasonForAdmission { get; init; } = string.Empty;
+
+    /// <summary>The patient's IP/Day Care/Observation/Emergency visit this admission is for —
+    /// optional (a direct IPD admission has none). Its IP No is issued once an advance is paid
+    /// on this admission (ADR-104). Must be this patient's, not an OP visit, and not already
+    /// linked to another admission.</summary>
+    public Guid? VisitId { get; init; }
 }
 
 // PatientId/WardId/BedId are intentionally absent — the patient can't be changed after
@@ -105,6 +111,13 @@ public record AdmissionResponse
     /// HMS.Modules.Billing Invoice for this admission — the frontend uses this to decide
     /// whether to show "Generate Final Bill" or "View Final Bill". See ADR-066.</summary>
     public Guid? FinalInvoiceId { get; init; }
+
+    /// <summary>The linked visit (ADR-104), null on an admission with none.</summary>
+    public Guid? VisitId { get; init; }
+
+    /// <summary>The linked visit's IP No — null until it is issued (the first advance paid, or
+    /// "Issue IP No without advance"), and always null without a linked visit.</summary>
+    public string? IpNumber { get; init; }
 
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }

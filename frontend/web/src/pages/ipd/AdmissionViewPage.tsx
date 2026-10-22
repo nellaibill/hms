@@ -15,6 +15,7 @@ import {
   DischargeForm,
   DoctorOrdersPanel,
   FinalBillCard,
+  IssueIpNumberDialog,
   LabOrdersPanel,
   MedicationAdministrationPanel,
   MedicationOrdersPanel,
@@ -26,8 +27,10 @@ import {
   VitalsPanel,
   useAdmissionQuery,
   useDischargeMutation,
+  useIssueIpNumberMutation,
   useTransferBedMutation,
 } from '../../features/ipd/admissions';
+import { useAuth } from '../../features/auth/AuthContext';
 import { DischargeSummaryEntryCard } from '../../features/dischargeSummary';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
@@ -47,6 +50,9 @@ export default function AdmissionViewPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const transferMutation = useTransferBedMutation();
   const dischargeMutation = useDischargeMutation();
+  const issueIpNumberMutation = useIssueIpNumberMutation();
+  const [isIssuingIpNumber, setIsIssuingIpNumber] = useState(false);
+  const { hasPermission } = useAuth();
   const { toast } = useToast();
 
   if (isPending) {
@@ -93,7 +99,19 @@ export default function AdmissionViewPage() {
     });
   }
 
+  function handleIssueIpNumber() {
+    issueIpNumberMutation.mutate(id as string, {
+      onSuccess: (updated) => {
+        setIsIssuingIpNumber(false);
+        toast({ title: updated.ipNumber ? `IP No ${updated.ipNumber} issued` : 'IP No issued', variant: 'success' });
+      },
+    });
+  }
+
   const isAdmitted = admission.status === 'Admitted';
+  // ADR-104: a linked visit's IP No is issued by the first advance; a supervisor can issue it
+  // without one (cashless insurance, a waived deposit) — the same permission as approving a discount.
+  const canIssueIpNumberWithoutAdvance = Boolean(admission.visitId) && !admission.ipNumber && hasPermission('finance-billing.discount-approve');
 
   return (
     <div className="flex flex-1 flex-col">
@@ -120,8 +138,42 @@ export default function AdmissionViewPage() {
             <Field label="Age / Gender" value={`${admission.age} / ${admission.gender}`} />
             <Field label="Consultant" value={admission.consultantName} />
             <Field label="Ward / Bed" value={`${admission.wardName} / ${admission.bedNumber}`} />
+            {admission.visitId && (
+              <Field
+                label="IP No"
+                value={
+                  admission.ipNumber ? (
+                    <span className="font-mono">{admission.ipNumber}</span>
+                  ) : (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Badge variant="warning" className="text-[10px]">
+                        Advance pending
+                      </Badge>
+                      {canIssueIpNumberWithoutAdvance && (
+                        <Button variant="outline" size="sm" className="h-7" onClick={() => setIsIssuingIpNumber(true)}>
+                          Issue IP No without advance
+                        </Button>
+                      )}
+                    </span>
+                  )
+                }
+              />
+            )}
           </CardContent>
         </Card>
+
+        {isIssuingIpNumber && (
+          <IssueIpNumberDialog
+            patientName={admission.patientName}
+            isIssuing={issueIpNumberMutation.isPending}
+            error={issueIpNumberMutation.error instanceof ApiError ? issueIpNumberMutation.error.message : null}
+            onConfirm={handleIssueIpNumber}
+            onCancel={() => {
+              setIsIssuingIpNumber(false);
+              issueIpNumberMutation.reset();
+            }}
+          />
+        )}
 
         {/* Each tab mirrors one section of the IPD Patient Dashboard vision from the
             module-expansion proposal — every future IPD slice (Doctor Orders, Medication,

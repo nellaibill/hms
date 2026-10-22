@@ -572,6 +572,10 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("visit_number");
 
+                    b.Property<bool>("VisitNumberPending")
+                        .HasColumnType("boolean")
+                        .HasColumnName("visit_number_pending");
+
                     b.Property<string>("VisitType")
                         .IsRequired()
                         .HasMaxLength(20)

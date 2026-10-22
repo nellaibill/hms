@@ -38,8 +38,14 @@ export interface PatientVisit extends VisitAdmissionDetails {
   patientId: string;
   visitType: VisitType;
   /** The auto-generated OP No ("OP-…", OP visits) or IP No ("IP-…", every other visit type).
-   * Missing only on visits recorded before these numbers existed. */
+   * Missing while `visitNumberPending` — an OP visit until its consultation fee is paid
+   * (ADR-103), an IP/Day Care/Observation visit until its admission's advance is paid (ADR-104);
+   * only an Emergency visit is numbered as it's recorded — and on visits recorded before these
+   * numbers existed. */
   visitNumber?: string | null;
+  /** True while the visit is still waiting for its number: "Fee pending" (OP) or "Advance
+   * pending" (IP) on the patient page. False on visits recorded before ADR-104. */
+  visitNumberPending?: boolean;
   appointmentTypeId?: string | null;
   consultations: VisitConsultation[];
   createdAt: string;

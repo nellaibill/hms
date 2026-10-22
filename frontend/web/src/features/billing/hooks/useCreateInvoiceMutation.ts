@@ -16,6 +16,9 @@ export function useCreateInvoiceMutation() {
       values: BillingFormValues;
       patient: PatientDisplaySnapshot;
     }) => createInvoice(patientId, visitId, values, patient),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['billings'] }),
+    // Paying a consultation can give the visit its OP No (ADR-103), so the patient's visits
+    // are refreshed too — otherwise the patient page keeps showing the visit as unpaid.
+    onSuccess: () =>
+      Promise.all([queryClient.invalidateQueries({ queryKey: ['billings'] }), queryClient.invalidateQueries({ queryKey: ['patient-visits'] })]),
   });
 }

@@ -1,6 +1,6 @@
 import type { AdmissionStatus, InvoicePaymentStatus, LabOrderItemStatus, OpdConsultationStatus } from '@hms/shared';
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, BedDouble, FlaskConical, Stethoscope, Users } from 'lucide-react';
+import { Activity, BedDouble, CalendarClock, FlaskConical, Stethoscope, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -13,20 +13,30 @@ import {
   OpdInvestigationsListTable,
   OpdPatientListTable,
   OpdProceduresListTable,
+  OpdScheduledVisitsTable,
   emptyOpdFilters,
+  formatScheduledDate,
   toRangeEnd,
   toRangeStart,
+  todayIsoDate,
   type OpdFilterValues,
   type OpdTab,
 } from '@/features/opd';
-import { admissionsApi, billingApi, consultantsApi, laboratoryApi, opdApi } from '@/services/apiClient';
+import type { Role } from '@/features/auth/types';
+import { admissionsApi, billingApi, consultantsApi, laboratoryApi, opdApi, opdConsultationApi } from '@/services/apiClient';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 const EXPORT_PAGE_SIZE = 1000;
 
+/** Who gets the Scheduled Visits tab — the front desk and administrators (every consultant's)
+ * and Consultants (only their own, which the backend forces). Mirrors the backend's own list
+ * on OpdConsultationsController.GetScheduledVisits. */
+const SCHEDULED_VISITS_ROLES: Role[] = ['superAdmin', 'admin', 'receptionist', 'doctor'];
+
 export default function OpdPage() {
   const queryClient = useQueryClient();
-  const { scopedConsultantId } = useAuth();
+  const { user, scopedConsultantId } = useAuth();
+  const canSeeScheduledVisits = Boolean(user && SCHEDULED_VISITS_ROLES.includes(user.role));
   const [tab, setTab] = useState<OpdTab>('patients');
   const [filters, setFilters] = useState<OpdFilterValues>(emptyOpdFilters);
   const [page, setPage] = useState(1);
@@ -209,12 +219,38 @@ export default function OpdPage() {
         };
         break;
       }
+      case 'scheduled': {
+        const today = todayIsoDate();
+        const result = await opdConsultationApi.listScheduledVisits({
+          from: today,
+          departmentId: filters.departmentId,
+          consultantId: filters.consultantId,
+          search: filters.search || undefined,
+        });
+        section = {
+          heading: 'OPD Scheduled Visits',
+          headers: ['Date', 'Patient Name', 'Age', 'Gender', 'UHID', 'Department', 'Consultant', 'Notes'],
+          rows: result.map((row) => [
+            formatScheduledDate(row.scheduledDate),
+            row.patientName,
+            row.age,
+            row.gender,
+            row.uhid,
+            row.departmentName,
+            row.consultantName,
+            row.notes ?? '',
+          ]),
+        };
+        break;
+      }
     }
 
-    const filenameBase = `opd-${tab}_${filters.from}_to_${filters.to}`;
+    // Scheduled Visits always runs from today on — the From/To range doesn't apply to it.
+    const rangeLabel = tab === 'scheduled' ? `from ${todayIsoDate()}` : `${filters.from} to ${filters.to}`;
+    const filenameBase = `opd-${tab}_${rangeLabel.replace(/ /g, '_')}`;
     if (format === 'csv') exportReportToCsv(`${filenameBase}.csv`, [section]);
     else if (format === 'excel') await exportReportToExcel(`${filenameBase}.xlsx`, [section]);
-    else exportReportToPdf(`${filenameBase}.pdf`, `${section.heading} (${filters.from} to ${filters.to})`, [section]);
+    else exportReportToPdf(`${filenameBase}.pdf`, `${section.heading} (${rangeLabel})`, [section]);
   }
 
   return (
@@ -258,6 +294,12 @@ export default function OpdPage() {
               <BedDouble className="h-4 w-4" />
               Admissions List
             </TabsTrigger>
+            {canSeeScheduledVisits && (
+              <TabsTrigger value="scheduled" className="gap-1.5">
+                <CalendarClock className="h-4 w-4" />
+                Scheduled Visits
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="patients">
@@ -286,6 +328,12 @@ export default function OpdPage() {
           <TabsContent value="admissions">
             <OpdAdmissionsListTable filters={queryFilters} page={page} onPageChange={setPage} />
           </TabsContent>
+
+          {canSeeScheduledVisits && (
+            <TabsContent value="scheduled">
+              <OpdScheduledVisitsTable filters={queryFilters} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
