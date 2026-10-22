@@ -348,6 +348,7 @@ export const API_ROUTES = {
   opdConsultations: {
     /** GET ?patientId= — every note already on file for one patient; never auto-creates. */
     base: '/api/v1/opd-consultations',
+    scheduledVisits: '/api/v1/opd-consultations/scheduled-visits',
     byConsultationId: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}`,
     saveDraft: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/draft`,
     complete: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/complete`,

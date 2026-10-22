@@ -49,32 +49,39 @@ interface OpdFilterBarProps {
  * list page's screenshot shows pinned to the row's right edge. */
 export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
   const statusOptions = statusOptionsForTab(tab);
+  // Scheduled Visits always lists from today on and has no status, so neither the date range
+  // nor the Status dropdown applies there.
+  const showDatesAndStatus = tab !== 'scheduled';
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4 shadow-soft-md">
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="opd-from">From Date</Label>
-        <Input
-          id="opd-from"
-          type="date"
-          value={filters.from}
-          max={filters.to || undefined}
-          onChange={(event) => onChange({ ...filters, from: event.target.value })}
-          className="w-40"
-        />
-      </div>
+      {showDatesAndStatus && (
+        <>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="opd-from">From Date</Label>
+            <Input
+              id="opd-from"
+              type="date"
+              value={filters.from}
+              max={filters.to || undefined}
+              onChange={(event) => onChange({ ...filters, from: event.target.value })}
+              className="w-40"
+            />
+          </div>
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="opd-to">To Date</Label>
-        <Input
-          id="opd-to"
-          type="date"
-          value={filters.to}
-          min={filters.from || undefined}
-          onChange={(event) => onChange({ ...filters, to: event.target.value })}
-          className="w-40"
-        />
-      </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="opd-to">To Date</Label>
+            <Input
+              id="opd-to"
+              type="date"
+              value={filters.to}
+              min={filters.from || undefined}
+              onChange={(event) => onChange({ ...filters, to: event.target.value })}
+              className="w-40"
+            />
+          </div>
+        </>
+      )}
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="opd-department">Department</Label>
@@ -101,25 +108,27 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="opd-status">Status</Label>
-        <Select
-          value={filters.status ?? 'all'}
-          onValueChange={(value) => onChange({ ...filters, status: value === 'all' ? undefined : value })}
-        >
-          <SelectTrigger id="opd-status" className="w-44" aria-label="Filter by status">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {statusOptions.map((status) => (
-              <SelectItem key={status} value={status}>
-                {humanize(status)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showDatesAndStatus && (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="opd-status">Status</Label>
+          <Select
+            value={filters.status ?? 'all'}
+            onValueChange={(value) => onChange({ ...filters, status: value === 'all' ? undefined : value })}
+          >
+            <SelectTrigger id="opd-status" className="w-44" aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {statusOptions.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {humanize(status)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="opd-search">Search</Label>

@@ -1,6 +1,6 @@
 import { defaultReportDateRange, todayDateInputValue } from '@/lib/reportDateRange';
 
-export type OpdTab = 'patients' | 'consultations' | 'investigations' | 'procedures' | 'admissions';
+export type OpdTab = 'patients' | 'consultations' | 'investigations' | 'procedures' | 'admissions' | 'scheduled';
 
 /** Shared filter values driven by OpdFilterBar and consumed by every tab's own query hook —
  * which fields actually apply (e.g. `status`'s option list) depends on the active tab. */
@@ -15,6 +15,13 @@ export interface OpdFilterValues {
 
 /** Local calendar day, not the UTC one — see lib/reportDateRange. */
 export const todayIsoDate = todayDateInputValue;
+
+/** A Scheduled Visit's "YYYY-MM-DD" date as a local calendar day — new Date("YYYY-MM-DD") alone
+ * is UTC midnight, which shows as the previous day west of UTC. */
+export function formatScheduledDate(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 // Full-day bounds for a date-input value — moved to lib/reportDateRange (shared with the Lab
 // Worklist); re-exported so every OPD tab's existing import keeps working.

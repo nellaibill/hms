@@ -167,3 +167,35 @@ export interface StructuredConsultationNoteFields {
   followUpInstructions?: string | null;
   emergencyReviewInstructions?: string | null;
 }
+
+/** Mirrors HMS.Modules.OpdConsultation.Contracts.ScheduledVisitQuery — the OPD page's Scheduled
+ * Visits filters. A Consultant's consultantId is forced to their own server-side. */
+export interface ScheduledVisitQuery {
+  /** First scheduled date to include ("YYYY-MM-DD") — the caller's local today. */
+  from?: string;
+  departmentId?: string;
+  consultantId?: string;
+  /** Patient name, UHID or phone number. */
+  search?: string;
+}
+
+/** Mirrors HMS.Modules.OpdConsultation.Contracts.ScheduledVisitResponse — one upcoming
+ * scheduled visit: a consultation's review date with its patient, department and consultant. */
+export interface ScheduledVisit {
+  consultationId: string;
+  patientId: string;
+  visitId: string;
+  /** "YYYY-MM-DD" — the consultation's review date. */
+  scheduledDate: string;
+  patientName: string;
+  age: number;
+  gender: string;
+  uhid: string;
+  phoneNumber: string;
+  departmentId: string;
+  departmentName: string;
+  consultantId: string;
+  consultantName: string;
+  /** The consultation's follow-up instructions, when the doctor wrote any. */
+  notes?: string | null;
+}

@@ -56,6 +56,15 @@ internal class OpdConsultationRepository : IOpdConsultationRepository
             .Take(take)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<OpdConsultationNote>> GetWithReviewDateFromAsync(DateOnly from, int take, CancellationToken cancellationToken)
+        => await _dbContext.OpdConsultationNotes
+            .AsNoTracking()
+            .Where(x => x.ReviewDate != null && x.ReviewDate >= from)
+            .OrderBy(x => x.ReviewDate)
+            .ThenBy(x => x.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 }
