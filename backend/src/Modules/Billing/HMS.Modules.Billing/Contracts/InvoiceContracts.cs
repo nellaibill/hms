@@ -133,6 +133,11 @@ public record InvoiceResponse
     public bool IsVoided { get; init; }
     public DateTime? VoidedAt { get; init; }
     public string? VoidReason { get; init; }
+
+    /// <summary>The visit's OP No — set only on the create/record-payment response once the
+    /// visit's consultation fee is paid, which is when an OP visit gets its number (ADR-103),
+    /// so reception can quote it straight away. Null everywhere else, including every read.</summary>
+    public string? OpNumber { get; init; }
 }
 
 /// <summary>Standard pagination/sort/search shape (docs/ApiStandards.md §6), plus the one

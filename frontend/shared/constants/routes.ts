@@ -267,6 +267,7 @@ export const API_ROUTES = {
       discharge: (id: string) => `/api/v1/ipd/admissions/${id}/discharge`,
       request: '/api/v1/ipd/admissions/request',
       assignBed: (id: string) => `/api/v1/ipd/admissions/${id}/assign-bed`,
+      issueIpNumber: (id: string) => `/api/v1/ipd/admissions/${id}/issue-ip-number`,
       charges: (id: string) => `/api/v1/ipd/admissions/${id}/charges`,
       advances: (id: string) => `/api/v1/ipd/admissions/${id}/advances`,
       vitals: (id: string) => `/api/v1/ipd/admissions/${id}/vitals`,
@@ -347,6 +348,7 @@ export const API_ROUTES = {
   opdConsultations: {
     /** GET ?patientId= — every note already on file for one patient; never auto-creates. */
     base: '/api/v1/opd-consultations',
+    scheduledVisits: '/api/v1/opd-consultations/scheduled-visits',
     byConsultationId: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}`,
     saveDraft: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/draft`,
     complete: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/complete`,

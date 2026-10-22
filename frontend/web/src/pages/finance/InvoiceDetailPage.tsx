@@ -2,6 +2,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/toast-context';
 import {
   InvoiceDetailCard,
   LabDetailsCard,
@@ -22,12 +23,21 @@ export default function InvoiceDetailPage() {
   const [isVoiding, setIsVoiding] = useState(false);
   const recordPaymentMutation = useRecordPaymentMutation();
   const voidInvoiceMutation = useVoidInvoiceMutation();
+  const { toast } = useToast();
 
   function handleConfirmPayment(method: PaymentMethod) {
     if (!billing || !itemPendingPayment) return;
     recordPaymentMutation.mutate(
       { billingId: billing.id, itemId: itemPendingPayment.id, method },
-      { onSuccess: () => setItemPendingPayment(null) },
+      {
+        onSuccess: (updated) => {
+          setItemPendingPayment(null);
+          // Paying the consultation is when an OP visit gets its OP No (ADR-103).
+          if (updated.opNumber) {
+            toast({ title: `Payment recorded — OP No ${updated.opNumber}`, description: `${updated.patientName} (${updated.patientUhid})`, variant: 'success' });
+          }
+        },
+      },
     );
   }
 

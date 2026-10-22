@@ -48,6 +48,9 @@ import { PatientAiSearchTab } from './PatientAiSearchTab';
 import { PatientTimelineTab } from './PatientTimelineTab';
 import { DataVerificationBanner } from './DataVerificationBanner';
 import { PatientMedicalInformationTab } from './PatientMedicalInformationTab';
+import { PatientNextScheduleTab } from './PatientNextScheduleTab';
+import { VisitNumberLabel } from './VisitNumberLabel';
+import { visitNumberText } from '../visitNumberText';
 import { PatientDocumentUpload } from './PatientDocumentUpload';
 import type { DocumentResponse, PatientVisit, VisitConsultation } from '@hms/shared';
 
@@ -424,20 +427,40 @@ function AtAGlanceStrip({ patient }: { patient: Patient }) {
   const outstanding =
     billings?.reduce((sum, billing) => sum + billing.items.filter((item) => item.paymentStatus === 'Pending').reduce((s, item) => s + item.total, 0), 0) ?? 0;
 
+  // Visit tiles show only the visit types this patient actually has: a visit count that loaded as 0
+  // (e.g. Day Care for a patient never in day care) returns null and its tile is left out, as is
+  // Last Visit when there are none. Still-loading tiles keep their spinner, and IP Admissions keeps
+  // its '—' for viewers without access — that's "unknown", not 0. Prescriptions, bills and
+  // outstanding always show, 0 included.
+  const visitStat = (pending: boolean, count: number): ReactNode => (pending ? dash : count === 0 ? null : count);
+
+  const stats: [label: string, value: ReactNode][] = [
+    ['Total Visits', visitStat(visitsPending, visits?.length ?? 0)],
+    ['OP Visits', visitStat(visitsPending, visitCountByType('OP'))],
+    ['IP Admissions', canViewAdmissions ? visitStat(admissionsQuery.isPending, admissionCount) : '—'],
+    ['Emergency', visitStat(visitsPending, visitCountByType('Emergency'))],
+    ['Day Care', visitStat(visitsPending, visitCountByType('DayCare'))],
+    // "(OP)"/"(IP)" follows the visit number: only an OP visit gets an OP No, every other visit
+    // type (Emergency, Day Care…) an IP No.
+    [
+      'Last Visit',
+      visitsPending
+        ? dash
+        : lastVisit
+          ? `${new Date(lastVisit.createdAt).toLocaleDateString('en-IN')} (${lastVisit.visitType === 'OP' ? 'OP' : 'IP'})`
+          : null,
+    ],
+    ['Total Prescriptions', prescriptionsPending ? dash : prescriptionCount],
+    ['Total Bills', billingsPending ? dash : formatCurrency(totalBills)],
+    ['Outstanding', billingsPending ? dash : formatCurrency(outstanding)],
+  ];
+  const shownStats = stats.filter(([, value]) => value !== null);
+
   return (
     <div className="flex flex-wrap items-stretch divide-x divide-border rounded-lg border border-border bg-card">
-      <StatItem label="Total Visits" value={visitsPending ? dash : (visits?.length ?? 0)} />
-      <StatItem label="OP Visits" value={visitsPending ? dash : visitCountByType('OP')} />
-      <StatItem label="IP Admissions" value={!canViewAdmissions ? '—' : admissionsQuery.isPending ? dash : admissionCount} />
-      <StatItem label="Emergency" value={visitsPending ? dash : visitCountByType('Emergency')} />
-      <StatItem label="Day Care" value={visitsPending ? dash : visitCountByType('DayCare')} />
-      <StatItem
-        label="Last Visit"
-        value={visitsPending ? dash : lastVisit ? new Date(lastVisit.createdAt).toLocaleDateString('en-IN') : '—'}
-      />
-      <StatItem label="Total Prescriptions" value={prescriptionsPending ? dash : prescriptionCount} />
-      <StatItem label="Total Bills" value={billingsPending ? dash : formatCurrency(totalBills)} />
-      <StatItem label="Outstanding" value={billingsPending ? dash : formatCurrency(outstanding)} />
+      {shownStats.map(([label, value]) => (
+        <StatItem key={label} label={label} value={value} />
+      ))}
     </div>
   );
 }
@@ -476,6 +499,13 @@ function formatVisitDateTime(iso: string): string {
 function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number }) {
   const rows = limit ? visits.slice(0, limit) : visits;
 
+  // A visit still waiting for its number says what it's waiting for rather than a bare '—': an
+  // OP visit its consultation fee (ADR-103), an IP/Day Care/Observation visit the advance on its
+  // admission (ADR-104). The server's own flag, so an old visit from before these numbers
+  // existed (no number, not pending) keeps showing '—'.
+  const pendingLabel = (visit: PatientVisit) =>
+    visit.visitNumberPending ? (visit.visitType === 'OP' ? 'Fee pending' : 'Advance pending') : null;
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -494,7 +524,15 @@ function VisitsTable({ visits, limit }: { visits: PatientVisit[]; limit?: number
             return (
               <tr key={visit.visitId} className="hover:bg-muted/30">
                 <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{formatVisitDateTime(visit.createdAt)}</td>
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{visit.visitNumber ?? '—'}</td>
+                <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">
+                  {pendingLabel(visit) ? (
+                    <Badge variant="warning" className="text-[10px]">
+                      {pendingLabel(visit)}
+                    </Badge>
+                  ) : (
+                    (visit.visitNumber ?? '—')
+                  )}
+                </td>
                 <td className="px-3 py-2">
                   <Badge variant="outline" className="text-[10px]">
                     {visit.visitType}
@@ -675,13 +713,76 @@ function PatientVisitsTab({ patient }: { patient: Patient }) {
 
 /* -------------------------------------------------------------------------- Documents */
 
+/** One visit's documents in the Documents tab: its OP/IP No, type and date, with an Upload
+ * button that files the new document under this visit. */
+function VisitDocumentsSection({
+  visit,
+  documents,
+  onUpload,
+  onDelete,
+}: {
+  visit: PatientVisit;
+  documents: DocumentResponse[];
+  onUpload: () => void;
+  onDelete?: (document: DocumentResponse) => void;
+}) {
+  return (
+    <section className="flex flex-col" aria-label={`Documents for visit ${visit.visitNumber ?? formatVisitDateTime(visit.createdAt)}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-1.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <VisitNumberLabel visit={visit} />
+          <Badge variant="outline" className="text-[10px]">
+            {visit.visitType === 'DayCare' ? 'Day Care' : visit.visitType}
+          </Badge>
+          <span className="text-muted-foreground">{formatVisitDateTime(visit.createdAt)}</span>
+          <span className="text-xs text-muted-foreground">
+            {documents.length} document{documents.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5" onClick={onUpload}>
+          <Upload className="h-3.5 w-3.5" />
+          Upload
+        </Button>
+      </div>
+      {documents.length === 0 ? (
+        <p className="py-1.5 text-sm text-muted-foreground">No documents for this visit.</p>
+      ) : (
+        <div className="flex flex-col divide-y divide-border">
+          {documents.map((document) => (
+            <DocumentRow key={document.id} document={document} onDelete={onDelete} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PatientDocumentsTab({ patient }: { patient: Patient }) {
   const photoUrl = usePatientDocumentUrl(patient.id, 'Other');
   const idProofUrl = usePatientDocumentUrl(patient.id, 'IdProof');
   const { data: documents, isPending } = usePatientDocumentsQuery(patient.id);
-  const sorted = [...(documents ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient.id);
+  const newestFirst = (a: string, b: string) => new Date(b).getTime() - new Date(a).getTime();
+  const sorted = [...(documents ?? [])].sort((a, b) => newestFirst(a.createdAt, b.createdAt));
+  // Visit-wise: every visit, newest first, each with the documents filed under it. Anything not
+  // filed under one of these visits — the photo, ID proof, and uploads from before documents
+  // could be filed by visit — is listed after them.
+  const sortedVisits = [...(visits ?? [])].sort((a, b) => newestFirst(a.createdAt, b.createdAt));
+  const visitIds = new Set(sortedVisits.map((visit) => visit.visitId));
+  const unlinkedDocuments = sorted.filter((document) => !document.visitId || !visitIds.has(document.visitId));
+  const visitOptions = sortedVisits.map((visit) => ({
+    value: visit.visitId,
+    label: [visitNumberText(visit), visit.visitType === 'DayCare' ? 'Day Care' : visit.visitType, formatVisitDateTime(visit.createdAt)]
+      .filter(Boolean)
+      .join(' · '),
+  }));
   const queryClient = useQueryClient();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadVisitId, setUploadVisitId] = useState<string | null>(null);
+  const openUpload = (visitId: string | null) => {
+    setUploadVisitId(visitId);
+    setIsUploadOpen(true);
+  };
   const { hasPermission } = useAuth();
   const canDelete = hasPermission('records-compliance.delete');
   const deleteMutation = useDeletePatientDocumentMutation(patient.id);
@@ -729,24 +830,44 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
 
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-foreground">All documents</h2>
-          <Button type="button" size="sm" className="gap-1.5" onClick={() => setIsUploadOpen(true)}>
+          <h2 className="text-sm font-semibold text-foreground">Documents by visit</h2>
+          {/* Defaults to the most recent visit; the dialog's Visit picker can change it. */}
+          <Button type="button" size="sm" className="gap-1.5" onClick={() => openUpload(sortedVisits[0]?.visitId ?? null)}>
             <Upload className="h-4 w-4" />
             Upload document
           </Button>
         </div>
-        {isPending ? (
+        {isPending || visitsPending ? (
           <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading documents…
           </div>
-        ) : sorted.length === 0 ? (
+        ) : sortedVisits.length === 0 && sorted.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">No documents uploaded for this patient yet.</p>
         ) : (
-          <div className="flex flex-col divide-y divide-border">
-            {sorted.map((document) => (
-              <DocumentRow key={document.id} document={document} onDelete={canDelete ? setPendingDelete : undefined} />
+          <div className="flex flex-col gap-4">
+            {sortedVisits.map((visit) => (
+              <VisitDocumentsSection
+                key={visit.visitId}
+                visit={visit}
+                documents={sorted.filter((document) => document.visitId === visit.visitId)}
+                onUpload={() => openUpload(visit.visitId)}
+                onDelete={canDelete ? setPendingDelete : undefined}
+              />
             ))}
+            {unlinkedDocuments.length > 0 && (
+              <section className="flex flex-col" aria-label="Documents not linked to a visit">
+                <div className="flex flex-wrap items-center gap-x-3 border-b border-border pb-1.5 text-sm">
+                  <span className="font-semibold text-foreground">Not linked to a visit</span>
+                  <span className="text-xs text-muted-foreground">Photo, ID proof and earlier uploads</span>
+                </div>
+                <div className="flex flex-col divide-y divide-border">
+                  {unlinkedDocuments.map((document) => (
+                    <DocumentRow key={document.id} document={document} onDelete={canDelete ? setPendingDelete : undefined} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
@@ -792,6 +913,8 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
         defaultEntityType="Patient"
         defaultEntityId={patient.id}
         lockedEntityLabel={`${patient.title} ${patient.firstName} ${patient.lastName} (${patient.uhid})`}
+        visitOptions={visitOptions}
+        defaultVisitId={uploadVisitId}
       />
     </div>
   );
@@ -815,6 +938,7 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="billing">Billing</TabsTrigger>
         <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        <TabsTrigger value="next-schedule">Next Schedule</TabsTrigger>
         {canSearchDocuments && (
           <TabsTrigger value="ai-search" className="gap-1">
             <Sparkles className="h-3.5 w-3.5" />
@@ -845,6 +969,10 @@ export function PatientDetails({ patient, activeTab, onActiveTabChange }: Patien
 
       <TabsContent value="timeline" className="pt-2.5">
         <PatientTimelineTab patient={patient} onNavigateToTab={onActiveTabChange} />
+      </TabsContent>
+
+      <TabsContent value="next-schedule" className="pt-2.5">
+        <PatientNextScheduleTab patientId={patient.id} />
       </TabsContent>
 
       {canSearchDocuments && (

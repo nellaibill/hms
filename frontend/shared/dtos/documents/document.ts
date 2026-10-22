@@ -40,6 +40,9 @@ export interface UploadDocumentRequest {
   /** Optional — when the document itself has a renewal/expiry date (e.g. a Staff ID proof
    * or certification). ISO date string (e.g. "2027-01-15"). */
   expiryDate?: string | null;
+  /** Optional — the owner's visit to file this document under (a patient's OP/IP visit). Must
+   * be one of the owner's own visits. */
+  visitId?: string | null;
 }
 
 /** Mirrors HMS.Modules.Documents.Contracts.DocumentResponse. */
@@ -57,6 +60,9 @@ export interface DocumentResponse {
   uploadedByUserId?: string | null;
   /** ISO date string (e.g. "2027-01-15"), when this document has a renewal/expiry date. */
   expiryDate?: string | null;
+  /** The owner's visit this document is filed under (a patient's OP/IP visit) — null when it
+   * isn't tied to one, as with a photo or ID proof. */
+  visitId?: string | null;
   createdAt: string;
   updatedAt?: string | null;
 }

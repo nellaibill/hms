@@ -14,6 +14,13 @@ export function usePostAdmissionAdvanceMutation(admissionId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: CreateAdmissionAdvanceRequest) => admissionsApi.postAdvance(admissionId, request),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ipd', 'admissions', 'advances', admissionId] }),
+    // A paid advance can issue the linked visit's IP No (ADR-104), so the admission (its IP No)
+    // and the patient's visits ("Advance pending") are refreshed too.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['ipd', 'admissions', 'advances', admissionId] }),
+        queryClient.invalidateQueries({ queryKey: ['ipd', 'admissions', 'detail', admissionId] }),
+        queryClient.invalidateQueries({ queryKey: ['patient-visits'] }),
+      ]),
   });
 }

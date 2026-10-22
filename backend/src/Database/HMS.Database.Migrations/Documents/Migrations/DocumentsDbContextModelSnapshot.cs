@@ -132,6 +132,10 @@ namespace HMS.Database.Migrations.Documents.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("uploaded_by_user_id");
 
+                    b.Property<Guid?>("VisitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("visit_id");
+
                     b.Property<uint>("xmin")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()

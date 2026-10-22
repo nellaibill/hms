@@ -397,6 +397,116 @@ public class InvoiceServiceTests
         await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
+    // ADR-103: an OP visit gets its OP No once its consultation fee is paid.
+    private void GivenOpNumberIssued(Guid visitId, string opNumber) =>
+        _patientVisitService.AssignOpNumberAsync(_patientId, visitId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitId = visitId, PatientId = _patientId, VisitType = VisitType.OP, VisitNumber = opNumber }));
+
+    [Fact]
+    public async Task CreateAsync_PayingTheConsultation_IssuesTheVisitsOpNumberAndReturnsIt()
+    {
+        var request = ValidRequest() with { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }] };
+        GivenOpNumberIssued(request.VisitId, "OP-2026-000042");
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.OpNumber.Should().Be("OP-2026-000042");
+        await _patientVisitService.Received(1).AssignOpNumberAsync(_patientId, request.VisitId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_LeavingTheConsultationUnpaid_IssuesNoOpNumber()
+    {
+        var result = await _sut.CreateAsync(ValidRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.OpNumber.Should().BeNull();
+        await _patientVisitService.DidNotReceive().AssignOpNumberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    // A ₹0 consultation has nothing to pay, so it counts as paid.
+    [Fact]
+    public async Task CreateAsync_WithAFreeConsultation_IssuesTheOpNumberWithoutAPayment()
+    {
+        var request = ValidRequest() with
+        {
+            Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "cardiology", ConsultantId = "dr-revathi", Quantity = 1, UnitPrice = 0m }],
+        };
+        GivenOpNumberIssued(request.VisitId, "OP-2026-000043");
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.OpNumber.Should().Be("OP-2026-000043");
+    }
+
+    [Fact]
+    public async Task CreateAsync_PayingOnlyALaboratoryLine_IssuesNoOpNumber()
+    {
+        var request = ValidRequest() with
+        {
+            Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ServiceId = "svc-cbc", Quantity = 1, UnitPrice = 300m }],
+            Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 300m }],
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _patientVisitService.DidNotReceive().AssignOpNumberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    // A bill with no registered visit carries the patient's own id as its VisitId.
+    [Fact]
+    public async Task CreateAsync_ForABillWithNoVisit_IssuesNoOpNumber()
+    {
+        var request = ValidRequest() with
+        {
+            VisitId = _patientId,
+            Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }],
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _patientVisitService.DidNotReceive().AssignOpNumberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenIssuingTheOpNumberThrows_StillSucceeds()
+    {
+        var request = ValidRequest() with { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }] };
+        _patientVisitService.AssignOpNumberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<Result<PatientVisitResponse>>>(_ => throw new InvalidOperationException("Patients module unavailable"));
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        result.Value.OpNumber.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RecordPaymentAsync_OnTheConsultationLine_IssuesTheVisitsOpNumberAndReturnsIt()
+    {
+        var visitId = Guid.NewGuid();
+        var invoice = Invoice.Create(
+            "INV-2026-000001",
+            _patientId,
+            visitId,
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 0m, false, null)],
+            createdBy: null);
+        _repository.GetByIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+        GivenOpNumberIssued(visitId, "OP-2026-000044");
+
+        var result = await _sut.RecordPaymentAsync(invoice.Id, invoice.Items.Single().Id, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.OpNumber.Should().Be("OP-2026-000044");
+    }
+
     [Fact]
     public async Task CreateAsync_WhenPatientDoesNotExist_ReturnsInvalidPatientFailure()
     {

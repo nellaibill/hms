@@ -90,6 +90,12 @@ export class AdmissionsApi {
     return response.data;
   }
 
+  /** Issues the linked visit's IP No with no advance paid (ADR-104) — a supervisor action. */
+  async issueIpNumber(id: string): Promise<Admission> {
+    const response = await this.client.post<Admission>(API_ROUTES.ipd.admissions.issueIpNumber(id), {});
+    return response.data;
+  }
+
   async updateAdmission(id: string, request: UpdateAdmissionRequest): Promise<Admission> {
     const response = await this.client.put<Admission>(API_ROUTES.ipd.admissions.byId(id), request);
     return response.data;

@@ -17,10 +17,19 @@ internal class PatientVisit : Entity
     public VisitType VisitType { get; private set; }
 
     /// <summary>The human-readable OP No ("OP-…", OP visits) or IP No ("IP-…", every other
-    /// visit type), drawn from a sequence when the visit is recorded — see
-    /// IPatientIdentifierGenerator.NextVisitNumberAsync. Null only on visits recorded before
-    /// these numbers existed; they are not backfilled.</summary>
+    /// visit type), drawn from a sequence — see IPatientIdentifierGenerator.NextVisitNumberAsync.
+    /// Only an Emergency visit's IP No is drawn when the visit is recorded. An OP No is drawn once
+    /// the consultation fee is paid (ADR-103), and an IP/Day Care/Observation visit's IP No once
+    /// the advance on its admission is paid, or issued without one (ADR-104) — see
+    /// <see cref="AssignVisitNumber"/>. Also null on visits recorded before these numbers
+    /// existed; they are not backfilled.</summary>
     public string? VisitNumber { get; private set; }
+
+    /// <summary>True from the moment a visit is recorded without a number until
+    /// <see cref="AssignVisitNumber"/> gives it one — what the patient page shows as "Fee pending"
+    /// (OP) or "Advance pending" (IP). False on visits recorded before ADR-104, numbered or not,
+    /// so an old visit with no number is never mistaken for one still waiting.</summary>
+    public bool VisitNumberPending { get; private set; }
 
     public Guid? AppointmentTypeId { get; private set; }
 
@@ -55,6 +64,7 @@ internal class PatientVisit : Entity
         VisitType = visitType;
         AppointmentTypeId = appointmentTypeId;
         VisitNumber = visitNumber;
+        VisitNumberPending = visitNumber is null;
     }
 
     public static PatientVisit Create(Guid patientId, VisitType visitType, Guid? appointmentTypeId, Guid? createdBy, string? visitNumber = null)
@@ -94,6 +104,25 @@ internal class PatientVisit : Entity
     public void SetEmergencyType(EmergencyType? emergencyType)
     {
         EmergencyType = VisitType == VisitType.Emergency ? emergencyType : null;
+    }
+
+    /// <summary>Gives a visit recorded without a number its OP No or IP No — an OP visit once its
+    /// consultation fee is paid (ADR-103), any other once its admission's advance is paid or
+    /// the number is issued without one (ADR-104). A visit that already has a number keeps it:
+    /// returns false and changes nothing, so a second payment can never renumber a visit.</summary>
+    public bool AssignVisitNumber(string visitNumber, Guid? updatedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(visitNumber, nameof(visitNumber));
+
+        if (VisitNumber is not null)
+        {
+            return false;
+        }
+
+        VisitNumber = visitNumber.Trim();
+        VisitNumberPending = false;
+        MarkUpdated(updatedBy);
+        return true;
     }
 
     public void AddConsultation(PatientVisitConsultation consultation, Guid? updatedBy)

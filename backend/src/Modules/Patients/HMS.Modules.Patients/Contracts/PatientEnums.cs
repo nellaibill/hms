@@ -115,6 +115,17 @@ public enum VisitType
     Observation,
 }
 
+/// <summary>Why an IP/Day Care/Observation visit is being given its IP No (ADR-104) — recorded
+/// in the activity log. See IPatientVisitService.AssignIpNumberAsync.</summary>
+public enum IpNumberTrigger
+{
+    /// <summary>An advance was paid on the visit's admission.</summary>
+    AdvancePaid,
+
+    /// <summary>A supervisor issued it with no advance (cashless insurance, a waived deposit).</summary>
+    IssuedWithoutAdvance,
+}
+
 /// <summary>Whether a non-OP encounter is a Medico-Legal Case — the "Admission type"
 /// (IP/Emergency) / "Observation type" (Day Care/Observation) dropdown. Matches the frontend's
 /// ADMISSION_TYPES exactly. Not named AdmissionType: HMS.Modules.IPD.Contracts already has an

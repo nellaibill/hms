@@ -18,9 +18,9 @@ internal interface IPatientIdentifierGenerator
     /// even against a bug or a direct SQL insert bypassing this class entirely.</summary>
     Task<string?> NextImportedUhidAsync(CancellationToken cancellationToken);
 
-    /// <summary>The number given to a visit as it is recorded: an OP No ("OP-…") for an OP
-    /// visit, an IP No ("IP-…") for every other visit type (IP, Emergency, Day Care,
-    /// Observation). Each series has its own sequence, so the two never share or skip each
-    /// other's numbers.</summary>
+    /// <summary>A visit's number: an OP No ("OP-…") for an OP visit, drawn once its consultation
+    /// fee is paid (ADR-103), or an IP No ("IP-…") for every other visit type (IP, Emergency,
+    /// Day Care, Observation), drawn as the visit is recorded. Each series has its own
+    /// sequence, so the two never share or skip each other's numbers.</summary>
     Task<string> NextVisitNumberAsync(VisitType visitType, CancellationToken cancellationToken);
 }

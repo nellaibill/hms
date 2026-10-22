@@ -14,6 +14,13 @@ internal interface IPatientVisitRepository
     /// <summary>Loads one visit with its Consultations included.</summary>
     Task<PatientVisit?> GetByIdAsync(Guid visitId, CancellationToken cancellationToken);
 
+    /// <summary>Loads one visit with its row locked (SELECT … FOR UPDATE) inside its own
+    /// transaction, runs <paramref name="update"/> on it, then saves and commits. A second
+    /// caller for the same visit waits for the first to commit and then sees its change — how
+    /// PatientVisitService.AssignOpNumberAsync stops two payments arriving together from each
+    /// drawing an OP No. Null (and <paramref name="update"/> not run) if the visit doesn't exist.</summary>
+    Task<PatientVisit?> LockAndUpdateAsync(Guid visitId, Func<PatientVisit, Task> update, CancellationToken cancellationToken);
+
     /// <summary>Every visit for a patient, newest first, each with its Consultations included.</summary>
     Task<IReadOnlyList<PatientVisit>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 

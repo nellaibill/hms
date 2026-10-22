@@ -57,6 +57,7 @@ export function useUploadDocumentMutation() {
           ownerType: values.entityType as EntityType,
           ownerId: values.entityId,
           documentType: DOCUMENT_TYPE_TO_API[values.documentType as Exclude<DocumentUploadFormValues['documentType'], ''>],
+          visitId: values.visitId ?? null,
         })
         .then((response) => {
           if (timerRef.current) clearInterval(timerRef.current);

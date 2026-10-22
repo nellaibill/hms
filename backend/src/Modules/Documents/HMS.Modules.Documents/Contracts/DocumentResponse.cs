@@ -21,6 +21,10 @@ public record DocumentResponse
 
     public DateOnly? ExpiryDate { get; init; }
 
+    /// <summary>The owner's visit this document is filed under (a patient's OP/IP visit) — null
+    /// when it isn't tied to one, as with a photo or ID proof.</summary>
+    public Guid? VisitId { get; init; }
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

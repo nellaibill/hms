@@ -8,6 +8,8 @@ import type {
   OpdInvestigationDepartment,
   OpdInvestigationServiceOption,
   SaveOpdConsultationRequest,
+  ScheduledVisit,
+  ScheduledVisitQuery,
   StructureConsultationNoteRequest,
   StructuredConsultationNoteFields,
 } from '../../dtos';
@@ -59,6 +61,15 @@ export class OpdConsultationApi {
 
   async listByPatient(patientId: string): Promise<OpdConsultationDetail[]> {
     const response = await this.client.get<OpdConsultationDetail[]>(API_ROUTES.opdConsultations.base, { query: { patientId } });
+    return response.data;
+  }
+
+  /** Upcoming scheduled visits (consultation review dates) across patients — the OPD page's
+   * Scheduled Visits tab. Receptionists, Admins, Super Admins and Consultants only. */
+  async listScheduledVisits(query: ScheduledVisitQuery): Promise<ScheduledVisit[]> {
+    const response = await this.client.get<ScheduledVisit[]>(API_ROUTES.opdConsultations.scheduledVisits, {
+      query: { from: query.from, departmentId: query.departmentId, consultantId: query.consultantId, search: query.search },
+    });
     return response.data;
   }
 

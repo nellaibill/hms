@@ -86,6 +86,9 @@ export interface InvoiceResponse {
   isVoided: boolean;
   voidedAt?: string | null;
   voidReason?: string | null;
+  /** The visit's OP No — set only on the create/record-payment response once the visit's
+   * consultation fee is paid, which is when an OP visit gets its number (ADR-103). */
+  opNumber?: string | null;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceListQuery. */

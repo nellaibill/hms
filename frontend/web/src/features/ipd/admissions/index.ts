@@ -8,6 +8,7 @@ export * from './components/DischargeForm';
 export * from './components/DoctorOrdersPanel';
 export * from './components/DownloadDischargeSummaryButton';
 export * from './components/FinalBillCard';
+export * from './components/IssueIpNumberDialog';
 export * from './components/LabOrdersPanel';
 export * from './components/MedicationAdministrationPanel';
 export * from './components/MedicationOrdersPanel';

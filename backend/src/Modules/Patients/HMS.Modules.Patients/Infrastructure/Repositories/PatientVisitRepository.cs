@@ -22,6 +22,39 @@ internal class PatientVisitRepository : IPatientVisitRepository
             .Include(v => v.Consultations)
             .FirstOrDefaultAsync(v => v.Id == visitId, cancellationToken);
 
+    public async Task<PatientVisit?> LockAndUpdateAsync(Guid visitId, Func<PatientVisit, Task> update, CancellationToken cancellationToken)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        // Lock first, then load: the row stays locked until CommitAsync below, so a concurrent
+        // caller blocks here rather than reading the visit before this one's change is saved.
+        // Table and key column as PatientVisitConfiguration maps them (the key is visit_id).
+        await _dbContext.Database.ExecuteSqlRawAsync(
+            "SELECT 1 FROM " + PatientsDbContext.SchemaName + ".patient_visits WHERE visit_id = {0} FOR UPDATE",
+            [visitId],
+            cancellationToken);
+
+        // Already tracked (read earlier in this same request) means its values may predate the
+        // lock — reload so `update` sees what is actually committed now.
+        var alreadyTracked = _dbContext.PatientVisits.Local.Any(v => v.Id == visitId);
+        var visit = await GetByIdAsync(visitId, cancellationToken);
+        if (visit is null)
+        {
+            return null;
+        }
+
+        if (alreadyTracked)
+        {
+            await _dbContext.Entry(visit).ReloadAsync(cancellationToken);
+        }
+
+        await update(visit);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return visit;
+    }
+
     public async Task<IReadOnlyList<PatientVisit>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
         => await _dbContext.PatientVisits
             .Include(v => v.Consultations)

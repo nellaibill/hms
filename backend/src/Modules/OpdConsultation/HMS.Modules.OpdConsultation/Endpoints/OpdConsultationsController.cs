@@ -74,6 +74,42 @@ public class OpdConsultationsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<OpdConsultationDetailResponse>> { Data = result.Value });
     }
 
+    /// <summary>The login types (HMS.Modules.Identity's LoginTypes) the Scheduled Visits list is
+    /// for: the front desk and administrators see every consultant's, a Consultant only their own.</summary>
+    private static readonly HashSet<string> ScheduledVisitLoginTypes = new(StringComparer.OrdinalIgnoreCase) { "superAdmin", "admin", "receptionist", "doctor" };
+
+    /// <summary>The OPD page's Scheduled Visits list — every patient's upcoming review dates
+    /// (set on their OPD consultations), soonest first. For Receptionists, Admins, Super Admins
+    /// and Consultants only; a Consultant only ever sees their own patients here, whatever
+    /// consultantId they ask for (same rule as OpdController.GetPatientList).</summary>
+    /// <response code="200">The upcoming scheduled visits (empty when none).</response>
+    /// <response code="403">The caller's role isn't one this list is for.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
+    [HttpGet("scheduled-visits")]
+    public async Task<IActionResult> GetScheduledVisits([FromQuery] ScheduledVisitQuery query, CancellationToken cancellationToken)
+    {
+        if (!ScheduledVisitLoginTypes.Contains(User.FindFirst("LoginType")?.Value ?? string.Empty))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorResponse
+            {
+                ErrorCode = OpdConsultationErrorCodes.ScheduledVisitsForbidden,
+                Message = "Scheduled visits are only available to Receptionists, Admins, Super Admins and Consultants.",
+                CorrelationId = HttpContext.GetCorrelationId(),
+                Timestamp = DateTime.UtcNow,
+            });
+        }
+
+        var scopedConsultantId = User.GetScopedConsultantId();
+        if (scopedConsultantId is not null)
+        {
+            query = query with { ConsultantId = scopedConsultantId };
+        }
+
+        var result = await _service.GetScheduledVisitsAsync(query, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<ScheduledVisitResponse>> { Data = result });
+    }
+
     /// <summary>Saves the current form state with no required fields.</summary>
     /// <response code="200">The consultation note was saved.</response>
     /// <response code="400">The request failed validation.</response>

@@ -1,4 +1,4 @@
-import type { OpdConsultationDetail, PatientVisit } from '@hms/shared';
+import type { Admission, OpdConsultationDetail, PatientVisit } from '@hms/shared';
 import { ExternalLink, HeartPulse, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,7 +7,9 @@ import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import { formatDiagnosisLabel, formatPrescriptionDetails } from '@/features/opdConsultation/consultationLabels';
 import { useOpdConsultationsByPatientQuery } from '@/features/opdConsultation';
 import { useAuth } from '../../auth/AuthContext';
+import { usePatientAdmissionsQuery } from '../hooks/usePatientAdmissionsQuery';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { VisitNumberLabel } from './VisitNumberLabel';
 
 function formatDateTime(value?: string | null): string {
   return value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
@@ -175,15 +177,61 @@ function ConsultationCard({ detail, consultationTypeId }: { detail: OpdConsultat
   );
 }
 
-/** Medical Information tab — the patient's OPD consultation history, read straight from the
- * OpdConsultation module's own notes (the same records the consultation form saves). Nothing
- * here is new clinical data: every field shown is one the consultation form already captures,
- * and a field is only shown when it was actually recorded. */
+const newestFirst = (a?: string | null, b?: string | null) => (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0);
+
+/** One visit's section: its OP/IP No, type and date over the consultation notes recorded on it
+ * (newest first), plus a link to its IPD admission when it has one — where an inpatient's progress
+ * notes, vitals and discharge details live. */
+function VisitSection({
+  visit,
+  consultations,
+  admission,
+  visits,
+}: {
+  visit: PatientVisit;
+  consultations: OpdConsultationDetail[];
+  admission?: Admission;
+  visits: PatientVisit[];
+}) {
+  return (
+    <section className="flex flex-col gap-2" aria-label={`Visit ${visit.visitNumber ?? formatDateTime(visit.createdAt)}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border pb-1.5 text-sm">
+        <VisitNumberLabel visit={visit} />
+        <Badge variant="outline" className="text-[10px]">
+          {visit.visitType === 'DayCare' ? 'Day Care' : visit.visitType}
+        </Badge>
+        <span className="text-muted-foreground">{formatDateTime(visit.createdAt)}</span>
+        {admission && (
+          <Link
+            to={`/clinical/ipd/admissions/${admission.id}`}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            IPD admission {admission.admissionNumber} <ExternalLink className="h-3 w-3" />
+          </Link>
+        )}
+      </div>
+      {consultations.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No consultation notes recorded for this visit.</p>
+      ) : (
+        consultations.map((detail) => (
+          <ConsultationCard key={detail.header.consultationId} detail={detail} consultationTypeId={consultationTypeIdFor(visits, detail)} />
+        ))
+      )}
+    </section>
+  );
+}
+
+/** Medical Information tab — the patient's clinical history, one section per visit, the most
+ * recent visit at the top and the earliest at the bottom, each headed by its OP No/IP No. The
+ * notes are read straight from the OpdConsultation module's own records (the same ones the
+ * consultation form saves). Nothing here is new clinical data: every field shown is one the
+ * consultation form already captures, and a field is only shown when it was actually recorded. */
 export function PatientMedicalInformationTab({ patientId }: { patientId: string }) {
-  const { hasPermission } = useAuth();
+  const { hasFeature, hasPermission } = useAuth();
   const canViewClinical = hasPermission('clinical-care.view');
   const { data: consultations, isPending, isError } = useOpdConsultationsByPatientQuery(patientId, canViewClinical);
-  const { data: visits } = usePatientVisitsQuery(patientId);
+  const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patientId);
+  const { data: admissions } = usePatientAdmissionsQuery(patientId, canViewClinical && hasFeature('ipd'));
   // Primes the reference cache resolveRecordLabel reads for diagnosis/referral/type names.
   useMasterOptionsQuery('diagnosis');
   useMasterOptionsQuery('department');
@@ -198,7 +246,7 @@ export function PatientMedicalInformationTab({ patientId }: { patientId: string 
     );
   }
 
-  if (isPending) {
+  if (isPending || visitsPending) {
     return (
       <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -215,20 +263,45 @@ export function PatientMedicalInformationTab({ patientId }: { patientId: string 
     );
   }
 
-  if (!consultations || consultations.length === 0) {
+  const allVisits = visits ?? [];
+  if (allVisits.length === 0 && (!consultations || consultations.length === 0)) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
         <HeartPulse className="h-6 w-6" />
-        No consultation records for this patient yet. Allergies are shown on the Overview tab.
+        No visits or consultation records for this patient yet. Allergies are shown on the Overview tab.
       </div>
     );
   }
 
+  // Every visit, newest first, each with the notes recorded on it (also newest first). A note
+  // whose visit isn't in the list (shouldn't happen) still shows, under "Other consultations".
+  const sortedVisits = [...allVisits].sort((a, b) => newestFirst(a.createdAt, b.createdAt));
+  const visitIds = new Set(sortedVisits.map((visit) => visit.visitId));
+  const notesFor = (visitId: string) =>
+    (consultations ?? []).filter((detail) => detail.header.visitId === visitId).sort((a, b) => newestFirst(a.header.appointmentTime, b.header.appointmentTime));
+  const otherConsultations = (consultations ?? [])
+    .filter((detail) => !visitIds.has(detail.header.visitId))
+    .sort((a, b) => newestFirst(a.header.appointmentTime, b.header.appointmentTime));
+
   return (
-    <div className="flex flex-col gap-2.5">
-      {consultations.map((detail) => (
-        <ConsultationCard key={detail.header.consultationId} detail={detail} consultationTypeId={consultationTypeIdFor(visits, detail)} />
+    <div className="flex flex-col gap-5">
+      {sortedVisits.map((visit) => (
+        <VisitSection
+          key={visit.visitId}
+          visit={visit}
+          consultations={notesFor(visit.visitId)}
+          admission={admissions?.find((admission) => admission.visitId === visit.visitId)}
+          visits={allVisits}
+        />
       ))}
+      {otherConsultations.length > 0 && (
+        <section className="flex flex-col gap-2" aria-label="Other consultations">
+          <div className="border-b border-border pb-1.5 text-sm font-semibold text-foreground">Other consultations</div>
+          {otherConsultations.map((detail) => (
+            <ConsultationCard key={detail.header.consultationId} detail={detail} consultationTypeId={consultationTypeIdFor(allVisits, detail)} />
+          ))}
+        </section>
+      )}
     </div>
   );
 }

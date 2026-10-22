@@ -17,4 +17,7 @@ export interface AdmissionAdvance {
   referenceNumber?: string | null;
   remarks?: string | null;
   createdAt: string;
+  /** The admission's linked visit's IP No — set only on the record-advance response once it has
+   * one, which a paid advance is what issues (ADR-104). */
+  ipNumber?: string | null;
 }

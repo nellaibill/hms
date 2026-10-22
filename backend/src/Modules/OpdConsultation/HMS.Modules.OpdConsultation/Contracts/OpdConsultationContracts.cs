@@ -268,3 +268,48 @@ public record OpdPrescriptionQueueItemResponse
     public DateTime PrescribedAt { get; init; }
     public IReadOnlyList<OpdConsultationPrescriptionResponse> Prescriptions { get; init; } = [];
 }
+
+/// <summary>
+/// Filters for the OPD page's Scheduled Visits list — GET /api/v1/opd-consultations/scheduled-visits.
+/// A Consultant caller's ConsultantId is forced to their own by the controller.
+/// </summary>
+public record ScheduledVisitQuery
+{
+    /// <summary>The first scheduled date to include — the caller's own "today", so the list
+    /// starts on the hospital's local calendar day. Defaults to the server's date.</summary>
+    public DateOnly? From { get; init; }
+
+    public Guid? DepartmentId { get; init; }
+    public Guid? ConsultantId { get; init; }
+
+    /// <summary>Matches patient name, UHID or phone number (contains, case-insensitive).</summary>
+    public string? Search { get; init; }
+}
+
+/// <summary>
+/// One upcoming scheduled visit: the review date a doctor set on an OPD consultation, with the
+/// patient and the department/consultant of that consultation — the visit they're due back for.
+/// </summary>
+public record ScheduledVisitResponse
+{
+    public Guid ConsultationId { get; init; }
+    public Guid PatientId { get; init; }
+    public Guid VisitId { get; init; }
+
+    /// <summary>The consultation's review date.</summary>
+    public DateOnly ScheduledDate { get; init; }
+
+    public string PatientName { get; init; } = string.Empty;
+    public int Age { get; init; }
+    public string Gender { get; init; } = string.Empty;
+    public string Uhid { get; init; } = string.Empty;
+    public string PhoneNumber { get; init; } = string.Empty;
+
+    public Guid DepartmentId { get; init; }
+    public string DepartmentName { get; init; } = string.Empty;
+    public Guid ConsultantId { get; init; }
+    public string ConsultantName { get; init; } = string.Empty;
+
+    /// <summary>The consultation's follow-up instructions, when the doctor wrote any.</summary>
+    public string? Notes { get; init; }
+}

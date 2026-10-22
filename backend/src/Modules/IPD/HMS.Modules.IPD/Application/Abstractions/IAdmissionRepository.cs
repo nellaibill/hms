@@ -15,6 +15,9 @@ internal interface IAdmissionRepository
 
     Task<Admission?> GetActiveByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
 
+    /// <summary>Whether any admission (of any status) is already linked to this visit.</summary>
+    Task<bool> IsVisitLinkedAsync(Guid visitId, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<Admission> Items, int TotalCount)> GetPagedAsync(AdmissionListQuery query, CancellationToken cancellationToken);
 
     Task<int> CountByStatusAsync(AdmissionStatus status, CancellationToken cancellationToken);

@@ -2,7 +2,10 @@ using HMS.Modules.IPD.Application.Abstractions;
 using HMS.Modules.IPD.Application.Mapping;
 using HMS.Modules.IPD.Contracts;
 using HMS.Modules.IPD.Domain;
+using HMS.Modules.Patients.Application;
 using HMS.Shared.Kernel;
+using Microsoft.Extensions.Logging;
+using IpNumberTrigger = HMS.Modules.Patients.Contracts.IpNumberTrigger;
 
 namespace HMS.Modules.IPD.Application;
 
@@ -23,16 +26,25 @@ internal class AdmissionAdvanceService : IAdmissionAdvanceService
 {
     private readonly IAdmissionAdvanceRepository _repository;
     private readonly IAdmissionRepository _admissionRepository;
+    private readonly IPatientVisitService _patientVisitService;
+    private readonly ILogger<AdmissionAdvanceService> _logger;
 
-    public AdmissionAdvanceService(IAdmissionAdvanceRepository repository, IAdmissionRepository admissionRepository)
+    public AdmissionAdvanceService(
+        IAdmissionAdvanceRepository repository,
+        IAdmissionRepository admissionRepository,
+        IPatientVisitService patientVisitService,
+        ILogger<AdmissionAdvanceService> logger)
     {
         _repository = repository;
         _admissionRepository = admissionRepository;
+        _patientVisitService = patientVisitService;
+        _logger = logger;
     }
 
     public async Task<Result<AdmissionAdvanceResponse>> CreateAsync(Guid admissionId, CreateAdmissionAdvanceRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
-        if (await _admissionRepository.GetByIdAsync(admissionId, cancellationToken) is null)
+        var admission = await _admissionRepository.GetByIdAsync(admissionId, cancellationToken);
+        if (admission is null)
         {
             return Result<AdmissionAdvanceResponse>.Failure(IPDErrorCodes.NotFound, $"Admission '{admissionId}' was not found.");
         }
@@ -42,7 +54,44 @@ internal class AdmissionAdvanceService : IAdmissionAdvanceService
         await _repository.AddAsync(advance, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<AdmissionAdvanceResponse>.Success(advance.ToResponse());
+        var ipNumber = await IssueIpNumberAsync(admission, actorId, cancellationToken);
+
+        return Result<AdmissionAdvanceResponse>.Success(advance.ToResponse() with { IpNumber = ipNumber });
+    }
+
+    /// <summary>
+    /// ADR-104: an IP/Day Care/Observation visit gets its IP No once an advance is paid on its
+    /// admission. Asking again for a visit that already has its number changes nothing, which
+    /// also means any later advance retries one that failed. Best-effort, like Billing's OP No
+    /// step (ADR-103): the advance is already saved and must never fail because of this, so a
+    /// failure is logged instead. Returns the linked visit's IP No, or null if there's no linked
+    /// visit or it failed.
+    /// </summary>
+    private async Task<string?> IssueIpNumberAsync(Admission admission, Guid? actorId, CancellationToken cancellationToken)
+    {
+        if (admission.VisitId is not { } visitId)
+        {
+            return null;
+        }
+
+        try
+        {
+            var result = await _patientVisitService.AssignIpNumberAsync(admission.PatientId, visitId, IpNumberTrigger.AdvancePaid, actorId, cancellationToken);
+            if (result is not { IsSuccess: true, Value: { } visit })
+            {
+                _logger.LogWarning(
+                    "Patients: could not issue an IP No for visit '{VisitId}' after an advance on admission '{AdmissionId}' — {ErrorCode}: {Error}",
+                    visitId, admission.Id, result?.ErrorCode, result?.Error);
+                return null;
+            }
+
+            return visit.VisitNumber;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Patients: issuing an IP No for visit '{VisitId}' after an advance on admission '{AdmissionId}' threw unexpectedly — the advance itself was still saved.", visitId, admission.Id);
+            return null;
+        }
     }
 
     public async Task<Result<IReadOnlyList<AdmissionAdvanceResponse>>> GetByAdmissionIdAsync(Guid admissionId, CancellationToken cancellationToken)

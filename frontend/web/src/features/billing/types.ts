@@ -106,4 +106,7 @@ export interface Billing {
   isVoided: boolean;
   voidedAt?: string;
   voidReason?: string;
+  /** The visit's OP No, present only on the create/record-payment result that paid its
+   * consultation fee (ADR-103) — never on an invoice read back later. */
+  opNumber?: string;
 }

@@ -110,6 +110,16 @@ internal class DocumentService : IDocumentService
             _logger.LogWarning("No owner-existence checker registered for {OwnerType}; upload against owner {OwnerId} was not existence-validated.", request.OwnerType, request.OwnerId);
         }
 
+        // A visit (e.g. the OP/IP visit a lab report came from) is only accepted when the owner's
+        // own module confirms it's one of that owner's visits — an owner type with no checker,
+        // or no visits at all, can't take one.
+        if (request.VisitId is { } visitId
+            && !(_ownerCheckers.TryGetValue(request.OwnerType, out var visitChecker)
+                 && await visitChecker.HasVisitAsync(request.OwnerId, visitId, cancellationToken)))
+        {
+            return Result<DocumentResponse>.Failure(DocumentErrorCodes.InvalidVisit, $"Visit '{visitId}' is not one of this {request.OwnerType}'s visits.");
+        }
+
         var documentId = Guid.CreateVersion7();
         var saved = await _fileStorage.SaveAsync(documentId, fileName, content, cancellationToken);
 
@@ -124,7 +134,8 @@ internal class DocumentService : IDocumentService
             length,
             saved.ChecksumSha256,
             actor.UserId,
-            request.ExpiryDate);
+            request.ExpiryDate,
+            request.VisitId);
 
         await _repository.AddAsync(document, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
