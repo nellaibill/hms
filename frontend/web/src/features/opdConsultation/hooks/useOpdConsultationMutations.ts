@@ -1,4 +1,4 @@
-import type { SaveOpdConsultationRequest, StructureConsultationNoteRequest } from '@hms/shared';
+import type { MarkPatientRequest, SaveOpdConsultationRequest, StructureConsultationNoteRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { opdConsultationApi } from '@/services/apiClient';
 
@@ -49,6 +49,32 @@ export function useReopenOpdConsultationMutation(consultationId: string | undefi
       invalidate();
       queryClient.invalidateQueries({ queryKey: ['opd', 'patients'] });
       queryClient.invalidateQueries({ queryKey: ['opd', 'consultations'] });
+    },
+  });
+}
+
+/** Marks the consultation's patient (or updates the reason when already marked) — also
+ * refreshes the OPD page's Marked Patients tab. */
+export function useMarkPatientMutation(consultationId: string | undefined) {
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateOpdConsultation(consultationId);
+  return useMutation({
+    mutationFn: (request: MarkPatientRequest) => opdConsultationApi.markPatient(consultationId as string, request),
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ['opd', 'marked-patients'] });
+    },
+  });
+}
+
+export function useUnmarkPatientMutation(consultationId: string | undefined) {
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateOpdConsultation(consultationId);
+  return useMutation({
+    mutationFn: () => opdConsultationApi.unmarkPatient(consultationId as string),
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ['opd', 'marked-patients'] });
     },
   });
 }

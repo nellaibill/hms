@@ -152,6 +152,12 @@ public record OpdConsultationNoteResponse
     public Guid? ReferralConsultantId { get; init; }
     public string? ReferralReason { get; init; }
 
+    /// <summary>When the patient was marked on this consultation (null when not marked) — see
+    /// POST /api/v1/opd-consultations/{consultationId}/mark.</summary>
+    public DateTime? MarkedAt { get; init; }
+    public Guid? MarkedBy { get; init; }
+    public string? MarkReason { get; init; }
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }
@@ -312,4 +318,53 @@ public record ScheduledVisitResponse
 
     /// <summary>The consultation's follow-up instructions, when the doctor wrote any.</summary>
     public string? Notes { get; init; }
+}
+
+/// <summary>Marks the consultation's patient — POST /api/v1/opd-consultations/{consultationId}/mark.
+/// Posting again while already marked updates the reason.</summary>
+public record MarkPatientRequest
+{
+    /// <summary>Optional: why the patient is being marked.</summary>
+    public string? Reason { get; init; }
+}
+
+/// <summary>
+/// Filters for the OPD page's Marked Patients list — GET /api/v1/opd-consultations/marked-patients.
+/// A Consultant caller's ConsultantId is forced to their own by the controller.
+/// </summary>
+public record MarkedPatientQuery
+{
+    public Guid? DepartmentId { get; init; }
+    public Guid? ConsultantId { get; init; }
+
+    /// <summary>Matches patient name, UHID or phone number (contains, case-insensitive).</summary>
+    public string? Search { get; init; }
+}
+
+/// <summary>
+/// One marked patient: a consultation whose patient the doctor marked, with the patient, the
+/// department/consultant of that consultation and the reason given.
+/// </summary>
+public record MarkedPatientResponse
+{
+    public Guid ConsultationId { get; init; }
+    public Guid PatientId { get; init; }
+    public Guid VisitId { get; init; }
+
+    public DateTime MarkedAt { get; init; }
+    public string? Reason { get; init; }
+
+    /// <summary>The consultation's own date and time.</summary>
+    public DateTime AppointmentTime { get; init; }
+
+    public string PatientName { get; init; } = string.Empty;
+    public int Age { get; init; }
+    public string Gender { get; init; } = string.Empty;
+    public string Uhid { get; init; } = string.Empty;
+    public string PhoneNumber { get; init; } = string.Empty;
+
+    public Guid DepartmentId { get; init; }
+    public string DepartmentName { get; init; } = string.Empty;
+    public Guid ConsultantId { get; init; }
+    public string ConsultantName { get; init; } = string.Empty;
 }

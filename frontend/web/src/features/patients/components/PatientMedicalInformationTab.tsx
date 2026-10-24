@@ -1,5 +1,5 @@
 import type { Admission, OpdConsultationDetail, PatientVisit } from '@hms/shared';
-import { ExternalLink, HeartPulse, Loader2 } from 'lucide-react';
+import { ExternalLink, Flag, HeartPulse, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -73,6 +73,12 @@ function ConsultationCard({ detail, consultationTypeId }: { detail: OpdConsultat
           )}
         </div>
         <div className="flex items-center gap-2">
+          {note.markedAt && (
+            <Badge variant="success" className="gap-1 text-[10px]">
+              <Flag className="h-3 w-3" />
+              Marked
+            </Badge>
+          )}
           <Badge variant={note.status === 'Completed' ? 'success' : 'warning'} className="text-[10px]">
             {note.status}
           </Badge>
@@ -84,6 +90,22 @@ function ConsultationCard({ detail, consultationTypeId }: { detail: OpdConsultat
           </Link>
         </div>
       </div>
+
+      {note.markedAt && (
+        <p className="flex items-start gap-2 border-b border-success/30 bg-success/10 px-3 py-2 text-sm text-foreground">
+          <Flag className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+          <span>
+            Marked by <span className="font-semibold">{header.consultantName}</span>
+            {note.markReason && (
+              <>
+                {' '}
+                for <span className="whitespace-pre-wrap font-semibold">{note.markReason}</span>
+              </>
+            )}
+            <span className="text-muted-foreground"> · {formatDateTime(note.markedAt)}</span>
+          </span>
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-3 p-3 md:grid-cols-2">
         {!hasAnyDetail && <p className="text-sm text-muted-foreground">No clinical details recorded for this consultation yet.</p>}

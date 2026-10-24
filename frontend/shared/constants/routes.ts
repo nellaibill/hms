@@ -349,10 +349,13 @@ export const API_ROUTES = {
     /** GET ?patientId= — every note already on file for one patient; never auto-creates. */
     base: '/api/v1/opd-consultations',
     scheduledVisits: '/api/v1/opd-consultations/scheduled-visits',
+    markedPatients: '/api/v1/opd-consultations/marked-patients',
     byConsultationId: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}`,
     saveDraft: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/draft`,
     complete: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/complete`,
     reopen: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/reopen`,
+    /** POST { reason } marks the consultation's patient; DELETE clears the mark. */
+    mark: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/mark`,
     structureNote: (consultationId: string) => `/api/v1/opd-consultations/${consultationId}/ai/structure-note`,
     /** GET ?search= (clinical-care.view) / POST (clinical-care.edit) — the consultation form's
      * own Diagnosis catalog access; the Masters endpoints require an admin permission. */

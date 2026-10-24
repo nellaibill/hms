@@ -2,6 +2,9 @@ import { API_ROUTES } from '../../constants';
 import type {
   BillableInvestigation,
   CreateOpdDiagnosisRequest,
+  MarkedPatient,
+  MarkedPatientQuery,
+  MarkPatientRequest,
   OpdConsultationDetail,
   OpdConsultationNote,
   OpdDiagnosisOption,
@@ -70,6 +73,27 @@ export class OpdConsultationApi {
     const response = await this.client.get<ScheduledVisit[]>(API_ROUTES.opdConsultations.scheduledVisits, {
       query: { from: query.from, departmentId: query.departmentId, consultantId: query.consultantId, search: query.search },
     });
+    return response.data;
+  }
+
+  /** Every consultation whose patient a doctor marked, newest mark first — the OPD page's Marked
+   * Patients tab. Receptionists, Admins, Super Admins and Consultants only. */
+  async listMarkedPatients(query: MarkedPatientQuery): Promise<MarkedPatient[]> {
+    const response = await this.client.get<MarkedPatient[]>(API_ROUTES.opdConsultations.markedPatients, {
+      query: { departmentId: query.departmentId, consultantId: query.consultantId, search: query.search },
+    });
+    return response.data;
+  }
+
+  /** Marks the consultation's patient (or updates the reason when already marked). */
+  async markPatient(consultationId: string, request: MarkPatientRequest): Promise<OpdConsultationNote> {
+    const response = await this.client.post<OpdConsultationNote>(API_ROUTES.opdConsultations.mark(consultationId), request);
+    return response.data;
+  }
+
+  /** Clears the consultation's mark. */
+  async unmarkPatient(consultationId: string): Promise<OpdConsultationNote> {
+    const response = await this.client.delete<OpdConsultationNote>(API_ROUTES.opdConsultations.mark(consultationId));
     return response.data;
   }
 

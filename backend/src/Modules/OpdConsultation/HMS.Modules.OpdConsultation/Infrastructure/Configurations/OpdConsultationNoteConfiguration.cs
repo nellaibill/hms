@@ -51,6 +51,11 @@ internal class OpdConsultationNoteConfiguration : IEntityTypeConfiguration<OpdCo
         builder.Property(x => x.ReferralConsultantId).HasColumnName("referral_consultant_id");
         builder.Property(x => x.ReferralReason).HasColumnName("referral_reason").HasMaxLength(1000);
 
+        builder.Property(x => x.MarkedAt).HasColumnName("marked_at");
+        builder.Property(x => x.MarkedBy).HasColumnName("marked_by");
+        builder.Property(x => x.MarkReason).HasColumnName("mark_reason").HasMaxLength(500);
+        builder.Ignore(x => x.IsMarked);
+
         // Standard audit columns (docs/DatabaseArchitecture.md §5).
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(x => x.CreatedBy).HasColumnName("created_by");
@@ -69,6 +74,9 @@ internal class OpdConsultationNoteConfiguration : IEntityTypeConfiguration<OpdCo
         // identical AdmissionId uniqueness index.
         builder.HasIndex(x => x.ConsultationId).IsUnique().HasDatabaseName("ux_opd_consultation_notes_consultation_id").HasFilter("is_deleted = false");
         builder.HasIndex(x => x.PatientId).HasDatabaseName("ix_opd_consultation_notes_patient_id");
+
+        // The OPD page's Marked Patients list reads only marked notes, newest mark first.
+        builder.HasIndex(x => x.MarkedAt).HasDatabaseName("ix_opd_consultation_notes_marked_at").HasFilter("marked_at IS NOT NULL");
 
         // Real, same-schema FKs — unlike ConsultationId/PatientId/VisitId above, these are
         // intra-module relationships. Cascade: a note is soft-deleted as a whole, never leaving

@@ -157,6 +157,19 @@ namespace HMS.Database.Migrations.OpdConsultation.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<string>("MarkReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("mark_reason");
+
+                    b.Property<DateTime?>("MarkedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("marked_at");
+
+                    b.Property<Guid?>("MarkedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("marked_by");
+
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid")
                         .HasColumnName("patient_id");
@@ -235,6 +248,10 @@ namespace HMS.Database.Migrations.OpdConsultation.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_opd_consultation_notes_consultation_id")
                         .HasFilter("is_deleted = false");
+
+                    b.HasIndex("MarkedAt")
+                        .HasDatabaseName("ix_opd_consultation_notes_marked_at")
+                        .HasFilter("marked_at IS NOT NULL");
 
                     b.HasIndex("PatientId")
                         .HasDatabaseName("ix_opd_consultation_notes_patient_id");

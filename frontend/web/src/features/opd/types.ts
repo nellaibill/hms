@@ -1,6 +1,6 @@
 import { defaultReportDateRange, todayDateInputValue } from '@/lib/reportDateRange';
 
-export type OpdTab = 'patients' | 'consultations' | 'investigations' | 'procedures' | 'admissions' | 'scheduled';
+export type OpdTab = 'patients' | 'consultations' | 'investigations' | 'procedures' | 'admissions' | 'scheduled' | 'marked';
 
 /** Shared filter values driven by OpdFilterBar and consumed by every tab's own query hook —
  * which fields actually apply (e.g. `status`'s option list) depends on the active tab. */
@@ -21,6 +21,11 @@ export const todayIsoDate = todayDateInputValue;
 export function formatScheduledDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
   return new Date(year, month - 1, day).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/** When a patient was marked (an ISO timestamp) as local date and time. */
+export function formatMarkedAt(value: string): string {
+  return new Date(value).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 // Full-day bounds for a date-input value — moved to lib/reportDateRange (shared with the Lab
