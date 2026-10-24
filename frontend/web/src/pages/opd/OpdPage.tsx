@@ -1,6 +1,6 @@
 import type { AdmissionStatus, InvoicePaymentStatus, LabOrderItemStatus, OpdConsultationStatus } from '@hms/shared';
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, BedDouble, CalendarClock, FlaskConical, Stethoscope, Users } from 'lucide-react';
+import { Activity, BedDouble, CalendarClock, Flag, FlaskConical, Stethoscope, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -11,10 +11,12 @@ import {
   OpdConsultationListTable,
   OpdFilterBar,
   OpdInvestigationsListTable,
+  OpdMarkedPatientsTable,
   OpdPatientListTable,
   OpdProceduresListTable,
   OpdScheduledVisitsTable,
   emptyOpdFilters,
+  formatMarkedAt,
   formatScheduledDate,
   toRangeEnd,
   toRangeStart,
@@ -28,15 +30,15 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 const EXPORT_PAGE_SIZE = 1000;
 
-/** Who gets the Scheduled Visits tab — the front desk and administrators (every consultant's)
- * and Consultants (only their own, which the backend forces). Mirrors the backend's own list
- * on OpdConsultationsController.GetScheduledVisits. */
-const SCHEDULED_VISITS_ROLES: Role[] = ['superAdmin', 'admin', 'receptionist', 'doctor'];
+/** Who gets the Scheduled Visits and Marked Patients tabs — the front desk and administrators
+ * (every consultant's) and Consultants (only their own, which the backend forces). Mirrors the
+ * backend's own list on OpdConsultationsController (OpdListLoginTypes). */
+const OPD_LIST_ROLES: Role[] = ['superAdmin', 'admin', 'receptionist', 'doctor'];
 
 export default function OpdPage() {
   const queryClient = useQueryClient();
   const { user, scopedConsultantId } = useAuth();
-  const canSeeScheduledVisits = Boolean(user && SCHEDULED_VISITS_ROLES.includes(user.role));
+  const canSeeOpdLists = Boolean(user && OPD_LIST_ROLES.includes(user.role));
   const [tab, setTab] = useState<OpdTab>('patients');
   const [filters, setFilters] = useState<OpdFilterValues>(emptyOpdFilters);
   const [page, setPage] = useState(1);
@@ -219,6 +221,28 @@ export default function OpdPage() {
         };
         break;
       }
+      case 'marked': {
+        const result = await opdConsultationApi.listMarkedPatients({
+          departmentId: filters.departmentId,
+          consultantId: filters.consultantId,
+          search: filters.search || undefined,
+        });
+        section = {
+          heading: 'OPD Marked Patients',
+          headers: ['Marked On', 'Patient Name', 'Age', 'Gender', 'UHID', 'Department', 'Marked By', 'Reason'],
+          rows: result.map((row) => [
+            formatMarkedAt(row.markedAt),
+            row.patientName,
+            row.age,
+            row.gender,
+            row.uhid,
+            row.departmentName,
+            row.consultantName,
+            row.reason ?? '',
+          ]),
+        };
+        break;
+      }
       case 'scheduled': {
         const today = todayIsoDate();
         const result = await opdConsultationApi.listScheduledVisits({
@@ -245,8 +269,10 @@ export default function OpdPage() {
       }
     }
 
-    // Scheduled Visits always runs from today on — the From/To range doesn't apply to it.
-    const rangeLabel = tab === 'scheduled' ? `from ${todayIsoDate()}` : `${filters.from} to ${filters.to}`;
+    // Scheduled Visits always runs from today on and Marked Patients covers every mark — the
+    // From/To range applies to neither.
+    const rangeLabel =
+      tab === 'scheduled' ? `from ${todayIsoDate()}` : tab === 'marked' ? `as of ${todayIsoDate()}` : `${filters.from} to ${filters.to}`;
     const filenameBase = `opd-${tab}_${rangeLabel.replace(/ /g, '_')}`;
     if (format === 'csv') exportReportToCsv(`${filenameBase}.csv`, [section]);
     else if (format === 'excel') await exportReportToExcel(`${filenameBase}.xlsx`, [section]);
@@ -294,10 +320,16 @@ export default function OpdPage() {
               <BedDouble className="h-4 w-4" />
               Admissions List
             </TabsTrigger>
-            {canSeeScheduledVisits && (
+            {canSeeOpdLists && (
               <TabsTrigger value="scheduled" className="gap-1.5">
                 <CalendarClock className="h-4 w-4" />
                 Scheduled Visits
+              </TabsTrigger>
+            )}
+            {canSeeOpdLists && (
+              <TabsTrigger value="marked" className="gap-1.5">
+                <Flag className="h-4 w-4" />
+                Marked Patients
               </TabsTrigger>
             )}
           </TabsList>
@@ -329,9 +361,15 @@ export default function OpdPage() {
             <OpdAdmissionsListTable filters={queryFilters} page={page} onPageChange={setPage} />
           </TabsContent>
 
-          {canSeeScheduledVisits && (
+          {canSeeOpdLists && (
             <TabsContent value="scheduled">
               <OpdScheduledVisitsTable filters={queryFilters} />
+            </TabsContent>
+          )}
+
+          {canSeeOpdLists && (
+            <TabsContent value="marked">
+              <OpdMarkedPatientsTable filters={queryFilters} />
             </TabsContent>
           )}
         </Tabs>

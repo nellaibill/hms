@@ -25,5 +25,9 @@ internal interface IOpdConsultationRepository
     /// soonest first — the OPD page's Scheduled Visits list. Untracked.</summary>
     Task<IReadOnlyList<Domain.OpdConsultationNote>> GetWithReviewDateFromAsync(DateOnly from, int take, CancellationToken cancellationToken);
 
+    /// <summary>Notes (Draft or Completed) whose patient is marked, newest mark first — the OPD
+    /// page's Marked Patients list. Untracked.</summary>
+    Task<IReadOnlyList<Domain.OpdConsultationNote>> GetMarkedAsync(int take, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

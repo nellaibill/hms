@@ -54,4 +54,8 @@ internal static class OpdConsultationErrorCodes
     /// <summary>The caller's role isn't one the Scheduled Visits list is for (Receptionist,
     /// Admin, Super Admin, Consultant).</summary>
     public const string ScheduledVisitsForbidden = "OPD_CONSULTATION.SCHEDULED_VISITS_FORBIDDEN";
+
+    /// <summary>The caller's role isn't one the Marked Patients list is for (Receptionist,
+    /// Admin, Super Admin, Consultant).</summary>
+    public const string MarkedPatientsForbidden = "OPD_CONSULTATION.MARKED_PATIENTS_FORBIDDEN";
 }

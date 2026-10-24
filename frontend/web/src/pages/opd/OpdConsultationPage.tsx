@@ -1,5 +1,5 @@
 import { ApiError, type SaveOpdConsultationRequest } from '@hms/shared';
-import { History, Loader2, Stethoscope } from 'lucide-react';
+import { BadgeCheck, Flag, History, Loader2, Stethoscope } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
@@ -10,14 +10,17 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import {
   exportOpdConsultationPdf,
+  MarkPatientDialog,
   OpdConsultationForm,
   OpdConsultationHeader,
   OpdConsultationPrintTemplate,
   ReopenConsultationDialog,
   useCompleteOpdConsultationMutation,
+  useMarkPatientMutation,
   useOpdConsultationQuery,
   useReopenOpdConsultationMutation,
   useSaveOpdConsultationDraftMutation,
+  useUnmarkPatientMutation,
 } from '@/features/opdConsultation';
 
 /**
@@ -31,11 +34,14 @@ export default function OpdConsultationPage() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [showMarkDialog, setShowMarkDialog] = useState(false);
 
   const { data, isPending, isError } = useOpdConsultationQuery(consultationId);
   const saveDraftMutation = useSaveOpdConsultationDraftMutation(consultationId);
   const completeMutation = useCompleteOpdConsultationMutation(consultationId);
   const reopenMutation = useReopenOpdConsultationMutation(consultationId);
+  const markMutation = useMarkPatientMutation(consultationId);
+  const unmarkMutation = useUnmarkPatientMutation(consultationId);
   const { data: brandingConfig } = useBrandingQuery();
 
   if (isPending) {
@@ -61,6 +67,8 @@ export default function OpdConsultationPage() {
   }
 
   const { header, note } = data;
+  const canEdit = hasPermission('clinical-care.edit');
+  const isMarked = Boolean(note.markedAt);
 
   function handleSaveDraft(values: SaveOpdConsultationRequest) {
     saveDraftMutation.mutate(values, { onSuccess: () => toast({ title: 'Draft saved', description: 'The consultation draft has been saved.' }) });
@@ -81,6 +89,33 @@ export default function OpdConsultationPage() {
     });
   }
 
+  function openMarkDialog() {
+    markMutation.reset();
+    unmarkMutation.reset();
+    setShowMarkDialog(true);
+  }
+
+  function handleMark(reason: string) {
+    markMutation.mutate(
+      { reason: reason.trim() || null },
+      {
+        onSuccess: () => {
+          setShowMarkDialog(false);
+          toast({ title: isMarked ? 'Mark updated' : 'Patient marked', description: isMarked ? 'The reason has been updated.' : `${header.patientName} has been marked.` });
+        },
+      },
+    );
+  }
+
+  function handleUnmark() {
+    unmarkMutation.mutate(undefined, {
+      onSuccess: () => {
+        setShowMarkDialog(false);
+        toast({ title: 'Mark removed', description: `${header.patientName} is no longer marked on this consultation.` });
+      },
+    });
+  }
+
   function handlePrint() {
     window.print();
   }
@@ -94,6 +129,7 @@ export default function OpdConsultationPage() {
   }
 
   const activeError = saveDraftMutation.error ?? completeMutation.error;
+  const markError = markMutation.error ?? unmarkMutation.error;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -104,16 +140,30 @@ export default function OpdConsultationPage() {
         backTo="/clinical/opd"
         backLabel="Back to Patient List"
         rightActions={
-          <Button
-            asChild
-            variant="outline"
-            className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
-          >
-            <Link to={`/patients/registration/${header.patientId}`}>
-              <History className="h-4 w-4" />
-              View Patient History
-            </Link>
-          </Button>
+          <>
+            {canEdit && (
+              <Button
+                type="button"
+                variant="success"
+                className="gap-1.5"
+                onClick={openMarkDialog}
+                title={isMarked ? (note.markReason ? `Marked: ${note.markReason}` : 'Marked') : 'Mark this patient'}
+              >
+                {isMarked ? <BadgeCheck className="h-4 w-4" /> : <Flag className="h-4 w-4" />}
+                {isMarked ? 'Marked' : 'Mark Patient'}
+              </Button>
+            )}
+            <Button
+              asChild
+              variant="outline"
+              className="gap-1.5 border-page-banner-foreground/30 bg-page-banner-foreground/10 text-page-banner-foreground hover:bg-page-banner-foreground/20"
+            >
+              <Link to={`/patients/registration/${header.patientId}`}>
+                <History className="h-4 w-4" />
+                View Patient History
+              </Link>
+            </Button>
+          </>
         }
       />
 
@@ -125,7 +175,7 @@ export default function OpdConsultationPage() {
           isSavingDraft={saveDraftMutation.isPending}
           isCompleting={completeMutation.isPending}
           isReopening={reopenMutation.isPending}
-          canReopen={hasPermission('clinical-care.edit')}
+          canReopen={canEdit}
           apiError={activeError instanceof ApiError ? activeError : null}
           onSaveDraft={handleSaveDraft}
           onComplete={handleComplete}
@@ -134,6 +184,20 @@ export default function OpdConsultationPage() {
           onDownloadPdf={handleDownloadPdf}
         />
       </div>
+
+      {showMarkDialog && (
+        <MarkPatientDialog
+          patientName={header.patientName}
+          currentReason={note.markReason}
+          isMarked={isMarked}
+          isSaving={markMutation.isPending}
+          isRemoving={unmarkMutation.isPending}
+          error={markError instanceof Error ? markError.message : null}
+          onConfirm={handleMark}
+          onRemove={handleUnmark}
+          onCancel={() => setShowMarkDialog(false)}
+        />
+      )}
 
       {showReopenDialog && (
         <ReopenConsultationDialog isSaving={reopenMutation.isPending} onConfirm={handleReopen} onCancel={() => setShowReopenDialog(false)} />
