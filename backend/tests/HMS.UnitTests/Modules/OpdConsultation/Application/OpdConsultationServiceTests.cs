@@ -639,4 +639,190 @@ public class OpdConsultationServiceTests
 
         result.Should().BeEmpty();
     }
+
+    /* ------------------------------------------------------------ Mark patient */
+
+    [Fact]
+    public async Task MarkPatientAsync_SetsTheMarkAndReason()
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        _repository.GetByConsultationIdAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(note);
+        var actorId = Guid.NewGuid();
+
+        var result = await _sut.MarkPatientAsync(note.ConsultationId, new MarkPatientRequest { Reason = "  Needs a cardiology review  " }, actorId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.MarkedAt.Should().NotBeNull();
+        result.Value.MarkedBy.Should().Be(actorId);
+        result.Value.MarkReason.Should().Be("Needs a cardiology review");
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MarkPatientAsync_WithNoReason_StillMarks()
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        _repository.GetByConsultationIdAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.MarkPatientAsync(note.ConsultationId, new MarkPatientRequest { Reason = "   " }, actorId: null, CancellationToken.None);
+
+        result.Value!.MarkedAt.Should().NotBeNull();
+        result.Value.MarkReason.Should().BeNull();
+    }
+
+    // The mark isn't clinical content, so a Completed consultation can still be marked.
+    [Fact]
+    public async Task MarkPatientAsync_OnACompletedNote_Marks()
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.Complete(updatedBy: null);
+        _repository.GetByConsultationIdAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.MarkPatientAsync(note.ConsultationId, new MarkPatientRequest { Reason = "Defaulter" }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(OpdConsultationNoteStatus.Completed);
+        result.Value.MarkReason.Should().Be("Defaulter");
+    }
+
+    [Fact]
+    public async Task MarkPatientAsync_WhenAlreadyMarked_UpdatesTheReasonAndKeepsTheFirstMark()
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        var firstActor = Guid.NewGuid();
+        note.Mark("First reason", firstActor);
+        var firstMarkedAt = note.MarkedAt;
+        _repository.GetByConsultationIdAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.MarkPatientAsync(note.ConsultationId, new MarkPatientRequest { Reason = "Second reason" }, Guid.NewGuid(), CancellationToken.None);
+
+        result.Value!.MarkedAt.Should().Be(firstMarkedAt);
+        result.Value.MarkedBy.Should().Be(firstActor);
+        result.Value.MarkReason.Should().Be("Second reason");
+    }
+
+    [Fact]
+    public async Task MarkPatientAsync_WhenNoNoteExists_ReturnsNotFound()
+    {
+        var consultationId = Guid.NewGuid();
+        _repository.GetByConsultationIdAsync(consultationId, Arg.Any<CancellationToken>()).Returns((OpdConsultationNote?)null);
+
+        var result = await _sut.MarkPatientAsync(consultationId, new MarkPatientRequest(), actorId: null, CancellationToken.None);
+
+        result.ErrorCode.Should().Be(OpdConsultationErrorCodes.NotFound);
+    }
+
+    [Fact]
+    public async Task UnmarkPatientAsync_ClearsTheMarkAndReason()
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.Mark("Reason", Guid.NewGuid());
+        _repository.GetByConsultationIdAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.UnmarkPatientAsync(note.ConsultationId, actorId: null, CancellationToken.None);
+
+        result.Value!.MarkedAt.Should().BeNull();
+        result.Value.MarkedBy.Should().BeNull();
+        result.Value.MarkReason.Should().BeNull();
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UnmarkPatientAsync_WhenNotMarked_SucceedsWithoutSaving()
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        _repository.GetByConsultationIdAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.UnmarkPatientAsync(note.ConsultationId, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    // SaveDraft's full-record update must not wipe a mark set from the same page.
+    [Fact]
+    public async Task SaveDraftAsync_KeepsAnExistingMark()
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.Mark("Reason", Guid.NewGuid());
+        _repository.GetByConsultationIdAsync(note.ConsultationId, Arg.Any<CancellationToken>()).Returns(note);
+
+        var result = await _sut.SaveDraftAsync(note.ConsultationId, new SaveOpdConsultationRequest { PresentingComplaints = "Fever" }, actorId: null, CancellationToken.None);
+
+        result.Value!.MarkedAt.Should().NotBeNull();
+        result.Value.MarkReason.Should().Be("Reason");
+    }
+
+    /* ------------------------------------------------------------ Marked patients */
+
+    private static OpdConsultationNote MarkedNote(string? reason = null)
+    {
+        var note = OpdConsultationNote.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdBy: null);
+        note.Mark(reason, markedBy: null);
+        return note;
+    }
+
+    [Fact]
+    public async Task GetMarkedPatientsAsync_ReturnsEachMarkWithItsPatientConsultantAndReason()
+    {
+        var note = MarkedNote("Needs a cardiology review");
+        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        var header = GivenHeader(note, patientName: "Anitha R");
+
+        var result = await _sut.GetMarkedPatientsAsync(new MarkedPatientQuery(), CancellationToken.None);
+
+        var row = result.Should().ContainSingle().Subject;
+        row.ConsultationId.Should().Be(note.ConsultationId);
+        row.MarkedAt.Should().Be(note.MarkedAt!.Value);
+        row.Reason.Should().Be("Needs a cardiology review");
+        row.PatientName.Should().Be("Anitha R");
+        row.Gender.Should().Be("Female");
+        row.Uhid.Should().Be(header.Uhid);
+        row.DepartmentName.Should().Be(header.DepartmentName);
+        row.ConsultantName.Should().Be(header.ConsultantName);
+        row.AppointmentTime.Should().Be(header.AppointmentTime);
+    }
+
+    // A Consultant's own list: the controller forces their ConsultantId into the query.
+    [Fact]
+    public async Task GetMarkedPatientsAsync_WithAConsultant_ReturnsOnlyThatConsultantsPatients()
+    {
+        var mine = MarkedNote();
+        var theirs = MarkedNote();
+        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([mine, theirs]);
+        var consultantId = Guid.NewGuid();
+        GivenHeader(mine, consultantId: consultantId);
+        GivenHeader(theirs);
+
+        var result = await _sut.GetMarkedPatientsAsync(new MarkedPatientQuery { ConsultantId = consultantId }, CancellationToken.None);
+
+        result.Should().ContainSingle().Which.ConsultationId.Should().Be(mine.ConsultationId);
+    }
+
+    [Fact]
+    public async Task GetMarkedPatientsAsync_WithASearch_MatchesPatientName()
+    {
+        var match = MarkedNote();
+        var other = MarkedNote();
+        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([match, other]);
+        GivenHeader(match, patientName: "Murugan S");
+        GivenHeader(other, patientName: "Lakshmi K");
+
+        var result = await _sut.GetMarkedPatientsAsync(new MarkedPatientQuery { Search = "murugan" }, CancellationToken.None);
+
+        result.Should().ContainSingle().Which.ConsultationId.Should().Be(match.ConsultationId);
+    }
+
+    [Fact]
+    public async Task GetMarkedPatientsAsync_SkipsAConsultationThatCanNoLongerBeFound()
+    {
+        var note = MarkedNote();
+        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, Arg.Any<CancellationToken>())
+            .Returns(Result<OpdPatientListItem>.Failure(PatientErrorCodes.ConsultationNotFound, "not found"));
+
+        var result = await _sut.GetMarkedPatientsAsync(new MarkedPatientQuery(), CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
 }

@@ -50,6 +50,9 @@ internal static class OpdConsultationMappingExtensions
         ReferralDepartmentId = note.ReferralDepartmentId,
         ReferralConsultantId = note.ReferralConsultantId,
         ReferralReason = note.ReferralReason,
+        MarkedAt = note.MarkedAt,
+        MarkedBy = note.MarkedBy,
+        MarkReason = note.MarkReason,
         CreatedAt = note.CreatedAt,
         UpdatedAt = note.UpdatedAt,
     };

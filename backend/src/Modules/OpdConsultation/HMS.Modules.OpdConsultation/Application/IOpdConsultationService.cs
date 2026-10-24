@@ -40,6 +40,19 @@ public interface IOpdConsultationService
     /// department/consultant/search. Capped at the 500 soonest review dates.</summary>
     Task<IReadOnlyList<ScheduledVisitResponse>> GetScheduledVisitsAsync(ScheduledVisitQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Every consultation whose patient is marked, newest mark first, filtered by
+    /// department/consultant/search. Capped at the 500 most recent marks.</summary>
+    Task<IReadOnlyList<MarkedPatientResponse>> GetMarkedPatientsAsync(MarkedPatientQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Marks the consultation's patient with an optional reason, or updates the reason
+    /// when already marked. Allowed on a Draft or Completed note — the mark isn't part of the
+    /// clinical record the Completed lock protects. Fails with NotFound if no note exists yet.</summary>
+    Task<Result<OpdConsultationNoteResponse>> MarkPatientAsync(Guid consultationId, MarkPatientRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Clears the consultation's mark. A no-op success when it isn't marked. Fails with
+    /// NotFound if no note exists yet.</summary>
+    Task<Result<OpdConsultationNoteResponse>> UnmarkPatientAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken);
+
     /// <summary>Full-record save with no required fields. Fails with NotDraft once
     /// Completed.</summary>
     Task<Result<OpdConsultationNoteResponse>> SaveDraftAsync(Guid consultationId, SaveOpdConsultationRequest request, Guid? actorId, CancellationToken cancellationToken);
@@ -203,6 +216,87 @@ internal class OpdConsultationService : IOpdConsultationService
         }
 
         return visits;
+    }
+
+    public async Task<IReadOnlyList<MarkedPatientResponse>> GetMarkedPatientsAsync(MarkedPatientQuery query, CancellationToken cancellationToken)
+    {
+        var notes = await _repository.GetMarkedAsync(take: 500, cancellationToken);
+        var search = query.Search?.Trim();
+
+        // Same shape as GetScheduledVisitsAsync: patient/department/consultant come from the
+        // consultation's header, so the filters apply after the lookup.
+        var patients = new List<MarkedPatientResponse>(notes.Count);
+        foreach (var note in notes)
+        {
+            var detailResult = await _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, cancellationToken);
+            if (!detailResult.IsSuccess)
+            {
+                continue;
+            }
+
+            var item = detailResult.Value!;
+            if ((query.DepartmentId is { } departmentId && item.DepartmentId != departmentId)
+                || (query.ConsultantId is { } consultantId && item.ConsultantId != consultantId)
+                || (!string.IsNullOrEmpty(search)
+                    && !item.PatientName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    && !item.Uhid.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    && !item.PhoneNumber.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            patients.Add(new MarkedPatientResponse
+            {
+                ConsultationId = note.ConsultationId,
+                PatientId = note.PatientId,
+                VisitId = note.VisitId,
+                MarkedAt = note.MarkedAt!.Value,
+                Reason = note.MarkReason,
+                AppointmentTime = item.AppointmentTime,
+                PatientName = item.PatientName,
+                Age = item.Age,
+                Gender = item.Gender.ToString(),
+                Uhid = item.Uhid,
+                PhoneNumber = item.PhoneNumber,
+                DepartmentId = item.DepartmentId,
+                DepartmentName = item.DepartmentName,
+                ConsultantId = item.ConsultantId,
+                ConsultantName = item.ConsultantName,
+            });
+        }
+
+        return patients;
+    }
+
+    public async Task<Result<OpdConsultationNoteResponse>> MarkPatientAsync(Guid consultationId, MarkPatientRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var note = await _repository.GetByConsultationIdAsync(consultationId, cancellationToken);
+        if (note is null)
+        {
+            return Result<OpdConsultationNoteResponse>.Failure(OpdConsultationErrorCodes.NotFound, $"No consultation note exists for consultation '{consultationId}'.");
+        }
+
+        note.Mark(request.Reason, actorId);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        return Result<OpdConsultationNoteResponse>.Success(await ToResponseAsync(note, cancellationToken));
+    }
+
+    public async Task<Result<OpdConsultationNoteResponse>> UnmarkPatientAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var note = await _repository.GetByConsultationIdAsync(consultationId, cancellationToken);
+        if (note is null)
+        {
+            return Result<OpdConsultationNoteResponse>.Failure(OpdConsultationErrorCodes.NotFound, $"No consultation note exists for consultation '{consultationId}'.");
+        }
+
+        if (note.IsMarked)
+        {
+            note.Unmark(actorId);
+            await _repository.SaveChangesAsync(cancellationToken);
+        }
+
+        return Result<OpdConsultationNoteResponse>.Success(await ToResponseAsync(note, cancellationToken));
     }
 
     public async Task<IReadOnlyList<OpdPrescriptionQueueItemResponse>> GetPrescriptionQueueAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)

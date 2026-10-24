@@ -49,9 +49,9 @@ interface OpdFilterBarProps {
  * list page's screenshot shows pinned to the row's right edge. */
 export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
   const statusOptions = statusOptionsForTab(tab);
-  // Scheduled Visits always lists from today on and has no status, so neither the date range
-  // nor the Status dropdown applies there.
-  const showDatesAndStatus = tab !== 'scheduled';
+  // Scheduled Visits always lists from today on and Marked Patients lists every mark; neither
+  // has a status, so the date range and the Status dropdown don't apply there.
+  const showDatesAndStatus = tab !== 'scheduled' && tab !== 'marked';
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4 shadow-soft-md">

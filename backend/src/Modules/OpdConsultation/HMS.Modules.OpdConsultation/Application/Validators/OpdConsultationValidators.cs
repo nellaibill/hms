@@ -62,6 +62,14 @@ internal class CreateOpdDiagnosisRequestValidator : AbstractValidator<CreateOpdD
     }
 }
 
+internal class MarkPatientRequestValidator : AbstractValidator<MarkPatientRequest>
+{
+    public MarkPatientRequestValidator()
+    {
+        RuleFor(x => x.Reason).MaximumLength(500);
+    }
+}
+
 internal class StructureConsultationNoteRequestValidator : AbstractValidator<StructureConsultationNoteRequest>
 {
     public StructureConsultationNoteRequestValidator()

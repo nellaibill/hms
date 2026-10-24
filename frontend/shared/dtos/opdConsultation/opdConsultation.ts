@@ -118,6 +118,10 @@ export interface OpdConsultationNote extends SaveOpdConsultationRequest {
   id?: string | null;
   consultationId: string;
   status: OpdConsultationNoteStatus;
+  /** When the doctor marked this consultation's patient (null when not marked). */
+  markedAt?: string | null;
+  markedBy?: string | null;
+  markReason?: string | null;
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -198,4 +202,40 @@ export interface ScheduledVisit {
   consultantName: string;
   /** The consultation's follow-up instructions, when the doctor wrote any. */
   notes?: string | null;
+}
+
+/** Mirrors HMS.Modules.OpdConsultation.Contracts.MarkPatientRequest — POST .../{consultationId}/mark.
+ * Posting again while already marked updates the reason. */
+export interface MarkPatientRequest {
+  reason?: string | null;
+}
+
+/** Mirrors HMS.Modules.OpdConsultation.Contracts.MarkedPatientQuery — the OPD page's Marked
+ * Patients filters. A Consultant's consultantId is forced to their own server-side. */
+export interface MarkedPatientQuery {
+  departmentId?: string;
+  consultantId?: string;
+  /** Patient name, UHID or phone number. */
+  search?: string;
+}
+
+/** Mirrors HMS.Modules.OpdConsultation.Contracts.MarkedPatientResponse — one consultation whose
+ * patient the doctor marked, with its patient, department, consultant and reason. */
+export interface MarkedPatient {
+  consultationId: string;
+  patientId: string;
+  visitId: string;
+  markedAt: string;
+  reason?: string | null;
+  /** The consultation's own date and time. */
+  appointmentTime: string;
+  patientName: string;
+  age: number;
+  gender: string;
+  uhid: string;
+  phoneNumber: string;
+  departmentId: string;
+  departmentName: string;
+  consultantId: string;
+  consultantName: string;
 }

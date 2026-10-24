@@ -50,6 +50,15 @@ internal class OpdConsultationNote : Entity
     public Guid? ReferralConsultantId { get; private set; }
     public string? ReferralReason { get; private set; }
 
+    // Mark Patient — a flag the doctor raises on this consultation's patient, with an optional
+    // reason. Not clinical content: it can be set or cleared whether the note is Draft or
+    // Completed, and SaveDetails never touches it.
+    public DateTime? MarkedAt { get; private set; }
+    public Guid? MarkedBy { get; private set; }
+    public string? MarkReason { get; private set; }
+
+    public bool IsMarked => MarkedAt.HasValue;
+
     /// <summary>1:many child, real DB FK — see OpdConsultationDiagnosis's own doc comment.
     /// Only ever loaded/replaced through this aggregate.</summary>
     private readonly List<OpdConsultationDiagnosis> _diagnoses = [];
@@ -174,6 +183,29 @@ internal class OpdConsultationNote : Entity
     public void Reopen(Guid? updatedBy)
     {
         Status = OpdConsultationNoteStatus.Draft;
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Marks this consultation's patient, or updates the reason when already marked —
+    /// MarkedAt/MarkedBy keep the first mark's time and author.</summary>
+    public void Mark(string? reason, Guid? markedBy)
+    {
+        if (!IsMarked)
+        {
+            MarkedAt = DateTime.UtcNow;
+            MarkedBy = markedBy;
+        }
+
+        MarkReason = Normalize(reason);
+        MarkUpdated(markedBy);
+    }
+
+    /// <summary>Clears the mark and its reason.</summary>
+    public void Unmark(Guid? updatedBy)
+    {
+        MarkedAt = null;
+        MarkedBy = null;
+        MarkReason = null;
         MarkUpdated(updatedBy);
     }
 

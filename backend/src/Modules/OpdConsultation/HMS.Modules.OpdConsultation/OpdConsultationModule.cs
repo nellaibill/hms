@@ -71,6 +71,7 @@ public static class OpdConsultationModule
         services.AddScoped<IValidator<SaveOpdConsultationRequest>, SaveOpdConsultationRequestValidator>();
         services.AddScoped<IValidator<StructureConsultationNoteRequest>, StructureConsultationNoteRequestValidator>();
         services.AddScoped<IValidator<CreateOpdDiagnosisRequest>, CreateOpdDiagnosisRequestValidator>();
+        services.AddScoped<IValidator<MarkPatientRequest>, MarkPatientRequestValidator>();
 
         return services;
     }

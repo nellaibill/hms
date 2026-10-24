@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-105: A doctor can mark a patient on an OPD consultation; marks show on Medical Information and a Marked Patients list
+**Date:** 2026-10-24
+**Status:** Accepted
+
+**Context**
+Client request: a green "Mark Patient" option on the OPD consultation page, with an optional reason. Each mark should appear visit-wise on the patient's Medical Information tab as "Marked by <Consultant> for <reason>". The OPD page should get a Marked Patients tab after Scheduled Visits, for Receptionists, Admins, Super Admins and Consultants, where Consultants see only their own patients.
+
+**Decision**
+- The mark lives on the consultation note (`OpdConsultationNote.MarkedAt` / `MarkedBy` / `MarkReason`; columns `marked_at`, `marked_by`, `mark_reason` (500), migration `AddOpdConsultationPatientMark`, filtered index `ix_opd_consultation_notes_marked_at`). That makes it one mark per consultation, which is what "visit-wise" asks for. A note is already auto-created when the consultation page opens, so no separate table is needed.
+- `POST /api/v1/opd-consultations/{consultationId}/mark` (`{ reason? }`) marks the patient, or updates the reason when already marked; the first mark's time and author are kept. `DELETE` on the same route clears it. Both need `clinical-care.edit`, the gate SaveDraft/Complete use. The mark isn't clinical content, so it can be set or cleared on a Draft or a Completed note. `SaveDetails` never touches it, so a later Save Draft can't wipe it.
+- `GET /api/v1/opd-consultations/marked-patients` (`clinical-care.view`) lists every marked consultation, newest mark first, capped at 500. It has department/consultant/search filters. It is restricted to the same login types as Scheduled Visits (now shared as `OpdListLoginTypes`), with 403 `OPD_CONSULTATION.MARKED_PATIENTS_FORBIDDEN` otherwise. A Consultant is force-scoped to their own patients.
+- "Marked by" shows the consultation's consultant, as requested. `MarkedBy` (user id) is kept for audit only.
+- Frontend:
+  - The consultation page banner has a green **Mark Patient** button, shown with `clinical-care.edit`. It opens a dialog with an optional reason. Once marked, the button reads **Marked** and the same dialog edits the reason or removes the mark.
+  - Medical Information shows a green "Marked" badge and a "Marked by Dr. X for <reason> · <date>" line on each marked consultation card.
+  - `/clinical/opd` has a **Marked Patients** tab (Marked On, Patient, Age, Gender, UHID, Department, Marked By, Reason) with CSV/Excel/PDF export. The From/To and Status filters are hidden on it, as on Scheduled Visits.
+
+**Consequences**
+- A patient marked on two visits appears twice in the list, once per consultation with its own reason.
+- The list covers every mark ever made, with no date filter. If it grows large, a marked-on date range can be added later.
+- Each tenant needs the migration applied (Platform "Migrate") after deploy.
+
+---
+
 ### ADR-104: An IP/Day Care/Observation visit gets its IP No only once the advance is paid
 **Date:** 2026-10-21
 **Status:** Accepted (follows ADR-103; changes when the IP No is drawn under ADR-089)

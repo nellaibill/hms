@@ -24,17 +24,20 @@ public class OpdConsultationsController : ControllerBase
     private readonly IValidator<SaveOpdConsultationRequest> _saveValidator;
     private readonly IValidator<StructureConsultationNoteRequest> _structureNoteValidator;
     private readonly IValidator<CreateOpdDiagnosisRequest> _createDiagnosisValidator;
+    private readonly IValidator<MarkPatientRequest> _markPatientValidator;
 
     public OpdConsultationsController(
         IOpdConsultationService service,
         IValidator<SaveOpdConsultationRequest> saveValidator,
         IValidator<StructureConsultationNoteRequest> structureNoteValidator,
-        IValidator<CreateOpdDiagnosisRequest> createDiagnosisValidator)
+        IValidator<CreateOpdDiagnosisRequest> createDiagnosisValidator,
+        IValidator<MarkPatientRequest> markPatientValidator)
     {
         _service = service;
         _saveValidator = saveValidator;
         _structureNoteValidator = structureNoteValidator;
         _createDiagnosisValidator = createDiagnosisValidator;
+        _markPatientValidator = markPatientValidator;
     }
 
     /// <summary>Fetches (auto-creating on first call) the consultation note plus its read-only
@@ -74,9 +77,10 @@ public class OpdConsultationsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<OpdConsultationDetailResponse>> { Data = result.Value });
     }
 
-    /// <summary>The login types (HMS.Modules.Identity's LoginTypes) the Scheduled Visits list is
-    /// for: the front desk and administrators see every consultant's, a Consultant only their own.</summary>
-    private static readonly HashSet<string> ScheduledVisitLoginTypes = new(StringComparer.OrdinalIgnoreCase) { "superAdmin", "admin", "receptionist", "doctor" };
+    /// <summary>The login types (HMS.Modules.Identity's LoginTypes) the OPD page's Scheduled
+    /// Visits and Marked Patients lists are for: the front desk and administrators see every
+    /// consultant's, a Consultant only their own.</summary>
+    private static readonly HashSet<string> OpdListLoginTypes = new(StringComparer.OrdinalIgnoreCase) { "superAdmin", "admin", "receptionist", "doctor" };
 
     /// <summary>The OPD page's Scheduled Visits list — every patient's upcoming review dates
     /// (set on their OPD consultations), soonest first. For Receptionists, Admins, Super Admins
@@ -89,7 +93,7 @@ public class OpdConsultationsController : ControllerBase
     [HttpGet("scheduled-visits")]
     public async Task<IActionResult> GetScheduledVisits([FromQuery] ScheduledVisitQuery query, CancellationToken cancellationToken)
     {
-        if (!ScheduledVisitLoginTypes.Contains(User.FindFirst("LoginType")?.Value ?? string.Empty))
+        if (!OpdListLoginTypes.Contains(User.FindFirst("LoginType")?.Value ?? string.Empty))
         {
             return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorResponse
             {
@@ -108,6 +112,67 @@ public class OpdConsultationsController : ControllerBase
 
         var result = await _service.GetScheduledVisitsAsync(query, cancellationToken);
         return Ok(new ApiResponse<IReadOnlyList<ScheduledVisitResponse>> { Data = result });
+    }
+
+    /// <summary>The OPD page's Marked Patients list — every consultation whose patient a doctor
+    /// marked, newest mark first. Same audience and Consultant scoping as GetScheduledVisits.</summary>
+    /// <response code="200">The marked patients (empty when none).</response>
+    /// <response code="403">The caller's role isn't one this list is for.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.view")]
+    [HttpGet("marked-patients")]
+    public async Task<IActionResult> GetMarkedPatients([FromQuery] MarkedPatientQuery query, CancellationToken cancellationToken)
+    {
+        if (!OpdListLoginTypes.Contains(User.FindFirst("LoginType")?.Value ?? string.Empty))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorResponse
+            {
+                ErrorCode = OpdConsultationErrorCodes.MarkedPatientsForbidden,
+                Message = "Marked patients are only available to Receptionists, Admins, Super Admins and Consultants.",
+                CorrelationId = HttpContext.GetCorrelationId(),
+                Timestamp = DateTime.UtcNow,
+            });
+        }
+
+        var scopedConsultantId = User.GetScopedConsultantId();
+        if (scopedConsultantId is not null)
+        {
+            query = query with { ConsultantId = scopedConsultantId };
+        }
+
+        var result = await _service.GetMarkedPatientsAsync(query, cancellationToken);
+        return Ok(new ApiResponse<IReadOnlyList<MarkedPatientResponse>> { Data = result });
+    }
+
+    /// <summary>Marks the consultation's patient, with an optional reason — or updates the
+    /// reason when already marked. Works on a Draft or Completed consultation.</summary>
+    /// <response code="200">The patient was marked.</response>
+    /// <response code="400">The request failed validation.</response>
+    /// <response code="404">No consultation note exists for this consultation yet — GET first.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
+    [HttpPost("{consultationId:guid}/mark")]
+    public async Task<IActionResult> MarkPatient(Guid consultationId, [FromBody] MarkPatientRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _markPatientValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.MarkPatientAsync(consultationId, request, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapNoteFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>Clears the consultation's mark.</summary>
+    /// <response code="200">The mark was removed (or there was none).</response>
+    /// <response code="404">No consultation note exists for this consultation yet — GET first.</response>
+    [Authorize]
+    [RequirePermission("clinical-care.edit")]
+    [HttpDelete("{consultationId:guid}/mark")]
+    public async Task<IActionResult> UnmarkPatient(Guid consultationId, CancellationToken cancellationToken)
+    {
+        var result = await _service.UnmarkPatientAsync(consultationId, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapNoteFailure(result.ErrorCode!, result.Error!);
     }
 
     /// <summary>Saves the current form state with no required fields.</summary>
