@@ -67,9 +67,11 @@ export function TopHeader() {
       <div className="flex shrink-0 items-center gap-3 2xl:min-w-0 2xl:shrink">
         {/* The configured Primary logo height (Logo Configuration) is clamped by these caps,
             which never exceed the header's own h-16 — so no logo or configured size can make
-            the top bar taller. Below sm the Compact logo (square/icon-style) is shown instead. */}
+            the top bar taller. Below sm the Compact logo (square/icon-style) is shown instead.
+            From xl the box is pinned to AppSidebar's expanded 280px, whatever width is
+            configured, so the logo's right edge lines up with the sidebar below it. */}
         <HospitalLogo slot="compact" className="sm:hidden" invert showName={false} imageClassName="max-h-10 max-w-32" />
-        <HospitalLogo className="hidden sm:flex" invert showName={false} imageClassName="max-h-12 max-w-48 xl:max-h-16 xl:max-w-80" />
+        <HospitalLogo className="hidden sm:flex" invert showName={false} imageClassName="max-h-12 max-w-48 xl:max-h-16 xl:min-w-[280px] xl:max-w-[280px]" />
         <span className="hidden min-w-0 truncate text-base font-bold leading-tight tracking-tight text-header-foreground 2xl:inline 2xl:text-lg">
           {appTitle}
         </span>
