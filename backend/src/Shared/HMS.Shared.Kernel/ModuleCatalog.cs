@@ -9,6 +9,10 @@ namespace HMS.Shared.Kernel;
 /// and both Platform (Tenant.EnabledModules) and, in principle, other future callers need
 /// the same list — same reasoning as the frontend's independent ROLE_MODULES mirror
 /// (frontend/web/src/features/roles/modules.ts).
+/// Adding a key here also needs a Platform migration that appends it to existing
+/// platform.tenants.enabled_modules rows (see BackfillDischargeSummaryEnabledModule):
+/// changing the column default only covers hospitals registered afterwards, and login
+/// strips a missing module's permissions, so older hospitals' users get 403 on it.
 /// </summary>
 public static class ModuleCatalog
 {
