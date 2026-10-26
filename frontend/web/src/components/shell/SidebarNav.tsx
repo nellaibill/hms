@@ -54,7 +54,10 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
               {({ isActive }) => (
                 <>
                   <Icon className={cn('h-5 w-5 shrink-0', !isActive && node.iconColor)} />
-                  {!collapsed && <span className="truncate">{node.label}</span>}
+                  {/* Wraps rather than truncates, so a long label such as "Human Resource
+                      Management (HR)" moves its last word to a second line instead of
+                      cutting it off. */}
+                  {!collapsed && <span className="min-w-0 break-words">{node.label}</span>}
                 </>
               )}
             </NavLink>

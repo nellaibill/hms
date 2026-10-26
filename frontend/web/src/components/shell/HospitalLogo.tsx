@@ -10,7 +10,7 @@ interface HospitalLogoProps {
   showName?: boolean;
   /** Use on a solid `bg-primary` surface (e.g. the top header) — lightens the system-name text to read on that background. */
   invert?: boolean;
-  /** Caps on the logo box (defaults to `max-h-16 max-w-32`) — pass Tailwind max-height/max-width utilities only. The box's actual size is the slot's configured width × height (Theme & Branding → Logo Configuration), clamped by these caps, so a surface with a fixed size (the top bar) can never be grown by a configured size. */
+  /** Caps on the logo box (defaults to `max-h-16 max-w-32`) — pass Tailwind max-height/max-width utilities (plus a matching min-width to pin an exact width, as the top bar does). The box's actual size is the slot's configured width × height (Theme & Branding → Logo Configuration), clamped by these caps, so a surface with a fixed size (the top bar) can never be grown by a configured size. */
   imageClassName?: string;
   /** Which configured logo to show — see LOGO_SLOT_META. Falls back to the Primary logo, then the bundled default. */
   slot?: LogoSlot;
