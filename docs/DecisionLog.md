@@ -42,7 +42,7 @@ _To be documented._
 **Status:** Accepted
 
 **Context**
-Client request: billing staff need to revert an OP bill. Raising a revert must require a reason, the request must go to the Super Admin role, and the bill is reverted only once a Super Admin approves it. The existing Void only works on an unpaid invoice, so a paid OP bill (the usual case, since OP fees are collected at billing) had no way to be cancelled.
+Client request: billing staff need to revert an OP bill. Raising a revert must require a reason, the request must go to the Super Admin role, and the bill is reverted only once a Super Admin approves it. A follow-up asked that a revert can only be raised on the day the bill was made. The existing Void only works on an unpaid invoice, so a paid OP bill (the usual case, since OP fees are collected at billing) had no way to be cancelled.
 
 **Decision**
 - New `billing.invoice_revert_requests` table (`InvoiceRevertRequest`, migration `AddInvoiceRevertRequests`):
@@ -50,6 +50,7 @@ Client request: billing staff need to revert an OP bill. Raising a revert must r
   - It holds the reason (required, 500), status `Pending` / `Approved` / `Rejected`, and who requested and who decided. Usernames are snapshotted from the token, because Billing can't read Identity's user directory.
   - A filtered unique index allows one Pending request per invoice.
 - Only OP bills can be reverted: not voided, no Pharmacy or InpatientCharge lines, and the visit is OP. A bill with no registered visit, or whose visit can't be found, counts as OP, since it comes from OPD Billing Entry.
+- A revert can only be **raised on the day the bill was made**, judged in hospital time (India Standard Time, `MonthlySeries.HospitalTimeZone`), not UTC. The service reads the clock through an injected `TimeProvider`. Approving or rejecting isn't limited to that day, so a request raised late in the evening can still be approved the next morning.
 - Endpoints (`InvoiceRevertRequestsController`):
   - `GET /api/v1/billing/invoices/{id}/revert` (`finance-billing.view`) says whether a revert can be requested and lists the bill's requests.
   - `POST .../invoices/{id}/revert-requests` (`finance-billing.edit`, `{ reason }`) raises a request.
@@ -69,7 +70,8 @@ Client request: billing staff need to revert an OP bill. Raising a revert must r
 - The visit keeps its OP No (ADR-103). If the bill is re-done, paying the new consultation doesn't issue another number.
 - Lab or radiology orders already raised from a reverted bill are not cancelled. There is no cancel API in Laboratory yet, so lab staff must be told separately.
 - Super Admins learn about new requests from the tab badge, not a push notification. Adding one means relaxing the Billing→Notifications architecture rule.
-- A rejected request doesn't block a new one on the same bill.
+- A rejected request doesn't block a new one on the same bill, but only while it is still the bill's day.
+- Request Revert is simply not shown on an older bill; the status endpoint's `ineligibleReason` says why.
 - Each tenant needs the migration applied (Platform "Migrate") after deploy.
 
 ---

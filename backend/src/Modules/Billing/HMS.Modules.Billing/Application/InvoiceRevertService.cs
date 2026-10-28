@@ -1,3 +1,4 @@
+using System.Globalization;
 using HMS.Modules.ActivityLog.Application;
 using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Billing.Application.Abstractions;
@@ -39,18 +40,26 @@ internal class InvoiceRevertService : IInvoiceRevertService
     private readonly IInvoiceRevertRequestRepository _repository;
     private readonly IPatientVisitService _patientVisitService;
     private readonly IActivityLogService _activityLog;
+    private readonly TimeProvider _clock;
 
     public InvoiceRevertService(
         IInvoiceRepository invoiceRepository,
         IInvoiceRevertRequestRepository repository,
         IPatientVisitService patientVisitService,
-        IActivityLogService activityLog)
+        IActivityLogService activityLog,
+        TimeProvider clock)
     {
         _invoiceRepository = invoiceRepository;
         _repository = repository;
         _patientVisitService = patientVisitService;
         _activityLog = activityLog;
+        _clock = clock;
     }
+
+    /// <summary>The hospital-local calendar day a UTC instant falls on — "today" is judged in
+    /// India Standard Time, not UTC, which trails it by 5½ hours (same rule as PharmacyClock).</summary>
+    private static DateOnly HospitalDate(DateTime utc)
+        => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), MonthlySeries.HospitalTimeZone));
 
     // Best-effort audit write (never throws - see IActivityLogService); runs only after the
     // change itself has been committed.
@@ -73,7 +82,8 @@ internal class InvoiceRevertService : IInvoiceRevertService
     /// belong to an IPD final bill, so either one rules the invoice out, as does a visit of any
     /// type other than OP. A bill with no registered visit (VisitId falls back to PatientId — see
     /// CreateInvoiceRequest.VisitId) or whose visit can't be found is an OPD Billing Entry bill
-    /// and counts as OP.
+    /// and counts as OP. A revert can also only be raised on the day the bill was made (hospital
+    /// time) — an older bill is a settled day's collection. Approving isn't limited to that day.
     /// </summary>
     private async Task<string?> GetIneligibleReasonAsync(Invoice invoice, CancellationToken cancellationToken)
     {
@@ -94,6 +104,12 @@ internal class InvoiceRevertService : IInvoiceRevertService
             {
                 return $"Only OP bills can be reverted — this bill belongs to a {found.VisitType} visit.";
             }
+        }
+
+        var billDate = HospitalDate(invoice.CreatedAt);
+        if (billDate != HospitalDate(_clock.GetUtcNow().UtcDateTime))
+        {
+            return $"A revert can only be requested on the day the bill was made — this bill is from {billDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.";
         }
 
         return null;

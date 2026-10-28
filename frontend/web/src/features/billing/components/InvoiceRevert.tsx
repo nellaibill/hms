@@ -19,7 +19,8 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 /** "Request Revert" on an OP bill (ADR-106) — shown only when the server says this bill can be
- * reverted (an OP bill, not voided, no request already pending) and the user can edit bills. */
+ * reverted (an OP bill made today, not voided, no request already pending) and the user can edit
+ * bills. */
 export function RequestRevertButton({ billing }: { billing: Billing }) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();

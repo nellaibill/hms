@@ -17,12 +17,13 @@ public class InvoiceRevertServiceTests
     private readonly IInvoiceRepository _invoiceRepository = Substitute.For<IInvoiceRepository>();
     private readonly IInvoiceRevertRequestRepository _repository = Substitute.For<IInvoiceRevertRequestRepository>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
+    private readonly FakeClock _clock = new();
     private readonly InvoiceRevertService _sut;
     private readonly Guid _actorId = Guid.NewGuid();
 
     public InvoiceRevertServiceTests()
     {
-        _sut = new InvoiceRevertService(_invoiceRepository, _repository, _patientVisitService, Substitute.For<IActivityLogService>());
+        _sut = new InvoiceRevertService(_invoiceRepository, _repository, _patientVisitService, Substitute.For<IActivityLogService>(), _clock);
         _repository.GetByInvoiceIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
     }
 
@@ -226,5 +227,65 @@ public class InvoiceRevertServiceTests
         await _sut.GetPagedAsync(new InvoiceRevertRequestListQuery { Page = 0, PageSize = 1000 }, CancellationToken.None);
 
         await _repository.Received(1).GetPagedAsync(Arg.Is<InvoiceRevertRequestListQuery>(q => q.Page == 1 && q.PageSize == 100), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>"Now" for the service — starts at the real time, so an invoice created in a test
+    /// counts as made today unless the test moves the clock.</summary>
+    private sealed class FakeClock : TimeProvider
+    {
+        public DateTimeOffset UtcNow { get; set; } = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => UtcNow;
+    }
+
+    private static DateOnly HospitalDate(DateTime utc) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), MonthlySeries.HospitalTimeZone));
+
+    /// <summary>The UTC instant the hospital-local day after <paramref name="utc"/>'s begins.</summary>
+    private static DateTimeOffset NextHospitalMidnightUtc(DateTime utc)
+    {
+        var nextDay = HospitalDate(utc).AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(nextDay, MonthlySeries.HospitalTimeZone), TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task CreateAsync_OnABillFromAnEarlierDay_IsNotEligible()
+    {
+        var invoice = GivenInvoice();
+        _clock.UtcNow = _clock.UtcNow.AddDays(1);
+
+        var result = await _sut.CreateAsync(invoice.Id, new CreateInvoiceRevertRequest { Reason = "Wrong consultant" }, _actorId, null, CancellationToken.None);
+
+        result.ErrorCode.Should().Be(BillingErrorCodes.RevertNotEligible);
+        result.Error.Should().Contain("on the day the bill was made").And.MatchRegex(@"from \d{2}/\d{2}/\d{4}\.$");
+        await _repository.DidNotReceive().AddAsync(Arg.Any<InvoiceRevertRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    // "Today" is the hospital's (IST) calendar day, not UTC's: a minute before IST midnight is
+    // still the bill's day, a minute after isn't — even though both can be the same UTC date.
+    [Theory]
+    [InlineData(-1, true)]
+    [InlineData(1, false)]
+    public async Task GetForInvoiceAsync_JudgesTodayInHospitalTime(int minutesFromNextMidnight, bool canRequest)
+    {
+        var invoice = GivenInvoice();
+        _clock.UtcNow = NextHospitalMidnightUtc(invoice.CreatedAt).AddMinutes(minutesFromNextMidnight);
+
+        var result = await _sut.GetForInvoiceAsync(invoice.Id, CancellationToken.None);
+
+        result.Value!.CanRequest.Should().Be(canRequest);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_OnARequestRaisedOnAnEarlierDay_StillReverts()
+    {
+        var invoice = GivenInvoice();
+        var request = GivenPendingRequest(invoice);
+        _clock.UtcNow = _clock.UtcNow.AddDays(2);
+
+        var result = await _sut.ApproveAsync(request.Id, new ApproveInvoiceRevertRequest(), _actorId, "superadmin", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        invoice.IsReverted.Should().BeTrue();
     }
 }
