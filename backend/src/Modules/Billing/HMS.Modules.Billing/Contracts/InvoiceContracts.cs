@@ -134,6 +134,9 @@ public record InvoiceResponse
     public DateTime? VoidedAt { get; init; }
     public string? VoidReason { get; init; }
 
+    /// <summary>True when the void came from an approved OP bill revert request (ADR-106).</summary>
+    public bool IsReverted { get; init; }
+
     /// <summary>The visit's OP No — set only on the create/record-payment response once the
     /// visit's consultation fee is paid, which is when an OP visit gets its number (ADR-103),
     /// so reception can quote it straight away. Null everywhere else, including every read.</summary>
@@ -194,6 +197,7 @@ public record RecentPatientBillResponse
     public decimal NetAmount { get; init; }
     public PaymentStatus PaymentStatus { get; init; }
     public bool IsVoided { get; init; }
+    public bool IsReverted { get; init; }
 }
 
 /// <summary>The Executive Dashboard's finance data (DASH-01): billed revenue per month (non-voided

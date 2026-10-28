@@ -40,7 +40,9 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
   usePrimeDiagnosticPackageCache();
 
   const statusLabel = billing.isVoided
-    ? 'VOIDED'
+    ? billing.isReverted
+      ? 'REVERTED'
+      : 'VOIDED'
     : billing.items.length > 0 && billing.items.every((item) => item.paymentStatus === 'Paid')
       ? 'PAID'
       : 'PENDING';
