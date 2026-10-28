@@ -39,9 +39,14 @@ public static class BillingModule
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IInvoiceNumberGenerator, InvoiceNumberGenerator>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IInvoiceRevertRequestRepository, InvoiceRevertRequestRepository>();
+        services.AddScoped<IInvoiceRevertService, InvoiceRevertService>();
 
         services.AddScoped<IValidator<CreateInvoiceRequest>, CreateInvoiceRequestValidator>();
         services.AddScoped<IValidator<VoidInvoiceRequest>, VoidInvoiceRequestValidator>();
+        services.AddScoped<IValidator<CreateInvoiceRevertRequest>, CreateInvoiceRevertRequestValidator>();
+        services.AddScoped<IValidator<ApproveInvoiceRevertRequest>, ApproveInvoiceRevertRequestValidator>();
+        services.AddScoped<IValidator<RejectInvoiceRevertRequest>, RejectInvoiceRevertRequestValidator>();
 
         return services;
     }

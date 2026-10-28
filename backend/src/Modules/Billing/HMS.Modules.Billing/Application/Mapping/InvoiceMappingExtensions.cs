@@ -40,5 +40,6 @@ internal static class InvoiceMappingExtensions
         IsVoided = invoice.IsVoided,
         VoidedAt = invoice.VoidedAt,
         VoidReason = invoice.VoidReason,
+        IsReverted = invoice.IsReverted,
     };
 }

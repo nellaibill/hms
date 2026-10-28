@@ -81,6 +81,8 @@ export interface RecentBill {
   netAmount: number;
   paymentStatus: PaymentStatus;
   isVoided: boolean;
+  /** Voided by an approved OP bill revert request (ADR-106) rather than a plain void. */
+  isReverted: boolean;
 }
 
 /** The bill for one visit — totals are always derived from `items`, never stored independently. */
@@ -106,6 +108,8 @@ export interface Billing {
   isVoided: boolean;
   voidedAt?: string;
   voidReason?: string;
+  /** Voided by an approved OP bill revert request (ADR-106) rather than a plain void. */
+  isReverted: boolean;
   /** The visit's OP No, present only on the create/record-payment result that paid its
    * consultation fee (ADR-103) — never on an invoice read back later. */
   opNumber?: string;

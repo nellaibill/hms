@@ -1,10 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
+import { usePendingRevertCountQuery } from '@/features/billing';
 import { cn } from '@/lib/utils';
 
 const TABS: { to: string; label: string; feature?: string }[] = [
   { to: '/finance/accounts', label: 'Recent Bills' },
   { to: '/finance/accounts/invoices', label: 'All Invoices' },
+  // OP bill revert requests (ADR-106) — the Super Admin's approval queue.
+  { to: '/finance/accounts/revert-requests', label: 'Revert Requests' },
   { to: '/finance/accounts/reports', label: 'Income & Expense' },
   { to: '/finance/accounts/reports/profit', label: 'Hospital Profit' },
   { to: '/finance/accounts/reports/laboratory', label: 'Laboratory' },
@@ -26,6 +29,7 @@ const TABS: { to: string; label: string; feature?: string }[] = [
 export function AccountsNavTabs() {
   const { hasFeature } = useAuth();
   const tabs = TABS.filter((tab) => !tab.feature || hasFeature(tab.feature));
+  const { data: pendingRevertCount = 0 } = usePendingRevertCountQuery();
 
   return (
     <div className="flex flex-wrap items-center gap-1 overflow-x-auto border-b border-border">
@@ -49,6 +53,14 @@ export function AccountsNavTabs() {
           }
         >
           {tab.label}
+          {tab.to === '/finance/accounts/revert-requests' && pendingRevertCount > 0 && (
+            <span
+              className="ml-1.5 rounded-full bg-warning px-1.5 text-xs font-semibold text-warning-foreground"
+              aria-label={`${pendingRevertCount} pending`}
+            >
+              {pendingRevertCount}
+            </span>
+          )}
         </NavLink>
       ))}
     </div>
