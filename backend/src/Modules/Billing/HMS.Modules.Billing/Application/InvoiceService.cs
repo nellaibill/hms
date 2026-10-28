@@ -509,6 +509,7 @@ internal class InvoiceService : IInvoiceService
                 NetAmount = invoice.NetAmount,
                 PaymentStatus = invoice.PaymentStatus,
                 IsVoided = invoice.IsVoided,
+                IsReverted = invoice.IsReverted,
             });
         }
 

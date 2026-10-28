@@ -1,13 +1,19 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  ApproveInvoiceRevertRequest,
   BillingDashboardSummary,
   CreateInvoiceRequest,
+  CreateInvoiceRevertRequest,
   InvoiceListQuery,
   InvoiceResponse,
+  InvoiceRevertRequestListQuery,
+  InvoiceRevertRequestResponse,
+  InvoiceRevertStatusResponse,
   ProcedureListItem,
   ProcedureListQuery,
   RecentPatientBill,
   RecordPaymentRequest,
+  RejectInvoiceRevertRequest,
   VoidInvoiceRequest,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
@@ -15,6 +21,11 @@ import type { HttpClient } from '../httpClient';
 
 export interface PagedInvoices {
   items: InvoiceResponse[];
+  meta: PaginationMeta;
+}
+
+export interface PagedInvoiceRevertRequests {
+  items: InvoiceRevertRequestResponse[];
   meta: PaginationMeta;
 }
 
@@ -83,6 +94,46 @@ export class BillingApi {
 
   async voidInvoice(id: string, request: VoidInvoiceRequest): Promise<InvoiceResponse> {
     const response = await this.client.post<InvoiceResponse>(API_ROUTES.billing.invoices.void(id), request);
+    return response.data;
+  }
+
+  /** Whether a revert can be requested for this invoice, and every revert request on it (ADR-106). */
+  async getInvoiceRevertStatus(invoiceId: string): Promise<InvoiceRevertStatusResponse> {
+    const response = await this.client.get<InvoiceRevertStatusResponse>(API_ROUTES.billing.invoices.revert(invoiceId));
+    return response.data;
+  }
+
+  /** Asks a Super Admin to revert an OP bill — the reason is required. */
+  async requestInvoiceRevert(invoiceId: string, request: CreateInvoiceRevertRequest): Promise<InvoiceRevertRequestResponse> {
+    const response = await this.client.post<InvoiceRevertRequestResponse>(API_ROUTES.billing.invoices.revertRequests(invoiceId), request);
+    return response.data;
+  }
+
+  async getRevertRequests(query: InvoiceRevertRequestListQuery = {}): Promise<PagedInvoiceRevertRequests> {
+    const response = await this.client.get<InvoiceRevertRequestResponse[]>(API_ROUTES.billing.revertRequests.base, {
+      query: { page: query.page, pageSize: query.pageSize, status: query.status },
+    });
+
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
+  }
+
+  async getPendingRevertRequestCount(): Promise<number> {
+    const response = await this.client.get<number>(API_ROUTES.billing.revertRequests.pendingCount);
+    return response.data;
+  }
+
+  /** Super Admin only — approving reverts the bill. */
+  async approveRevertRequest(id: string, request: ApproveInvoiceRevertRequest = {}): Promise<InvoiceRevertRequestResponse> {
+    const response = await this.client.post<InvoiceRevertRequestResponse>(API_ROUTES.billing.revertRequests.approve(id), request);
+    return response.data;
+  }
+
+  /** Super Admin only — notes are required. */
+  async rejectRevertRequest(id: string, request: RejectInvoiceRevertRequest): Promise<InvoiceRevertRequestResponse> {
+    const response = await this.client.post<InvoiceRevertRequestResponse>(API_ROUTES.billing.revertRequests.reject(id), request);
     return response.data;
   }
 

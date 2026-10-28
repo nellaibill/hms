@@ -65,6 +65,7 @@ function fromDto(dto: InvoiceResponseDto): Billing {
     isVoided: dto.isVoided,
     voidedAt: dto.voidedAt ?? undefined,
     voidReason: dto.voidReason ?? undefined,
+    isReverted: dto.isReverted ?? false,
     opNumber: dto.opNumber ?? undefined,
   };
 }
@@ -133,6 +134,7 @@ function fromRecentBillDto(dto: RecentPatientBillDto): RecentBill {
     netAmount: dto.netAmount,
     paymentStatus: dto.paymentStatus,
     isVoided: dto.isVoided,
+    isReverted: dto.isReverted ?? false,
   };
 }
 

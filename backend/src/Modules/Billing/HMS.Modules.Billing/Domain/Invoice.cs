@@ -50,6 +50,10 @@ internal class Invoice : Entity
     public Guid? VoidedBy { get; private set; }
     public string? VoidReason { get; private set; }
 
+    /// <summary>True when the void came from an approved revert request (ADR-106) rather than a
+    /// plain <see cref="Void"/> — <see cref="IsVoided"/> is set either way.</summary>
+    public bool IsReverted { get; private set; }
+
     /// <summary>Derived, not stored — Paid only once every line item is Paid, matching
     /// frontend/web/src/features/billing/billingCalculations.ts's getOverallPaymentStatus.</summary>
     public PaymentStatus PaymentStatus =>
@@ -170,5 +174,29 @@ internal class Invoice : Entity
         VoidedBy = voidedBy;
         VoidReason = reason.Trim();
         MarkUpdated(voidedBy);
+    }
+
+    /// <summary>
+    /// Reverts an OP bill once a Super Admin approves its <see cref="InvoiceRevertRequest"/>
+    /// (ADR-106). Unlike <see cref="Void"/> this is allowed after payment: the invoice is voided
+    /// (so every report and ledger total drops it) and flagged <see cref="IsReverted"/>, while
+    /// its line items and Payment rows stay as they were — the record of what was collected
+    /// before the counter refunded it. Caller (InvoiceRevertService) has already checked the
+    /// invoice isn't voided.
+    /// </summary>
+    public void Revert(string reason, Guid? approvedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(reason, nameof(reason));
+        if (IsVoided)
+        {
+            throw new InvalidOperationException("This invoice has already been voided.");
+        }
+
+        IsVoided = true;
+        IsReverted = true;
+        VoidedAt = DateTime.UtcNow;
+        VoidedBy = approvedBy;
+        VoidReason = reason.Trim();
+        MarkUpdated(approvedBy);
     }
 }

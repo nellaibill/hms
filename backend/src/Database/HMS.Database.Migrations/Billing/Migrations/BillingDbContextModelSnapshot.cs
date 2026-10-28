@@ -18,7 +18,7 @@ namespace HMS.Database.Migrations.Billing.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("billing")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -62,6 +62,12 @@ namespace HMS.Database.Migrations.Billing.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsReverted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_reverted");
 
                     b.Property<bool>("IsVoided")
                         .ValueGeneratedOnAdd()
@@ -257,6 +263,134 @@ namespace HMS.Database.Migrations.Billing.Migrations
                     b.ToTable("invoice_line_items", "billing");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceRevertRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<string>("DecisionNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_notes");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("invoice_number");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("net_amount");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("paid_amount");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<string>("PatientName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("patient_name");
+
+                    b.Property<string>("PatientUhid")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("patient_uhid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("RequestedByName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("requested_by_name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invoice_revert_requests");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_invoice_revert_requests_status_created_at");
+
+                    b.HasIndex(new[] { "InvoiceId" }, "ix_invoice_revert_requests_invoice_id")
+                        .HasDatabaseName("ix_invoice_revert_requests_invoice_id");
+
+                    b.HasIndex(new[] { "InvoiceId" }, "ux_invoice_revert_requests_invoice_id_pending")
+                        .IsUnique()
+                        .HasDatabaseName("ux_invoice_revert_requests_invoice_id_pending")
+                        .HasFilter("status = 'Pending' AND is_deleted = false");
+
+                    b.ToTable("invoice_revert_requests", "billing");
+                });
+
             modelBuilder.Entity("HMS.Modules.Billing.Domain.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -342,6 +476,16 @@ namespace HMS.Database.Migrations.Billing.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_invoice_line_items_invoices_invoice_id");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceRevertRequest", b =>
+                {
+                    b.HasOne("HMS.Modules.Billing.Domain.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_revert_requests_invoices_invoice_id");
                 });
 
             modelBuilder.Entity("HMS.Modules.Billing.Domain.Payment", b =>

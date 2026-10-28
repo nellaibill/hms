@@ -9,6 +9,7 @@ using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HMS.Modules.Billing;
 
@@ -39,9 +40,16 @@ public static class BillingModule
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IInvoiceNumberGenerator, InvoiceNumberGenerator>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IInvoiceRevertRequestRepository, InvoiceRevertRequestRepository>();
+        services.AddScoped<IInvoiceRevertService, InvoiceRevertService>();
+        // The revert service's "made today" rule reads the clock through this, so tests can move it.
+        services.TryAddSingleton(TimeProvider.System);
 
         services.AddScoped<IValidator<CreateInvoiceRequest>, CreateInvoiceRequestValidator>();
         services.AddScoped<IValidator<VoidInvoiceRequest>, VoidInvoiceRequestValidator>();
+        services.AddScoped<IValidator<CreateInvoiceRevertRequest>, CreateInvoiceRevertRequestValidator>();
+        services.AddScoped<IValidator<ApproveInvoiceRevertRequest>, ApproveInvoiceRevertRequestValidator>();
+        services.AddScoped<IValidator<RejectInvoiceRevertRequest>, RejectInvoiceRevertRequestValidator>();
 
         return services;
     }

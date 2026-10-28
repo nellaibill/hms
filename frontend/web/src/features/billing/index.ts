@@ -1,5 +1,6 @@
 export * from './components/BillingStep';
 export * from './components/InvoiceDetailCard';
+export * from './components/InvoiceRevert';
 export * from './components/InvoiceLedgerTable';
 export * from './components/LabDetailsCard';
 export * from './components/InvoiceListToolbar';
@@ -18,6 +19,7 @@ export * from './hooks/useBillingQuery';
 export * from './hooks/useBillingsQuery';
 export * from './hooks/useCreateInvoiceMutation';
 export * from './hooks/useInvoicesForReportQuery';
+export * from './hooks/useInvoiceRevert';
 export * from './hooks/usePatientInvoicesQuery';
 export * from './hooks/useRecentBillsQuery';
 export * from './hooks/useRecordPaymentMutation';

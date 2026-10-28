@@ -300,6 +300,16 @@ export const API_ROUTES = {
       procedures: '/api/v1/billing/invoices/procedures',
       /** GET ?months=6 — revenue per month + this month by billing type (DASH-01). */
       dashboardSummary: '/api/v1/billing/invoices/dashboard-summary',
+      /** GET — whether a revert can be requested, plus every revert request on the invoice (ADR-106). */
+      revert: (id: string) => `/api/v1/billing/invoices/${id}/revert`,
+      revertRequests: (id: string) => `/api/v1/billing/invoices/${id}/revert-requests`,
+    },
+    /** Mirrors HMS.Modules.Billing.Endpoints.InvoiceRevertRequestsController (ADR-106). */
+    revertRequests: {
+      base: '/api/v1/billing/revert-requests',
+      pendingCount: '/api/v1/billing/revert-requests/pending-count',
+      approve: (id: string) => `/api/v1/billing/revert-requests/${id}/approve`,
+      reject: (id: string) => `/api/v1/billing/revert-requests/${id}/reject`,
     },
   },
   /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */

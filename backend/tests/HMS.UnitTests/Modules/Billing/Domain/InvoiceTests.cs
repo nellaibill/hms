@@ -87,4 +87,41 @@ public class InvoiceTests
         paidItem.PaymentStatus.Should().Be(PaymentStatus.Paid);
         invoice.Items.Last().PaymentStatus.Should().Be(PaymentStatus.Pending);
     }
+
+    [Fact]
+    public void Revert_VoidsAPaidInvoiceAndFlagsItReverted()
+    {
+        var invoice = Invoice.Create("INV-2026-000010", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec()], createdBy: null);
+        invoice.MarkItemPaid(invoice.Items.Single().Id, null);
+        var approver = Guid.NewGuid();
+
+        invoice.Revert("  Patient left before consultation  ", approver);
+
+        invoice.IsVoided.Should().BeTrue();
+        invoice.IsReverted.Should().BeTrue();
+        invoice.VoidReason.Should().Be("Patient left before consultation");
+        invoice.VoidedBy.Should().Be(approver);
+        invoice.Items.Single().PaymentStatus.Should().Be(PaymentStatus.Paid, "the line keeps its record of what was collected");
+    }
+
+    [Fact]
+    public void Revert_OnAnAlreadyVoidedInvoice_Throws()
+    {
+        var invoice = Invoice.Create("INV-2026-000011", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec()], createdBy: null);
+        invoice.Void("Entered twice", null);
+
+        var act = () => invoice.Revert("Wrong bill", null);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Void_DoesNotFlagTheInvoiceReverted()
+    {
+        var invoice = Invoice.Create("INV-2026-000012", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec()], createdBy: null);
+
+        invoice.Void("Entered twice", null);
+
+        invoice.IsReverted.Should().BeFalse();
+    }
 }

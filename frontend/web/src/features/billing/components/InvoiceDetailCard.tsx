@@ -8,6 +8,7 @@ import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import type { Billing, BillingItem } from '../types';
 import { InvoicePrintTemplate } from './InvoicePrintTemplate';
+import { InvoiceRevertBanner, RequestRevertButton } from './InvoiceRevert';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
@@ -59,6 +60,7 @@ export function InvoiceDetailCard({
             <Printer className="h-4 w-4" />
             Print
           </Button>
+          <RequestRevertButton billing={billing} />
           {!billing.isVoided && !hasAnyPayment && canVoid && (
             <Button
               size="sm"
@@ -76,7 +78,7 @@ export function InvoiceDetailCard({
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium">
-                  Voided
+                  {billing.isReverted ? 'Reverted' : 'Voided'}
                   {billing.voidedAt
                     ? ` on ${new Date(billing.voidedAt).toLocaleString('en-IN')}`
                     : ''}
@@ -85,6 +87,7 @@ export function InvoiceDetailCard({
               </div>
             </div>
           )}
+          <InvoiceRevertBanner billing={billing} />
           <div className="flex flex-col divide-y divide-border rounded-md border border-border">
             {billing.items.map((item) => {
               const { serviceLabel, consultantName } = describeBillingItem(item);

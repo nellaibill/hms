@@ -86,6 +86,8 @@ export interface InvoiceResponse {
   isVoided: boolean;
   voidedAt?: string | null;
   voidReason?: string | null;
+  /** True when the void came from an approved OP bill revert request (ADR-106). */
+  isReverted: boolean;
   /** The visit's OP No — set only on the create/record-payment response once the visit's
    * consultation fee is paid, which is when an OP visit gets its number (ADR-103). */
   opNumber?: string | null;
@@ -125,6 +127,7 @@ export interface RecentPatientBill {
   netAmount: number;
   paymentStatus: InvoicePaymentStatus;
   isVoided: boolean;
+  isReverted: boolean;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.ProcedureListItem — one row of the OPD Procedures
@@ -165,4 +168,60 @@ export interface ProcedureListQuery {
   departmentId?: string;
   consultantId?: string;
   paymentStatus?: InvoicePaymentStatus;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceRevertRequestStatus. */
+export type InvoiceRevertRequestStatus = 'Pending' | 'Approved' | 'Rejected';
+
+/** Mirrors HMS.Modules.Billing.Contracts.CreateInvoiceRevertRequest — the reason is required. */
+export interface CreateInvoiceRevertRequest {
+  reason: string;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.ApproveInvoiceRevertRequest. */
+export interface ApproveInvoiceRevertRequest {
+  notes?: string | null;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.RejectInvoiceRevertRequest — notes are required. */
+export interface RejectInvoiceRevertRequest {
+  notes: string;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceRevertRequestResponse — an OP bill revert
+ * request (ADR-106). Invoice number, patient and amounts are snapshotted when it was raised. */
+export interface InvoiceRevertRequestResponse {
+  id: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientUhid: string;
+  netAmount: number;
+  /** What had been collected when the request was raised — the amount to refund on approval. */
+  paidAmount: number;
+  reason: string;
+  status: InvoiceRevertRequestStatus;
+  requestedBy?: string | null;
+  requestedByName?: string | null;
+  requestedAt: string;
+  decidedBy?: string | null;
+  decidedByName?: string | null;
+  decidedAt?: string | null;
+  decisionNotes?: string | null;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceRevertStatusResponse — one invoice's revert state. */
+export interface InvoiceRevertStatusResponse {
+  canRequest: boolean;
+  ineligibleReason?: string | null;
+  /** Newest first. */
+  requests: InvoiceRevertRequestResponse[];
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceRevertRequestListQuery. */
+export interface InvoiceRevertRequestListQuery {
+  page?: number;
+  pageSize?: number;
+  status?: InvoiceRevertRequestStatus;
 }
