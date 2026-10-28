@@ -5,6 +5,7 @@ using FluentValidation.Results;
 using HMS.Modules.Billing.Application;
 using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Endpoints;
+using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -90,5 +91,18 @@ public class InvoiceRevertRequestsControllerTests
             HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) },
         };
         return userId;
+    }
+
+    // The front desk raises revert requests, and the Receptionist role has finance-billing.create
+    // but not .edit — so raising one must only need create.
+    [Fact]
+    public void Create_RequiresOnlyTheBillCreatePermission()
+    {
+        var attribute = typeof(InvoiceRevertRequestsController).GetMethod(nameof(InvoiceRevertRequestsController.Create))!
+            .GetCustomAttributes(typeof(RequirePermissionAttribute), inherit: false)
+            .Cast<RequirePermissionAttribute>()
+            .Single();
+
+        attribute.GetRequirements().Cast<PermissionRequirement>().Single().PermissionKey.Should().Be("finance-billing.create");
     }
 }

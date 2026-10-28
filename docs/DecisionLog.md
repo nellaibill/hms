@@ -53,7 +53,7 @@ Client request: billing staff need to revert an OP bill. Raising a revert must r
 - A revert can only be **raised on the day the bill was made**, judged in hospital time (India Standard Time, `MonthlySeries.HospitalTimeZone`), not UTC. The service reads the clock through an injected `TimeProvider`. Approving or rejecting isn't limited to that day, so a request raised late in the evening can still be approved the next morning.
 - Endpoints (`InvoiceRevertRequestsController`):
   - `GET /api/v1/billing/invoices/{id}/revert` (`finance-billing.view`) says whether a revert can be requested and lists the bill's requests.
-  - `POST .../invoices/{id}/revert-requests` (`finance-billing.edit`, `{ reason }`) raises a request.
+  - `POST .../invoices/{id}/revert-requests` (`finance-billing.create`, `{ reason }`) raises a request. It needs `create`, not `edit`, because the Receptionist role (the front desk that raises these) has `finance-billing.create`/`view` but not `edit`.
   - `GET /api/v1/billing/revert-requests?status=` and `.../pending-count` (`finance-billing.view`) back the approval queue.
   - `POST .../revert-requests/{id}/approve` (`{ notes? }`) and `.../reject` (`{ notes }`, required) are Super Admin only. The check is the `LoginType` claim `superAdmin`, which login only issues to users whose role is "Super Admin" (`LoginTypes.RoleMatches`). Anyone else gets 403 `BILLING.REVERT_SUPER_ADMIN_ONLY`.
 - Approval calls the new `Invoice.Revert`, which voids the invoice even when paid and sets `IsReverted` (new `invoices.is_reverted` column). The request and the invoice commit in one SaveChanges.
@@ -62,7 +62,7 @@ Client request: billing staff need to revert an OP bill. Raising a revert must r
   - The amount to refund at the counter is the request's `paidAmount`.
 - "Sent to the Super Admin" is the Accounts & Finance **Revert Requests** tab. It shows a pending-count badge, Pending is oldest first, and only a Super Admin sees Approve/Reject. No in-app notification is raised: the architecture tests forbid Billing from depending on Notifications' or Identity's Application layer (which would be needed to find the Super Admin users).
 - Frontend:
-  - The invoice page has **Request Revert**. It is shown when the server says the bill qualifies and the user has `finance-billing.edit`, and opens a dialog with a required reason.
+  - The invoice page has **Request Revert**. It is shown when the server says the bill qualifies and the user has `finance-billing.create`, and opens a dialog with a required reason.
   - A banner shows a pending request (with Approve/Reject for a Super Admin), who approved a reverted bill, or why the last request was rejected.
   - Ledger, Recent Bills and the printout say "Reverted" instead of "Voided".
 

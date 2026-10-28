@@ -19,8 +19,8 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 /** "Request Revert" on an OP bill (ADR-106) — shown only when the server says this bill can be
- * reverted (an OP bill made today, not voided, no request already pending) and the user can edit
- * bills. */
+ * reverted (an OP bill made today, not voided, no request already pending) and the user can make
+ * bills — the same "finance-billing.create" the server checks, which the Receptionist role has. */
 export function RequestRevertButton({ billing }: { billing: Billing }) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
@@ -28,7 +28,7 @@ export function RequestRevertButton({ billing }: { billing: Billing }) {
   const mutation = useRequestInvoiceRevertMutation();
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!hasPermission('finance-billing.edit') || !status?.canRequest) return null;
+  if (!hasPermission('finance-billing.create') || !status?.canRequest) return null;
 
   const paidAmount = billing.items.filter((item) => item.paymentStatus === 'Paid').reduce((sum, item) => sum + item.total, 0);
 

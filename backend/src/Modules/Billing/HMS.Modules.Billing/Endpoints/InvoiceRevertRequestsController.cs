@@ -11,8 +11,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.Modules.Billing.Endpoints;
 
 /// <summary>
-/// OP bill revert requests (ADR-106). Billing staff ("finance-billing.edit") raise a request
-/// with a reason; only a Super Admin can approve or reject it, and approving reverts the bill.
+/// OP bill revert requests (ADR-106). Anyone who can make bills ("finance-billing.create" — the
+/// front desk's Receptionist role has create but not edit) raises a request with a reason; only a
+/// Super Admin can approve or reject it, and approving reverts the bill.
 /// "Super Admin" is the caller's login type — the login page only lets a user sign in as
 /// superAdmin when their role is the Super Admin role (HMS.Modules.Identity's LoginTypes), the
 /// same claim OpdConsultationsController's list gates read.
@@ -64,7 +65,7 @@ public class InvoiceRevertRequestsController : ControllerBase
     /// <response code="404">No invoice was found for the given id.</response>
     /// <response code="409">A revert request for this bill is already pending.</response>
     [Authorize]
-    [RequirePermission("finance-billing.edit")]
+    [RequirePermission("finance-billing.create")]
     [HttpPost("invoices/{invoiceId:guid}/revert-requests")]
     [ProducesResponseType(typeof(ApiResponse<InvoiceRevertRequestResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
