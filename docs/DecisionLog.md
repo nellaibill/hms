@@ -37,6 +37,34 @@ _To be documented._
 
 ## Decisions
 
+### ADR-107: OPD "Consult" is allowed only once the visit's Payment Status is Paid; otherwise the user is sent to billing first
+**Date:** 2026-10-30
+**Status:** Accepted
+
+**Context**
+Client request: on `/clinical/opd`, only patients whose Payment Status is **Paid** can be consulted. For any other status, Consult should show a popup about billing. OK on that popup takes the user to billing, and the consultation can go ahead once it's paid.
+
+**Decision**
+- The rule uses the OPD Patient List's own Payment Status column (`useVisitPaymentStatusesQuery`), computed per visit: Paid only when every non-voided invoice on the visit is fully paid. The popup states exactly what the column shows.
+- Consult on a Waiting/CheckedIn row:
+  - **Paid:** starts the consultation, as before.
+  - **Not Billed / Unavailable:** shows "Payment required before consultation". OK opens OPD Billing Entry with `?patientId=&visitId=&consultationId=`.
+  - **Pending:** the same popup. OK opens the visit's oldest unpaid invoice (`/finance/accounts/{id}?consultationId=`), where Record Payment is.
+  - **Loading:** the button stays disabled until the status is known.
+  - A user without `finance-billing.view` (e.g. a consultant) gets the popup with no billing button and is told to ask the billing counter.
+- OPD Billing Entry now honours `?visitId=` and bills that visit instead of always the patient's latest one. The OPD row isn't necessarily the latest visit (a later or scheduled visit can exist).
+- When opened with `?consultationId=`, OPD Billing Entry and Invoice Detail show `OpdConsultAfterBillingBanner`:
+  - Before the visit is fully paid, it shows "Back to OPD" and, if another bill is unpaid, a "Next unpaid bill" link.
+  - Once paid, it shows **Continue to Consultation**, which starts the consultation and opens it. It refreshes on its own because save and payment invalidate `['billings']`.
+
+**Consequences**
+- The check is UI-only. `POST .../consultations/{id}/start-consultation` doesn't check payment: the Patients module can't call Billing (Billing already depends on Patients, and the reverse would be circular), which is the same reason the Payment Status column is composed client-side.
+- The rule follows the whole visit, not just the consultation fee. An unpaid lab or radiology bill on the same visit also blocks Consult for another consultant on that visit.
+- A ₹0 consultation line stays "Pending" until a payment is recorded against it, so it also goes through the popup.
+- Rows already In Consultation or Completed still open with View, unchanged.
+
+---
+
 ### ADR-106: An OP bill is reverted only through a revert request with a reason, approved by a Super Admin
 **Date:** 2026-10-28
 **Status:** Accepted

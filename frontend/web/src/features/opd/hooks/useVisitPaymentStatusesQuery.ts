@@ -35,19 +35,35 @@ export function useVisitPaymentStatusesQuery(patientIds: string[]) {
 
   const isLoading = results.some((result) => result.isLoading);
 
-  function getStatus(patientId: string, visitId: string): OpdVisitPaymentStatusDisplay {
+  function getResult(patientId: string) {
     const index = uniquePatientIds.indexOf(patientId);
-    const result = index >= 0 ? results[index] : undefined;
+    return index >= 0 ? results[index] : undefined;
+  }
+
+  function getVisitInvoices(patientId: string, visitId: string) {
+    return (getResult(patientId)?.data ?? []).filter((invoice) => invoice.visitId === visitId && !invoice.isVoided);
+  }
+
+  function getStatus(patientId: string, visitId: string): OpdVisitPaymentStatusDisplay {
+    const result = getResult(patientId);
     // Until this patient's invoices have actually arrived (or if the lookup failed), the real
     // status is unknown — reporting 'NotBilled' here made already-paid visits briefly (or, on a
     // failed request, permanently) read as unbilled.
     if (!result || result.isPending) return 'Loading';
     if (result.isError) return 'Unavailable';
-    const invoices = result.data ?? [];
-    const visitInvoices = invoices.filter((invoice) => invoice.visitId === visitId && !invoice.isVoided);
+    const visitInvoices = getVisitInvoices(patientId, visitId);
     if (visitInvoices.length === 0) return 'NotBilled';
     return visitInvoices.every((invoice) => getOverallPaymentStatus(invoice.items) === 'Paid') ? 'Paid' : 'Pending';
   }
 
-  return { getStatus, isLoading };
+  /** The visit's unpaid invoices, oldest first — where a 'Pending' visit's payment gets
+   * collected (Record Payment on Invoice Detail). Empty unless getStatus is 'Pending'. */
+  function getUnpaidInvoiceIds(patientId: string, visitId: string): string[] {
+    return getVisitInvoices(patientId, visitId)
+      .filter((invoice) => getOverallPaymentStatus(invoice.items) !== 'Paid')
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((invoice) => invoice.id);
+  }
+
+  return { getStatus, getUnpaidInvoiceIds, isLoading };
 }
