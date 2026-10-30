@@ -1,6 +1,6 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast-context';
 import {
@@ -15,9 +15,13 @@ import {
   type BillingItem,
   type PaymentMethod,
 } from '../../features/billing';
+import { CONSULT_AFTER_BILLING_PARAM, OpdConsultAfterBillingBanner } from '../../features/opd';
 
 export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
+  // Set when an OPD "Consult" click on this unpaid visit sent the user here to collect payment.
+  const [searchParams] = useSearchParams();
+  const consultAfterBillingId = searchParams.get(CONSULT_AFTER_BILLING_PARAM);
   const { data: billing, isPending, isError } = useBillingQuery(id);
   const [itemPendingPayment, setItemPendingPayment] = useState<BillingItem | null>(null);
   const [isVoiding, setIsVoiding] = useState(false);
@@ -81,7 +85,15 @@ export default function InvoiceDetailPage() {
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
         {/* Left-aligned, not centered — matches PatientRegistrationForm/InvoiceCreatePage
             rather than leaving a large empty gutter before the card. */}
-        <div className="w-full max-w-3xl">
+        <div className="flex w-full max-w-3xl flex-col gap-4">
+          {consultAfterBillingId && (
+            <OpdConsultAfterBillingBanner
+              consultationId={consultAfterBillingId}
+              patientId={billing.patientId}
+              visitId={billing.visitId}
+              currentInvoiceId={billing.id}
+            />
+          )}
           {hasLaboratoryItems ? (
             <Tabs defaultValue="summary">
               <TabsList>
