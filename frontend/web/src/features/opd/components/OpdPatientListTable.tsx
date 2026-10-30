@@ -1,14 +1,18 @@
 import type { OpdConsultationStatus, OpdPatientListItem } from '@hms/shared';
 import { Eye, Loader2, Stethoscope } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/features/auth/AuthContext';
+import { billingEntryPathForConsult, invoicePathForConsult } from '../consultBillingLinks';
 import { useStartConsultationMutation } from '../hooks/useStartConsultationMutation';
 import { useOpdPatientListQuery } from '../hooks/useOpdPatientListQuery';
 import { useVisitPaymentStatusesQuery } from '../hooks/useVisitPaymentStatusesQuery';
+import { OpdBillingRequiredDialog, type OpdBlockedPaymentStatus } from './OpdBillingRequiredDialog';
 import { OpdListHeading } from './OpdListHeading';
 import { OpdPaymentStatusBadge } from './OpdPaymentStatusBadge';
 import { OpdStatusBadge } from './OpdStatusBadge';
@@ -63,13 +67,32 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
     search: filters.search || undefined,
   });
 
+  const { getStatus: getPaymentStatus, getUnpaidInvoiceIds } = useVisitPaymentStatusesQuery((data?.items ?? []).map((row) => row.patientId));
+  const { hasPermission } = useAuth();
+  const [billingRequired, setBillingRequired] = useState<{ row: OpdPatientListItem; status: OpdBlockedPaymentStatus } | null>(null);
+
+  // Only a visit whose Payment Status is Paid can be consulted — anything else gets the
+  // "Payment required" popup, whose OK goes to billing for that visit.
   function handleConsult(row: OpdPatientListItem) {
+    const paymentStatus = getPaymentStatus(row.patientId, row.visitId);
+    if (paymentStatus === 'Loading') return;
+    if (paymentStatus !== 'Paid') {
+      setBillingRequired({ row, status: paymentStatus });
+      return;
+    }
     startConsultation.mutate(row.consultationId, {
       onSuccess: () => navigate(`/clinical/opd/consultations/${row.consultationId}`),
     });
   }
 
-  const { getStatus: getPaymentStatus } = useVisitPaymentStatusesQuery((data?.items ?? []).map((row) => row.patientId));
+  // A visit with an unpaid invoice is paid on that invoice; one with none (or whose billing
+  // couldn't be loaded) goes to OPD Billing Entry, which still flags anything already billed.
+  function handleGoToBilling() {
+    if (!billingRequired) return;
+    const { row, status } = billingRequired;
+    const unpaidInvoiceId = status === 'Pending' ? getUnpaidInvoiceIds(row.patientId, row.visitId)[0] : undefined;
+    navigate(unpaidInvoiceId ? invoicePathForConsult(unpaidInvoiceId, row.consultationId) : billingEntryPathForConsult(row));
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -151,7 +174,12 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           {CONSULTABLE_STATUSES.includes(row.status) ? (
-                            <Button size="sm" className="gap-1.5" disabled={startConsultation.isPending} onClick={() => handleConsult(row)}>
+                            <Button
+                              size="sm"
+                              className="gap-1.5"
+                              disabled={startConsultation.isPending || getPaymentStatus(row.patientId, row.visitId) === 'Loading'}
+                              onClick={() => handleConsult(row)}
+                            >
                               <Stethoscope className="h-3.5 w-3.5" />
                               Consult
                             </Button>
@@ -182,6 +210,16 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
           </>
         )}
       </LoadingOverlay>
+
+      {billingRequired && (
+        <OpdBillingRequiredDialog
+          patientName={billingRequired.row.patientName}
+          status={billingRequired.status}
+          canBill={hasPermission('finance-billing.view')}
+          onGoToBilling={handleGoToBilling}
+          onCancel={() => setBillingRequired(null)}
+        />
+      )}
     </div>
   );
 }

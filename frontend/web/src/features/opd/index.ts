@@ -1,4 +1,6 @@
+export * from './consultBillingLinks';
 export * from './components/OpdAdmissionsListTable';
+export * from './components/OpdConsultAfterBillingBanner';
 export * from './components/OpdConsultationListTable';
 export * from './components/OpdFilterBar';
 export * from './components/OpdInvestigationsListTable';

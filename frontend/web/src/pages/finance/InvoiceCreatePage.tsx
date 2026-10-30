@@ -32,6 +32,7 @@ import {
   type ConsultationBillingFormValues,
   type PaymentMethod,
 } from '../../features/billing';
+import { CONSULT_AFTER_BILLING_PARAM, OpdConsultAfterBillingBanner } from '../../features/opd';
 import { usePatientQuery, usePatientVisitsQuery, VerifyPatientDialog } from '../../features/patients';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
@@ -89,9 +90,13 @@ export default function InvoiceCreatePage() {
   // entry for the common case (billing the visit that was just registered). Prefilled from the
   // patient's most recent visit only; a patient with none (never went through Registration
   // Details, or was created before the visit feature existed) falls back to one blank row,
-  // same as before this change.
+  // same as before this change. ?visitId= (OPD "Consult" on an unpaid visit) bills that visit
+  // instead — the OPD row may not be the patient's latest visit.
+  const [searchParams] = useSearchParams();
   const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient?.id);
-  const latestVisit = visits?.[0];
+  const requestedVisitId = searchParams.get('visitId');
+  const billingVisit = visits?.find((visit) => visit.visitId === requestedVisitId) ?? visits?.[0];
+  const consultAfterBillingId = searchParams.get(CONSULT_AFTER_BILLING_PARAM);
 
   // Guards against double-billing a consultation this specific visit already had billed —
   // without this, re-opening OPD Billing Entry for the same visit (e.g. to add a Laboratory
@@ -108,26 +113,26 @@ export default function InvoiceCreatePage() {
   // count — that consultation was never actually billed.
   const { data: patientInvoices, isPending: invoicesPending } = usePatientInvoicesQuery(patient?.id);
   const consultationAlreadyBilledForVisit = useMemo(() => {
-    if (!latestVisit) return false;
+    if (!billingVisit) return false;
     return (patientInvoices ?? []).some(
       (invoice) =>
         !invoice.isVoided &&
-        invoice.visitId === latestVisit.visitId &&
+        invoice.visitId === billingVisit.visitId &&
         invoice.items.some((item) => item.billingType === 'Consultation'),
     );
-  }, [patientInvoices, latestVisit]);
+  }, [patientInvoices, billingVisit]);
 
   // OPD-01: tests the doctor picked from the Laboratory/Radiology catalog on this visit's
   // consultation are pre-added as bill lines (billing them is what creates the lab order), each
   // with the ordering doctor as the referring consultant. Anything already billed on this visit
   // (a non-voided invoice line for the same service) is left out, so re-opening the page after
   // billing the tests never suggests billing them twice.
-  const { data: billableInvestigations, isPending: billableInvestigationsPending } = useBillableInvestigationsQuery(latestVisit?.visitId);
+  const { data: billableInvestigations, isPending: billableInvestigationsPending } = useBillableInvestigationsQuery(billingVisit?.visitId);
   const investigationRows = useMemo(() => {
-    if (!latestVisit || !billableInvestigations) return { laboratory: [], radiology: [] };
+    if (!billingVisit || !billableInvestigations) return { laboratory: [], radiology: [] };
     const alreadyBilled = new Set(
       (patientInvoices ?? [])
-        .filter((invoice) => !invoice.isVoided && invoice.visitId === latestVisit.visitId)
+        .filter((invoice) => !invoice.isVoided && invoice.visitId === billingVisit.visitId)
         .flatMap((invoice) => invoice.items)
         .filter((item) => item.billingType === 'Laboratory' || item.billingType === 'Radiology')
         .map((item) => item.serviceId)
@@ -142,7 +147,7 @@ export default function InvoiceCreatePage() {
         .filter((investigation) => investigation.department === 'Radiology')
         .map((investigation) => ({ ...emptyServiceRow, serviceId: investigation.serviceId, consultantId: investigation.consultantId })),
     };
-  }, [latestVisit, billableInvestigations, patientInvoices]);
+  }, [billingVisit, billableInvestigations, patientInvoices]);
 
   const billingDefaultValues = useMemo<BillingFormValues>(() => {
     const withInvestigations = (values: BillingFormValues): BillingFormValues => ({
@@ -150,10 +155,10 @@ export default function InvoiceCreatePage() {
       laboratory: investigationRows.laboratory.length > 0 ? investigationRows.laboratory : values.laboratory,
       radiology: investigationRows.radiology.length > 0 ? investigationRows.radiology : values.radiology,
     });
-    if (consultationAlreadyBilledForVisit || !latestVisit || latestVisit.consultations.length === 0) {
+    if (consultationAlreadyBilledForVisit || !billingVisit || billingVisit.consultations.length === 0) {
       return withInvestigations(defaultBillingFormValues);
     }
-    const consultation: ConsultationBillingFormValues[] = latestVisit.consultations.map((c) => ({
+    const consultation: ConsultationBillingFormValues[] = billingVisit.consultations.map((c) => ({
       ...emptyConsultation,
       departmentId: c.departmentId,
       consultantId: c.consultantId,
@@ -166,7 +171,7 @@ export default function InvoiceCreatePage() {
       fromVisit: true,
     }));
     return withInvestigations({ ...defaultBillingFormValues, consultation });
-  }, [latestVisit, consultationAlreadyBilledForVisit, investigationRows]);
+  }, [billingVisit, consultationAlreadyBilledForVisit, investigationRows]);
 
   // Guards against losing an in-progress, unsaved invoice — a receptionist part-way through
   // billing several items who accidentally hits back/closes the tab previously lost
@@ -267,7 +272,6 @@ export default function InvoiceCreatePage() {
 
   // ?patientId= (Patient Details → Billing → New Bill) preselects that patient once, through the
   // same path as the picker so an unverified patient still gets VerifyPatientDialog.
-  const [searchParams] = useSearchParams();
   const { data: preselectedPatient } = usePatientQuery(searchParams.get('patientId') ?? undefined);
   const preselectAppliedRef = useRef(false);
   useEffect(() => {
@@ -298,7 +302,7 @@ export default function InvoiceCreatePage() {
       // back to the patient id itself — mirrors CreateInvoiceRequest.VisitId's own doc comment.
       const billing = await createInvoiceMutation.mutateAsync({
         patientId: patient.id,
-        visitId: latestVisit?.visitId ?? patient.id,
+        visitId: billingVisit?.visitId ?? patient.id,
         values,
         patient: { name: `${patient.firstName} ${patient.lastName}`, uhid: patient.uhid },
       });
@@ -396,6 +400,15 @@ export default function InvoiceCreatePage() {
                 </CardContent>
               </Card>
 
+              {consultAfterBillingId && billingVisit && billingVisit.visitId === requestedVisitId && (
+                <OpdConsultAfterBillingBanner
+                  consultationId={consultAfterBillingId}
+                  patientId={patient.id}
+                  visitId={billingVisit.visitId}
+                  currentInvoiceId={savedInvoice?.id}
+                />
+              )}
+
               {savedInvoice ? (
                 // Saved — shows the real invoice view right here (same InvoiceDetailCard the
                 // standalone Invoice Detail page renders) instead of navigating there, so
@@ -430,7 +443,7 @@ export default function InvoiceCreatePage() {
                 </>
               ) : (
                 <>
-                  {visitsPending || invoicesPending || (Boolean(latestVisit) && billableInvestigationsPending) ? (
+                  {visitsPending || invoicesPending || (Boolean(billingVisit) && billableInvestigationsPending) ? (
                     <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading this patient's visit details…
