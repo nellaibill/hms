@@ -1,6 +1,7 @@
 import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceCostPrice, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
 import { resolveConsultantCharge, resolveRecordCostPrice, resolveRecordLabel } from '@/features/masters';
 import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
+import { linesSignature, type DiscountableLine } from './billingDiscount';
 import type {
   BillingFormValues,
   ConsultationBillingFormValues,
@@ -97,6 +98,18 @@ export function summarizeBilling(values: BillingFormValues): BillingSummary {
     toSummaryLine('Injection', SIMPLE_SERVICE_LABELS.injection, summarizeRows(values.injection, isSimpleServiceEntryActive)),
     toSummaryLine('File', SIMPLE_SERVICE_LABELS.file, summarizeRows(values.file, isSimpleServiceEntryActive)),
   ];
+
+  // The bill discount (ADR-109) sits outside the rows — fold each line's share into its
+  // category, so every total below includes it.
+  const rowDiscountById = new Map(toUndiscountedBillingItems(values).map((item) => [item.id, item.discount]));
+  for (const item of toBillingItems(values)) {
+    const share = item.discount - (rowDiscountById.get(item.id) ?? 0);
+    const line = lines.find((candidate) => candidate.billingType === item.billingType);
+    if (line && share > 0) {
+      line.discount += share;
+      line.net = Math.max(line.charge - line.discount, 0);
+    }
+  }
 
   const activeLines = lines.filter((line) => line.active);
   const grossTotal = activeLines.reduce((sum, line) => sum + line.charge, 0);
@@ -196,9 +209,41 @@ function laboratoryRowToBillingItem(entry: LaboratoryBillingRowFormValues, index
  * contribute more than one. Every produced line starts Pending here — the form itself requires
  * full payment before save (see billingValidation.ts's `payments`), but marking every item Paid
  * is something InvoiceService applies server-side once the save actually succeeds, not
- * something this pre-save preview does.
+ * something this pre-save preview does. Carries the bill discount (ADR-109) on each line it
+ * covers, unless the bill has changed since it was applied (see isFormDiscountStale).
  */
 export function toBillingItems(values: BillingFormValues): BillingItem[] {
+  const items = toUndiscountedBillingItems(values);
+  const discount = values.discount;
+  if (!discount || discount.signature !== linesSignature(toDiscountableLines(items))) return items;
+
+  const shareById = new Map(discount.allocations.map((allocation) => [allocation.lineId, allocation.amount]));
+  return items.map((item) => {
+    const share = shareById.get(item.id) ?? 0;
+    if (share === 0) return item;
+    const lineDiscount = item.discount + share;
+    return { ...item, discount: lineDiscount, total: Math.max(item.quantity * item.unitPrice - lineDiscount, 0) };
+  });
+}
+
+/** True when a bill discount was added but the bill has changed since (a line added, removed or
+ * re-priced) — its per-line shares no longer fit, so it must be applied again before saving. */
+export function isFormDiscountStale(values: BillingFormValues): boolean {
+  if (!values.discount) return false;
+  return values.discount.signature !== linesSignature(toDiscountableLines(toUndiscountedBillingItems(values)));
+}
+
+/** The form's bill lines as the discount dialog lists them — id, name and charge before discount. */
+export function toDiscountableLines(items: BillingItem[]): DiscountableLine[] {
+  return items.map((item) => ({
+    id: item.id,
+    label: `${item.billingType} — ${describeBillingItem(item).serviceLabel}`,
+    amount: item.quantity * item.unitPrice,
+  }));
+}
+
+/** toBillingItems without the bill discount — the lines exactly as the category cards hold them. */
+export function toUndiscountedBillingItems(values: BillingFormValues): BillingItem[] {
   const items: BillingItem[] = [];
 
   values.consultation.forEach((entry, index) => {

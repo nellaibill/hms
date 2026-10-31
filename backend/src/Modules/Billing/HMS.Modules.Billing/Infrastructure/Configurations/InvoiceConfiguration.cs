@@ -31,6 +31,7 @@ internal class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.VoidedBy).HasColumnName("voided_by");
         builder.Property(i => i.VoidReason).HasColumnName("void_reason").HasMaxLength(500);
         builder.Property(i => i.IsReverted).HasColumnName("is_reverted").IsRequired().HasDefaultValue(false);
+        builder.Property(i => i.DiscountStatus).HasColumnName("discount_status").HasConversion<string>().HasMaxLength(20);
 
         builder.Property(i => i.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(i => i.CreatedBy).HasColumnName("created_by");

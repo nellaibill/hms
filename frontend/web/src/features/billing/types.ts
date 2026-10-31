@@ -1,3 +1,5 @@
+import type { InvoiceDiscountRequestStatus } from '@hms/shared';
+
 export const BILLING_TYPES = ['Consultation', 'Radiology', 'Laboratory', 'Procedure', 'Injection', 'File'] as const;
 export type BillingType = (typeof BILLING_TYPES)[number];
 
@@ -44,7 +46,7 @@ export interface BillingItem {
   unitPrice: number;
   discount: number;
   discountApproved: boolean;
-  /** Name/username of whoever authorized the discount — set when a non-self-approving role (e.g. Receptionist) had to go through supervisor override. Empty when no override was needed. */
+  /** Username of the Super Admin who approved this line's discount (ADR-109). */
   discountApprovedBy?: string;
   paymentStatus: PaymentStatus;
   total: number;
@@ -83,6 +85,8 @@ export interface RecentBill {
   isVoided: boolean;
   /** Voided by an approved OP bill revert request (ADR-106) rather than a plain void. */
   isReverted: boolean;
+  /** The bill's latest discount request (ADR-109); undefined when none was raised. */
+  discountStatus?: InvoiceDiscountRequestStatus;
 }
 
 /** The bill for one visit — totals are always derived from `items`, never stored independently. */
@@ -110,6 +114,9 @@ export interface Billing {
   voidReason?: string;
   /** Voided by an approved OP bill revert request (ADR-106) rather than a plain void. */
   isReverted: boolean;
+  /** The bill's latest discount request (ADR-109); undefined when none was raised. While Pending
+   * the bill can't be paid. */
+  discountStatus?: InvoiceDiscountRequestStatus;
   /** The visit's OP No, present only on the create/record-payment result that paid its
    * consultation fee (ADR-103) — never on an invoice read back later. */
   opNumber?: string;

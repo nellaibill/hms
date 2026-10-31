@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
-import { usePendingRevertCountQuery } from '@/features/billing';
+import { usePendingDiscountCountQuery, usePendingRevertCountQuery } from '@/features/billing';
 import { cn } from '@/lib/utils';
 
 const TABS: { to: string; label: string; feature?: string }[] = [
@@ -8,6 +8,8 @@ const TABS: { to: string; label: string; feature?: string }[] = [
   { to: '/finance/accounts/invoices', label: 'All Invoices' },
   // OP bill revert requests (ADR-106) — the Super Admin's approval queue.
   { to: '/finance/accounts/revert-requests', label: 'Revert Requests' },
+  // Bill discount requests (ADR-109) — the Super Admin's other approval queue.
+  { to: '/finance/accounts/discount-requests', label: 'Discount Requests' },
   { to: '/finance/accounts/reports', label: 'Income & Expense' },
   { to: '/finance/accounts/reports/profit', label: 'Hospital Profit' },
   { to: '/finance/accounts/reports/laboratory', label: 'Laboratory' },
@@ -30,6 +32,11 @@ export function AccountsNavTabs() {
   const { hasFeature } = useAuth();
   const tabs = TABS.filter((tab) => !tab.feature || hasFeature(tab.feature));
   const { data: pendingRevertCount = 0 } = usePendingRevertCountQuery();
+  const { data: pendingDiscountCount = 0 } = usePendingDiscountCountQuery();
+  const pendingCountByTab: Record<string, number> = {
+    '/finance/accounts/revert-requests': pendingRevertCount,
+    '/finance/accounts/discount-requests': pendingDiscountCount,
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-1 overflow-x-auto border-b border-border">
@@ -53,12 +60,12 @@ export function AccountsNavTabs() {
           }
         >
           {tab.label}
-          {tab.to === '/finance/accounts/revert-requests' && pendingRevertCount > 0 && (
+          {(pendingCountByTab[tab.to] ?? 0) > 0 && (
             <span
               className="ml-1.5 rounded-full bg-warning px-1.5 text-xs font-semibold text-warning-foreground"
-              aria-label={`${pendingRevertCount} pending`}
+              aria-label={`${pendingCountByTab[tab.to]} pending`}
             >
-              {pendingRevertCount}
+              {pendingCountByTab[tab.to]}
             </span>
           )}
         </NavLink>

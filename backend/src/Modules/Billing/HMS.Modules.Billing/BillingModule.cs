@@ -42,6 +42,8 @@ public static class BillingModule
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IInvoiceRevertRequestRepository, InvoiceRevertRequestRepository>();
         services.AddScoped<IInvoiceRevertService, InvoiceRevertService>();
+        services.AddScoped<IInvoiceDiscountRequestRepository, InvoiceDiscountRequestRepository>();
+        services.AddScoped<IInvoiceDiscountService, InvoiceDiscountService>();
         // The revert service's "made today" rule reads the clock through this, so tests can move it.
         services.TryAddSingleton(TimeProvider.System);
 
@@ -50,6 +52,10 @@ public static class BillingModule
         services.AddScoped<IValidator<CreateInvoiceRevertRequest>, CreateInvoiceRevertRequestValidator>();
         services.AddScoped<IValidator<ApproveInvoiceRevertRequest>, ApproveInvoiceRevertRequestValidator>();
         services.AddScoped<IValidator<RejectInvoiceRevertRequest>, RejectInvoiceRevertRequestValidator>();
+        services.AddScoped<IValidator<CreateInvoiceDiscountRequest>, CreateInvoiceDiscountRequestValidator>();
+        services.AddScoped<IValidator<ApproveInvoiceDiscountRequest>, ApproveInvoiceDiscountRequestValidator>();
+        services.AddScoped<IValidator<RejectInvoiceDiscountRequest>, RejectInvoiceDiscountRequestValidator>();
+        services.AddScoped<IValidator<PayInvoiceRequest>, PayInvoiceRequestValidator>();
 
         return services;
     }

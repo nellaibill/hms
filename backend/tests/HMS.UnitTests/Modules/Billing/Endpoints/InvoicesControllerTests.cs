@@ -5,6 +5,7 @@ using FluentValidation.Results;
 using HMS.Modules.Billing.Application;
 using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Endpoints;
+using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -13,9 +14,9 @@ using Xunit;
 
 namespace HMS.UnitTests.Modules.Billing.Endpoints;
 
-// Controller-level, same rationale as ProductsControllerTests (ADR-077): the permission check
-// under test (ADR-080) needs the caller's ClaimsPrincipal, which lives in the Controller, not
-// the Service.
+// Controller-level, same rationale as ProductsControllerTests (ADR-077): who may approve their
+// own discount (ADR-109) comes from the caller's ClaimsPrincipal, which lives in the
+// Controller, not the Service.
 public class InvoicesControllerTests
 {
     private readonly IInvoiceService _service = Substitute.For<IInvoiceService>();
@@ -26,47 +27,65 @@ public class InvoicesControllerTests
     {
         _createValidator.ValidateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<CancellationToken>())
             .Returns(new ValidationResult());
-        _sut = new InvoicesController(_service, _createValidator, Substitute.For<IValidator<VoidInvoiceRequest>>());
-    }
-
-    [Fact]
-    public async Task Create_RejectsAnApprovedDiscountFromACallerWithoutTheApprovalPermission()
-    {
-        SetCaller(includingDiscountApprove: false);
-        var request = BuildRequest(discountApproved: true);
-
-        var result = await _sut.Create(request, CancellationToken.None);
-
-        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-        objectResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
-        await _service.DidNotReceive().CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task Create_AllowsAnApprovedDiscountFromACallerWithTheApprovalPermission()
-    {
-        SetCaller(includingDiscountApprove: true);
-        var request = BuildRequest(discountApproved: true);
-        _service.CreateAsync(request, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        var payValidator = Substitute.For<IValidator<PayInvoiceRequest>>();
+        payValidator.ValidateAsync(Arg.Any<PayInvoiceRequest>(), Arg.Any<CancellationToken>()).Returns(new ValidationResult());
+        _sut = new InvoicesController(_service, _createValidator, Substitute.For<IValidator<VoidInvoiceRequest>>(), payValidator);
+        _service.CreateAsync(Arg.Any<CreateInvoiceRequest>(), Arg.Any<BillingActor>(), Arg.Any<CancellationToken>())
             .Returns(Result<InvoiceResponse>.Success(new InvoiceResponse { Id = Guid.NewGuid() }));
+    }
+
+    [Fact]
+    public async Task Create_PassesASuperAdminCallerAsOneWhoseDiscountNeedsNoApproval()
+    {
+        var userId = SetCaller("superAdmin", "superadmin");
+        var request = BuildRequest(discount: 100);
 
         var result = await _sut.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<CreatedAtActionResult>();
-        await _service.Received(1).CreateAsync(request, Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await _service.Received(1).CreateAsync(request, new BillingActor(userId, "superadmin", IsSuperAdmin: true), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public async Task Create_AllowsAnUndiscountedInvoiceFromACallerWithoutTheApprovalPermission()
+    // ADR-080's "discount-approve" permission no longer lets anyone self-approve a bill discount:
+    // only a Super Admin does (ADR-109) — everyone else's discount becomes a request.
+    [Theory]
+    [InlineData("admin")]
+    [InlineData("receptionist")]
+    [InlineData("accounts")]
+    public async Task Create_PassesAnyOtherCallerAsOneWhoseDiscountNeedsApproval(string loginType)
     {
-        SetCaller(includingDiscountApprove: false);
-        var request = BuildRequest(discountApproved: false);
-        _service.CreateAsync(request, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(Result<InvoiceResponse>.Success(new InvoiceResponse { Id = Guid.NewGuid() }));
+        var userId = SetCaller(loginType, "reception1", includingDiscountApprove: true);
+        var request = BuildRequest(discount: 100);
 
         var result = await _sut.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<CreatedAtActionResult>();
+        await _service.Received(1).CreateAsync(request, new BillingActor(userId, "reception1", IsSuperAdmin: false), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Pay_ReturnsConflictWhileADiscountIsWaitingForApproval()
+    {
+        SetCaller("receptionist");
+        _service.PayAsync(Arg.Any<Guid>(), Arg.Any<PayInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, "Waiting"));
+
+        var result = await _sut.Pay(Guid.NewGuid(), new PayInvoiceRequest(), CancellationToken.None);
+
+        result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+    }
+
+    // The front desk collects payment once a discount is decided, and the Receptionist role has
+    // finance-billing.create but not .edit — so collecting must only need create.
+    [Fact]
+    public void Pay_RequiresOnlyTheBillCreatePermission()
+    {
+        var attribute = typeof(InvoicesController).GetMethod(nameof(InvoicesController.Pay))!
+            .GetCustomAttributes(typeof(RequirePermissionAttribute), inherit: false)
+            .Cast<RequirePermissionAttribute>()
+            .Single();
+
+        attribute.GetRequirements().Cast<PermissionRequirement>().Single().PermissionKey.Should().Be("finance-billing.create");
     }
 
     // The scoping under test here needs a ConsultantId/RoleName claim, which no existing
@@ -103,9 +122,10 @@ public class InvoicesControllerTests
             Arg.Any<CancellationToken>());
     }
 
-    private void SetCaller(bool includingDiscountApprove)
+    private Guid SetCaller(string loginType, string username = "user1", bool includingDiscountApprove = false)
     {
-        var claims = new List<Claim> { new("UserId", Guid.NewGuid().ToString()) };
+        var userId = Guid.NewGuid();
+        var claims = new List<Claim> { new("UserId", userId.ToString()), new("Username", username), new("LoginType", loginType) };
         if (includingDiscountApprove)
         {
             claims.Add(new Claim("Permission", "finance-billing.discount-approve"));
@@ -115,6 +135,7 @@ public class InvoicesControllerTests
         {
             HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) },
         };
+        return userId;
     }
 
     private void SetCallerConsultant(Guid? consultantId, string roleName)
@@ -131,7 +152,7 @@ public class InvoicesControllerTests
         };
     }
 
-    private static CreateInvoiceRequest BuildRequest(bool discountApproved) => new()
+    private static CreateInvoiceRequest BuildRequest(decimal discount) => new()
     {
         PatientId = Guid.NewGuid(),
         VisitId = Guid.NewGuid(),
@@ -144,10 +165,11 @@ public class InvoicesControllerTests
                 BillingType = BillingType.Consultation,
                 Quantity = 1,
                 UnitPrice = 500,
-                Discount = discountApproved ? 100 : 0,
-                DiscountApproved = discountApproved,
-                DiscountApprovedBy = discountApproved ? "Self" : null,
+                Discount = discount,
             },
         ],
+        DiscountType = InvoiceDiscountType.Amount,
+        DiscountValue = discount,
+        DiscountReason = discount > 0 ? "Staff family" : null,
     };
 }

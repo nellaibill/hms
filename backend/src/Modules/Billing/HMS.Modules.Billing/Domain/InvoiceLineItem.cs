@@ -120,6 +120,29 @@ internal class InvoiceLineItem : Entity
             createdBy);
     }
 
+    /// <summary>Puts a Super Admin-approved discount on this line (ADR-109) and recomputes
+    /// <see cref="Total"/> — the one exception to "computed once at creation", since a counter
+    /// discount is decided after the bill is saved. Only an unpaid line can take one: collected
+    /// money isn't re-priced. Callers (Invoice.ApplyDiscount) have already checked both rules so
+    /// they can return a proper error; they are repeated here as invariants.</summary>
+    public void ApplyDiscount(decimal discount, string? approvedByName, Guid? updatedBy)
+    {
+        if (PaymentStatus == PaymentStatus.Paid)
+        {
+            throw new InvalidOperationException("A paid line can't be discounted.");
+        }
+        if (discount < 0 || discount > Quantity * UnitPrice)
+        {
+            throw new ArgumentOutOfRangeException(nameof(discount), "A discount must be between zero and the line's charge.");
+        }
+
+        Discount = discount;
+        DiscountApproved = true;
+        DiscountApprovedBy = string.IsNullOrWhiteSpace(approvedByName) ? null : approvedByName.Trim();
+        Total = Math.Max((Quantity * UnitPrice) - discount, 0m);
+        MarkUpdated(updatedBy);
+    }
+
     /// <summary>Caller (InvoiceService) is responsible for creating the corresponding
     /// Payment record — this only flips the denormalized status the ledger reads. Also
     /// clears ConsultantId: once a line item is paid, it's a settled transaction record, not

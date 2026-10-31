@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-109: A bill discount is a request approved by a Super Admin; the bill waits unpaid until it's decided
+**Date:** 2026-10-31
+**Status:** Accepted
+
+**Context**
+The client asked for a discount on OPD bills: like "Add another payment method", an "Add discount" that covers the whole bill or only the ticked lines, approved by the Super Admin. Every invoice line already had `Discount`/`DiscountApproved`/`DiscountApprovedBy`, but no screen entered a discount (ADR-080 removed the half-built override UI), and the server applied any line `Discount` straight away — only the `DiscountApproved` flag was gated. The counter also requires full payment before a bill saves, so a discount waiting for approval has no settled amount to collect.
+
+**Decision**
+- **"Add discount"** in the Billing Summary (OPD Billing Entry) opens `DiscountDialog`: tick the lines (all = whole bill), a ₹ amount or a %, and a required reason. The discount is spread over the ticked lines in proportion to their charges, in whole rupees (`billingDiscount.ts`'s `allocateDiscount`). A form discount keeps a snapshot of the bill's lines; if the bill changes afterwards it shows as out of date and must be applied again before saving.
+- **Only a Super Admin approves** (login type `superAdmin`, as for ADR-106 reverts). A Super Admin's own discount applies at once and the reduced amount is collected as usual. Anyone else's — including roles holding ADR-080's `finance-billing.discount-approve` — becomes an `InvoiceDiscountRequest`: the bill is saved at full price, unpaid, with `Invoice.DiscountStatus = Pending`, and "Collect Payment" becomes "Send for Approval".
+- The server decides, not the client: `CreateInvoiceLineItemRequest.DiscountApproved`/`DiscountApprovedBy` are gone, every line is created at full price, and `Invoice.ApplyDiscount` puts approved discounts on (re-pricing the unpaid lines and the bill's totals). Discounts cover OP charges only (Consultation, Radiology, Laboratory, Procedure, Injection, File) and a line is discounted once.
+- **While Pending no payment is taken** (`BILLING.DISCOUNT_APPROVAL_PENDING`, both per-line and whole-bill). Voiding the bill cancels the request.
+- The Super Admin decides from a new Accounts **Discount Requests** tab (pending-count badge) or the bill's own banner; rejecting needs a reason. Approving or rejecting leaves the bill payable: a new whole-bill **Collect Payment** (`POST invoices/{id}/pay`, needs only `finance-billing.create`, same split-payment rules as billing) collects what's owed, including settling a fully discounted ₹0 bill. The bill page and OPD Billing Entry check back every 15 s while a request waits.
+- "Request Discount" on a saved, unpaid bill raises the same request for lines that have no discount yet.
+- Each request snapshots the bill and each line's charge (`invoice_discount_requests` + `invoice_discount_request_lines`, migration `AddInvoiceDiscountRequests`); a Super Admin's own discount is recorded as an already-approved request, so every discount has one audit trail.
+
+**Consequences**
+- The patient waits (or comes back) until the Super Admin decides; OPD Consult stays blocked meanwhile (ADR-107), and the OP No is issued on payment as before (ADR-103).
+- No in-app notification to the Super Admin — the tab badge is the signal (Billing may not depend on Notifications, same gap as ADR-106).
+- Pharmacy (its own counter discount) and IPD final bills are not covered. No maximum-discount limit.
+- Run Platform Migrate on each tenant after deploy.
+
+---
+
 ### ADR-108: A login is created from the Employee or Consultant form, in a Login access card, not only from Settings → Users
 **Date:** 2026-10-31
 **Status:** Accepted
