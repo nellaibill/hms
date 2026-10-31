@@ -15,8 +15,6 @@ export type LoginAccessSubject = 'employee' | 'consultant';
 /** Everything the card holds until the record itself is saved. */
 export interface LoginAccessDraft {
   enabled: boolean;
-  /** 'new' creates a login; 'existing' links one that's already in Settings → Users. */
-  mode: 'new' | 'existing';
   username: string;
   roleId: string;
   password: string;
@@ -24,7 +22,6 @@ export interface LoginAccessDraft {
   /** Consultant only — an employee's login uses the employee's own email and phone. */
   email: string;
   phoneNumber: string;
-  existingUserId: string;
 }
 
 export type LoginAccessErrors = Partial<Record<keyof LoginAccessDraft, string>>;
@@ -32,14 +29,12 @@ export type LoginAccessErrors = Partial<Record<keyof LoginAccessDraft, string>>;
 export function emptyLoginDraft(enabled = false): LoginAccessDraft {
   return {
     enabled,
-    mode: 'new',
     username: '',
     roleId: '',
     password: '',
     confirmPassword: '',
     email: '',
     phoneNumber: '',
-    existingUserId: '',
   };
 }
 
@@ -50,9 +45,6 @@ export function validateLoginDraft(
 ): LoginAccessErrors {
   if (!draft.enabled) {
     return {};
-  }
-  if (draft.mode === 'existing') {
-    return draft.existingUserId ? {} : { existingUserId: 'Choose the login to link' };
   }
 
   const result = (subject === 'consultant' ? consultantNewLoginSchema : newLoginSchema).safeParse(
@@ -99,21 +91,11 @@ export function splitPersonName(fullName: string): { firstName: string; lastName
   return { firstName: tokens.slice(0, -1).join(' '), lastName: tokens[tokens.length - 1] };
 }
 
-/** What an Employee create/update request carries for a draft: a new login, or an existing one's id. */
-export function toEmployeeLoginPayload(draft: LoginAccessDraft): {
-  login: EmployeeLoginRequest | null;
-  userId: string | null;
-} {
-  if (!draft.enabled) {
-    return { login: null, userId: null };
-  }
-  if (draft.mode === 'existing') {
-    return { login: null, userId: draft.existingUserId };
-  }
-  return {
-    login: { username: draft.username.trim(), password: draft.password, roleId: draft.roleId },
-    userId: null,
-  };
+/** The `login` an Employee create/update request carries for a draft — null when login access is off. */
+export function toEmployeeLoginRequest(draft: LoginAccessDraft): EmployeeLoginRequest | null {
+  return draft.enabled
+    ? { username: draft.username.trim(), password: draft.password, roleId: draft.roleId }
+    : null;
 }
 
 /**
@@ -143,10 +125,6 @@ export function loginErrorsFromApiError(error: ApiError | null | undefined): Log
       break;
     case 'IDENTITY.USER_INVALID_ROLE':
       errors.roleId = 'Choose a role.';
-      break;
-    case 'HR.USER_ALREADY_LINKED':
-    case 'IDENTITY.USER_CONSULTANT_ALREADY_LINKED':
-      errors.existingUserId = error.message;
       break;
   }
   return errors;

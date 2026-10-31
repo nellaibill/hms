@@ -4,7 +4,7 @@ import { Loader2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { useToast } from '@/components/ui/toast-context';
-import { toEmployeeLoginPayload, type LoginAccessDraft } from '@/features/users';
+import { toEmployeeLoginRequest, type LoginAccessDraft } from '@/features/users';
 import { EmployeeForm, useEmployeeQuery, useUpdateEmployeeMutation } from '../../features/employees';
 
 export default function EmployeeEditPage() {
@@ -35,9 +35,9 @@ export default function EmployeeEditPage() {
   }
 
   function handleSubmit(values: EmployeeFormValues, loginDraft: LoginAccessDraft) {
-    // The login link isn't a form field any more — keep the existing one unless the Login
-    // access card links or creates one now.
-    const { login, userId } = toEmployeeLoginPayload(loginDraft);
+    // The login link isn't a form field any more — keep the existing one; the Login access
+    // card only creates one for an employee who has none.
+    const login = toEmployeeLoginRequest(loginDraft);
     const request: UpdateEmployeeRequest = {
       firstName: values.firstName,
       lastName: values.lastName,
@@ -55,7 +55,7 @@ export default function EmployeeEditPage() {
       employmentStatus: values.employmentStatus,
       reportingManagerId: values.reportingManagerId || null,
       profilePhotoUrl: values.profilePhotoUrl || null,
-      userId: userId ?? employee?.userId ?? null,
+      userId: employee?.userId ?? null,
       isActive: values.isActive,
       login,
     };

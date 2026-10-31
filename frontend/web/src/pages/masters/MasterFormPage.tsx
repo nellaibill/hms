@@ -93,12 +93,11 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
       done();
       return;
     }
-    const isExisting = loginAccess.draft.mode === 'existing';
     saveLoginMutation.mutate(
       { consultantId: recordId, consultantName: recordName, draft: loginAccess.draft },
       {
         onSuccess: (user) => {
-          toast({ title: isExisting ? 'Login linked' : `${config!.label} and login saved`, description: `They can log in as ${user.username}.`, variant: 'success' });
+          toast({ title: `${config!.label} and login saved`, description: `They can log in as ${user.username}.`, variant: 'success' });
           done();
         },
         onError: (error) => {

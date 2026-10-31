@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
-import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -15,8 +14,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/features/auth/AuthContext';
 import { isConsultantRoleName } from '@/lib/isConsultantRoleName';
-import { cn } from '@/lib/utils';
-import { useLinkableUsersQuery, type UsernameStatus } from '../hooks/useLoginAccess';
+import { type UsernameStatus } from '../hooks/useLoginAccess';
 import { useRolesForSelect } from '../hooks/useRolesForSelect';
 import {
   suggestUsername,
@@ -60,7 +58,8 @@ const COPY: Record<LoginAccessSubject, { noun: string; leaveOff: string; note: s
  * One card for both the Employee and the Consultant forms (ADR-108): decide whether this
  * person logs in to HMS, and if so, only the things a login has that their own record
  * doesn't — username, role and password (plus email and phone for a consultant, whose
- * record has neither). Hidden from anyone who can't see Settings → Users.
+ * record has neither). Every person gets a login of their own; there's no picking an
+ * existing one. Hidden from anyone who can't see Settings → Users.
  */
 export function LoginAccessCard({
   subject,
@@ -76,15 +75,9 @@ export function LoginAccessCard({
   const { hasPermission } = useAuth();
   const canView = hasPermission('identity-administration.view');
   const canCreate = hasPermission('identity-administration.create');
-  // Linking an existing consultant login re-saves that user, so it needs edit rights; an
-  // employee link is saved on the employee, which the HR permission already covers.
-  const canLinkExisting = subject === 'employee' || hasPermission('identity-administration.edit');
   const copy = COPY[subject];
   const { data: roles } = useRolesForSelect();
   const showForm = !readOnly && !linkedUserId && !isLoadingLink;
-  const { data: linkableUsers, isPending: isLoadingUsers } = useLinkableUsersQuery(
-    canView && showForm && draft.enabled && draft.mode === 'existing',
-  );
 
   // Once someone types a username themselves, stop replacing it with the suggestion.
   const usernameEditedRef = useRef(false);
@@ -93,7 +86,7 @@ export function LoginAccessCard({
   // it's typed, and a consultant's login almost always gets the doctor role. One effect, so
   // the two never overwrite each other's change.
   useEffect(() => {
-    if (!showForm || !draft.enabled || draft.mode !== 'new') return;
+    if (!showForm || !draft.enabled) return;
     const changes: Partial<LoginAccessDraft> = {};
     const suggestion = suggestUsername(personName);
     if (!usernameEditedRef.current && suggestion !== draft.username) {
@@ -118,19 +111,6 @@ export function LoginAccessCard({
   function update(changes: Partial<LoginAccessDraft>) {
     onDraftChange({ ...draft, ...changes });
   }
-
-  function handleToggle(enabled: boolean) {
-    update({ enabled, mode: canCreate ? draft.mode : 'existing' });
-  }
-
-  const linkOptions = (linkableUsers?.items ?? [])
-    // A consultant can only take a login that isn't already some other consultant's.
-    .filter((user) => subject === 'employee' || !user.consultantId)
-    .map((user) => ({
-      value: user.id,
-      label: `${user.firstName} ${user.lastName} (${user.username})`,
-      keywords: `${user.username} ${user.email} ${user.roleName}`,
-    }));
 
   return (
     <Card>
@@ -167,8 +147,8 @@ export function LoginAccessCard({
               <Switch
                 id="loginAccessEnabled"
                 checked={draft.enabled}
-                onCheckedChange={handleToggle}
-                disabled={!canCreate && !canLinkExisting}
+                onCheckedChange={(enabled) => update({ enabled })}
+                disabled={!canCreate}
                 aria-label={`Allow this ${copy.noun} to log in`}
               />
               <div className="flex flex-col gap-0.5">
@@ -176,189 +156,127 @@ export function LoginAccessCard({
                   Allow this {copy.noun} to log in to HMS
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {!canCreate && !canLinkExisting
-                    ? 'You don’t have permission to create logins.'
-                    : copy.leaveOff}
+                  {canCreate ? copy.leaveOff : 'You don’t have permission to create logins.'}
                 </p>
               </div>
             </div>
 
             {draft.enabled && (
               <>
-                {canCreate && canLinkExisting && (
-                  <div
-                    className="inline-flex self-start rounded-md border border-input p-0.5"
-                    role="radiogroup"
-                    aria-label="Login type"
-                  >
-                    {(
-                      [
-                        ['new', 'Create a new login'],
-                        ['existing', 'Link an existing login'],
-                      ] as const
-                    ).map(([mode, label]) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        role="radio"
-                        aria-checked={draft.mode === mode}
-                        onClick={() => update({ mode })}
-                        className={cn(
-                          'rounded px-3 py-1.5 text-sm transition-colors',
-                          draft.mode === mode
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {draft.mode === 'new' ? (
-                  <>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="loginUsername">Username</Label>
-                        <Input
-                          id="loginUsername"
-                          autoComplete="off"
-                          value={draft.username}
-                          onChange={(event) => {
-                            usernameEditedRef.current = true;
-                            update({ username: event.target.value });
-                          }}
-                        />
-                        {errors.username ? (
-                          <p className="text-sm text-destructive">{errors.username}</p>
-                        ) : usernameStatus === 'taken' ? (
-                          <p className="text-sm text-destructive">
-                            This username is already taken.
-                          </p>
-                        ) : usernameStatus === 'available' ? (
-                          <p className="flex items-center gap-1 text-xs text-success">
-                            <Check className="h-3.5 w-3.5" />
-                            Available
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            Suggested from the name. You can change it.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="loginRole">Role</Label>
-                        <Select value={draft.roleId} onValueChange={(roleId) => update({ roleId })}>
-                          <SelectTrigger id="loginRole" aria-label="Login role">
-                            <SelectValue placeholder="Select a role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles?.items.map((role) => (
-                              <SelectItem key={role.id} value={role.id}>
-                                {role.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errors.roleId && (
-                          <p className="text-sm text-destructive">{errors.roleId}</p>
-                        )}
-                      </div>
-
-                      {subject === 'consultant' && (
-                        <>
-                          <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="loginEmail">Email</Label>
-                            <Input
-                              id="loginEmail"
-                              type="email"
-                              autoComplete="off"
-                              value={draft.email}
-                              onChange={(event) => update({ email: event.target.value })}
-                            />
-                            {errors.email && (
-                              <p className="text-sm text-destructive">{errors.email}</p>
-                            )}
-                          </div>
-                          <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="loginPhone">Mobile number</Label>
-                            <Input
-                              id="loginPhone"
-                              inputMode="numeric"
-                              autoComplete="off"
-                              value={draft.phoneNumber}
-                              // Digits only, capped here rather than with maxLength, which would
-                              // count a typed space or dash before it's stripped.
-                              onChange={(event) =>
-                                update({ phoneNumber: event.target.value.replace(/\D/g, '').slice(0, 10) })
-                              }
-                            />
-                            {errors.phoneNumber && (
-                              <p className="text-sm text-destructive">{errors.phoneNumber}</p>
-                            )}
-                          </div>
-                        </>
-                      )}
-
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="loginPassword">Password</Label>
-                        <PasswordInput
-                          id="loginPassword"
-                          autoComplete="new-password"
-                          value={draft.password}
-                          onChange={(event) => update({ password: event.target.value })}
-                        />
-                        {errors.password && (
-                          <p className="text-sm text-destructive">{errors.password}</p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="loginConfirmPassword">Confirm password</Label>
-                        <PasswordInput
-                          id="loginConfirmPassword"
-                          autoComplete="new-password"
-                          value={draft.confirmPassword}
-                          onChange={(event) => update({ confirmPassword: event.target.value })}
-                        />
-                        {errors.confirmPassword && (
-                          <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      {subject === 'consultant'
-                        ? 'A consultant record has no email or phone, so the login needs its own. ' +
-                          copy.note
-                        : copy.note}
-                    </p>
-                  </>
-                ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="loginExistingUser">Login</Label>
-                    <SearchableSelect
-                      id="loginExistingUser"
-                      value={draft.existingUserId}
-                      onValueChange={(existingUserId) => update({ existingUserId })}
-                      options={linkOptions}
-                      isLoading={isLoadingUsers}
-                      placeholder="Select a login…"
-                      searchPlaceholder="Search by name or username…"
-                      ariaLabel="Existing login"
+                    <Label htmlFor="loginUsername">Username</Label>
+                    <Input
+                      id="loginUsername"
+                      autoComplete="off"
+                      value={draft.username}
+                      onChange={(event) => {
+                        usernameEditedRef.current = true;
+                        update({ username: event.target.value });
+                      }}
                     />
-                    {errors.existingUserId ? (
-                      <p className="text-sm text-destructive">{errors.existingUserId}</p>
+                    {errors.username ? (
+                      <p className="text-sm text-destructive">{errors.username}</p>
+                    ) : usernameStatus === 'taken' ? (
+                      <p className="text-sm text-destructive">This username is already taken.</p>
+                    ) : usernameStatus === 'available' ? (
+                      <p className="flex items-center gap-1 text-xs text-success">
+                        <Check className="h-3.5 w-3.5" />
+                        Available
+                      </p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        For someone who already has a login in Settings → Users.
+                        Suggested from the name. You can change it.
                       </p>
                     )}
                   </div>
-                )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="loginRole">Role</Label>
+                    <Select value={draft.roleId} onValueChange={(roleId) => update({ roleId })}>
+                      <SelectTrigger id="loginRole" aria-label="Login role">
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.items.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.roleId && <p className="text-sm text-destructive">{errors.roleId}</p>}
+                  </div>
+
+                  {subject === 'consultant' && (
+                    <>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="loginEmail">Email</Label>
+                        <Input
+                          id="loginEmail"
+                          type="email"
+                          autoComplete="off"
+                          value={draft.email}
+                          onChange={(event) => update({ email: event.target.value })}
+                        />
+                        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="loginPhone">Mobile number</Label>
+                        <Input
+                          id="loginPhone"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          value={draft.phoneNumber}
+                          // Digits only, capped here rather than with maxLength, which would
+                          // count a typed space or dash before it's stripped.
+                          onChange={(event) =>
+                            update({
+                              phoneNumber: event.target.value.replace(/\D/g, '').slice(0, 10),
+                            })
+                          }
+                        />
+                        {errors.phoneNumber && (
+                          <p className="text-sm text-destructive">{errors.phoneNumber}</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="loginPassword">Password</Label>
+                    <PasswordInput
+                      id="loginPassword"
+                      autoComplete="new-password"
+                      value={draft.password}
+                      onChange={(event) => update({ password: event.target.value })}
+                    />
+                    {errors.password && (
+                      <p className="text-sm text-destructive">{errors.password}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="loginConfirmPassword">Confirm password</Label>
+                    <PasswordInput
+                      id="loginConfirmPassword"
+                      autoComplete="new-password"
+                      value={draft.confirmPassword}
+                      onChange={(event) => update({ confirmPassword: event.target.value })}
+                    />
+                    {errors.confirmPassword && (
+                      <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {subject === 'consultant'
+                    ? 'A consultant record has no email or phone, so the login needs its own. ' +
+                      copy.note
+                    : copy.note}
+                </p>
               </>
             )}
           </>

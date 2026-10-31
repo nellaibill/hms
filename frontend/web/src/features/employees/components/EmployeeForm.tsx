@@ -19,7 +19,7 @@ interface EmployeeFormProps {
   employeeId?: string;
   defaultValues?: Partial<EmployeeFormValues>;
   /** The Login access card's draft comes along with the values — the page turns it into the
-   * request's `login`/`userId` (see toEmployeeLoginPayload). */
+   * request's `login` (see toEmployeeLoginRequest). */
   onSubmit: (values: EmployeeFormValues, login: LoginAccessDraft) => void;
   /** The login already linked to the employee being edited, if any. */
   linkedUserId?: string | null;
@@ -91,7 +91,7 @@ export function EmployeeForm({ mode, employeeId, defaultValues, onSubmit, isSubm
   // The login uses this form's Phone, which a login needs as exactly 10 digits.
   function loginPhoneIsUsable(values: EmployeeFormValues): boolean {
     const { draft } = loginAccess;
-    if (!draft.enabled || draft.mode !== 'new' || toTenDigitMobile(values.phone)) {
+    if (!draft.enabled || toTenDigitMobile(values.phone)) {
       return true;
     }
     setError('phone', { type: 'login', message: 'A login needs a 10-digit mobile number. Enter the phone as 10 digits.' });

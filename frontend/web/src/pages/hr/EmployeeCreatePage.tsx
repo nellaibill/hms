@@ -4,7 +4,7 @@ import { Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { useToast } from '@/components/ui/toast-context';
-import { toEmployeeLoginPayload, type LoginAccessDraft } from '@/features/users';
+import { toEmployeeLoginRequest, type LoginAccessDraft } from '@/features/users';
 import { EmployeeForm, useCreateEmployeeMutation } from '../../features/employees';
 
 export default function EmployeeCreatePage() {
@@ -14,12 +14,12 @@ export default function EmployeeCreatePage() {
   const mutation = useCreateEmployeeMutation();
 
   function handleSubmit(values: EmployeeFormValues, loginDraft: LoginAccessDraft) {
-    const { login, userId } = toEmployeeLoginPayload(loginDraft);
+    const login = toEmployeeLoginRequest(loginDraft);
     const request: CreateEmployeeRequest = {
       ...values,
       reportingManagerId: values.reportingManagerId || null,
       profilePhotoUrl: values.profilePhotoUrl || null,
-      userId,
+      userId: null,
       login,
     };
     mutation.mutate(request, {

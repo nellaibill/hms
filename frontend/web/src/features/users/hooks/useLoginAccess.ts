@@ -31,7 +31,7 @@ export function useLoginAccessState(subject: LoginAccessSubject, startEnabled: b
   const [errors, setErrors] = useState<LoginAccessErrors>({});
   const usernameStatus = useUsernameAvailability(
     draft.username,
-    draft.enabled && draft.mode === 'new' && hasPermission('identity-administration.view'),
+    draft.enabled && hasPermission('identity-administration.view'),
   );
 
   function onDraftChange(next: LoginAccessDraft) {
@@ -48,7 +48,7 @@ export function useLoginAccessState(subject: LoginAccessSubject, startEnabled: b
 
   function validate(): boolean {
     const next = validateLoginDraft(draft, subject);
-    if (draft.enabled && draft.mode === 'new' && usernameStatus === 'taken') {
+    if (draft.enabled && usernameStatus === 'taken') {
       next.username ??= 'This username is already taken.';
     }
     setErrors(next);
@@ -108,19 +108,9 @@ export function useConsultantLoginQuery(consultantId: string | undefined, enable
   });
 }
 
-/** Active logins to pick from in the card's "Link an existing login" mode. */
-export function useLinkableUsersQuery(enabled: boolean) {
-  return useQuery({
-    queryKey: ['users', 'select-list', 'active'],
-    queryFn: () => usersApi.getUsers({ isActive: true, pageSize: 100 }),
-    enabled,
-  });
-}
-
 /**
  * A consultant's login is saved right after the consultant (Masters can't call Identity, so
- * there's no single request for both, unlike an employee's). New: created with the
- * consultant's id and name. Existing: that user is re-linked to this consultant.
+ * there's no single request for both, unlike an employee's), with the consultant's id and name.
  */
 export function useSaveConsultantLoginMutation() {
   const queryClient = useQueryClient();
@@ -134,19 +124,6 @@ export function useSaveConsultantLoginMutation() {
       consultantName: string;
       draft: LoginAccessDraft;
     }) => {
-      if (draft.mode === 'existing') {
-        const user = await usersApi.getUserById(draft.existingUserId);
-        return usersApi.updateUser(user.id, {
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phoneNumber: user.phoneNumber,
-          roleId: user.roleId,
-          consultantId,
-        });
-      }
-
       const { firstName, lastName } = splitPersonName(consultantName);
       return usersApi.createUser({
         username: draft.username.trim(),
