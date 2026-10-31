@@ -1,11 +1,14 @@
-import { useQueries } from '@tanstack/react-query';
-import { ArrowRight, Building2, Database, FlaskConical, ListTree, PackageSearch, type LucideIcon } from 'lucide-react';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { ArrowRight, Building2, Database, FlaskConical, ListTree, PackageSearch, Users, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/features/auth/AuthContext';
+import { employeesQueryKey } from '@/features/employees';
 import { getAllMasterConfigs, getMasterStore, MASTER_SECTIONS } from '@/features/masters';
+import { employeesApi } from '@/services/apiClient';
 
 // Diagnostic Tests is superseded by Central Laboratory's own Categories/Services/Packages/
 // External Labs screens (frontend/web/src/pages/diagnostics/) — every Laboratory/Radiology row
@@ -35,6 +38,12 @@ const diagnosticCatalogCards: StaticReferenceCard[] = [
   { key: 'diagnostic-packages', label: 'Diagnostic Packages', description: 'Bundled test packages (e.g. Lipid Profile) at a fixed price.', icon: PackageSearch, path: '/diagnostics/lab/packages' },
   { key: 'diagnostic-external-labs', label: 'External Labs', description: 'Providers tests are outsourced to.', icon: Building2, path: '/diagnostics/lab/external-labs' },
 ];
+
+// Employees aren't a MasterEntityConfig either (HMS.Modules.HR's own pages), but sit in the HR
+// tab beside Designations so staff — and, with ADR-108, their logins — are managed from one
+// place. Still reachable from the HR hub too; routes and their HR feature/permission guards
+// (routes.tsx's hrRoutes) are unchanged, so the card only shows to users who can open it.
+const EMPLOYEE_COUNT_QUERY = { page: 1, pageSize: 1 };
 
 function ReferenceDataCard({
   icon: Icon,
@@ -90,6 +99,15 @@ export default function MastersHubPage() {
   });
   const countByKey = new Map(configs.map((config, index) => [config.key, countQueries[index].data?.meta.totalCount]));
 
+  const { hasFeature, hasPermission } = useAuth();
+  const canSeeEmployees = hasFeature('hr') && hasPermission('workforce-admin.view');
+  // Same query key as the HR hub's own Employees count, so the two share one cached request.
+  const employeesCount = useQuery({
+    queryKey: employeesQueryKey(EMPLOYEE_COUNT_QUERY),
+    queryFn: () => employeesApi.getEmployees(EMPLOYEE_COUNT_QUERY),
+    enabled: canSeeEmployees,
+  });
+
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
@@ -115,12 +133,23 @@ export default function MastersHubPage() {
           {MASTER_SECTIONS.map((section) => {
             const sectionConfigs = configs.filter((config) => config.section === section);
             const extraCards = section === 'Hospital Reference Data' ? diagnosticCatalogCards : [];
+            const showEmployees = section === 'HR' && canSeeEmployees;
             return (
               <TabsContent key={section} value={section} className="pt-4">
-                {sectionConfigs.length === 0 && extraCards.length === 0 ? (
+                {sectionConfigs.length === 0 && extraCards.length === 0 && !showEmployees ? (
                   <p className="text-sm text-muted-foreground">No reference data in this section yet.</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {showEmployees && (
+                      <ReferenceDataCard
+                        icon={Users}
+                        label="Employees"
+                        description="Staff directory — profiles, department/designation, status, and each person's login access."
+                        path="/admin/hr/employees"
+                        count={employeesCount.data?.meta.totalCount}
+                        showCount
+                      />
+                    )}
                     {sectionConfigs.map((config) => (
                       <ReferenceDataCard
                         key={config.key}
