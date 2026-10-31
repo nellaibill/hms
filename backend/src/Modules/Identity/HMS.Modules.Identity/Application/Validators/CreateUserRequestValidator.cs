@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.Identity.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Identity.Application.Validators;
 
@@ -30,5 +31,16 @@ internal class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
         RuleFor(x => x.RoleId)
             .NotEmpty()
             .WithMessage("Role is required.");
+
+        // Optional (see CreateUserRequest.Password) — same policy as SetPasswordRequestValidator
+        // whenever one is actually supplied.
+        When(x => !string.IsNullOrEmpty(x.Password), () =>
+        {
+            RuleFor(x => x.Password!)
+                .MinimumLength(PasswordPolicy.MinimumLength)
+                .WithMessage($"Password must be at least {PasswordPolicy.MinimumLength} characters.")
+                .Matches(PasswordPolicy.ComplexityRegex)
+                .WithMessage(PasswordPolicy.ComplexityMessage);
+        });
     }
 }

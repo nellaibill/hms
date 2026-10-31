@@ -49,6 +49,8 @@ Those are designed in [Authentication.md](../../Authentication.md) and [Authoriz
 - A newly created user defaults to **active** (`isActive = true`).
 - A soft-deleted user is excluded from all normal list/search/get operations.
 - Activating or deactivating a user does not delete or restore it — those are independent operations from soft delete.
+- At most one user is linked to a given consultant (`consultantId`), checked when the link is set or changed (ADR-108).
+- A user can also be created from the Employee or Consultant form's Login access card (ADR-108). That card can set the first password in the same step; it's stored like an admin Set Password, so the person must change it at first login.
 - A soft-deleted user cannot be activated/deactivated or updated until restored (restoration is an explicit, privileged operation per [DatabaseArchitecture.md](../../DatabaseArchitecture.md) §6 — not implemented as a user-facing feature in this iteration).
 
 ## Validation Rules
@@ -87,15 +89,15 @@ Base path: `/api/v1/users`. Every response uses the standard envelope/error shap
 
 | Method | Path | Purpose | Success | Failure |
 |---|---|---|---|---|
-| `POST` | `/api/v1/users` | Create a user | `201 Created` | `400` validation, `409` duplicate email |
+| `POST` | `/api/v1/users` | Create a user, optionally with a first `password` | `201 Created` | `400` validation, `409` duplicate username/email or consultant already linked |
 | `PUT` | `/api/v1/users/{id}` | Update a user's profile | `200 OK` | `400` validation, `404` not found, `409` duplicate email |
 | `DELETE` | `/api/v1/users/{id}` | Soft-delete a user | `204 No Content` | `404` not found |
 | `GET` | `/api/v1/users/{id}` | Get a user by ID | `200 OK` | `404` not found |
-| `GET` | `/api/v1/users` | Paged list — `page`, `pageSize`, `sort`, `search`, `isActive` query params | `200 OK` | — |
+| `GET` | `/api/v1/users` | Paged list — `page`, `pageSize`, `sort`, `search`, `isActive`, `consultantId` query params | `200 OK` | — |
 | `POST` | `/api/v1/users/{id}/activate` | Activate a user (idempotent) | `200 OK` | `404` not found |
 | `POST` | `/api/v1/users/{id}/deactivate` | Deactivate a user (idempotent) | `200 OK` | `404` not found |
 
-`errorCode` values this module produces: `IDENTITY.USER_NOT_FOUND`, `IDENTITY.USER_EMAIL_DUPLICATE`, `VALIDATION.FAILED`.
+`errorCode` values this module produces: `IDENTITY.USER_NOT_FOUND`, `IDENTITY.USER_EMAIL_DUPLICATE`, `IDENTITY.USER_USERNAME_DUPLICATE`, `IDENTITY.USER_CONSULTANT_ALREADY_LINKED`, `VALIDATION.FAILED`.
 
 **Note:** every request currently records `createdBy`/`updatedBy`/`deletedBy` as `null` — there is no authenticated principal yet to attribute the action to. Wiring these to the real actor is a one-line change in `UsersController` once Authentication ships (see the `actorId: null` call sites and their TODO comments).
 
@@ -105,3 +107,4 @@ Base path: `/api/v1/users`. Every response uses the standard envelope/error shap
 |---|---|
 | 2026-07-22 | Initial version — Users module built as the reference implementation for all future HMS modules. CRUD, soft delete, activate/deactivate, pagination/search/sort. Authentication, authorization, roles, and permissions explicitly deferred. |
 | 2026-07-23 | Full implementation completed end-to-end: `identity.users` table + hand-authored migration, backend (entity, repository, service, validators, controller, DI, global exception handling), shared TypeScript package, React web feature, React Native mobile feature (full parity), and unit/integration/architecture tests. See [DecisionLog.md](../../DecisionLog.md) for the notable decisions made along the way. |
+| 2026-10-31 | Logins can be created from the Employee and Consultant forms (Login access card, ADR-108): optional first `password` on create, `consultantId` list filter, one login per consultant. |

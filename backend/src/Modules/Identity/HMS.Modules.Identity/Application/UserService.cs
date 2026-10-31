@@ -98,6 +98,13 @@ internal class UserService : IUserService
                 $"Role '{request.RoleId}' was not found.");
         }
 
+        if (request.ConsultantId.HasValue && await _repository.ExistsByConsultantIdAsync(request.ConsultantId.Value, excludingId: null, cancellationToken))
+        {
+            return Result<UserResponse>.Failure(
+                UserErrorCodes.ConsultantAlreadyLinked,
+                "Another login is already linked to this consultant.");
+        }
+
         var user = User.Create(
             request.Username,
             request.FirstName,
@@ -107,6 +114,11 @@ internal class UserService : IUserService
             request.RoleId,
             actorId,
             request.ConsultantId);
+
+        if (!string.IsNullOrEmpty(request.Password))
+        {
+            user.SetPasswordHash(_passwordHasher.HashPassword(request.Password), actorId);
+        }
 
         await _repository.AddAsync(user, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -166,6 +178,17 @@ internal class UserService : IUserService
             }
 
             user.ChangeRole(request.RoleId, actorId);
+        }
+
+        // Only checked when the link actually changes, so a user saved before the
+        // one-login-per-consultant rule (ADR-108) can still be edited as it stands.
+        if (request.ConsultantId.HasValue
+            && request.ConsultantId != user.ConsultantId
+            && await _repository.ExistsByConsultantIdAsync(request.ConsultantId.Value, excludingId: id, cancellationToken))
+        {
+            return Result<UserResponse>.Failure(
+                UserErrorCodes.ConsultantAlreadyLinked,
+                "Another login is already linked to this consultant.");
         }
 
         user.UpdateProfile(request.FirstName, request.LastName, request.PhoneNumber, actorId);

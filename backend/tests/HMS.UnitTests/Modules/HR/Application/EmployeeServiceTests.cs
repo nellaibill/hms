@@ -294,4 +294,146 @@ public class EmployeeServiceTests
         result.IsSuccess.Should().BeTrue();
         employee.IsDeleted.Should().BeTrue();
     }
+
+    private static UpdateEmployeeRequest UpdateRequestFor(Employee employee) => new()
+    {
+        FirstName = employee.FirstName,
+        LastName = employee.LastName,
+        Gender = employee.Gender,
+        DateOfBirth = employee.DateOfBirth,
+        Phone = "9876543210",
+        Email = employee.Email,
+        Address = employee.Address,
+        EmergencyContactName = employee.EmergencyContactName,
+        EmergencyContactPhone = employee.EmergencyContactPhone,
+        DepartmentId = employee.DepartmentId,
+        DesignationId = employee.DesignationId,
+        EmployeeType = employee.EmployeeType,
+        JoiningDate = employee.JoiningDate,
+        EmploymentStatus = employee.EmploymentStatus,
+        UserId = employee.UserId,
+        IsActive = true,
+    };
+
+    private static Employee NewEmployee(Guid? userId = null)
+        => Employee.Create("EMP-1", "Priya", "R", Gender.Female, DateOfBirth, "9876543210", "priya@example.com", "addr", "c", "cp", Guid.NewGuid(), Guid.NewGuid(), EmployeeType.Permanent, JoiningDate, EmploymentStatus.Active, null, null, userId, true, null);
+
+    private static EmployeeLoginRequest NewLogin() => new() { Username = "priya.r", Password = "Sup3rSecret!", RoleId = Guid.NewGuid() };
+
+    [Fact]
+    public async Task CreateAsync_WithLogin_CreatesTheLoginFromTheEmployeesOwnDetailsAndLinksIt()
+    {
+        var loginId = Guid.NewGuid();
+        CreateUserRequest? sent = null;
+        _userService.CreateAsync(Arg.Do<CreateUserRequest>(r => sent = r), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<UserResponse>.Success(new UserResponse { Id = loginId }));
+        Employee? added = null;
+        await _repository.AddAsync(Arg.Do<Employee>(e => added = e), Arg.Any<CancellationToken>());
+
+        var login = NewLogin();
+        var request = NewCreateRequest() with { Phone = "+91 98765-43210", Login = login };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        added!.UserId.Should().Be(loginId);
+        sent!.Username.Should().Be("priya.r");
+        sent.Password.Should().Be("Sup3rSecret!");
+        sent.RoleId.Should().Be(login.RoleId);
+        sent.FirstName.Should().Be("Ada");
+        sent.LastName.Should().Be("Lovelace");
+        sent.Email.Should().Be("ada@example.com");
+        sent.PhoneNumber.Should().Be("9876543210");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenTheLoginIsRejected_ReturnsIdentitysFailureAndSavesNoEmployee()
+    {
+        _userService.CreateAsync(Arg.Any<CreateUserRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<UserResponse>.Failure("IDENTITY.USER_USERNAME_DUPLICATE", "A user with username 'priya.r' already exists."));
+
+        var result = await _sut.CreateAsync(NewCreateRequest() with { Login = NewLogin() }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("IDENTITY.USER_USERNAME_DUPLICATE");
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenAnEmployeeCheckFails_NeverCreatesTheLogin()
+    {
+        _repository.ExistsByCodeAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.CreateAsync(NewCreateRequest() with { Login = NewLogin() }, actorId: null, CancellationToken.None);
+
+        result.ErrorCode.Should().Be(HRErrorCodes.DuplicateCode);
+        await _userService.DidNotReceiveWithAnyArgs().CreateAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenTheEmployeeFailsToSave_RemovesTheLoginItJustCreated()
+    {
+        var loginId = Guid.NewGuid();
+        _userService.CreateAsync(Arg.Any<CreateUserRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<UserResponse>.Success(new UserResponse { Id = loginId }));
+        _repository.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(Task.FromException(new InvalidOperationException("db down")));
+
+        var act = () => _sut.CreateAsync(NewCreateRequest() with { Login = NewLogin() }, actorId: null, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _userService.Received(1).DeleteAsync(loginId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAUserIdAlreadyLinkedToAnotherEmployee_ReturnsUserAlreadyLinkedFailure()
+    {
+        var userId = Guid.NewGuid();
+        _repository.ExistsByUserIdAsync(userId, null, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.CreateAsync(NewCreateRequest() with { UserId = userId }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.UserAlreadyLinked);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithLoginForAnEmployeeWithoutOne_CreatesAndLinksIt()
+    {
+        var employee = NewEmployee();
+        _repository.GetByIdAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(employee);
+        var loginId = Guid.NewGuid();
+        _userService.CreateAsync(Arg.Any<CreateUserRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<UserResponse>.Success(new UserResponse { Id = loginId }));
+
+        var result = await _sut.UpdateAsync(employee.Id, UpdateRequestFor(employee) with { Login = NewLogin() }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        employee.UserId.Should().Be(loginId);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithLoginForAnEmployeeWhoAlreadyHasOne_ReturnsEmployeeAlreadyHasLoginFailure()
+    {
+        var employee = NewEmployee(userId: Guid.NewGuid());
+        _repository.GetByIdAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(employee);
+
+        var result = await _sut.UpdateAsync(employee.Id, UpdateRequestFor(employee) with { Login = NewLogin() }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(HRErrorCodes.EmployeeAlreadyHasLogin);
+        await _userService.DidNotReceiveWithAnyArgs().CreateAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_KeepingTheSameUserId_DoesNotRecheckTheLink()
+    {
+        var employee = NewEmployee(userId: Guid.NewGuid());
+        _repository.GetByIdAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(employee);
+
+        var result = await _sut.UpdateAsync(employee.Id, UpdateRequestFor(employee), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _repository.DidNotReceiveWithAnyArgs().ExistsByUserIdAsync(default, default, default);
+    }
 }

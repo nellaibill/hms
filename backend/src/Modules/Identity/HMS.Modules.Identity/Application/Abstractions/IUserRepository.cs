@@ -17,6 +17,8 @@ internal interface IUserRepository
 
     Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken);
 
+    Task<bool> ExistsByConsultantIdAsync(Guid consultantId, Guid? excludingId, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(UserListQuery query, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

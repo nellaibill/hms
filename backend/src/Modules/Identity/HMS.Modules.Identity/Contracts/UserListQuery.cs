@@ -11,4 +11,8 @@ namespace HMS.Modules.Identity.Contracts;
 public class UserListQuery : PagedRequest
 {
     public bool? IsActive { get; set; }
+
+    /// <summary>Only the user linked to this Masters.Consultant — how the Consultant form
+    /// finds its login (the link is stored on the user, not the consultant).</summary>
+    public Guid? ConsultantId { get; set; }
 }

@@ -32,6 +32,9 @@ internal class UserRepository : IUserRepository
         return _dbContext.Users.FirstOrDefaultAsync(u => u.Username == normalized, cancellationToken);
     }
 
+    public Task<bool> ExistsByConsultantIdAsync(Guid consultantId, Guid? excludingId, CancellationToken cancellationToken)
+        => _dbContext.Users.AnyAsync(u => u.ConsultantId == consultantId && u.Id != excludingId, cancellationToken);
+
     public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(UserListQuery query, CancellationToken cancellationToken)
     {
         var users = _dbContext.Users.AsQueryable();
@@ -39,6 +42,11 @@ internal class UserRepository : IUserRepository
         if (query.IsActive.HasValue)
         {
             users = users.Where(u => u.IsActive == query.IsActive.Value);
+        }
+
+        if (query.ConsultantId.HasValue)
+        {
+            users = users.Where(u => u.ConsultantId == query.ConsultantId.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Search))

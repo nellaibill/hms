@@ -3,6 +3,7 @@ using HMS.Modules.HR.Application.Mapping;
 using HMS.Modules.HR.Contracts;
 using HMS.Modules.HR.Domain;
 using HMS.Modules.Identity.Application;
+using HMS.Modules.Identity.Contracts;
 using HMS.Modules.Masters.Application;
 using HMS.Shared.Kernel;
 
@@ -77,6 +78,26 @@ internal class EmployeeService : IEmployeeService
             return Result<EmployeeResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
         }
 
+        if (request.UserId.HasValue && await _repository.ExistsByUserIdAsync(request.UserId.Value, excludingId: null, cancellationToken))
+        {
+            return Result<EmployeeResponse>.Failure(HRErrorCodes.UserAlreadyLinked, "This login is already linked to another employee.");
+        }
+
+        // Last, once every employee-side check has passed — Identity saves the login straight
+        // away, so nothing that could still reject the employee should come after it.
+        var userId = request.UserId;
+        Guid? createdLoginId = null;
+        if (request.Login is not null)
+        {
+            var login = await CreateLoginAsync(request.Login, request.FirstName, request.LastName, request.Email, request.Phone, actorId, cancellationToken);
+            if (!login.IsSuccess)
+            {
+                return Result<EmployeeResponse>.Failure(login.ErrorCode!, login.Error!);
+            }
+
+            userId = createdLoginId = login.Value!.Id;
+        }
+
         var employee = Employee.Create(
             request.EmployeeCode,
             request.FirstName,
@@ -95,12 +116,12 @@ internal class EmployeeService : IEmployeeService
             request.EmploymentStatus,
             request.ReportingManagerId,
             request.ProfilePhotoUrl,
-            request.UserId,
+            userId,
             request.IsActive,
             actorId);
 
         await _repository.AddAsync(employee, cancellationToken);
-        await _repository.SaveChangesAsync(cancellationToken);
+        await SaveChangesOrRemoveLoginAsync(createdLoginId, actorId, cancellationToken);
 
         return Result<EmployeeResponse>.Success(employee.ToResponse());
     }
@@ -117,6 +138,33 @@ internal class EmployeeService : IEmployeeService
         if (referenceError is not null)
         {
             return Result<EmployeeResponse>.Failure(referenceError.ErrorCode!, referenceError.Error!);
+        }
+
+        // Only when the link actually changes, so an employee saved before this rule can still
+        // be edited as it stands.
+        if (request.UserId.HasValue
+            && request.UserId != employee.UserId
+            && await _repository.ExistsByUserIdAsync(request.UserId.Value, excludingId: id, cancellationToken))
+        {
+            return Result<EmployeeResponse>.Failure(HRErrorCodes.UserAlreadyLinked, "This login is already linked to another employee.");
+        }
+
+        var userId = request.UserId;
+        Guid? createdLoginId = null;
+        if (request.Login is not null)
+        {
+            if (employee.UserId.HasValue)
+            {
+                return Result<EmployeeResponse>.Failure(HRErrorCodes.EmployeeAlreadyHasLogin, "This employee already has a login.");
+            }
+
+            var login = await CreateLoginAsync(request.Login, request.FirstName, request.LastName, request.Email, request.Phone, actorId, cancellationToken);
+            if (!login.IsSuccess)
+            {
+                return Result<EmployeeResponse>.Failure(login.ErrorCode!, login.Error!);
+            }
+
+            userId = createdLoginId = login.Value!.Id;
         }
 
         employee.Update(
@@ -136,11 +184,11 @@ internal class EmployeeService : IEmployeeService
             request.EmploymentStatus,
             request.ReportingManagerId,
             request.ProfilePhotoUrl,
-            request.UserId,
+            userId,
             request.IsActive,
             actorId);
 
-        await _repository.SaveChangesAsync(cancellationToken);
+        await SaveChangesOrRemoveLoginAsync(createdLoginId, actorId, cancellationToken);
 
         return Result<EmployeeResponse>.Success(employee.ToResponse());
     }
@@ -258,6 +306,47 @@ internal class EmployeeService : IEmployeeService
             DesignationName = designationResult.IsSuccess ? designationResult.Value!.Name : null,
             ReportingManagerName = reportingManagerName,
         };
+    }
+
+    // The login's name, email and phone are the employee's own (ADR-108) — only username,
+    // password and role come from the Login access card. Identity re-checks everything
+    // (duplicate username/email, role exists) and its failure codes are passed straight back.
+    private Task<Result<UserResponse>> CreateLoginAsync(
+        EmployeeLoginRequest login,
+        string firstName,
+        string lastName,
+        string email,
+        string phone,
+        Guid? actorId,
+        CancellationToken cancellationToken)
+        => _userService.CreateAsync(
+            new CreateUserRequest
+            {
+                Username = login.Username.Trim(),
+                FirstName = firstName.Trim(),
+                LastName = lastName.Trim(),
+                Email = email.Trim(),
+                PhoneNumber = MobileNumber.ToTenDigits(phone),
+                RoleId = login.RoleId,
+                Password = login.Password,
+            },
+            actorId,
+            cancellationToken);
+
+    // Identity saved the new login in its own DbContext a moment ago — there's no transaction
+    // spanning the two modules, so if the employee then fails to save, soft-delete the login
+    // again rather than leave an account no employee points at.
+    private async Task SaveChangesOrRemoveLoginAsync(Guid? createdLoginId, Guid? actorId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _repository.SaveChangesAsync(cancellationToken);
+        }
+        catch when (createdLoginId.HasValue)
+        {
+            await _userService.DeleteAsync(createdLoginId.Value, actorId, CancellationToken.None);
+            throw;
+        }
     }
 
     // Every cross-aggregate reference check a Create/Update call needs, run together since

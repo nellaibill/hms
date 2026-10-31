@@ -1,5 +1,5 @@
 import type { PatientVisit, SaleLineResponse, SaleResponse, SaleReturnResponse } from '@hms/shared';
-import { CalendarDays, FileText, Loader2, Plus, RotateCcw, Search, Wallet } from 'lucide-react';
+import { Ban, CalendarDays, FileText, Loader2, Plus, RotateCcw, Search, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -35,7 +35,7 @@ const STATUS_PILL_CLASSES: Record<InvoiceStatus | PharmacyBillStatus, string> = 
   Paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
   Pending: 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400',
   'Partially Paid': 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
-  Voided: 'bg-muted text-muted-foreground line-through',
+  Voided: 'bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300',
   'On IP bill': 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400',
 };
 
@@ -71,8 +71,14 @@ function invoiceStatus(billing: Billing): InvoiceStatus {
   return paid === 0 ? 'Pending' : 'Partially Paid';
 }
 
-function StatusPill({ status }: { status: InvoiceStatus | PharmacyBillStatus }) {
-  return <span className={cn('inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_PILL_CLASSES[status])}>{status}</span>;
+/** `label` overrides the text only — e.g. "Reverted" for a voided bill that came from an
+ * approved revert request (ADR-106), which is styled and filtered as Voided. */
+function StatusPill({ status, label }: { status: InvoiceStatus | PharmacyBillStatus; label?: string }) {
+  return (
+    <span className={cn('inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_PILL_CLASSES[status])}>
+      {label ?? status}
+    </span>
+  );
 }
 
 function SummaryTile({ label, value, className }: { label: string; value: string; className: string }) {
@@ -355,8 +361,13 @@ export function PatientBillingPanel({ patientId }: { patientId: string }) {
 
 function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
   const { billing, context, status, items } = invoice;
+  // A voided (or reverted) bill was cancelled: it stays listed for the record, but every
+  // figure on it must read as "not charged" — the totals above already leave it out.
+  const voided = billing.isVoided;
+  const voidLabel = billing.isReverted ? 'Reverted' : 'Voided';
+  const voidedAmountClass = voided ? 'text-muted-foreground line-through' : undefined;
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className={cn('overflow-hidden rounded-lg border', voided ? 'border-dashed border-destructive/40' : 'border-border')}>
       <div className="flex flex-wrap items-center gap-3 bg-muted/50 px-3 py-2">
         <span
           className={cn('rounded-full px-3 py-0.5 text-xs font-semibold', CONTEXT_TONE_CLASSES[context.tone])}
@@ -369,9 +380,24 @@ function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
         </Link>
         <span className="text-sm text-muted-foreground">{new Date(billing.createdAt).toLocaleDateString('en-IN')}</span>
         <span className="ml-auto">
-          <StatusPill status={status} />
+          <StatusPill status={status} label={voided ? voidLabel : undefined} />
         </span>
       </div>
+      {voided && (
+        <div className="flex items-start gap-2 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          <Ban className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="flex flex-col">
+            <span>
+              <span className="font-medium">
+                {voidLabel}
+                {billing.voidedAt ? ` on ${new Date(billing.voidedAt).toLocaleString('en-IN')}` : ''}
+              </span>
+              {' '}— this bill was cancelled. Nothing is due on it and it isn&apos;t counted in the totals above.
+            </span>
+            {billing.voidReason && <span className="text-destructive/80">Reason: {billing.voidReason}</span>}
+          </div>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] text-sm">
           <thead>
@@ -408,10 +434,10 @@ function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
                   </td>
                   <td className="px-3 py-2">{itemDepartment(item)}</td>
                   <td className="px-3 py-2 text-center tabular-nums">{item.quantity}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatAmount(item.unitPrice)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatAmount(item.total)}</td>
+                  <td className={cn('px-3 py-2 text-right tabular-nums', voidedAmountClass)}>{formatAmount(item.unitPrice)}</td>
+                  <td className={cn('px-3 py-2 text-right tabular-nums', voidedAmountClass)}>{formatAmount(item.total)}</td>
                   <td className="px-3 py-2 text-center">
-                    <StatusPill status={billing.isVoided ? 'Voided' : item.paymentStatus} />
+                    <StatusPill status={voided ? 'Voided' : item.paymentStatus} label={voided ? voidLabel : undefined} />
                   </td>
                 </tr>
               );
@@ -421,15 +447,29 @@ function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
       </div>
       <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-1 border-t border-border px-3 py-2 text-sm">
         <span className="text-muted-foreground">
-          Gross Amount <span className="ml-3 font-semibold text-foreground">{formatCurrency(billing.grossAmount)}</span>
+          Gross Amount{' '}
+          <span className={cn('ml-3 font-semibold', voided ? 'text-muted-foreground line-through' : 'text-foreground')}>
+            {formatCurrency(billing.grossAmount)}
+          </span>
         </span>
         {billing.totalDiscount > 0 && (
           <span className="text-muted-foreground">
-            Discount <span className="ml-3 font-semibold text-foreground">−{formatCurrency(billing.totalDiscount)}</span>
+            Discount{' '}
+            <span className={cn('ml-3 font-semibold', voided ? 'text-muted-foreground line-through' : 'text-foreground')}>
+              −{formatCurrency(billing.totalDiscount)}
+            </span>
+          </span>
+        )}
+        {voided && (
+          <span className="text-muted-foreground">
+            {voidLabel} <span className="ml-3 font-semibold text-destructive">−{formatCurrency(billing.netAmount)}</span>
           </span>
         )}
         <span className="text-muted-foreground">
-          Net Amount <span className="ml-3 font-semibold text-orange-500">{formatCurrency(billing.netAmount)}</span>
+          Net Amount{' '}
+          <span className={cn('ml-3 font-semibold', voided ? 'text-foreground' : 'text-orange-500')}>
+            {formatCurrency(voided ? 0 : billing.netAmount)}
+          </span>
         </span>
       </div>
     </div>
