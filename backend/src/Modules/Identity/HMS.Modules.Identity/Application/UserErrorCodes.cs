@@ -11,4 +11,8 @@ internal static class UserErrorCodes
     public const string DuplicateUsername = "IDENTITY.USER_USERNAME_DUPLICATE";
     public const string InvalidRole = "IDENTITY.USER_INVALID_ROLE";
     public const string InvalidFile = "IDENTITY.USER_INVALID_FILE";
+
+    // Another user is already linked to this Masters.Consultant — one login per consultant
+    // (ADR-108), so the Consultant form's single Login access card is never ambiguous.
+    public const string ConsultantAlreadyLinked = "IDENTITY.USER_CONSULTANT_ALREADY_LINKED";
 }

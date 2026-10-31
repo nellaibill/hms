@@ -613,4 +613,103 @@ public class UserServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(UserErrorCodes.NotFound);
     }
+
+    [Fact]
+    public async Task CreateAsync_WithPassword_StoresHashAndRequiresAChangeAtFirstLogin()
+    {
+        _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        _repository.GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        _passwordHasher.HashPassword("Sup3rSecret!").Returns("hashed-password");
+        User? added = null;
+        await _repository.AddAsync(Arg.Do<User>(u => added = u), Arg.Any<CancellationToken>());
+
+        var request = new CreateUserRequest
+        {
+            Username = "ada.lovelace",
+            FirstName = "Ada",
+            LastName = "Lovelace",
+            Email = "ada@example.com",
+            RoleId = _roleId,
+            Password = "Sup3rSecret!",
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        added!.PasswordHash.Should().Be("hashed-password");
+        added.MustChangePassword.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutPassword_LeavesPasswordUnset()
+    {
+        _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        _repository.GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        User? added = null;
+        await _repository.AddAsync(Arg.Do<User>(u => added = u), Arg.Any<CancellationToken>());
+
+        var request = new CreateUserRequest { Username = "ada.lovelace", FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", RoleId = _roleId };
+
+        await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        added!.PasswordHash.Should().BeNull();
+        _passwordHasher.DidNotReceiveWithAnyArgs().HashPassword(default!);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenConsultantAlreadyHasALogin_ReturnsConsultantAlreadyLinkedFailure()
+    {
+        var consultantId = Guid.NewGuid();
+        _repository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        _repository.GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
+        _repository.ExistsByConsultantIdAsync(consultantId, null, Arg.Any<CancellationToken>()).Returns(true);
+
+        var request = new CreateUserRequest
+        {
+            Username = "dr.meena",
+            FirstName = "Dr.",
+            LastName = "Meena",
+            Email = "meena@example.com",
+            RoleId = _roleId,
+            ConsultantId = consultantId,
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(UserErrorCodes.ConsultantAlreadyLinked);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenLinkingAConsultantThatAnotherUserHas_ReturnsConsultantAlreadyLinkedFailure()
+    {
+        var consultantId = Guid.NewGuid();
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, _roleId, null);
+        _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        _repository.ExistsByConsultantIdAsync(consultantId, user.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var request = new UpdateUserRequest { Username = "ada.lovelace", FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", RoleId = _roleId, ConsultantId = consultantId };
+
+        var result = await _sut.UpdateAsync(user.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(UserErrorCodes.ConsultantAlreadyLinked);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenConsultantLinkIsUnchanged_DoesNotRecheckIt()
+    {
+        var consultantId = Guid.NewGuid();
+        var user = User.Create("ada.lovelace", "Ada", "Lovelace", "ada@example.com", null, _roleId, null, consultantId);
+        _repository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var request = new UpdateUserRequest { Username = "ada.lovelace", FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", RoleId = _roleId, ConsultantId = consultantId };
+
+        var result = await _sut.UpdateAsync(user.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _repository.DidNotReceiveWithAnyArgs().ExistsByConsultantIdAsync(default, default, default);
+    }
 }

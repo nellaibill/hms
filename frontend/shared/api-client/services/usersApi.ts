@@ -23,6 +23,7 @@ export class UsersApi {
         sort: query.sort,
         search: query.search,
         isActive: query.isActive,
+        consultantId: query.consultantId,
       },
     });
     return {

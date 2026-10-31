@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useDepartmentNameById } from '@/features/calendarEvents/hooks/useDepartmentDirectory';
+import { LoginAccessCard, useLoginAccessState } from '@/features/users';
 import { EmployeeDocumentsPanel } from '../../features/employeeDocuments';
 import { EmploymentStatusBadge, useDesignationNameById, useEmployeeLeaveBalancesQuery, useEmployeeQuery } from '../../features/employees';
 import { NewLeaveRequestDialog } from '../../features/leaveRequests';
@@ -21,6 +22,9 @@ export default function EmployeeViewPage() {
   const { hasPermission } = useAuth();
   const [showRequestLeave, setShowRequestLeave] = useState(false);
   const canViewDocuments = hasPermission('records-compliance.view');
+  // Read-only here: the card only shows the linked login (with its own actions); adding one
+  // happens on the Edit page.
+  const loginAccess = useLoginAccessState('employee', false);
 
   if (isPending) {
     return (
@@ -103,6 +107,15 @@ export default function EmployeeViewPage() {
                 {employee.updatedAt && <Field label="Last updated" value={new Date(employee.updatedAt).toLocaleString('en-IN')} />}
               </CardContent>
             </Card>
+
+            <div className="mt-4">
+              <LoginAccessCard
+                {...loginAccess.cardProps}
+                personName={`${employee.firstName} ${employee.lastName}`}
+                linkedUserId={employee.userId}
+                readOnly
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="leave-balances" className="mt-4">

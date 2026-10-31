@@ -27,6 +27,9 @@ export interface CreateUserRequest {
   phoneNumber?: string | null;
   roleId: string;
   consultantId?: string | null;
+  /** Optional first password — hashed and flagged must-change, exactly like an admin
+   * SetPassword (ADR-108). Omitted, the account has no password until one is set. */
+  password?: string | null;
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.UpdateUserRequest. */
@@ -47,6 +50,8 @@ export interface UserListQuery {
   sort?: string;
   search?: string;
   isActive?: boolean;
+  /** Only the user linked to this consultant (one login per consultant, ADR-108). */
+  consultantId?: string;
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.SetPasswordRequest. */

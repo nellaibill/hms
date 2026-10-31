@@ -37,6 +37,34 @@ _To be documented._
 
 ## Decisions
 
+### ADR-108: A login is created from the Employee or Consultant form, in a Login access card, not only from Settings → Users
+**Date:** 2026-10-31
+**Status:** Accepted
+
+**Context**
+Giving staff a login took three pages: create the employee (or consultant), then Settings → Users → New User re-typing the same name, email and phone, then the user's page → Set Password. The Employee form's only link to a login was a "Linked User Account Id" box that took a raw id. Many employees (drivers, housekeepers, electricians, watchmen) never need a login at all.
+
+**Decision**
+- One **Login access** card (`features/users/components/LoginAccessCard.tsx`) on the Employee form (New/Edit/View) and the Consultant form (New/Edit/View). A switch, "Allow this … to log in to HMS", decides whether there is a login.
+  - Off by default for an employee, on by default for a new consultant (with the "Doctor / Consultant" role pre-selected).
+  - On: only what a login has that the record doesn't — username (suggested from the name, checked live for clashes), role, password and confirm. A consultant record has no email or phone, so its card also asks for those.
+  - "Link an existing login" replaces the raw id box, for people who already have a login.
+  - Once a login exists, the card shows its username, status and last login, and lets you change the role, reset the password and activate/deactivate it. These save straight away through the Users API, with the same permissions as Settings → Users.
+- **Employee: one request.** `CreateEmployeeRequest`/`UpdateEmployeeRequest` take an optional `Login { Username, Password, RoleId }`. `EmployeeService` checks every employee rule first, then creates the login through Identity's `IUserService` with the employee's own name, email and phone (phone reduced to 10 digits by `MobileNumber.ToTenDigits`), then saves the employee with its `UserId`. If that save fails, the new login is soft-deleted again: the two modules have no shared transaction. Sending `Login` needs `identity-administration.create` as well as the HR permission (`HR.CREATE_LOGIN_FORBIDDEN` otherwise).
+- **Consultant: two requests.** Masters may not depend on Identity, so the page saves the consultant, then creates the login with `consultantId`. If the login is rejected, the consultant stays saved and the user lands on its Edit page with a toast saying what to fix.
+- `CreateUserRequest.Password` is new and optional. It's hashed like an admin Set Password and sets `MustChangePassword`, so the person picks their own password at first login.
+- `GET /api/v1/users?consultantId=` finds a consultant's login (the link is stored on the user).
+- **One login per consultant and one employee per login.** `IDENTITY.USER_CONSULTANT_ALREADY_LINKED` and `HR.USER_ALREADY_LINKED` are only checked when the link changes, so records saved before this rule can still be edited as they stand.
+- Settings → Users is unchanged. It still lists every login and is still where accounts that aren't employees or consultants (e.g. the hospital Super Admin) are made.
+
+**Consequences**
+- An employee login's name, email and phone are copied at creation and don't follow later edits to the employee. Edit them on the Users page if they change.
+- Identity requires a login's phone to be 10 digits. An employee whose Phone can't be reduced to 10 digits can't get a login until the phone is corrected; the form says so on the Phone field.
+- A failed consultant login leaves a consultant without a login. That's visible, and fixable from its Edit page; a half-saved employee can't happen.
+- A designation-level "usually needs a login" default was considered and left for later.
+
+---
+
 ### ADR-107: OPD "Consult" is allowed only once the visit's Payment Status is Paid; otherwise the user is sent to billing first
 **Date:** 2026-10-30
 **Status:** Accepted

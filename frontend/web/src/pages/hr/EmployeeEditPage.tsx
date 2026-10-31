@@ -1,12 +1,17 @@
 import { ApiError, type EmployeeFormValues, type UpdateEmployeeRequest } from '@hms/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
+import { useToast } from '@/components/ui/toast-context';
+import { toEmployeeLoginPayload, type LoginAccessDraft } from '@/features/users';
 import { EmployeeForm, useEmployeeQuery, useUpdateEmployeeMutation } from '../../features/employees';
 
 export default function EmployeeEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: employee, isPending, isError } = useEmployeeQuery(id);
   const mutation = useUpdateEmployeeMutation();
 
@@ -29,7 +34,10 @@ export default function EmployeeEditPage() {
     );
   }
 
-  function handleSubmit(values: EmployeeFormValues) {
+  function handleSubmit(values: EmployeeFormValues, loginDraft: LoginAccessDraft) {
+    // The login link isn't a form field any more — keep the existing one unless the Login
+    // access card links or creates one now.
+    const { login, userId } = toEmployeeLoginPayload(loginDraft);
     const request: UpdateEmployeeRequest = {
       firstName: values.firstName,
       lastName: values.lastName,
@@ -47,12 +55,21 @@ export default function EmployeeEditPage() {
       employmentStatus: values.employmentStatus,
       reportingManagerId: values.reportingManagerId || null,
       profilePhotoUrl: values.profilePhotoUrl || null,
-      userId: values.userId || null,
+      userId: userId ?? employee?.userId ?? null,
       isActive: values.isActive,
+      login,
     };
     mutation.mutate(
       { id: id as string, request },
-      { onSuccess: () => navigate(`/admin/hr/employees/${id}`) },
+      {
+        onSuccess: () => {
+          if (login) {
+            void queryClient.invalidateQueries({ queryKey: ['users'] });
+            toast({ title: 'Login created', description: `They can now log in as ${login.username}.`, variant: 'success' });
+          }
+          navigate(`/admin/hr/employees/${id}`);
+        },
+      },
     );
   }
 
@@ -95,9 +112,9 @@ export default function EmployeeEditPage() {
             employmentStatus: employee.employmentStatus,
             reportingManagerId: employee.reportingManagerId ?? '',
             profilePhotoUrl: employee.profilePhotoUrl ?? '',
-            userId: employee.userId ?? '',
             isActive: employee.isActive,
           }}
+          linkedUserId={employee.userId}
           onSubmit={handleSubmit}
         />
       </div>

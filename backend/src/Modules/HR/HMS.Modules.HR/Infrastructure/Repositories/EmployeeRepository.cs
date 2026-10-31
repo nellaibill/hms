@@ -26,6 +26,9 @@ internal class EmployeeRepository : IEmployeeRepository
     public Task<bool> ExistsByCodeAsync(string employeeCode, Guid? excludingId, CancellationToken cancellationToken)
         => _dbContext.Employees.AnyAsync(e => e.EmployeeCode == employeeCode && e.Id != excludingId, cancellationToken);
 
+    public Task<bool> ExistsByUserIdAsync(Guid userId, Guid? excludingId, CancellationToken cancellationToken)
+        => _dbContext.Employees.AnyAsync(e => e.UserId == userId && e.Id != excludingId, cancellationToken);
+
     public async Task<(IReadOnlyList<Employee> Items, int TotalCount)> GetPagedAsync(EmployeeListQuery query, CancellationToken cancellationToken)
     {
         var employees = _dbContext.Employees.AsQueryable();

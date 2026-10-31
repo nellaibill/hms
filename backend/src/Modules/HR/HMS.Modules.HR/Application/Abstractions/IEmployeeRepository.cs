@@ -13,6 +13,8 @@ internal interface IEmployeeRepository
 
     Task<bool> ExistsByCodeAsync(string employeeCode, Guid? excludingId, CancellationToken cancellationToken);
 
+    Task<bool> ExistsByUserIdAsync(Guid userId, Guid? excludingId, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<Employee> Items, int TotalCount)> GetPagedAsync(EmployeeListQuery query, CancellationToken cancellationToken);
 
     Task<int> CountAsync(CancellationToken cancellationToken);

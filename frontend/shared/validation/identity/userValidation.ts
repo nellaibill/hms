@@ -42,3 +42,56 @@ export const setPasswordSchema = z
   });
 
 export type SetPasswordFormValues = z.infer<typeof setPasswordSchema>;
+
+/**
+ * The Login access card on the Employee/Consultant forms (ADR-108) — only what a login has
+ * that the person's own record doesn't. Mirrors HMS.Modules.HR's EmployeeLoginRequestValidator
+ * plus Identity's password policy, with the same client-only confirm-password check as
+ * setPasswordSchema.
+ */
+export const newLoginSchema = z
+  .object({
+    username: userProfileSchema.shape.username,
+    roleId: userProfileSchema.shape.roleId,
+    password: setPasswordSchema.innerType().shape.password,
+    confirmPassword: z.string().min(1, 'Confirm the password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type NewLoginFormValues = z.infer<typeof newLoginSchema>;
+
+/** A consultant record has no email or phone of its own, so its Login access card asks for
+ * both — with the same rules as any other login. */
+export const consultantNewLoginSchema = z
+  .object({
+    username: userProfileSchema.shape.username,
+    roleId: userProfileSchema.shape.roleId,
+    email: userProfileSchema.shape.email,
+    phoneNumber: userProfileSchema.shape.phoneNumber,
+    password: setPasswordSchema.innerType().shape.password,
+    confirmPassword: z.string().min(1, 'Confirm the password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type ConsultantNewLoginFormValues = z.infer<typeof consultantNewLoginSchema>;
+
+/**
+ * Mirrors HMS.Modules.HR.Application.MobileNumber.ToTenDigits — the employee's free-text
+ * phone as the bare 10-digit number a login needs (spaces, dashes and a +91/0 prefix
+ * dropped), or null when that isn't possible.
+ */
+export function toTenDigitMobile(phone: string | null | undefined): string | null {
+  let digits = (phone ?? '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  return digits.length === 10 ? digits : null;
+}

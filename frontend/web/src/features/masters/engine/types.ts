@@ -181,6 +181,12 @@ export interface MasterEntityConfig {
     urlField: string;
     helpText?: string;
   };
+  /**
+   * Opts this entity into the Login access card (ADR-108): the record is a person who may log
+   * in to HMS, linked from the user's side (User.ConsultantId). MasterFormPage renders the
+   * card and saves the login right after the record — only Consultant uses this.
+   */
+  consultantLogin?: boolean;
 }
 
 export interface MasterExtraColumn {

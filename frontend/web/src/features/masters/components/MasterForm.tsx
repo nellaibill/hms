@@ -1,6 +1,6 @@
 import type { ApiError } from '@hms/shared';
 import { Info } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,6 +102,12 @@ interface MasterFormProps {
    * call this came from actually succeeds and a real record id exists. */
   onSubmit: (values: Record<string, unknown>, photoFile?: File) => void;
   onCancel: () => void;
+  /** An extra card the page owns, rendered inside the form after Status (e.g. the
+   * Consultant's Login access card) — given the live form values so it can follow them. */
+  renderExtraSection?: (values: Record<string, unknown>) => ReactNode;
+  /** Runs on every Save attempt, valid form or not, so the extra section's own errors show
+   * alongside the form's — return false to stop the save. */
+  onValidateExtra?: () => boolean;
 }
 
 function toFormDefaults(config: MasterEntityConfig, values: Record<string, unknown>): Record<string, unknown> {
@@ -544,7 +550,18 @@ function FieldControl({ field, register, control, errors, readOnly, recordId, sc
   );
 }
 
-export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting, apiError, onSubmit, onCancel }: MasterFormProps) {
+export function MasterForm({
+  config,
+  mode,
+  recordId,
+  defaultValues,
+  isSubmitting,
+  apiError,
+  onSubmit,
+  onCancel,
+  renderExtraSection,
+  onValidateExtra,
+}: MasterFormProps) {
   const readOnly = mode === 'view';
   const existingRecordsQuery = useMasterOptionsQuery(config.key);
   const existingRecords: MasterRecord[] = existingRecordsQuery.data ?? [];
@@ -591,6 +608,7 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
   }
 
   function submitHandler(values: Record<string, unknown>) {
+    const extraIsValid = onValidateExtra?.() ?? true;
     const normalized = fromFormValues(config, values);
     if (config.validateForm) {
       const message = config.validateForm(normalized);
@@ -600,8 +618,14 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
       }
     }
     setCrossFieldError(undefined);
+    if (!extraIsValid) {
+      return;
+    }
     onSubmit(normalized, stagedPhotoFile ?? undefined);
   }
+
+  const handleFormSubmit = handleSubmit(submitHandler, () => onValidateExtra?.());
+  const extraSection = renderExtraSection?.(watch());
 
   const nonTextareaFields = config.fields.filter((field) => field.type !== 'textarea');
   const textareaFields = config.fields.filter((field) => field.type === 'textarea');
@@ -705,7 +729,7 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
   // unset and falls through to the classic single flat-card layout below, unchanged.
   if (config.fieldGroups) {
     return (
-      <form onSubmit={handleSubmit(submitHandler)} noValidate className="flex w-full flex-col gap-5">
+      <form onSubmit={handleFormSubmit} noValidate className="flex w-full flex-col gap-5">
         {config.fieldGroups.map((group, index) => (
           <Card key={group.key}>
             <CardHeader className="flex flex-row items-center gap-2 space-y-0 rounded-t-xl bg-muted/50 py-3">
@@ -745,13 +769,15 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
 
         {statusCard}
 
+        {extraSection}
+
         {footer}
       </form>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit(submitHandler)} noValidate className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    <form onSubmit={handleFormSubmit} noValidate className="mx-auto flex w-full max-w-4xl flex-col gap-5">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{config.label} Information</CardTitle>
@@ -783,6 +809,8 @@ export function MasterForm({ config, mode, recordId, defaultValues, isSubmitting
           {textareaFields.map((field) => renderField(field))}
         </CardContent>
       </Card>
+
+      {extraSection}
 
       {footer}
     </form>

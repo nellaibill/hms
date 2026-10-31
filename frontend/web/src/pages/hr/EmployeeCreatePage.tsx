@@ -1,22 +1,35 @@
 import { ApiError, type CreateEmployeeRequest, type EmployeeFormValues } from '@hms/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import { Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
+import { useToast } from '@/components/ui/toast-context';
+import { toEmployeeLoginPayload, type LoginAccessDraft } from '@/features/users';
 import { EmployeeForm, useCreateEmployeeMutation } from '../../features/employees';
 
 export default function EmployeeCreatePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const mutation = useCreateEmployeeMutation();
 
-  function handleSubmit(values: EmployeeFormValues) {
+  function handleSubmit(values: EmployeeFormValues, loginDraft: LoginAccessDraft) {
+    const { login, userId } = toEmployeeLoginPayload(loginDraft);
     const request: CreateEmployeeRequest = {
       ...values,
       reportingManagerId: values.reportingManagerId || null,
       profilePhotoUrl: values.profilePhotoUrl || null,
-      userId: values.userId || null,
+      userId,
+      login,
     };
     mutation.mutate(request, {
-      onSuccess: (employee) => navigate(`/admin/hr/employees/${employee.id}`),
+      onSuccess: (employee) => {
+        if (login) {
+          void queryClient.invalidateQueries({ queryKey: ['users'] });
+          toast({ title: 'Employee and login saved', description: `${employee.firstName} can now log in as ${login.username}.`, variant: 'success' });
+        }
+        navigate(`/admin/hr/employees/${employee.id}`);
+      },
     });
   }
 
