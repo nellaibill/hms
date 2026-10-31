@@ -41,5 +41,42 @@ internal static class InvoiceMappingExtensions
         VoidedAt = invoice.VoidedAt,
         VoidReason = invoice.VoidReason,
         IsReverted = invoice.IsReverted,
+        DiscountStatus = invoice.DiscountStatus,
+    };
+
+    public static InvoiceDiscountRequestResponse ToResponse(this InvoiceDiscountRequest request) => new()
+    {
+        Id = request.Id,
+        InvoiceId = request.InvoiceId,
+        InvoiceNumber = request.InvoiceNumber,
+        PatientId = request.PatientId,
+        PatientName = request.PatientName,
+        PatientUhid = request.PatientUhid,
+        GrossAmount = request.GrossAmount,
+        DiscountType = request.DiscountType,
+        DiscountValue = request.DiscountValue,
+        TotalDiscount = request.TotalDiscount,
+        Reason = request.Reason,
+        Status = request.Status,
+        RequestedBy = request.CreatedBy,
+        RequestedByName = request.RequestedByName,
+        RequestedAt = request.CreatedAt,
+        DecidedBy = request.DecidedBy,
+        DecidedByName = request.DecidedByName,
+        DecidedAt = request.DecidedAt,
+        DecisionNotes = request.DecisionNotes,
+        Lines = request.Lines.Select(l => new InvoiceDiscountRequestLineResponse
+        {
+            LineItemId = l.LineItemId,
+            BillingType = l.BillingType,
+            DepartmentId = l.DepartmentId,
+            ConsultantId = l.ConsultantId,
+            ServiceId = l.ServiceId,
+            PackageId = l.PackageId,
+            Quantity = l.Quantity,
+            UnitPrice = l.UnitPrice,
+            LineAmount = l.Quantity * l.UnitPrice,
+            Discount = l.Discount,
+        }).ToList(),
     };
 }

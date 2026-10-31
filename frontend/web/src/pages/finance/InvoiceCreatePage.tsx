@@ -21,6 +21,7 @@ import {
   emptyLaboratoryRow,
   emptyServiceRow,
   useBillableInvestigationsQuery,
+  useBillingQuery,
   useCreateInvoiceMutation,
   usePatientInvoicesQuery,
   useRecordPaymentMutation,
@@ -84,6 +85,13 @@ export default function InvoiceCreatePage() {
   const [isVoiding, setIsVoiding] = useState(false);
   const recordPaymentMutation = useRecordPaymentMutation();
   const voidInvoiceMutation = useVoidInvoiceMutation();
+  // The saved invoice as the server has it now — a discount sent for approval (ADR-109) is
+  // decided on another screen, and this query checks back while it waits, so the counter sees
+  // the decision (and Collect Payment) here without reloading. Keeps the OP No from the save or
+  // payment result, which a plain read never carries.
+  const { data: liveInvoice } = useBillingQuery(savedInvoice?.id);
+  const shownInvoice: Billing | null =
+    savedInvoice && liveInvoice ? { ...liveInvoice, opNumber: liveInvoice.opNumber ?? savedInvoice.opNumber } : savedInvoice;
 
   // Registration Details already captured Department/Consultant/Consultation Type for this
   // patient's visit — re-asking for the same three fields here would just be redundant data
@@ -347,6 +355,11 @@ export default function InvoiceCreatePage() {
     );
   }
 
+  // Collect Payment on the saved bill (e.g. once its discount is decided) — keep its OP No.
+  function handlePaid(updated: Billing) {
+    setSavedInvoice((previous) => ({ ...updated, opNumber: updated.opNumber ?? previous?.opNumber }));
+  }
+
   function handleConfirmVoid(reason: string) {
     if (!savedInvoice) return;
     voidInvoiceMutation.mutate(
@@ -409,33 +422,34 @@ export default function InvoiceCreatePage() {
                 />
               )}
 
-              {savedInvoice ? (
+              {shownInvoice ? (
                 // Saved — shows the real invoice view right here (same InvoiceDetailCard the
                 // standalone Invoice Detail page renders) instead of navigating there, so
                 // billing this patient never leaves this page. Record Payment/Void still work,
                 // same as on that page.
                 <>
                   <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
-                    Invoice {savedInvoice.invoiceNumber ?? savedInvoice.id} saved.
+                    Invoice {shownInvoice.invoiceNumber ?? shownInvoice.id} saved.
+                    {shownInvoice.discountStatus === 'Pending' && <> The discount was sent to the Super Admin for approval — collect payment here once it’s decided.</>}
                     {/* An OP visit gets its OP No once its consultation fee is paid (ADR-103) —
                         this is where reception first sees it. */}
-                    {savedInvoice.opNumber && <> OP No: <span className="font-semibold">{savedInvoice.opNumber}</span></>}
+                    {shownInvoice.opNumber && <> OP No: <span className="font-semibold">{shownInvoice.opNumber}</span></>}
                   </p>
-                  {savedInvoice.items.some((item) => item.billingType === 'Laboratory') ? (
+                  {shownInvoice.items.some((item) => item.billingType === 'Laboratory') ? (
                     <Tabs defaultValue="summary">
                       <TabsList>
                         <TabsTrigger value="summary">Summary</TabsTrigger>
                         <TabsTrigger value="lab-details">Lab Details</TabsTrigger>
                       </TabsList>
                       <TabsContent value="summary" className="mt-4">
-                        <InvoiceDetailCard billing={savedInvoice} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
+                        <InvoiceDetailCard billing={shownInvoice} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} onPaid={handlePaid} />
                       </TabsContent>
                       <TabsContent value="lab-details" className="mt-4">
-                        <LabDetailsCard billing={savedInvoice} />
+                        <LabDetailsCard billing={shownInvoice} />
                       </TabsContent>
                     </Tabs>
                   ) : (
-                    <InvoiceDetailCard billing={savedInvoice} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} />
+                    <InvoiceDetailCard billing={shownInvoice} onRecordPayment={setItemPendingPayment} onVoidInvoice={() => setIsVoiding(true)} onPaid={handlePaid} />
                   )}
                   <div className="flex justify-end">
                     <Button onClick={handleBillAnotherPatient}>Bill Another Patient</Button>

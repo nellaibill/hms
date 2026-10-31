@@ -1,9 +1,14 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  ApproveInvoiceDiscountRequest,
   ApproveInvoiceRevertRequest,
   BillingDashboardSummary,
+  CreateInvoiceDiscountRequest,
   CreateInvoiceRequest,
   CreateInvoiceRevertRequest,
+  InvoiceDiscountRequestListQuery,
+  InvoiceDiscountRequestResponse,
+  InvoiceDiscountStatusResponse,
   InvoiceListQuery,
   InvoiceResponse,
   InvoiceRevertRequestListQuery,
@@ -12,7 +17,9 @@ import type {
   ProcedureListItem,
   ProcedureListQuery,
   RecentPatientBill,
+  PayInvoiceRequest,
   RecordPaymentRequest,
+  RejectInvoiceDiscountRequest,
   RejectInvoiceRevertRequest,
   VoidInvoiceRequest,
 } from '../../dtos';
@@ -26,6 +33,11 @@ export interface PagedInvoices {
 
 export interface PagedInvoiceRevertRequests {
   items: InvoiceRevertRequestResponse[];
+  meta: PaginationMeta;
+}
+
+export interface PagedInvoiceDiscountRequests {
+  items: InvoiceDiscountRequestResponse[];
   meta: PaginationMeta;
 }
 
@@ -92,6 +104,12 @@ export class BillingApi {
     return response.data;
   }
 
+  /** Collects everything still owed on the bill in one go — e.g. once its discount is decided (ADR-109). */
+  async payInvoice(id: string, request: PayInvoiceRequest): Promise<InvoiceResponse> {
+    const response = await this.client.post<InvoiceResponse>(API_ROUTES.billing.invoices.pay(id), request);
+    return response.data;
+  }
+
   async voidInvoice(id: string, request: VoidInvoiceRequest): Promise<InvoiceResponse> {
     const response = await this.client.post<InvoiceResponse>(API_ROUTES.billing.invoices.void(id), request);
     return response.data;
@@ -134,6 +152,46 @@ export class BillingApi {
   /** Super Admin only — notes are required. */
   async rejectRevertRequest(id: string, request: RejectInvoiceRevertRequest): Promise<InvoiceRevertRequestResponse> {
     const response = await this.client.post<InvoiceRevertRequestResponse>(API_ROUTES.billing.revertRequests.reject(id), request);
+    return response.data;
+  }
+
+  /** Whether a discount can be requested for this invoice, and every discount request on it (ADR-109). */
+  async getInvoiceDiscountStatus(invoiceId: string): Promise<InvoiceDiscountStatusResponse> {
+    const response = await this.client.get<InvoiceDiscountStatusResponse>(API_ROUTES.billing.invoices.discount(invoiceId));
+    return response.data;
+  }
+
+  /** Asks for a discount on lines of an unpaid bill — approved at once for a Super Admin. */
+  async requestInvoiceDiscount(invoiceId: string, request: CreateInvoiceDiscountRequest): Promise<InvoiceDiscountRequestResponse> {
+    const response = await this.client.post<InvoiceDiscountRequestResponse>(API_ROUTES.billing.invoices.discountRequests(invoiceId), request);
+    return response.data;
+  }
+
+  async getDiscountRequests(query: InvoiceDiscountRequestListQuery = {}): Promise<PagedInvoiceDiscountRequests> {
+    const response = await this.client.get<InvoiceDiscountRequestResponse[]>(API_ROUTES.billing.discountRequests.base, {
+      query: { page: query.page, pageSize: query.pageSize, status: query.status },
+    });
+
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
+  }
+
+  async getPendingDiscountRequestCount(): Promise<number> {
+    const response = await this.client.get<number>(API_ROUTES.billing.discountRequests.pendingCount);
+    return response.data;
+  }
+
+  /** Super Admin only — approving puts the discount on the bill. */
+  async approveDiscountRequest(id: string, request: ApproveInvoiceDiscountRequest = {}): Promise<InvoiceDiscountRequestResponse> {
+    const response = await this.client.post<InvoiceDiscountRequestResponse>(API_ROUTES.billing.discountRequests.approve(id), request);
+    return response.data;
+  }
+
+  /** Super Admin only — notes are required. */
+  async rejectDiscountRequest(id: string, request: RejectInvoiceDiscountRequest): Promise<InvoiceDiscountRequestResponse> {
+    const response = await this.client.post<InvoiceDiscountRequestResponse>(API_ROUTES.billing.discountRequests.reject(id), request);
     return response.data;
   }
 

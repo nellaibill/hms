@@ -124,4 +124,59 @@ public class InvoiceTests
 
         invoice.IsReverted.Should().BeFalse();
     }
+
+    // ADR-109: an approved counter discount re-prices unpaid lines after the bill is saved.
+    [Fact]
+    public void ApplyDiscount_RepricesTheGivenLinesAndTheBillsTotals()
+    {
+        var invoice = Invoice.Create("INV-2026-000013", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1",
+            [Spec(unitPrice: 720m), Spec(BillingType.Laboratory, unitPrice: 300m)], createdBy: null);
+        var approver = Guid.NewGuid();
+
+        invoice.ApplyDiscount([(invoice.Items.First().Id, 120m)], "  superadmin  ", approver);
+
+        var line = invoice.Items.First();
+        line.Discount.Should().Be(120m);
+        line.Total.Should().Be(600m);
+        line.DiscountApproved.Should().BeTrue();
+        line.DiscountApprovedBy.Should().Be("superadmin");
+        invoice.Items.Last().Total.Should().Be(300m, "an unselected line keeps its price");
+        invoice.GrossAmount.Should().Be(1020m);
+        invoice.TotalDiscount.Should().Be(120m);
+        invoice.NetAmount.Should().Be(900m);
+        invoice.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
+    }
+
+    [Fact]
+    public void ApplyDiscount_OnAPaidLine_Throws()
+    {
+        var invoice = Invoice.Create("INV-2026-000014", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec()], createdBy: null);
+        var lineId = invoice.Items.Single().Id;
+        invoice.MarkItemPaid(lineId, null);
+
+        var act = () => invoice.ApplyDiscount([(lineId, 50m)], "superadmin", null);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void ApplyDiscount_AboveTheLinesCharge_Throws()
+    {
+        var invoice = Invoice.Create("INV-2026-000015", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec(unitPrice: 100m)], createdBy: null);
+
+        var act = () => invoice.ApplyDiscount([(invoice.Items.Single().Id, 101m)], "superadmin", null);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Void_WhileADiscountIsPending_CancelsTheBillsDiscountStatus()
+    {
+        var invoice = Invoice.Create("INV-2026-000016", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec()], createdBy: null);
+        invoice.MarkDiscountPending(null);
+
+        invoice.Void("Patient left", null);
+
+        invoice.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Cancelled);
+    }
 }
