@@ -55,7 +55,7 @@ Giving staff a login took three pages: create the employee (or consultant), then
 - `CreateUserRequest.Password` is new and optional. It's hashed like an admin Set Password and sets `MustChangePassword`, so the person picks their own password at first login.
 - `GET /api/v1/users?consultantId=` finds a consultant's login (the link is stored on the user).
 - **One login per consultant and one employee per login.** `IDENTITY.USER_CONSULTANT_ALREADY_LINKED` and `HR.USER_ALREADY_LINKED` are only checked when the link changes, so records saved before this rule can still be edited as they stand.
-- Settings → Users is unchanged. It still lists every login and is still where accounts that aren't employees or consultants (e.g. the hospital Super Admin) are made.
+- The **User Accounts** card is removed from Settings: logins are made and managed from the Employee and Consultant pages. The `/users` pages still exist (reached from the login card's "Open in Users" link, or directly) for the rare edit there and for accounts that aren't employees or consultants, such as the hospital Super Admin.
 
 **Consequences**
 - An employee login's name, email and phone are copied at creation and don't follow later edits to the employee. Edit them on the Users page if they change.
