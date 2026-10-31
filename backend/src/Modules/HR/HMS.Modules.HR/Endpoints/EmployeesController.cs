@@ -21,6 +21,10 @@ namespace HMS.Modules.HR.Endpoints;
 [Route("api/v1/employees")]
 public class EmployeesController : ControllerBase
 {
+    // A login made from the Employee form is still an Identity account, so creating one needs
+    // the same permission as Settings → Users → New User on top of the HR one (ADR-108).
+    private const string CreateLoginPermission = "identity-administration.create";
+
     private readonly IEmployeeService _service;
     private readonly IValidator<CreateEmployeeRequest> _createValidator;
     private readonly IValidator<UpdateEmployeeRequest> _updateValidator;
@@ -38,6 +42,7 @@ public class EmployeesController : ControllerBase
     /// <summary>Creates a new employee.</summary>
     /// <response code="201">The employee was created.</response>
     /// <response code="400">The request failed validation, or a reference (Department/Designation/ReportingManager/User) is invalid.</response>
+    /// <response code="403">A login was requested but the caller can't create user accounts.</response>
     [Authorize]
     [RequirePermission("workforce-admin.create")]
     [HttpPost]
@@ -52,6 +57,11 @@ public class EmployeesController : ControllerBase
         if (!validation.IsValid)
         {
             return BadRequest(BuildValidationError(validation));
+        }
+
+        if (request.Login is not null && !User.HasPermission(CreateLoginPermission))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, BuildCreateLoginForbiddenError());
         }
 
         var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
@@ -103,6 +113,11 @@ public class EmployeesController : ControllerBase
         if (!validation.IsValid)
         {
             return BadRequest(BuildValidationError(validation));
+        }
+
+        if (request.Login is not null && !User.HasPermission(CreateLoginPermission))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, BuildCreateLoginForbiddenError());
         }
 
         var result = await _service.UpdateAsync(id, request, actorId: User.GetUserId(), cancellationToken);
@@ -178,6 +193,14 @@ public class EmployeesController : ControllerBase
         ErrorCode = "VALIDATION.FAILED",
         Message = "One or more validation errors occurred.",
         ValidationErrors = validation.Errors.Select(e => new ValidationErrorItem { Field = e.PropertyName, Message = e.ErrorMessage }).ToList(),
+        CorrelationId = HttpContext.GetCorrelationId(),
+        Timestamp = DateTime.UtcNow,
+    };
+
+    private ApiErrorResponse BuildCreateLoginForbiddenError() => new()
+    {
+        ErrorCode = "HR.CREATE_LOGIN_FORBIDDEN",
+        Message = "You don't have permission to create logins. Save without login access, or ask an administrator to add the login.",
         CorrelationId = HttpContext.GetCorrelationId(),
         Timestamp = DateTime.UtcNow,
     };

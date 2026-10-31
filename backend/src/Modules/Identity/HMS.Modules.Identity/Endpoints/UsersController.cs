@@ -44,7 +44,7 @@ public class UsersController : ControllerBase
     /// <summary>Creates a new user.</summary>
     /// <response code="201">The user was created.</response>
     /// <response code="400">The request failed validation.</response>
-    /// <response code="409">A user with the given username or email already exists.</response>
+    /// <response code="409">A user with the given username or email already exists, or another user is already linked to the consultant.</response>
     [Authorize]
     [RequirePermission("identity-administration.create")]
     [HttpPost]
@@ -230,6 +230,7 @@ public class UsersController : ControllerBase
             UserErrorCodes.NotFound => StatusCodes.Status404NotFound,
             UserErrorCodes.DuplicateEmail => StatusCodes.Status409Conflict,
             UserErrorCodes.DuplicateUsername => StatusCodes.Status409Conflict,
+            UserErrorCodes.ConsultantAlreadyLinked => StatusCodes.Status409Conflict,
             UserErrorCodes.InvalidRole => StatusCodes.Status400BadRequest,
             UserErrorCodes.InvalidFile => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status400BadRequest,

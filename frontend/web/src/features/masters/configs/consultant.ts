@@ -20,6 +20,7 @@ export const consultantConfig: MasterEntityConfig = {
       visitEndTime2: record.visitEndTime2 as string | null | undefined,
     }),
   photo: { urlField: 'photoUrl', helpText: 'JPG, PNG (Max 2MB)' },
+  consultantLogin: true,
   fields: [
     // skipUniquenessCheck: two consultants can legitimately share a display name (e.g. two
     // "Dr. Sharma"s) — see ConsultantSelect's own comment on using Specialization instead of

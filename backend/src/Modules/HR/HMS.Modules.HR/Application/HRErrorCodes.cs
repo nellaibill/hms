@@ -51,6 +51,12 @@ internal static class HRErrorCodes
     // (it's always optional).
     public const string InvalidUser = "HR.INVALID_USER";
 
+    // Employee.UserId is already linked to a different employee — one employee per login.
+    public const string UserAlreadyLinked = "HR.USER_ALREADY_LINKED";
+
+    // UpdateEmployeeRequest.Login was sent for an employee who already has a login.
+    public const string EmployeeAlreadyHasLogin = "HR.EMPLOYEE_ALREADY_HAS_LOGIN";
+
     // Attendance.EmployeeId / LeaveRequest.EmployeeId doesn't resolve to a real Employee.
     public const string InvalidEmployee = "HR.INVALID_EMPLOYEE";
 

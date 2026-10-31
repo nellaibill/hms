@@ -5,7 +5,6 @@ import {
   Palette,
   Settings as SettingsIcon,
   ShieldCheck,
-  Users as UsersIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -25,15 +24,10 @@ interface SettingsSection {
   permission?: string;
 }
 
+// No "User Accounts" card: logins are now created and managed from each Employee's and
+// Consultant's own Login access card (ADR-108), one login per person. The /users pages still
+// exist for the login card's "Open in Users" link and for accounts that aren't staff records.
 const sections: SettingsSection[] = [
-  {
-    title: 'User Accounts',
-    description: 'Manage system user accounts — the Identity reference module, fully connected to the live API.',
-    icon: UsersIcon,
-    path: '/users',
-    status: 'available',
-    permission: 'identity-administration.view',
-  },
   {
     title: 'Roles & Permissions',
     description: 'Role-based access control and the permission matrix for every module.',

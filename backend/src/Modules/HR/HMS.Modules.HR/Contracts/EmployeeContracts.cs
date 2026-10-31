@@ -2,6 +2,19 @@ using HMS.Shared.Kernel;
 
 namespace HMS.Modules.HR.Contracts;
 
+/// <summary>
+/// A new portal login to create together with the employee (ADR-108) — only the three
+/// things a login has that an employee doesn't. Name, email and phone come from the employee
+/// itself, so they're never typed twice. Mutually exclusive with linking an existing login
+/// through <c>UserId</c>.
+/// </summary>
+public record EmployeeLoginRequest
+{
+    public string Username { get; init; } = string.Empty;
+    public string Password { get; init; } = string.Empty;
+    public Guid RoleId { get; init; }
+}
+
 public record CreateEmployeeRequest
 {
     public string EmployeeCode { get; init; } = string.Empty;
@@ -23,6 +36,9 @@ public record CreateEmployeeRequest
     public string? ProfilePhotoUrl { get; init; }
     public Guid? UserId { get; init; }
     public bool IsActive { get; init; } = true;
+
+    /// <summary>Creates a login for this employee in the same save — see <see cref="EmployeeLoginRequest"/>.</summary>
+    public EmployeeLoginRequest? Login { get; init; }
 }
 
 // EmployeeCode is intentionally absent — a natural-key field, protected from change after
@@ -47,6 +63,9 @@ public record UpdateEmployeeRequest
     public string? ProfilePhotoUrl { get; init; }
     public Guid? UserId { get; init; }
     public bool IsActive { get; init; } = true;
+
+    /// <summary>Creates a login for this employee in the same save — see <see cref="EmployeeLoginRequest"/>.</summary>
+    public EmployeeLoginRequest? Login { get; init; }
 }
 
 /// <summary>

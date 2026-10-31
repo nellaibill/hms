@@ -1,4 +1,4 @@
-import { ApiError, createEmployeeSchema, EMPLOYEE_GENDERS, EMPLOYEE_TYPES, EMPLOYMENT_STATUSES, type EmployeeFormValues } from '@hms/shared';
+import { ApiError, createEmployeeSchema, EMPLOYEE_GENDERS, EMPLOYEE_TYPES, EMPLOYMENT_STATUSES, toTenDigitMobile, type EmployeeFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { hasLoginErrors, LoginAccessCard, loginErrorsFromApiError, useLoginAccessState, type LoginAccessDraft } from '@/features/users';
 
 interface EmployeeFormProps {
   mode: 'create' | 'edit';
@@ -17,18 +18,25 @@ interface EmployeeFormProps {
    * (an employee can't be their own manager). */
   employeeId?: string;
   defaultValues?: Partial<EmployeeFormValues>;
-  onSubmit: (values: EmployeeFormValues) => void;
+  /** The Login access card's draft comes along with the values — the page turns it into the
+   * request's `login` (see toEmployeeLoginRequest). */
+  onSubmit: (values: EmployeeFormValues, login: LoginAccessDraft) => void;
+  /** The login already linked to the employee being edited, if any. */
+  linkedUserId?: string | null;
   isSubmitting: boolean;
   submitLabel: string;
   apiError: ApiError | null;
 }
 
-export function EmployeeForm({ mode, employeeId, defaultValues, onSubmit, isSubmitting, submitLabel, apiError }: EmployeeFormProps) {
+export function EmployeeForm({ mode, employeeId, defaultValues, onSubmit, isSubmitting, submitLabel, apiError, linkedUserId }: EmployeeFormProps) {
+  const loginAccess = useLoginAccessState('employee', false);
+  const { setErrors: setLoginErrors } = loginAccess;
   const {
     register,
     control,
     handleSubmit,
     setError,
+    watch,
     formState: { errors },
   } = useForm<EmployeeFormValues>({
     resolver: zodResolver(createEmployeeSchema),
@@ -58,21 +66,47 @@ export function EmployeeForm({ mode, employeeId, defaultValues, onSubmit, isSubm
 
   // Server-side validation failures (docs/ApiStandards.md §5) are mapped onto the same
   // field-level display client validation uses, per docs/FrontendArchitecture.md §9.
+  // Failures about the login itself (Login.* fields, or Identity's duplicate username/email)
+  // go to the Login access card; an email clash is about this form's own Email field.
   useEffect(() => {
+    const { email, ...loginErrors } = loginErrorsFromApiError(apiError);
+    setLoginErrors(loginErrors);
+    if (email) {
+      setError('email', { type: 'server', message: email });
+    }
+
     if (!apiError?.validationErrors) {
       return;
     }
 
     for (const issue of apiError.validationErrors) {
+      if (issue.field.startsWith('Login.')) continue;
       const fieldName = (issue.field.charAt(0).toLowerCase() + issue.field.slice(1)) as keyof EmployeeFormValues;
       setError(fieldName, { type: 'server', message: issue.message });
     }
-  }, [apiError, setError]);
+  }, [apiError, setError, setLoginErrors]);
 
-  const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
+  const generalError = apiError && !apiError.validationErrors && !hasLoginErrors(loginErrorsFromApiError(apiError)) ? apiError.message : null;
+
+  // The login uses this form's Phone, which a login needs as exactly 10 digits.
+  function loginPhoneIsUsable(values: EmployeeFormValues): boolean {
+    const { draft } = loginAccess;
+    if (!draft.enabled || toTenDigitMobile(values.phone)) {
+      return true;
+    }
+    setError('phone', { type: 'login', message: 'A login needs a 10-digit mobile number. Enter the phone as 10 digits.' });
+    return false;
+  }
+
+  function handleValid(values: EmployeeFormValues) {
+    const loginIsValid = loginAccess.validate();
+    if (loginPhoneIsUsable(values) && loginIsValid) {
+      onSubmit(values, loginAccess.draft);
+    }
+  }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex max-w-3xl flex-col gap-8">
+    <form onSubmit={handleSubmit(handleValid, () => loginAccess.validate())} noValidate className="flex max-w-3xl flex-col gap-8">
       {generalError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {generalError}
@@ -280,6 +314,8 @@ export function EmployeeForm({ mode, employeeId, defaultValues, onSubmit, isSubm
         </div>
       </section>
 
+      <LoginAccessCard {...loginAccess.cardProps} personName={`${watch('firstName')} ${watch('lastName')}`} linkedUserId={linkedUserId} />
+
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Advanced (optional)</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -287,11 +323,6 @@ export function EmployeeForm({ mode, employeeId, defaultValues, onSubmit, isSubm
             <Label htmlFor="profilePhotoUrl">Profile Photo URL</Label>
             <Input id="profilePhotoUrl" {...register('profilePhotoUrl')} />
             {errors.profilePhotoUrl && <p className="text-sm text-destructive">{errors.profilePhotoUrl.message}</p>}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="userId">Linked User Account Id</Label>
-            <Input id="userId" placeholder="Login user account id, if any" {...register('userId')} />
-            {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
           </div>
         </div>
       </section>

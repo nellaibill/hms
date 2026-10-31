@@ -1,5 +1,7 @@
 export * from './components/CardHeading';
 export * from './components/DeleteUserDialog';
+export * from './components/LinkedLoginDetails';
+export * from './components/LoginAccessCard';
 export * from './components/Pagination';
 export * from './components/SetPasswordDialog';
 export * from './components/StatusBadge';
@@ -9,7 +11,9 @@ export * from './components/UserDetails';
 export * from './components/UserEditForm';
 export * from './components/UserListToolbar';
 export * from './components/UserTable';
+export * from './hooks/useLoginAccess';
 export * from './hooks/useRolesForSelect';
 export * from './hooks/useUserMutations';
 export * from './hooks/useUserQuery';
 export * from './hooks/useUsersQuery';
+export * from './loginAccess';

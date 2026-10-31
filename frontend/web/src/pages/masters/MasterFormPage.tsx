@@ -1,8 +1,17 @@
-import type { ApiError } from '@hms/shared';
+import { ApiError } from '@hms/shared';
 import { Loader2, Pencil } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast-context';
+import { useAuth } from '@/features/auth/AuthContext';
+import {
+  LoginAccessCard,
+  loginErrorsFromApiError,
+  useConsultantLoginQuery,
+  useLoginAccessState,
+  useSaveConsultantLoginMutation,
+} from '@/features/users';
 import {
   getDisplayLabel,
   getMasterConfig,
@@ -27,6 +36,17 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
   const createMutation = useCreateMasterMutation(entityKey ?? '');
   const updateMutation = useUpdateMasterMutation(entityKey ?? '');
   const uploadPhotoMutation = useUploadMasterPhotoMutation(entityKey ?? '');
+
+  // Consultant only (config.consultantLogin) — the Login access card, ADR-108. On by default
+  // for a new consultant; the login is saved right after the consultant itself.
+  const { hasPermission } = useAuth();
+  const { toast } = useToast();
+  const withLogin = Boolean(config?.consultantLogin);
+  const loginAccess = useLoginAccessState('consultant', isNew && withLogin);
+  const canSeeLogins = withLogin && hasPermission('identity-administration.view');
+  const linkedLoginQuery = useConsultantLoginQuery(isNew ? undefined : id, canSeeLogins);
+  const saveLoginMutation = useSaveConsultantLoginMutation();
+  const linkedUserId = linkedLoginQuery.data?.id ?? null;
 
   if (!config) {
     return (
@@ -65,6 +85,30 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
     );
   }
 
+  // Runs once the consultant itself is saved. If the login is then rejected (say the email is
+  // already used by another login), the consultant stays saved and the user lands on its Edit
+  // page, where the Login access card shows what to fix.
+  function saveLoginThen(recordId: string, recordName: string, done: () => void) {
+    if (!withLogin || linkedUserId || !loginAccess.draft.enabled) {
+      done();
+      return;
+    }
+    saveLoginMutation.mutate(
+      { consultantId: recordId, consultantName: recordName, draft: loginAccess.draft },
+      {
+        onSuccess: (user) => {
+          toast({ title: `${config!.label} and login saved`, description: `They can log in as ${user.username}.`, variant: 'success' });
+          done();
+        },
+        onError: (error) => {
+          loginAccess.setErrors(loginErrorsFromApiError(error instanceof ApiError ? error : null));
+          toast({ title: `${config!.label} saved, but the login wasn't`, description: error.message, variant: 'error' });
+          navigate(`${listPath}/${recordId}/edit`);
+        },
+      },
+    );
+  }
+
   function handleSubmit(values: Record<string, unknown>, photoFile?: File) {
     if (isNew) {
       createMutation.mutate(values, {
@@ -76,11 +120,14 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
           if (photoFile) {
             uploadPhotoMutation.mutate({ id: created.id, file: photoFile });
           }
-          navigate(`${listPath}/${created.id}`);
+          saveLoginThen(created.id, String(values.name ?? ''), () => navigate(`${listPath}/${created.id}`));
         },
       });
     } else {
-      updateMutation.mutate({ id: id as string, values }, { onSuccess: () => navigate(`${listPath}/${id}`) });
+      updateMutation.mutate(
+        { id: id as string, values },
+        { onSuccess: () => saveLoginThen(id as string, String(values.name ?? ''), () => navigate(`${listPath}/${id}`)) },
+      );
     }
   }
 
@@ -124,10 +171,24 @@ export default function MasterFormPage({ mode }: MasterFormPageProps) {
           mode={mode}
           recordId={isNew ? undefined : id}
           defaultValues={isNew ? {} : (record as Record<string, unknown>)}
-          isSubmitting={createMutation.isPending || updateMutation.isPending}
+          isSubmitting={createMutation.isPending || updateMutation.isPending || saveLoginMutation.isPending}
           apiError={(createMutation.error ?? updateMutation.error) as ApiError | null}
           onSubmit={handleSubmit}
           onCancel={() => navigate(backTo)}
+          onValidateExtra={withLogin && !linkedUserId ? loginAccess.validate : undefined}
+          renderExtraSection={
+            withLogin
+              ? (values) => (
+                  <LoginAccessCard
+                    {...loginAccess.cardProps}
+                    personName={String(values.name ?? '')}
+                    linkedUserId={linkedUserId}
+                    isLoadingLink={canSeeLogins && !isNew && linkedLoginQuery.isPending}
+                    readOnly={mode === 'view'}
+                  />
+                )
+              : undefined
+          }
         />
       </div>
     </div>

@@ -1,6 +1,14 @@
 import type { EmployeeGender, EmployeeType, EmploymentStatus } from '../../enums/hr';
 import type { PagedQuery } from '../../types';
 
+/** Mirrors HMS.Modules.HR.Contracts.EmployeeLoginRequest — a new login created in the same
+ * save as the employee (ADR-108). Name, email and phone come from the employee itself. */
+export interface EmployeeLoginRequest {
+  username: string;
+  password: string;
+  roleId: string;
+}
+
 /** Mirrors HMS.Modules.HR.Contracts.CreateEmployeeRequest. */
 export interface CreateEmployeeRequest {
   employeeCode: string;
@@ -22,6 +30,8 @@ export interface CreateEmployeeRequest {
   profilePhotoUrl?: string | null;
   userId?: string | null;
   isActive: boolean;
+  /** Creates a login for this employee in the same save — never sent together with userId. */
+  login?: EmployeeLoginRequest | null;
 }
 
 /** Mirrors HMS.Modules.HR.Contracts.UpdateEmployeeRequest — no EmployeeCode (Employee's
@@ -45,6 +55,8 @@ export interface UpdateEmployeeRequest {
   profilePhotoUrl?: string | null;
   userId?: string | null;
   isActive: boolean;
+  /** Creates a login for this employee in the same save — never sent together with userId. */
+  login?: EmployeeLoginRequest | null;
 }
 
 /**
