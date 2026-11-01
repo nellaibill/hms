@@ -27,6 +27,10 @@ public interface IInvoiceRevertService
 
     Task<int> GetPendingCountAsync(CancellationToken cancellationToken);
 
+    /// <summary>Reasons this hospital has given for reverts before, most-used first — suggestions
+    /// for the Request Revert dialog's Reason box.</summary>
+    Task<IReadOnlyList<ReasonSuggestionResponse>> GetReasonSuggestionsAsync(int limit, CancellationToken cancellationToken);
+
     Task<Result<InvoiceRevertRequestResponse>> ApproveAsync(Guid id, ApproveInvoiceRevertRequest request, Guid? actorId, string? actorName, CancellationToken cancellationToken);
 
     Task<Result<InvoiceRevertRequestResponse>> RejectAsync(Guid id, RejectInvoiceRevertRequest request, Guid? actorId, string? actorName, CancellationToken cancellationToken);
@@ -174,6 +178,9 @@ internal class InvoiceRevertService : IInvoiceRevertService
     }
 
     public Task<int> GetPendingCountAsync(CancellationToken cancellationToken) => _repository.CountPendingAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ReasonSuggestionResponse>> GetReasonSuggestionsAsync(int limit, CancellationToken cancellationToken)
+        => ReasonSuggestions.Rank(await _repository.GetRecentReasonsAsync(ReasonSuggestions.SampleSize, cancellationToken), limit);
 
     public async Task<Result<InvoiceRevertRequestResponse>> ApproveAsync(Guid id, ApproveInvoiceRevertRequest request, Guid? actorId, string? actorName, CancellationToken cancellationToken)
     {

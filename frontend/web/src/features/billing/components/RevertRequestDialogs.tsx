@@ -1,9 +1,26 @@
 import type { InvoiceRevertRequestResponse } from '@hms/shared';
 import { useState } from 'react';
+import { SuggestionTextarea } from '@/components/SuggestionTextarea';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { mergeSuggestions } from '@/lib/suggestions';
 import { formatCurrency } from '../billingCalculations';
+import { useRevertReasonSuggestionsQuery } from '../hooks/useInvoiceRevert';
+
+/** Starting suggestions for a revert's reason, shown after the reasons this hospital has already
+ * used (those come first, most-used first). */
+const COMMON_REVERT_REASONS: readonly string[] = [
+  'Wrong consultant billed',
+  'Wrong service billed',
+  'Wrong patient billed',
+  'Wrong amount charged',
+  'Duplicate bill',
+  'Patient left before consultation',
+  'Consultation not needed',
+  'Patient asked to cancel',
+  'Billed under the wrong visit',
+];
 
 const textareaClassName =
   'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -32,10 +49,18 @@ interface RequestRevertDialogProps {
 export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, isSaving, error, onConfirm, onCancel }: RequestRevertDialogProps) {
   const [reason, setReason] = useState('');
   const trimmedReason = reason.trim();
+  const { data: usedReasons } = useRevertReasonSuggestionsQuery();
+  const reasonSuggestions = mergeSuggestions(usedReasons?.map((suggestion) => suggestion.reason) ?? [], COMMON_REVERT_REASONS);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent aria-labelledby="request-revert-title">
+      <DialogContent
+        aria-labelledby="request-revert-title"
+        // Esc in the Reason box undoes a suggestion first (SuggestionTextarea) rather than closing.
+        onEscapeKeyDown={(event) => {
+          if (document.activeElement?.getAttribute('data-suggesting') === 'true') event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle id="request-revert-title">Request bill revert</DialogTitle>
           <DialogDescription>
@@ -48,13 +73,13 @@ export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, isSav
           <Label htmlFor="revert-reason">
             Reason for revert <span className="font-normal text-muted-foreground">(required)</span>
           </Label>
-          <textarea
+          <SuggestionTextarea
             id="revert-reason"
             rows={3}
             maxLength={500}
             value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            className={textareaClassName}
+            onValueChange={setReason}
+            suggestions={reasonSuggestions}
             placeholder="e.g. Wrong consultant billed, patient left before consultation"
             autoFocus
           />

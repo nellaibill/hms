@@ -29,6 +29,10 @@ public interface IInvoiceDiscountService
 
     Task<int> GetPendingCountAsync(CancellationToken cancellationToken);
 
+    /// <summary>Reasons this hospital has given before, most-used first — suggestions for the
+    /// counter's Reason box.</summary>
+    Task<IReadOnlyList<ReasonSuggestionResponse>> GetReasonSuggestionsAsync(int limit, CancellationToken cancellationToken);
+
     /// <summary>Requests with a part for this consultant — their "Discount Approvals" tab.</summary>
     Task<PagedResult<InvoiceDiscountRequestResponse>> GetPagedForConsultantAsync(Guid consultantId, InvoiceDiscountRequestListQuery query, CancellationToken cancellationToken);
 
@@ -232,6 +236,9 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
     }
 
     public Task<int> GetPendingCountAsync(CancellationToken cancellationToken) => _repository.CountPendingAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ReasonSuggestionResponse>> GetReasonSuggestionsAsync(int limit, CancellationToken cancellationToken)
+        => ReasonSuggestions.Rank(await _repository.GetRecentReasonsAsync(ReasonSuggestions.SampleSize, cancellationToken), limit);
 
     public async Task<PagedResult<InvoiceDiscountRequestResponse>> GetPagedForConsultantAsync(Guid consultantId, InvoiceDiscountRequestListQuery query, CancellationToken cancellationToken)
     {

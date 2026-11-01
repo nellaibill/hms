@@ -20,5 +20,8 @@ internal interface IInvoiceRevertRequestRepository
 
     Task<int> CountPendingAsync(CancellationToken cancellationToken);
 
+    /// <summary>The reasons given on the most recent <paramref name="take"/> requests, newest first.</summary>
+    Task<IReadOnlyList<string>> GetRecentReasonsAsync(int take, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }
