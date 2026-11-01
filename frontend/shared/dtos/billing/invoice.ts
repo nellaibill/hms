@@ -243,9 +243,15 @@ export interface InvoiceRevertRequestListQuery {
   status?: InvoiceRevertRequestStatus;
 }
 
-/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestStatus — also an invoice's own
- * `discountStatus` (its latest request). Cancelled when the bill was voided while waiting. */
-export type InvoiceDiscountRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestStatus — a request's, an approval
+ * part's (never PartlyApproved), and an invoice's own `discountStatus` (its latest request).
+ * Pending while any part waits; PartlyApproved when the parts were decided both ways (ADR-111).
+ * Cancelled when the bill was voided while waiting. */
+export type InvoiceDiscountRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | 'PartlyApproved';
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountApproverType (ADR-111) — a consultation
+ * fee's discount is decided by that consultant, every other line by the Super Admin. */
+export type InvoiceDiscountApproverType = 'SuperAdmin' | 'Consultant';
 
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountType — how the counter entered it. */
 export type InvoiceDiscountType = 'Amount' | 'Percent';
@@ -289,6 +295,26 @@ export interface InvoiceDiscountRequestLineResponse {
   /** quantity × unitPrice — the line's charge before this discount. */
   lineAmount: number;
   discount: number;
+  /** The approval part (`InvoiceDiscountRequestResponse.approvals`) that decides this line. */
+  approvalId: string;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountApprovalResponse — one approver's part of a
+ * discount request and their decision (ADR-111). */
+export interface InvoiceDiscountApprovalResponse {
+  id: string;
+  approverType: InvoiceDiscountApproverType;
+  /** The consultant who decides this part; null for the Super Admin's part. */
+  consultantId?: string | null;
+  /** Pending, Approved, Rejected or Cancelled. */
+  status: InvoiceDiscountRequestStatus;
+  totalDiscount: number;
+  decidedBy?: string | null;
+  decidedByName?: string | null;
+  decidedAt?: string | null;
+  decisionNotes?: string | null;
+  /** True when a Super Admin decided a consultant's part for them. */
+  decidedOnBehalf: boolean;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestResponse (ADR-109). */
@@ -304,6 +330,8 @@ export interface InvoiceDiscountRequestResponse {
   discountType: InvoiceDiscountType;
   discountValue: number;
   totalDiscount: number;
+  /** Sum of the discounts in approved parts — what actually came off the bill. */
+  approvedDiscount: number;
   reason: string;
   status: InvoiceDiscountRequestStatus;
   requestedBy?: string | null;
@@ -314,6 +342,8 @@ export interface InvoiceDiscountRequestResponse {
   decidedAt?: string | null;
   decisionNotes?: string | null;
   lines: InvoiceDiscountRequestLineResponse[];
+  /** One part per approver — consultants' first, the Super Admin's last. */
+  approvals: InvoiceDiscountApprovalResponse[];
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountStatusResponse — one invoice's discount state. */
@@ -324,7 +354,8 @@ export interface InvoiceDiscountStatusResponse {
   requests: InvoiceDiscountRequestResponse[];
 }
 
-/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestListQuery. */
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestListQuery — `status` filters the
+ * request for the Super Admin's list, the caller's own part for a consultant's list. */
 export interface InvoiceDiscountRequestListQuery {
   page?: number;
   pageSize?: number;

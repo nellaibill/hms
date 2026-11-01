@@ -185,26 +185,33 @@ internal class Invoice : Entity
         MarkUpdated(voidedBy);
     }
 
-    /// <summary>A discount request on this bill is now waiting for a Super Admin (ADR-109).</summary>
+    /// <summary>A discount request on this bill is now waiting for approval (ADR-109).</summary>
     public void MarkDiscountPending(Guid? updatedBy)
     {
         DiscountStatus = InvoiceDiscountRequestStatus.Pending;
         MarkUpdated(updatedBy);
     }
 
-    /// <summary>The Super Admin turned the bill's discount request down — the bill stays at the
-    /// price it had and can be paid again.</summary>
-    public void MarkDiscountRejected(Guid? updatedBy)
+    /// <summary>Every part of the bill's discount request has been decided (ADR-111) — Approved,
+    /// Rejected or PartlyApproved. The approved parts' discounts are already on the lines (see
+    /// <see cref="ApplyDiscount"/>); the bill can be paid again.</summary>
+    public void MarkDiscountDecided(InvoiceDiscountRequestStatus status, Guid? updatedBy)
     {
-        DiscountStatus = InvoiceDiscountRequestStatus.Rejected;
+        if (status is InvoiceDiscountRequestStatus.Pending or InvoiceDiscountRequestStatus.Cancelled)
+        {
+            throw new ArgumentOutOfRangeException(nameof(status), status, "A decided discount is Approved, Rejected or PartlyApproved.");
+        }
+
+        DiscountStatus = status;
         MarkUpdated(updatedBy);
     }
 
     /// <summary>
     /// Applies an approved discount (ADR-109) to the given lines and recomputes the bill's
     /// discount and net totals. Callers (InvoiceService for a Super Admin's own bill,
-    /// InvoiceDiscountService on approval) have already checked the bill isn't voided and every
-    /// line is on it and unpaid.
+    /// InvoiceDiscountService on approving a part) have already checked the bill isn't voided and
+    /// every line is on it and unpaid. Leaves <see cref="DiscountStatus"/> alone: other parts of
+    /// the request may still be waiting — callers set it with <see cref="MarkDiscountDecided"/>.
     /// </summary>
     public void ApplyDiscount(IReadOnlyCollection<(Guid LineItemId, decimal Discount)> lines, string? approvedByName, Guid? approvedBy)
     {
@@ -220,7 +227,6 @@ internal class Invoice : Entity
 
         TotalDiscount = _items.Sum(i => i.Discount);
         NetAmount = Math.Max(GrossAmount - TotalDiscount, 0m);
-        DiscountStatus = InvoiceDiscountRequestStatus.Approved;
         MarkUpdated(approvedBy);
     }
 

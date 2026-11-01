@@ -1,5 +1,5 @@
-import type { InvoiceDiscountRequestResponse } from '@hms/shared';
-import { BadgePercent, CircleCheck, CircleX, Clock, Plus, Wallet, X } from 'lucide-react';
+import type { InvoiceDiscountApprovalResponse, InvoiceDiscountRequestResponse, InvoiceDiscountRequestStatus } from '@hms/shared';
+import { BadgePercent, CircleCheck, CircleX, Clock, Plus, UserRound, Wallet, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/AuthContext';
-import { describeBillingItem, formatCurrency } from '../billingCalculations';
+import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
+import { describeBillingItem, formatCurrency, toDiscountableLines } from '../billingCalculations';
 import { describeDiscountEntry, type DiscountableLine } from '../billingDiscount';
 import {
-  useApproveDiscountRequestMutation,
+  useApproveDiscountMutation,
   useInvoiceDiscountStatusQuery,
   usePayInvoiceMutation,
-  useRejectDiscountRequestMutation,
+  useRejectDiscountMutation,
   useRequestInvoiceDiscountMutation,
 } from '../hooks/useInvoiceDiscount';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type Billing, type BillingItem, type PaymentMethod } from '../types';
@@ -50,7 +51,8 @@ function amountDue(billing: Billing) {
 }
 
 /** "Request Discount" on a saved, unpaid bill (ADR-109) — shown when the server says a discount
- * can be raised and the user can make bills. A Super Admin's applies at once. */
+ * can be raised and the user can make bills. A Super Admin's applies at once; anyone else's goes
+ * to the consultant for their fee and the Super Admin for the rest (ADR-111). */
 export function RequestDiscountButton({ billing }: { billing: Billing }) {
   const { hasPermission, user } = useAuth();
   const { toast } = useToast();
@@ -61,11 +63,7 @@ export function RequestDiscountButton({ billing }: { billing: Billing }) {
 
   if (!hasPermission('finance-billing.create') || !status?.canRequest) return null;
 
-  const lines: DiscountableLine[] = billing.items.filter(canTakeDiscount).map((item) => ({
-    id: item.id,
-    label: `${item.billingType} — ${describeBillingItem(item).serviceLabel}`,
-    amount: item.quantity * item.unitPrice,
-  }));
+  const lines: DiscountableLine[] = toDiscountableLines(billing.items.filter(canTakeDiscount));
 
   function handleConfirm(result: DiscountDialogResult) {
     mutation.mutate(
@@ -81,7 +79,7 @@ export function RequestDiscountButton({ billing }: { billing: Billing }) {
           setIsOpen(false);
           toast({
             title: isSuperAdmin ? 'Discount applied' : 'Discount sent for approval',
-            description: isSuperAdmin ? undefined : 'Collect payment once the Super Admin approves or rejects it.',
+            description: isSuperAdmin ? undefined : 'Collect payment once every part of it is approved or rejected.',
             variant: 'success',
           });
         },
@@ -119,10 +117,12 @@ export function RequestDiscountButton({ billing }: { billing: Billing }) {
   );
 }
 
-function DiscountLines({ request }: { request: InvoiceDiscountRequestResponse }) {
+/** The request's lines, or only one approval part's when `approvalId` is given. */
+function DiscountLines({ request, approvalId }: { request: InvoiceDiscountRequestResponse; approvalId?: string }) {
+  const lines = approvalId ? request.lines.filter((line) => line.approvalId === approvalId) : request.lines;
   return (
     <ul className="flex flex-col gap-0.5 text-xs">
-      {request.lines.map((line) => {
+      {lines.map((line) => {
         const { serviceLabel } = describeBillingItem({
           id: line.lineItemId,
           billingType: line.billingType,
@@ -150,35 +150,58 @@ function DiscountLines({ request }: { request: InvoiceDiscountRequestResponse })
   );
 }
 
+/** "Dr. S. Karthikeyan" for a consultant's part, "Super Admin" for the rest (ADR-111). */
+function describeDiscountApprover(approval: InvoiceDiscountApprovalResponse): string {
+  return approval.approverType === 'Consultant' && approval.consultantId ? resolveRecordLabel('consultant', approval.consultantId) : 'Super Admin';
+}
+
+/** A Super Admin may decide any waiting part; a consultant's login only the part for their own fees. */
+function useCanDecide() {
+  const { user, scopedConsultantId } = useAuth();
+  return (approval: InvoiceDiscountApprovalResponse) =>
+    approval.status === 'Pending' &&
+    (user?.role === 'superAdmin' || (approval.approverType === 'Consultant' && Boolean(scopedConsultantId) && approval.consultantId === scopedConsultantId));
+}
+
 interface DiscountDecisionDialogProps {
   decision: 'approve' | 'reject';
   request: InvoiceDiscountRequestResponse;
+  approval: InvoiceDiscountApprovalResponse;
+  /** A Super Admin deciding a consultant's part for them. */
+  onBehalf: boolean;
   isSaving: boolean;
   error: unknown;
   onConfirm: (notes: string) => void;
   onCancel: () => void;
 }
 
-/** A Super Admin's approve/reject of a discount request. Rejecting needs a reason. */
-function DiscountDecisionDialog({ decision, request, isSaving, error, onConfirm, onCancel }: DiscountDecisionDialogProps) {
+/** Approving or rejecting one approval part of a discount request. Rejecting needs a reason. */
+function DiscountDecisionDialog({ decision, request, approval, onBehalf, isSaving, error, onConfirm, onCancel }: DiscountDecisionDialogProps) {
   const [notes, setNotes] = useState('');
   const trimmedNotes = notes.trim();
   const isApprove = decision === 'approve';
+  const isConsultantPart = approval.approverType === 'Consultant';
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent aria-labelledby="discount-decision-title" className="max-w-lg">
         <DialogHeader>
-          <DialogTitle id="discount-decision-title">{isApprove ? 'Approve discount?' : 'Reject discount request?'}</DialogTitle>
+          <DialogTitle id="discount-decision-title">{isApprove ? 'Approve discount?' : 'Reject discount?'}</DialogTitle>
           <DialogDescription>
             <strong className="text-foreground">Invoice {request.invoiceNumber}</strong> for {request.patientName}:{' '}
-            {formatCurrency(request.totalDiscount)} off
+            {formatCurrency(approval.totalDiscount)} off{isConsultantPart ? ' the consultation fee' : ''}
             {request.discountType === 'Percent' ? ` (${describeDiscountEntry(request.discountType, request.discountValue)})` : ''}.{' '}
-            {isApprove ? 'The discount goes on the bill and the counter collects the reduced amount.' : 'The bill stays at its full price.'}
+            {isApprove ? 'The discount goes on the bill.' : 'These lines stay at their full price.'}
           </DialogDescription>
         </DialogHeader>
+        {onBehalf && (
+          <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground">
+            <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            This part is for {describeDiscountApprover(approval)} to decide — you’re deciding it on their behalf.
+          </p>
+        )}
         <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
-          <DiscountLines request={request} />
+          <DiscountLines request={request} approvalId={approval.id} />
           <div>
             <span className="text-muted-foreground">Reason given: </span>
             <span className="text-foreground">{request.reason}</span>
@@ -205,7 +228,7 @@ function DiscountDecisionDialog({ decision, request, isSaving, error, onConfirm,
             Cancel
           </Button>
           <Button onClick={() => onConfirm(trimmedNotes)} disabled={isSaving || (!isApprove && trimmedNotes.length === 0)}>
-            {isSaving ? 'Saving…' : isApprove ? 'Approve Discount' : 'Reject Request'}
+            {isSaving ? 'Saving…' : isApprove ? 'Approve Discount' : 'Reject Discount'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -213,17 +236,19 @@ function DiscountDecisionDialog({ decision, request, isSaving, error, onConfirm,
   );
 }
 
-/** Approve/Reject buttons for a Pending discount request — rendered only for a Super Admin.
- * Shared by the invoice page's banner and the Discount Requests list. */
-export function DiscountDecisionButtons({ request }: { request: InvoiceDiscountRequestResponse }) {
-  const { user } = useAuth();
+/** Approve/Reject for one waiting approval part — rendered only for someone who may decide it
+ * (the Super Admin, or the consultant whose fee it is). */
+export function DiscountDecisionButtons({ request, approval }: { request: InvoiceDiscountRequestResponse; approval: InvoiceDiscountApprovalResponse }) {
+  const { scopedConsultantId } = useAuth();
+  const canDecide = useCanDecide();
   const { toast } = useToast();
-  const approve = useApproveDiscountRequestMutation();
-  const reject = useRejectDiscountRequestMutation();
+  const approve = useApproveDiscountMutation();
+  const reject = useRejectDiscountMutation();
   const [decision, setDecision] = useState<'approve' | 'reject' | null>(null);
 
-  if (user?.role !== 'superAdmin' || request.status !== 'Pending') return null;
+  if (!canDecide(approval)) return null;
 
+  const onBehalf = approval.approverType === 'Consultant' && approval.consultantId !== scopedConsultantId;
   const mutation = decision === 'reject' ? reject : approve;
 
   function handleConfirm(notes: string) {
@@ -231,13 +256,13 @@ export function DiscountDecisionButtons({ request }: { request: InvoiceDiscountR
       const approved = decision === 'approve';
       setDecision(null);
       toast({
-        title: approved ? `Discount approved on invoice ${request.invoiceNumber}` : 'Discount request rejected',
-        description: approved ? `${formatCurrency(request.totalDiscount)} off for ${request.patientName}.` : undefined,
+        title: approved ? `Discount approved on invoice ${request.invoiceNumber}` : 'Discount rejected',
+        description: approved ? `${formatCurrency(approval.totalDiscount)} off for ${request.patientName}.` : undefined,
         variant: 'success',
       });
     };
-    if (decision === 'reject') reject.mutate({ id: request.id, notes }, { onSuccess });
-    else approve.mutate({ id: request.id, notes }, { onSuccess });
+    if (decision === 'reject') reject.mutate({ approvalId: approval.id, notes }, { onSuccess });
+    else approve.mutate({ approvalId: approval.id, notes }, { onSuccess });
   }
 
   function open(next: 'approve' | 'reject') {
@@ -260,6 +285,8 @@ export function DiscountDecisionButtons({ request }: { request: InvoiceDiscountR
         <DiscountDecisionDialog
           decision={decision}
           request={request}
+          approval={approval}
+          onBehalf={onBehalf}
           isSaving={mutation.isPending}
           error={mutation.error}
           onConfirm={handleConfirm}
@@ -270,57 +297,113 @@ export function DiscountDecisionButtons({ request }: { request: InvoiceDiscountR
   );
 }
 
-/** The invoice page's discount status: a pending request (with the Super Admin's Approve/Reject),
- * who approved the discount, or why the last request was rejected. Nothing when the bill never had
- * a discount request. */
+const APPROVAL_STATUS_LABELS: Record<InvoiceDiscountRequestStatus, string> = {
+  Pending: 'Waiting',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
+  Cancelled: 'Cancelled',
+  PartlyApproved: 'Partly approved',
+};
+
+function ApprovalStatusIcon({ status }: { status: InvoiceDiscountRequestStatus }) {
+  if (status === 'Pending') return <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />;
+  if (status === 'Approved') return <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />;
+  return <CircleX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />;
+}
+
+/** Each approver's part of a discount request (ADR-111): who decides it, its amount, its status
+ * or decision, and Approve/Reject for whoever may decide it. With `showLines`, each part lists
+ * its lines. `onlyConsultantId` narrows it to one consultant's part — a consultant's own tab. */
+export function DiscountApprovalParts({
+  request,
+  showLines = false,
+  onlyConsultantId,
+}: {
+  request: InvoiceDiscountRequestResponse;
+  showLines?: boolean;
+  onlyConsultantId?: string;
+}) {
+  const approvals = onlyConsultantId ? request.approvals.filter((approval) => approval.consultantId === onlyConsultantId) : request.approvals;
+  return (
+    <ul className="flex flex-col gap-2">
+      {approvals.map((approval) => (
+        <li key={approval.id} className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex min-w-[12rem] flex-1 items-start gap-2">
+            <ApprovalStatusIcon status={approval.status} />
+            <div className="flex flex-1 flex-col gap-0.5">
+              <span className="text-sm text-foreground">
+                <span className="font-medium">{describeDiscountApprover(approval)}</span>
+                {approval.approverType === 'Consultant' ? ' (consultation fee)' : ''} · {formatCurrency(approval.totalDiscount)} ·{' '}
+                {APPROVAL_STATUS_LABELS[approval.status]}
+              </span>
+              {approval.status !== 'Pending' && (approval.decidedByName || approval.decidedAt) && (
+                <span className="text-xs text-muted-foreground">
+                  {approval.decidedByName ? `by ${approval.decidedByName}` : ''}
+                  {approval.decidedOnBehalf ? ' on their behalf' : ''}
+                  {approval.decidedAt ? ` · ${formatDateTime(approval.decidedAt)}` : ''}
+                  {approval.decisionNotes ? ` · ${approval.decisionNotes}` : ''}
+                </span>
+              )}
+              {showLines && <DiscountLines request={request} approvalId={approval.id} />}
+            </div>
+          </div>
+          <DiscountDecisionButtons request={request} approval={approval} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The invoice page's discount status: who still has to decide a waiting request (with
+ * Approve/Reject for whoever may), or how it was decided. Nothing when the bill never had a
+ * discount request. */
 export function InvoiceDiscountBanner({ billing }: { billing: Billing }) {
   const { data: status } = useInvoiceDiscountStatusQuery(billing.id);
+  // Names each consultant's part.
+  useMasterOptionsQuery('consultant');
   const latest = status?.requests[0];
   if (!latest || latest.status === 'Cancelled') return null;
 
+  const requested = (
+    <span className="text-muted-foreground">
+      Requested{latest.requestedByName ? ` by ${latest.requestedByName}` : ''} on {formatDateTime(latest.requestedAt)} · Reason: {latest.reason}
+    </span>
+  );
+
   if (latest.status === 'Pending') {
     return (
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-        <div className="flex min-w-[14rem] flex-1 items-start gap-2">
+      <div className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+        <div className="flex items-start gap-2">
           <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
           <div className="flex flex-1 flex-col gap-1">
             <span className="font-medium text-foreground">
-              Discount of {formatCurrency(latest.totalDiscount)} waiting for Super Admin approval — collect payment once it’s decided
+              Discount of {formatCurrency(latest.totalDiscount)} waiting for approval — collect payment once every part is decided
             </span>
-            <span className="text-muted-foreground">
-              Requested{latest.requestedByName ? ` by ${latest.requestedByName}` : ''} on {formatDateTime(latest.requestedAt)} · Reason: {latest.reason}
-            </span>
-            <DiscountLines request={latest} />
+            {requested}
           </div>
         </div>
-        <DiscountDecisionButtons request={latest} />
+        <DiscountApprovalParts request={latest} showLines />
       </div>
     );
   }
 
-  if (latest.status === 'Approved') {
-    return (
-      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
-        <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-        <span className="text-muted-foreground">
-          Discount of {formatCurrency(latest.totalDiscount)} approved{latest.decidedByName ? ` by ${latest.decidedByName}` : ''} on{' '}
-          {formatDateTime(latest.decidedAt)} · {latest.reason}
-          {latest.decisionNotes ? ` · ${latest.decisionNotes}` : ''}
-        </span>
-      </div>
-    );
-  }
+  const heading =
+    latest.status === 'Approved'
+      ? `Discount of ${formatCurrency(latest.totalDiscount)} approved`
+      : latest.status === 'PartlyApproved'
+        ? `${formatCurrency(latest.approvedDiscount)} of the ${formatCurrency(latest.totalDiscount)} discount approved — the rest stays at full price`
+        : 'Discount request rejected — collect the full amount';
 
   return (
-    <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
-      <CircleX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div className="flex flex-col">
-        <span className="font-medium text-foreground">
-          Discount request rejected{latest.decidedByName ? ` by ${latest.decidedByName}` : ''} on {formatDateTime(latest.decidedAt)} — collect the
-          full amount
-        </span>
-        {latest.decisionNotes && <span className="text-muted-foreground">{latest.decisionNotes}</span>}
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+      <div className="flex items-start gap-2">
+        <ApprovalStatusIcon status={latest.status === 'PartlyApproved' ? 'Approved' : latest.status} />
+        <div className="flex flex-1 flex-col gap-1">
+          <span className="font-medium text-foreground">{heading}</span>
+          {requested}
+        </div>
       </div>
+      <DiscountApprovalParts request={latest} />
     </div>
   );
 }

@@ -19,7 +19,7 @@ import {
   toDiscountableLines,
   toUndiscountedBillingItems,
 } from '../billingCalculations';
-import { describeDiscountEntry, linesSignature } from '../billingDiscount';
+import { describeDiscountApprovers, describeDiscountEntry, linesSignature } from '../billingDiscount';
 import { emptyPaymentSplit, type BillingFormValues } from '../billingValidation';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
 import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
@@ -45,7 +45,8 @@ import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
  *
  * "Add discount" (ADR-109) sits above Collect Payment: it opens DiscountDialog to enter a ₹
  * discount per line (or one whole-bill amount split across them) and a reason. A Super Admin's
- * discount comes straight off Net Payable; anyone else's needs Super Admin approval, so Collect
+ * discount comes straight off Net Payable; anyone else's needs approval (ADR-111: the consultant
+ * for their consultation fee, the Super Admin for the rest), so Collect
  * Payment is replaced by a note and the save action becomes "Send for Approval" — the bill is
  * saved unpaid and paid from its invoice page once the discount is decided.
  *
@@ -229,7 +230,11 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                     discount.needsApproval && (
                       <span className="flex items-start gap-1.5 text-xs text-foreground">
                         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
-                        Needs Super Admin approval — the bill is saved without payment and sent for approval.
+                        Needs approval from{' '}
+                        {describeDiscountApprovers(
+                          toDiscountableLines(undiscountedItems).filter((line) => discount.allocations.some((a) => a.lineId === line.id)),
+                        )}{' '}
+                        — the bill is saved without payment and sent for approval.
                       </span>
                     )
                   )}
@@ -250,7 +255,7 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
           <span className="text-sm font-semibold text-foreground">Collect Payment</span>
           {awaitingApproval && (
             <p className="text-xs text-muted-foreground">
-              No payment now — once the Super Admin decides on the discount, collect {formatCurrency(summary.netTotal)} if it’s approved (or{' '}
+              No payment now — once the discount is decided, collect {formatCurrency(summary.netTotal)} if it’s all approved (up to{' '}
               {formatCurrency(summary.grossTotal)} if it’s rejected) from the bill’s page.
             </p>
           )}

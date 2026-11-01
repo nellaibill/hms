@@ -1,6 +1,7 @@
 import { defaultReportDateRange, todayDateInputValue } from '@/lib/reportDateRange';
 
-export type OpdTab = 'patients' | 'consultations' | 'investigations' | 'procedures' | 'admissions' | 'scheduled' | 'marked';
+/** 'discounts' is a consultant login's own Discount Approvals tab (ADR-111) — it has no filters or export. */
+export type OpdTab = 'patients' | 'consultations' | 'investigations' | 'procedures' | 'admissions' | 'scheduled' | 'marked' | 'discounts';
 
 /** Shared filter values driven by OpdFilterBar and consumed by every tab's own query hook —
  * which fields actually apply (e.g. `status`'s option list) depends on the active tab. */

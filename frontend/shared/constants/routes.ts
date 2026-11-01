@@ -320,8 +320,14 @@ export const API_ROUTES = {
     discountRequests: {
       base: '/api/v1/billing/discount-requests',
       pendingCount: '/api/v1/billing/discount-requests/pending-count',
-      approve: (id: string) => `/api/v1/billing/discount-requests/${id}/approve`,
-      reject: (id: string) => `/api/v1/billing/discount-requests/${id}/reject`,
+    },
+    /** One approval part of a discount request (ADR-111) — decided by the Super Admin or, for a
+     * consultation fee, that consultant; `mine` is a consultant login's own list. */
+    discountApprovals: {
+      mine: '/api/v1/billing/discount-approvals/mine',
+      minePendingCount: '/api/v1/billing/discount-approvals/mine/pending-count',
+      approve: (approvalId: string) => `/api/v1/billing/discount-approvals/${approvalId}/approve`,
+      reject: (approvalId: string) => `/api/v1/billing/discount-approvals/${approvalId}/reject`,
     },
   },
   /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */
