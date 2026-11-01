@@ -51,6 +51,14 @@ internal class InvoiceRevertRequestRepository : IInvoiceRevertRequestRepository
     public Task<int> CountPendingAsync(CancellationToken cancellationToken)
         => _dbContext.InvoiceRevertRequests.CountAsync(r => r.Status == InvoiceRevertRequestStatus.Pending, cancellationToken);
 
+    public async Task<IReadOnlyList<string>> GetRecentReasonsAsync(int take, CancellationToken cancellationToken)
+        => await _dbContext.InvoiceRevertRequests
+            .AsNoTracking()
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(take)
+            .Select(r => r.Reason)
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 }

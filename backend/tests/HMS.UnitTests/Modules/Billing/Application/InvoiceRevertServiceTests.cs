@@ -288,4 +288,15 @@ public class InvoiceRevertServiceTests
         result.IsSuccess.Should().BeTrue();
         invoice.IsReverted.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task GetReasonSuggestionsAsync_ListsTheHospitalsRevertReasonsMostUsedFirst()
+    {
+        _repository.GetRecentReasonsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(
+            ["Wrong consultant billed", "Duplicate bill", "wrong consultant  billed"]);
+
+        var result = await _sut.GetReasonSuggestionsAsync(20, CancellationToken.None);
+
+        result.Select(r => (r.Reason, r.TimesUsed)).Should().Equal(("Wrong consultant billed", 2), ("Duplicate bill", 1));
+    }
 }

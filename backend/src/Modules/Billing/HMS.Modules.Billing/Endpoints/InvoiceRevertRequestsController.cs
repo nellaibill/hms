@@ -98,6 +98,17 @@ public class InvoiceRevertRequestsController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<InvoiceRevertRequestResponse>> { Data = paged.Items, Meta = meta });
     }
 
+    /// <summary>Reasons this hospital has given for reverts before, most-used first — the
+    /// suggestions under the Request Revert dialog's Reason box. Needs the same permission as
+    /// raising a revert.</summary>
+    /// <response code="200">Up to <paramref name="limit"/> reasons (default 20, at most 50).</response>
+    [Authorize]
+    [RequirePermission("finance-billing.create")]
+    [HttpGet("revert-requests/reasons")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ReasonSuggestionResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetReasonSuggestions([FromQuery] int limit = 20, CancellationToken cancellationToken = default)
+        => Ok(new ApiResponse<IReadOnlyList<ReasonSuggestionResponse>> { Data = await _service.GetReasonSuggestionsAsync(limit, cancellationToken) });
+
     /// <summary>How many revert requests are waiting for a decision — the tab badge.</summary>
     /// <response code="200">The number of Pending requests.</response>
     [Authorize]

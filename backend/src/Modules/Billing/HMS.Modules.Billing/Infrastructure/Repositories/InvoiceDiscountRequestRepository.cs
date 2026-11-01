@@ -77,6 +77,14 @@ internal class InvoiceDiscountRequestRepository : IInvoiceDiscountRequestReposit
     public Task<int> CountPendingAsync(CancellationToken cancellationToken)
         => _dbContext.InvoiceDiscountRequests.CountAsync(r => r.Status == InvoiceDiscountRequestStatus.Pending, cancellationToken);
 
+    public async Task<IReadOnlyList<string>> GetRecentReasonsAsync(int take, CancellationToken cancellationToken)
+        => await _dbContext.InvoiceDiscountRequests
+            .AsNoTracking()
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(take)
+            .Select(r => r.Reason)
+            .ToListAsync(cancellationToken);
+
     public Task<int> CountPendingForConsultantAsync(Guid consultantId, CancellationToken cancellationToken)
         => _dbContext.InvoiceDiscountRequests.CountAsync(
             r => r.Approvals.Any(a => a.ConsultantId == consultantId && a.Status == InvoiceDiscountRequestStatus.Pending),

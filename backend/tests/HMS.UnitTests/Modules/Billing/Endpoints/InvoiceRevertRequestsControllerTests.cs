@@ -105,4 +105,16 @@ public class InvoiceRevertRequestsControllerTests
 
         attribute.GetRequirements().Cast<PermissionRequirement>().Single().PermissionKey.Should().Be("finance-billing.create");
     }
+
+    // Whoever can raise a revert gets the suggestions for its reason.
+    [Fact]
+    public void GetReasonSuggestions_RequiresTheBillCreatePermission()
+    {
+        var attribute = typeof(InvoiceRevertRequestsController).GetMethod(nameof(InvoiceRevertRequestsController.GetReasonSuggestions))!
+            .GetCustomAttributes(typeof(RequirePermissionAttribute), inherit: false)
+            .Cast<RequirePermissionAttribute>()
+            .Single();
+
+        attribute.GetRequirements().Cast<PermissionRequirement>().Single().PermissionKey.Should().Be("finance-billing.create");
+    }
 }

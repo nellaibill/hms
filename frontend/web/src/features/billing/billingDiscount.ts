@@ -71,6 +71,21 @@ export function linesSignature(lines: Pick<DiscountableLine, 'id' | 'amount'>[])
   return lines.map((line) => `${line.id}:${line.amount}`).join('|');
 }
 
+/** Starting suggestions for a discount's reason, shown after the reasons this hospital has
+ * already used (those come first, most-used first — useDiscountReasonSuggestionsQuery). */
+export const COMMON_DISCOUNT_REASONS: readonly string[] = [
+  'Staff family',
+  'Hospital staff',
+  'Senior citizen',
+  'Financial hardship',
+  "Doctor's request",
+  'Management approval',
+  'Follow-up visit',
+  'Referred patient',
+  'Health camp patient',
+  'Charity case',
+];
+
 /** "₹100" or "10%" — how the counter entered it. New discounts are always ₹ amounts entered
  * line by line; "%" only appears on requests raised before that change. */
 export function describeDiscountEntry(type: InvoiceDiscountType, value: number): string {

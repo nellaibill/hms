@@ -193,4 +193,16 @@ public class InvoiceDiscountRequestsControllerTests
         };
         return userId;
     }
+
+    // Whoever can raise a discount gets the suggestions for its reason.
+    [Fact]
+    public void GetReasonSuggestions_RequiresTheBillCreatePermission()
+    {
+        var attribute = typeof(InvoiceDiscountRequestsController).GetMethod(nameof(InvoiceDiscountRequestsController.GetReasonSuggestions))!
+            .GetCustomAttributes(typeof(RequirePermissionAttribute), inherit: false)
+            .Cast<RequirePermissionAttribute>()
+            .Single();
+
+        attribute.GetRequirements().Cast<PermissionRequirement>().Single().PermissionKey.Should().Be("finance-billing.create");
+    }
 }

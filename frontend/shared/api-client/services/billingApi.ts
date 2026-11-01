@@ -19,6 +19,7 @@ import type {
   RecentPatientBill,
   PayInvoiceRequest,
   RecordPaymentRequest,
+  ReasonSuggestion,
   RejectInvoiceDiscountRequest,
   RejectInvoiceRevertRequest,
   VoidInvoiceRequest,
@@ -143,6 +144,12 @@ export class BillingApi {
     return response.data;
   }
 
+  /** Bill revert reasons this hospital has given before, most-used first. */
+  async getRevertReasonSuggestions(limit = 20): Promise<ReasonSuggestion[]> {
+    const response = await this.client.get<ReasonSuggestion[]>(API_ROUTES.billing.revertRequests.reasons, { query: { limit } });
+    return response.data;
+  }
+
   /** Super Admin only — approving reverts the bill. */
   async approveRevertRequest(id: string, request: ApproveInvoiceRevertRequest = {}): Promise<InvoiceRevertRequestResponse> {
     const response = await this.client.post<InvoiceRevertRequestResponse>(API_ROUTES.billing.revertRequests.approve(id), request);
@@ -180,6 +187,12 @@ export class BillingApi {
 
   async getPendingDiscountRequestCount(): Promise<number> {
     const response = await this.client.get<number>(API_ROUTES.billing.discountRequests.pendingCount);
+    return response.data;
+  }
+
+  /** Discount reasons this hospital has given before, most-used first. */
+  async getDiscountReasonSuggestions(limit = 20): Promise<ReasonSuggestion[]> {
+    const response = await this.client.get<ReasonSuggestion[]>(API_ROUTES.billing.discountRequests.reasons, { query: { limit } });
     return response.data;
   }
 

@@ -313,6 +313,8 @@ export const API_ROUTES = {
     revertRequests: {
       base: '/api/v1/billing/revert-requests',
       pendingCount: '/api/v1/billing/revert-requests/pending-count',
+      /** GET ?limit= — reasons given before, most-used first (suggestions for the Reason box). */
+      reasons: '/api/v1/billing/revert-requests/reasons',
       approve: (id: string) => `/api/v1/billing/revert-requests/${id}/approve`,
       reject: (id: string) => `/api/v1/billing/revert-requests/${id}/reject`,
     },
@@ -320,6 +322,8 @@ export const API_ROUTES = {
     discountRequests: {
       base: '/api/v1/billing/discount-requests',
       pendingCount: '/api/v1/billing/discount-requests/pending-count',
+      /** GET ?limit= — reasons given before, most-used first (suggestions for the Reason box). */
+      reasons: '/api/v1/billing/discount-requests/reasons',
     },
     /** One approval part of a discount request (ADR-111) — decided by the Super Admin or, for a
      * consultation fee, that consultant; `mine` is a consultant login's own list. */
