@@ -12,6 +12,18 @@ export interface DiscountableLine {
   id: string;
   label: string;
   amount: number;
+  /** Who decides this line's discount (ADR-111): the consultant's name for their consultation
+   * fee; undefined for every other line, which the Super Admin decides. */
+  approver?: string;
+}
+
+/** "Dr. S. Karthikeyan and the Super Admin" — everyone who has to decide a discount on these
+ * lines, consultants first. */
+export function describeDiscountApprovers(lines: Pick<DiscountableLine, 'approver'>[]): string {
+  const consultants = [...new Set(lines.map((line) => line.approver).filter((name): name is string => Boolean(name)))];
+  const names = lines.some((line) => !line.approver) ? [...consultants, 'the Super Admin'] : consultants;
+  if (names.length <= 1) return names[0] ?? 'the Super Admin';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 /** One line's ₹ discount. */

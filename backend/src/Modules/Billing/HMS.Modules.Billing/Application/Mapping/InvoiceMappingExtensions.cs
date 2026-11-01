@@ -56,6 +56,7 @@ internal static class InvoiceMappingExtensions
         DiscountType = request.DiscountType,
         DiscountValue = request.DiscountValue,
         TotalDiscount = request.TotalDiscount,
+        ApprovedDiscount = request.ApprovedDiscount(),
         Reason = request.Reason,
         Status = request.Status,
         RequestedBy = request.CreatedBy,
@@ -77,6 +78,25 @@ internal static class InvoiceMappingExtensions
             UnitPrice = l.UnitPrice,
             LineAmount = l.Quantity * l.UnitPrice,
             Discount = l.Discount,
+            ApprovalId = l.ApprovalId,
         }).ToList(),
+        // Consultants' parts first, the Super Admin's last — the order they were created in.
+        Approvals = request.Approvals
+            .OrderBy(a => a.ApproverType == InvoiceDiscountApproverType.SuperAdmin ? 1 : 0)
+            .ThenBy(a => a.CreatedAt)
+            .Select(a => new InvoiceDiscountApprovalResponse
+            {
+                Id = a.Id,
+                ApproverType = a.ApproverType,
+                ConsultantId = a.ConsultantId,
+                Status = a.Status,
+                TotalDiscount = request.Lines.Where(l => l.ApprovalId == a.Id).Sum(l => l.Discount),
+                DecidedBy = a.DecidedBy,
+                DecidedByName = a.DecidedByName,
+                DecidedAt = a.DecidedAt,
+                DecisionNotes = a.DecisionNotes,
+                DecidedOnBehalf = a.DecidedOnBehalf,
+            })
+            .ToList(),
     };
 }

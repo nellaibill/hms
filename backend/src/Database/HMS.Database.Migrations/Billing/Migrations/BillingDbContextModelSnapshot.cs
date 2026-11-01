@@ -152,6 +152,104 @@ namespace HMS.Database.Migrations.Billing.Migrations
                     b.ToTable("invoices", "billing");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceDiscountApproval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApproverType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("approver_type");
+
+                    b.Property<Guid?>("ConsultantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consultant_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<bool>("DecidedOnBehalf")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("decided_on_behalf");
+
+                    b.Property<string>("DecisionNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_notes");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invoice_discount_approvals");
+
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("ix_invoice_discount_approvals_request_id");
+
+                    b.HasIndex("ConsultantId", "Status")
+                        .HasDatabaseName("ix_invoice_discount_approvals_consultant_id_status");
+
+                    b.ToTable("invoice_discount_approvals", "billing");
+                });
+
             modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceDiscountRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -296,6 +394,10 @@ namespace HMS.Database.Migrations.Billing.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid>("ApprovalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approval_id");
+
                     b.Property<string>("BillingType")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -379,6 +481,9 @@ namespace HMS.Database.Migrations.Billing.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_invoice_discount_request_lines");
+
+                    b.HasIndex("ApprovalId")
+                        .HasDatabaseName("ix_invoice_discount_request_lines_approval_id");
 
                     b.HasIndex("RequestId")
                         .HasDatabaseName("ix_invoice_discount_request_lines_request_id");
@@ -707,6 +812,16 @@ namespace HMS.Database.Migrations.Billing.Migrations
                     b.ToTable("payments", "billing");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceDiscountApproval", b =>
+                {
+                    b.HasOne("HMS.Modules.Billing.Domain.InvoiceDiscountRequest", null)
+                        .WithMany("Approvals")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_discount_approvals_requests_request_id");
+                });
+
             modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceDiscountRequest", b =>
                 {
                     b.HasOne("HMS.Modules.Billing.Domain.Invoice", null)
@@ -719,6 +834,13 @@ namespace HMS.Database.Migrations.Billing.Migrations
 
             modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceDiscountRequestLine", b =>
                 {
+                    b.HasOne("HMS.Modules.Billing.Domain.InvoiceDiscountApproval", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_discount_request_lines_approvals_approval_id");
+
                     b.HasOne("HMS.Modules.Billing.Domain.InvoiceDiscountRequest", null)
                         .WithMany("Lines")
                         .HasForeignKey("RequestId")
@@ -771,6 +893,8 @@ namespace HMS.Database.Migrations.Billing.Migrations
 
             modelBuilder.Entity("HMS.Modules.Billing.Domain.InvoiceDiscountRequest", b =>
                 {
+                    b.Navigation("Approvals");
+
                     b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618

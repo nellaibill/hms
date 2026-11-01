@@ -5,12 +5,15 @@ namespace HMS.Modules.Billing.Application.Abstractions;
 
 /// <summary>Shares BillingDbContext with <see cref="IInvoiceRepository"/> (both scoped), so a
 /// bill and its discount request — on creation, approval or void — commit in one
-/// SaveChangesAsync. Every read includes the request's lines.</summary>
+/// SaveChangesAsync. Every read includes the request's lines and approval parts.</summary>
 internal interface IInvoiceDiscountRequestRepository
 {
     Task AddAsync(InvoiceDiscountRequest request, CancellationToken cancellationToken);
 
     Task<InvoiceDiscountRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>The request that owns the given approval part (ADR-111).</summary>
+    Task<InvoiceDiscountRequest?> GetByApprovalIdAsync(Guid approvalId, CancellationToken cancellationToken);
 
     /// <summary>Newest first.</summary>
     Task<IReadOnlyList<InvoiceDiscountRequest>> GetByInvoiceIdAsync(Guid invoiceId, CancellationToken cancellationToken);
@@ -19,7 +22,14 @@ internal interface IInvoiceDiscountRequestRepository
     /// the order it was raised.</summary>
     Task<(IReadOnlyList<InvoiceDiscountRequest> Items, int TotalCount)> GetPagedAsync(InvoiceDiscountRequestListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Requests with a part for this consultant, filtered on that part's status; same
+    /// ordering as <see cref="GetPagedAsync"/>.</summary>
+    Task<(IReadOnlyList<InvoiceDiscountRequest> Items, int TotalCount)> GetPagedForConsultantAsync(Guid consultantId, InvoiceDiscountRequestListQuery query, CancellationToken cancellationToken);
+
     Task<int> CountPendingAsync(CancellationToken cancellationToken);
+
+    /// <summary>Requests with a part still waiting for this consultant.</summary>
+    Task<int> CountPendingForConsultantAsync(Guid consultantId, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

@@ -144,7 +144,34 @@ public class InvoiceTests
         invoice.GrossAmount.Should().Be(1020m);
         invoice.TotalDiscount.Should().Be(120m);
         invoice.NetAmount.Should().Be(900m);
-        invoice.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        // ADR-111: one approved part doesn't settle the request — callers set the status.
+        invoice.DiscountStatus.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(InvoiceDiscountRequestStatus.Approved)]
+    [InlineData(InvoiceDiscountRequestStatus.Rejected)]
+    [InlineData(InvoiceDiscountRequestStatus.PartlyApproved)]
+    public void MarkDiscountDecided_SetsTheBillsDiscountStatus(InvoiceDiscountRequestStatus status)
+    {
+        var invoice = Invoice.Create("INV-2026-000017", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec()], createdBy: null);
+        invoice.MarkDiscountPending(null);
+
+        invoice.MarkDiscountDecided(status, null);
+
+        invoice.DiscountStatus.Should().Be(status);
+    }
+
+    [Theory]
+    [InlineData(InvoiceDiscountRequestStatus.Pending)]
+    [InlineData(InvoiceDiscountRequestStatus.Cancelled)]
+    public void MarkDiscountDecided_WithAnUndecidedStatus_Throws(InvoiceDiscountRequestStatus status)
+    {
+        var invoice = Invoice.Create("INV-2026-000018", Guid.NewGuid(), Guid.NewGuid(), "Test Patient", "NH1", [Spec()], createdBy: null);
+
+        var act = () => invoice.MarkDiscountDecided(status, null);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]

@@ -2,6 +2,7 @@ export * from './components/BillingStep';
 export * from './components/InvoiceDetailCard';
 export * from './components/InvoiceRevert';
 export * from './components/InvoiceDiscount';
+export * from './components/MyDiscountApprovals';
 export * from './components/InvoiceLedgerTable';
 export * from './components/LabDetailsCard';
 export * from './components/InvoiceListToolbar';

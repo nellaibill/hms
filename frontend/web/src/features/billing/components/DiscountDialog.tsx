@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { allocateDiscount, type DiscountAllocation, type DiscountableLine } from '../billingDiscount';
+import { allocateDiscount, describeDiscountApprovers, type DiscountAllocation, type DiscountableLine } from '../billingDiscount';
 import { formatCurrency } from '../billingCalculations';
 
 const textareaClassName =
@@ -93,6 +93,7 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
   const wholeAmount = parseAmount(wholeText);
   const totalDiscount = entries.reduce((sum, entry) => sum + entry.amount, 0);
   const trimmedReason = reason.trim();
+  const discountedLines = entries.filter((entry) => entry.amount > 0).map((entry) => entry.line);
 
   const problem =
     entries.find((entry) => entry.problem)?.problem ??
@@ -184,6 +185,7 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
                 value={lineTexts[entry.line.id] ?? ''}
                 net={entry.line.amount - entry.amount}
                 invalid={entry.problem !== null}
+                hint={needsApproval && entry.line.approver ? `${entry.line.approver} approves` : undefined}
                 onChange={(text) => handleLineChange(entry.line.id, text)}
                 autoFocus={!showWholeBill && index === 0}
               />
@@ -230,8 +232,10 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
         {needsApproval && (
           <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-            A discount needs Super Admin approval. The bill is saved without payment and sent for approval; collect payment once it’s
-            approved or rejected.
+            {discountedLines.length > 0
+              ? `Needs approval from ${describeDiscountApprovers(discountedLines)}.`
+              : 'A discount needs approval — from the consultant for their consultation fee, the Super Admin for the rest.'}{' '}
+            The bill is saved without payment and sent for approval; collect payment once every part is approved or rejected.
           </p>
         )}
 
@@ -275,19 +279,22 @@ interface DiscountRowProps {
   value: string;
   net: number;
   invalid: boolean;
+  /** A small note under the line's name — who approves its discount. */
+  hint?: string;
   onChange: (text: string) => void;
   /** The Whole bill row — shaded and bold. */
   emphasis?: boolean;
   autoFocus?: boolean;
 }
 
-function DiscountRow({ id, label, charge, value, net, invalid, onChange, emphasis, autoFocus }: DiscountRowProps) {
+function DiscountRow({ id, label, charge, value, net, invalid, hint, onChange, emphasis, autoFocus }: DiscountRowProps) {
   return (
     <div role="row" className={cn(rowGridClassName, emphasis && 'bg-muted/30')}>
       <div role="cell" className="flex min-w-0 flex-col">
         <label htmlFor={id} className={cn('break-words text-foreground', emphasis && 'font-medium')}>
           {label}
         </label>
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
         <span className="text-xs text-muted-foreground sm:hidden">
           {formatCurrency(charge)} → {formatCurrency(Math.max(net, 0))}
         </span>

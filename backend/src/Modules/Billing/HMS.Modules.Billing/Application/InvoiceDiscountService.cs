@@ -9,11 +9,13 @@ using HMS.Shared.Kernel;
 namespace HMS.Modules.Billing.Application;
 
 /// <summary>
-/// Bill discount workflow (ADR-109): billing staff ask for a discount on some or all lines of an
-/// unpaid bill with a reason, a Super Admin approves or rejects it, and approval puts the
-/// discount on the bill. A Super Admin's own request is approved as it is raised. Public for the
-/// same CS0051 reason as <see cref="IInvoiceService"/>. Who may decide is checked by the
-/// controller (the caller's login type), not here. A discount entered while the bill is being
+/// Bill discount workflow (ADR-109, ADR-111): billing staff ask for a discount on some or all
+/// lines of an unpaid bill with a reason. The request is split into approval parts — a
+/// consultation fee's discount goes to that consultant, the rest to the Super Admin — and each
+/// part is approved or rejected on its own; approving a part puts its discounts on the bill. A
+/// Super Admin may decide any part. A Super Admin's own request is approved as it is raised.
+/// Public for the same CS0051 reason as <see cref="IInvoiceService"/>. Who may decide a part is
+/// checked here, from the <see cref="BillingActor"/>. A discount entered while the bill is being
 /// made goes through InvoiceService.CreateAsync instead, using the same
 /// <see cref="InvoiceDiscountRules"/>.
 /// </summary>
@@ -27,9 +29,16 @@ public interface IInvoiceDiscountService
 
     Task<int> GetPendingCountAsync(CancellationToken cancellationToken);
 
-    Task<Result<InvoiceDiscountRequestResponse>> ApproveAsync(Guid id, ApproveInvoiceDiscountRequest request, Guid? actorId, string? actorName, CancellationToken cancellationToken);
+    /// <summary>Requests with a part for this consultant — their "Discount Approvals" tab.</summary>
+    Task<PagedResult<InvoiceDiscountRequestResponse>> GetPagedForConsultantAsync(Guid consultantId, InvoiceDiscountRequestListQuery query, CancellationToken cancellationToken);
 
-    Task<Result<InvoiceDiscountRequestResponse>> RejectAsync(Guid id, RejectInvoiceDiscountRequest request, Guid? actorId, string? actorName, CancellationToken cancellationToken);
+    Task<int> GetPendingCountForConsultantAsync(Guid consultantId, CancellationToken cancellationToken);
+
+    /// <summary>Approves one part (<paramref name="approvalId"/>) and puts its discounts on the bill.</summary>
+    Task<Result<InvoiceDiscountRequestResponse>> ApproveAsync(Guid approvalId, ApproveInvoiceDiscountRequest request, BillingActor actor, CancellationToken cancellationToken);
+
+    /// <summary>Rejects one part (<paramref name="approvalId"/>); its lines keep their price.</summary>
+    Task<Result<InvoiceDiscountRequestResponse>> RejectAsync(Guid approvalId, RejectInvoiceDiscountRequest request, BillingActor actor, CancellationToken cancellationToken);
 }
 
 /// <summary>Which bills and lines can take a counter discount (ADR-109) — shared by
@@ -60,7 +69,7 @@ internal static class InvoiceDiscountRules
 
         if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
         {
-            return "A discount request for this bill is already waiting for Super Admin approval.";
+            return "A discount request for this bill is already waiting for approval.";
         }
 
         return invoice.Items.Any(CanTakeDiscount)
@@ -94,6 +103,24 @@ internal static class InvoiceDiscountRules
         }
 
         return Result<IReadOnlyCollection<(InvoiceLineItem, decimal)>>.Success(resolved);
+    }
+
+    /// <summary>A Super Admin may decide any part; a consultant only the part for their own fees.</summary>
+    public static bool CanDecide(InvoiceDiscountApproval approval, BillingActor actor) =>
+        actor.IsSuperAdmin
+        || (approval.ApproverType == InvoiceDiscountApproverType.Consultant && actor.ConsultantId is { } consultantId && approval.ConsultantId == consultantId);
+
+    /// <summary>A consultant's part decided by someone other than that consultant — a Super Admin.</summary>
+    public static bool IsOnBehalf(InvoiceDiscountApproval approval, BillingActor actor) =>
+        approval.ApproverType == InvoiceDiscountApproverType.Consultant && actor.ConsultantId != approval.ConsultantId;
+
+    /// <summary>Once every part is decided, the bill's discount status follows the request's.</summary>
+    public static void SettleInvoice(Invoice invoice, InvoiceDiscountRequest request, Guid? actorId)
+    {
+        if (request.Status is InvoiceDiscountRequestStatus.Approved or InvoiceDiscountRequestStatus.Rejected or InvoiceDiscountRequestStatus.PartlyApproved)
+        {
+            invoice.MarkDiscountDecided(request.Status, actorId);
+        }
     }
 }
 
@@ -176,7 +203,8 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         if (actor.IsSuperAdmin)
         {
             invoice.ApplyDiscount(discountRequest.LineDiscounts(), actor.UserName, actor.UserId);
-            discountRequest.Approve(actor.UserId, actor.UserName, null);
+            discountRequest.ApproveAll(actor.UserId, actor.UserName);
+            InvoiceDiscountRules.SettleInvoice(invoice, discountRequest, actor.UserId);
         }
         else
         {
@@ -205,19 +233,25 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
 
     public Task<int> GetPendingCountAsync(CancellationToken cancellationToken) => _repository.CountPendingAsync(cancellationToken);
 
-    public async Task<Result<InvoiceDiscountRequestResponse>> ApproveAsync(Guid id, ApproveInvoiceDiscountRequest request, Guid? actorId, string? actorName, CancellationToken cancellationToken)
+    public async Task<PagedResult<InvoiceDiscountRequestResponse>> GetPagedForConsultantAsync(Guid consultantId, InvoiceDiscountRequestListQuery query, CancellationToken cancellationToken)
     {
-        var discountRequest = await _repository.GetByIdAsync(id, cancellationToken);
-        if (discountRequest is null)
+        var bounded = query with { Page = Math.Max(query.Page, 1), PageSize = Math.Clamp(query.PageSize, 1, MaxPageSize) };
+        var (items, totalCount) = await _repository.GetPagedForConsultantAsync(consultantId, bounded, cancellationToken);
+        return new PagedResult<InvoiceDiscountRequestResponse>(items.Select(r => r.ToResponse()).ToList(), bounded.Page, bounded.PageSize, totalCount);
+    }
+
+    public Task<int> GetPendingCountForConsultantAsync(Guid consultantId, CancellationToken cancellationToken)
+        => _repository.CountPendingForConsultantAsync(consultantId, cancellationToken);
+
+    public async Task<Result<InvoiceDiscountRequestResponse>> ApproveAsync(Guid approvalId, ApproveInvoiceDiscountRequest request, BillingActor actor, CancellationToken cancellationToken)
+    {
+        var found = await FindPendingPartAsync(approvalId, actor, cancellationToken);
+        if (!found.IsSuccess)
         {
-            return Result<InvoiceDiscountRequestResponse>.Failure(BillingErrorCodes.DiscountRequestNotFound, $"Discount request '{id}' was not found.");
+            return Result<InvoiceDiscountRequestResponse>.Failure(found.ErrorCode!, found.Error!);
         }
 
-        if (discountRequest.Status != InvoiceDiscountRequestStatus.Pending)
-        {
-            return Result<InvoiceDiscountRequestResponse>.Failure(BillingErrorCodes.DiscountRequestNotPending, $"This discount request has already been {discountRequest.Status.ToString().ToLowerInvariant()}.");
-        }
-
+        var (discountRequest, approval) = found.Value;
         var invoice = await _invoiceRepository.GetByIdAsync(discountRequest.InvoiceId, cancellationToken);
         if (invoice is null)
         {
@@ -231,7 +265,8 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
 
         // Payments are blocked while the request waits, so this only trips on data changed some
         // other way — but a paid line must never be re-priced.
-        var lineIds = discountRequest.Lines.Select(l => l.LineItemId).ToHashSet();
+        var lineDiscounts = discountRequest.LineDiscountsFor(approval.Id);
+        var lineIds = lineDiscounts.Select(l => l.LineItemId).ToHashSet();
         if (invoice.Items.Where(i => lineIds.Contains(i.Id)).Count() != lineIds.Count
             || invoice.Items.Any(i => lineIds.Contains(i.Id) && !InvoiceDiscountRules.CanTakeDiscount(i)))
         {
@@ -239,44 +274,70 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         }
 
         var invoiceBefore = invoice.ToResponse();
+        var partDiscount = lineDiscounts.Sum(l => l.Discount);
 
         // One SaveChanges for both: the request and its invoice share BillingDbContext.
-        invoice.ApplyDiscount(discountRequest.LineDiscounts(), actorName, actorId);
-        discountRequest.Approve(actorId, actorName, request.Notes);
+        invoice.ApplyDiscount(lineDiscounts, actor.UserName, actor.UserId);
+        discountRequest.ApprovePart(approval.Id, actor.UserId, actor.UserName, request.Notes, InvoiceDiscountRules.IsOnBehalf(approval, actor));
+        InvoiceDiscountRules.SettleInvoice(invoice, discountRequest, actor.UserId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = discountRequest.ToResponse();
-        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, $"Approved a discount of {discountRequest.TotalDiscount} on invoice {invoice.InvoiceNumber}", null, response, actorId, cancellationToken);
-        await LogAsync(ActivityLogActions.Update, "Invoice", invoice.Id, $"Applied a discount of {discountRequest.TotalDiscount} to invoice {invoice.InvoiceNumber}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, $"Approved {DescribePart(approval)} discount of {partDiscount} on invoice {invoice.InvoiceNumber}", null, response, actor.UserId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "Invoice", invoice.Id, $"Applied a discount of {partDiscount} to invoice {invoice.InvoiceNumber}", invoiceBefore, invoice.ToResponse(), actor.UserId, cancellationToken);
 
         return Result<InvoiceDiscountRequestResponse>.Success(response);
     }
 
-    public async Task<Result<InvoiceDiscountRequestResponse>> RejectAsync(Guid id, RejectInvoiceDiscountRequest request, Guid? actorId, string? actorName, CancellationToken cancellationToken)
+    public async Task<Result<InvoiceDiscountRequestResponse>> RejectAsync(Guid approvalId, RejectInvoiceDiscountRequest request, BillingActor actor, CancellationToken cancellationToken)
     {
-        var discountRequest = await _repository.GetByIdAsync(id, cancellationToken);
-        if (discountRequest is null)
+        var found = await FindPendingPartAsync(approvalId, actor, cancellationToken);
+        if (!found.IsSuccess)
         {
-            return Result<InvoiceDiscountRequestResponse>.Failure(BillingErrorCodes.DiscountRequestNotFound, $"Discount request '{id}' was not found.");
+            return Result<InvoiceDiscountRequestResponse>.Failure(found.ErrorCode!, found.Error!);
         }
 
-        if (discountRequest.Status != InvoiceDiscountRequestStatus.Pending)
-        {
-            return Result<InvoiceDiscountRequestResponse>.Failure(BillingErrorCodes.DiscountRequestNotPending, $"This discount request has already been {discountRequest.Status.ToString().ToLowerInvariant()}.");
-        }
+        var (discountRequest, approval) = found.Value;
+        discountRequest.RejectPart(approval.Id, actor.UserId, actor.UserName, request.Notes, InvoiceDiscountRules.IsOnBehalf(approval, actor));
 
         var invoice = await _invoiceRepository.GetByIdAsync(discountRequest.InvoiceId, cancellationToken);
         if (invoice is { DiscountStatus: InvoiceDiscountRequestStatus.Pending })
         {
-            invoice.MarkDiscountRejected(actorId);
+            InvoiceDiscountRules.SettleInvoice(invoice, discountRequest, actor.UserId);
         }
 
-        discountRequest.Reject(actorId, actorName, request.Notes);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = discountRequest.ToResponse();
-        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, $"Rejected a discount on invoice {discountRequest.InvoiceNumber}: {discountRequest.DecisionNotes}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, $"Rejected {DescribePart(approval)} discount on invoice {discountRequest.InvoiceNumber}: {approval.DecisionNotes}", null, response, actor.UserId, cancellationToken);
 
         return Result<InvoiceDiscountRequestResponse>.Success(response);
     }
+
+    /// <summary>The request that owns <paramref name="approvalId"/> and that part, once it's
+    /// known to exist, to be the actor's to decide, and to be still waiting.</summary>
+    private async Task<Result<(InvoiceDiscountRequest Request, InvoiceDiscountApproval Approval)>> FindPendingPartAsync(Guid approvalId, BillingActor actor, CancellationToken cancellationToken)
+    {
+        var discountRequest = await _repository.GetByApprovalIdAsync(approvalId, cancellationToken);
+        var approval = discountRequest?.FindApproval(approvalId);
+        if (discountRequest is null || approval is null)
+        {
+            return Result<(InvoiceDiscountRequest, InvoiceDiscountApproval)>.Failure(BillingErrorCodes.DiscountRequestNotFound, $"Discount approval '{approvalId}' was not found.");
+        }
+
+        if (!InvoiceDiscountRules.CanDecide(approval, actor))
+        {
+            return Result<(InvoiceDiscountRequest, InvoiceDiscountApproval)>.Failure(BillingErrorCodes.DiscountNotYourApproval, "Only the Super Admin, or the consultant whose fee is discounted, can decide this discount.");
+        }
+
+        if (approval.Status != InvoiceDiscountRequestStatus.Pending)
+        {
+            return Result<(InvoiceDiscountRequest, InvoiceDiscountApproval)>.Failure(BillingErrorCodes.DiscountRequestNotPending, $"This discount has already been {approval.Status.ToString().ToLowerInvariant()}.");
+        }
+
+        return Result<(InvoiceDiscountRequest, InvoiceDiscountApproval)>.Success((discountRequest, approval));
+    }
+
+    private static string DescribePart(InvoiceDiscountApproval approval)
+        => approval.ApproverType == InvoiceDiscountApproverType.Consultant ? $"consultant {approval.ConsultantId}'s" : "the Super Admin's";
 }

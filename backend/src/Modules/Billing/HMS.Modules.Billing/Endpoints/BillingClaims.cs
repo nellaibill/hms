@@ -19,6 +19,9 @@ internal static class BillingClaims
 
     public static string? GetUsername(this ClaimsPrincipal user) => user.FindFirst("Username")?.Value;
 
+    /// <summary>ConsultantId is the caller's own consultant only for a consultant's login
+    /// (GetScopedConsultantId) — a Super Admin or receptionist linked to a consultant record
+    /// doesn't decide that consultant's discounts as them.</summary>
     public static BillingActor GetBillingActor(this ClaimsPrincipal user)
-        => new(user.GetUserId(), user.GetUsername(), user.IsSuperAdmin());
+        => new(user.GetUserId(), user.GetUsername(), user.IsSuperAdmin(), user.GetScopedConsultantId());
 }
