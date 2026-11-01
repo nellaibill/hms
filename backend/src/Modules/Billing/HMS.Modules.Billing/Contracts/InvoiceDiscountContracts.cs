@@ -165,6 +165,16 @@ public record InvoiceDiscountStatusResponse
     public IReadOnlyList<InvoiceDiscountRequestResponse> Requests { get; init; } = [];
 }
 
+/// <summary>A reason this hospital has given before (for a discount or a bill revert), offered as
+/// a suggestion when the counter types one — most-used first.</summary>
+public record ReasonSuggestionResponse
+{
+    public string Reason { get; init; } = string.Empty;
+
+    /// <summary>How many of the recent requests gave this reason (ignoring case and spacing).</summary>
+    public int TimesUsed { get; init; }
+}
+
 /// <summary>Standard paging shape (docs/ApiStandards.md §6) plus a status filter — on the
 /// request for the Super Admin's list, on the caller's own part for a consultant's list.</summary>
 public record InvoiceDiscountRequestListQuery

@@ -10,6 +10,7 @@ export const discountRequestsQueryKey = (query: InvoiceDiscountRequestListQuery)
 export const pendingDiscountCountQueryKey = ['billings', 'discount-requests', 'pending-count'] as const;
 export const myDiscountApprovalsQueryKey = (query: InvoiceDiscountRequestListQuery) => ['billings', 'my-discount-approvals', query] as const;
 export const myPendingDiscountApprovalCountQueryKey = ['billings', 'my-discount-approvals', 'pending-count'] as const;
+export const discountReasonSuggestionsQueryKey = ['billings', 'discount-reasons'] as const;
 
 export function useInvoiceDiscountStatusQuery(invoiceId: string | undefined) {
   return useQuery({
@@ -34,6 +35,18 @@ export function usePendingDiscountCountQuery(enabled = true) {
     queryKey: pendingDiscountCountQueryKey,
     queryFn: () => billingApi.getPendingDiscountRequestCount(),
     enabled,
+  });
+}
+
+/** Reasons this hospital has given for discounts before, most-used first — the Reason box's
+ * suggestions. Under 'billings', so a newly raised discount's reason joins them. Without access
+ * (or offline) it just stays empty and the built-in suggestions are used. */
+export function useDiscountReasonSuggestionsQuery() {
+  return useQuery({
+    queryKey: discountReasonSuggestionsQueryKey,
+    queryFn: () => billingApi.getDiscountReasonSuggestions(20),
+    staleTime: 5 * 60_000,
+    retry: false,
   });
 }
 

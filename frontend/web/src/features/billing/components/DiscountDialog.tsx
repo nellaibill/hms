@@ -1,16 +1,16 @@
 import type { InvoiceDiscountType } from '@hms/shared';
 import { ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
+import { SuggestionTextarea } from '@/components/SuggestionTextarea';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { mergeSuggestions } from '@/lib/suggestions';
 import { cn } from '@/lib/utils';
-import { allocateDiscount, describeDiscountApprovers, type DiscountAllocation, type DiscountableLine } from '../billingDiscount';
+import { allocateDiscount, COMMON_DISCOUNT_REASONS, describeDiscountApprovers, type DiscountAllocation, type DiscountableLine } from '../billingDiscount';
 import { formatCurrency } from '../billingCalculations';
-
-const textareaClassName =
-  'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+import { useDiscountReasonSuggestionsQuery } from '../hooks/useInvoiceDiscount';
 
 /** Bill line | Charge | Discount (₹) | Net — the last three collapse under the line on a phone. */
 const rowGridClassName = 'grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_8rem_6.5rem]';
@@ -84,6 +84,8 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
   });
   const [wholeText, setWholeText] = useState(() => toAmountText(sumOfLines(lines, lineTexts)));
   const [reason, setReason] = useState(initial?.reason ?? '');
+  const { data: usedReasons } = useDiscountReasonSuggestionsQuery();
+  const reasonSuggestions = mergeSuggestions(usedReasons?.map((suggestion) => suggestion.reason) ?? [], COMMON_DISCOUNT_REASONS);
   const [attempted, setAttempted] = useState(false);
 
   const showWholeBill = lines.length > 1;
@@ -147,6 +149,10 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
       <DialogContent
         aria-labelledby="discount-dialog-title"
         className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl flex-col gap-4 overflow-y-auto"
+        // Esc in the Reason box undoes a suggestion first (SuggestionTextarea) rather than closing.
+        onEscapeKeyDown={(event) => {
+          if (document.activeElement?.getAttribute('data-suggesting') === 'true') event.preventDefault();
+        }}
       >
         <DialogHeader>
           <DialogTitle id="discount-dialog-title">Add discount</DialogTitle>
@@ -212,13 +218,13 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
           <Label htmlFor="discount-reason">
             Reason <span className="font-normal text-muted-foreground">(required)</span>
           </Label>
-          <textarea
+          <SuggestionTextarea
             id="discount-reason"
             rows={2}
             maxLength={500}
             value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            className={textareaClassName}
+            onValueChange={setReason}
+            suggestions={reasonSuggestions}
             placeholder="e.g. Staff family, senior citizen, financial hardship"
           />
         </div>

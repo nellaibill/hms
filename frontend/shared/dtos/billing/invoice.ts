@@ -354,6 +354,13 @@ export interface InvoiceDiscountStatusResponse {
   requests: InvoiceDiscountRequestResponse[];
 }
 
+/** Mirrors HMS.Modules.Billing.Contracts.ReasonSuggestionResponse — a reason this hospital has
+ * given before (for a discount or a bill revert), offered as a suggestion; most-used first. */
+export interface ReasonSuggestion {
+  reason: string;
+  timesUsed: number;
+}
+
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestListQuery — `status` filters the
  * request for the Super Admin's list, the caller's own part for a consultant's list. */
 export interface InvoiceDiscountRequestListQuery {

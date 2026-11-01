@@ -7,6 +7,7 @@ import { billingApi } from '@/services/apiClient';
 export const invoiceRevertStatusQueryKey = (invoiceId: string) => ['billings', 'revert-status', invoiceId] as const;
 export const revertRequestsQueryKey = (query: InvoiceRevertRequestListQuery) => ['billings', 'revert-requests', query] as const;
 export const pendingRevertCountQueryKey = ['billings', 'revert-requests', 'pending-count'] as const;
+export const revertReasonSuggestionsQueryKey = ['billings', 'revert-reasons'] as const;
 
 export function useInvoiceRevertStatusQuery(invoiceId: string | undefined) {
   return useQuery({
@@ -35,6 +36,17 @@ export function usePendingRevertCountQuery(enabled = true) {
 function useInvalidateBillings() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: ['billings'] });
+}
+
+/** Reasons this hospital has given for reverts before, most-used first — the Request Revert
+ * dialog's suggestions. Same rules as useDiscountReasonSuggestionsQuery. */
+export function useRevertReasonSuggestionsQuery() {
+  return useQuery({
+    queryKey: revertReasonSuggestionsQueryKey,
+    queryFn: () => billingApi.getRevertReasonSuggestions(20),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 }
 
 export function useRequestInvoiceRevertMutation() {

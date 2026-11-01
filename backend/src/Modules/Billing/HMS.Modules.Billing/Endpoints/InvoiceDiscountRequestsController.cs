@@ -102,6 +102,16 @@ public class InvoiceDiscountRequestsController : ControllerBase
     public async Task<IActionResult> GetPendingCount(CancellationToken cancellationToken)
         => Ok(new ApiResponse<int> { Data = await _service.GetPendingCountAsync(cancellationToken) });
 
+    /// <summary>Reasons this hospital has given for discounts before, most-used first — the
+    /// suggestions under the counter's Reason box. Needs the same permission as raising a discount.</summary>
+    /// <response code="200">Up to <paramref name="limit"/> reasons (default 20, at most 50).</response>
+    [Authorize]
+    [RequirePermission("finance-billing.create")]
+    [HttpGet("discount-requests/reasons")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ReasonSuggestionResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetReasonSuggestions([FromQuery] int limit = 20, CancellationToken cancellationToken = default)
+        => Ok(new ApiResponse<IReadOnlyList<ReasonSuggestionResponse>> { Data = await _service.GetReasonSuggestionsAsync(limit, cancellationToken) });
+
     /// <summary>A consultant's own discount approvals — requests with a part for their fees,
     /// filtered on that part's status (ADR-111). Consultant logins only; no billing permission
     /// is needed.</summary>

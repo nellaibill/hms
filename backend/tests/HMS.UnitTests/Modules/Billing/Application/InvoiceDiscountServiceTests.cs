@@ -455,4 +455,37 @@ public class InvoiceDiscountServiceTests
         result.Items.Should().ContainSingle().Which.Id.Should().Be(request.Id);
         await _repository.Received(1).GetPagedForConsultantAsync(DrKarthikeyan, Arg.Is<InvoiceDiscountRequestListQuery>(q => q.PageSize == 100 && q.Status == InvoiceDiscountRequestStatus.Pending), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task GetReasonSuggestionsAsync_GroupsSpellingsAndListsTheMostUsedFirst()
+    {
+        // Newest first, as the repository returns them.
+        _repository.GetRecentReasonsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(
+        [
+            "Senior citizen",
+            "Staff family",
+            "  senior  CITIZEN ",
+            "Financial hardship",
+            "staff family",
+            "   ",
+            "Senior citizen",
+        ]);
+
+        var result = await _sut.GetReasonSuggestionsAsync(10, CancellationToken.None);
+
+        result.Select(r => (r.Reason, r.TimesUsed)).Should().Equal(
+            ("Senior citizen", 3),
+            ("Staff family", 2),
+            ("Financial hardship", 1));
+    }
+
+    [Fact]
+    public async Task GetReasonSuggestionsAsync_KeepsToTheLimitAndBreaksTiesByTheNewest()
+    {
+        _repository.GetRecentReasonsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(["Camp patient", "Referred patient", "Charity case"]);
+
+        var result = await _sut.GetReasonSuggestionsAsync(2, CancellationToken.None);
+
+        result.Select(r => r.Reason).Should().Equal("Camp patient", "Referred patient");
+    }
 }
