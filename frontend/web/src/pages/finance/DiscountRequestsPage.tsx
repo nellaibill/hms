@@ -192,7 +192,8 @@ export default function DiscountRequestsPage() {
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="font-medium text-destructive">− {formatCurrency(request.totalDiscount)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {describeDiscountEntry(request.discountType, request.discountValue)} · bill {formatCurrency(request.grossAmount)}
+                          {request.discountType === 'Percent' && `${describeDiscountEntry(request.discountType, request.discountValue)} · `}bill{' '}
+                          {formatCurrency(request.grossAmount)}
                         </div>
                       </td>
                       <td className="min-w-[10rem] max-w-xs px-4 py-3 text-foreground">{request.reason}</td>

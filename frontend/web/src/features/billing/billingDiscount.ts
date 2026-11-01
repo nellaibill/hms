@@ -14,33 +14,27 @@ export interface DiscountableLine {
   amount: number;
 }
 
-/** One line's share of a discount. */
+/** One line's ₹ discount. */
 export interface DiscountAllocation {
   lineId: string;
   amount: number;
 }
 
-/** The whole discount in whole rupees: a % of the chosen lines' total, or the ₹ amount typed —
- * never more than the chosen lines' total, never negative. */
-export function discountTotalFor(selectedTotal: number, type: InvoiceDiscountType, value: number): number {
-  if (!(value > 0) || !(selectedTotal > 0)) return 0;
-  const raw = type === 'Percent' ? (selectedTotal * Math.min(value, 100)) / 100 : value;
-  return Math.min(Math.round(raw), Math.floor(selectedTotal));
-}
-
 /**
- * Splits the discount across the chosen lines in proportion to their charges, in whole rupees
+ * Splits a whole-bill ₹ discount across the lines in proportion to their charges, in whole rupees
  * (largest-remainder rounding, so the shares always add up to exactly the total) — e.g. ₹100 off
- * a ₹300 consultation and a ₹700 lab test is ₹30 + ₹70. No line's share ever exceeds its own
- * charge. Lines with a share of zero are left out.
+ * a ₹300 consultation and a ₹700 lab test is ₹30 + ₹70. The total is rounded to whole rupees and
+ * capped at the lines' total; no line's share ever exceeds its own charge. Lines with a share of
+ * zero are left out.
  */
-export function allocateDiscount(lines: Pick<DiscountableLine, 'id' | 'amount'>[], type: InvoiceDiscountType, value: number): DiscountAllocation[] {
-  const selectedTotal = lines.reduce((sum, line) => sum + line.amount, 0);
-  const total = discountTotalFor(selectedTotal, type, value);
+export function allocateDiscount(lines: Pick<DiscountableLine, 'id' | 'amount'>[], amount: number): DiscountAllocation[] {
+  const linesTotal = lines.reduce((sum, line) => sum + line.amount, 0);
+  if (!(amount > 0) || !(linesTotal > 0)) return [];
+  const total = Math.min(Math.round(amount), Math.floor(linesTotal));
   if (total === 0) return [];
 
   const shares = lines.map((line) => {
-    const exact = (total * line.amount) / selectedTotal;
+    const exact = (total * line.amount) / linesTotal;
     return { id: line.id, cap: Math.floor(line.amount), amount: Math.min(Math.floor(exact), Math.floor(line.amount)), remainder: exact - Math.floor(exact) };
   });
 
@@ -65,12 +59,8 @@ export function linesSignature(lines: Pick<DiscountableLine, 'id' | 'amount'>[])
   return lines.map((line) => `${line.id}:${line.amount}`).join('|');
 }
 
-export const DISCOUNT_TYPE_LABELS: Record<InvoiceDiscountType, string> = {
-  Amount: '₹ Amount',
-  Percent: '% Percent',
-};
-
-/** "₹100" or "10%" — how the counter entered it. */
+/** "₹100" or "10%" — how the counter entered it. New discounts are always ₹ amounts entered
+ * line by line; "%" only appears on requests raised before that change. */
 export function describeDiscountEntry(type: InvoiceDiscountType, value: number): string {
   return type === 'Percent' ? `${value}%` : `₹${Math.round(value).toLocaleString('en-IN')}`;
 }

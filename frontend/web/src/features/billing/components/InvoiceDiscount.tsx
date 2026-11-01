@@ -172,7 +172,8 @@ function DiscountDecisionDialog({ decision, request, isSaving, error, onConfirm,
           <DialogTitle id="discount-decision-title">{isApprove ? 'Approve discount?' : 'Reject discount request?'}</DialogTitle>
           <DialogDescription>
             <strong className="text-foreground">Invoice {request.invoiceNumber}</strong> for {request.patientName}:{' '}
-            {formatCurrency(request.totalDiscount)} off ({describeDiscountEntry(request.discountType, request.discountValue)}).{' '}
+            {formatCurrency(request.totalDiscount)} off
+            {request.discountType === 'Percent' ? ` (${describeDiscountEntry(request.discountType, request.discountValue)})` : ''}.{' '}
             {isApprove ? 'The discount goes on the bill and the counter collects the reduced amount.' : 'The bill stays at its full price.'}
           </DialogDescription>
         </DialogHeader>
