@@ -43,11 +43,11 @@ import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
  * name reads identically everywhere it's shown.
  *
- * "Add discount" (ADR-109) sits above Collect Payment: it opens DiscountDialog to pick the lines
- * it covers, a ₹ amount or %, and a reason. A Super Admin's discount comes straight off Net
- * Payable; anyone else's needs Super Admin approval, so Collect Payment is replaced by a note and
- * the save action becomes "Send for Approval" — the bill is saved unpaid and paid from its
- * invoice page once the discount is decided.
+ * "Add discount" (ADR-109) sits above Collect Payment: it opens DiscountDialog to enter a ₹
+ * discount per line (or one whole-bill amount split across them) and a reason. A Super Admin's
+ * discount comes straight off Net Payable; anyone else's needs Super Admin approval, so Collect
+ * Payment is replaced by a note and the save action becomes "Send for Approval" — the bill is
+ * saved unpaid and paid from its invoice page once the discount is decided.
  *
  * The save action itself (onSave/isSaving/saveError) also renders here, inside this sticky
  * card, rather than below the four billing category cards — this card's height doesn't change
@@ -441,7 +441,7 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
         <DiscountDialog
           lines={toDiscountableLines(undiscountedItems)}
           billTotal={undiscountedItems.reduce((sum, item) => sum + item.total, 0)}
-          initial={discount ? { type: discount.type, value: discount.value, reason: discount.reason, lineIds: discount.allocations.map((a) => a.lineId) } : undefined}
+          initial={discount ? { reason: discount.reason, allocations: discount.allocations } : undefined}
           needsApproval={!isSuperAdmin}
           confirmLabel="Apply discount"
           onConfirm={handleApplyDiscount}

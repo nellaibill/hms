@@ -6,26 +6,31 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { allocateDiscount, DISCOUNT_TYPE_LABELS, discountTotalFor, type DiscountAllocation, type DiscountableLine } from '../billingDiscount';
+import { allocateDiscount, type DiscountAllocation, type DiscountableLine } from '../billingDiscount';
 import { formatCurrency } from '../billingCalculations';
 
 const textareaClassName =
   'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
+/** Bill line | Charge | Discount (₹) | Net — the last three collapse under the line on a phone. */
+const rowGridClassName = 'grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_8rem_6.5rem]';
+
 export interface DiscountDialogResult {
+  /** Always 'Amount' — each line's discount is a ₹ figure and `value` is their total. */
   type: InvoiceDiscountType;
   value: number;
   reason: string;
-  /** Each chosen line's share, in whole rupees — see billingDiscount.ts's allocateDiscount. */
+  /** Each discounted line's ₹ discount, in whole rupees; lines left at zero are left out. */
   allocations: DiscountAllocation[];
 }
 
 interface DiscountDialogProps {
-  /** The lines that can take a discount; all start ticked unless `initial` says otherwise. */
+  /** The lines that can take a discount. */
   lines: DiscountableLine[];
   /** The bill's whole net amount before this discount — lines that can't be discounted included. */
   billTotal: number;
-  initial?: { type: InvoiceDiscountType; value: number; reason: string; lineIds: string[] };
+  /** A discount already on the form — its lines' amounts are filled back in. */
+  initial?: { reason: string; allocations: DiscountAllocation[] };
   /** True for anyone but a Super Admin — the discount then waits for approval. */
   needsApproval: boolean;
   confirmLabel: string;
@@ -37,141 +42,159 @@ interface DiscountDialogProps {
   onCancel: () => void;
 }
 
+/** Blank reads as no discount; anything that isn't a number reads as NaN. */
+function parseAmount(text: string | undefined): number {
+  return !text || text.trim() === '' ? 0 : Number(text);
+}
+
+function isValidAmount(amount: number): boolean {
+  return Number.isInteger(amount) && amount >= 0;
+}
+
+function toAmountText(amount: number): string {
+  return amount > 0 ? String(amount) : '';
+}
+
+function sumOfLines(lines: DiscountableLine[], texts: Record<string, string>): number {
+  return lines.reduce((sum, line) => {
+    const amount = parseAmount(texts[line.id]);
+    return isValidAmount(amount) ? sum + amount : sum;
+  }, 0);
+}
+
 /**
- * "Add discount" (ADR-109) — pick the bill lines it covers (all of them, or some), a ₹ amount or
- * a %, and a reason. The discount is spread over the ticked lines in proportion to their charges,
- * and the preview shows each line's share and the new net payable. Used both while making a bill
- * (BillingSummaryCard) and on a saved, unpaid bill (RequestDiscountButton).
+ * "Add discount" (ADR-109) — a ₹ discount against each bill line (consultation, radiology,
+ * laboratory, procedure, injection…), and a reason. When the bill has more than one line, a
+ * "Whole bill" row takes one amount and splits it across the lines in proportion to their
+ * charges, after which any line can still be changed; the Whole bill figure always shows the lines'
+ * total. Used both while making a bill (BillingSummaryCard) and on a saved, unpaid bill
+ * (RequestDiscountButton).
  */
 export function DiscountDialog({ lines, billTotal, initial, needsApproval, confirmLabel, isSaving, error, onConfirm, onRemove, onCancel }: DiscountDialogProps) {
-  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => {
-    const initialIds = initial?.lineIds.filter((id) => lines.some((line) => line.id === id)) ?? [];
-    return new Set(initialIds.length > 0 ? initialIds : lines.map((line) => line.id));
+  const [lineTexts, setLineTexts] = useState<Record<string, string>>(() => {
+    const initialById = new Map(initial?.allocations.map((allocation) => [allocation.lineId, allocation.amount]));
+    return Object.fromEntries(lines.map((line) => [line.id, toAmountText(initialById.get(line.id) ?? 0)]));
   });
-  const [type, setType] = useState<InvoiceDiscountType>(initial?.type ?? 'Amount');
-  const [valueText, setValueText] = useState(initial ? String(initial.value) : '');
+  const [wholeText, setWholeText] = useState(() => toAmountText(sumOfLines(lines, lineTexts)));
   const [reason, setReason] = useState(initial?.reason ?? '');
   const [attempted, setAttempted] = useState(false);
 
-  const value = valueText === '' ? 0 : Number(valueText);
-  const selectedLines = lines.filter((line) => selectedIds.has(line.id));
-  const selectedTotal = selectedLines.reduce((sum, line) => sum + line.amount, 0);
-  const allocations = allocateDiscount(selectedLines, type, value);
-  const shareById = new Map(allocations.map((allocation) => [allocation.lineId, allocation.amount]));
-  const totalDiscount = discountTotalFor(selectedTotal, type, value);
-  const allSelected = selectedIds.size === lines.length;
+  const showWholeBill = lines.length > 1;
+  const linesTotal = lines.reduce((sum, line) => sum + line.amount, 0);
+  const entries = lines.map((line) => {
+    const amount = parseAmount(lineTexts[line.id]);
+    const problem = !isValidAmount(amount)
+      ? `Enter the discount for ${line.label} in whole rupees.`
+      : amount > line.amount
+        ? `The discount for ${line.label} can’t be more than its charge (${formatCurrency(line.amount)}).`
+        : null;
+    return { line, amount: problem ? 0 : amount, problem };
+  });
+  const wholeAmount = parseAmount(wholeText);
+  const totalDiscount = entries.reduce((sum, entry) => sum + entry.amount, 0);
   const trimmedReason = reason.trim();
 
   const problem =
-    selectedLines.length === 0
-      ? 'Tick at least one bill line to discount.'
-      : !(value > 0) || Number.isNaN(value)
-        ? `Enter the discount ${type === 'Percent' ? 'percentage' : 'amount'}.`
-        : type === 'Percent' && value > 100
-          ? 'A percentage discount can’t be more than 100%.'
-          : type === 'Amount' && value > selectedTotal
-            ? `The discount can’t be more than the ticked lines’ total (${formatCurrency(selectedTotal)}).`
-            : trimmedReason.length === 0
-              ? 'A reason is required — the Super Admin decides on it.'
-              : totalDiscount === 0
-                ? 'This discount rounds to ₹0 — enter a larger amount.'
-                : null;
+    entries.find((entry) => entry.problem)?.problem ??
+    (!isValidAmount(wholeAmount)
+      ? 'Enter the whole-bill discount in whole rupees.'
+      : wholeAmount > linesTotal
+        ? `The whole-bill discount can’t be more than the bill’s total (${formatCurrency(linesTotal)}).`
+        : totalDiscount === 0
+          ? showWholeBill
+            ? 'Enter a discount against at least one line, or for the whole bill.'
+            : 'Enter the discount amount.'
+          : trimmedReason.length === 0
+            ? 'A reason is required — the Super Admin decides on it.'
+            : null);
 
-  function toggleLine(id: string) {
-    setSelectedIds((previous) => {
-      const next = new Set(previous);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function handleWholeChange(text: string) {
+    setWholeText(text);
+    const amount = parseAmount(text);
+    const shares = new Map(allocateDiscount(lines, isValidAmount(amount) ? amount : 0).map((share) => [share.lineId, share.amount]));
+    setLineTexts(Object.fromEntries(lines.map((line) => [line.id, toAmountText(shares.get(line.id) ?? 0)])));
+  }
+
+  function handleLineChange(id: string, text: string) {
+    const next = { ...lineTexts, [id]: text };
+    setLineTexts(next);
+    setWholeText(toAmountText(sumOfLines(lines, next)));
   }
 
   function handleConfirm() {
     setAttempted(true);
     if (problem) return;
-    onConfirm({ type, value, reason: trimmedReason, allocations });
+    onConfirm({
+      type: 'Amount',
+      value: totalDiscount,
+      reason: trimmedReason,
+      allocations: entries.filter((entry) => entry.amount > 0).map((entry) => ({ lineId: entry.line.id, amount: entry.amount })),
+    });
   }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent aria-labelledby="discount-dialog-title" className="max-h-[90vh] max-w-lg overflow-y-auto">
+      <DialogContent
+        aria-labelledby="discount-dialog-title"
+        className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl flex-col gap-4 overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle id="discount-dialog-title">Add discount</DialogTitle>
-          <DialogDescription>Choose the bill lines the discount covers, how much, and why.</DialogDescription>
+          <DialogDescription>
+            {showWholeBill
+              ? 'Enter a ₹ discount against each bill line, or one amount for the whole bill, and the reason.'
+              : 'Enter the ₹ discount and the reason.'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">Apply to</span>
-          <div className="flex flex-col divide-y divide-border rounded-md border border-border text-sm">
-            <label className="flex cursor-pointer items-center justify-between gap-3 bg-muted/30 px-3 py-2">
-              <span className="flex items-center gap-2 font-medium text-foreground">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-input accent-primary"
-                  checked={allSelected}
-                  onChange={(event) => setSelectedIds(new Set(event.target.checked ? lines.map((line) => line.id) : []))}
-                />
-                Whole bill ({lines.length} {lines.length === 1 ? 'line' : 'lines'})
+          <div className="flex flex-col divide-y divide-border rounded-md border border-border text-sm" role="table" aria-label="Discount by bill line">
+            <div role="row" className={cn(rowGridClassName, 'hidden bg-muted/50 text-xs font-medium text-muted-foreground sm:grid')}>
+              <span role="columnheader">Bill line</span>
+              <span role="columnheader" className="text-right">
+                Charge
               </span>
-              <span className="text-muted-foreground">{formatCurrency(lines.reduce((sum, line) => sum + line.amount, 0))}</span>
-            </label>
-            {lines.map((line) => {
-              const share = shareById.get(line.id);
-              return (
-                <label key={line.id} className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2">
-                  <span className="flex min-w-0 items-center gap-2 text-foreground">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 shrink-0 rounded border-input accent-primary"
-                      checked={selectedIds.has(line.id)}
-                      onChange={() => toggleLine(line.id)}
-                    />
-                    <span className="truncate">{line.label}</span>
-                  </span>
-                  <span className="flex shrink-0 flex-col items-end">
-                    <span className="text-foreground">{formatCurrency(line.amount)}</span>
-                    {share ? <span className="text-xs font-medium text-destructive">− {formatCurrency(share)}</span> : null}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground">Discount as</span>
-            <div className="flex gap-1 rounded-md border border-border p-1" role="group" aria-label="Discount as">
-              {(Object.keys(DISCOUNT_TYPE_LABELS) as InvoiceDiscountType[]).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={type === option}
-                  onClick={() => setType(option)}
-                  className={cn(
-                    'rounded px-3 py-1.5 text-sm font-medium transition-colors',
-                    type === option ? 'bg-sidebar-active text-sidebar-active-foreground' : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
-                  )}
-                >
-                  {DISCOUNT_TYPE_LABELS[option]}
-                </button>
-              ))}
+              <span role="columnheader" className="text-right">
+                Discount (₹)
+              </span>
+              <span role="columnheader" className="text-right">
+                Net
+              </span>
             </div>
+
+            {showWholeBill && (
+              <DiscountRow
+                id="discount-whole-bill"
+                label={`Whole bill (${lines.length} lines)`}
+                charge={linesTotal}
+                value={wholeText}
+                net={linesTotal - totalDiscount}
+                invalid={!isValidAmount(wholeAmount) || wholeAmount > linesTotal}
+                onChange={handleWholeChange}
+                emphasis
+                autoFocus
+              />
+            )}
+            {entries.map((entry, index) => (
+              <DiscountRow
+                key={entry.line.id}
+                id={`discount-line-${index}`}
+                label={entry.line.label}
+                charge={entry.line.amount}
+                value={lineTexts[entry.line.id] ?? ''}
+                net={entry.line.amount - entry.amount}
+                invalid={entry.problem !== null}
+                onChange={(text) => handleLineChange(entry.line.id, text)}
+                autoFocus={!showWholeBill && index === 0}
+              />
+            ))}
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="discount-value">{type === 'Percent' ? 'Percentage (%)' : 'Amount (₹)'}</Label>
-            <Input
-              id="discount-value"
-              type="number"
-              min={0}
-              max={type === 'Percent' ? 100 : selectedTotal}
-              inputMode="decimal"
-              value={valueText}
-              onChange={(event) => setValueText(event.target.value)}
-              placeholder={type === 'Percent' ? 'e.g. 10' : 'e.g. 100'}
-              autoFocus
-            />
-          </div>
+          {showWholeBill && (
+            <p className="text-xs text-muted-foreground">
+              An amount against <span className="font-medium text-foreground">Whole bill</span> is shared across the lines in proportion to
+              their charges — change any line afterwards if needed.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -223,7 +246,7 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
           </p>
         )}
 
-        <DialogFooter className="gap-2 sm:justify-between">
+        <DialogFooter className="mt-1 gap-2 sm:justify-between">
           {onRemove ? (
             <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={onRemove} disabled={isSaving}>
               Remove discount
@@ -242,5 +265,55 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface DiscountRowProps {
+  id: string;
+  label: string;
+  charge: number;
+  value: string;
+  net: number;
+  invalid: boolean;
+  onChange: (text: string) => void;
+  /** The Whole bill row — shaded and bold. */
+  emphasis?: boolean;
+  autoFocus?: boolean;
+}
+
+function DiscountRow({ id, label, charge, value, net, invalid, onChange, emphasis, autoFocus }: DiscountRowProps) {
+  return (
+    <div role="row" className={cn(rowGridClassName, emphasis && 'bg-muted/30')}>
+      <div role="cell" className="flex min-w-0 flex-col">
+        <label htmlFor={id} className={cn('break-words text-foreground', emphasis && 'font-medium')}>
+          {label}
+        </label>
+        <span className="text-xs text-muted-foreground sm:hidden">
+          {formatCurrency(charge)} → {formatCurrency(Math.max(net, 0))}
+        </span>
+      </div>
+      <span role="cell" className="hidden text-right text-muted-foreground sm:block">
+        {formatCurrency(charge)}
+      </span>
+      <div role="cell">
+        <Input
+          id={id}
+          type="number"
+          min={0}
+          max={charge}
+          step={1}
+          inputMode="numeric"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="0"
+          aria-invalid={invalid || undefined}
+          className={cn('h-9 text-right', invalid && 'border-destructive focus-visible:ring-destructive')}
+          autoFocus={autoFocus}
+        />
+      </div>
+      <span role="cell" className={cn('hidden text-right sm:block', emphasis ? 'font-semibold text-foreground' : 'font-medium text-foreground')}>
+        {formatCurrency(Math.max(net, 0))}
+      </span>
+    </div>
   );
 }
