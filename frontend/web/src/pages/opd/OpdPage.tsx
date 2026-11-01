@@ -21,6 +21,7 @@ import {
   toRangeEnd,
   toRangeStart,
   todayIsoDate,
+  upcomingScheduledVisits,
   type OpdFilterValues,
   type OpdTab,
 } from '@/features/opd';
@@ -254,7 +255,7 @@ export default function OpdPage() {
         section = {
           heading: 'OPD Scheduled Visits',
           headers: ['Date', 'Patient Name', 'Age', 'Gender', 'UHID', 'Department', 'Consultant', 'Notes'],
-          rows: result.map((row) => [
+          rows: upcomingScheduledVisits(result, today).map((row) => [
             formatScheduledDate(row.scheduledDate),
             row.patientName,
             row.age,

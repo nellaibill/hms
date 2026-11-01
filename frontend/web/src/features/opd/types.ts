@@ -23,6 +23,13 @@ export function formatScheduledDate(value: string): string {
   return new Date(year, month - 1, day).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+/** Scheduled Visits from `today` (a "YYYY-MM-DD" local day) on — the API already starts the list
+ * today, but cached rows, or a page left open past midnight, can still hold a day that has gone.
+ * "YYYY-MM-DD" strings compare in date order. */
+export function upcomingScheduledVisits<T extends { scheduledDate: string }>(rows: readonly T[], today: string): T[] {
+  return rows.filter((row) => row.scheduledDate >= today);
+}
+
 /** When a patient was marked (an ISO timestamp) as local date and time. */
 export function formatMarkedAt(value: string): string {
   return new Date(value).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
