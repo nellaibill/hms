@@ -7,6 +7,7 @@ import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/feature
 import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import type { Billing, BillingItem } from '../types';
+import { CollectPaymentButton, InvoiceDiscountBanner, RequestDiscountButton } from './InvoiceDiscount';
 import { InvoicePrintTemplate } from './InvoicePrintTemplate';
 import { InvoiceRevertBanner, RequestRevertButton } from './InvoiceRevert';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
@@ -16,17 +17,23 @@ interface InvoiceDetailCardProps {
   billing: Billing;
   onRecordPayment: (item: BillingItem) => void;
   onVoidInvoice: () => void;
+  /** Called after "Collect Payment" pays the whole bill (ADR-109) — the result carries an OP No
+   * when this payment paid the visit's consultation. */
+  onPaid?: (updated: Billing) => void;
 }
 
 export function InvoiceDetailCard({
   billing,
   onRecordPayment,
   onVoidInvoice,
+  onPaid,
 }: InvoiceDetailCardProps) {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('finance-billing.edit');
   const canVoid = hasPermission('finance-billing.delete');
   const hasAnyPayment = billing.items.some((item) => item.paymentStatus === 'Paid');
+  // No payment while a discount waits for Super Admin approval (ADR-109) — the server refuses it.
+  const discountPending = billing.discountStatus === 'Pending';
   // Primes the Masters reference cache describeBillingItem reads from below, so every line
   // item resolves to its real name instead of a raw id — this page can be opened directly,
   // without ever visiting the live billing form.
@@ -60,6 +67,8 @@ export function InvoiceDetailCard({
             <Printer className="h-4 w-4" />
             Print
           </Button>
+          <CollectPaymentButton billing={billing} onPaid={onPaid} />
+          <RequestDiscountButton billing={billing} />
           <RequestRevertButton billing={billing} />
           {!billing.isVoided && !hasAnyPayment && canVoid && (
             <Button
@@ -87,6 +96,7 @@ export function InvoiceDetailCard({
               </div>
             </div>
           )}
+          <InvoiceDiscountBanner billing={billing} />
           <InvoiceRevertBanner billing={billing} />
           <div className="flex flex-col divide-y divide-border rounded-md border border-border">
             {billing.items.map((item) => {
@@ -113,7 +123,7 @@ export function InvoiceDetailCard({
                       {formatCurrency(item.total)}
                     </span>
                     <PaymentStatusBadge status={item.paymentStatus} />
-                    {item.paymentStatus === 'Pending' && canEdit && !billing.isVoided && (
+                    {item.paymentStatus === 'Pending' && canEdit && !billing.isVoided && !discountPending && (
                       <Button size="sm" variant="outline" onClick={() => onRecordPayment(item)}>
                         Record Payment
                       </Button>

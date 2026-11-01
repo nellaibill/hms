@@ -54,6 +54,11 @@ internal class Invoice : Entity
     /// plain <see cref="Void"/> — <see cref="IsVoided"/> is set either way.</summary>
     public bool IsReverted { get; private set; }
 
+    /// <summary>The state of this bill's latest <see cref="InvoiceDiscountRequest"/> (ADR-109) —
+    /// null when none was ever raised. While Pending the bill can't take a payment: the amount
+    /// owed isn't settled until a Super Admin decides.</summary>
+    public InvoiceDiscountRequestStatus? DiscountStatus { get; private set; }
+
     /// <summary>Derived, not stored — Paid only once every line item is Paid, matching
     /// frontend/web/src/features/billing/billingCalculations.ts's getOverallPaymentStatus.</summary>
     public PaymentStatus PaymentStatus =>
@@ -173,7 +178,50 @@ internal class Invoice : Entity
         VoidedAt = DateTime.UtcNow;
         VoidedBy = voidedBy;
         VoidReason = reason.Trim();
+        if (DiscountStatus == InvoiceDiscountRequestStatus.Pending)
+        {
+            DiscountStatus = InvoiceDiscountRequestStatus.Cancelled;
+        }
         MarkUpdated(voidedBy);
+    }
+
+    /// <summary>A discount request on this bill is now waiting for a Super Admin (ADR-109).</summary>
+    public void MarkDiscountPending(Guid? updatedBy)
+    {
+        DiscountStatus = InvoiceDiscountRequestStatus.Pending;
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>The Super Admin turned the bill's discount request down — the bill stays at the
+    /// price it had and can be paid again.</summary>
+    public void MarkDiscountRejected(Guid? updatedBy)
+    {
+        DiscountStatus = InvoiceDiscountRequestStatus.Rejected;
+        MarkUpdated(updatedBy);
+    }
+
+    /// <summary>
+    /// Applies an approved discount (ADR-109) to the given lines and recomputes the bill's
+    /// discount and net totals. Callers (InvoiceService for a Super Admin's own bill,
+    /// InvoiceDiscountService on approval) have already checked the bill isn't voided and every
+    /// line is on it and unpaid.
+    /// </summary>
+    public void ApplyDiscount(IReadOnlyCollection<(Guid LineItemId, decimal Discount)> lines, string? approvedByName, Guid? approvedBy)
+    {
+        if (IsVoided)
+        {
+            throw new InvalidOperationException("A voided invoice can't be discounted.");
+        }
+
+        foreach (var (lineItemId, discount) in lines)
+        {
+            _items.First(i => i.Id == lineItemId).ApplyDiscount(discount, approvedByName, approvedBy);
+        }
+
+        TotalDiscount = _items.Sum(i => i.Discount);
+        NetAmount = Math.Max(GrossAmount - TotalDiscount, 0m);
+        DiscountStatus = InvoiceDiscountRequestStatus.Approved;
+        MarkUpdated(approvedBy);
     }
 
     /// <summary>

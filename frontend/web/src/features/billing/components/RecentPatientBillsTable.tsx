@@ -88,7 +88,14 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col items-end gap-1">
-                    {bill.isVoided ? <Badge variant="secondary">{bill.isReverted ? 'Reverted' : 'Voided'}</Badge> : <PaymentStatusBadge status={bill.paymentStatus} />}
+                    {bill.isVoided ? (
+                      <Badge variant="secondary">{bill.isReverted ? 'Reverted' : 'Voided'}</Badge>
+                    ) : bill.discountStatus === 'Pending' ? (
+                      // ADR-109: can't be paid until the Super Admin decides on the discount.
+                      <Badge variant="warning">Discount approval</Badge>
+                    ) : (
+                      <PaymentStatusBadge status={bill.paymentStatus} />
+                    )}
                     <span className="font-medium tabular-nums text-foreground">{formatCurrency(bill.netAmount)}</span>
                   </div>
                 </td>

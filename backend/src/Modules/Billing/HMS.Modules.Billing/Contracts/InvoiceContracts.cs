@@ -20,9 +20,11 @@ public record CreateInvoiceLineItemRequest
 
     public int Quantity { get; init; } = 1;
     public decimal UnitPrice { get; init; }
+
+    /// <summary>The discount asked for on this line (ADR-109). The server decides whether it is
+    /// applied: a Super Admin's applies straight away, anyone else's is saved as a discount
+    /// request and the line stays at full price until a Super Admin approves it.</summary>
     public decimal Discount { get; init; }
-    public bool DiscountApproved { get; init; }
-    public string? DiscountApprovedBy { get; init; }
 }
 
 /// <summary>
@@ -60,6 +62,14 @@ public record CreateInvoiceRequest
     /// single tendered amount here may end up split across more than one Payment record, or
     /// one line item's Total may end up covered by more than one row.</summary>
     public IReadOnlyList<CreateInvoicePaymentRequest>? Payments { get; init; }
+
+    /// <summary>How the counter entered the discount (ADR-109) — required, with
+    /// <see cref="DiscountValue"/> and <see cref="DiscountReason"/>, when any line has a
+    /// Discount. Display only: the per-line Discount amounts are what is applied.</summary>
+    public InvoiceDiscountType DiscountType { get; init; }
+
+    public decimal DiscountValue { get; init; }
+    public string? DiscountReason { get; init; }
 }
 
 /// <summary>One payment-method row at invoice-creation time — see
@@ -137,6 +147,10 @@ public record InvoiceResponse
     /// <summary>True when the void came from an approved OP bill revert request (ADR-106).</summary>
     public bool IsReverted { get; init; }
 
+    /// <summary>The state of the bill's latest discount request (ADR-109); null when none was
+    /// ever raised. While Pending the bill can't be paid.</summary>
+    public InvoiceDiscountRequestStatus? DiscountStatus { get; init; }
+
     /// <summary>The visit's OP No — set only on the create/record-payment response once the
     /// visit's consultation fee is paid, which is when an OP visit gets its number (ADR-103),
     /// so reception can quote it straight away. Null everywhere else, including every read.</summary>
@@ -198,6 +212,9 @@ public record RecentPatientBillResponse
     public PaymentStatus PaymentStatus { get; init; }
     public bool IsVoided { get; init; }
     public bool IsReverted { get; init; }
+
+    /// <summary>See <see cref="InvoiceResponse.DiscountStatus"/>.</summary>
+    public InvoiceDiscountRequestStatus? DiscountStatus { get; init; }
 }
 
 /// <summary>The Executive Dashboard's finance data (DASH-01): billed revenue per month (non-voided

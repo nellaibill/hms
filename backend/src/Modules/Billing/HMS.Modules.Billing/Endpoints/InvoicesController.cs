@@ -24,15 +24,24 @@ public class InvoicesController : ControllerBase
     private readonly IInvoiceService _service;
     private readonly IValidator<CreateInvoiceRequest> _createValidator;
     private readonly IValidator<VoidInvoiceRequest> _voidValidator;
+    private readonly IValidator<PayInvoiceRequest> _payValidator;
 
-    public InvoicesController(IInvoiceService service, IValidator<CreateInvoiceRequest> createValidator, IValidator<VoidInvoiceRequest> voidValidator)
+    public InvoicesController(
+        IInvoiceService service,
+        IValidator<CreateInvoiceRequest> createValidator,
+        IValidator<VoidInvoiceRequest> voidValidator,
+        IValidator<PayInvoiceRequest> payValidator)
     {
         _service = service;
         _createValidator = createValidator;
         _voidValidator = voidValidator;
+        _payValidator = payValidator;
     }
 
-    /// <summary>Creates a new invoice with its line items in one call.</summary>
+    /// <summary>Creates a new invoice with its line items in one call. A line Discount is a
+    /// discount request (ADR-109): applied straight away when the caller is signed in as a
+    /// Super Admin, otherwise saved for a Super Admin to decide — the bill is then saved
+    /// unpaid, so it must come without Payments.</summary>
     [Authorize]
     [RequirePermission("finance-billing.create")]
     [HttpPost]
@@ -45,12 +54,7 @@ public class InvoicesController : ControllerBase
         var validation = await _createValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
 
-        if (request.Items.Any(i => i.DiscountApproved) && !User.HasPermission("finance-billing.discount-approve"))
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, BuildDiscountApprovalForbiddenError());
-        }
-
-        var result = await _service.CreateAsync(request, actorId: User.GetUserId(), cancellationToken);
+        var result = await _service.CreateAsync(request, User.GetBillingActor(), cancellationToken);
         return !result.IsSuccess
             ? MapFailure(result.ErrorCode!, result.Error!)
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
@@ -161,6 +165,32 @@ public class InvoicesController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Collects everything still owed on a bill in one go — the counter's Collect
+    /// Payment for a bill saved unpaid, e.g. once its discount request is decided (ADR-109).
+    /// Needs "create" like taking payment while billing does — the front desk's Receptionist
+    /// role has create but not edit.</summary>
+    /// <response code="200">Every unpaid line is now paid.</response>
+    /// <response code="400">The rows don't cover the amount due, or split rows over-tender in a non-cash method.</response>
+    /// <response code="404">No invoice was found for the given id.</response>
+    /// <response code="409">The bill is voided, already paid, or has a discount waiting for approval.</response>
+    [Authorize]
+    [RequirePermission("finance-billing.create")]
+    [HttpPost("{id:guid}/pay")]
+    [ProducesResponseType(typeof(ApiResponse<InvoiceResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Pay(Guid id, [FromBody] PayInvoiceRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null) return BadRequest(BuildRequestRequiredError());
+
+        var validation = await _payValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return BadRequest(BuildValidationError(validation));
+
+        var result = await _service.PayAsync(id, request, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     /// <summary>Cancels an invoice that hasn't had any payment recorded against it — see
     /// Domain/Invoice.cs's Void for why a paid invoice is rejected instead. Requires the
     /// "delete" permission (already seeded, previously unused by Billing) rather than
@@ -197,6 +227,8 @@ public class InvoicesController : ControllerBase
             BillingErrorCodes.EmptyInvoice => StatusCodes.Status400BadRequest,
             BillingErrorCodes.InvalidPatient => StatusCodes.Status400BadRequest,
             BillingErrorCodes.PaymentAmountMismatch => StatusCodes.Status400BadRequest,
+            BillingErrorCodes.DiscountApprovalPending => StatusCodes.Status409Conflict,
+            BillingErrorCodes.NothingToPay => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -224,14 +256,6 @@ public class InvoicesController : ControllerBase
     {
         ErrorCode = "VALIDATION.FAILED",
         Message = "The request body is missing or could not be parsed.",
-        CorrelationId = HttpContext.GetCorrelationId(),
-        Timestamp = DateTime.UtcNow,
-    };
-
-    private ApiErrorResponse BuildDiscountApprovalForbiddenError() => new()
-    {
-        ErrorCode = "BILLING.DISCOUNT_APPROVAL_FORBIDDEN",
-        Message = "You don't have permission to approve a discount. Ask an Accounts Officer, Hospital Administrator, or Super Admin to create this invoice.",
         CorrelationId = HttpContext.GetCorrelationId(),
         Timestamp = DateTime.UtcNow,
     };

@@ -215,7 +215,7 @@ function consultationArraySchema() {
 /** Local, self-contained net-total calculation — mirrors billingCalculations.ts's
  * summarizeBilling but kept separate to avoid a circular import (billingCalculations.ts
  * already imports types from this file). Only what the superRefine below needs: gross minus
- * per-line discount, clamped at 0. */
+ * per-line discount and any bill discount (ADR-109), clamped at 0. */
 function computeNetTotal(values: {
   consultation: ConsultationBillingFormValues[];
   radiology: ServiceBillingRowFormValues[];
@@ -223,6 +223,7 @@ function computeNetTotal(values: {
   procedure: ServiceBillingRowFormValues[];
   injection: SimpleServiceBillingRowFormValues[];
   file: SimpleServiceBillingRowFormValues[];
+  discount: BillingDiscountFormValues | null;
 }): number {
   const rows: { charge: number; quantity: number; discount: number }[] = [
     ...values.consultation.filter(isConsultationEntryActive),
@@ -234,7 +235,8 @@ function computeNetTotal(values: {
   ];
   const gross = rows.reduce((sum, row) => sum + row.charge * row.quantity, 0);
   const discount = rows.reduce((sum, row) => sum + row.discount, 0);
-  return Math.max(gross - discount, 0);
+  const billDiscount = (values.discount?.allocations ?? []).reduce((sum, allocation) => sum + allocation.amount, 0);
+  return Math.max(gross - discount - billDiscount, 0);
 }
 
 /** One payment-method row within `payments` below — see that field's own comment for why this
@@ -243,6 +245,23 @@ export const paymentSplitSchema = z.object({
   method: z.enum(PAYMENT_METHODS).optional(),
   amount: z.number().min(0).default(0),
   referenceNumber: z.string().default(''),
+});
+
+/**
+ * The bill discount added with "Add discount" (ADR-109) — null when there is none. Worked out
+ * once, when it's applied, against the bill's lines at that moment: `allocations` holds each
+ * line's share (keyed by BillingItem id) and `signature` that set of lines
+ * (billingDiscount.ts's linesSignature), so a bill edited afterwards shows the discount as out of
+ * date instead of silently re-spreading it. `needsApproval` is true for anyone but a Super Admin:
+ * the bill is then sent for approval and saved unpaid, so no payment is collected here.
+ */
+export const billingDiscountSchema = z.object({
+  type: z.enum(['Amount', 'Percent']),
+  value: z.number(),
+  reason: z.string(),
+  allocations: z.array(z.object({ lineId: z.string(), amount: z.number() })),
+  signature: z.string(),
+  needsApproval: z.boolean(),
 });
 
 export const billingFormSchema = z
@@ -254,8 +273,13 @@ export const billingFormSchema = z
     injection: simpleServiceArraySchema().default([]),
     file: simpleServiceArraySchema().default([]),
     payments: z.array(paymentSplitSchema).default([{ method: undefined, amount: 0, referenceNumber: '' }]),
+    discount: billingDiscountSchema.nullable().default(null),
   })
   .superRefine((data, ctx) => {
+    // A discount waiting for Super Admin approval means there's no settled amount to collect
+    // yet — the bill is saved unpaid and paid from its invoice page once the discount is decided.
+    if (data.discount?.needsApproval) return;
+
     const netTotal = computeNetTotal(data);
     // Nothing billed yet — "at least one item is required" is enforced separately once Save
     // is actually attempted (apiBillingRepository.ts), not here on every keystroke.
@@ -307,6 +331,7 @@ export type ServiceBillingRowFormValues = z.infer<typeof serviceBillingSchema>;
 export type LaboratoryBillingRowFormValues = z.infer<typeof laboratoryBillingSchema>;
 export type SimpleServiceBillingRowFormValues = z.infer<typeof simpleServiceBillingSchema>;
 export type PaymentSplitFormValues = z.infer<typeof paymentSplitSchema>;
+export type BillingDiscountFormValues = z.infer<typeof billingDiscountSchema>;
 /** Radiology/Procedure only now — Laboratory forked off to its own schema/row shape above. */
 export type ServiceBillingCategory = 'radiology' | 'procedure';
 /** Injection/File — same row shape as each other, minus consultantId (see simpleServiceBillingSchema). */
@@ -371,4 +396,5 @@ export const defaultBillingFormValues: BillingFormValues = {
   // the user explicitly clicks "Add File Billing", not as a pre-populated blank row.
   file: [],
   payments: [{ ...emptyPaymentSplit }],
+  discount: null,
 };

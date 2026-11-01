@@ -68,7 +68,14 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
               </td>
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(billing.netAmount)}</td>
               <td className="px-4 py-3">
-                {billing.isVoided ? <Badge variant="secondary">{billing.isReverted ? 'Reverted' : 'Voided'}</Badge> : <PaymentStatusBadge status={getOverallPaymentStatus(billing.items)} />}
+                {billing.isVoided ? (
+                  <Badge variant="secondary">{billing.isReverted ? 'Reverted' : 'Voided'}</Badge>
+                ) : billing.discountStatus === 'Pending' ? (
+                  // ADR-109: can't be paid until the Super Admin decides on the discount.
+                  <Badge variant="warning">Discount approval</Badge>
+                ) : (
+                  <PaymentStatusBadge status={getOverallPaymentStatus(billing.items)} />
+                )}
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end">

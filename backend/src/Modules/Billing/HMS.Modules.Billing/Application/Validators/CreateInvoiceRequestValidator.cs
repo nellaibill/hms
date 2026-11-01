@@ -26,6 +26,16 @@ internal class CreateInvoiceRequestValidator : AbstractValidator<CreateInvoiceRe
         {
             RuleForEach(x => x.Payments!).SetValidator(new CreateInvoicePaymentRequestValidator());
         });
+
+        // A discount on any line is a discount request (ADR-109): the Super Admin decides on
+        // the reason, so it is required, along with how the counter entered it.
+        When(x => x.Items.Any(i => i.Discount > 0), () =>
+        {
+            RuleFor(x => x.DiscountReason).NotEmpty().WithMessage("A reason is required for a discount.").MaximumLength(500);
+            RuleFor(x => x.DiscountType).IsInEnum();
+            RuleFor(x => x.DiscountValue).GreaterThan(0);
+            RuleFor(x => x.DiscountValue).LessThanOrEqualTo(100).When(x => x.DiscountType == InvoiceDiscountType.Percent).WithMessage("A percentage discount can't be more than 100%.");
+        });
     }
 }
 
@@ -50,7 +60,6 @@ internal class CreateInvoiceLineItemRequestValidator : AbstractValidator<CreateI
         RuleFor(x => x.DepartmentId).MaximumLength(100);
         RuleFor(x => x.ConsultantId).MaximumLength(100);
         RuleFor(x => x.ServiceId).MaximumLength(100);
-        RuleFor(x => x.DiscountApprovedBy).MaximumLength(150);
 
         // Mirrors billingValidation.ts's consultationBillingSchema/serviceBillingSchema:
         // "Discount cannot exceed the charge".

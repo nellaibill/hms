@@ -11,9 +11,10 @@ export interface CreateInvoiceLineItemRequest {
   packageId?: string | null;
   quantity: number;
   unitPrice: number;
+  /** The discount asked for on this line (ADR-109). The server decides whether it applies: a
+   * Super Admin's applies straight away, anyone else's becomes a discount request and the line
+   * stays at full price until a Super Admin approves it. */
   discount: number;
-  discountApproved: boolean;
-  discountApprovedBy?: string | null;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.CreateInvoicePaymentRequest — one payment-method row. */
@@ -37,6 +38,18 @@ export interface CreateInvoiceRequest {
    * not stored); more than one row is a split payment across methods and must add up to exactly
    * the net total. See Contracts/InvoiceContracts.cs. */
   payments?: CreateInvoicePaymentRequest[] | null;
+  /** Required, with `discountValue` and `discountReason`, when any line has a discount (ADR-109).
+   * Display only — the per-line discounts are what is applied. A non-Super Admin's discounted
+   * bill must come without `payments`: it is saved unpaid until the discount is decided. */
+  discountType?: InvoiceDiscountType;
+  discountValue?: number;
+  discountReason?: string | null;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.PayInvoiceRequest — collects everything still owed on a
+ * bill. Empty only when nothing is owed (a fully discounted bill). */
+export interface PayInvoiceRequest {
+  payments: CreateInvoicePaymentRequest[];
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.RecordPaymentRequest. */
@@ -88,6 +101,9 @@ export interface InvoiceResponse {
   voidReason?: string | null;
   /** True when the void came from an approved OP bill revert request (ADR-106). */
   isReverted: boolean;
+  /** The state of the bill's latest discount request (ADR-109); null when none was ever raised.
+   * While Pending the bill can't be paid. */
+  discountStatus?: InvoiceDiscountRequestStatus | null;
   /** The visit's OP No — set only on the create/record-payment response once the visit's
    * consultation fee is paid, which is when an OP visit gets its number (ADR-103). */
   opNumber?: string | null;
@@ -128,6 +144,7 @@ export interface RecentPatientBill {
   paymentStatus: InvoicePaymentStatus;
   isVoided: boolean;
   isReverted: boolean;
+  discountStatus?: InvoiceDiscountRequestStatus | null;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.ProcedureListItem — one row of the OPD Procedures
@@ -224,4 +241,92 @@ export interface InvoiceRevertRequestListQuery {
   page?: number;
   pageSize?: number;
   status?: InvoiceRevertRequestStatus;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestStatus — also an invoice's own
+ * `discountStatus` (its latest request). Cancelled when the bill was voided while waiting. */
+export type InvoiceDiscountRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountType — how the counter entered it. */
+export type InvoiceDiscountType = 'Amount' | 'Percent';
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountLineRequest. */
+export interface InvoiceDiscountLineRequest {
+  lineItemId: string;
+  discount: number;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.CreateInvoiceDiscountRequest — a discount on lines of an
+ * existing unpaid bill (ADR-109). The reason is required. */
+export interface CreateInvoiceDiscountRequest {
+  discountType: InvoiceDiscountType;
+  discountValue: number;
+  reason: string;
+  lines: InvoiceDiscountLineRequest[];
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.ApproveInvoiceDiscountRequest. */
+export interface ApproveInvoiceDiscountRequest {
+  notes?: string | null;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.RejectInvoiceDiscountRequest — notes are required. */
+export interface RejectInvoiceDiscountRequest {
+  notes: string;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestLineResponse — one discounted line,
+ * snapshotted from the bill line when the request was raised. */
+export interface InvoiceDiscountRequestLineResponse {
+  lineItemId: string;
+  billingType: BillingType;
+  departmentId?: string | null;
+  consultantId?: string | null;
+  serviceId?: string | null;
+  packageId?: string | null;
+  quantity: number;
+  unitPrice: number;
+  /** quantity × unitPrice — the line's charge before this discount. */
+  lineAmount: number;
+  discount: number;
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestResponse (ADR-109). */
+export interface InvoiceDiscountRequestResponse {
+  id: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientUhid: string;
+  /** The whole bill's gross amount when the request was raised. */
+  grossAmount: number;
+  discountType: InvoiceDiscountType;
+  discountValue: number;
+  totalDiscount: number;
+  reason: string;
+  status: InvoiceDiscountRequestStatus;
+  requestedBy?: string | null;
+  requestedByName?: string | null;
+  requestedAt: string;
+  decidedBy?: string | null;
+  decidedByName?: string | null;
+  decidedAt?: string | null;
+  decisionNotes?: string | null;
+  lines: InvoiceDiscountRequestLineResponse[];
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountStatusResponse — one invoice's discount state. */
+export interface InvoiceDiscountStatusResponse {
+  canRequest: boolean;
+  ineligibleReason?: string | null;
+  /** Newest first. */
+  requests: InvoiceDiscountRequestResponse[];
+}
+
+/** Mirrors HMS.Modules.Billing.Contracts.InvoiceDiscountRequestListQuery. */
+export interface InvoiceDiscountRequestListQuery {
+  page?: number;
+  pageSize?: number;
+  status?: InvoiceDiscountRequestStatus;
 }

@@ -317,7 +317,6 @@ internal class DispenseService : IDispenseService
                 Quantity = 1,
                 UnitPrice = lineTotal,
                 Discount = 0,
-                DiscountApproved = false,
             });
         }
 

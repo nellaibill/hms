@@ -22,7 +22,15 @@ namespace HMS.Modules.Billing.Application;
 /// </summary>
 public interface IInvoiceService
 {
+    /// <summary>For server-side callers (IPD final bill, Pharmacy dispense), which never send a
+    /// discount. A line Discount here would be treated like any non-Super Admin's: saved as a
+    /// discount request, not applied.</summary>
     Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Counter billing — knows who is billing, because a line Discount (ADR-109) is
+    /// applied straight away for a Super Admin and saved as a discount request for anyone else,
+    /// in which case the bill is saved unpaid and can't take a payment until it is decided.</summary>
+    Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, BillingActor actor, CancellationToken cancellationToken);
 
     Task<Result<InvoiceResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
@@ -37,6 +45,10 @@ public interface IInvoiceService
     Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, CancellationToken cancellationToken);
 
     Task<Result<InvoiceResponse>> RecordPaymentAsync(Guid invoiceId, Guid itemId, RecordPaymentRequest request, Guid? actorId, CancellationToken cancellationToken);
+
+    /// <summary>Collects everything still owed on a bill in one go — the counter's Collect
+    /// Payment for a bill saved unpaid, e.g. once its discount request is decided (ADR-109).</summary>
+    Task<Result<InvoiceResponse>> PayAsync(Guid invoiceId, PayInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken);
 
     Task<Result<InvoiceResponse>> VoidAsync(Guid id, VoidInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken);
 
@@ -56,6 +68,7 @@ internal class InvoiceService : IInvoiceService
 {
     private readonly IInvoiceRepository _repository;
     private readonly IPaymentRepository _paymentRepository;
+    private readonly IInvoiceDiscountRequestRepository _discountRequestRepository;
     private readonly IInvoiceNumberGenerator _numberGenerator;
     private readonly IPatientService _patientService;
     private readonly IPatientVisitService _patientVisitService;
@@ -70,6 +83,7 @@ internal class InvoiceService : IInvoiceService
     public InvoiceService(
         IInvoiceRepository repository,
         IPaymentRepository paymentRepository,
+        IInvoiceDiscountRequestRepository discountRequestRepository,
         IInvoiceNumberGenerator numberGenerator,
         IPatientService patientService,
         IPatientVisitService patientVisitService,
@@ -83,6 +97,7 @@ internal class InvoiceService : IInvoiceService
     {
         _repository = repository;
         _paymentRepository = paymentRepository;
+        _discountRequestRepository = discountRequestRepository;
         _numberGenerator = numberGenerator;
         _patientService = patientService;
         _patientVisitService = patientVisitService;
@@ -173,6 +188,80 @@ internal class InvoiceService : IInvoiceService
     }
 
     /// <summary>
+    /// Pays every unpaid line of <paramref name="invoice"/> from the tendered rows — staged on the
+    /// tracked invoice and Payment repository, saved by the caller. Shared by CreateAsync's
+    /// pay-at-creation and PayAsync, so both follow the same rules: the rows must cover what's
+    /// owed, and once split only Cash may tender more than that.
+    /// </summary>
+    private async Task<Result> ApplyPaymentsAsync(Invoice invoice, IReadOnlyList<CreateInvoicePaymentRequest> payments, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var unpaid = invoice.Items.Where(i => i.PaymentStatus != Contracts.PaymentStatus.Paid).ToList();
+        var owed = unpaid.Sum(i => i.Total);
+        var totalTendered = payments.Sum(p => p.Amount);
+
+        if (totalTendered < owed)
+        {
+            return Result.Failure(
+                BillingErrorCodes.PaymentAmountMismatch,
+                $"The amount received ({totalTendered:C}) is less than the amount due ({owed:C}).");
+        }
+
+        // Cash is the only method that can realistically hand back change at the counter —
+        // a Card/Upi/BankTransfer row can't be partially refunded on the spot, so those
+        // rows must land within their actual share of the bill. E.g. a ₹700 bill paid as
+        // ₹570 Upi + ₹200 Cash is fine (₹70 change comes back in cash); ₹700 Upi + ₹200 Cash
+        // "just in case" isn't, since the Upi row alone already covers the whole bill with
+        // nowhere for that excess to realistically come from. A single row may still
+        // overtender regardless of method (this check only applies once split).
+        if (payments.Count > 1)
+        {
+            var nonCashTendered = payments.Where(p => p.Method != PaymentMethod.Cash).Sum(p => p.Amount);
+            if (nonCashTendered > owed)
+            {
+                return Result.Failure(
+                    BillingErrorCodes.PaymentAmountMismatch,
+                    $"Card, Upi, and BankTransfer amounts can't add up to more than the amount due ({owed:C}) — any extra should be paid in Cash so change can be given back.");
+            }
+        }
+
+        // Waterfall: apply each row's tendered amount against line items in order. Payment
+        // still records per line item (see Domain/Payment.cs), so a row here may end up
+        // split across more than one item, and an item may end up covered by more than one
+        // row. Non-Cash rows are consumed before Cash rows regardless of the order they
+        // were entered in, so any leftover (change) always lands on Cash — the validation
+        // above guarantees the non-Cash rows alone never exceed what's owed, so they're
+        // always fully consumed by the time Cash rows are reached; only Cash can end up
+        // with genuine, never-persisted leftover.
+        var remaining = payments
+            .OrderBy(p => p.Method == PaymentMethod.Cash)
+            .Select(p => (p.Method, p.ReferenceNumber, Amount: p.Amount))
+            .ToList();
+        var payIndex = 0;
+        foreach (var item in unpaid)
+        {
+            var itemOwed = item.Total;
+            while (itemOwed > 0 && payIndex < remaining.Count)
+            {
+                var (method, referenceNumber, available) = remaining[payIndex];
+                var applied = Math.Min(itemOwed, available);
+                if (applied > 0)
+                {
+                    await _paymentRepository.AddAsync(Payment.Create(invoice.Id, item.Id, applied, method, referenceNumber, actorId), cancellationToken);
+                    itemOwed -= applied;
+                    remaining[payIndex] = (method, referenceNumber, available - applied);
+                }
+                if (remaining[payIndex].Amount <= 0)
+                {
+                    payIndex++;
+                }
+            }
+            invoice.MarkItemPaid(item.Id, actorId);
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
     /// ADR-103: an OP visit gets its OP No only once its consultation fee is paid. Runs after a
     /// save that may have paid a Consultation line on this invoice — a ₹0 Consultation line has
     /// nothing to pay, so it counts as paid. Asking again for a visit that already has its
@@ -229,8 +318,13 @@ internal class InvoiceService : IInvoiceService
         };
     }
 
-    public async Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
+    public Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
+        => CreateAsync(request, new BillingActor(actorId, null, IsSuperAdmin: false), cancellationToken);
+
+    public async Task<Result<InvoiceResponse>> CreateAsync(CreateInvoiceRequest request, BillingActor actor, CancellationToken cancellationToken)
     {
+        var actorId = actor.UserId;
+
         if (request.Items.Count == 0)
         {
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.EmptyInvoice, "At least one billing item is required.");
@@ -253,6 +347,23 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(offeredCheck.ErrorCode!, offeredCheck.Error!);
         }
 
+        // ADR-109: a line Discount is a discount request. Lines are always created at full price;
+        // a Super Admin's discount is then applied straight away, anyone else's waits for one —
+        // and while it waits there is no settled amount to collect, so no payment is taken.
+        var hasDiscount = request.Items.Any(i => i.Discount > 0);
+        if (hasDiscount)
+        {
+            if (request.Items.Any(i => i.Discount > 0 && !InvoiceDiscountRules.IsDiscountable(i.BillingType)))
+            {
+                return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountNotEligible, "Only OP charges (consultation, radiology, laboratory, procedure, injection, file) can be discounted.");
+            }
+
+            if (!actor.IsSuperAdmin && request.Payments is { Count: > 0 })
+            {
+                return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, "A discount needs Super Admin approval first — send the bill for approval without collecting payment.");
+            }
+        }
+
         var invoiceNumber = await _numberGenerator.NextInvoiceNumberAsync(cancellationToken);
 
         var itemSpecs = request.Items
@@ -264,9 +375,9 @@ internal class InvoiceService : IInvoiceService
                 i.PackageId,
                 i.Quantity,
                 i.UnitPrice,
-                i.Discount,
-                i.DiscountApproved,
-                i.DiscountApprovedBy))
+                Discount: 0m,
+                DiscountApproved: false,
+                DiscountApprovedBy: null))
             .ToList();
 
         var invoice = Invoice.Create(
@@ -280,76 +391,48 @@ internal class InvoiceService : IInvoiceService
 
         await _repository.AddAsync(invoice, cancellationToken);
 
+        InvoiceDiscountRequest? discountRequest = null;
+        if (hasDiscount)
+        {
+            // Invoice.Create keeps the request's line order, so lines pair up by position.
+            var discountedLines = invoice.Items
+                .Zip(request.Items, (line, requested) => (Line: line, requested.Discount))
+                .Where(x => x.Discount > 0)
+                .ToList();
+            discountRequest = InvoiceDiscountRequest.Create(invoice, discountedLines, request.DiscountType, request.DiscountValue, request.DiscountReason!, actor.UserName, actorId);
+            if (actor.IsSuperAdmin)
+            {
+                invoice.ApplyDiscount(discountRequest.LineDiscounts(), actor.UserName, actorId);
+                discountRequest.Approve(actorId, actor.UserName, null);
+            }
+            else
+            {
+                invoice.MarkDiscountPending(actorId);
+            }
+
+            await _discountRequestRepository.AddAsync(discountRequest, cancellationToken);
+        }
+
         // Optional pay-in-full-at-creation: mark every line item Paid and record Payment rows
         // in the same save as the invoice itself, so there's no window where the invoice
         // exists with some lines paid and others not from a partial failure.
         if (request.Payments is { Count: > 0 } payments)
         {
-            var totalTendered = payments.Sum(p => p.Amount);
-
-            if (totalTendered < invoice.NetAmount)
+            var paid = await ApplyPaymentsAsync(invoice, payments, actorId, cancellationToken);
+            if (!paid.IsSuccess)
             {
-                return Result<InvoiceResponse>.Failure(
-                    BillingErrorCodes.PaymentAmountMismatch,
-                    $"The amount received ({totalTendered:C}) is less than the invoice's net amount ({invoice.NetAmount:C}).");
-            }
-
-            // Cash is the only method that can realistically hand back change at the counter —
-            // a Card/Upi/BankTransfer row can't be partially refunded on the spot, so those
-            // rows must land within their actual share of the bill. E.g. a ₹700 bill paid as
-            // ₹570 Upi + ₹200 Cash is fine (₹70 change comes back in cash); ₹700 Upi + ₹200 Cash
-            // "just in case" isn't, since the Upi row alone already covers the whole bill with
-            // nowhere for that excess to realistically come from. A single row may still
-            // overtender regardless of method (this check only applies once split).
-            if (payments.Count > 1)
-            {
-                var nonCashTendered = payments.Where(p => p.Method != PaymentMethod.Cash).Sum(p => p.Amount);
-                if (nonCashTendered > invoice.NetAmount)
-                {
-                    return Result<InvoiceResponse>.Failure(
-                        BillingErrorCodes.PaymentAmountMismatch,
-                        $"Card, Upi, and BankTransfer amounts can't add up to more than the invoice's net amount ({invoice.NetAmount:C}) — any extra should be paid in Cash so change can be given back.");
-                }
-            }
-
-            // Waterfall: apply each row's tendered amount against line items in order. Payment
-            // still records per line item (see Domain/Payment.cs), so a row here may end up
-            // split across more than one item, and an item may end up covered by more than one
-            // row. Non-Cash rows are consumed before Cash rows regardless of the order they
-            // were entered in, so any leftover (change) always lands on Cash — the validation
-            // above guarantees the non-Cash rows alone never exceed NetAmount, so they're
-            // always fully consumed by the time Cash rows are reached; only Cash can end up
-            // with genuine, never-persisted leftover.
-            var remaining = payments
-                .OrderBy(p => p.Method == PaymentMethod.Cash)
-                .Select(p => (p.Method, p.ReferenceNumber, Amount: p.Amount))
-                .ToList();
-            var payIndex = 0;
-            foreach (var item in invoice.Items)
-            {
-                var owed = item.Total;
-                while (owed > 0 && payIndex < remaining.Count)
-                {
-                    var (method, referenceNumber, available) = remaining[payIndex];
-                    var applied = Math.Min(owed, available);
-                    if (applied > 0)
-                    {
-                        await _paymentRepository.AddAsync(Payment.Create(invoice.Id, item.Id, applied, method, referenceNumber, actorId), cancellationToken);
-                        owed -= applied;
-                        remaining[payIndex] = (method, referenceNumber, available - applied);
-                    }
-                    if (remaining[payIndex].Amount <= 0)
-                    {
-                        payIndex++;
-                    }
-                }
-                invoice.MarkItemPaid(item.Id, actorId);
+                return Result<InvoiceResponse>.Failure(paid.ErrorCode!, paid.Error!);
             }
         }
 
         await _repository.SaveChangesAsync(cancellationToken);
 
         await LogAsync(ActivityLogActions.Create, invoice, $"Created invoice {invoice.InvoiceNumber}", null, invoice.ToResponse(), actorId, cancellationToken);
+        if (discountRequest is not null)
+        {
+            var verb = discountRequest.Status == InvoiceDiscountRequestStatus.Approved ? "Applied" : "Requested";
+            await LogAsync(ActivityLogActions.Update, invoice, $"{verb} a discount of {discountRequest.TotalDiscount} on invoice {invoice.InvoiceNumber}: {discountRequest.Reason}", null, discountRequest.ToResponse(), actorId, cancellationToken);
+        }
 
         var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
 
@@ -510,6 +593,7 @@ internal class InvoiceService : IInvoiceService
                 PaymentStatus = invoice.PaymentStatus,
                 IsVoided = invoice.IsVoided,
                 IsReverted = invoice.IsReverted,
+                DiscountStatus = invoice.DiscountStatus,
             });
         }
 
@@ -540,6 +624,11 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.LineItemAlreadyPaid, $"Line item '{itemId}' is already paid.");
         }
 
+        if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, DiscountPendingMessage);
+        }
+
         var before = invoice.ToResponse();
 
         var paidItem = invoice.MarkItemPaid(itemId, actorId);
@@ -550,6 +639,58 @@ internal class InvoiceService : IInvoiceService
 
         var after = invoice.ToResponse();
         await LogAsync(ActivityLogActions.Payment, invoice, $"Recorded {request.Method} payment of {paidItem.Total} on invoice {invoice.InvoiceNumber}", before, after, actorId, cancellationToken);
+
+        var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
+
+        return Result<InvoiceResponse>.Success(after with { OpNumber = opNumber });
+    }
+
+    private const string DiscountPendingMessage = "This bill has a discount waiting for Super Admin approval — collect payment once it is approved or rejected.";
+
+    public async Task<Result<InvoiceResponse>> PayAsync(Guid invoiceId, PayInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var invoice = await _repository.GetByIdAsync(invoiceId, cancellationToken);
+        if (invoice is null)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.NotFound, $"Invoice '{invoiceId}' was not found.");
+        }
+
+        if (invoice.IsVoided)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.InvoiceVoided, $"Invoice {invoice.InvoiceNumber} has been voided and can no longer receive payments.");
+        }
+
+        if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, DiscountPendingMessage);
+        }
+
+        var unpaid = invoice.Items.Where(i => i.PaymentStatus != Contracts.PaymentStatus.Paid).ToList();
+        if (unpaid.Count == 0)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.NothingToPay, $"Invoice {invoice.InvoiceNumber} is already fully paid.");
+        }
+
+        // A fully discounted bill owes nothing: an empty Payments list settles it (every line is
+        // marked Paid with no Payment row, the same as a ₹0 line at creation).
+        if (request.Payments.Count == 0 && unpaid.Sum(i => i.Total) > 0m)
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.PaymentAmountMismatch, "Enter how the amount due was paid.");
+        }
+
+        var before = invoice.ToResponse();
+
+        var paid = await ApplyPaymentsAsync(invoice, request.Payments, actorId, cancellationToken);
+        if (!paid.IsSuccess)
+        {
+            return Result<InvoiceResponse>.Failure(paid.ErrorCode!, paid.Error!);
+        }
+
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        var after = invoice.ToResponse();
+        var methods = string.Join(" + ", request.Payments.Select(p => p.Method).Distinct());
+        await LogAsync(ActivityLogActions.Payment, invoice, $"Collected {unpaid.Sum(i => i.Total)} on invoice {invoice.InvoiceNumber}{(methods.Length > 0 ? $" ({methods})" : string.Empty)}", before, after, actorId, cancellationToken);
 
         var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
 
@@ -575,6 +716,18 @@ internal class InvoiceService : IInvoiceService
         }
 
         var before = invoice.ToResponse();
+
+        // A discount still waiting on this bill has nothing left to decide — cancel it in the
+        // same save, so it drops out of the Super Admin's queue.
+        if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
+        {
+            var pending = (await _discountRequestRepository.GetByInvoiceIdAsync(invoice.Id, cancellationToken))
+                .Where(r => r.Status == InvoiceDiscountRequestStatus.Pending);
+            foreach (var discountRequest in pending)
+            {
+                discountRequest.Cancel(actorId, "Bill voided");
+            }
+        }
 
         invoice.Void(request.Reason, actorId);
         await _repository.SaveChangesAsync(cancellationToken);

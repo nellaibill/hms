@@ -17,6 +17,7 @@ public class BillingDbContext : DbContext
     internal DbSet<InvoiceLineItem> InvoiceLineItems => Set<InvoiceLineItem>();
     internal DbSet<Payment> Payments => Set<Payment>();
     internal DbSet<InvoiceRevertRequest> InvoiceRevertRequests => Set<InvoiceRevertRequest>();
+    internal DbSet<InvoiceDiscountRequest> InvoiceDiscountRequests => Set<InvoiceDiscountRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

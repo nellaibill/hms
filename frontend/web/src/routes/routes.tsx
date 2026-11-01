@@ -44,6 +44,7 @@ const ProductEditPage = lazy(() => import('../pages/products/ProductEditPage'));
 const InvoiceLedgerPage = lazy(() => import('../pages/finance/InvoiceLedgerPage'));
 const AllInvoicesPage = lazy(() => import('../pages/finance/AllInvoicesPage'));
 const RevertRequestsPage = lazy(() => import('../pages/finance/RevertRequestsPage'));
+const DiscountRequestsPage = lazy(() => import('../pages/finance/DiscountRequestsPage'));
 const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'));
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
@@ -352,6 +353,7 @@ const financeRoutes = [
       { path: 'finance/accounts', element: withSuspense(<InvoiceLedgerPage />) },
       { path: 'finance/accounts/invoices', element: withSuspense(<AllInvoicesPage />) },
       { path: 'finance/accounts/revert-requests', element: withSuspense(<RevertRequestsPage />) },
+      { path: 'finance/accounts/discount-requests', element: withSuspense(<DiscountRequestsPage />) },
       { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
       { path: 'finance/accounts/reports', element: withSuspense(<IncomeExpenseReportPage />) },
       { path: 'finance/accounts/reports/profit', element: withSuspense(<ProfitReportPage />) },

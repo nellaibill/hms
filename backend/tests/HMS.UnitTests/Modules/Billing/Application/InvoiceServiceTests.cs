@@ -22,6 +22,7 @@ public class InvoiceServiceTests
 {
     private readonly IInvoiceRepository _repository = Substitute.For<IInvoiceRepository>();
     private readonly IPaymentRepository _paymentRepository = Substitute.For<IPaymentRepository>();
+    private readonly IInvoiceDiscountRequestRepository _discountRequestRepository = Substitute.For<IInvoiceDiscountRequestRepository>();
     private readonly IInvoiceNumberGenerator _numberGenerator = Substitute.For<IInvoiceNumberGenerator>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
@@ -40,6 +41,7 @@ public class InvoiceServiceTests
         _sut = new InvoiceService(
             _repository,
             _paymentRepository,
+            _discountRequestRepository,
             _numberGenerator,
             _patientService,
             _patientVisitService,
@@ -942,5 +944,246 @@ public class InvoiceServiceTests
                 new RevenueByBillingTypeResponse { BillingType = BillingType.Consultation, Amount = 250m },
                 new RevenueByBillingTypeResponse { BillingType = BillingType.Laboratory, Amount = 120m },
             });
+    }
+
+    // ── ADR-109: bill discounts ─────────────────────────────────────────────────────────────
+
+    private static readonly BillingActor Receptionist = new(Guid.NewGuid(), "reception1", IsSuperAdmin: false);
+    private static readonly BillingActor SuperAdmin = new(Guid.NewGuid(), "superadmin", IsSuperAdmin: true);
+
+    /// <summary>A ₹720 consultation and a ₹300 lab test, ₹100 off the consultation only.</summary>
+    private CreateInvoiceRequest DiscountedRequest() => ValidRequest() with
+    {
+        Items =
+        [
+            new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, Quantity = 1, UnitPrice = 720m, Discount = 100m },
+            new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, ServiceId = "cbc", Quantity = 1, UnitPrice = 300m },
+        ],
+        DiscountType = InvoiceDiscountType.Amount,
+        DiscountValue = 100m,
+        DiscountReason = "Staff family",
+    };
+
+    private Invoice GivenSavedInvoice(params InvoiceLineItemSpec[] items)
+    {
+        var invoice = Invoice.Create("INV-2026-000050", _patientId, Guid.NewGuid(), "Aravind Nadar", "NH20260001",
+            items.Length > 0 ? items : [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 0m, false, null)], createdBy: null);
+        _repository.GetByIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+        return invoice;
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAReceptionistsDiscount_SavesTheBillAtFullPriceWithAPendingRequest()
+    {
+        InvoiceDiscountRequest? saved = null;
+        await _discountRequestRepository.AddAsync(Arg.Do<InvoiceDiscountRequest>(r => saved = r), Arg.Any<CancellationToken>());
+
+        var result = await _sut.CreateAsync(DiscountedRequest(), Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(1020m, "nothing is discounted until a Super Admin approves");
+        result.Value.TotalDiscount.Should().Be(0m);
+        result.Value.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Pending);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Pending);
+        saved.Should().NotBeNull();
+        saved!.Status.Should().Be(InvoiceDiscountRequestStatus.Pending);
+        saved.TotalDiscount.Should().Be(100m);
+        saved.Reason.Should().Be("Staff family");
+        saved.RequestedByName.Should().Be("reception1");
+        saved.Lines.Should().ContainSingle().Which.LineItemId.Should().Be(result.Value.Items[0].Id);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAReceptionistsDiscountAndAPayment_IsRefused()
+    {
+        var request = DiscountedRequest() with { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 920m }] };
+
+        var result = await _sut.CreateAsync(request, Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.DiscountApprovalPending);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithASuperAdminsDiscount_AppliesItAndTakesTheDiscountedPayment()
+    {
+        InvoiceDiscountRequest? saved = null;
+        await _discountRequestRepository.AddAsync(Arg.Do<InvoiceDiscountRequest>(r => saved = r), Arg.Any<CancellationToken>());
+        var request = DiscountedRequest() with { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 920m }] };
+
+        var result = await _sut.CreateAsync(request, SuperAdmin, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(920m);
+        result.Value.TotalDiscount.Should().Be(100m);
+        result.Value.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        var consultation = result.Value.Items[0];
+        consultation.Discount.Should().Be(100m);
+        consultation.Total.Should().Be(620m);
+        consultation.DiscountApproved.Should().BeTrue();
+        consultation.DiscountApprovedBy.Should().Be("superadmin");
+        saved!.Status.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        saved.DecidedByName.Should().Be("superadmin");
+    }
+
+    [Fact]
+    public async Task CreateAsync_FromAServerSideCallerWithADiscount_TreatsItAsARequestNotAnApproval()
+    {
+        var result = await _sut.CreateAsync(DiscountedRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.TotalDiscount.Should().Be(0m);
+        result.Value.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Pending);
+    }
+
+    [Theory]
+    [InlineData(BillingType.Pharmacy)]
+    [InlineData(BillingType.InpatientCharge)]
+    public async Task CreateAsync_WithADiscountOnANonOpLine_IsRefused(BillingType billingType)
+    {
+        var request = DiscountedRequest() with
+        {
+            Items = [new CreateInvoiceLineItemRequest { BillingType = billingType, Quantity = 1, UnitPrice = 500m, Discount = 50m }],
+        };
+
+        var result = await _sut.CreateAsync(request, SuperAdmin, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.DiscountNotEligible);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutADiscount_RaisesNoRequest()
+    {
+        var result = await _sut.CreateAsync(ValidRequest(), Receptionist, CancellationToken.None);
+
+        result.Value!.DiscountStatus.Should().BeNull();
+        await _discountRequestRepository.DidNotReceive().AddAsync(Arg.Any<InvoiceDiscountRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordPaymentAsync_WhileADiscountIsPending_IsRefused()
+    {
+        var invoice = GivenSavedInvoice();
+        invoice.MarkDiscountPending(null);
+
+        var result = await _sut.RecordPaymentAsync(invoice.Id, invoice.Items.Single().Id, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.DiscountApprovalPending);
+        invoice.PaymentStatus.Should().Be(PaymentStatus.Pending);
+    }
+
+    [Fact]
+    public async Task PayAsync_AfterAnApprovedDiscount_CollectsTheDiscountedAmountAcrossEveryUnpaidLine()
+    {
+        var invoice = GivenSavedInvoice(
+            new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 0m, false, null),
+            new InvoiceLineItemSpec(BillingType.Laboratory, null, null, "cbc", null, 1, 300m, 0m, false, null));
+        invoice.ApplyDiscount([(invoice.Items.First().Id, 100m)], "superadmin", null);
+        var request = new PayInvoiceRequest
+        {
+            Payments =
+            [
+                new CreateInvoicePaymentRequest { Method = PaymentMethod.Upi, Amount = 500m, ReferenceNumber = "UPI-1" },
+                new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 420m },
+            ],
+        };
+
+        var result = await _sut.PayAsync(invoice.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        await _paymentRepository.Received().AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Upi), Arg.Any<CancellationToken>());
+        await _paymentRepository.Received().AddAsync(Arg.Is<Payment>(p => p.Method == PaymentMethod.Cash), Arg.Any<CancellationToken>());
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PayAsync_WhenTheRowsDontCoverTheAmountDue_IsRefused()
+    {
+        var invoice = GivenSavedInvoice();
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 700m }] }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.PaymentAmountMismatch);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PayAsync_OnAFullyDiscountedBill_SettlesItWithNoPaymentRows()
+    {
+        var invoice = GivenSavedInvoice();
+        invoice.ApplyDiscount([(invoice.Items.Single().Id, 720m)], "superadmin", null);
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PayAsync_WithNoRowsWhileSomethingIsOwed_IsRefused()
+    {
+        var invoice = GivenSavedInvoice();
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.PaymentAmountMismatch);
+    }
+
+    [Fact]
+    public async Task PayAsync_WhileADiscountIsPending_IsRefused()
+    {
+        var invoice = GivenSavedInvoice();
+        invoice.MarkDiscountPending(null);
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }] }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.DiscountApprovalPending);
+    }
+
+    [Fact]
+    public async Task PayAsync_OnAPaidBill_IsRefused()
+    {
+        var invoice = GivenSavedInvoice();
+        invoice.MarkItemPaid(invoice.Items.Single().Id, null);
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }] }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.NothingToPay);
+    }
+
+    [Fact]
+    public async Task PayAsync_OnTheConsultationLine_IssuesTheVisitsOpNumber()
+    {
+        var invoice = GivenSavedInvoice();
+        GivenOpNumberIssued(invoice.VisitId, "OP-2026-000045");
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }] }, actorId: null, CancellationToken.None);
+
+        result.Value!.OpNumber.Should().Be("OP-2026-000045");
+    }
+
+    [Fact]
+    public async Task VoidAsync_WhileADiscountIsPending_CancelsTheRequest()
+    {
+        var invoice = GivenSavedInvoice();
+        var discountRequest = InvoiceDiscountRequest.Create(invoice, [(invoice.Items.Single(), 100m)], InvoiceDiscountType.Amount, 100m, "Staff family", "reception1", null);
+        invoice.MarkDiscountPending(null);
+        _discountRequestRepository.GetByInvoiceIdAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns([discountRequest]);
+
+        var result = await _sut.VoidAsync(invoice.Id, new VoidInvoiceRequest { Reason = "Patient left" }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Cancelled);
+        discountRequest.Status.Should().Be(InvoiceDiscountRequestStatus.Cancelled);
     }
 }

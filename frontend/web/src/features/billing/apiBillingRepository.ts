@@ -1,5 +1,8 @@
 import type {
+  CreateInvoicePaymentRequest,
   CreateInvoiceRequest as CreateInvoiceRequestDto,
+  InvoiceDiscountLineRequest,
+  InvoiceDiscountType,
   InvoiceListQuery as InvoiceListQueryDto,
   InvoiceResponse as InvoiceResponseDto,
   PaginationMeta,
@@ -7,7 +10,7 @@ import type {
 } from '@hms/shared';
 import { billingApi } from '@/services/apiClient';
 import type { BillingFormValues } from './billingValidation';
-import { toBillingItems } from './billingCalculations';
+import { isFormDiscountStale, toBillingItems } from './billingCalculations';
 import type { Billing, BillingItem, PaymentStatus, RecentBill } from './types';
 
 /** Real, database-backed repository (HMS.Modules.Billing). */
@@ -66,11 +69,15 @@ function fromDto(dto: InvoiceResponseDto): Billing {
     voidedAt: dto.voidedAt ?? undefined,
     voidReason: dto.voidReason ?? undefined,
     isReverted: dto.isReverted ?? false,
+    discountStatus: dto.discountStatus ?? undefined,
     opNumber: dto.opNumber ?? undefined,
   };
 }
 
 function toCreateRequest(patientId: string, visitId: string, values: BillingFormValues, patient: PatientDisplaySnapshot): CreateInvoiceRequestDto {
+  // A stale discount never gets here (BillingSummaryCard won't save until it's redone), but if
+  // one did, toBillingItems already leaves it off every line — so drop its details too.
+  const discount = values.discount && !isFormDiscountStale(values) ? values.discount : null;
   return {
     patientId,
     visitId,
@@ -84,16 +91,21 @@ function toCreateRequest(patientId: string, visitId: string, values: BillingForm
       packageId: item.packageId ?? null,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
+      // Includes this line's share of a bill discount (ADR-109) — the server decides whether it
+      // applies now (Super Admin) or waits for approval.
       discount: item.discount,
-      discountApproved: item.discountApproved,
-      discountApprovedBy: item.discountApprovedBy ?? null,
     })),
     // billingValidation.ts's superRefine already guarantees every row has a method and the
     // rows add up to at least the net total whenever anything's billed (with any non-Cash
     // excess rejected, since only Cash can realistically hand back change) — non-null
     // assertion on method mirrors that same established guarantee already relied on elsewhere
-    // in this file.
-    payments: values.payments.map((row) => ({ method: row.method!, amount: row.amount, referenceNumber: row.referenceNumber || null })),
+    // in this file. None while a discount waits for approval: the bill is saved unpaid.
+    payments: discount?.needsApproval
+      ? null
+      : values.payments.map((row) => ({ method: row.method!, amount: row.amount, referenceNumber: row.referenceNumber || null })),
+    discountType: discount?.type,
+    discountValue: discount?.value,
+    discountReason: discount?.reason ?? null,
   };
 }
 
@@ -135,6 +147,7 @@ function fromRecentBillDto(dto: RecentPatientBillDto): RecentBill {
     paymentStatus: dto.paymentStatus,
     isVoided: dto.isVoided,
     isReverted: dto.isReverted ?? false,
+    discountStatus: dto.discountStatus ?? undefined,
   };
 }
 
@@ -166,6 +179,26 @@ export async function createInvoice(
 export async function recordPayment(billingId: string, itemId: string, method: 'Cash' | 'Card' | 'Upi' | 'BankTransfer'): Promise<Billing> {
   const updated = await billingApi.recordPayment(billingId, itemId, { method });
   return fromDto(updated);
+}
+
+/** Collects everything still owed on the bill in one go (ADR-109). `payments` may be empty only
+ * when nothing is owed (a fully discounted bill). */
+export async function payInvoice(billingId: string, payments: CreateInvoicePaymentRequest[]): Promise<Billing> {
+  const updated = await billingApi.payInvoice(billingId, { payments });
+  return fromDto(updated);
+}
+
+/** Asks for a discount on lines of a saved, unpaid bill — approved at once for a Super Admin. */
+export async function requestInvoiceDiscount(
+  billingId: string,
+  request: { type: InvoiceDiscountType; value: number; reason: string; lines: InvoiceDiscountLineRequest[] },
+) {
+  return billingApi.requestInvoiceDiscount(billingId, {
+    discountType: request.type,
+    discountValue: request.value,
+    reason: request.reason,
+    lines: request.lines,
+  });
 }
 
 export async function voidInvoice(billingId: string, reason: string): Promise<Billing> {

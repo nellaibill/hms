@@ -303,6 +303,11 @@ export const API_ROUTES = {
       /** GET — whether a revert can be requested, plus every revert request on the invoice (ADR-106). */
       revert: (id: string) => `/api/v1/billing/invoices/${id}/revert`,
       revertRequests: (id: string) => `/api/v1/billing/invoices/${id}/revert-requests`,
+      /** POST — collect everything still owed on the bill in one go (ADR-109). */
+      pay: (id: string) => `/api/v1/billing/invoices/${id}/pay`,
+      /** GET — whether a discount can be requested, plus every discount request on the invoice (ADR-109). */
+      discount: (id: string) => `/api/v1/billing/invoices/${id}/discount`,
+      discountRequests: (id: string) => `/api/v1/billing/invoices/${id}/discount-requests`,
     },
     /** Mirrors HMS.Modules.Billing.Endpoints.InvoiceRevertRequestsController (ADR-106). */
     revertRequests: {
@@ -310,6 +315,13 @@ export const API_ROUTES = {
       pendingCount: '/api/v1/billing/revert-requests/pending-count',
       approve: (id: string) => `/api/v1/billing/revert-requests/${id}/approve`,
       reject: (id: string) => `/api/v1/billing/revert-requests/${id}/reject`,
+    },
+    /** Mirrors HMS.Modules.Billing.Endpoints.InvoiceDiscountRequestsController (ADR-109). */
+    discountRequests: {
+      base: '/api/v1/billing/discount-requests',
+      pendingCount: '/api/v1/billing/discount-requests/pending-count',
+      approve: (id: string) => `/api/v1/billing/discount-requests/${id}/approve`,
+      reject: (id: string) => `/api/v1/billing/discount-requests/${id}/reject`,
     },
   },
   /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */

@@ -1,17 +1,28 @@
-import { Plus, Receipt, X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { BadgePercent, Plus, Receipt, ShieldCheck, TriangleAlert, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useFieldArray, useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { Field } from '@/features/patients/components/FormSection';
 import { useMasterOptionsQuery } from '@/features/masters';
-import { describeBillingItem, formatCurrency, summarizeBilling, toBillingItems } from '../billingCalculations';
+import {
+  describeBillingItem,
+  formatCurrency,
+  isFormDiscountStale,
+  summarizeBilling,
+  toBillingItems,
+  toDiscountableLines,
+  toUndiscountedBillingItems,
+} from '../billingCalculations';
+import { describeDiscountEntry, linesSignature } from '../billingDiscount';
 import { emptyPaymentSplit, type BillingFormValues } from '../billingValidation';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
+import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
 
 /**
  * Recomputed live from the four category cards, plus a whole-bill "Collect Payment" block
@@ -32,6 +43,12 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
  * same resolver InvoiceDetailCard and the patient detail Billing section use, so a service
  * name reads identically everywhere it's shown.
  *
+ * "Add discount" (ADR-109) sits above Collect Payment: it opens DiscountDialog to pick the lines
+ * it covers, a ₹ amount or %, and a reason. A Super Admin's discount comes straight off Net
+ * Payable; anyone else's needs Super Admin approval, so Collect Payment is replaced by a note and
+ * the save action becomes "Send for Approval" — the bill is saved unpaid and paid from its
+ * invoice page once the discount is decided.
+ *
  * The save action itself (onSave/isSaving/saveError) also renders here, inside this sticky
  * card, rather than below the four billing category cards — this card's height doesn't change
  * when a category expands, so an action anchored here stays put instead of jumping down the
@@ -51,9 +68,13 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
     watch,
     control,
     setValue,
+    clearErrors,
     formState: { errors },
   } = useFormContext<BillingFormValues>();
   const values = watch();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superAdmin';
+  const [isDiscountOpen, setIsDiscountOpen] = useState(false);
   // Primes the Masters reference cache describeBillingItem reads from below, so Consultation
   // line items resolve to real department/consultant/type names — Consultation Billing uses
   // the dedicated department/consultant/consultationType typed API clients (via
@@ -69,6 +90,34 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
   usePrimeDiagnosticPackageCache();
   const summary = summarizeBilling(values);
   const items = toBillingItems(values);
+  const undiscountedItems = toUndiscountedBillingItems(values);
+  const discount = values.discount;
+  const discountStale = isFormDiscountStale(values);
+  // Payment is collected here unless a discount is waiting for approval (a stale one counts as
+  // not applied — it has to be redone before the bill can be saved at all).
+  const awaitingApproval = Boolean(discount?.needsApproval) && !discountStale;
+
+  function handleApplyDiscount(result: DiscountDialogResult) {
+    setValue(
+      'discount',
+      {
+        type: result.type,
+        value: result.value,
+        reason: result.reason,
+        allocations: result.allocations,
+        signature: linesSignature(toDiscountableLines(undiscountedItems)),
+        needsApproval: !isSuperAdmin,
+      },
+      { shouldDirty: true },
+    );
+    if (!isSuperAdmin) clearErrors('payments');
+    setIsDiscountOpen(false);
+  }
+
+  function handleRemoveDiscount() {
+    setValue('discount', null, { shouldDirty: true });
+    setIsDiscountOpen(false);
+  }
   const { fields: paymentFields, append: appendPayment, remove: removePayment } = useFieldArray({ control, name: 'payments' });
   const totalTendered = values.payments.reduce((sum, row) => sum + row.amount, 0);
 
@@ -109,7 +158,10 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                   <span className="text-muted-foreground">
                     {item.billingType} — {serviceLabel}
                   </span>
-                  <span className="font-medium text-foreground">{formatCurrency(item.unitPrice)}</span>
+                  <span className="flex shrink-0 flex-col items-end">
+                    <span className="font-medium text-foreground">{formatCurrency(item.unitPrice)}</span>
+                    {item.discount > 0 && <span className="text-xs text-destructive">− {formatCurrency(item.discount)}</span>}
+                  </span>
                 </div>
               );
             })}
@@ -132,22 +184,77 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
             <span className="font-medium text-foreground">{formatCurrency(summary.grossTotal)}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Discount</span>
+            <span className="text-muted-foreground">Discount{awaitingApproval ? ' (awaiting approval)' : ''}</span>
             <span className="font-medium text-destructive">
               {summary.discountTotal > 0 ? `- ${formatCurrency(summary.discountTotal)}` : formatCurrency(0)}
             </span>
           </div>
           <div className="mt-1 flex items-center justify-between gap-3 border-t border-border pt-2">
-            <span className="text-base font-semibold text-foreground">Net Payable</span>
+            <span className="text-base font-semibold text-foreground">Net Payable{awaitingApproval ? ' after approval' : ''}</span>
             <span className="text-base font-bold text-primary">{formatCurrency(summary.netTotal)}</span>
           </div>
         </div>
+
+        {(items.length > 0 || discount) && (
+          <>
+            <Separator />
+            <div className="flex flex-col gap-2">
+              {discount ? (
+                <div
+                  className={
+                    discountStale
+                      ? 'flex flex-col gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm'
+                      : 'flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm'
+                  }
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="flex items-center gap-1.5 font-medium text-foreground">
+                        <BadgePercent className="h-4 w-4 shrink-0 text-primary" />
+                        Discount {describeDiscountEntry(discount.type, discount.value)} on {discount.allocations.length}{' '}
+                        {discount.allocations.length === 1 ? 'line' : 'lines'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">Reason: {discount.reason}</span>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIsDiscountOpen(true)}>
+                      {discountStale ? 'Update' : 'Edit'}
+                    </Button>
+                  </div>
+                  {discountStale ? (
+                    <span className="flex items-start gap-1.5 text-xs text-destructive">
+                      <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      The bill changed after this discount was added — update or remove it before saving.
+                    </span>
+                  ) : (
+                    discount.needsApproval && (
+                      <span className="flex items-start gap-1.5 text-xs text-foreground">
+                        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+                        Needs Super Admin approval — the bill is saved without payment and sent for approval.
+                      </span>
+                    )
+                  )}
+                </div>
+              ) : (
+                <Button type="button" variant="outline" size="sm" className="w-full gap-1.5" onClick={() => setIsDiscountOpen(true)}>
+                  <BadgePercent className="h-4 w-4" />
+                  Add discount
+                </Button>
+              )}
+            </div>
+          </>
+        )}
 
         <Separator />
 
         <div className="flex flex-col gap-3">
           <span className="text-sm font-semibold text-foreground">Collect Payment</span>
-          {items.length > 0 && (
+          {awaitingApproval && (
+            <p className="text-xs text-muted-foreground">
+              No payment now — once the Super Admin decides on the discount, collect {formatCurrency(summary.netTotal)} if it’s approved (or{' '}
+              {formatCurrency(summary.grossTotal)} if it’s rejected) from the bill’s page.
+            </p>
+          )}
+          {items.length > 0 && !awaitingApproval && (
             <>
               <p className="text-xs text-muted-foreground">
                 Full payment is required before this invoice can be saved — the patient proceeds to the consultant only once billing is settled here.
@@ -323,12 +430,25 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
               </div>
             )}
 
-            <Button onClick={onSave} disabled={isSaving} className="w-full">
-              {isSaving ? 'Collecting…' : 'Collect Payment'}
+            <Button onClick={onSave} disabled={isSaving || discountStale} className="w-full">
+              {awaitingApproval ? (isSaving ? 'Sending…' : 'Send for Approval') : isSaving ? 'Collecting…' : 'Collect Payment'}
             </Button>
           </>
         )}
       </CardContent>
+
+      {isDiscountOpen && (
+        <DiscountDialog
+          lines={toDiscountableLines(undiscountedItems)}
+          billTotal={undiscountedItems.reduce((sum, item) => sum + item.total, 0)}
+          initial={discount ? { type: discount.type, value: discount.value, reason: discount.reason, lineIds: discount.allocations.map((a) => a.lineId) } : undefined}
+          needsApproval={!isSuperAdmin}
+          confirmLabel="Apply discount"
+          onConfirm={handleApplyDiscount}
+          onRemove={discount ? handleRemoveDiscount : undefined}
+          onCancel={() => setIsDiscountOpen(false)}
+        />
+      )}
     </Card>
   );
 }
