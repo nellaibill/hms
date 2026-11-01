@@ -281,8 +281,9 @@ public record OpdPrescriptionQueueItemResponse
 /// </summary>
 public record ScheduledVisitQuery
 {
-    /// <summary>The first scheduled date to include — the caller's own "today", so the list
-    /// starts on the hospital's local calendar day. Defaults to the server's date.</summary>
+    /// <summary>The first scheduled date to include — the caller's own "today". Never earlier
+    /// than the hospital's today (India Standard Time): a past date, or none, starts the list
+    /// today, so past review dates never show.</summary>
     public DateOnly? From { get; init; }
 
     public Guid? DepartmentId { get; init; }

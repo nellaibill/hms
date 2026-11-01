@@ -10,6 +10,7 @@ using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HMS.Modules.OpdConsultation;
 
@@ -42,6 +43,9 @@ public static class OpdConsultationModule
 
         services.AddScoped<IOpdConsultationRepository, OpdConsultationRepository>();
         services.AddScoped<IOpdConsultationService, OpdConsultationService>();
+
+        // Scheduled Visits' "today" (TryAdd: Billing registers the same system clock).
+        services.TryAddSingleton(TimeProvider.System);
 
         // Which AI provider structures transcripts is a per-deployment choice, not a per-request
         // one — so it's picked once here at startup from Ai:Provider, not behind a runtime
