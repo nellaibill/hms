@@ -167,7 +167,8 @@ public enum VisitCategory
 /// <summary>The OPD queue status of one consultation line — set at Create (Waiting) and
 /// advanced via PatientVisitConsultation's transition methods as the patient moves through
 /// the front desk (CheckedIn), a consultant's room (InConsultation), and out
-/// (Completed/Cancelled/NoShow).</summary>
+/// (Completed/Cancelled/NoShow). AutoCompleted is set only by the nightly day-close job
+/// (ADR-110) on an OP line still open after its appointment day ended.</summary>
 public enum OpdConsultationStatus
 {
     Waiting,
@@ -176,4 +177,5 @@ public enum OpdConsultationStatus
     Completed,
     Cancelled,
     NoShow,
+    AutoCompleted,
 }

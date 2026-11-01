@@ -35,7 +35,7 @@ public class OpdQueryServiceTests
             .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse { Id = ConsultantId, Name = "Dr. Rao" }));
     }
 
-    private static OpdPatientListRow NewRow(OpdConsultationStatus status = OpdConsultationStatus.Waiting) => new(
+    private static OpdPatientListRow NewRow(OpdConsultationStatus status = OpdConsultationStatus.Waiting, OpdConsultationStatus? autoCompletedFrom = null) => new(
         ConsultationId,
         VisitId,
         PatientId,
@@ -49,7 +49,8 @@ public class OpdQueryServiceTests
         null,
         DepartmentId,
         ConsultantId,
-        status);
+        status,
+        autoCompletedFrom);
 
     [Fact]
     public async Task GetPatientListAsync_MapsRowsAndResolvesDisplayNames()

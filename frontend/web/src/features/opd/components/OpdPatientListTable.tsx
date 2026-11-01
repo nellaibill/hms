@@ -29,6 +29,16 @@ const CONSULTABLE_STATUSES: OpdConsultationStatus[] = ['Waiting', 'CheckedIn'];
 // registration/demographics page instead — there's no clinical note to show for those.
 const CONSULTATION_VIEWABLE_STATUSES: OpdConsultationStatus[] = ['InConsultation', 'Completed'];
 
+// An AutoCompleted row (nightly day close, ADR-110) has a note only if the doctor had started
+// one — that draft can still be finished. One closed from Waiting/CheckedIn was never seen.
+function hasConsultationNote(row: OpdPatientListItem): boolean {
+  return CONSULTATION_VIEWABLE_STATUSES.includes(row.status) || (row.status === 'AutoCompleted' && row.autoCompletedFrom === 'InConsultation');
+}
+
+function wasNeverSeen(row: OpdPatientListItem): boolean {
+  return row.status === 'AutoCompleted' && row.autoCompletedFrom !== 'InConsultation';
+}
+
 const PAGE_SIZE = 10;
 
 // Includes the date, not just the time — the From/To filter above can span more than one day,
@@ -168,6 +178,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                         <td className="whitespace-nowrap px-4 py-3 text-foreground">{formatAppointmentDateTime(row.appointmentTime)}</td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <OpdStatusBadge status={row.status} />
+                          {wasNeverSeen(row) && <p className="mt-1 text-xs text-muted-foreground">Not seen</p>}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <OpdPaymentStatusBadge status={getPaymentStatus(row.patientId, row.visitId)} />
@@ -183,7 +194,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                               <Stethoscope className="h-3.5 w-3.5" />
                               Consult
                             </Button>
-                          ) : CONSULTATION_VIEWABLE_STATUSES.includes(row.status) ? (
+                          ) : hasConsultationNote(row) ? (
                             <Button
                               size="sm"
                               variant="outline"

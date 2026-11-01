@@ -69,6 +69,16 @@ internal class PatientVisitRepository : IPatientVisitRepository
             .Select(v => v.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<PatientVisit>> GetOpVisitsWithOpenConsultationsBeforeAsync(DateTime beforeUtc, int take, CancellationToken cancellationToken)
+        => await _dbContext.PatientVisits
+            .Include(v => v.Consultations)
+            .Where(v => v.VisitType == VisitType.OP && v.Consultations.Any(c =>
+                (c.Status == OpdConsultationStatus.Waiting || c.Status == OpdConsultationStatus.CheckedIn || c.Status == OpdConsultationStatus.InConsultation)
+                && c.AppointmentTime < beforeUtc))
+            .OrderBy(v => v.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
     public async Task<(IReadOnlyList<PatientVisit> Items, int TotalCount)> GetPagedAsync(PatientVisitListQuery query, CancellationToken cancellationToken)
     {
         var visits = _dbContext.PatientVisits.Include(v => v.Consultations).AsQueryable();
@@ -183,7 +193,8 @@ internal class PatientVisitRepository : IPatientVisitRepository
                 r.visit.AppointmentTypeId,
                 r.consultation.DepartmentId,
                 r.consultation.ConsultantId,
-                r.consultation.Status))
+                r.consultation.Status,
+                r.consultation.AutoCompletedFrom))
             .ToListAsync(cancellationToken);
 
         return (items, totalCount);
@@ -237,7 +248,8 @@ internal class PatientVisitRepository : IPatientVisitRepository
                 r.visit.AppointmentTypeId,
                 r.consultation.DepartmentId,
                 r.consultation.ConsultantId,
-                r.consultation.Status))
+                r.consultation.Status,
+                r.consultation.AutoCompletedFrom))
             .ToListAsync(cancellationToken);
     }
 
@@ -268,7 +280,8 @@ internal class PatientVisitRepository : IPatientVisitRepository
                 r.visit.AppointmentTypeId,
                 r.consultation.DepartmentId,
                 r.consultation.ConsultantId,
-                r.consultation.Status))
+                r.consultation.Status,
+                r.consultation.AutoCompletedFrom))
             .FirstOrDefaultAsync(cancellationToken);
     }
 
