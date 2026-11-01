@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
+import { RouteErrorPage } from '../components/RouteErrorPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { RequireFeatureRoute } from '../features/auth/RequireFeatureRoute';
@@ -600,8 +601,14 @@ const opdConsultationRoutes = [
   },
 ];
 
+/** Every top-level route gets the friendly error screen, so an error anywhere below — including
+ * a page file that went missing in a deploy (lib/staleBuild.ts) — lands on RouteErrorPage. */
+function withRouteErrorPage(routes: RouteObject[]): RouteObject[] {
+  return routes.map((route) => ({ errorElement: <RouteErrorPage />, ...route }));
+}
+
 export const router = createBrowserRouter(
-  [
+  withRouteErrorPage([
     {
       path: '/login',
       element: withSuspense(<LoginPage />),
@@ -657,7 +664,7 @@ export const router = createBrowserRouter(
       path: '*',
       element: <Navigate to="/dashboard" replace />,
     },
-  ],
+  ]),
   // Matches Vite's configured `base` (see vite.config.ts) — '/' locally, '/<repo>/' on
   // GitHub Pages — so route paths don't need the subpath baked into every href.
   { basename: import.meta.env.BASE_URL },
