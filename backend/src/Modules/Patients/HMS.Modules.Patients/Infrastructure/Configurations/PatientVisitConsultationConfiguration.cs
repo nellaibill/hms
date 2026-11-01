@@ -24,8 +24,13 @@ internal class PatientVisitConsultationConfiguration : IEntityTypeConfiguration<
 
         builder.Property(c => c.AppointmentTime).HasColumnName("appointment_time").IsRequired();
         builder.Property(c => c.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(c => c.AutoCompletedFrom).HasColumnName("auto_completed_from").HasConversion<string>().HasMaxLength(20);
+        builder.Property(c => c.AutoCompletedAt).HasColumnName("auto_completed_at");
 
         builder.HasIndex(c => c.VisitId).HasDatabaseName("ix_patient_visit_consultations_visit_id");
         builder.HasIndex(c => c.AppointmentTime).HasDatabaseName("ix_patient_visit_consultations_appointment_time");
+
+        // The nightly day-close job's lookup: still-open lines dated before today (ADR-110).
+        builder.HasIndex(c => new { c.Status, c.AppointmentTime }).HasDatabaseName("ix_patient_visit_consultations_status_appointment_time");
     }
 }

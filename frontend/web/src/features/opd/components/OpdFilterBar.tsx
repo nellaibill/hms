@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { humanize } from '@/features/patients/humanize';
 import { ExportMenu, type ExportFormatOption } from '@/features/reports';
+import { opdStatusLabel } from '../opdStatusLabel';
 import type { OpdFilterValues, OpdTab } from '../types';
 
 /** Per-tab option list for the shared Status dropdown — each tab's list endpoint filters on
@@ -122,7 +122,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
               <SelectItem value="all">All statuses</SelectItem>
               {statusOptions.map((status) => (
                 <SelectItem key={status} value={status}>
-                  {humanize(status)}
+                  {opdStatusLabel(status)}
                 </SelectItem>
               ))}
             </SelectContent>

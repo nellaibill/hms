@@ -612,6 +612,15 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("appointment_time");
 
+                    b.Property<DateTime?>("AutoCompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("auto_completed_at");
+
+                    b.Property<string>("AutoCompletedFrom")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("auto_completed_from");
+
                     b.Property<Guid>("ConsultantId")
                         .HasColumnType("uuid")
                         .HasColumnName("consultant_id");
@@ -642,6 +651,9 @@ namespace HMS.Database.Migrations.Patients.Migrations
 
                     b.HasIndex("VisitId")
                         .HasDatabaseName("ix_patient_visit_consultations_visit_id");
+
+                    b.HasIndex("Status", "AppointmentTime")
+                        .HasDatabaseName("ix_patient_visit_consultations_status_appointment_time");
 
                     b.ToTable("patient_visit_consultations", "patients");
                 });

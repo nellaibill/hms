@@ -37,6 +37,29 @@ _To be documented._
 
 ## Decisions
 
+### ADR-110: OPD lines still open after their day are auto-completed by a nightly job at 3 AM IST
+**Date:** 2026-11-01
+**Status:** Accepted
+
+**Context**
+The only thing that ever closed an OPD consultation line was the doctor pressing Complete. Lines from earlier days stayed Waiting or In Consultation forever, so the OPD Patient List showed last week's patients as still in the queue, some of them Paid with a live Consult button. Consultation lines also exist on IP, Emergency, Day Care and Observation visits (same `patient_visit_consultations` table), so any rule had to be limited to OP.
+
+**Decision**
+- New `OpdConsultationStatus.AutoCompleted` ("Auto-completed", slate badge), separate from Completed so a consultation the doctor finished can always be told apart from one the system closed. `PatientVisitConsultation.AutoComplete(atUtc)` records `AutoCompletedFrom` (the status it was closed from) and `AutoCompletedAt`.
+- **`OpdDayCloseSchedulerService`** (Patients module, in-process timer like the 1 AM backup) runs at **3:00 AM IST** for every active tenant (`ITenantDirectory`, so Patients now references Platform). 3 AM, not midnight, so a patient registered late in the evening isn't closed while still in the room. `OpdDayCloseService` closes every **OP** line still Waiting/CheckedIn/InConsultation whose appointment fell on an earlier IST day, in batches of 200, with one activity-log entry per line (no user: the system did it). The close is idempotent, so on startup after 3 AM it simply runs again: no record of the last run is kept, and a missed night is caught up. Before 3 AM it waits. The first run on a tenant also clears all old open lines.
+- **Never touched:** today's lines, future/scheduled appointments, Completed/Cancelled/No-show lines, non-OP visits, and bills or payments (nothing is refunded or voided).
+- **Draft notes stay finishable.** `Complete()` is also legal from AutoCompleted when `AutoCompletedFrom` is InConsultation, so the doctor can finish the draft note the next day; the line becomes Completed. A line closed from Waiting/CheckedIn was never seen: it can't be completed, cancelled or consulted.
+- OPD Patient List: "Auto-completed" in the Status filter; a row closed from Waiting/CheckedIn shows "Not seen" and its View goes to the patient page; one closed mid-consultation opens the consultation form. `OpdPatientListItem.AutoCompletedFrom` carries this.
+- Migration `AddOpdConsultationAutoComplete`: two nullable columns plus an index on `(status, appointment_time)` for the nightly lookup.
+
+**Consequences**
+- A paid patient who wasn't seen keeps the bill; if they come back, reception records a new visit, and whether the fee is charged again is the hospital's call.
+- A past consultation reopened for editing goes back to In Consultation and is auto-completed again at the next 3 AM unless completed first. Its draft is still finishable.
+- The Consultation List tab's counts don't have an Auto-completed column (like Checked In/Cancelled/No-show, it's only in the total).
+- Run Platform Migrate on each tenant after deploy; the first 3 AM run (or the first start after 3 AM) closes the existing backlog, which on load-test tenants can be thousands of lines.
+
+---
+
 ### ADR-109: A bill discount is a request approved by a Super Admin; the bill waits unpaid until it's decided
 **Date:** 2026-10-31
 **Status:** Accepted

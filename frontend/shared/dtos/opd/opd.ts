@@ -3,8 +3,9 @@ import type { VisitConsultation } from '../patients/patientVisit';
 
 /** Mirrors HMS.Modules.Patients.Contracts.OpdConsultationStatus — serialized as a string
  * (JsonStringEnumConverter). The lifecycle of one OPD consultation, from queued through
- * done (or abandoned). */
-export const OPD_CONSULTATION_STATUSES = ['Waiting', 'CheckedIn', 'InConsultation', 'Completed', 'Cancelled', 'NoShow'] as const;
+ * done (or abandoned). AutoCompleted is set only by the nightly day close (ADR-110) on a line
+ * still open after its appointment day ended. */
+export const OPD_CONSULTATION_STATUSES = ['Waiting', 'CheckedIn', 'InConsultation', 'Completed', 'Cancelled', 'NoShow', 'AutoCompleted'] as const;
 export type OpdConsultationStatus = (typeof OPD_CONSULTATION_STATUSES)[number];
 
 /** Mirrors HMS.Modules.Patients.Contracts.OpdPatientListItem — one row of the OPD Patient
@@ -27,6 +28,9 @@ export interface OpdPatientListItem {
   consultantId: string;
   consultantName: string;
   status: OpdConsultationStatus;
+  /** Set once the nightly day close auto-completed this line: Waiting/CheckedIn means the
+   * patient was never seen, InConsultation means the doctor's note may still be a draft. */
+  autoCompletedFrom?: OpdConsultationStatus | null;
 }
 
 /** Mirrors HMS.Modules.Patients.Contracts.OpdPatientListQuery. */

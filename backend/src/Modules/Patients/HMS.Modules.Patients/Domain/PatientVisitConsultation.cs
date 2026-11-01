@@ -27,6 +27,13 @@ internal class PatientVisitConsultation
     public DateTime AppointmentTime { get; private set; }
     public OpdConsultationStatus Status { get; private set; }
 
+    /// <summary>The status this line was in when the nightly day-close job auto-completed it
+    /// (ADR-110) — Waiting/CheckedIn means the patient was never seen, InConsultation means the
+    /// doctor started but never pressed Complete. Kept after a later Complete as history; null
+    /// on a line the job never touched.</summary>
+    public OpdConsultationStatus? AutoCompletedFrom { get; private set; }
+    public DateTime? AutoCompletedAt { get; private set; }
+
     // Required by EF Core materialization.
     private PatientVisitConsultation()
     {
@@ -70,14 +77,33 @@ internal class PatientVisitConsultation
         Status = OpdConsultationStatus.InConsultation;
     }
 
+    /// <summary>Also legal from AutoCompleted when the line was auto-completed mid-consultation
+    /// — the doctor's draft note can still be finished the next day (ADR-110). A line
+    /// auto-completed from Waiting/CheckedIn was never seen, so it has no note to finish.</summary>
     public void Complete()
     {
-        if (Status != OpdConsultationStatus.InConsultation)
+        var finishingAutoCompletedDraft = Status == OpdConsultationStatus.AutoCompleted
+            && AutoCompletedFrom == OpdConsultationStatus.InConsultation;
+        if (Status != OpdConsultationStatus.InConsultation && !finishingAutoCompletedDraft)
         {
             throw new InvalidOperationException($"Cannot complete a consultation in status '{Status}'.");
         }
 
         Status = OpdConsultationStatus.Completed;
+    }
+
+    /// <summary>The nightly day-close job (ADR-110) — closes a line left Waiting/CheckedIn/
+    /// InConsultation after its appointment day ended, remembering which of those it was.</summary>
+    public void AutoComplete(DateTime atUtc)
+    {
+        if (Status is not (OpdConsultationStatus.Waiting or OpdConsultationStatus.CheckedIn or OpdConsultationStatus.InConsultation))
+        {
+            throw new InvalidOperationException($"Cannot auto-complete a consultation in status '{Status}'.");
+        }
+
+        AutoCompletedFrom = Status;
+        AutoCompletedAt = atUtc;
+        Status = OpdConsultationStatus.AutoCompleted;
     }
 
     /// <summary>The inverse of Complete — used when a completed consultation's clinical note is
@@ -98,7 +124,7 @@ internal class PatientVisitConsultation
     /// any point before their consultation is actually finished.</summary>
     public void Cancel()
     {
-        if (Status is OpdConsultationStatus.Completed or OpdConsultationStatus.Cancelled or OpdConsultationStatus.NoShow)
+        if (Status is OpdConsultationStatus.Completed or OpdConsultationStatus.Cancelled or OpdConsultationStatus.NoShow or OpdConsultationStatus.AutoCompleted)
         {
             throw new InvalidOperationException($"Cannot cancel a consultation in status '{Status}'.");
         }

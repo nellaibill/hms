@@ -24,4 +24,5 @@ internal sealed record OpdPatientListRow(
     Guid? AppointmentTypeId,
     Guid DepartmentId,
     Guid ConsultantId,
-    OpdConsultationStatus Status);
+    OpdConsultationStatus Status,
+    OpdConsultationStatus? AutoCompletedFrom);
