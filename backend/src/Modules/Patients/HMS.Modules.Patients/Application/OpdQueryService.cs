@@ -172,6 +172,7 @@ internal class OpdQueryService : IOpdQueryService
             ConsultantId = row.ConsultantId,
             ConsultantName = consultant.Value?.Name ?? string.Empty,
             Status = row.Status,
+            AutoCompletedFrom = row.AutoCompletedFrom,
         };
     }
 

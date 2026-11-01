@@ -46,6 +46,10 @@ public static class PatientsModule
         services.AddScoped<IPatientVisitService, PatientVisitService>();
         services.AddScoped<IOpdQueryService, OpdQueryService>();
 
+        // Nightly 3 AM IST auto-complete of OP lines left open from an earlier day (ADR-110).
+        services.AddScoped<IOpdDayCloseService, OpdDayCloseService>();
+        services.AddHostedService<OpdDayCloseSchedulerService>();
+
         // Bulk Excel import (Super Admin only — see PermissionSeedData's
         // "patient-management.import" entry). One in-memory queue/hosted-service pair each for
         // the validate and commit passes, mirroring Documents' scan pipeline — see

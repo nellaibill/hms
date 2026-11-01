@@ -26,6 +26,11 @@ public record OpdPatientListItem
     public Guid ConsultantId { get; init; }
     public string ConsultantName { get; init; } = string.Empty;
     public OpdConsultationStatus Status { get; init; }
+
+    /// <summary>Set once the nightly day close auto-completed this line (ADR-110): Waiting/
+    /// CheckedIn means the patient was never seen, InConsultation means the doctor's note may
+    /// still be a draft to finish.</summary>
+    public OpdConsultationStatus? AutoCompletedFrom { get; init; }
 }
 
 public class OpdPatientListQuery : PagedRequest

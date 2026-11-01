@@ -156,6 +156,108 @@ public class PatientVisitConsultationTests
         act.Should().Throw<InvalidOperationException>();
     }
 
+    [Theory]
+    [InlineData(OpdConsultationStatus.Waiting)]
+    [InlineData(OpdConsultationStatus.CheckedIn)]
+    [InlineData(OpdConsultationStatus.InConsultation)]
+    public void AutoComplete_FromOpenState_RecordsWhereItWasClosedFrom(OpdConsultationStatus fromStatus)
+    {
+        var consultation = NewConsultation();
+        MoveTo(consultation, fromStatus);
+        var at = new DateTime(2026, 11, 1, 21, 30, 0, DateTimeKind.Utc);
+
+        consultation.AutoComplete(at);
+
+        consultation.Status.Should().Be(OpdConsultationStatus.AutoCompleted);
+        consultation.AutoCompletedFrom.Should().Be(fromStatus);
+        consultation.AutoCompletedAt.Should().Be(at);
+    }
+
+    [Theory]
+    [InlineData(OpdConsultationStatus.Completed)]
+    [InlineData(OpdConsultationStatus.Cancelled)]
+    [InlineData(OpdConsultationStatus.NoShow)]
+    public void AutoComplete_FromClosedState_Throws(OpdConsultationStatus fromStatus)
+    {
+        var consultation = NewConsultation();
+        MoveToClosed(consultation, fromStatus);
+
+        var act = () => consultation.AutoComplete(DateTime.UtcNow);
+
+        act.Should().Throw<InvalidOperationException>();
+        consultation.Status.Should().Be(fromStatus);
+        consultation.AutoCompletedFrom.Should().BeNull();
+    }
+
+    [Fact]
+    public void AutoComplete_WhenAlreadyAutoCompleted_Throws()
+    {
+        var consultation = NewConsultation();
+        consultation.AutoComplete(DateTime.UtcNow);
+
+        var act = () => consultation.AutoComplete(DateTime.UtcNow);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Complete_WhenAutoCompletedMidConsultation_FinishesTheDraft()
+    {
+        var consultation = NewConsultation();
+        consultation.StartConsultation();
+        consultation.AutoComplete(DateTime.UtcNow);
+
+        consultation.Complete();
+
+        consultation.Status.Should().Be(OpdConsultationStatus.Completed);
+        consultation.AutoCompletedFrom.Should().Be(OpdConsultationStatus.InConsultation);
+    }
+
+    [Theory]
+    [InlineData(OpdConsultationStatus.Waiting)]
+    [InlineData(OpdConsultationStatus.CheckedIn)]
+    public void Complete_WhenAutoCompletedBeforeBeingSeen_Throws(OpdConsultationStatus fromStatus)
+    {
+        var consultation = NewConsultation();
+        MoveTo(consultation, fromStatus);
+        consultation.AutoComplete(DateTime.UtcNow);
+
+        var act = () => consultation.Complete();
+
+        act.Should().Throw<InvalidOperationException>();
+        consultation.Status.Should().Be(OpdConsultationStatus.AutoCompleted);
+    }
+
+    [Fact]
+    public void Cancel_WhenAutoCompleted_Throws()
+    {
+        var consultation = NewConsultation();
+        consultation.AutoComplete(DateTime.UtcNow);
+
+        var act = () => consultation.Cancel();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    private static void MoveToClosed(PatientVisitConsultation consultation, OpdConsultationStatus status)
+    {
+        switch (status)
+        {
+            case OpdConsultationStatus.Completed:
+                consultation.StartConsultation();
+                consultation.Complete();
+                break;
+            case OpdConsultationStatus.Cancelled:
+                consultation.Cancel();
+                break;
+            case OpdConsultationStatus.NoShow:
+                consultation.MarkNoShow();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(status));
+        }
+    }
+
     private static void MoveTo(PatientVisitConsultation consultation, OpdConsultationStatus status)
     {
         switch (status)
