@@ -55,6 +55,13 @@ function toAmountText(amount: number): string {
   return amount > 0 ? String(amount) : '';
 }
 
+/** A typed amount above `max` is cut back to it as it's typed: a discount can never be more than
+ * the charge it comes off (whole rupees, so a ₹99.50 charge caps at ₹99). */
+function capAmountText(text: string, max: number): string {
+  const amount = parseAmount(text);
+  return Number.isFinite(amount) && amount > max ? String(Math.floor(max)) : text;
+}
+
 function sumOfLines(lines: DiscountableLine[], texts: Record<string, string>): number {
   return lines.reduce((sum, line) => {
     const amount = parseAmount(texts[line.id]);
@@ -109,15 +116,17 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
             ? 'A reason is required — the Super Admin decides on it.'
             : null);
 
-  function handleWholeChange(text: string) {
+  function handleWholeChange(typed: string) {
+    const text = capAmountText(typed, linesTotal);
     setWholeText(text);
     const amount = parseAmount(text);
     const shares = new Map(allocateDiscount(lines, isValidAmount(amount) ? amount : 0).map((share) => [share.lineId, share.amount]));
     setLineTexts(Object.fromEntries(lines.map((line) => [line.id, toAmountText(shares.get(line.id) ?? 0)])));
   }
 
-  function handleLineChange(id: string, text: string) {
-    const next = { ...lineTexts, [id]: text };
+  function handleLineChange(id: string, typed: string) {
+    const charge = lines.find((line) => line.id === id)?.amount ?? 0;
+    const next = { ...lineTexts, [id]: capAmountText(typed, charge) };
     setLineTexts(next);
     setWholeText(toAmountText(sumOfLines(lines, next)));
   }
