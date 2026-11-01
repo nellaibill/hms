@@ -239,7 +239,15 @@ export function toDiscountableLines(items: BillingItem[]): DiscountableLine[] {
     id: item.id,
     label: `${item.billingType} — ${describeBillingItem(item).serviceLabel}`,
     amount: item.quantity * item.unitPrice,
+    approver: discountApproverFor(item),
   }));
+}
+
+/** The consultant who decides a line's discount (ADR-111) — their name, for their consultation
+ * fee; undefined for every other line, which the Super Admin decides. Mirrors the server's
+ * InvoiceDiscountRequest.ApproverConsultantFor. */
+export function discountApproverFor(item: Pick<BillingItem, 'billingType' | 'consultantId'>): string | undefined {
+  return item.billingType === 'Consultation' && item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : undefined;
 }
 
 /** toBillingItems without the bill discount — the lines exactly as the category cards hold them. */

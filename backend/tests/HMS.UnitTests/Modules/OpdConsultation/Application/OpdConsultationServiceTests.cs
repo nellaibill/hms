@@ -22,11 +22,21 @@ public class OpdConsultationServiceTests
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IClinicalNoteAiClient _clinicalNoteAiClient = Substitute.For<IClinicalNoteAiClient>();
+
+    // Noon IST on 22 Oct 2026 — the hospital's "today" for the Scheduled Visits tests.
+    private readonly FakeClock _clock = new() { UtcNow = new DateTimeOffset(2026, 10, 22, 6, 30, 0, TimeSpan.Zero) };
     private readonly IOpdConsultationService _sut;
 
     public OpdConsultationServiceTests()
     {
-        _sut = new OpdConsultationService(_repository, _opdQueryService, _diagnosisService, _diagnosticServiceService, _departmentService, _consultantService, _clinicalNoteAiClient);
+        _sut = new OpdConsultationService(_repository, _opdQueryService, _diagnosisService, _diagnosticServiceService, _departmentService, _consultantService, _clinicalNoteAiClient, _clock);
+    }
+
+    private sealed class FakeClock : TimeProvider
+    {
+        public DateTimeOffset UtcNow { get; set; }
+
+        public override DateTimeOffset GetUtcNow() => UtcNow;
     }
 
     private static OpdPatientListItem NewListItem(Guid consultationId, Guid patientId, Guid visitId) => new()
@@ -638,6 +648,40 @@ public class OpdConsultationServiceTests
         var result = await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from }, CancellationToken.None);
 
         result.Should().BeEmpty();
+    }
+
+    // Only today onward: a past From can't pull visits whose day has already gone.
+    [Fact]
+    public async Task GetScheduledVisitsAsync_WithAPastFrom_StartsFromTheHospitalsToday()
+    {
+        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = new DateOnly(2026, 10, 1) }, CancellationToken.None);
+
+        await _repository.Received(1).GetWithReviewDateFromAsync(new DateOnly(2026, 10, 22), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    // 01:30 IST on 22 Oct is still 21 Oct in UTC (the VPS's zone) — the list must start on 22 Oct.
+    [Fact]
+    public async Task GetScheduledVisitsAsync_WithNoFrom_StartsFromTodayInIndiaNotUtc()
+    {
+        _clock.UtcNow = new DateTimeOffset(2026, 10, 21, 20, 0, 0, TimeSpan.Zero);
+        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery(), CancellationToken.None);
+
+        await _repository.Received(1).GetWithReviewDateFromAsync(new DateOnly(2026, 10, 22), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetScheduledVisitsAsync_WithAFutureFrom_KeepsIt()
+    {
+        var from = new DateOnly(2026, 10, 30);
+        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from }, CancellationToken.None);
+
+        await _repository.Received(1).GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     /* ------------------------------------------------------------ Mark patient */

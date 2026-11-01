@@ -348,8 +348,9 @@ internal class InvoiceService : IInvoiceService
         }
 
         // ADR-109: a line Discount is a discount request. Lines are always created at full price;
-        // a Super Admin's discount is then applied straight away, anyone else's waits for one —
-        // and while it waits there is no settled amount to collect, so no payment is taken.
+        // a Super Admin's discount is then applied straight away, anyone else's waits for its
+        // approvers (ADR-111: the consultant for their fee, the Super Admin for the rest) — and
+        // while it waits there is no settled amount to collect, so no payment is taken.
         var hasDiscount = request.Items.Any(i => i.Discount > 0);
         if (hasDiscount)
         {
@@ -360,7 +361,7 @@ internal class InvoiceService : IInvoiceService
 
             if (!actor.IsSuperAdmin && request.Payments is { Count: > 0 })
             {
-                return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, "A discount needs Super Admin approval first — send the bill for approval without collecting payment.");
+                return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, "A discount needs approval first — send the bill for approval without collecting payment.");
             }
         }
 
@@ -403,7 +404,8 @@ internal class InvoiceService : IInvoiceService
             if (actor.IsSuperAdmin)
             {
                 invoice.ApplyDiscount(discountRequest.LineDiscounts(), actor.UserName, actorId);
-                discountRequest.Approve(actorId, actor.UserName, null);
+                discountRequest.ApproveAll(actorId, actor.UserName);
+                InvoiceDiscountRules.SettleInvoice(invoice, discountRequest, actorId);
             }
             else
             {
@@ -645,7 +647,7 @@ internal class InvoiceService : IInvoiceService
         return Result<InvoiceResponse>.Success(after with { OpNumber = opNumber });
     }
 
-    private const string DiscountPendingMessage = "This bill has a discount waiting for Super Admin approval — collect payment once it is approved or rejected.";
+    private const string DiscountPendingMessage = "This bill has a discount waiting for approval — collect payment once every part of it is approved or rejected.";
 
     public async Task<Result<InvoiceResponse>> PayAsync(Guid invoiceId, PayInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
     {

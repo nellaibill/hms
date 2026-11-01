@@ -1,9 +1,10 @@
 import type { AdmissionStatus, InvoicePaymentStatus, LabOrderItemStatus, OpdConsultationStatus } from '@hms/shared';
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, BedDouble, CalendarClock, Flag, FlaskConical, Stethoscope, Users } from 'lucide-react';
+import { Activity, BadgePercent, BedDouble, CalendarClock, Flag, FlaskConical, Stethoscope, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
+import { MyDiscountApprovals, useMyPendingDiscountApprovalCountQuery } from '@/features/billing';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { exportReportToCsv, exportReportToExcel, exportReportToPdf, type ExportFormatOption, type ReportSection } from '@/features/reports';
 import {
@@ -21,6 +22,7 @@ import {
   toRangeEnd,
   toRangeStart,
   todayIsoDate,
+  upcomingScheduledVisits,
   type OpdFilterValues,
   type OpdTab,
 } from '@/features/opd';
@@ -42,6 +44,8 @@ export default function OpdPage() {
   const [tab, setTab] = useState<OpdTab>('patients');
   const [filters, setFilters] = useState<OpdFilterValues>(emptyOpdFilters);
   const [page, setPage] = useState(1);
+  // A consultant's own Discount Approvals tab (ADR-111) — its badge counts the ones waiting.
+  const { data: pendingDiscountCount = 0 } = useMyPendingDiscountApprovalCountQuery(Boolean(scopedConsultantId));
   // Same key prefixes handleRefresh invalidates — drives the Refresh button's spinner.
   const isRefreshing = useIsFetching({ queryKey: tab === 'admissions' ? ['ipd', 'admissions'] : ['opd'] }) > 0;
 
@@ -104,6 +108,9 @@ export default function OpdPage() {
     let section: ReportSection;
 
     switch (tab) {
+      // Nothing to export — the Discount Approvals tab has no filter bar.
+      case 'discounts':
+        return;
       case 'patients': {
         const result = await opdApi.getPatientList({
           page: 1,
@@ -254,7 +261,7 @@ export default function OpdPage() {
         section = {
           heading: 'OPD Scheduled Visits',
           headers: ['Date', 'Patient Name', 'Age', 'Gender', 'UHID', 'Department', 'Consultant', 'Notes'],
-          rows: result.map((row) => [
+          rows: upcomingScheduledVisits(result, today).map((row) => [
             formatScheduledDate(row.scheduledDate),
             row.patientName,
             row.age,
@@ -288,15 +295,17 @@ export default function OpdPage() {
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
-        <OpdFilterBar
-          tab={tab}
-          filters={filters}
-          onChange={handleFiltersChange}
-          onRefresh={handleRefresh}
-          isRefreshing={isRefreshing}
-          onExport={handleExport}
-          lockDepartmentAndConsultant={Boolean(scopedConsultantId)}
-        />
+        {tab !== 'discounts' && (
+          <OpdFilterBar
+            tab={tab}
+            filters={filters}
+            onChange={handleFiltersChange}
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshing}
+            onExport={handleExport}
+            lockDepartmentAndConsultant={Boolean(scopedConsultantId)}
+          />
+        )}
 
         <Tabs value={tab} onValueChange={handleTabChange}>
           <TabsList>
@@ -330,6 +339,15 @@ export default function OpdPage() {
               <TabsTrigger value="marked" className="gap-1.5">
                 <Flag className="h-4 w-4" />
                 Marked Patients
+              </TabsTrigger>
+            )}
+            {scopedConsultantId && (
+              <TabsTrigger value="discounts" className="gap-1.5">
+                <BadgePercent className="h-4 w-4" />
+                Discount Approvals
+                {pendingDiscountCount > 0 && (
+                  <span className="rounded-full bg-warning px-1.5 text-xs font-semibold leading-5 text-warning-foreground">{pendingDiscountCount}</span>
+                )}
               </TabsTrigger>
             )}
           </TabsList>
@@ -370,6 +388,12 @@ export default function OpdPage() {
           {canSeeOpdLists && (
             <TabsContent value="marked">
               <OpdMarkedPatientsTable filters={queryFilters} />
+            </TabsContent>
+          )}
+
+          {scopedConsultantId && (
+            <TabsContent value="discounts">
+              <MyDiscountApprovals />
             </TabsContent>
           )}
         </Tabs>

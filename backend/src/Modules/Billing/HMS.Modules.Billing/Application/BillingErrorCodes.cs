@@ -22,7 +22,8 @@ internal static class BillingErrorCodes
     public const string DiscountNotEligible = "BILLING.DISCOUNT_NOT_ELIGIBLE";
     public const string DiscountAlreadyPending = "BILLING.DISCOUNT_ALREADY_PENDING";
     public const string DiscountRequestNotPending = "BILLING.DISCOUNT_REQUEST_NOT_PENDING";
-    public const string DiscountSuperAdminOnly = "BILLING.DISCOUNT_SUPER_ADMIN_ONLY";
+    public const string DiscountNotYourApproval = "BILLING.DISCOUNT_NOT_YOUR_APPROVAL";
+    public const string DiscountConsultantOnly = "BILLING.DISCOUNT_CONSULTANT_ONLY";
     public const string DiscountApprovalPending = "BILLING.DISCOUNT_APPROVAL_PENDING";
     public const string NothingToPay = "BILLING.NOTHING_TO_PAY";
 }

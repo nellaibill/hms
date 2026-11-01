@@ -11,20 +11,14 @@ import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/feature
 import { useMasterOptionsQuery } from '@/features/masters';
 import { AccountsNavTabs } from '@/features/reports';
 import { cn } from '@/lib/utils';
-import {
-  DiscountDecisionButtons,
-  Pagination,
-  describeBillingItem,
-  describeDiscountEntry,
-  formatCurrency,
-  useDiscountRequestsQuery,
-} from '../../features/billing';
+import { DiscountApprovalParts, Pagination, describeDiscountEntry, formatCurrency, useDiscountRequestsQuery } from '../../features/billing';
 
 const PAGE_SIZE = 20;
 
 const FILTERS: { value: InvoiceDiscountRequestStatus | undefined; label: string }[] = [
   { value: 'Pending', label: 'Pending' },
   { value: 'Approved', label: 'Approved' },
+  { value: 'PartlyApproved', label: 'Partly approved' },
   { value: 'Rejected', label: 'Rejected' },
   { value: 'Cancelled', label: 'Cancelled' },
   { value: undefined, label: 'All' },
@@ -33,58 +27,28 @@ const FILTERS: { value: InvoiceDiscountRequestStatus | undefined; label: string 
 function StatusBadge({ status }: { status: InvoiceDiscountRequestStatus }) {
   if (status === 'Pending') return <Badge variant="warning">Pending</Badge>;
   if (status === 'Approved') return <Badge variant="success">Approved</Badge>;
+  if (status === 'PartlyApproved') return <Badge variant="success">Partly approved</Badge>;
   if (status === 'Cancelled') return <Badge variant="secondary">Cancelled</Badge>;
   return <Badge variant="outline">Rejected</Badge>;
 }
 
-function Decision({ request }: { request: InvoiceDiscountRequestResponse }) {
-  if (request.status === 'Pending') return <DiscountDecisionButtons request={request} />;
+function Status({ request }: { request: InvoiceDiscountRequestResponse }) {
   return (
     <div className="flex flex-col gap-0.5">
       <StatusBadge status={request.status} />
-      <span className="text-xs text-muted-foreground">
-        {request.decidedByName ?? (request.status === 'Cancelled' ? 'Bill voided' : 'Super Admin')}
-        {request.decidedAt ? ` · ${new Date(request.decidedAt).toLocaleString('en-IN')}` : ''}
-      </span>
-      {request.decisionNotes && <span className="text-xs text-foreground">{request.decisionNotes}</span>}
+      {request.status === 'PartlyApproved' && (
+        <span className="text-xs text-muted-foreground">{formatCurrency(request.approvedDiscount)} approved</span>
+      )}
+      {request.status === 'Cancelled' && <span className="text-xs text-muted-foreground">Bill voided</span>}
     </div>
   );
 }
 
-function Lines({ request }: { request: InvoiceDiscountRequestResponse }) {
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {request.lines.map((line) => {
-        const { serviceLabel } = describeBillingItem({
-          id: line.lineItemId,
-          billingType: line.billingType,
-          departmentId: line.departmentId ?? undefined,
-          consultantId: line.consultantId ?? undefined,
-          serviceId: line.serviceId ?? undefined,
-          packageId: line.packageId ?? undefined,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          discount: 0,
-          discountApproved: false,
-          paymentStatus: 'Pending',
-          total: line.lineAmount,
-        });
-        return (
-          <li key={line.lineItemId} className="flex justify-between gap-3 text-xs">
-            <span className="text-muted-foreground">
-              {line.billingType} — {serviceLabel} ({formatCurrency(line.lineAmount)})
-            </span>
-            <span className="shrink-0 font-medium text-destructive">− {formatCurrency(line.discount)}</span>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 /** The Accounts & Finance "Discount Requests" tab — bill discount requests (ADR-109). Pending
- * requests are the Super Admin's approval queue (oldest first); anyone with billing access can
- * read the list, but only a Super Admin sees Approve/Reject. */
+ * requests are the approval queue (oldest first). Each request lists its approval parts
+ * (ADR-111): a consultant's for their consultation fee, the Super Admin's for the rest. Anyone
+ * with billing access can read the list; the Super Admin sees Approve/Reject on every waiting
+ * part, a consultant's part included (decided on their behalf). */
 export default function DiscountRequestsPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'superAdmin';
@@ -106,7 +70,7 @@ export default function DiscountRequestsPage() {
       <PageBanner
         icon={Wallet}
         title="Accounts and Finance"
-        subtitle="Bill discount requests — raised by billing staff, approved or rejected by the Super Admin."
+        subtitle="Bill discount requests — raised by billing staff, decided by the consultant for their fee and the Super Admin for the rest."
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
       />
@@ -134,7 +98,9 @@ export default function DiscountRequestsPage() {
               </button>
             ))}
           </div>
-          {!isSuperAdmin && <p className="text-sm text-muted-foreground">Only a Super Admin can approve or reject these requests.</p>}
+          {!isSuperAdmin && (
+            <p className="text-sm text-muted-foreground">Only the Super Admin, or the consultant whose fee it is, can approve or reject these.</p>
+          )}
         </div>
 
         {isPending && (
@@ -167,11 +133,11 @@ export default function DiscountRequestsPage() {
                   <tr>
                     <th className="px-4 py-2.5">Invoice</th>
                     <th className="px-4 py-2.5">Patient</th>
-                    <th className="px-4 py-2.5">Lines</th>
+                    <th className="px-4 py-2.5">Approvals</th>
                     <th className="px-4 py-2.5 text-right">Discount</th>
                     <th className="px-4 py-2.5">Reason</th>
                     <th className="px-4 py-2.5">Requested</th>
-                    <th className="px-4 py-2.5">Decision</th>
+                    <th className="px-4 py-2.5">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -186,13 +152,14 @@ export default function DiscountRequestsPage() {
                         <PatientNameLink patientId={request.patientId}>{request.patientName}</PatientNameLink>
                         <div className="text-xs text-muted-foreground">{request.patientUhid}</div>
                       </td>
-                      <td className="min-w-[14rem] px-4 py-3">
-                        <Lines request={request} />
+                      <td className="min-w-[20rem] px-4 py-3">
+                        <DiscountApprovalParts request={request} showLines />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="font-medium text-destructive">− {formatCurrency(request.totalDiscount)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {describeDiscountEntry(request.discountType, request.discountValue)} · bill {formatCurrency(request.grossAmount)}
+                          {request.discountType === 'Percent' && `${describeDiscountEntry(request.discountType, request.discountValue)} · `}bill{' '}
+                          {formatCurrency(request.grossAmount)}
                         </div>
                       </td>
                       <td className="min-w-[10rem] max-w-xs px-4 py-3 text-foreground">{request.reason}</td>
@@ -200,8 +167,8 @@ export default function DiscountRequestsPage() {
                         <div className="text-foreground">{request.requestedByName ?? '—'}</div>
                         <div className="font-mono text-xs text-muted-foreground">{new Date(request.requestedAt).toLocaleString('en-IN')}</div>
                       </td>
-                      <td className="min-w-[10rem] px-4 py-3">
-                        <Decision request={request} />
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <Status request={request} />
                       </td>
                     </tr>
                   ))}

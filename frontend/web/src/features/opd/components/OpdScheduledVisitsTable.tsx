@@ -5,7 +5,7 @@ import { PatientNameLink } from '@/components/PatientNameLink';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOpdScheduledVisitsQuery } from '../hooks/useOpdScheduledVisitsQuery';
-import { formatScheduledDate, todayIsoDate, type OpdFilterValues } from '../types';
+import { formatScheduledDate, todayIsoDate, upcomingScheduledVisits, type OpdFilterValues } from '../types';
 import { OpdListHeading } from './OpdListHeading';
 
 interface OpdScheduledVisitsTableProps {
@@ -16,17 +16,20 @@ interface OpdScheduledVisitsTableProps {
  * OPD Scheduled Visits tab — every patient's upcoming visits, from today on, soonest first: the
  * review date a doctor set on an OPD consultation, with the patient, the department and
  * consultant of that consultation, and the doctor's follow-up notes. Department/Consultant/
- * Search filter it; the From/To dates don't apply (it always starts today). A Consultant sees
- * only their own patients — the backend forces that.
+ * Search filter it; the From/To dates don't apply (it always starts today — the backend won't
+ * go earlier, and past rows are dropped here too). A Consultant sees only their own patients —
+ * the backend forces that.
  */
 export function OpdScheduledVisitsTable({ filters }: OpdScheduledVisitsTableProps) {
   const today = todayIsoDate();
-  const { data, isPending, isPlaceholderData, isError, error } = useOpdScheduledVisitsQuery({
+  const query = useOpdScheduledVisitsQuery({
     from: today,
     departmentId: filters.departmentId,
     consultantId: filters.consultantId,
     search: filters.search || undefined,
   });
+  const { isPending, isPlaceholderData, isError, error } = query;
+  const data = query.data && upcomingScheduledVisits(query.data, today);
 
   return (
     <div className="flex flex-col gap-3">
@@ -59,7 +62,7 @@ export function OpdScheduledVisitsTable({ filters }: OpdScheduledVisitsTableProp
         {!isPending && !isError && data && data.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-              <p className="text-sm font-medium text-foreground">No scheduled visits</p>
+              <p className="text-sm font-medium text-foreground">No scheduled visits from today on</p>
               <p className="text-sm text-muted-foreground">A review date set in an OPD consultation shows up here.</p>
             </CardContent>
           </Card>

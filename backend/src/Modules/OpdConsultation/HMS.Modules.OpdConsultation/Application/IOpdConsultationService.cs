@@ -37,7 +37,9 @@ public interface IOpdConsultationService
 
     /// <summary>Upcoming scheduled visits across every patient — each consultation's review
     /// date from <see cref="ScheduledVisitQuery.From"/> on, soonest first, filtered by
-    /// department/consultant/search. Capped at the 500 soonest review dates.</summary>
+    /// department/consultant/search. Never earlier than the hospital's today: a From in the past
+    /// (or none) starts the list today, so a past review date never shows. Capped at the 500
+    /// soonest review dates.</summary>
     Task<IReadOnlyList<ScheduledVisitResponse>> GetScheduledVisitsAsync(ScheduledVisitQuery query, CancellationToken cancellationToken);
 
     /// <summary>Every consultation whose patient is marked, newest mark first, filtered by
@@ -107,6 +109,7 @@ internal class OpdConsultationService : IOpdConsultationService
     private readonly IDepartmentService _departmentService;
     private readonly IConsultantService _consultantService;
     private readonly IClinicalNoteAiClient _clinicalNoteAiClient;
+    private readonly TimeProvider _clock;
 
     public OpdConsultationService(
         IOpdConsultationRepository repository,
@@ -115,7 +118,8 @@ internal class OpdConsultationService : IOpdConsultationService
         IDiagnosticServiceService diagnosticServiceService,
         IDepartmentService departmentService,
         IConsultantService consultantService,
-        IClinicalNoteAiClient clinicalNoteAiClient)
+        IClinicalNoteAiClient clinicalNoteAiClient,
+        TimeProvider clock)
     {
         _repository = repository;
         _opdQueryService = opdQueryService;
@@ -124,7 +128,13 @@ internal class OpdConsultationService : IOpdConsultationService
         _departmentService = departmentService;
         _consultantService = consultantService;
         _clinicalNoteAiClient = clinicalNoteAiClient;
+        _clock = clock;
     }
+
+    /// <summary>The hospital-local calendar day it is now — India Standard Time, not the
+    /// server's zone (UTC on the VPS, which trails IST by 5½ hours; same rule as PharmacyClock).</summary>
+    private DateOnly HospitalToday()
+        => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(_clock.GetUtcNow().UtcDateTime, MonthlySeries.HospitalTimeZone));
 
     public async Task<Result<OpdConsultationDetailResponse>> GetOrCreateByConsultationIdAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken)
     {
@@ -170,7 +180,10 @@ internal class OpdConsultationService : IOpdConsultationService
 
     public async Task<IReadOnlyList<ScheduledVisitResponse>> GetScheduledVisitsAsync(ScheduledVisitQuery query, CancellationToken cancellationToken)
     {
-        var from = query.From ?? DateOnly.FromDateTime(DateTime.Now);
+        // From today on, whatever the caller asks — a past From would otherwise list visits
+        // whose day has already gone. A later From (narrowing the list) is kept.
+        var today = HospitalToday();
+        var from = query.From is { } asked && asked > today ? asked : today;
         var notes = await _repository.GetWithReviewDateFromAsync(from, take: 500, cancellationToken);
         var search = query.Search?.Trim();
 

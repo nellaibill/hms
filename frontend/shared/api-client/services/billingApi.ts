@@ -183,15 +183,34 @@ export class BillingApi {
     return response.data;
   }
 
-  /** Super Admin only — approving puts the discount on the bill. */
-  async approveDiscountRequest(id: string, request: ApproveInvoiceDiscountRequest = {}): Promise<InvoiceDiscountRequestResponse> {
-    const response = await this.client.post<InvoiceDiscountRequestResponse>(API_ROUTES.billing.discountRequests.approve(id), request);
+  /** A consultant login's own discount approvals — requests with a part for their fees, filtered
+   * on that part's status (ADR-111). */
+  async getMyDiscountApprovals(query: InvoiceDiscountRequestListQuery = {}): Promise<PagedInvoiceDiscountRequests> {
+    const response = await this.client.get<InvoiceDiscountRequestResponse[]>(API_ROUTES.billing.discountApprovals.mine, {
+      query: { page: query.page, pageSize: query.pageSize, status: query.status },
+    });
+
+    return {
+      items: response.data,
+      meta: response.meta as PaginationMeta,
+    };
+  }
+
+  async getMyPendingDiscountApprovalCount(): Promise<number> {
+    const response = await this.client.get<number>(API_ROUTES.billing.discountApprovals.minePendingCount);
     return response.data;
   }
 
-  /** Super Admin only — notes are required. */
-  async rejectDiscountRequest(id: string, request: RejectInvoiceDiscountRequest): Promise<InvoiceDiscountRequestResponse> {
-    const response = await this.client.post<InvoiceDiscountRequestResponse>(API_ROUTES.billing.discountRequests.reject(id), request);
+  /** Approves one part of a discount request and puts its discounts on the bill — the Super Admin
+   * (any part) or the consultant whose fee it is (their own part). */
+  async approveDiscountApproval(approvalId: string, request: ApproveInvoiceDiscountRequest = {}): Promise<InvoiceDiscountRequestResponse> {
+    const response = await this.client.post<InvoiceDiscountRequestResponse>(API_ROUTES.billing.discountApprovals.approve(approvalId), request);
+    return response.data;
+  }
+
+  /** Rejects one part of a discount request — notes are required. */
+  async rejectDiscountApproval(approvalId: string, request: RejectInvoiceDiscountRequest): Promise<InvoiceDiscountRequestResponse> {
+    const response = await this.client.post<InvoiceDiscountRequestResponse>(API_ROUTES.billing.discountApprovals.reject(approvalId), request);
     return response.data;
   }
 

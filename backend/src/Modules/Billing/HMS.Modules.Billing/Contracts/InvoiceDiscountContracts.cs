@@ -1,15 +1,25 @@
 namespace HMS.Modules.Billing.Contracts;
 
-/// <summary>Lifecycle of a bill discount request (ADR-109) — raised Pending by billing staff,
-/// then decided once by a Super Admin. Cancelled when the bill is voided while still waiting.
-/// Also the invoice's own <see cref="InvoiceResponse.DiscountStatus"/>, which tracks its latest
-/// request.</summary>
+/// <summary>Lifecycle of a bill discount request (ADR-109) and of each of its approval parts
+/// (ADR-111). A request is Pending while any part waits; once every part is decided it is
+/// Approved (all approved), Rejected (all rejected) or PartlyApproved (a mix — a part itself is
+/// never PartlyApproved). Cancelled when the bill is voided while still waiting. Also the
+/// invoice's own <see cref="InvoiceResponse.DiscountStatus"/>, which tracks its latest request.</summary>
 public enum InvoiceDiscountRequestStatus
 {
     Pending,
     Approved,
     Rejected,
     Cancelled,
+    PartlyApproved,
+}
+
+/// <summary>Who decides one part of a discount request (ADR-111): the consultant whose
+/// consultation fee is discounted, or the Super Admin for every other line.</summary>
+public enum InvoiceDiscountApproverType
+{
+    SuperAdmin,
+    Consultant,
 }
 
 /// <summary>How the counter entered the discount — kept for display only; the per-line amounts
@@ -21,8 +31,11 @@ public enum InvoiceDiscountType
 }
 
 /// <summary>Who is making a billing change. Built by the controller from the caller's token:
-/// a Super Admin's own discount needs no approval, anyone else's waits for one.</summary>
-public sealed record BillingActor(Guid? UserId, string? UserName, bool IsSuperAdmin);
+/// a Super Admin's own discount needs no approval, anyone else's waits for one.
+/// <paramref name="ConsultantId"/> is set only for a consultant's own login (a linked consultant
+/// and a Consultant role — ClaimsPrincipalExtensions.GetScopedConsultantId): it lets them decide
+/// the discount parts on their own fees (ADR-111).</summary>
+public sealed record BillingActor(Guid? UserId, string? UserName, bool IsSuperAdmin, Guid? ConsultantId = null);
 
 /// <summary>One bill line's share of a discount request.</summary>
 public record InvoiceDiscountLineRequest
@@ -72,6 +85,34 @@ public record InvoiceDiscountRequestLineResponse
     public decimal LineAmount { get; init; }
 
     public decimal Discount { get; init; }
+
+    /// <summary>The <see cref="InvoiceDiscountApprovalResponse"/> this line belongs to.</summary>
+    public Guid ApprovalId { get; init; }
+}
+
+/// <summary>One approver's part of a discount request (ADR-111) — the lines they decide and
+/// their decision.</summary>
+public record InvoiceDiscountApprovalResponse
+{
+    public Guid Id { get; init; }
+    public InvoiceDiscountApproverType ApproverType { get; init; }
+
+    /// <summary>The consultant who decides this part; null for the Super Admin's part.</summary>
+    public Guid? ConsultantId { get; init; }
+
+    /// <summary>Pending, Approved, Rejected or Cancelled.</summary>
+    public InvoiceDiscountRequestStatus Status { get; init; }
+
+    /// <summary>Sum of this part's lines' discounts.</summary>
+    public decimal TotalDiscount { get; init; }
+
+    public Guid? DecidedBy { get; init; }
+    public string? DecidedByName { get; init; }
+    public DateTime? DecidedAt { get; init; }
+    public string? DecisionNotes { get; init; }
+
+    /// <summary>True when a Super Admin decided a consultant's part for them.</summary>
+    public bool DecidedOnBehalf { get; init; }
 }
 
 public record InvoiceDiscountRequestResponse
@@ -92,6 +133,9 @@ public record InvoiceDiscountRequestResponse
     /// <summary>Sum of <see cref="Lines"/>' discounts.</summary>
     public decimal TotalDiscount { get; init; }
 
+    /// <summary>Sum of the discounts in approved parts — what actually came off the bill.</summary>
+    public decimal ApprovedDiscount { get; init; }
+
     public string Reason { get; init; } = string.Empty;
     public InvoiceDiscountRequestStatus Status { get; init; }
     public Guid? RequestedBy { get; init; }
@@ -102,6 +146,9 @@ public record InvoiceDiscountRequestResponse
     public DateTime? DecidedAt { get; init; }
     public string? DecisionNotes { get; init; }
     public IReadOnlyList<InvoiceDiscountRequestLineResponse> Lines { get; init; } = [];
+
+    /// <summary>One part per approver; the Super Admin's part (if any) comes last.</summary>
+    public IReadOnlyList<InvoiceDiscountApprovalResponse> Approvals { get; init; } = [];
 }
 
 /// <summary>The discount state of one invoice — backs the invoice page's "Request Discount"
@@ -118,7 +165,8 @@ public record InvoiceDiscountStatusResponse
     public IReadOnlyList<InvoiceDiscountRequestResponse> Requests { get; init; } = [];
 }
 
-/// <summary>Standard paging shape (docs/ApiStandards.md §6) plus a status filter.</summary>
+/// <summary>Standard paging shape (docs/ApiStandards.md §6) plus a status filter — on the
+/// request for the Super Admin's list, on the caller's own part for a consultant's list.</summary>
 public record InvoiceDiscountRequestListQuery
 {
     public int Page { get; init; } = 1;

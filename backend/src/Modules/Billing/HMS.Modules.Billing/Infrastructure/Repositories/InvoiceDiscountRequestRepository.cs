@@ -18,13 +18,15 @@ internal class InvoiceDiscountRequestRepository : IInvoiceDiscountRequestReposit
         => await _dbContext.InvoiceDiscountRequests.AddAsync(request, cancellationToken);
 
     public Task<InvoiceDiscountRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        => _dbContext.InvoiceDiscountRequests
-            .Include(r => r.Lines)
+        => WithDetails(_dbContext.InvoiceDiscountRequests)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
+    public Task<InvoiceDiscountRequest?> GetByApprovalIdAsync(Guid approvalId, CancellationToken cancellationToken)
+        => WithDetails(_dbContext.InvoiceDiscountRequests)
+            .FirstOrDefaultAsync(r => r.Approvals.Any(a => a.Id == approvalId), cancellationToken);
+
     public async Task<IReadOnlyList<InvoiceDiscountRequest>> GetByInvoiceIdAsync(Guid invoiceId, CancellationToken cancellationToken)
-        => await _dbContext.InvoiceDiscountRequests
-            .Include(r => r.Lines)
+        => await WithDetails(_dbContext.InvoiceDiscountRequests)
             .Where(r => r.InvoiceId == invoiceId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -43,8 +45,28 @@ internal class InvoiceDiscountRequestRepository : IInvoiceDiscountRequestReposit
             : requests.OrderByDescending(r => r.CreatedAt);
 
         var totalCount = await requests.CountAsync(cancellationToken);
-        var items = await requests
-            .Include(r => r.Lines)
+        var items = await WithDetails(requests)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<(IReadOnlyList<InvoiceDiscountRequest> Items, int TotalCount)> GetPagedForConsultantAsync(Guid consultantId, InvoiceDiscountRequestListQuery query, CancellationToken cancellationToken)
+    {
+        var requests = _dbContext.InvoiceDiscountRequests.AsNoTracking();
+
+        requests = query.Status is { } status
+            ? requests.Where(r => r.Approvals.Any(a => a.ConsultantId == consultantId && a.Status == status))
+            : requests.Where(r => r.Approvals.Any(a => a.ConsultantId == consultantId));
+
+        requests = query.Status == InvoiceDiscountRequestStatus.Pending
+            ? requests.OrderBy(r => r.CreatedAt)
+            : requests.OrderByDescending(r => r.CreatedAt);
+
+        var totalCount = await requests.CountAsync(cancellationToken);
+        var items = await WithDetails(requests)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
             .ToListAsync(cancellationToken);
@@ -54,6 +76,14 @@ internal class InvoiceDiscountRequestRepository : IInvoiceDiscountRequestReposit
 
     public Task<int> CountPendingAsync(CancellationToken cancellationToken)
         => _dbContext.InvoiceDiscountRequests.CountAsync(r => r.Status == InvoiceDiscountRequestStatus.Pending, cancellationToken);
+
+    public Task<int> CountPendingForConsultantAsync(Guid consultantId, CancellationToken cancellationToken)
+        => _dbContext.InvoiceDiscountRequests.CountAsync(
+            r => r.Approvals.Any(a => a.ConsultantId == consultantId && a.Status == InvoiceDiscountRequestStatus.Pending),
+            cancellationToken);
+
+    private static IQueryable<InvoiceDiscountRequest> WithDetails(IQueryable<InvoiceDiscountRequest> requests)
+        => requests.Include(r => r.Lines).Include(r => r.Approvals);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);

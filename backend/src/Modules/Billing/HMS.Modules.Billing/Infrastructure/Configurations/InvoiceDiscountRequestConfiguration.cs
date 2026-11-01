@@ -69,6 +69,53 @@ internal class InvoiceDiscountRequestConfiguration : IEntityTypeConfiguration<In
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(r => r.Lines).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // One approval part per approver (ADR-111), owned by the request like its lines.
+        builder.HasMany(r => r.Approvals)
+            .WithOne()
+            .HasForeignKey(a => a.RequestId)
+            .HasConstraintName("fk_invoice_discount_approvals_requests_request_id")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(r => r.Approvals).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+internal class InvoiceDiscountApprovalConfiguration : IEntityTypeConfiguration<InvoiceDiscountApproval>
+{
+    public void Configure(EntityTypeBuilder<InvoiceDiscountApproval> builder)
+    {
+        builder.ToTable("invoice_discount_approvals");
+
+        builder.HasKey(a => a.Id).HasName("pk_invoice_discount_approvals");
+        builder.Property(a => a.Id).HasColumnName("id").ValueGeneratedNever();
+
+        builder.Property(a => a.RequestId).HasColumnName("request_id").IsRequired();
+        builder.Property(a => a.ApproverType).HasColumnName("approver_type").HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(a => a.ConsultantId).HasColumnName("consultant_id");
+        builder.Property(a => a.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(a => a.DecidedBy).HasColumnName("decided_by");
+        builder.Property(a => a.DecidedByName).HasColumnName("decided_by_name").HasMaxLength(150);
+        builder.Property(a => a.DecidedAt).HasColumnName("decided_at");
+        builder.Property(a => a.DecisionNotes).HasColumnName("decision_notes").HasMaxLength(500);
+        builder.Property(a => a.DecidedOnBehalf).HasColumnName("decided_on_behalf").IsRequired().HasDefaultValue(false);
+
+        builder.Property(a => a.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(a => a.CreatedBy).HasColumnName("created_by");
+        builder.Property(a => a.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(a => a.UpdatedBy).HasColumnName("updated_by");
+        builder.Property(a => a.IsDeleted).HasColumnName("is_deleted").IsRequired().HasDefaultValue(false);
+        builder.Property(a => a.DeletedAt).HasColumnName("deleted_at");
+        builder.Property(a => a.DeletedBy).HasColumnName("deleted_by");
+
+        builder.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
+
+        builder.HasQueryFilter(a => !a.IsDeleted);
+
+        builder.HasIndex(a => a.RequestId).HasDatabaseName("ix_invoice_discount_approvals_request_id");
+
+        // A consultant's "Discount Approvals" tab: their parts, by status.
+        builder.HasIndex(a => new { a.ConsultantId, a.Status }).HasDatabaseName("ix_invoice_discount_approvals_consultant_id_status");
     }
 }
 
@@ -82,6 +129,7 @@ internal class InvoiceDiscountRequestLineConfiguration : IEntityTypeConfiguratio
         builder.Property(l => l.Id).HasColumnName("id").ValueGeneratedNever();
 
         builder.Property(l => l.RequestId).HasColumnName("request_id").IsRequired();
+        builder.Property(l => l.ApprovalId).HasColumnName("approval_id").IsRequired();
         builder.Property(l => l.LineItemId).HasColumnName("line_item_id").IsRequired();
         builder.Property(l => l.BillingType).HasColumnName("billing_type").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(l => l.DepartmentId).HasColumnName("department_id").HasMaxLength(100);
@@ -105,5 +153,14 @@ internal class InvoiceDiscountRequestLineConfiguration : IEntityTypeConfiguratio
         builder.HasQueryFilter(l => !l.IsDeleted);
 
         builder.HasIndex(l => l.RequestId).HasDatabaseName("ix_invoice_discount_request_lines_request_id");
+        builder.HasIndex(l => l.ApprovalId).HasDatabaseName("ix_invoice_discount_request_lines_approval_id");
+
+        // Lines go with their part, as they go with their request (PostgreSQL allows both paths).
+        // Requests are only ever soft-deleted, so neither cascade runs in practice.
+        builder.HasOne<InvoiceDiscountApproval>()
+            .WithMany()
+            .HasForeignKey(l => l.ApprovalId)
+            .HasConstraintName("fk_invoice_discount_request_lines_approvals_approval_id")
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

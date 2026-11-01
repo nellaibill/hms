@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-111: A bill discount is split into approval parts — the consultant decides their consultation fee, the Super Admin the rest
+**Date:** 2026-11-01
+**Status:** Accepted
+
+**Context**
+ADR-109 sent every counter discount to the Super Admin. Management wants the consultant whose consultation fee is being discounted to approve that part themselves — it's their income. A bill often mixes a consultation with lab, radiology or procedure lines, which stay hospital income. Doctors' logins are linked to their Masters consultant record (ADR-108, `Identity.User.ConsultantId`) and usually hold no billing permissions.
+
+**Decision**
+- **Routing:** each `InvoiceDiscountRequest` is split into `InvoiceDiscountApproval` parts. A **Consultation** line's discount goes to its billed consultant (`InvoiceLineItem.BilledConsultantId`); every other line — radiology, laboratory and procedure lines that name a doctor included — goes to one **Super Admin** part. Two consultants on one bill get a part each. A consultation line with no consultant goes to the Super Admin.
+- **Who decides:** the consultant decides their own part; the **Super Admin may decide any part**, a consultant's included (recorded as `DecidedOnBehalf`) — this covers visiting consultants without a login and a doctor who isn't available. "The consultant" means a consultant login: a linked `ConsultantId` **and** a role containing "Consultant" (`GetScopedConsultantId`, as for OPD scoping) — a Super Admin or receptionist linked to a consultant record doesn't decide as them. Another consultant is refused (`BILLING.DISCOUNT_NOT_YOUR_APPROVAL`, 403).
+- **Each part is decided on its own.** Approving a part puts its lines' discounts on the bill at once (`Invoice.ApplyDiscount` no longer sets the status). The request — and `Invoice.DiscountStatus` — stays **Pending until every part is decided**, so no payment is taken until then; it then becomes **Approved**, **Rejected**, or the new **PartlyApproved** (approved lines discounted, rejected lines at full price).
+- **A Super Admin's own discount** still applies at once: every part is approved as it's raised, a consultant's part on their behalf.
+- **API:** decisions move from `POST discount-requests/{id}/approve|reject` to **`POST discount-approvals/{approvalId}/approve|reject`**, which need no billing permission — the service checks the caller. New **`GET discount-approvals/mine`** and **`mine/pending-count`** list a consultant login's own parts (403 for anyone else). Responses carry `approvals[]`, each line's `approvalId`, and `approvedDiscount`.
+- **Screens:** the OPD page gets a **Discount Approvals** tab for consultant logins (badge with the waiting count, checks back every 15 s), showing only their own part. The bill's banner and Accounts → Discount Requests list each part with its approver, status and decision, and Approve/Reject for whoever may decide it. The counter's Add discount pop-up and Billing Summary name the approvers ("Needs approval from Dr. S. Karthikeyan and the Super Admin").
+- **Migration `AddInvoiceDiscountApprovals`:** new `invoice_discount_approvals` table and `invoice_discount_request_lines.approval_id`. Each request raised before this becomes one Super Admin part carrying the request's status and decision, so one still waiting stays with the Super Admin.
+
+**Consequences**
+- No push/SMS notification to the consultant — the OPD tab badge is the signal (Billing may not depend on Notifications, as in ADR-106/109).
+- The patient waits until every approver has decided; a consultant who never acts leaves it to the Super Admin to step in.
+- A consultant's own login sees only their part's lines and no link to the invoice page (they usually can't open billing pages).
+- Run Platform Migrate on each tenant after deploy.
+
+---
+
 ### ADR-110: OPD lines still open after their day are auto-completed by a nightly job at 3 AM IST
 **Date:** 2026-11-01
 **Status:** Accepted
@@ -62,13 +86,14 @@ The only thing that ever closed an OPD consultation line was the doctor pressing
 
 ### ADR-109: A bill discount is a request approved by a Super Admin; the bill waits unpaid until it's decided
 **Date:** 2026-10-31
-**Status:** Accepted
+**Status:** Accepted — who approves is amended by ADR-111 (a consultation fee's discount goes to that consultant)
 
 **Context**
 The client asked for a discount on OPD bills: like "Add another payment method", an "Add discount" that covers the whole bill or only the ticked lines, approved by the Super Admin. Every invoice line already had `Discount`/`DiscountApproved`/`DiscountApprovedBy`, but no screen entered a discount (ADR-080 removed the half-built override UI), and the server applied any line `Discount` straight away — only the `DiscountApproved` flag was gated. The counter also requires full payment before a bill saves, so a discount waiting for approval has no settled amount to collect.
 
 **Decision**
-- **"Add discount"** in the Billing Summary (OPD Billing Entry) opens `DiscountDialog`: tick the lines (all = whole bill), a ₹ amount or a %, and a required reason. The discount is spread over the ticked lines in proportion to their charges, in whole rupees (`billingDiscount.ts`'s `allocateDiscount`). A form discount keeps a snapshot of the bill's lines; if the bill changes afterwards it shows as out of date and must be applied again before saving.
+- **"Add discount"** in the Billing Summary (OPD Billing Entry) opens `DiscountDialog`: a ₹ discount against each line (e.g. the scan and the lab test separately), in whole rupees, and a required reason. With more than one line, a **Whole bill** row takes one amount and splits it across the lines in proportion to their charges (`billingDiscount.ts`'s `allocateDiscount`); any line can still be changed afterwards, and the Whole bill figure shows the lines' total. A form discount keeps a snapshot of the bill's lines; if the bill changes afterwards it shows as out of date and must be applied again before saving.
+  - *Amended 2026-11-01, before release:* the first version took one ₹ amount or % for the ticked lines and split it; management asked for each line's discount to be entered directly, plus a whole-bill amount. % entry was dropped from the screen. The API is unchanged — it always took each line's discount; a line-wise discount is sent as `DiscountType = Amount` with `DiscountValue` = the lines' total (`Percent` stays for any request already raised).
 - **Only a Super Admin approves** (login type `superAdmin`, as for ADR-106 reverts). A Super Admin's own discount applies at once and the reduced amount is collected as usual. Anyone else's — including roles holding ADR-080's `finance-billing.discount-approve` — becomes an `InvoiceDiscountRequest`: the bill is saved at full price, unpaid, with `Invoice.DiscountStatus = Pending`, and "Collect Payment" becomes "Send for Approval".
 - The server decides, not the client: `CreateInvoiceLineItemRequest.DiscountApproved`/`DiscountApprovedBy` are gone, every line is created at full price, and `Invoice.ApplyDiscount` puts approved discounts on (re-pricing the unpaid lines and the bill's totals). Discounts cover OP charges only (Consultation, Radiology, Laboratory, Procedure, Injection, File) and a line is discounted once.
 - **While Pending no payment is taken** (`BILLING.DISCOUNT_APPROVAL_PENDING`, both per-line and whole-bill). Voiding the bill cancels the request.
