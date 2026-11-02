@@ -91,8 +91,10 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                     {bill.isVoided ? (
                       <Badge variant="secondary">{bill.isReverted ? 'Reverted' : 'Voided'}</Badge>
                     ) : bill.discountStatus === 'Pending' ? (
-                      // ADR-109: can't be paid until the Super Admin decides on the discount.
-                      <Badge variant="warning">Discount approval</Badge>
+                      // ADR-109/111: on hold — can't be paid until every approver decides on the discount.
+                      <Badge variant="warning" title="A discount on this bill is waiting for approval — payment can be collected once it’s decided">
+                        On hold
+                      </Badge>
                     ) : (
                       <PaymentStatusBadge status={bill.paymentStatus} />
                     )}

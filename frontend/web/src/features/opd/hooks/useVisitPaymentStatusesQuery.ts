@@ -4,9 +4,10 @@ import { getInvoicesByPatientId } from '@/features/billing/apiBillingRepository'
 
 export const OPD_PAYMENT_STATUSES = ['NotBilled', 'Pending', 'Paid'] as const;
 export type OpdVisitPaymentStatus = (typeof OPD_PAYMENT_STATUSES)[number];
-/** What the badge can show: a real status, or a placeholder while the invoice lookup is in
- * flight ('Loading') or has failed ('Unavailable'). */
-export type OpdVisitPaymentStatusDisplay = OpdVisitPaymentStatus | 'Loading' | 'Unavailable';
+/** What the badge can show: a real status, 'OnHold' for a Pending visit whose unpaid bill has a
+ * discount waiting for approval (no payment can be taken until it's decided, ADR-109), or a
+ * placeholder while the invoice lookup is in flight ('Loading') or has failed ('Unavailable'). */
+export type OpdVisitPaymentStatusDisplay = OpdVisitPaymentStatus | 'OnHold' | 'Loading' | 'Unavailable';
 
 /**
  * Payment status has no direct link to a specific OPD consultation — Billing only tracks
@@ -53,11 +54,13 @@ export function useVisitPaymentStatusesQuery(patientIds: string[]) {
     if (result.isError) return 'Unavailable';
     const visitInvoices = getVisitInvoices(patientId, visitId);
     if (visitInvoices.length === 0) return 'NotBilled';
-    return visitInvoices.every((invoice) => getOverallPaymentStatus(invoice.items) === 'Paid') ? 'Paid' : 'Pending';
+    const unpaid = visitInvoices.filter((invoice) => getOverallPaymentStatus(invoice.items) !== 'Paid');
+    if (unpaid.length === 0) return 'Paid';
+    return unpaid.some((invoice) => invoice.discountStatus === 'Pending') ? 'OnHold' : 'Pending';
   }
 
-  /** The visit's unpaid invoices, oldest first — where a 'Pending' visit's payment gets
-   * collected (Record Payment on Invoice Detail). Empty unless getStatus is 'Pending'. */
+  /** The visit's unpaid invoices, oldest first — where a 'Pending' or 'OnHold' visit's payment
+   * gets collected (Collect Payment on Invoice Detail). Empty for any other status. */
   function getUnpaidInvoiceIds(patientId: string, visitId: string): string[] {
     return getVisitInvoices(patientId, visitId)
       .filter((invoice) => getOverallPaymentStatus(invoice.items) !== 'Paid')
