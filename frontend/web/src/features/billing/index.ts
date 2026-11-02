@@ -23,6 +23,7 @@ export * from './hooks/useCreateInvoiceMutation';
 export * from './hooks/useInvoicesForReportQuery';
 export * from './hooks/useInvoiceRevert';
 export * from './hooks/useInvoiceDiscount';
+export * from './hooks/useApprovalTasks';
 export * from './billingDiscount';
 export * from './components/DiscountDialog';
 export * from './hooks/usePatientInvoicesQuery';
