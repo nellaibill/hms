@@ -100,7 +100,7 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
   function handleGoToBilling() {
     if (!billingRequired) return;
     const { row, status } = billingRequired;
-    const unpaidInvoiceId = status === 'Pending' ? getUnpaidInvoiceIds(row.patientId, row.visitId)[0] : undefined;
+    const unpaidInvoiceId = status === 'Pending' || status === 'OnHold' ? getUnpaidInvoiceIds(row.patientId, row.visitId)[0] : undefined;
     navigate(unpaidInvoiceId ? invoicePathForConsult(unpaidInvoiceId, row.consultationId) : billingEntryPathForConsult(row));
   }
 

@@ -8,6 +8,7 @@ export type OpdBlockedPaymentStatus = Exclude<OpdVisitPaymentStatusDisplay, 'Pai
 const REASONS: Record<OpdBlockedPaymentStatus, (patientName: string) => string> = {
   NotBilled: (patientName) => `${patientName}'s visit hasn't been billed yet.`,
   Pending: (patientName) => `${patientName}'s bill for this visit still has an unpaid amount.`,
+  OnHold: (patientName) => `${patientName}'s bill for this visit is on hold — a discount on it is waiting for approval, and payment can be collected once it's decided.`,
   Unavailable: (patientName) => `${patientName}'s billing for this visit couldn't be loaded, so the payment can't be confirmed.`,
 };
 

@@ -430,7 +430,8 @@ export default function InvoiceCreatePage() {
                 <>
                   <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
                     Invoice {shownInvoice.invoiceNumber ?? shownInvoice.id} saved.
-                    {shownInvoice.discountStatus === 'Pending' && <> The discount was sent to the Super Admin for approval — collect payment here once it’s decided.</>}
+                    {/* ADR-111: the consultant approves their fee's discount, the Super Admin the rest — the banner below names each. */}
+                    {shownInvoice.discountStatus === 'Pending' && <> The bill is on hold: its discount was sent for approval — collect payment here once it’s decided.</>}
                     {/* An OP visit gets its OP No once its consultation fee is paid (ADR-103) —
                         this is where reception first sees it. */}
                     {shownInvoice.opNumber && <> OP No: <span className="font-semibold">{shownInvoice.opNumber}</span></>}
