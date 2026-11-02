@@ -10,13 +10,14 @@ interface IncomeTableProps {
 export function IncomeTable({ rows }: IncomeTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[820px] text-sm">
         <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">Date</th>
             <th className="px-4 py-2.5">Invoice</th>
             <th className="px-4 py-2.5">Patient</th>
             <th className="px-4 py-2.5">Billing Type(s)</th>
+            <th className="px-4 py-2.5 text-right">Discount</th>
             <th className="px-4 py-2.5 text-right">Amount</th>
             <th className="px-4 py-2.5">Status</th>
           </tr>
@@ -35,6 +36,9 @@ export function IncomeTable({ rows }: IncomeTableProps) {
                 <div className="text-xs text-muted-foreground">{row.patientUhid}</div>
               </td>
               <td className="px-4 py-3 text-muted-foreground">{row.billingTypes}</td>
+              <td className={`px-4 py-3 text-right ${row.discount > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {row.discount > 0 ? `−${formatCurrency(row.discount)}` : '—'}
+              </td>
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(row.amount)}</td>
               <td className="px-4 py-3">
                 <PaymentStatusBadge status={row.paymentStatus} />

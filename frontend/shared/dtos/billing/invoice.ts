@@ -140,6 +140,7 @@ export interface RecentPatientBill {
   registrationType?: VisitType | null;
   consultants: RecentBillConsultation[];
   appointmentDateTime: string;
+  totalDiscount: number;
   netAmount: number;
   paymentStatus: InvoicePaymentStatus;
   isVoided: boolean;

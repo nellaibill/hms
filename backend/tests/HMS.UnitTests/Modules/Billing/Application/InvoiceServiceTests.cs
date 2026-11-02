@@ -741,6 +741,32 @@ public class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task GetRecentAsync_ReturnsTheBillsApprovedDiscountAlongsideItsNetAmount()
+    {
+        var invoice = Invoice.Create(
+            "INV-2026-000004",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, null, null, null, null, 1, 720m, 120m, true, "superadmin")],
+            createdBy: null);
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice> { invoice }, 1));
+        _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientResponse>.Success(new PatientResponse()));
+        _patientVisitService.GetByIdAsync(_patientId, invoice.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Failure("VISIT.NOT_FOUND", "not found"));
+
+        var result = await _sut.GetRecentAsync(10, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var row = result.Value!.Single();
+        row.TotalDiscount.Should().Be(120m);
+        row.NetAmount.Should().Be(600m);
+    }
+
+    [Fact]
     public async Task GetRecentAsync_ClampsAnOutOfRangeCountToTheAllowedMaximum()
     {
         _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())

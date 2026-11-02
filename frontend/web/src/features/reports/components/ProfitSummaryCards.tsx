@@ -1,4 +1,4 @@
-import { ArrowUpCircle, CircleDollarSign, Percent, TrendingUp } from 'lucide-react';
+import { ArrowUpCircle, CircleDollarSign, Percent, Tag, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/features/billing';
 import { cn } from '@/lib/utils';
@@ -11,7 +11,7 @@ interface ProfitSummaryCardsProps {
 export function ProfitSummaryCards({ totals }: ProfitSummaryCardsProps) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card>
           <CardContent className="flex items-center gap-3 py-4">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-success/15 text-success">
@@ -20,6 +20,20 @@ export function ProfitSummaryCards({ totals }: ProfitSummaryCardsProps) {
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">Total Revenue</span>
               <span className="text-lg font-semibold text-foreground">{formatCurrency(totals.totalRevenue)}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-destructive/15 text-destructive">
+              <Tag className="h-5 w-5" />
+            </span>
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">Total Discount</span>
+              <span className="text-lg font-semibold text-foreground">{formatCurrency(totals.totalDiscount)}</span>
+              {totals.totalDiscount > 0 && (
+                <span className="text-xs text-muted-foreground">on {formatCurrency(totals.totalCharge)} charged</span>
+              )}
             </div>
           </CardContent>
         </Card>

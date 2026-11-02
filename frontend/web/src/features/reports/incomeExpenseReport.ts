@@ -20,6 +20,7 @@ function billingToIncomeRow(billing: Billing): IncomeReportRow {
     patientName: billing.patientName,
     patientUhid: billing.patientUhid,
     billingTypes,
+    discount: billing.totalDiscount,
     amount: billing.netAmount,
     paymentStatus: getOverallPaymentStatus(billing.items),
   };
@@ -57,6 +58,8 @@ export function filterExpenseRows(rows: ExpenseReportRow[], search: string | und
 
 export interface ReportTotals {
   totalIncome: number;
+  /** Discounts given on the income rows — Total Income is already net of it. */
+  totalDiscount: number;
   totalExpense: number;
   net: number;
   /** Sum of income rows still awaiting payment — a real outstanding-receivables figure the
@@ -67,9 +70,10 @@ export interface ReportTotals {
 
 export function getReportTotals(income: IncomeReportRow[], expense: ExpenseReportRow[]): ReportTotals {
   const totalIncome = income.reduce((sum, row) => sum + row.amount, 0);
+  const totalDiscount = income.reduce((sum, row) => sum + row.discount, 0);
   const totalExpense = expense.reduce((sum, row) => sum + row.amount, 0);
   const pendingAmount = income.filter((row) => row.paymentStatus === 'Pending').reduce((sum, row) => sum + row.amount, 0);
-  return { totalIncome, totalExpense, net: totalIncome - totalExpense, pendingAmount };
+  return { totalIncome, totalDiscount, totalExpense, net: totalIncome - totalExpense, pendingAmount };
 }
 
 export interface BreakdownRow {

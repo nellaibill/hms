@@ -80,6 +80,8 @@ export interface RecentBill {
   registrationType?: string;
   consultants: RecentBillConsultant[];
   appointmentDateTime: string;
+  /** The bill's approved discount (ADR-109/111) — `netAmount` is already net of it. */
+  totalDiscount: number;
   netAmount: number;
   paymentStatus: PaymentStatus;
   isVoided: boolean;

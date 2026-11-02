@@ -46,6 +46,9 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
     : billing.items.length > 0 && billing.items.every((item) => item.paymentStatus === 'Paid')
       ? 'PAID'
       : 'PENDING';
+  // Charge and Discount columns only when the bill has an approved discount (ADR-109/111), so
+  // the patient can see what each line cost before it; an undiscounted bill keeps one Amount column.
+  const hasDiscount = billing.totalDiscount > 0;
 
   return (
     <div
@@ -92,6 +95,8 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
           <tr className="border-y-2 border-black">
             <th className="py-2 pr-2 text-left font-semibold">#</th>
             <th className="py-2 pr-2 text-left font-semibold">Item / Service Details</th>
+            {hasDiscount && <th className="py-2 pr-2 text-right font-semibold">Charge</th>}
+            {hasDiscount && <th className="py-2 pr-2 text-right font-semibold">Discount</th>}
             <th className="py-2 text-right font-semibold">Amount</th>
           </tr>
         </thead>
@@ -104,6 +109,10 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
                 <td className="py-2 pr-2 align-top">
                   {item.billingType} — {serviceLabel}
                 </td>
+                {hasDiscount && <td className="py-2 pr-2 text-right align-top">{formatCurrency(item.quantity * item.unitPrice)}</td>}
+                {hasDiscount && (
+                  <td className="py-2 pr-2 text-right align-top">{item.discount > 0 ? `− ${formatCurrency(item.discount)}` : '—'}</td>
+                )}
                 <td className="py-2 text-right align-top font-medium">
                   {formatCurrency(item.total)}
                 </td>
@@ -119,6 +128,12 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
             <span className="text-gray-600">Gross total</span>
             <span>{formatCurrency(billing.grossAmount)}</span>
           </div>
+          {hasDiscount && (
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Discount</span>
+              <span>− {formatCurrency(billing.totalDiscount)}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between border-t-2 border-black pt-1.5 text-base font-bold">
             <span>Net Payable</span>
             <span>{formatCurrency(billing.netAmount)}</span>

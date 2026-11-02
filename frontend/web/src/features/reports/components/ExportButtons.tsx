@@ -13,8 +13,17 @@ function buildSections(income: IncomeReportRow[], expense: ExpenseReportRow[]): 
   return [
     {
       heading: 'Income',
-      headers: ['Date', 'Invoice', 'Patient', 'UHID', 'Billing Type(s)', 'Amount', 'Payment Status'],
-      rows: income.map((row) => [row.date, row.id, row.patientName, row.patientUhid, row.billingTypes, row.amount, row.paymentStatus]),
+      headers: ['Date', 'Invoice', 'Patient', 'UHID', 'Billing Type(s)', 'Discount', 'Amount', 'Payment Status'],
+      rows: income.map((row) => [
+        row.date,
+        row.invoiceNumber ?? row.id,
+        row.patientName,
+        row.patientUhid,
+        row.billingTypes,
+        row.discount,
+        row.amount,
+        row.paymentStatus,
+      ]),
     },
     {
       heading: 'Expenses',
