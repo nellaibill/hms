@@ -8,6 +8,8 @@ export interface IncomeReportRow {
   patientName: string;
   patientUhid: string;
   billingTypes: string;
+  /** The bill's approved discount (ADR-109/111) — `amount` is already net of it. */
+  discount: number;
   amount: number;
   paymentStatus: PaymentStatus;
 }

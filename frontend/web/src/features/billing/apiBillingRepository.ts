@@ -143,6 +143,7 @@ function fromRecentBillDto(dto: RecentPatientBillDto): RecentBill {
     registrationType: dto.registrationType ?? undefined,
     consultants: dto.consultants.map((c) => ({ departmentId: c.departmentId, consultantId: c.consultantId })),
     appointmentDateTime: dto.appointmentDateTime,
+    totalDiscount: dto.totalDiscount,
     netAmount: dto.netAmount,
     paymentStatus: dto.paymentStatus,
     isVoided: dto.isVoided,

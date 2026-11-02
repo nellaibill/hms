@@ -29,7 +29,12 @@ export interface ProfitReportRow {
    * this stays populated even after the line item is paid. */
   billedConsultantId?: string;
   quantity: number;
-  /** Already net of discount — same figure the invoice itself bills. */
+  /** quantity × unitPrice — what the line was charged before any discount. */
+  charge: number;
+  /** The line's approved discount (ADR-109/111); 0 when none. A discount still waiting for
+   * approval isn't on the line yet, so it isn't counted here either. */
+  discount: number;
+  /** charge − discount — already net of discount, the same figure the invoice itself bills. */
   revenue: number;
   /** Per-unit cost resolved from the matching master's CostPrice, or null if unknown/not
    * yet costed (see resolveItemCostPrice) — kept alongside `cost` for a per-unit column. */
@@ -72,6 +77,8 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
         departmentId: item.departmentId,
         billedConsultantId: item.billedConsultantId,
         quantity: item.quantity,
+        charge: item.quantity * item.unitPrice,
+        discount: item.discount,
         revenue: item.total,
         costPerUnit,
         cost,
@@ -84,6 +91,9 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
 }
 
 export interface ProfitTotals {
+  /** Sum of `charge` — what was billed before discounts. */
+  totalCharge: number;
+  totalDiscount: number;
   totalRevenue: number;
   /** Sum of `revenue` only over rows with a known cost — the denominator overallMarginPercent
    * is computed against, since revenue with unknown cost has no profit figure to include. */
@@ -98,6 +108,8 @@ export interface ProfitTotals {
 }
 
 export function getProfitTotals(rows: ProfitReportRow[]): ProfitTotals {
+  const totalCharge = rows.reduce((sum, row) => sum + row.charge, 0);
+  const totalDiscount = rows.reduce((sum, row) => sum + row.discount, 0);
   const totalRevenue = rows.reduce((sum, row) => sum + row.revenue, 0);
   const knownCostRows = rows.filter((row) => row.cost !== null);
   const revenueWithKnownCost = knownCostRows.reduce((sum, row) => sum + row.revenue, 0);
@@ -106,7 +118,7 @@ export function getProfitTotals(rows: ProfitReportRow[]): ProfitTotals {
   const revenueWithUnknownCost = totalRevenue - revenueWithKnownCost;
   const overallMarginPercent = revenueWithKnownCost > 0 ? Math.round((totalProfit / revenueWithKnownCost) * 100) : null;
 
-  return { totalRevenue, revenueWithKnownCost, revenueWithUnknownCost, totalCost, totalProfit, overallMarginPercent };
+  return { totalCharge, totalDiscount, totalRevenue, revenueWithKnownCost, revenueWithUnknownCost, totalCost, totalProfit, overallMarginPercent };
 }
 
 /** Profit by service — only rows with a known cost contribute (see ProfitTotals'
@@ -135,6 +147,8 @@ export function getProfitByBillingType(rows: ProfitReportRow[]): BreakdownRow[] 
 
 export interface ConsultantProfitRow {
   consultantId: string;
+  /** Approved discounts on this consultant's consultation fees — `revenue` is already net of it. */
+  discount: number;
   revenue: number;
   itemCount: number;
   /** null when none of this consultant's rows have a known cost yet (see ProfitReportRow.cost) —
@@ -151,10 +165,11 @@ export interface ConsultantProfitRow {
  * comment). A Consultation row billed before this field existed has no billedConsultantId and
  * is simply excluded rather than grouped under a misleading "Unknown" bucket. */
 export function getProfitByConsultant(rows: ProfitReportRow[]): ConsultantProfitRow[] {
-  const totals = new Map<string, { revenue: number; cost: number; hasCost: boolean; profit: number; itemCount: number }>();
+  const totals = new Map<string, { discount: number; revenue: number; cost: number; hasCost: boolean; profit: number; itemCount: number }>();
   for (const row of rows) {
     if (row.billingType !== 'Consultation' || !row.billedConsultantId) continue;
-    const entry = totals.get(row.billedConsultantId) ?? { revenue: 0, cost: 0, hasCost: false, profit: 0, itemCount: 0 };
+    const entry = totals.get(row.billedConsultantId) ?? { discount: 0, revenue: 0, cost: 0, hasCost: false, profit: 0, itemCount: 0 };
+    entry.discount += row.discount;
     entry.revenue += row.revenue;
     entry.itemCount += 1;
     if (row.cost !== null) {
@@ -166,6 +181,7 @@ export function getProfitByConsultant(rows: ProfitReportRow[]): ConsultantProfit
   }
   return Array.from(totals, ([consultantId, t]) => ({
     consultantId,
+    discount: t.discount,
     revenue: t.revenue,
     itemCount: t.itemCount,
     cost: t.hasCost ? t.cost : null,

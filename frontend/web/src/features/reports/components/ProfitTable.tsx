@@ -8,7 +8,7 @@ interface ProfitTableProps {
   rows: ProfitReportRow[];
 }
 
-/** "—" for cost/profit/margin means unknown (Pharmacy, a Laboratory package, or a service
+/** "—" in the Discount column means none was given; "—" for cost/profit/margin means unknown (Pharmacy, a Laboratory package, or a service
  * never costed) — never rendered as ₹0 or 0%, which would misreport it as confirmed free. */
 function formatMaybeCurrency(value: number | null): string {
   return value === null ? '—' : formatCurrency(value);
@@ -17,7 +17,7 @@ function formatMaybeCurrency(value: number | null): string {
 export function ProfitTable({ rows }: ProfitTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[1100px] text-sm">
+      <table className="w-full min-w-[1250px] text-sm">
         <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             <th className="px-4 py-2.5">Date</th>
@@ -28,6 +28,8 @@ export function ProfitTable({ rows }: ProfitTableProps) {
             <th className="px-4 py-2.5">Department</th>
             <th className="px-4 py-2.5">Consultant</th>
             <th className="px-4 py-2.5 text-right">Qty</th>
+            <th className="px-4 py-2.5 text-right">Charge</th>
+            <th className="px-4 py-2.5 text-right">Discount</th>
             <th className="px-4 py-2.5 text-right">Revenue</th>
             <th className="px-4 py-2.5 text-right">Cost</th>
             <th className="px-4 py-2.5 text-right">Profit</th>
@@ -53,6 +55,10 @@ export function ProfitTable({ rows }: ProfitTableProps) {
               <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('department', row.departmentId)}</td>
               <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('consultant', row.billedConsultantId)}</td>
               <td className="px-4 py-3 text-right text-muted-foreground">{row.quantity}</td>
+              <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(row.charge)}</td>
+              <td className={`px-4 py-3 text-right ${row.discount > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {row.discount > 0 ? `−${formatCurrency(row.discount)}` : '—'}
+              </td>
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(row.revenue)}</td>
               <td className="px-4 py-3 text-right text-muted-foreground">{formatMaybeCurrency(row.cost)}</td>
               <td className={`px-4 py-3 text-right font-medium ${row.profit === null ? 'text-muted-foreground' : row.profit < 0 ? 'text-destructive' : 'text-success'}`}>
