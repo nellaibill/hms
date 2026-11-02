@@ -64,7 +64,9 @@ export function OpdConsultAfterBillingBanner({ consultationId, patientId, visitI
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-sm">
       <span className="flex items-center gap-2 text-foreground">
         <Info className="h-4 w-4 shrink-0 text-info" />
-        Opened from OPD Consult — the consultation can start once this visit's Payment Status is Paid.
+        {status === 'OnHold'
+          ? 'Opened from OPD Consult — this visit’s bill is on hold until its discount is decided; the consultation can start once it’s paid.'
+          : 'Opened from OPD Consult — the consultation can start once this visit’s Payment Status is Paid.'}
       </span>
       <div className="flex items-center gap-3">
         {nextUnpaidInvoiceId && (
