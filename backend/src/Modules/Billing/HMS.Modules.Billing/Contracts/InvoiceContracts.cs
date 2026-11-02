@@ -208,6 +208,9 @@ public record RecentPatientBillResponse
     /// invoice's CreatedAt otherwise, so this column is always populated.</summary>
     public DateTime AppointmentDateTime { get; init; }
 
+    /// <summary>The bill's approved discount (ADR-109/111) — <see cref="NetAmount"/> is already
+    /// net of it. A discount still waiting for approval isn't on the bill yet, so it's 0 here.</summary>
+    public decimal TotalDiscount { get; init; }
     public decimal NetAmount { get; init; }
     public PaymentStatus PaymentStatus { get; init; }
     public bool IsVoided { get; init; }

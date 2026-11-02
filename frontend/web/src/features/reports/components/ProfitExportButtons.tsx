@@ -16,7 +16,7 @@ function buildSections(rows: ProfitReportRow[]): ReportSection[] {
   return [
     {
       heading: 'Profit by Service Line',
-      headers: ['Date', 'Invoice', 'Patient', 'Type', 'Service', 'Qty', 'Revenue', 'Cost', 'Profit', 'Margin %'],
+      headers: ['Date', 'Invoice', 'Patient', 'Type', 'Service', 'Qty', 'Charge', 'Discount', 'Revenue', 'Cost', 'Profit', 'Margin %'],
       rows: rows.map((row) => [
         row.date,
         row.invoiceNumber ?? row.invoiceId,
@@ -24,6 +24,8 @@ function buildSections(rows: ProfitReportRow[]): ReportSection[] {
         row.billingType,
         row.serviceLabel,
         row.quantity,
+        row.charge,
+        row.discount,
         row.revenue,
         row.cost ?? '—',
         row.profit ?? '—',

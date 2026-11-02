@@ -591,6 +591,7 @@ internal class InvoiceService : IInvoiceService
                     .Select(c => new RecentBillConsultationResponse { DepartmentId = c.DepartmentId, ConsultantId = c.ConsultantId })
                     .ToList() ?? [],
                 AppointmentDateTime = visit?.CreatedAt ?? invoice.CreatedAt,
+                TotalDiscount = invoice.TotalDiscount,
                 NetAmount = invoice.NetAmount,
                 PaymentStatus = invoice.PaymentStatus,
                 IsVoided = invoice.IsVoided,

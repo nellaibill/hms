@@ -99,6 +99,9 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                       <PaymentStatusBadge status={bill.paymentStatus} />
                     )}
                     <span className="font-medium tabular-nums text-foreground">{formatCurrency(bill.netAmount)}</span>
+                    {bill.totalDiscount > 0 && (
+                      <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">after {formatCurrency(bill.totalDiscount)} discount</span>
+                    )}
                   </div>
                 </td>
               </tr>

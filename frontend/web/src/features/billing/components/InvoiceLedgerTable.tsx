@@ -43,6 +43,7 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
             <th className="px-4 py-2.5">{sortButton('patientName', 'Patient')}</th>
             <th className="px-4 py-2.5">{sortButton('createdAt', 'Date')}</th>
             <th className="px-4 py-2.5">Items</th>
+            <th className="px-4 py-2.5 text-right">Discount</th>
             <th className="px-4 py-2.5 text-right">{sortButton('netAmount', 'Net Amount')}</th>
             <th className="px-4 py-2.5">Status</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
@@ -65,6 +66,9 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
               <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(billing.createdAt).toLocaleDateString('en-IN')}</td>
               <td className="px-4 py-3 text-muted-foreground">
                 {billing.items.length} item{billing.items.length === 1 ? '' : 's'}
+              </td>
+              <td className={`whitespace-nowrap px-4 py-3 text-right ${billing.totalDiscount > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {billing.totalDiscount > 0 ? `−${formatCurrency(billing.totalDiscount)}` : '—'}
               </td>
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(billing.netAmount)}</td>
               <td className="px-4 py-3">
