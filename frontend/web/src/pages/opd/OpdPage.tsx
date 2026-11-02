@@ -2,6 +2,7 @@ import type { AdmissionStatus, InvoicePaymentStatus, LabOrderItemStatus, OpdCons
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, BadgePercent, BedDouble, CalendarClock, Flag, FlaskConical, Stethoscope, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
 import { MyDiscountApprovals, useMyPendingDiscountApprovalCountQuery } from '@/features/billing';
@@ -46,6 +47,25 @@ export default function OpdPage() {
   const [page, setPage] = useState(1);
   // A consultant's own Discount Approvals tab (ADR-111) — its badge counts the ones waiting.
   const { data: pendingDiscountCount = 0 } = useMyPendingDiscountApprovalCountQuery(Boolean(scopedConsultantId));
+  // The header's Tasks menu links a consultant here with ?tab=discounts. The parameter is dropped
+  // once applied, so the next link from the menu switches the tab again.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openDiscounts = searchParams.get('tab') === 'discounts';
+  useEffect(() => {
+    if (!openDiscounts) return;
+    if (scopedConsultantId) {
+      setTab('discounts');
+      setPage(1);
+    }
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.delete('tab');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [openDiscounts, scopedConsultantId, setSearchParams]);
   // Same key prefixes handleRefresh invalidates — drives the Refresh button's spinner.
   const isRefreshing = useIsFetching({ queryKey: tab === 'admissions' ? ['ipd', 'admissions'] : ['opd'] }) > 0;
 
