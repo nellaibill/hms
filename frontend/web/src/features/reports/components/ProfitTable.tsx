@@ -63,8 +63,8 @@ export function ProfitTable({ rows }: ProfitTableProps) {
               <td className="px-4 py-3 text-right text-muted-foreground">
                 {formatMaybeCurrency(row.cost)}
                 {row.costDiscount > 0 && (
-                  // ADR-112: the consultant's share carries the consultation discount.
-                  <div className="whitespace-nowrap text-xs" title="The discount comes out of the consultant's share, not the hospital's">
+                  // ADR-113: the consultant's share takes the same percentage off as the fee.
+                  <div className="whitespace-nowrap text-xs" title="The discount comes off the consultant's share and the hospital's part by the same percentage">
                     {formatCurrency((row.cost ?? 0) + row.costDiscount)} share − {formatCurrency(row.costDiscount)}
                   </div>
                 )}

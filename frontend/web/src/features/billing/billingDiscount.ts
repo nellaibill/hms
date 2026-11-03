@@ -64,6 +64,31 @@ export function allocateDiscount(lines: Pick<DiscountableLine, 'id' | 'amount'>[
   return shares.filter((share) => share.amount > 0).map((share) => ({ lineId: share.id, amount: share.amount }));
 }
 
+/** A discount as typed in the Add discount pop-up — a ₹ amount, or a % of the line's charge. */
+export interface DiscountEntry {
+  mode: 'amount' | 'percent';
+  text: string;
+}
+
+/**
+ * The whole rupees `entry` takes off `charge`: a ₹ amount as typed, or a % of the charge rounded
+ * to the nearest rupee and never past the whole charge (30% of ₹250 is ₹75; 33% is ₹83). Blank is
+ * 0; NaN when the text isn't a whole ₹ amount or a % from 0 to 100.
+ */
+export function resolveDiscountEntry(entry: DiscountEntry, charge: number): number {
+  const text = entry.text.trim();
+  if (text === '') return 0;
+  const value = Number(text);
+  if (entry.mode === 'amount') return Number.isInteger(value) && value >= 0 ? value : NaN;
+  if (!Number.isFinite(value) || value < 0 || value > 100) return NaN;
+  return Math.min(Math.round((charge * value) / 100), Math.floor(charge));
+}
+
+/** `amount` as a % of `charge`, to two decimals at most ("40", "33.2") — blank for none. */
+export function toPercentText(amount: number, charge: number): string {
+  return amount > 0 && charge > 0 ? String(Math.round((amount / charge) * 10_000) / 100) : '';
+}
+
 /** A snapshot of the bill's lines (id and charge) — a form discount was worked out against one
  * exact set of lines, so once this changes (a line added, removed or re-priced) it no longer
  * fits the bill and has to be applied again. */
@@ -86,8 +111,8 @@ export const COMMON_DISCOUNT_REASONS: readonly string[] = [
   'Charity case',
 ];
 
-/** "₹100" or "10%" — how the counter entered it. New discounts are always ₹ amounts entered
- * line by line; "%" only appears on requests raised before that change. */
+/** "₹100" or "10%" — how the counter entered it. A discount is "%" when every line it covers
+ * took the same % (ADR-113), e.g. 30% on the whole bill; otherwise it's the lines' ₹ total. */
 export function describeDiscountEntry(type: InvoiceDiscountType, value: number): string {
   return type === 'Percent' ? `${value}%` : `₹${Math.round(value).toLocaleString('en-IN')}`;
 }
