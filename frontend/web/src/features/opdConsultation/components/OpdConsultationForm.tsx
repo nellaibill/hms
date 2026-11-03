@@ -570,7 +570,8 @@ interface OpdConsultationFormProps {
   isSavingDraft: boolean;
   isCompleting: boolean;
   isReopening: boolean;
-  canReopen: boolean;
+  /** clinical-care.edit — needed to save, complete or reopen the note. Without it the note is view-only. */
+  canEdit: boolean;
   apiError: ApiError | null;
   onSaveDraft: (values: SaveOpdConsultationRequest) => void;
   onComplete: (values: SaveOpdConsultationRequest) => void;
@@ -585,7 +586,8 @@ interface OpdConsultationFormProps {
  * Referral, matching the attached mockup's functional sections but with this app's own plain
  * muted-header Card convention (MasterForm's fieldGroup style) rather than the mockup's
  * per-section colors — see the approved plan for why. Read-only once the note's own Status is
- * Completed (OpdConsultationPage passes readOnly down via disabling this same form's controls).
+ * Completed (OpdConsultationPage passes readOnly down via disabling this same form's controls),
+ * and always for a user without clinical-care.edit (ADR-114: only a doctor edits the note).
  *
  * Save Draft uses this form's own (lenient) resolver — nothing is required. Complete
  * Consultation re-validates the current values against the stricter completeOpdConsultationSchema
@@ -597,7 +599,7 @@ export function OpdConsultationForm({
   isSavingDraft,
   isCompleting,
   isReopening,
-  canReopen,
+  canEdit,
   apiError,
   onSaveDraft,
   onComplete,
@@ -621,7 +623,10 @@ export function OpdConsultationForm({
   });
 
   const { hasFeature } = useAuth();
-  const readOnly = note.status === 'Completed';
+  const isCompleted = note.status === 'Completed';
+  // Every save on this note needs clinical-care.edit, so without it (e.g. the front desk) the
+  // fields lock like a Completed note's and Save Draft / Complete show disabled.
+  const readOnly = isCompleted || !canEdit;
   const heightCm = watch('heightCm');
   const weightKg = watch('weightKg');
   // Only for values the form would accept (height 0–300 cm, weight 0–500 kg, both above 0) — an
@@ -786,13 +791,14 @@ export function OpdConsultationForm({
       </fieldset>
 
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        {!readOnly && (
-          <>
-            <Button type="submit" variant="outline" disabled={isSavingDraft} className="gap-1.5">
+        {!isCompleted && (
+          // A disabled Button has pointer-events-none, so the hover note sits on this wrapper.
+          <span className="flex flex-wrap gap-3" title={canEdit ? undefined : 'Only a doctor can edit a consultation.'}>
+            <Button type="submit" variant="outline" disabled={!canEdit || isSavingDraft} className="gap-1.5">
               <Save className="h-4 w-4" />
               {isSavingDraft ? 'Saving…' : 'Save Draft'}
             </Button>
-            <Button type="button" disabled={isCompleting} className="gap-1.5" onClick={handleCompleteClick}>
+            <Button type="button" disabled={!canEdit || isCompleting} className="gap-1.5" onClick={handleCompleteClick}>
               <Stethoscope className="h-4 w-4" />
               {isCompleting ? (
                 'Completing…'
@@ -802,9 +808,9 @@ export function OpdConsultationForm({
                 </>
               )}
             </Button>
-          </>
+          </span>
         )}
-        {readOnly && canReopen && (
+        {isCompleted && canEdit && (
           <Button type="button" variant="outline" disabled={isReopening} className="gap-1.5" onClick={onReopen}>
             <RotateCcw className="h-4 w-4" />
             {isReopening ? 'Reopening…' : 'Reopen'}
