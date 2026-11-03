@@ -39,6 +39,8 @@ function wasNeverSeen(row: OpdPatientListItem): boolean {
   return row.status === 'AutoCompleted' && row.autoCompletedFrom !== 'InConsultation';
 }
 
+const CONSULT_NOT_ALLOWED = 'Only a doctor can start a consultation.';
+
 const PAGE_SIZE = 10;
 
 // Includes the date, not just the time — the From/To filter above can span more than one day,
@@ -79,6 +81,9 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
 
   const { getStatus: getPaymentStatus, getUnpaidInvoiceIds } = useVisitPaymentStatusesQuery((data?.items ?? []).map((row) => row.patientId));
   const { hasPermission } = useAuth();
+  // Only a doctor starts a consultation — the same clinical-care.edit the start-consultation
+  // endpoint requires. Anyone else (e.g. the front desk) sees Consult disabled.
+  const canConsult = hasPermission('clinical-care.edit');
   const [billingRequired, setBillingRequired] = useState<{ row: OpdPatientListItem; status: OpdBlockedPaymentStatus } | null>(null);
 
   // Only a visit whose Payment Status is Paid can be consulted — anything else gets the
@@ -128,6 +133,12 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
       {isError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error instanceof Error ? error.message : 'Failed to load OPD patients.'}
+        </p>
+      )}
+
+      {startConsultation.isError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {startConsultation.error instanceof Error ? startConsultation.error.message : 'Could not start the consultation.'}
         </p>
       )}
 
@@ -185,15 +196,18 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           {CONSULTABLE_STATUSES.includes(row.status) ? (
-                            <Button
-                              size="sm"
-                              className="gap-1.5"
-                              disabled={startConsultation.isPending || getPaymentStatus(row.patientId, row.visitId) === 'Loading'}
-                              onClick={() => handleConsult(row)}
-                            >
-                              <Stethoscope className="h-3.5 w-3.5" />
-                              Consult
-                            </Button>
+                            // A disabled Button has pointer-events-none, so the hover note sits on this wrapper.
+                            <span className="inline-block" title={canConsult ? undefined : CONSULT_NOT_ALLOWED}>
+                              <Button
+                                size="sm"
+                                className="gap-1.5"
+                                disabled={!canConsult || startConsultation.isPending || getPaymentStatus(row.patientId, row.visitId) === 'Loading'}
+                                onClick={() => handleConsult(row)}
+                              >
+                                <Stethoscope className="h-3.5 w-3.5" />
+                                Consult
+                              </Button>
+                            </span>
                           ) : hasConsultationNote(row) ? (
                             <Button
                               size="sm"

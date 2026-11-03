@@ -1,6 +1,7 @@
 import { CircleCheck, Info, Loader2, Stethoscope } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 import { invoicePathForConsult } from '../consultBillingLinks';
 import { useStartConsultationMutation } from '../hooks/useStartConsultationMutation';
 import { useVisitPaymentStatusesQuery } from '../hooks/useVisitPaymentStatusesQuery';
@@ -24,6 +25,8 @@ export function OpdConsultAfterBillingBanner({ consultationId, patientId, visitI
   const startConsultation = useStartConsultationMutation();
   const { getStatus, getUnpaidInvoiceIds } = useVisitPaymentStatusesQuery([patientId]);
   const status = getStatus(patientId, visitId);
+  // Same rule as the OPD Patient List's Consult: only a doctor (clinical-care.edit) starts it.
+  const canConsult = useAuth().hasPermission('clinical-care.edit');
 
   if (status === 'Loading') return null;
 
@@ -35,19 +38,22 @@ export function OpdConsultAfterBillingBanner({ consultationId, patientId, visitI
           This visit is fully paid — the consultation can go ahead.
         </span>
         <div className="flex flex-col items-end gap-1">
-          <Button
-            size="sm"
-            className="gap-1.5"
-            disabled={startConsultation.isPending}
-            onClick={() =>
-              startConsultation.mutate(consultationId, {
-                onSuccess: () => navigate(`/clinical/opd/consultations/${consultationId}`),
-              })
-            }
-          >
-            {startConsultation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Stethoscope className="h-3.5 w-3.5" />}
-            Continue to Consultation
-          </Button>
+          {/* A disabled Button has pointer-events-none, so the hover note sits on this wrapper. */}
+          <span className="inline-block" title={canConsult ? undefined : 'Only a doctor can start a consultation.'}>
+            <Button
+              size="sm"
+              className="gap-1.5"
+              disabled={!canConsult || startConsultation.isPending}
+              onClick={() =>
+                startConsultation.mutate(consultationId, {
+                  onSuccess: () => navigate(`/clinical/opd/consultations/${consultationId}`),
+                })
+              }
+            >
+              {startConsultation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Stethoscope className="h-3.5 w-3.5" />}
+              Continue to Consultation
+            </Button>
+          </span>
           {startConsultation.isError && (
             <span role="alert" className="text-xs text-destructive">
               {startConsultation.error instanceof Error ? startConsultation.error.message : 'Could not start the consultation.'}

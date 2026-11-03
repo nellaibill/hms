@@ -175,7 +175,7 @@ export default function OpdConsultationPage() {
           isSavingDraft={saveDraftMutation.isPending}
           isCompleting={completeMutation.isPending}
           isReopening={reopenMutation.isPending}
-          canReopen={canEdit}
+          canEdit={canEdit}
           apiError={activeError instanceof ApiError ? activeError : null}
           onSaveDraft={handleSaveDraft}
           onComplete={handleComplete}
