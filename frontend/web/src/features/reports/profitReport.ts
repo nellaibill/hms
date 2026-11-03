@@ -40,8 +40,14 @@ export interface ProfitReportRow {
    * yet costed (see resolveItemCostPrice) — kept alongside `cost` for a per-unit column. */
   costPerUnit: number | null;
   /** quantity × costPerUnit, or null when costPerUnit is null — null must never collapse
-   * to 0 here, or a report reader would mistake "unknown cost" for "confirmed free." */
+   * to 0 here, or a report reader would mistake "unknown cost" for "confirmed free." For a
+   * Consultation line this is the consultant's share, and the line's discount comes out of it
+   * first (ADR-112) — see `costDiscount`. */
   cost: number | null;
+  /** How much of the line's discount came off `cost` rather than off the hospital's profit:
+   * for a Consultation line, the discount up to the consultant's full share (ADR-112); 0 for
+   * every other line, whose cost isn't anyone's share of the fee. */
+  costDiscount: number;
   /** revenue − cost, or null when cost is null. */
   profit: number | null;
   /** profit / revenue as a whole-number percent, or null when profit is null. Revenue of 0
@@ -61,7 +67,11 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
     for (const item of billing.items) {
       const { serviceLabel } = describeBillingItem(item);
       const costPerUnit = resolveItemCostPrice(item);
-      const cost = costPerUnit === null ? null : costPerUnit * item.quantity;
+      const fullCost = costPerUnit === null ? null : costPerUnit * item.quantity;
+      // ADR-112: a consultation discount comes out of the consultant's share first, so the
+      // hospital keeps its part of the fee; only a discount bigger than that share reaches it.
+      const costDiscount = fullCost !== null && item.billingType === 'Consultation' ? Math.min(item.discount, fullCost) : 0;
+      const cost = fullCost === null ? null : fullCost - costDiscount;
       const profit = cost === null ? null : item.total - cost;
       const marginPercent = profit === null || item.total <= 0 ? null : Math.round((profit / item.total) * 100);
 
@@ -82,6 +92,7 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
         revenue: item.total,
         costPerUnit,
         cost,
+        costDiscount,
         profit,
         marginPercent,
       });
