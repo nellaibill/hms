@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-114: Only a doctor can start an OPD consultation; Consult is disabled for everyone else
+**Date:** 2026-11-03
+**Status:** Accepted (amends ADR-107)
+
+**Context**
+A Receptionist clicking **Consult** on `/clinical/opd` got a 403 from `POST /api/v1/opd/consultations/{id}/start-consultation`. That endpoint needs `clinical-care.edit`, and the front desk role has only `clinical-care.view`. The button was shown to everyone, and a failed start showed nothing on the list. Management confirmed that only doctors start consultations.
+
+**Decision**
+- **Consult** on the OPD Patient List and **Continue to Consultation** on the billing banner (`OpdConsultAfterBillingBanner`) are disabled without `clinical-care.edit`. Hovering shows "Only a doctor can start a consultation." The buttons stay visible so the front desk still sees which rows are waiting.
+- The rule follows the permission, not the role name, matching the endpoint. Any role with `clinical-care.edit` (Doctor / Consultant, Super Admin) can still Consult.
+- If starting a consultation fails for any other reason (for example a 409 when the status has already moved on), the OPD Patient List now shows the error above the table.
+
+**Consequences**
+- Web app only. The endpoint already enforced the rule, so there are no API, permission or data changes.
+- The front desk no longer reaches billing through the ADR-107 "Payment required" pop-up, since that pop-up opens from Consult. They bill from OPD Billing Entry or the invoice as usual. The Payment Status column still shows each visit's status.
+
+---
+
 ### ADR-113: A consultation discount is shared by the consultant and the hospital at the same percentage; discounts can be typed as a %
 **Date:** 2026-11-03
 **Status:** Accepted (supersedes ADR-112)
