@@ -37,9 +37,42 @@ _To be documented._
 
 ## Decisions
 
+### ADR-113: A consultation discount is shared by the consultant and the hospital at the same percentage; discounts can be typed as a %
+**Date:** 2026-11-03
+**Status:** Accepted (supersedes ADR-112)
+
+**Context**
+Management changed the ADR-112 rule. A discount on a consultation fee should not come only from the consultant's share. It should come off the consultant's share and the hospital's part **at the same percentage**. For example, ₹100 off a ₹250 fee is 40% off, so the ₹200 consultant share becomes ₹120 and the hospital's ₹50 becomes ₹30. They also asked to enter a discount as a percentage again, next to the ₹ amount. Percentage entry was dropped from the screen when line-wise ₹ entry came in (ADR-109, amended 2026-11-01).
+
+**Decision**
+- **Profit split.** In the profit reports (`features/reports/profitReport.ts`), a **Consultation** line's approved discount comes off its cost (the consultant's share) in proportion to the fee: `costDiscount = share × discount ÷ charge`, rounded to the paisa, and `cost = share − costDiscount`. Revenue stays charge − discount and profit is revenue − cost, so the hospital's part drops by the same percentage. For a ₹250 fee with a ₹200 share:
+
+  | Discount | % off | Revenue | Consultant | Hospital profit |
+  |---|---|---|---|---|
+  | none | 0% | ₹250 | ₹200 | ₹50 |
+  | ₹100 | 40% | ₹150 | ₹120 | ₹30 |
+  | ₹75 | 30% | ₹175 | ₹140 | ₹35 |
+  | ₹220 | 88% | ₹30 | ₹24 | ₹6 |
+  | ₹250 (100%) | 100% | ₹0 | ₹0 | ₹0 |
+
+  Other lines are unchanged: a laboratory, radiology or procedure line's cost is the service's running cost, so a discount on it lowers only the hospital's profit. The Cost cell still reads e.g. "₹120" over "₹200 share − ₹80". Totals, margins, breakdowns, the Consultant report and the exports use the reduced cost.
+- **% or ₹ entry.** In the Add discount pop-up each line, and the Whole bill row, has a **Discount %** box and a **Discount ₹** box. Typing in one fills the other:
+  - A % is a percentage of the line's charge, from 0 to 100 with up to two decimals. It becomes whole rupees, rounded to the nearest rupee and never more than the charge (30% of ₹250 is ₹75; 33% is ₹83).
+  - A % on Whole bill puts the same % on every line. A ₹ amount on Whole bill is still split in proportion to the charges.
+  - The bill always takes each line's ₹ discount, so the API and the stored line discounts are unchanged.
+  - The request records `DiscountType = Percent` with that % as `DiscountValue` only when every discounted line was typed as the same %. Otherwise it records `Amount` with the ₹ total. The approval screens already show a Percent request as "₹75 off … (30%)".
+- **Approvals are unchanged** (ADR-111). The billed consultant, or a Super Admin on their behalf, still decides a discount on their consultation fee, even though the hospital's part now shares it.
+
+**Consequences**
+- Calculation and screen only, all in the web app: nothing stored changes, old bills are re-read under the new split, and there is no migration and no API restart.
+- Under the new rule a consultant's earnings and the hospital's profit both fall with any consultation discount, and the hospital's margin on a consultation line stays at its undiscounted percentage.
+- Rounding a % to whole rupees can leave the recorded % a little off the exact ₹ figure (33% of ₹250 is recorded as 33%, billed as ₹83, which is 33.2%).
+
+---
+
 ### ADR-112: A consultation discount comes out of the consultant's share first; the hospital's part of the fee is untouched
 **Date:** 2026-11-03
-**Status:** Accepted
+**Status:** Superseded by ADR-113 (same day — management asked for the discount to be shared at the same percentage instead)
 
 **Context**
 A consultation fee is split between the consultant and the hospital. The consultant's share is their charge for that consultation type (`Consultant.consultationTypeCharges`), which the profit reports already use as the line's cost; the rest is the hospital's. For example, a ₹250 fee with a ₹200 consultant charge leaves ₹50 for the hospital. Since ADR-109/111 a discount can be given on that fee, and the reports took it all from revenue: ₹100 off showed revenue ₹150, cost ₹200 and a **−₹50** profit, as if the hospital paid for the discount. Hospital rule: the consultant gives the discount from their own share. The hospital's part is only reduced when the discount is more than the consultant's whole share, e.g. a 100% discount.

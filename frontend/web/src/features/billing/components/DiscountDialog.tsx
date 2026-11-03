@@ -8,19 +8,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { mergeSuggestions } from '@/lib/suggestions';
 import { cn } from '@/lib/utils';
-import { allocateDiscount, COMMON_DISCOUNT_REASONS, describeDiscountApprovers, type DiscountAllocation, type DiscountableLine } from '../billingDiscount';
+import {
+  allocateDiscount,
+  COMMON_DISCOUNT_REASONS,
+  describeDiscountApprovers,
+  resolveDiscountEntry,
+  toPercentText,
+  type DiscountAllocation,
+  type DiscountableLine,
+  type DiscountEntry,
+} from '../billingDiscount';
 import { formatCurrency } from '../billingCalculations';
 import { useDiscountReasonSuggestionsQuery } from '../hooks/useInvoiceDiscount';
 
-/** Bill line | Charge | Discount (₹) | Net — the last three collapse under the line on a phone. */
-const rowGridClassName = 'grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_8rem_6.5rem]';
+/** Bill line | Charge | Discount % | Discount ₹ | Net — Charge and Net collapse under the line
+ * on a phone. */
+const rowGridClassName =
+  'grid grid-cols-[minmax(0,1fr)_4rem_5rem] items-center gap-x-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_6rem_5.5rem_7rem_6.5rem] sm:gap-x-3';
 
 export interface DiscountDialogResult {
-  /** Always 'Amount' — each line's discount is a ₹ figure and `value` is their total. */
+  /** 'Percent' when every discounted line took the same typed % (30% on the whole bill, say) —
+   * `value` is then that %; otherwise 'Amount' and `value` is the lines' ₹ total. */
   type: InvoiceDiscountType;
   value: number;
   reason: string;
-  /** Each discounted line's ₹ discount, in whole rupees; lines left at zero are left out. */
+  /** Each discounted line's ₹ discount, in whole rupees; lines left at zero are left out. This
+   * is what the bill takes, however the discount was typed. */
   allocations: DiscountAllocation[];
 }
 
@@ -29,8 +42,8 @@ interface DiscountDialogProps {
   lines: DiscountableLine[];
   /** The bill's whole net amount before this discount — lines that can't be discounted included. */
   billTotal: number;
-  /** A discount already on the form — its lines' amounts are filled back in. */
-  initial?: { reason: string; allocations: DiscountAllocation[] };
+  /** A discount already on the form — its lines' amounts, or its %, are filled back in. */
+  initial?: { type: InvoiceDiscountType; value: number; reason: string; allocations: DiscountAllocation[] };
   /** True for anyone but a Super Admin — the discount then waits for approval. */
   needsApproval: boolean;
   confirmLabel: string;
@@ -42,47 +55,55 @@ interface DiscountDialogProps {
   onCancel: () => void;
 }
 
-/** Blank reads as no discount; anything that isn't a number reads as NaN. */
-function parseAmount(text: string | undefined): number {
-  return !text || text.trim() === '' ? 0 : Number(text);
-}
-
-function isValidAmount(amount: number): boolean {
-  return Number.isInteger(amount) && amount >= 0;
-}
+const NO_DISCOUNT: DiscountEntry = { mode: 'amount', text: '' };
 
 function toAmountText(amount: number): string {
   return amount > 0 ? String(amount) : '';
 }
 
-/** A typed amount above `max` is cut back to it as it's typed: a discount can never be more than
- * the charge it comes off (whole rupees, so a ₹99.50 charge caps at ₹99). */
-function capAmountText(text: string, max: number): string {
-  const amount = parseAmount(text);
-  return Number.isFinite(amount) && amount > max ? String(Math.floor(max)) : text;
+/** Holds what's typed to a sensible figure as it's typed: a ₹ amount above `max` is cut back to it
+ * (a discount can never be more than the charge it comes off — whole rupees, so a ₹99.50 charge
+ * caps at ₹99), and a % to 100 with two decimals at most. */
+function capEntry(entry: DiscountEntry, max: number): DiscountEntry {
+  const value = Number(entry.text);
+  if (entry.mode === 'percent') {
+    return { mode: 'percent', text: Number.isFinite(value) && value > 100 ? '100' : entry.text.replace(/(\.\d{2})\d+$/, '$1') };
+  }
+  return { mode: 'amount', text: Number.isFinite(value) && value > max ? String(Math.floor(max)) : entry.text };
 }
 
-function sumOfLines(lines: DiscountableLine[], texts: Record<string, string>): number {
+function sumOfLines(lines: DiscountableLine[], entries: Record<string, DiscountEntry>): number {
   return lines.reduce((sum, line) => {
-    const amount = parseAmount(texts[line.id]);
-    return isValidAmount(amount) ? sum + amount : sum;
+    const amount = resolveDiscountEntry(entries[line.id] ?? NO_DISCOUNT, line.amount);
+    return Number.isNaN(amount) ? sum : sum + amount;
   }, 0);
 }
 
 /**
- * "Add discount" (ADR-109) — a ₹ discount against each bill line (consultation, radiology,
- * laboratory, procedure, injection…), and a reason. When the bill has more than one line, a
- * "Whole bill" row takes one amount and splits it across the lines in proportion to their
- * charges, after which any line can still be changed; the Whole bill figure always shows the lines'
- * total. Used both while making a bill (BillingSummaryCard) and on a saved, unpaid bill
- * (RequestDiscountButton).
+ * "Add discount" (ADR-109) — a discount against each bill line (consultation, radiology,
+ * laboratory, procedure, injection…), typed as a % of the line's charge or a ₹ amount (ADR-113),
+ * and a reason. Whichever box is typed in, the other shows what it comes to. When the bill has more
+ * than one line, a "Whole bill" row takes one % — the same % off every line — or one ₹ amount,
+ * split across the lines in proportion to their charges; any line can still be changed afterwards,
+ * and the Whole bill row then shows the lines' total. Used both while making a bill
+ * (BillingSummaryCard) and on a saved, unpaid bill (RequestDiscountButton).
  */
 export function DiscountDialog({ lines, billTotal, initial, needsApproval, confirmLabel, isSaving, error, onConfirm, onRemove, onCancel }: DiscountDialogProps) {
-  const [lineTexts, setLineTexts] = useState<Record<string, string>>(() => {
+  const [lineEntries, setLineEntries] = useState<Record<string, DiscountEntry>>(() => {
     const initialById = new Map(initial?.allocations.map((allocation) => [allocation.lineId, allocation.amount]));
-    return Object.fromEntries(lines.map((line) => [line.id, toAmountText(initialById.get(line.id) ?? 0)]));
+    return Object.fromEntries(
+      lines.map((line): [string, DiscountEntry] => {
+        const amount = initialById.get(line.id) ?? 0;
+        // A % discount comes back as that % on each line it covered.
+        return [line.id, initial?.type === 'Percent' && amount > 0 ? { mode: 'percent', text: String(initial.value) } : { mode: 'amount', text: toAmountText(amount) }];
+      }),
+    );
   });
-  const [wholeText, setWholeText] = useState(() => toAmountText(sumOfLines(lines, lineTexts)));
+  const [wholeEntry, setWholeEntry] = useState<DiscountEntry>(() =>
+    initial?.type === 'Percent' && lines.every((line) => lineEntries[line.id]?.mode === 'percent')
+      ? { mode: 'percent', text: String(initial.value) }
+      : { mode: 'amount', text: toAmountText(sumOfLines(lines, lineEntries)) },
+  );
   const [reason, setReason] = useState(initial?.reason ?? '');
   const { data: usedReasons } = useDiscountReasonSuggestionsQuery();
   const reasonSuggestions = mergeSuggestions(usedReasons?.map((suggestion) => suggestion.reason) ?? [], COMMON_DISCOUNT_REASONS);
@@ -91,56 +112,73 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
   const showWholeBill = lines.length > 1;
   const linesTotal = lines.reduce((sum, line) => sum + line.amount, 0);
   const entries = lines.map((line) => {
-    const amount = parseAmount(lineTexts[line.id]);
-    const problem = !isValidAmount(amount)
-      ? `Enter the discount for ${line.label} in whole rupees.`
+    const entry = lineEntries[line.id] ?? NO_DISCOUNT;
+    const amount = resolveDiscountEntry(entry, line.amount);
+    const problem = Number.isNaN(amount)
+      ? entry.mode === 'percent'
+        ? `Enter the discount for ${line.label} as a % from 0 to 100.`
+        : `Enter the discount for ${line.label} in whole rupees.`
       : amount > line.amount
         ? `The discount for ${line.label} can’t be more than its charge (${formatCurrency(line.amount)}).`
         : null;
-    return { line, amount: problem ? 0 : amount, problem };
+    return { line, entry, amount: problem ? 0 : amount, problem };
   });
-  const wholeAmount = parseAmount(wholeText);
+  const wholeAmount = resolveDiscountEntry(wholeEntry, linesTotal);
   const totalDiscount = entries.reduce((sum, entry) => sum + entry.amount, 0);
   const trimmedReason = reason.trim();
-  const discountedLines = entries.filter((entry) => entry.amount > 0).map((entry) => entry.line);
+  const discounted = entries.filter((entry) => entry.amount > 0);
+  const discountedLines = discounted.map((entry) => entry.line);
+  // Recorded as a % only when it really was one: every discounted line typed as the same %.
+  const sharedPercent =
+    discounted.length > 0 && discounted.every((entry) => entry.entry.mode === 'percent' && Number(entry.entry.text) === Number(discounted[0].entry.text))
+      ? Number(discounted[0].entry.text)
+      : null;
 
   const problem =
     entries.find((entry) => entry.problem)?.problem ??
-    (!isValidAmount(wholeAmount)
-      ? 'Enter the whole-bill discount in whole rupees.'
+    (Number.isNaN(wholeAmount)
+      ? wholeEntry.mode === 'percent'
+        ? 'Enter the whole-bill discount as a % from 0 to 100.'
+        : 'Enter the whole-bill discount in whole rupees.'
       : wholeAmount > linesTotal
         ? `The whole-bill discount can’t be more than the bill’s total (${formatCurrency(linesTotal)}).`
         : totalDiscount === 0
           ? showWholeBill
             ? 'Enter a discount against at least one line, or for the whole bill.'
-            : 'Enter the discount amount.'
+            : 'Enter the discount as a % or a ₹ amount.'
           : trimmedReason.length === 0
             ? 'A reason is required — the Super Admin decides on it.'
             : null);
 
-  function handleWholeChange(typed: string) {
-    const text = capAmountText(typed, linesTotal);
-    setWholeText(text);
-    const amount = parseAmount(text);
-    const shares = new Map(allocateDiscount(lines, isValidAmount(amount) ? amount : 0).map((share) => [share.lineId, share.amount]));
-    setLineTexts(Object.fromEntries(lines.map((line) => [line.id, toAmountText(shares.get(line.id) ?? 0)])));
+  function handleWholeChange(typed: DiscountEntry) {
+    const entry = capEntry(typed, linesTotal);
+    setWholeEntry(entry);
+    const amount = resolveDiscountEntry(entry, linesTotal);
+    if (entry.mode === 'percent') {
+      // The same % off every line.
+      const text = Number.isNaN(amount) ? '' : entry.text;
+      setLineEntries(Object.fromEntries(lines.map((line): [string, DiscountEntry] => [line.id, { mode: 'percent', text }])));
+      return;
+    }
+    const shares = new Map(allocateDiscount(lines, Number.isNaN(amount) ? 0 : amount).map((share) => [share.lineId, share.amount]));
+    setLineEntries(Object.fromEntries(lines.map((line): [string, DiscountEntry] => [line.id, { mode: 'amount', text: toAmountText(shares.get(line.id) ?? 0) }])));
   }
 
-  function handleLineChange(id: string, typed: string) {
+  function handleLineChange(id: string, typed: DiscountEntry) {
     const charge = lines.find((line) => line.id === id)?.amount ?? 0;
-    const next = { ...lineTexts, [id]: capAmountText(typed, charge) };
-    setLineTexts(next);
-    setWholeText(toAmountText(sumOfLines(lines, next)));
+    const next = { ...lineEntries, [id]: capEntry(typed, charge) };
+    setLineEntries(next);
+    setWholeEntry({ mode: 'amount', text: toAmountText(sumOfLines(lines, next)) });
   }
 
   function handleConfirm() {
     setAttempted(true);
     if (problem) return;
     onConfirm({
-      type: 'Amount',
-      value: totalDiscount,
+      type: sharedPercent === null ? 'Amount' : 'Percent',
+      value: sharedPercent ?? totalDiscount,
       reason: trimmedReason,
-      allocations: entries.filter((entry) => entry.amount > 0).map((entry) => ({ lineId: entry.line.id, amount: entry.amount })),
+      allocations: discounted.map((entry) => ({ lineId: entry.line.id, amount: entry.amount })),
     });
   }
 
@@ -158,22 +196,25 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
           <DialogTitle id="discount-dialog-title">Add discount</DialogTitle>
           <DialogDescription>
             {showWholeBill
-              ? 'Enter a ₹ discount against each bill line, or one amount for the whole bill, and the reason.'
-              : 'Enter the ₹ discount and the reason.'}
+              ? 'Enter a discount against each bill line as a % or a ₹ amount, or one for the whole bill, and the reason.'
+              : 'Enter the discount as a % or a ₹ amount, and the reason.'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-2">
           <div className="flex flex-col divide-y divide-border rounded-md border border-border text-sm" role="table" aria-label="Discount by bill line">
-            <div role="row" className={cn(rowGridClassName, 'hidden bg-muted/50 text-xs font-medium text-muted-foreground sm:grid')}>
+            <div role="row" className={cn(rowGridClassName, 'bg-muted/50 text-xs font-medium text-muted-foreground')}>
               <span role="columnheader">Bill line</span>
-              <span role="columnheader" className="text-right">
+              <span role="columnheader" className="hidden text-right sm:block">
                 Charge
               </span>
               <span role="columnheader" className="text-right">
-                Discount (₹)
+                Discount %
               </span>
               <span role="columnheader" className="text-right">
+                Discount ₹
+              </span>
+              <span role="columnheader" className="hidden text-right sm:block">
                 Net
               </span>
             </div>
@@ -183,9 +224,9 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
                 id="discount-whole-bill"
                 label={`Whole bill (${lines.length} lines)`}
                 charge={linesTotal}
-                value={wholeText}
-                net={linesTotal - totalDiscount}
-                invalid={!isValidAmount(wholeAmount) || wholeAmount > linesTotal}
+                entry={wholeEntry}
+                amount={totalDiscount}
+                invalid={Number.isNaN(wholeAmount) || wholeAmount > linesTotal}
                 onChange={handleWholeChange}
                 emphasis
                 autoFocus
@@ -197,19 +238,19 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
                 id={`discount-line-${index}`}
                 label={entry.line.label}
                 charge={entry.line.amount}
-                value={lineTexts[entry.line.id] ?? ''}
-                net={entry.line.amount - entry.amount}
+                entry={entry.entry}
+                amount={entry.amount}
                 invalid={entry.problem !== null}
                 hint={needsApproval ? `${entry.line.approver ?? 'Super Admin'} approves` : undefined}
-                onChange={(text) => handleLineChange(entry.line.id, text)}
+                onChange={(typed) => handleLineChange(entry.line.id, typed)}
                 autoFocus={!showWholeBill && index === 0}
               />
             ))}
           </div>
           {showWholeBill && (
             <p className="text-xs text-muted-foreground">
-              An amount against <span className="font-medium text-foreground">Whole bill</span> is shared across the lines in proportion to
-              their charges — change any line afterwards if needed.
+              A % against <span className="font-medium text-foreground">Whole bill</span> comes off every line; a ₹ amount is shared across
+              the lines in proportion to their charges. Change any line afterwards if needed.
             </p>
           )}
         </div>
@@ -291,18 +332,25 @@ interface DiscountRowProps {
   id: string;
   label: string;
   charge: number;
-  value: string;
-  net: number;
+  /** What was typed, in the % box or the ₹ box. */
+  entry: DiscountEntry;
+  /** The ₹ discount the row comes to — shown in the box that wasn't typed in, and taken off the
+   * charge for Net. */
+  amount: number;
+  /** Marks the box that was typed in. */
   invalid: boolean;
   /** A small note under the line's name — who approves its discount. */
   hint?: string;
-  onChange: (text: string) => void;
+  onChange: (entry: DiscountEntry) => void;
   /** The Whole bill row — shaded and bold. */
   emphasis?: boolean;
   autoFocus?: boolean;
 }
 
-function DiscountRow({ id, label, charge, value, net, invalid, hint, onChange, emphasis, autoFocus }: DiscountRowProps) {
+function DiscountRow({ id, label, charge, entry, amount, invalid, hint, onChange, emphasis, autoFocus }: DiscountRowProps) {
+  const net = charge - amount;
+  const percentInvalid = invalid && entry.mode === 'percent';
+  const amountInvalid = invalid && entry.mode === 'amount';
   return (
     <div role="row" className={cn(rowGridClassName, emphasis && 'bg-muted/30')}>
       <div role="cell" className="flex min-w-0 flex-col">
@@ -322,15 +370,31 @@ function DiscountRow({ id, label, charge, value, net, invalid, hint, onChange, e
           id={id}
           type="number"
           min={0}
+          max={100}
+          step={0.01}
+          inputMode="decimal"
+          value={entry.mode === 'percent' ? entry.text : toPercentText(amount, charge)}
+          onChange={(event) => onChange({ mode: 'percent', text: event.target.value })}
+          placeholder="%"
+          aria-label={`${label} — discount %`}
+          aria-invalid={percentInvalid || undefined}
+          className={cn('h-9 text-right', percentInvalid && 'border-destructive focus-visible:ring-destructive')}
+          autoFocus={autoFocus}
+        />
+      </div>
+      <div role="cell">
+        <Input
+          type="number"
+          min={0}
           max={charge}
           step={1}
           inputMode="numeric"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="0"
-          aria-invalid={invalid || undefined}
-          className={cn('h-9 text-right', invalid && 'border-destructive focus-visible:ring-destructive')}
-          autoFocus={autoFocus}
+          value={entry.mode === 'amount' ? entry.text : toAmountText(amount)}
+          onChange={(event) => onChange({ mode: 'amount', text: event.target.value })}
+          placeholder="₹"
+          aria-label={`${label} — discount ₹`}
+          aria-invalid={amountInvalid || undefined}
+          className={cn('h-9 text-right', amountInvalid && 'border-destructive focus-visible:ring-destructive')}
         />
       </div>
       <span role="cell" className={cn('hidden text-right sm:block', emphasis ? 'font-semibold text-foreground' : 'font-medium text-foreground')}>

@@ -446,7 +446,7 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
         <DiscountDialog
           lines={toDiscountableLines(undiscountedItems)}
           billTotal={undiscountedItems.reduce((sum, item) => sum + item.total, 0)}
-          initial={discount ? { reason: discount.reason, allocations: discount.allocations } : undefined}
+          initial={discount ? { type: discount.type, value: discount.value, reason: discount.reason, allocations: discount.allocations } : undefined}
           needsApproval={!isSuperAdmin}
           confirmLabel={isSuperAdmin ? 'Apply discount' : 'Add discount'}
           onConfirm={handleApplyDiscount}

@@ -10,6 +10,10 @@ function inRange(date: string, range: ReportDateRange): boolean {
   return date >= range.from && date <= range.to;
 }
 
+function roundToPaise(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
 /** One row per billed line item (not per invoice) — cost and margin are inherently a
  * per-service concept, so a single invoice mixing e.g. a costed Lab test and an uncosted
  * Pharmacy dispense needs to show that split rather than one blended invoice-level figure. */
@@ -41,11 +45,12 @@ export interface ProfitReportRow {
   costPerUnit: number | null;
   /** quantity × costPerUnit, or null when costPerUnit is null — null must never collapse
    * to 0 here, or a report reader would mistake "unknown cost" for "confirmed free." For a
-   * Consultation line this is the consultant's share, and the line's discount comes out of it
-   * first (ADR-112) — see `costDiscount`. */
+   * Consultation line this is the consultant's share, cut by the same percentage as the fee
+   * (ADR-113) — see `costDiscount`. */
   cost: number | null;
   /** How much of the line's discount came off `cost` rather than off the hospital's profit:
-   * for a Consultation line, the discount up to the consultant's full share (ADR-112); 0 for
+   * for a Consultation line, the consultant's share of it — the share times discount ÷ charge,
+   * so a 40% discount takes 40% off both the share and the hospital's part (ADR-113); 0 for
    * every other line, whose cost isn't anyone's share of the fee. */
   costDiscount: number;
   /** revenue − cost, or null when cost is null. */
@@ -67,10 +72,12 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
     for (const item of billing.items) {
       const { serviceLabel } = describeBillingItem(item);
       const costPerUnit = resolveItemCostPrice(item);
+      const charge = item.quantity * item.unitPrice;
       const fullCost = costPerUnit === null ? null : costPerUnit * item.quantity;
-      // ADR-112: a consultation discount comes out of the consultant's share first, so the
-      // hospital keeps its part of the fee; only a discount bigger than that share reaches it.
-      const costDiscount = fullCost !== null && item.billingType === 'Consultation' ? Math.min(item.discount, fullCost) : 0;
+      // ADR-113: a consultation discount is shared by the consultant and the hospital in
+      // proportion to their parts of the fee — the same percentage comes off both.
+      const costDiscount =
+        fullCost !== null && item.billingType === 'Consultation' && charge > 0 ? roundToPaise((fullCost * Math.min(item.discount, charge)) / charge) : 0;
       const cost = fullCost === null ? null : fullCost - costDiscount;
       const profit = cost === null ? null : item.total - cost;
       const marginPercent = profit === null || item.total <= 0 ? null : Math.round((profit / item.total) * 100);
@@ -87,7 +94,7 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
         departmentId: item.departmentId,
         billedConsultantId: item.billedConsultantId,
         quantity: item.quantity,
-        charge: item.quantity * item.unitPrice,
+        charge,
         discount: item.discount,
         revenue: item.total,
         costPerUnit,
