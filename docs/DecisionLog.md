@@ -37,6 +37,34 @@ _To be documented._
 
 ## Decisions
 
+### ADR-112: A consultation discount comes out of the consultant's share first; the hospital's part of the fee is untouched
+**Date:** 2026-11-03
+**Status:** Accepted
+
+**Context**
+A consultation fee is split between the consultant and the hospital. The consultant's share is their charge for that consultation type (`Consultant.consultationTypeCharges`), which the profit reports already use as the line's cost; the rest is the hospital's. For example, a ₹250 fee with a ₹200 consultant charge leaves ₹50 for the hospital. Since ADR-109/111 a discount can be given on that fee, and the reports took it all from revenue: ₹100 off showed revenue ₹150, cost ₹200 and a **−₹50** profit, as if the hospital paid for the discount. Hospital rule: the consultant gives the discount from their own share. The hospital's part is only reduced when the discount is more than the consultant's whole share, e.g. a 100% discount.
+
+**Decision**
+- In the profit reports (`features/reports/profitReport.ts`), a **Consultation** line's approved discount comes off its cost (the consultant's share) first: `cost = share − min(discount, share)`. The new `costDiscount` field holds the amount that came off. Revenue stays charge − discount, and profit is revenue − cost.
+- Examples, for a ₹250 fee with a ₹200 share:
+
+  | Discount | Revenue | Consultant | Hospital profit |
+  |---|---|---|---|
+  | none | ₹250 | ₹200 | ₹50 |
+  | ₹100 | ₹150 | ₹100 | ₹50 |
+  | ₹220 | ₹30 | ₹0 | ₹30 |
+  | ₹250 (100%) | ₹0 | ₹0 | ₹0 |
+
+- **Other lines are unchanged.** For laboratory, radiology and procedure lines the cost is the service's running cost, not anyone's share of the fee, so a discount on them still lowers the hospital's profit.
+- **Display:** the Cost cell of a discounted consultation line reads e.g. "₹100" over "₹200 share − ₹100". Total Cost, Total Profit, Margin, the breakdown cards, the Consultant report and the exports all use the reduced cost.
+
+**Consequences**
+- Calculation-only and frontend-only: nothing stored changes and old bills are re-read under the rule. No migration, and no API restart for this change.
+- Only approved discounts count, as before: a pending discount isn't on the line yet.
+- The Consultant report's Cost column is now what each consultant earns after the discounts on their fees.
+
+---
+
 ### ADR-111: A bill discount is split into approval parts — the consultant decides their consultation fee, the Super Admin the rest
 **Date:** 2026-11-01
 **Status:** Accepted
