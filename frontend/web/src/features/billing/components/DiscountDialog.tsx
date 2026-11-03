@@ -200,7 +200,7 @@ export function DiscountDialog({ lines, billTotal, initial, needsApproval, confi
                 value={lineTexts[entry.line.id] ?? ''}
                 net={entry.line.amount - entry.amount}
                 invalid={entry.problem !== null}
-                hint={needsApproval && entry.line.approver ? `${entry.line.approver} approves` : undefined}
+                hint={needsApproval ? `${entry.line.approver ?? 'Super Admin'} approves` : undefined}
                 onChange={(text) => handleLineChange(entry.line.id, text)}
                 autoFocus={!showWholeBill && index === 0}
               />

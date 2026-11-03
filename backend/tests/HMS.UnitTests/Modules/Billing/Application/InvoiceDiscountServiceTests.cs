@@ -469,6 +469,7 @@ public class InvoiceDiscountServiceTests
             "staff family",
             "   ",
             "Senior citizen",
+            "Financial Hardship",
         ]);
 
         var result = await _sut.GetReasonSuggestionsAsync(10, CancellationToken.None);
@@ -476,16 +477,28 @@ public class InvoiceDiscountServiceTests
         result.Select(r => (r.Reason, r.TimesUsed)).Should().Equal(
             ("Senior citizen", 3),
             ("Staff family", 2),
-            ("Financial hardship", 1));
+            ("Financial hardship", 2));
     }
 
     [Fact]
     public async Task GetReasonSuggestionsAsync_KeepsToTheLimitAndBreaksTiesByTheNewest()
     {
-        _repository.GetRecentReasonsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(["Camp patient", "Referred patient", "Charity case"]);
+        _repository.GetRecentReasonsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(
+            ["Camp patient", "Referred patient", "Charity case", "Charity case", "Referred patient", "Camp patient"]);
 
         var result = await _sut.GetReasonSuggestionsAsync(2, CancellationToken.None);
 
         result.Select(r => r.Reason).Should().Equal("Camp patient", "Referred patient");
+    }
+
+    [Fact]
+    public async Task GetReasonSuggestionsAsync_LeavesOutOneOffReasonsAndPlaceholders()
+    {
+        _repository.GetRecentReasonsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(
+            ["fdyt", "Test", "trest", "test", "NA", "na", ".", ".", "Staff family", "TEST ", "staff family", "Doctor's relative"]);
+
+        var result = await _sut.GetReasonSuggestionsAsync(10, CancellationToken.None);
+
+        result.Select(r => (r.Reason, r.TimesUsed)).Should().Equal(("Staff family", 2));
     }
 }

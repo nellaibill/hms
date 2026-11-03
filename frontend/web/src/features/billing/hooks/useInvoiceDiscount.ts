@@ -38,8 +38,9 @@ export function usePendingDiscountCountQuery(enabled = true) {
   });
 }
 
-/** Reasons this hospital has given for discounts before, most-used first — the Reason box's
- * suggestions. Under 'billings', so a newly raised discount's reason joins them. Without access
+/** Reasons this hospital has given for discounts at least twice, most-used first (the server
+ * leaves out one-offs and placeholders like "Test") — the Reason box's suggestions. Under
+ * 'billings', so a reason joins them once it's been used again. Without access
  * (or offline) it just stays empty and the built-in suggestions are used. */
 export function useDiscountReasonSuggestionsQuery() {
   return useQuery({
