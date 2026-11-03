@@ -138,6 +138,33 @@ public class InvoiceRevertServiceTests
     }
 
     [Fact]
+    public async Task GetForInvoiceAsync_OnABillOnHoldForADiscount_SaysToWaitForTheDecision()
+    {
+        var invoice = GivenInvoice(paid: false);
+        invoice.MarkDiscountPending(null);
+
+        var result = await _sut.GetForInvoiceAsync(invoice.Id, CancellationToken.None);
+        var create = await _sut.CreateAsync(invoice.Id, new CreateInvoiceRevertRequest { Reason = "Patient left" }, _actorId, null, CancellationToken.None);
+
+        result.Value!.CanRequest.Should().BeFalse();
+        result.Value.IneligibleReason.Should().Contain("discount is still waiting");
+        create.ErrorCode.Should().Be(BillingErrorCodes.RevertNotEligible);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<InvoiceRevertRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_OnceTheBillsDiscountIsDecided_IsEligibleAgain()
+    {
+        var invoice = GivenInvoice(paid: false);
+        invoice.MarkDiscountPending(null);
+        invoice.MarkDiscountDecided(InvoiceDiscountRequestStatus.Rejected, null);
+
+        var result = await _sut.CreateAsync(invoice.Id, new CreateInvoiceRevertRequest { Reason = "Patient left" }, _actorId, null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task GetForInvoiceAsync_ReportsWhetherARevertCanBeRequested()
     {
         var invoice = GivenInvoice();
@@ -195,6 +222,20 @@ public class InvoiceRevertServiceTests
 
         result.ErrorCode.Should().Be(BillingErrorCodes.AlreadyVoided);
         request.Status.Should().Be(InvoiceRevertRequestStatus.Pending);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_WhenADiscountWasRequestedMeanwhile_AsksForTheDiscountToBeDecidedFirst()
+    {
+        var invoice = GivenInvoice(paid: false);
+        var request = GivenPendingRequest(invoice);
+        invoice.MarkDiscountPending(null);
+
+        var result = await _sut.ApproveAsync(request.Id, new ApproveInvoiceRevertRequest(), _actorId, "superadmin", CancellationToken.None);
+
+        result.ErrorCode.Should().Be(BillingErrorCodes.RevertNotEligible);
+        request.Status.Should().Be(InvoiceRevertRequestStatus.Pending);
+        invoice.IsVoided.Should().BeFalse();
     }
 
     [Fact]
@@ -293,10 +334,10 @@ public class InvoiceRevertServiceTests
     public async Task GetReasonSuggestionsAsync_ListsTheHospitalsRevertReasonsMostUsedFirst()
     {
         _repository.GetRecentReasonsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(
-            ["Wrong consultant billed", "Duplicate bill", "wrong consultant  billed"]);
+            ["Wrong consultant billed", "Duplicate bill", "wrong consultant  billed", "Patient changed doctor", "Duplicate bill", "Wrong consultant billed"]);
 
         var result = await _sut.GetReasonSuggestionsAsync(20, CancellationToken.None);
 
-        result.Select(r => (r.Reason, r.TimesUsed)).Should().Equal(("Wrong consultant billed", 2), ("Duplicate bill", 1));
+        result.Select(r => (r.Reason, r.TimesUsed)).Should().Equal(("Wrong consultant billed", 3), ("Duplicate bill", 2));
     }
 }

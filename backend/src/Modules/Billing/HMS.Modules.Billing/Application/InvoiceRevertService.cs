@@ -88,12 +88,19 @@ internal class InvoiceRevertService : IInvoiceRevertService
     /// CreateInvoiceRequest.VisitId) or whose visit can't be found is an OPD Billing Entry bill
     /// and counts as OP. A revert can also only be raised on the day the bill was made (hospital
     /// time) — an older bill is a settled day's collection. Approving isn't limited to that day.
+    /// A bill on hold for a discount (ADR-109) waits until the discount is decided: reverting it
+    /// would leave the discount request in the approval queue against a dead bill.
     /// </summary>
     private async Task<string?> GetIneligibleReasonAsync(Invoice invoice, CancellationToken cancellationToken)
     {
         if (invoice.IsVoided)
         {
             return invoice.IsReverted ? "This bill has already been reverted." : "This bill has been voided.";
+        }
+
+        if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
+        {
+            return "This bill's discount is still waiting for approval — a revert can be requested once it's approved or rejected.";
         }
 
         if (invoice.Items.Any(i => i.BillingType is BillingType.Pharmacy or BillingType.InpatientCharge))
@@ -204,6 +211,12 @@ internal class InvoiceRevertService : IInvoiceRevertService
         if (invoice.IsVoided)
         {
             return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.AlreadyVoided, "This bill has already been voided — reject the request instead.");
+        }
+
+        // A discount can still be asked for on the saved bill after the revert was requested.
+        if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
+        {
+            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertNotEligible, "A discount request on this bill is still waiting — approve or reject it first.");
         }
 
         var invoiceBefore = invoice.ToResponse();
