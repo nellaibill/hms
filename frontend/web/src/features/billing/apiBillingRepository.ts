@@ -99,10 +99,14 @@ function toCreateRequest(patientId: string, visitId: string, values: BillingForm
     // rows add up to at least the net total whenever anything's billed (with any non-Cash
     // excess rejected, since only Cash can realistically hand back change) — non-null
     // assertion on method mirrors that same established guarantee already relied on elsewhere
-    // in this file. None while a discount waits for approval: the bill is saved unpaid.
+    // in this file. None while a discount waits for approval: the bill is saved unpaid. Rows of
+    // ₹0 carry nothing and the API refuses them, so they're dropped — a bill that comes to ₹0
+    // (a free consultation, a 100% discount) is sent with an empty list, which the API settles.
     payments: discount?.needsApproval
       ? null
-      : values.payments.map((row) => ({ method: row.method!, amount: row.amount, referenceNumber: row.referenceNumber || null })),
+      : values.payments
+          .filter((row) => row.amount > 0)
+          .map((row) => ({ method: row.method!, amount: row.amount, referenceNumber: row.referenceNumber || null })),
     discountType: discount?.type,
     discountValue: discount?.value,
     discountReason: discount?.reason ?? null,

@@ -417,8 +417,12 @@ internal class InvoiceService : IInvoiceService
 
         // Optional pay-in-full-at-creation: mark every line item Paid and record Payment rows
         // in the same save as the invoice itself, so there's no window where the invoice
-        // exists with some lines paid and others not from a partial failure.
-        if (request.Payments is { Count: > 0 } payments)
+        // exists with some lines paid and others not from a partial failure. An empty list is
+        // the counter collecting a bill that comes to ₹0 (a free consultation, a Super Admin's
+        // 100% discount): every line is marked Paid with no Payment row, as PayAsync does, and
+        // ApplyPaymentsAsync refuses it if anything is owed. A discount still waiting for
+        // approval leaves the bill unpaid, so an empty list changes nothing there.
+        if (request.Payments is { } payments && (payments.Count > 0 || invoice.DiscountStatus != InvoiceDiscountRequestStatus.Pending))
         {
             var paid = await ApplyPaymentsAsync(invoice, payments, actorId, cancellationToken);
             if (!paid.IsSuccess)
