@@ -1,10 +1,8 @@
-import { ID_PROOF_TYPES, type IdProofType } from '@hms/shared';
 import { CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { CameraCaptureButton } from '@/components/ui/camera-capture-button';
 import { FileChooserButton } from '@/components/ui/file-chooser-button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { validateUploadFile } from '@/lib/fileValidation';
 import { useUploadPatientIdProofMutation, useUploadPatientPhotoMutation } from '../hooks/usePatientMutations';
 import { MAX_PATIENT_DOCUMENT_SIZE_BYTES, MAX_PATIENT_DOCUMENT_SIZE_MB } from '../documentUploadLimits';
@@ -24,9 +22,12 @@ interface PatientDocumentUploadProps {
  * The chosen filename is tracked here in state rather than read back off a native file
  * input's own display — see FileChooserButton's own doc comment for why that native text
  * can't be trusted once the input is reset for re-selection.
+ *
+ * There's no ID proof type picker here: the upload endpoint takes only the file, and the
+ * patient's ID proof type is its own field on the patient record (edited on Patient Edit). The
+ * local-only picker this used to have was never sent anywhere and could contradict that field.
  */
 export function PatientDocumentUpload({ patientId, bare = false }: PatientDocumentUploadProps) {
-  const [idProofType, setIdProofType] = useState<IdProofType>('Aadhaar');
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const [idProofFileName, setIdProofFileName] = useState<string | null>(null);
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
@@ -97,23 +98,7 @@ export function PatientDocumentUpload({ patientId, bare = false }: PatientDocume
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="id-proof-type">ID proof type</Label>
-        <Select value={idProofType} onValueChange={(value) => setIdProofType(value as IdProofType)}>
-          <SelectTrigger id="id-proof-type" className="w-56" aria-label="ID proof type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ID_PROOF_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Label htmlFor="id-proof-upload" className="mt-2">
-          ID proof file (JPG/PNG/PDF, max {MAX_PATIENT_DOCUMENT_SIZE_MB}MB)
-        </Label>
+        <Label htmlFor="id-proof-upload">ID proof file (JPG/PNG/PDF, max {MAX_PATIENT_DOCUMENT_SIZE_MB}MB)</Label>
         <FileChooserButton
           id="id-proof-upload"
           accept="image/jpeg,image/png,application/pdf"
