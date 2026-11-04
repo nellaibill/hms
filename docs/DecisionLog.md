@@ -37,6 +37,29 @@ _To be documented._
 
 ## Decisions
 
+### ADR-115: A returning patient imported from the old system is caught as a duplicate; registration lists patients already on the phone number
+**Date:** 2026-11-04
+**Status:** Accepted
+
+**Context**
+About 31,000 patients were bulk-imported from the old system. Each has the whole name in First name with Last name blank ("Jeya Sathya" + ""), and none has an ID number. Registration's duplicate check (`PatientRepository.FindDuplicateAsync`) compared first and last name separately and, whenever an ID number was entered, required the stored one to match. The ID number is now mandatory at registration, so a returning imported patient could never match: reception could register them again under a second UHID with no warning, splitting their history. Patient search had the same blind spot for split names: "Kala Devi" found neither a patient saved as Kala + Devi.
+
+**Decision**
+- **Same person rule** (`PatientDuplicateMatching`, used by registration and bulk import): same primary phone, same full name ignoring case, spacing and how it's split between first and last name, and ID numbers that don't disagree. A blank ID number on either side can't tell two people apart, so name and phone decide. Two different ID numbers still mean two different people (e.g. a father and son with the same name and phone). Registration refuses such a patient with 409 `PATIENTS.DUPLICATE_PATIENT`, as before. When the match is an imported record, the message says to open it and save it from Edit Patient instead.
+- The phone is matched in SQL (indexed; a number is shared by at most a handful of family members), and the name and ID rule runs in memory.
+- **Warning by phone on New Patient Registration:**
+  - As soon as a 10-digit primary phone is typed, Contact Information lists the patients already registered with that number (primary or secondary), through the existing patient list `phone` filter. Each row shows name, UHID, age, gender and last visit, with **Same name** and **Imported — needs verification** badges. A name opens the record in a new tab, so the form isn't lost.
+  - Right before the patient is created, by Save and proceed or by Register Patient when Save and proceed was skipped, a dialog lists the same patients: **Cancel** or **Register as a new patient**. It is asked once per number. If the lookup fails (e.g. no permission to list patients), registration goes ahead, and the server still refuses an exact duplicate.
+- **Search** (the patient list's Search and Name filters, which also back the billing patient picker) also matches the full name "first last".
+
+**Consequences**
+- Web app and API only; nothing stored changes, no migration.
+- A partial-name match ("Kala" on file, "Kala Devi" typed) isn't refused; it is caught only by the phone warning, where the receptionist decides.
+- Families sharing a phone now see the dialog when registering another member: one extra click.
+- Patients whose phone changed since import aren't found by the warning; searching by name still finds them.
+
+---
+
 ### ADR-114: Only a doctor can start an OPD consultation; Consult is disabled for everyone else
 **Date:** 2026-11-03
 **Status:** Accepted (amends ADR-107)

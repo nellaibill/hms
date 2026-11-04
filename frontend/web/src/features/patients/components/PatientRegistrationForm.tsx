@@ -23,6 +23,7 @@ import {
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useController, useFieldArray, useForm, type Control, type FieldErrors } from 'react-hook-form';
@@ -40,6 +41,7 @@ import { StateSelect } from '@/components/StateSelect';
 import { useLiveErrorRefresh } from '@/hooks/useLiveErrorRefresh';
 import { DocumentUploadStaging, emptyStagedDocuments, type StagedDocuments } from './DocumentUploadStaging';
 import { Field, FormSection } from './FormSection';
+import { SamePhonePatientsDialog, SamePhonePatientsNotice } from './SamePhonePatients';
 import { TabErrorSummary } from './TabErrorSummary';
 import { bloodGroupLabel } from '../bloodGroupLabel';
 import { calculateDetailedAge, dateOfBirthInputBounds } from '../detailedAge';
@@ -50,6 +52,7 @@ import { offlineAdChannelLabel, onlineAdChannelLabel } from '../arrivalChannelLa
 import { humanize } from '../humanize';
 import { maritalStatusLabel } from '../maritalStatusLabel';
 import { titleLabel } from '../titleLabel';
+import { isCompletePhone, samePhonePatientsQueryOptions } from '../samePhonePatients';
 
 interface PatientRegistrationFormProps {
   isSubmitting: boolean;
@@ -216,6 +219,43 @@ export function PatientRegistrationForm({
   });
   useLiveErrorRefresh({ schema: patientRegistrationUiSchema, watch, errors, setError, clearErrors });
 
+  // A returning patient, above all one imported from the old system, mustn't get a second UHID
+  // by accident: patients already registered with the primary phone are listed under it as soon
+  // as it's typed, and asked about once more right before the patient is created. Skipped once
+  // this registration's own patient is saved — it would only find itself.
+  const queryClient = useQueryClient();
+  const primaryPhoneNumber = watch('primaryPhone.number');
+  const samePhoneLookup = !savedPatient && isCompletePhone(primaryPhoneNumber) ? primaryPhoneNumber.trim() : '';
+  const { data: samePhonePatients = [] } = useQuery({ ...samePhonePatientsQueryOptions(samePhoneLookup), enabled: samePhoneLookup !== '' });
+  // The number the receptionist already said "Register as a new patient" for — not asked again.
+  const acknowledgedSamePhoneRef = useRef<string | null>(null);
+  const [samePhoneCheck, setSamePhoneCheck] = useState<{ phone: string; patients: Patient[]; proceed: () => void } | null>(null);
+
+  // Resolves true when the patient can be created now. Otherwise opens SamePhonePatientsDialog,
+  // whose "Register as a new patient" runs `proceed` again with this number acknowledged.
+  async function confirmNoSamePhonePatient(phone: string, proceed: () => void): Promise<boolean> {
+    const number = phone.trim();
+    if (savedPatient || !isCompletePhone(number) || acknowledgedSamePhoneRef.current === number) return true;
+    let patients: Patient[];
+    try {
+      patients = await queryClient.fetchQuery(samePhonePatientsQueryOptions(number));
+    } catch {
+      // The lookup failed (e.g. no permission to list patients) — the API still refuses an exact
+      // duplicate (same full name and phone) on its own.
+      return true;
+    }
+    if (patients.length === 0) return true;
+    setSamePhoneCheck({ phone: number, patients, proceed });
+    return false;
+  }
+
+  function handleRegisterAsNewPatient() {
+    if (!samePhoneCheck) return;
+    acknowledgedSamePhoneRef.current = samePhoneCheck.phone;
+    setSamePhoneCheck(null);
+    samePhoneCheck.proceed();
+  }
+
   // UI-only demo affordance — see additionalConsultantSchema's own doc comment for why this
   // never reaches CreatePatientRequest.
   const additionalConsultants = useFieldArray({ control, name: 'registration.additionalConsultants' });
@@ -348,6 +388,7 @@ export function PatientRegistrationForm({
         formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
         return;
       }
+      if (!(await confirmNoSamePhonePatient(parsed.data.primaryPhone.number, () => void handleSaveAndProceed()))) return;
       const succeeded = await onSaveAndProceed(parsed.data, documents);
       if (succeeded) {
         setActiveTab('registration-details');
@@ -389,13 +430,16 @@ export function PatientRegistrationForm({
   };
 
   // Runs once the whole form is valid.
-  const onValidSubmit = (values: PatientRegistrationUiFormValues) => {
+  const onValidSubmit = async (values: PatientRegistrationUiFormValues) => {
     const idProofError = idProofNumberValidationError(documents);
     if (idProofError) {
       setActiveTab('medical-info');
       setIdProofNumberError(idProofError);
       return;
     }
+    // Only matters when Registration Details was reached without "Save and proceed" — the
+    // patient is then created here (see PatientRegistrationCreatePage's handleSubmit).
+    if (!(await confirmNoSamePhonePatient(values.primaryPhone.number, () => void onValidSubmit(values)))) return;
     onSubmit(values, documents);
   };
 
@@ -729,6 +773,9 @@ export function PatientRegistrationForm({
             <Field label="Profession" htmlFor="profession" className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Input id="profession" {...register('profession')} />
             </Field>
+            {samePhonePatients.length > 0 && (
+              <SamePhonePatientsNotice patients={samePhonePatients} firstName={watch('firstName')} lastName={watch('lastName')} />
+            )}
           </div>
         </FormSection>
 
@@ -1444,6 +1491,16 @@ export function PatientRegistrationForm({
           </div>
         </div>
       </form>
+      {samePhoneCheck && (
+        <SamePhonePatientsDialog
+          phone={samePhoneCheck.phone}
+          patients={samePhoneCheck.patients}
+          firstName={getValues('firstName')}
+          lastName={getValues('lastName')}
+          onRegisterNew={handleRegisterAsNewPatient}
+          onCancel={() => setSamePhoneCheck(null)}
+        />
+      )}
     </div>
   );
 }

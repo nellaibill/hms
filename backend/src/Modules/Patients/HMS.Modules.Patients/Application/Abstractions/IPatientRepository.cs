@@ -33,9 +33,10 @@ internal interface IPatientRepository
     /// not one page.</summary>
     Task<IReadOnlyList<Patient>> GetExportRowsAsync(PatientListQuery query, int maxRows, CancellationToken cancellationToken);
 
-    /// <summary>Finds an existing, non-deleted patient matching on primary phone + name
-    /// (case-insensitive) always, and additionally on IdProofNumber when one is supplied —
-    /// used by PatientService.CreateAsync to catch the same person being registered twice.</summary>
+    /// <summary>Finds an existing, non-deleted patient with the same primary phone who is the
+    /// same person by PatientDuplicateMatching's rule (same full name, ID numbers not
+    /// disagreeing) — used by PatientService.CreateAsync and bulk import to catch the same
+    /// person being registered twice.</summary>
     Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, string? idProofNumber, CancellationToken cancellationToken);
 
     /// <summary>Reads the row's current optimistic-concurrency token (Postgres xmin) as
