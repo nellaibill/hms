@@ -117,61 +117,88 @@ const additionalAllergySchema = z
     }
   });
 
-const arrivalSourceSchema = z
-  .object({
-    category: z.enum(ARRIVAL_SOURCE_CATEGORIES),
-    doctorReferral: z
-      .object({
-        department: z.string().trim().max(100).optional().or(z.literal('')),
-      })
-      .optional(),
-    patientRelativeReferral: z
-      .object({
-        source: z.enum(PATIENT_RELATIVE_REFERRAL_SOURCES),
-        details: z.string().trim().max(200).optional().or(z.literal('')),
-      })
-      .optional(),
-    onlineAd: z
-      .object({
-        channel: z.enum(ONLINE_AD_CHANNELS),
-        details: z.string().trim().max(200).optional().or(z.literal('')),
-      })
-      .optional(),
-    offlineAd: z
-      .object({
-        channel: z.enum(OFFLINE_AD_CHANNELS),
-        details: z.string().trim().max(200).optional().or(z.literal('')),
-      })
-      .optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.category === 'DoctorReferral') {
-      if (!data.doctorReferral?.department) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['doctorReferral', 'department'], message: 'Enter the referring department.' });
+// The sub-object each Source category reads its details from. react-hook-form keeps a field's
+// value after it unmounts, so switching Source leaves the previous category's sub-object behind
+// — often half-built, since just showing a Controller-driven Select stores `{ source: undefined }`.
+// Validating those leftovers blocked Save with a bare "Required" that had no visible field to
+// fix (Patient Edit: Doctor Referral -> Patient/Relative -> back to Doctor Referral), so only the
+// selected category's sub-object is kept and validated.
+const ARRIVAL_SOURCE_DETAIL_KEYS = {
+  DoctorReferral: 'doctorReferral',
+  PatientOrRelativeReferral: 'patientRelativeReferral',
+  OnlineAdvertisement: 'onlineAd',
+  OfflineAdvertisement: 'offlineAd',
+} as const;
+
+function keepSelectedArrivalDetails(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const record = value as Record<string, unknown>;
+  const detailKey = ARRIVAL_SOURCE_DETAIL_KEYS[record.category as keyof typeof ARRIVAL_SOURCE_DETAIL_KEYS];
+  return detailKey ? { category: record.category, [detailKey]: record[detailKey] } : { category: record.category };
+}
+
+// The source/channel pickers are optional at field level and made required by the superRefine
+// below instead: an unpicked one then gets its own message ("Select a channel") rather than
+// Zod's generic "Required", and doesn't abort the parse — an aborted parse skips every
+// superRefine, which hid the form's other errors (ID proof, Title) until the next Save.
+const arrivalSourceSchema = z.preprocess(
+  keepSelectedArrivalDetails,
+  z
+    .object({
+      category: z.enum(ARRIVAL_SOURCE_CATEGORIES),
+      doctorReferral: z
+        .object({
+          department: z.string().trim().max(100).optional().or(z.literal('')),
+        })
+        .optional(),
+      patientRelativeReferral: z
+        .object({
+          source: z.enum(PATIENT_RELATIVE_REFERRAL_SOURCES).optional(),
+          details: z.string().trim().max(200).optional().or(z.literal('')),
+        })
+        .optional(),
+      onlineAd: z
+        .object({
+          channel: z.enum(ONLINE_AD_CHANNELS).optional(),
+          details: z.string().trim().max(200).optional().or(z.literal('')),
+        })
+        .optional(),
+      offlineAd: z
+        .object({
+          channel: z.enum(OFFLINE_AD_CHANNELS).optional(),
+          details: z.string().trim().max(200).optional().or(z.literal('')),
+        })
+        .optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.category === 'DoctorReferral') {
+        if (!data.doctorReferral?.department) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['doctorReferral', 'department'], message: 'Enter the referring department.' });
+        }
       }
-    }
-    if (data.category === 'PatientOrRelativeReferral') {
-      if (!data.patientRelativeReferral?.source) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'source'], message: 'Select a referral source' });
-      } else if (data.patientRelativeReferral.source === 'Other' && !data.patientRelativeReferral.details) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'details'], message: 'Please specify' });
+      if (data.category === 'PatientOrRelativeReferral') {
+        if (!data.patientRelativeReferral?.source) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'source'], message: 'Select a referral source' });
+        } else if (data.patientRelativeReferral.source === 'Other' && !data.patientRelativeReferral.details) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'details'], message: 'Please specify' });
+        }
       }
-    }
-    if (data.category === 'OnlineAdvertisement') {
-      if (!data.onlineAd?.channel) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['onlineAd', 'channel'], message: 'Select a channel' });
-      } else if (data.onlineAd.channel === 'Other' && !data.onlineAd.details) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['onlineAd', 'details'], message: 'Please specify' });
+      if (data.category === 'OnlineAdvertisement') {
+        if (!data.onlineAd?.channel) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['onlineAd', 'channel'], message: 'Select a channel' });
+        } else if (data.onlineAd.channel === 'Other' && !data.onlineAd.details) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['onlineAd', 'details'], message: 'Please specify' });
+        }
       }
-    }
-    if (data.category === 'OfflineAdvertisement') {
-      if (!data.offlineAd?.channel) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offlineAd', 'channel'], message: 'Select a channel' });
-      } else if (data.offlineAd.channel === 'Other' && !data.offlineAd.details) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offlineAd', 'details'], message: 'Please specify' });
+      if (data.category === 'OfflineAdvertisement') {
+        if (!data.offlineAd?.channel) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offlineAd', 'channel'], message: 'Select a channel' });
+        } else if (data.offlineAd.channel === 'Other' && !data.offlineAd.details) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offlineAd', 'details'], message: 'Please specify' });
+        }
       }
-    }
-  });
+    }),
+);
 
 const referralColumnSchema = z.object({
   category: z.enum(REFERRAL_COLUMN_CATEGORIES),
