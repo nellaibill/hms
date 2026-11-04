@@ -97,6 +97,9 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
   // Payment is collected here unless a discount is waiting for approval (a stale one counts as
   // not applied — it has to be redone before the bill can be saved at all).
   const awaitingApproval = Boolean(discount?.needsApproval) && !discountStale;
+  // A bill that comes to ₹0 (a free consultation, a 100% discount) has nothing to collect — it's
+  // saved as paid with no payment rows (apiBillingRepository's toCreateRequest).
+  const nothingToCollect = items.length > 0 && !awaitingApproval && summary.netTotal <= 0;
 
   function handleApplyDiscount(result: DiscountDialogResult) {
     setValue(
@@ -259,7 +262,10 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
               {formatCurrency(summary.grossTotal)} if it’s rejected) from the bill’s page.
             </p>
           )}
-          {items.length > 0 && !awaitingApproval && (
+          {nothingToCollect && (
+            <p className="text-xs text-muted-foreground">Nothing to collect — this bill comes to {formatCurrency(0)} and is saved as paid.</p>
+          )}
+          {items.length > 0 && !awaitingApproval && !nothingToCollect && (
             <>
               <p className="text-xs text-muted-foreground">
                 Full payment is required before this invoice can be saved — the patient proceeds to the consultant only once billing is settled here.
@@ -436,7 +442,17 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
             )}
 
             <Button onClick={onSave} disabled={isSaving || discountStale} className="w-full">
-              {awaitingApproval ? (isSaving ? 'Sending…' : 'Send for Approval') : isSaving ? 'Collecting…' : 'Collect Payment'}
+              {awaitingApproval
+                ? isSaving
+                  ? 'Sending…'
+                  : 'Send for Approval'
+                : nothingToCollect
+                  ? isSaving
+                    ? 'Saving…'
+                    : 'Save Bill'
+                  : isSaving
+                    ? 'Collecting…'
+                    : 'Collect Payment'}
             </Button>
           </>
         )}

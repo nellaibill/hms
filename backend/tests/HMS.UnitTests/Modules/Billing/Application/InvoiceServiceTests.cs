@@ -1212,4 +1212,75 @@ public class InvoiceServiceTests
         result.Value!.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Cancelled);
         discountRequest.Status.Should().Be(InvoiceDiscountRequestStatus.Cancelled);
     }
+
+    // A bill that comes to ₹0 at the counter (a free consultation, a Super Admin's 100% discount)
+    // is sent with an empty Payments list: nothing to collect, so it's saved paid.
+    private CreateInvoiceRequest FreeConsultationRequest() => ValidRequest() with
+    {
+        Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "obg", ConsultantId = "dr-madhavi", Quantity = 1, UnitPrice = 0m }],
+        Payments = [],
+    };
+
+    [Fact]
+    public async Task CreateAsync_WithAZeroRupeeBillAndNoPaymentRows_SavesItPaidWithNoPaymentRecord()
+    {
+        var result = await _sut.CreateAsync(FreeConsultationRequest(), Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(0m);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAnAmountOwedAndNoPaymentRows_IsRefusedAndSavesNothing()
+    {
+        var result = await _sut.CreateAsync(ValidRequest() with { Payments = [] }, Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.PaymentAmountMismatch);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAZeroRupeeBillAndNoPaymentsAtAll_StaysPending()
+    {
+        // Null, as the IPD final bill and pharmacy dispense send it: save unpaid, as before.
+        var result = await _sut.CreateAsync(FreeConsultationRequest() with { Payments = null }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Pending);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithASuperAdminsFullDiscountAndNoPaymentRows_SavesItPaid()
+    {
+        var request = ValidRequest() with
+        {
+            Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, Quantity = 1, UnitPrice = 720m, Discount = 720m }],
+            DiscountType = InvoiceDiscountType.Percent,
+            DiscountValue = 100m,
+            DiscountReason = "Staff family",
+            Payments = [],
+        };
+
+        var result = await _sut.CreateAsync(request, SuperAdmin, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(0m);
+        result.Value.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAReceptionistsDiscountAndNoPaymentRows_SavesItUnpaidForApproval()
+    {
+        var result = await _sut.CreateAsync(DiscountedRequest() with { Payments = [] }, Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Pending);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Pending);
+    }
 }

@@ -49,8 +49,10 @@ public record CreateInvoiceRequest
     public IReadOnlyList<CreateInvoiceLineItemRequest> Items { get; init; } = [];
 
     /// <summary>Optional — when supplied, the whole invoice is paid in full at creation time
-    /// (every line item marked Paid, atomic with the invoice's own save). Null/empty means
-    /// save Pending, exactly like every invoice created before this field existed. Every row
+    /// (every line item marked Paid, atomic with the invoice's own save). Null means save
+    /// Pending, exactly like every invoice created before this field existed. An empty list
+    /// settles a bill that comes to ₹0 (rejected if anything is owed), unless a discount is
+    /// waiting for approval, which leaves the bill Pending either way. Every row
     /// together must add up to at least NetAmount; any excess is treated as change (not
     /// persisted) — same whether it's one row (e.g. a single Cash row tendering more than
     /// NetAmount) or several (e.g. part Upi, part Cash, with the excess coming back in Cash).

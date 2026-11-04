@@ -37,6 +37,28 @@ _To be documented._
 
 ## Decisions
 
+### ADR-116: A bill that comes to ₹0 is saved as paid at the counter
+**Date:** 2026-11-04
+**Status:** Accepted (amends ADR-107's note on ₹0 consultation lines)
+
+**Context**
+OPD Billing Entry couldn't save a bill whose Net Payable was ₹0, for example a free "Others / On-call" consultation with the charge left at ₹0, or a Super Admin's 100% discount. The payment row's amount then defaulted to 0. The screen still sent that row, and the API refuses any payment row of ₹0 ("Amount must be greater than 0"), so Collect Payment failed with a validation error. The visit never got its OP No and stayed blocked from Consult.
+
+**Decision**
+- The counter sends only payment rows above ₹0. A bill that comes to ₹0 is sent with an empty `Payments` list.
+- `CreateInvoiceRequest.Payments` now has three meanings:
+  - **Null:** save the bill unpaid. This is unchanged, and it is what the IPD final bill and pharmacy dispense send.
+  - **Rows:** pay the bill in full, as before.
+  - **An empty list:** collect now, with nothing owed. Every line is marked Paid with no Payment row, the same as Collect Payment's "Mark Settled" (`PayAsync`). It is refused (`BILLING.PAYMENT_AMOUNT_MISMATCH`) if anything is owed. A discount still waiting for approval leaves the bill unpaid either way.
+- Billing Summary on a ₹0 bill hides the payment rows, says "Nothing to collect — this bill comes to ₹0 and is saved as paid", and labels the button **Save Bill**.
+
+**Consequences**
+- A ₹0 consultation saved this way is Paid. The visit gets its OP No (ADR-103), and its Payment Status reads Paid, so Consult is allowed (ADR-107). Before, ADR-107 said such a line stayed Pending until a payment was recorded against it.
+- No migration, and no change for bills that have something to collect.
+- The API still doesn't check lab, radiology or procedure prices against Masters. A line whose price comes through as ₹0 is saved free, as it already was on a bill with other paid lines.
+
+---
+
 ### ADR-115: A returning patient imported from the old system is caught as a duplicate; registration lists patients already on the phone number
 **Date:** 2026-11-04
 **Status:** Accepted
@@ -266,7 +288,7 @@ Client request: on `/clinical/opd`, only patients whose Payment Status is **Paid
 **Consequences**
 - The check is UI-only. `POST .../consultations/{id}/start-consultation` doesn't check payment: the Patients module can't call Billing (Billing already depends on Patients, and the reverse would be circular), which is the same reason the Payment Status column is composed client-side.
 - The rule follows the whole visit, not just the consultation fee. An unpaid lab or radiology bill on the same visit also blocks Consult for another consultant on that visit.
-- A ₹0 consultation line stays "Pending" until a payment is recorded against it, so it also goes through the popup.
+- A ₹0 consultation line stays "Pending" until a payment is recorded against it, so it also goes through the popup. *Amended 2026-11-04 (ADR-116):* a bill that comes to ₹0 is now saved as paid at the counter.
 - Rows already In Consultation or Completed still open with View, unchanged.
 
 ---
