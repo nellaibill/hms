@@ -37,9 +37,10 @@ public record CreateInvoiceRequest
 {
     public Guid PatientId { get; init; }
 
-    /// <summary>References Patients' PatientRegistration.Id when a real encounter exists;
-    /// falls back to PatientId itself for flows with no registration concept yet (e.g. OPD
-    /// Billing Entry for a returning patient) — mirrors the frontend's own fallback.</summary>
+    /// <summary>The patient's visit (Patients' PatientVisit.VisitId) this bill is for — it must
+    /// be one of this patient's own visits (ADR-117). Falls back to PatientId itself for flows
+    /// with no visit (the IPD final bill, a pharmacy dispense, OPD Billing Entry for a patient
+    /// with no recorded visit) — mirrors the frontend's own fallback.</summary>
     public Guid VisitId { get; init; }
 
     /// <summary>Snapshotted at creation, not a live join — see Domain/Invoice.cs.</summary>
