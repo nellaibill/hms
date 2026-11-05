@@ -37,6 +37,105 @@ _To be documented._
 
 ## Decisions
 
+### ADR-118: No payment while a revert is waiting for approval; the refund is worked out again when it's approved
+**Date:** 2026-11-05
+**Status:** Accepted (amends ADR-106)
+
+**Context**
+A revert request (ADR-106) records the amount paid when it is raised, and that figure is the refund shown when it is approved. Nothing stopped the counter collecting money on the bill in between. Reproduced on 2026-11-05 with INV-2026-000245:
+- A receptionist's ₹100 discount left the ₹600 bill unpaid until it was decided.
+- A revert was then requested, recording ₹0 paid.
+- ₹600 cash was collected 22 seconds later.
+- The revert was approved with no refund shown.
+
+The bill was voided out of every report, while the ₹600 payment stayed on its lines with nothing telling the counter to hand it back.
+
+**Decision**
+- **No payment while a revert waits.** Collect Payment (`POST invoices/{id}/pay`) and Record Payment (`POST invoices/{id}/items/{itemId}/payments`) are refused while the bill has a Pending revert request: 409 `BILLING.REVERT_PENDING`. This is the same rule as a pending discount (ADR-109).
+- **Screen:** the bill page hides both buttons and the revert banner says "No payment can be taken on this bill until the revert is approved or rejected." Once the revert is rejected, payment can be collected as usual.
+- **Refund worked out on approval.** Approving takes the paid amount again from the bill as it stands (`InvoiceRevertRequest.Approve`). The refund shown on approval, and in the Revert Requests list and the bill's banner afterwards, is what the bill actually collected. This covers a payment that landed at the same moment as the request. The activity-log entry now reads "Approved revert of invoice … — refund ₹…".
+
+**Consequences**
+- No migration. Requests already decided keep their figures; INV-2026-000245 still shows ₹0, though ₹600 was collected.
+- While a request is Pending, the Revert Requests list still shows the amount recorded when it was raised. With payments blocked, that can't change any more.
+
+---
+
+### ADR-117: OPD Billing Entry shows which visit it bills, and asks when today has more than one unpaid visit
+**Date:** 2026-11-05
+**Status:** Accepted (changes the visit OPD Billing Entry picks; ADR-107's `?visitId=` still wins)
+
+**Context**
+OPD Billing Entry saved every bill against the patient's newest visit, unless `?visitId=` named one, and never said which visit that was. Only the OPD "Payment required" pop-up passes `?visitId=`, and since ADR-114 the front desk doesn't reach it. So a patient with more than one visit could have one doctor's fee land on another doctor's visit. On 28 Oct, INV-2026-000231/232 put Dr. L. Madhavi's OP fees on a week-old IP visit with Dr. M. Ramalakshmi. That visit then read Paid and got the money, while the right visit stayed Not Billed with no OP No. If the patient's visits failed to load, the bill was saved with no visit at all.
+
+**Decision**
+- **"Billing visit" card** (`BillingVisitCard`) above the bill shows the visit being billed:
+  - its type, OP/IP No, date and time, its consultants, and whether it's Not billed, Payment pending, On hold or Paid
+  - a dropdown of all the patient's visits, newest first, when there is more than one
+  - changing the visit restarts the bill from that visit's prefill, and asks first if anything has been entered.
+- **Which visit** (`chooseBillingVisit`):
+  - the one picked on the card, else `?visitId=`
+  - else today's only unpaid visit
+  - with **more than one unpaid visit today**, none: the bill form stays hidden until the counter picks one
+  - otherwise the newest visit.
+- **Warnings and blocks:**
+  - A visit from an earlier day shows a note: "If the patient has come for a new visit today, Add Visit first", with a link.
+  - A patient with no visit is told the bill won't be linked to one.
+  - If the patient's visits or bills fail to load, the form isn't offered and a reload message is shown.
+- **API:** `POST /api/v1/billing/invoices` refuses a `VisitId` that isn't one of the patient's own visits (400 `BILLING.INVALID_VISIT`). `VisitId = PatientId`, the no-visit fallback used by the IPD final bill and pharmacy, is unchanged.
+- The OPD list's Payment Status and the card use the same rule (`visitBillingStatus`).
+
+**Consequences**
+- No migration, and nothing already billed is moved. INV-2026-000231/232 stay on the IP visit; correcting them would mean a revert, which is not allowed because the bills belong to an IP visit.
+- "Today" is the counter's local date, and only unpaid visits count, so an old unbilled visit doesn't make the counter choose every time. It is still offered in the dropdown.
+
+---
+
+### ADR-116: A bill that comes to ₹0 is saved as paid at the counter
+**Date:** 2026-11-04
+**Status:** Accepted (amends ADR-107's note on ₹0 consultation lines)
+
+**Context**
+OPD Billing Entry couldn't save a bill whose Net Payable was ₹0, for example a free "Others / On-call" consultation with the charge left at ₹0, or a Super Admin's 100% discount. The payment row's amount then defaulted to 0. The screen still sent that row, and the API refuses any payment row of ₹0 ("Amount must be greater than 0"), so Collect Payment failed with a validation error. The visit never got its OP No and stayed blocked from Consult.
+
+**Decision**
+- The counter sends only payment rows above ₹0. A bill that comes to ₹0 is sent with an empty `Payments` list.
+- `CreateInvoiceRequest.Payments` now has three meanings:
+  - **Null:** save the bill unpaid. This is unchanged, and it is what the IPD final bill and pharmacy dispense send.
+  - **Rows:** pay the bill in full, as before.
+  - **An empty list:** collect now, with nothing owed. Every line is marked Paid with no Payment row, the same as Collect Payment's "Mark Settled" (`PayAsync`). It is refused (`BILLING.PAYMENT_AMOUNT_MISMATCH`) if anything is owed. A discount still waiting for approval leaves the bill unpaid either way.
+- Billing Summary on a ₹0 bill hides the payment rows, says "Nothing to collect — this bill comes to ₹0 and is saved as paid", and labels the button **Save Bill**.
+
+**Consequences**
+- A ₹0 consultation saved this way is Paid. The visit gets its OP No (ADR-103), and its Payment Status reads Paid, so Consult is allowed (ADR-107). Before, ADR-107 said such a line stayed Pending until a payment was recorded against it.
+- No migration, and no change for bills that have something to collect.
+- The API still doesn't check lab, radiology or procedure prices against Masters. A line whose price comes through as ₹0 is saved free, as it already was on a bill with other paid lines.
+
+---
+
+### ADR-115: A returning patient imported from the old system is caught as a duplicate; registration lists patients already on the phone number
+**Date:** 2026-11-04
+**Status:** Accepted
+
+**Context**
+About 31,000 patients were bulk-imported from the old system. Each has the whole name in First name with Last name blank ("Jeya Sathya" + ""), and none has an ID number. Registration's duplicate check (`PatientRepository.FindDuplicateAsync`) compared first and last name separately and, whenever an ID number was entered, required the stored one to match. The ID number is now mandatory at registration, so a returning imported patient could never match: reception could register them again under a second UHID with no warning, splitting their history. Patient search had the same blind spot for split names: "Kala Devi" found neither a patient saved as Kala + Devi.
+
+**Decision**
+- **Same person rule** (`PatientDuplicateMatching`, used by registration and bulk import): same primary phone, same full name ignoring case, spacing and how it's split between first and last name, and ID numbers that don't disagree. A blank ID number on either side can't tell two people apart, so name and phone decide. Two different ID numbers still mean two different people (e.g. a father and son with the same name and phone). Registration refuses such a patient with 409 `PATIENTS.DUPLICATE_PATIENT`, as before. When the match is an imported record, the message says to open it and save it from Edit Patient instead.
+- The phone is matched in SQL (indexed; a number is shared by at most a handful of family members), and the name and ID rule runs in memory.
+- **Warning by phone on New Patient Registration:**
+  - As soon as a 10-digit primary phone is typed, Contact Information lists the patients already registered with that number (primary or secondary), through the existing patient list `phone` filter. Each row shows name, UHID, age, gender and last visit, with **Same name** and **Imported — needs verification** badges. A name opens the record in a new tab, so the form isn't lost.
+  - Right before the patient is created, by Save and proceed or by Register Patient when Save and proceed was skipped, a dialog lists the same patients: **Cancel** or **Register as a new patient**. It is asked once per number. If the lookup fails (e.g. no permission to list patients), registration goes ahead, and the server still refuses an exact duplicate.
+- **Search** (the patient list's Search and Name filters, which also back the billing patient picker) also matches the full name "first last".
+
+**Consequences**
+- Web app and API only; nothing stored changes, no migration.
+- A partial-name match ("Kala" on file, "Kala Devi" typed) isn't refused; it is caught only by the phone warning, where the receptionist decides.
+- Families sharing a phone now see the dialog when registering another member: one extra click.
+- Patients whose phone changed since import aren't found by the warning; searching by name still finds them.
+
+---
+
 ### ADR-114: Only a doctor can start an OPD consultation; Consult is disabled for everyone else
 **Date:** 2026-11-03
 **Status:** Accepted (amends ADR-107)
@@ -243,7 +342,7 @@ Client request: on `/clinical/opd`, only patients whose Payment Status is **Paid
 **Consequences**
 - The check is UI-only. `POST .../consultations/{id}/start-consultation` doesn't check payment: the Patients module can't call Billing (Billing already depends on Patients, and the reverse would be circular), which is the same reason the Payment Status column is composed client-side.
 - The rule follows the whole visit, not just the consultation fee. An unpaid lab or radiology bill on the same visit also blocks Consult for another consultant on that visit.
-- A ₹0 consultation line stays "Pending" until a payment is recorded against it, so it also goes through the popup.
+- A ₹0 consultation line stays "Pending" until a payment is recorded against it, so it also goes through the popup. *Amended 2026-11-04 (ADR-116):* a bill that comes to ₹0 is now saved as paid at the counter.
 - Rows already In Consultation or Completed still open with View, unchanged.
 
 ---

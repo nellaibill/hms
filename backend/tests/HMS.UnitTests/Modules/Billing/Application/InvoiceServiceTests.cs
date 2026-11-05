@@ -23,6 +23,7 @@ public class InvoiceServiceTests
     private readonly IInvoiceRepository _repository = Substitute.For<IInvoiceRepository>();
     private readonly IPaymentRepository _paymentRepository = Substitute.For<IPaymentRepository>();
     private readonly IInvoiceDiscountRequestRepository _discountRequestRepository = Substitute.For<IInvoiceDiscountRequestRepository>();
+    private readonly IInvoiceRevertRequestRepository _revertRequestRepository = Substitute.For<IInvoiceRevertRequestRepository>();
     private readonly IInvoiceNumberGenerator _numberGenerator = Substitute.For<IInvoiceNumberGenerator>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
@@ -35,6 +36,7 @@ public class InvoiceServiceTests
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
     private readonly InvoiceService _sut;
     private readonly Guid _patientId = Guid.NewGuid();
+    private readonly Guid _visitId = Guid.NewGuid();
 
     public InvoiceServiceTests()
     {
@@ -42,6 +44,7 @@ public class InvoiceServiceTests
             _repository,
             _paymentRepository,
             _discountRequestRepository,
+            _revertRequestRepository,
             _numberGenerator,
             _patientService,
             _patientVisitService,
@@ -56,12 +59,14 @@ public class InvoiceServiceTests
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientResponse>.Success(new PatientResponse()));
         _numberGenerator.NextInvoiceNumberAsync(Arg.Any<CancellationToken>()).Returns("INV-2026-000001");
+        _patientVisitService.GetByIdAsync(_patientId, _visitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitId = _visitId, PatientId = _patientId, VisitType = VisitType.OP }));
     }
 
     private CreateInvoiceRequest ValidRequest() => new()
     {
         PatientId = _patientId,
-        VisitId = Guid.NewGuid(),
+        VisitId = _visitId,
         PatientName = "Aravind Nadar",
         PatientUhid = "NH20260001",
         Items =
@@ -1211,5 +1216,132 @@ public class InvoiceServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Cancelled);
         discountRequest.Status.Should().Be(InvoiceDiscountRequestStatus.Cancelled);
+    }
+
+    // A bill that comes to ₹0 at the counter (a free consultation, a Super Admin's 100% discount)
+    // is sent with an empty Payments list: nothing to collect, so it's saved paid.
+    private CreateInvoiceRequest FreeConsultationRequest() => ValidRequest() with
+    {
+        Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, DepartmentId = "obg", ConsultantId = "dr-madhavi", Quantity = 1, UnitPrice = 0m }],
+        Payments = [],
+    };
+
+    [Fact]
+    public async Task CreateAsync_WithAZeroRupeeBillAndNoPaymentRows_SavesItPaidWithNoPaymentRecord()
+    {
+        var result = await _sut.CreateAsync(FreeConsultationRequest(), Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(0m);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAnAmountOwedAndNoPaymentRows_IsRefusedAndSavesNothing()
+    {
+        var result = await _sut.CreateAsync(ValidRequest() with { Payments = [] }, Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.PaymentAmountMismatch);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAZeroRupeeBillAndNoPaymentsAtAll_StaysPending()
+    {
+        // Null, as the IPD final bill and pharmacy dispense send it: save unpaid, as before.
+        var result = await _sut.CreateAsync(FreeConsultationRequest() with { Payments = null }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentStatus.Should().Be(PaymentStatus.Pending);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithASuperAdminsFullDiscountAndNoPaymentRows_SavesItPaid()
+    {
+        var request = ValidRequest() with
+        {
+            Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, Quantity = 1, UnitPrice = 720m, Discount = 720m }],
+            DiscountType = InvoiceDiscountType.Percent,
+            DiscountValue = 100m,
+            DiscountReason = "Staff family",
+            Payments = [],
+        };
+
+        var result = await _sut.CreateAsync(request, SuperAdmin, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(0m);
+        result.Value.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAReceptionistsDiscountAndNoPaymentRows_SavesItUnpaidForApproval()
+    {
+        var result = await _sut.CreateAsync(DiscountedRequest() with { Payments = [] }, Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Pending);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Pending);
+    }
+
+    // ADR-117: a bill can only be made on one of the patient's own visits.
+    [Fact]
+    public async Task CreateAsync_OnAVisitThatIsNotThePatients_IsRefusedAndSavesNothing()
+    {
+        var otherVisitId = Guid.NewGuid();
+        _patientVisitService.GetByIdAsync(_patientId, otherVisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Failure("PATIENTS.VISIT_NOT_FOUND", "not found"));
+
+        var result = await _sut.CreateAsync(ValidRequest() with { VisitId = otherVisitId }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.InvalidVisit);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNoRegisteredVisit_DoesNotLookUpAVisit()
+    {
+        // VisitId = PatientId is the documented "no visit" fallback (IPD final bill, pharmacy).
+        var result = await _sut.CreateAsync(ValidRequest() with { VisitId = _patientId }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _patientVisitService.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // ADR-118: money taken while a revert waits was dropped from every report once the revert was
+    // approved, with no refund shown for it — so no payment is taken until it's decided.
+    [Fact]
+    public async Task PayAsync_WhileARevertIsWaitingForApproval_IsRefusedAndTakesNoPayment()
+    {
+        var invoice = GivenSavedInvoice();
+        _revertRequestRepository.HasPendingAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }] }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.RevertPending);
+        invoice.PaymentStatus.Should().Be(PaymentStatus.Pending);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordPaymentAsync_WhileARevertIsWaitingForApproval_IsRefusedAndTakesNoPayment()
+    {
+        var invoice = GivenSavedInvoice();
+        _revertRequestRepository.HasPendingAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.RecordPaymentAsync(invoice.Id, invoice.Items.Single().Id, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.RevertPending);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

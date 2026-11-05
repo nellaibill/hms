@@ -80,9 +80,15 @@ internal class PatientService : IPatientService
         var duplicate = await _repository.FindDuplicateAsync(request.PrimaryPhone, request.FirstName, request.LastName, request.IdProofNumber, cancellationToken);
         if (duplicate is not null)
         {
+            // An imported legacy record (RequiresDataVerification) is the usual match now — say
+            // how to bring it up to date rather than leaving reception to re-register.
+            var existingName = $"{duplicate.FirstName} {duplicate.LastName}".Trim();
+            var nextStep = duplicate.RequiresDataVerification
+                ? "Their record came from the old system and needs verifying — open it and save it from Edit Patient instead of registering them again."
+                : "If this is a returning patient, use their existing record instead of registering them again.";
             return Result<PatientResponse>.Failure(
                 PatientErrorCodes.DuplicatePatient,
-                $"A patient named '{duplicate.FirstName} {duplicate.LastName}' with this phone number (and ID number, if supplied) is already registered (UHID: {duplicate.Uhid}). If this is a returning patient, use their existing record instead of registering them again.");
+                $"A patient named '{existingName}' with this phone number is already registered (UHID: {duplicate.Uhid}). {nextStep}");
         }
 
         var referenceError = await ValidateAddressReferencesAsync(request.Address.StateId, request.Address.DistrictId, cancellationToken);

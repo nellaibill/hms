@@ -69,6 +69,7 @@ internal class InvoiceService : IInvoiceService
     private readonly IInvoiceRepository _repository;
     private readonly IPaymentRepository _paymentRepository;
     private readonly IInvoiceDiscountRequestRepository _discountRequestRepository;
+    private readonly IInvoiceRevertRequestRepository _revertRequestRepository;
     private readonly IInvoiceNumberGenerator _numberGenerator;
     private readonly IPatientService _patientService;
     private readonly IPatientVisitService _patientVisitService;
@@ -84,6 +85,7 @@ internal class InvoiceService : IInvoiceService
         IInvoiceRepository repository,
         IPaymentRepository paymentRepository,
         IInvoiceDiscountRequestRepository discountRequestRepository,
+        IInvoiceRevertRequestRepository revertRequestRepository,
         IInvoiceNumberGenerator numberGenerator,
         IPatientService patientService,
         IPatientVisitService patientVisitService,
@@ -98,6 +100,7 @@ internal class InvoiceService : IInvoiceService
         _repository = repository;
         _paymentRepository = paymentRepository;
         _discountRequestRepository = discountRequestRepository;
+        _revertRequestRepository = revertRequestRepository;
         _numberGenerator = numberGenerator;
         _patientService = patientService;
         _patientVisitService = patientVisitService;
@@ -335,6 +338,16 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.InvalidPatient, $"Patient '{request.PatientId}' was not found.");
         }
 
+        // A bill made for a visit must be on one of this patient's own visits (ADR-117). A bill
+        // with no registered visit carries the patient's own id instead (CreateInvoiceRequest.VisitId).
+        if (request.VisitId != request.PatientId
+            && await _patientVisitService.GetByIdAsync(request.PatientId, request.VisitId, cancellationToken) is not { IsSuccess: true })
+        {
+            return Result<InvoiceResponse>.Failure(
+                BillingErrorCodes.InvalidVisit,
+                $"Visit '{request.VisitId}' isn't one of this patient's visits. Reload the patient and choose the visit again.");
+        }
+
         var chargeCheck = await ValidateConsultationChargesAsync(request.Items, cancellationToken);
         if (!chargeCheck.IsSuccess)
         {
@@ -417,8 +430,12 @@ internal class InvoiceService : IInvoiceService
 
         // Optional pay-in-full-at-creation: mark every line item Paid and record Payment rows
         // in the same save as the invoice itself, so there's no window where the invoice
-        // exists with some lines paid and others not from a partial failure.
-        if (request.Payments is { Count: > 0 } payments)
+        // exists with some lines paid and others not from a partial failure. An empty list is
+        // the counter collecting a bill that comes to ₹0 (a free consultation, a Super Admin's
+        // 100% discount): every line is marked Paid with no Payment row, as PayAsync does, and
+        // ApplyPaymentsAsync refuses it if anything is owed. A discount still waiting for
+        // approval leaves the bill unpaid, so an empty list changes nothing there.
+        if (request.Payments is { } payments && (payments.Count > 0 || invoice.DiscountStatus != InvoiceDiscountRequestStatus.Pending))
         {
             var paid = await ApplyPaymentsAsync(invoice, payments, actorId, cancellationToken);
             if (!paid.IsSuccess)
@@ -632,6 +649,11 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, DiscountPendingMessage);
         }
 
+        if (await _revertRequestRepository.HasPendingAsync(invoice.Id, cancellationToken))
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.RevertPending, RevertPendingMessage);
+        }
+
         var before = invoice.ToResponse();
 
         var paidItem = invoice.MarkItemPaid(itemId, actorId);
@@ -650,6 +672,10 @@ internal class InvoiceService : IInvoiceService
 
     private const string DiscountPendingMessage = "This bill has a discount waiting for approval — collect payment once every part of it is approved or rejected.";
 
+    // ADR-118: money taken while a revert waits was dropped from every report once the revert was
+    // approved, with no refund shown for it.
+    private const string RevertPendingMessage = "This bill has a revert request waiting for Super Admin approval — no payment can be taken until it's approved or rejected.";
+
     public async Task<Result<InvoiceResponse>> PayAsync(Guid invoiceId, PayInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var invoice = await _repository.GetByIdAsync(invoiceId, cancellationToken);
@@ -666,6 +692,11 @@ internal class InvoiceService : IInvoiceService
         if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
         {
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, DiscountPendingMessage);
+        }
+
+        if (await _revertRequestRepository.HasPendingAsync(invoice.Id, cancellationToken))
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.RevertPending, RevertPendingMessage);
         }
 
         var unpaid = invoice.Items.Where(i => i.PaymentStatus != Contracts.PaymentStatus.Paid).ToList();

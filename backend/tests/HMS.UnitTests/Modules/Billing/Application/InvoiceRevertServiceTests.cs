@@ -340,4 +340,21 @@ public class InvoiceRevertServiceTests
 
         result.Select(r => (r.Reason, r.TimesUsed)).Should().Equal(("Wrong consultant billed", 3), ("Duplicate bill", 2));
     }
+
+    // ADR-118: the refund shown on approval is what the bill has collected by then, not what it
+    // had when the revert was asked for.
+    [Fact]
+    public async Task ApproveAsync_AfterAPaymentLandedAlongsideTheRequest_ShowsTheRefundForWhatWasCollected()
+    {
+        var invoice = GivenInvoice(paid: false);
+        var request = GivenPendingRequest(invoice);
+        request.PaidAmount.Should().Be(0m);
+        invoice.MarkItemPaid(invoice.Items.Single().Id, null);
+
+        var result = await _sut.ApproveAsync(request.Id, new ApproveInvoiceRevertRequest(), _actorId, "superadmin", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaidAmount.Should().Be(250m);
+        invoice.IsReverted.Should().BeTrue();
+    }
 }

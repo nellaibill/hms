@@ -1,3 +1,4 @@
+using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
@@ -114,9 +115,12 @@ internal class PatientRepository : IPatientRepository
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = $"%{query.Search.Trim()}%";
+            // The full name too, so "Kala Devi" finds a patient saved as Kala + Devi — first and
+            // last name on their own each miss a search typed as the whole name.
             patients = patients.Where(p =>
                 EF.Functions.ILike(p.FirstName, term) ||
                 EF.Functions.ILike(p.LastName, term) ||
+                EF.Functions.ILike(p.FirstName + " " + p.LastName, term) ||
                 EF.Functions.ILike(p.Uhid, term) ||
                 EF.Functions.ILike(p.PrimaryPhone, term));
         }
@@ -126,7 +130,8 @@ internal class PatientRepository : IPatientRepository
         if (!string.IsNullOrWhiteSpace(query.Name))
         {
             var term = $"%{query.Name.Trim()}%";
-            patients = patients.Where(p => EF.Functions.ILike(p.FirstName, term) || EF.Functions.ILike(p.LastName, term));
+            patients = patients.Where(p =>
+                EF.Functions.ILike(p.FirstName, term) || EF.Functions.ILike(p.LastName, term) || EF.Functions.ILike(p.FirstName + " " + p.LastName, term));
         }
 
         if (!string.IsNullOrWhiteSpace(query.Uhid))
@@ -203,19 +208,19 @@ internal class PatientRepository : IPatientRepository
         return patients;
     }
 
-    public Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, string? idProofNumber, CancellationToken cancellationToken)
+    public async Task<Patient?> FindDuplicateAsync(string primaryPhone, string firstName, string lastName, string? idProofNumber, CancellationToken cancellationToken)
     {
-        var query = _dbContext.Patients.Where(
-            p => p.PrimaryPhone == primaryPhone && EF.Functions.ILike(p.FirstName, firstName) && EF.Functions.ILike(p.LastName, lastName));
+        // Only the phone is matched in SQL (indexed, and a number is shared by a handful of
+        // family members at most); the name and ID rule runs in memory, where
+        // PatientDuplicateMatching can compare full names regardless of how they were split
+        // between first and last name — see its doc comment for why that matters.
+        var samePhone = await _dbContext.Patients
+            .Where(p => p.PrimaryPhone == primaryPhone.Trim())
+            .OrderBy(p => p.CreatedAt)
+            .ToListAsync(cancellationToken);
 
-        // When an ID number is supplied, require it to also match — the strongest of the
-        // three signals. When it isn't supplied, name+phone alone still catches the common case.
-        if (!string.IsNullOrWhiteSpace(idProofNumber))
-        {
-            query = query.Where(p => p.IdProofNumber == idProofNumber);
-        }
-
-        return query.FirstOrDefaultAsync(cancellationToken);
+        return samePhone.FirstOrDefault(p =>
+            PatientDuplicateMatching.IsSamePatient(p.FirstName, p.LastName, p.IdProofNumber, firstName, lastName, idProofNumber));
     }
 
     public string GetRowVersion(Patient patient)

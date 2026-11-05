@@ -1,5 +1,5 @@
 import { useQueries } from '@tanstack/react-query';
-import { getOverallPaymentStatus } from '@/features/billing';
+import { getOverallPaymentStatus, visitBillingStatus } from '@/features/billing';
 import { getInvoicesByPatientId } from '@/features/billing/apiBillingRepository';
 
 export const OPD_PAYMENT_STATUSES = ['NotBilled', 'Pending', 'Paid'] as const;
@@ -52,11 +52,8 @@ export function useVisitPaymentStatusesQuery(patientIds: string[]) {
     // failed request, permanently) read as unbilled.
     if (!result || result.isPending) return 'Loading';
     if (result.isError) return 'Unavailable';
-    const visitInvoices = getVisitInvoices(patientId, visitId);
-    if (visitInvoices.length === 0) return 'NotBilled';
-    const unpaid = visitInvoices.filter((invoice) => getOverallPaymentStatus(invoice.items) !== 'Paid');
-    if (unpaid.length === 0) return 'Paid';
-    return unpaid.some((invoice) => invoice.discountStatus === 'Pending') ? 'OnHold' : 'Pending';
+    // Same rule OPD Billing Entry's visit picker shows (ADR-117).
+    return visitBillingStatus(result.data ?? [], visitId);
   }
 
   /** The visit's unpaid invoices, oldest first — where a 'Pending' or 'OnHold' visit's payment

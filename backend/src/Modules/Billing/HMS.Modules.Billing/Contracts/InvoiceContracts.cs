@@ -37,9 +37,10 @@ public record CreateInvoiceRequest
 {
     public Guid PatientId { get; init; }
 
-    /// <summary>References Patients' PatientRegistration.Id when a real encounter exists;
-    /// falls back to PatientId itself for flows with no registration concept yet (e.g. OPD
-    /// Billing Entry for a returning patient) — mirrors the frontend's own fallback.</summary>
+    /// <summary>The patient's visit (Patients' PatientVisit.VisitId) this bill is for — it must
+    /// be one of this patient's own visits (ADR-117). Falls back to PatientId itself for flows
+    /// with no visit (the IPD final bill, a pharmacy dispense, OPD Billing Entry for a patient
+    /// with no recorded visit) — mirrors the frontend's own fallback.</summary>
     public Guid VisitId { get; init; }
 
     /// <summary>Snapshotted at creation, not a live join — see Domain/Invoice.cs.</summary>
@@ -49,8 +50,10 @@ public record CreateInvoiceRequest
     public IReadOnlyList<CreateInvoiceLineItemRequest> Items { get; init; } = [];
 
     /// <summary>Optional — when supplied, the whole invoice is paid in full at creation time
-    /// (every line item marked Paid, atomic with the invoice's own save). Null/empty means
-    /// save Pending, exactly like every invoice created before this field existed. Every row
+    /// (every line item marked Paid, atomic with the invoice's own save). Null means save
+    /// Pending, exactly like every invoice created before this field existed. An empty list
+    /// settles a bill that comes to ₹0 (rejected if anything is owed), unless a discount is
+    /// waiting for approval, which leaves the bill Pending either way. Every row
     /// together must add up to at least NetAmount; any excess is treated as change (not
     /// persisted) — same whether it's one row (e.g. a single Cash row tendering more than
     /// NetAmount) or several (e.g. part Upi, part Cash, with the excess coming back in Cash).
