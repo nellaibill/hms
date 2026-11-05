@@ -20,6 +20,10 @@ internal interface IInvoiceRevertRequestRepository
 
     Task<int> CountPendingAsync(CancellationToken cancellationToken);
 
+    /// <summary>Whether this invoice has a revert request still waiting for a decision — while
+    /// it does, the bill takes no payment (ADR-118).</summary>
+    Task<bool> HasPendingAsync(Guid invoiceId, CancellationToken cancellationToken);
+
     /// <summary>The reasons given on the most recent <paramref name="take"/> requests, newest first.</summary>
     Task<IReadOnlyList<string>> GetRecentReasonsAsync(int take, CancellationToken cancellationToken);
 

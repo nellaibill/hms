@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-118: No payment while a revert is waiting for approval; the refund is worked out again when it's approved
+**Date:** 2026-11-05
+**Status:** Accepted (amends ADR-106)
+
+**Context**
+A revert request (ADR-106) records the amount paid when it is raised, and that figure is the refund shown when it is approved. Nothing stopped the counter collecting money on the bill in between. Reproduced on 2026-11-05 with INV-2026-000245:
+- A receptionist's ₹100 discount left the ₹600 bill unpaid until it was decided.
+- A revert was then requested, recording ₹0 paid.
+- ₹600 cash was collected 22 seconds later.
+- The revert was approved with no refund shown.
+
+The bill was voided out of every report, while the ₹600 payment stayed on its lines with nothing telling the counter to hand it back.
+
+**Decision**
+- **No payment while a revert waits.** Collect Payment (`POST invoices/{id}/pay`) and Record Payment (`POST invoices/{id}/items/{itemId}/payments`) are refused while the bill has a Pending revert request: 409 `BILLING.REVERT_PENDING`. This is the same rule as a pending discount (ADR-109).
+- **Screen:** the bill page hides both buttons and the revert banner says "No payment can be taken on this bill until the revert is approved or rejected." Once the revert is rejected, payment can be collected as usual.
+- **Refund worked out on approval.** Approving takes the paid amount again from the bill as it stands (`InvoiceRevertRequest.Approve`). The refund shown on approval, and in the Revert Requests list and the bill's banner afterwards, is what the bill actually collected. This covers a payment that landed at the same moment as the request. The activity-log entry now reads "Approved revert of invoice … — refund ₹…".
+
+**Consequences**
+- No migration. Requests already decided keep their figures; INV-2026-000245 still shows ₹0, though ₹600 was collected.
+- While a request is Pending, the Revert Requests list still shows the amount recorded when it was raised. With payments blocked, that can't change any more.
+
+---
+
 ### ADR-117: OPD Billing Entry shows which visit it bills, and asks when today has more than one unpaid visit
 **Date:** 2026-11-05
 **Status:** Accepted (changes the visit OPD Billing Entry picks; ADR-107's `?visitId=` still wins)

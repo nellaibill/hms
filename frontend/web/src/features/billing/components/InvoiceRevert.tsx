@@ -149,6 +149,9 @@ export function InvoiceRevertBanner({ billing }: { billing: Billing }) {
               Requested{latest.requestedByName ? ` by ${latest.requestedByName}` : ''} on {formatDateTime(latest.requestedAt)}
             </span>
             <span className="text-foreground">Reason: {latest.reason}</span>
+            {billing.items.some((item) => item.paymentStatus !== 'Paid') && (
+              <span className="text-muted-foreground">No payment can be taken on this bill until the revert is approved or rejected.</span>
+            )}
           </div>
         </div>
         <RevertDecisionButtons request={latest} />

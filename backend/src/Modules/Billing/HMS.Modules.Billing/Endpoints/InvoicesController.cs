@@ -229,6 +229,7 @@ public class InvoicesController : ControllerBase
             BillingErrorCodes.PaymentAmountMismatch => StatusCodes.Status400BadRequest,
             BillingErrorCodes.DiscountApprovalPending => StatusCodes.Status409Conflict,
             BillingErrorCodes.NothingToPay => StatusCodes.Status409Conflict,
+            BillingErrorCodes.RevertPending => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 
