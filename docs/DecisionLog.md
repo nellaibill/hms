@@ -37,6 +37,36 @@ _To be documented._
 
 ## Decisions
 
+### ADR-117: OPD Billing Entry shows which visit it bills, and asks when today has more than one unpaid visit
+**Date:** 2026-11-05
+**Status:** Accepted (changes the visit OPD Billing Entry picks; ADR-107's `?visitId=` still wins)
+
+**Context**
+OPD Billing Entry saved every bill against the patient's newest visit, unless `?visitId=` named one, and never said which visit that was. Only the OPD "Payment required" pop-up passes `?visitId=`, and since ADR-114 the front desk doesn't reach it. So a patient with more than one visit could have one doctor's fee land on another doctor's visit. On 28 Oct, INV-2026-000231/232 put Dr. L. Madhavi's OP fees on a week-old IP visit with Dr. M. Ramalakshmi. That visit then read Paid and got the money, while the right visit stayed Not Billed with no OP No. If the patient's visits failed to load, the bill was saved with no visit at all.
+
+**Decision**
+- **"Billing visit" card** (`BillingVisitCard`) above the bill shows the visit being billed:
+  - its type, OP/IP No, date and time, its consultants, and whether it's Not billed, Payment pending, On hold or Paid
+  - a dropdown of all the patient's visits, newest first, when there is more than one
+  - changing the visit restarts the bill from that visit's prefill, and asks first if anything has been entered.
+- **Which visit** (`chooseBillingVisit`):
+  - the one picked on the card, else `?visitId=`
+  - else today's only unpaid visit
+  - with **more than one unpaid visit today**, none: the bill form stays hidden until the counter picks one
+  - otherwise the newest visit.
+- **Warnings and blocks:**
+  - A visit from an earlier day shows a note: "If the patient has come for a new visit today, Add Visit first", with a link.
+  - A patient with no visit is told the bill won't be linked to one.
+  - If the patient's visits or bills fail to load, the form isn't offered and a reload message is shown.
+- **API:** `POST /api/v1/billing/invoices` refuses a `VisitId` that isn't one of the patient's own visits (400 `BILLING.INVALID_VISIT`). `VisitId = PatientId`, the no-visit fallback used by the IPD final bill and pharmacy, is unchanged.
+- The OPD list's Payment Status and the card use the same rule (`visitBillingStatus`).
+
+**Consequences**
+- No migration, and nothing already billed is moved. INV-2026-000231/232 stay on the IP visit; correcting them would mean a revert, which is not allowed because the bills belong to an IP visit.
+- "Today" is the counter's local date, and only unpaid visits count, so an old unbilled visit doesn't make the counter choose every time. It is still offered in the dropdown.
+
+---
+
 ### ADR-116: A bill that comes to ₹0 is saved as paid at the counter
 **Date:** 2026-11-04
 **Status:** Accepted (amends ADR-107's note on ₹0 consultation lines)

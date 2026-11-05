@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageBanner } from '@/components/PageBanner';
 import {
   BillingStep,
+  BillingVisitCard,
+  chooseBillingVisit,
   InvoiceDetailCard,
   isConsultationEntryActive,
   LabDetailsCard,
@@ -26,6 +28,7 @@ import {
   usePatientInvoicesQuery,
   useRecordPaymentMutation,
   useVoidInvoiceMutation,
+  visitBillingStatus,
   type Billing,
   type BillingFormValues,
   type BillingItem,
@@ -36,6 +39,7 @@ import {
 import { CONSULT_AFTER_BILLING_PARAM, OpdConsultAfterBillingBanner } from '../../features/opd';
 import { usePatientQuery, usePatientVisitsQuery, VerifyPatientDialog } from '../../features/patients';
 import { PatientNameLink } from '@/components/PatientNameLink';
+import { todayDateInputValue } from '@/lib/reportDateRange';
 
 /**
  * Turns a thrown createInvoiceMutation error into what a receptionist actually needs to see —
@@ -95,15 +99,28 @@ export default function InvoiceCreatePage() {
 
   // Registration Details already captured Department/Consultant/Consultation Type for this
   // patient's visit — re-asking for the same three fields here would just be redundant data
-  // entry for the common case (billing the visit that was just registered). Prefilled from the
-  // patient's most recent visit only; a patient with none (never went through Registration
-  // Details, or was created before the visit feature existed) falls back to one blank row,
-  // same as before this change. ?visitId= (OPD "Consult" on an unpaid visit) bills that visit
-  // instead — the OPD row may not be the patient's latest visit.
+  // entry for the common case (billing the visit that was just registered), so the bill is
+  // prefilled from the visit it's for. A patient with no visit (never went through
+  // Registration Details, or created before the visit feature existed) falls back to one blank
+  // row, and the bill isn't linked to a visit.
+  //
+  // Which visit (ADR-117): the one picked under "Billing visit" (BillingVisitCard), else
+  // ?visitId= (OPD "Consult" on an unpaid visit), else today's only unpaid visit, else the
+  // newest — see chooseBillingVisit. With more than one unpaid visit today nothing is billed
+  // until the counter picks one: silently taking the newest put one doctor's fee on another
+  // doctor's visit. The card always says which visit it is.
   const [searchParams] = useSearchParams();
-  const { data: visits, isPending: visitsPending } = usePatientVisitsQuery(patient?.id);
+  const { data: visits, isPending: visitsPending, isError: visitsFailed } = usePatientVisitsQuery(patient?.id);
+  const { data: patientInvoices, isPending: invoicesPending, isError: invoicesFailed } = usePatientInvoicesQuery(patient?.id);
   const requestedVisitId = searchParams.get('visitId');
-  const billingVisit = visits?.find((visit) => visit.visitId === requestedVisitId) ?? visits?.[0];
+  const [chosenVisitId, setChosenVisitId] = useState<string | null>(null);
+  const today = todayDateInputValue();
+  const { visit: billingVisit, needsChoice: visitChoiceNeeded } = chooseBillingVisit(
+    visits ?? [],
+    patientInvoices ?? [],
+    chosenVisitId ?? requestedVisitId,
+    today,
+  );
   const consultAfterBillingId = searchParams.get(CONSULT_AFTER_BILLING_PARAM);
 
   // Guards against double-billing a consultation this specific visit already had billed —
@@ -119,7 +136,6 @@ export default function InvoiceCreatePage() {
   // consultant on a visit together in one invoice is the realistic common case anyway, so this
   // is the meaningful guard rather than a needless simplification. A voided invoice doesn't
   // count — that consultation was never actually billed.
-  const { data: patientInvoices, isPending: invoicesPending } = usePatientInvoicesQuery(patient?.id);
   const consultationAlreadyBilledForVisit = useMemo(() => {
     if (!billingVisit) return false;
     return (patientInvoices ?? []).some(
@@ -212,6 +228,18 @@ export default function InvoiceCreatePage() {
   // "Change patient" resets local state rather than navigating, so the router blocker above
   // never sees it — a separate, lighter-weight confirmation for this one case.
   const [confirmChangePatient, setConfirmChangePatient] = useState(false);
+  // Switching the billing visit starts the bill again from that visit's prefill, so entries
+  // already made ask first, the same way.
+  const [pendingVisitId, setPendingVisitId] = useState<string | null>(null);
+
+  function handleVisitChange(visitId: string) {
+    if (visitId === billingVisit?.visitId) return;
+    if (isDirty) {
+      setPendingVisitId(visitId);
+    } else {
+      setChosenVisitId(visitId);
+    }
+  }
 
   function handleChangePatientClick() {
     if (isDirty) {
@@ -221,7 +249,7 @@ export default function InvoiceCreatePage() {
     }
   }
 
-  const showUnsavedDialog = blocker.state === 'blocked' || confirmChangePatient;
+  const showUnsavedDialog = blocker.state === 'blocked' || confirmChangePatient || pendingVisitId !== null;
 
   function handleConfirmDiscard() {
     if (blocker.state === 'blocked') {
@@ -233,6 +261,12 @@ export default function InvoiceCreatePage() {
       setIsDirty(false);
       isDirtyRef.current = false;
     }
+    if (pendingVisitId) {
+      setChosenVisitId(pendingVisitId);
+      setPendingVisitId(null);
+      setIsDirty(false);
+      isDirtyRef.current = false;
+    }
   }
 
   function handleCancelDiscard() {
@@ -240,6 +274,7 @@ export default function InvoiceCreatePage() {
       blocker.reset();
     }
     setConfirmChangePatient(false);
+    setPendingVisitId(null);
   }
 
   // Save-time counterpart to the prefill guard above — that guard only stops a duplicate row
@@ -293,6 +328,7 @@ export default function InvoiceCreatePage() {
       setUnverifiedPatient(selected);
       return;
     }
+    setChosenVisitId(null);
     setPatient(selected);
   }
 
@@ -302,6 +338,13 @@ export default function InvoiceCreatePage() {
       setSaveError('This patient must be verified before billing — edit and verify the patient details first.');
       return;
     }
+    if (visitChoiceNeeded) {
+      setSaveError("Choose the visit you're billing first.");
+      return;
+    }
+    // Keep billing this visit once it's saved: the default choice can move on as soon as this
+    // visit reads Paid.
+    if (billingVisit) setChosenVisitId(billingVisit.visitId);
     try {
       // Use the patient's actual visit (populates Registration Type/Department/Consultant(s)
       // on the Recent Patient Bills ledger via the Billing↔Patients join in
@@ -422,6 +465,18 @@ export default function InvoiceCreatePage() {
                 />
               )}
 
+              {!shownInvoice && !visitsPending && !invoicesPending && !visitsFailed && !invoicesFailed && (
+                <BillingVisitCard
+                  patientId={patient.id}
+                  visits={visits ?? []}
+                  visit={billingVisit}
+                  needsChoice={visitChoiceNeeded}
+                  statusOf={(visitId) => visitBillingStatus(patientInvoices ?? [], visitId)}
+                  today={today}
+                  onChange={handleVisitChange}
+                />
+              )}
+
               {shownInvoice ? (
                 // Saved — shows the real invoice view right here (same InvoiceDetailCard the
                 // standalone Invoice Detail page renders) instead of navigating there, so
@@ -458,12 +513,19 @@ export default function InvoiceCreatePage() {
                 </>
               ) : (
                 <>
-                  {visitsPending || invoicesPending || (Boolean(billingVisit) && billableInvestigationsPending) ? (
+                  {visitsFailed || invoicesFailed ? (
+                    // Billing without them could save the bill against the wrong visit (or none)
+                    // and miss a consultation already billed on it — so don't offer the form.
+                    <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      Couldn't load this patient's visits and bills, so this bill can't be linked to the right visit. Reload the page and try
+                      again.
+                    </p>
+                  ) : visitsPending || invoicesPending || (Boolean(billingVisit) && billableInvestigationsPending) ? (
                     <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading this patient's visit details…
                     </div>
-                  ) : (
+                  ) : visitChoiceNeeded ? null : (
                     // key forces a fresh BillingStep (and a fresh RHF form) per patient -
                     // defaultValues is only ever read once by useForm, so without this, picking
                     // a different patient after the form already mounted would keep showing the
@@ -475,7 +537,7 @@ export default function InvoiceCreatePage() {
                     // section opened. The summary sidebar doesn't grow that way, so the action
                     // that actually depends on it stays anchored there instead.
                     <BillingStep
-                      key={patient.id}
+                      key={`${patient.id}:${billingVisit?.visitId ?? 'no-visit'}`}
                       ref={billingRef}
                       defaultValues={billingDefaultValues}
                       onDirtyChange={setIsDirty}
@@ -501,8 +563,9 @@ export default function InvoiceCreatePage() {
           <DialogHeader>
             <DialogTitle id="discard-invoice-title">Discard this invoice?</DialogTitle>
             <DialogDescription>
-              You've entered billing details that haven't been saved yet. Leaving now will lose everything entered for this
-              invoice.
+              {pendingVisitId
+                ? "You've entered billing details that haven't been saved yet. Switching to another visit starts the bill again from that visit, so they'll be lost."
+                : "You've entered billing details that haven't been saved yet. Leaving now will lose everything entered for this invoice."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -510,7 +573,7 @@ export default function InvoiceCreatePage() {
               Keep editing
             </Button>
             <Button variant="destructive" onClick={handleConfirmDiscard}>
-              Discard and leave
+              {pendingVisitId ? 'Discard and switch' : 'Discard and leave'}
             </Button>
           </DialogFooter>
         </DialogContent>

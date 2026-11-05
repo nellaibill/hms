@@ -35,6 +35,7 @@ public class InvoiceServiceTests
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
     private readonly InvoiceService _sut;
     private readonly Guid _patientId = Guid.NewGuid();
+    private readonly Guid _visitId = Guid.NewGuid();
 
     public InvoiceServiceTests()
     {
@@ -56,12 +57,14 @@ public class InvoiceServiceTests
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientResponse>.Success(new PatientResponse()));
         _numberGenerator.NextInvoiceNumberAsync(Arg.Any<CancellationToken>()).Returns("INV-2026-000001");
+        _patientVisitService.GetByIdAsync(_patientId, _visitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitId = _visitId, PatientId = _patientId, VisitType = VisitType.OP }));
     }
 
     private CreateInvoiceRequest ValidRequest() => new()
     {
         PatientId = _patientId,
-        VisitId = Guid.NewGuid(),
+        VisitId = _visitId,
         PatientName = "Aravind Nadar",
         PatientUhid = "NH20260001",
         Items =
@@ -1282,5 +1285,30 @@ public class InvoiceServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Pending);
         result.Value.PaymentStatus.Should().Be(PaymentStatus.Pending);
+    }
+
+    // ADR-117: a bill can only be made on one of the patient's own visits.
+    [Fact]
+    public async Task CreateAsync_OnAVisitThatIsNotThePatients_IsRefusedAndSavesNothing()
+    {
+        var otherVisitId = Guid.NewGuid();
+        _patientVisitService.GetByIdAsync(_patientId, otherVisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Failure("PATIENTS.VISIT_NOT_FOUND", "not found"));
+
+        var result = await _sut.CreateAsync(ValidRequest() with { VisitId = otherVisitId }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.InvalidVisit);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNoRegisteredVisit_DoesNotLookUpAVisit()
+    {
+        // VisitId = PatientId is the documented "no visit" fallback (IPD final bill, pharmacy).
+        var result = await _sut.CreateAsync(ValidRequest() with { VisitId = _patientId }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _patientVisitService.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

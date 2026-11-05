@@ -1,4 +1,5 @@
 export * from './components/BillingStep';
+export * from './components/BillingVisitCard';
 export * from './components/InvoiceDetailCard';
 export * from './components/InvoiceRevert';
 export * from './components/InvoiceDiscount';
@@ -14,6 +15,7 @@ export * from './components/RecentPatientBillsTable';
 export * from './components/RecordPaymentDialog';
 export * from './components/VoidInvoiceDialog';
 export * from './billingActivity';
+export * from './billingVisit';
 export * from './billingCalculations';
 export * from './billingValidation';
 export * from './hooks/useBillableInvestigationsQuery';

@@ -335,6 +335,16 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.InvalidPatient, $"Patient '{request.PatientId}' was not found.");
         }
 
+        // A bill made for a visit must be on one of this patient's own visits (ADR-117). A bill
+        // with no registered visit carries the patient's own id instead (CreateInvoiceRequest.VisitId).
+        if (request.VisitId != request.PatientId
+            && await _patientVisitService.GetByIdAsync(request.PatientId, request.VisitId, cancellationToken) is not { IsSuccess: true })
+        {
+            return Result<InvoiceResponse>.Failure(
+                BillingErrorCodes.InvalidVisit,
+                $"Visit '{request.VisitId}' isn't one of this patient's visits. Reload the patient and choose the visit again.");
+        }
+
         var chargeCheck = await ValidateConsultationChargesAsync(request.Items, cancellationToken);
         if (!chargeCheck.IsSuccess)
         {
