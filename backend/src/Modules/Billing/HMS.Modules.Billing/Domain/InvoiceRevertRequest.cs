@@ -46,7 +46,7 @@ internal class InvoiceRevertRequest : Entity
         PatientName = invoice.PatientName;
         PatientUhid = invoice.PatientUhid;
         NetAmount = invoice.NetAmount;
-        PaidAmount = invoice.Items.Where(i => i.PaymentStatus == PaymentStatus.Paid).Sum(i => i.Total);
+        PaidAmount = PaidOn(invoice);
         Reason = reason;
         Status = InvoiceRevertRequestStatus.Pending;
         RequestedByName = requestedByName;
@@ -64,7 +64,18 @@ internal class InvoiceRevertRequest : Entity
             createdBy);
     }
 
-    public void Approve(Guid? actorId, string? actorName, string? notes) => Decide(InvoiceRevertRequestStatus.Approved, actorId, actorName, notes);
+    /// <summary>What <paramref name="invoice"/> has collected so far — its paid lines' totals.</summary>
+    public static decimal PaidOn(Invoice invoice)
+        => invoice.Items.Where(i => i.PaymentStatus == PaymentStatus.Paid).Sum(i => i.Total);
+
+    /// <summary>Approves the revert. <see cref="PaidAmount"/> is taken again from the bill as it
+    /// stands, so it is the refund actually owed — the bill can't take a payment while the request
+    /// waits (ADR-118), but one that landed alongside the request still counts.</summary>
+    public void Approve(Invoice invoice, Guid? actorId, string? actorName, string? notes)
+    {
+        PaidAmount = PaidOn(invoice);
+        Decide(InvoiceRevertRequestStatus.Approved, actorId, actorName, notes);
+    }
 
     public void Reject(Guid? actorId, string? actorName, string? notes) => Decide(InvoiceRevertRequestStatus.Rejected, actorId, actorName, notes);
 

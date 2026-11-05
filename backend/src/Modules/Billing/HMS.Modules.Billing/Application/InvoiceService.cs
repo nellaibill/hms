@@ -69,6 +69,7 @@ internal class InvoiceService : IInvoiceService
     private readonly IInvoiceRepository _repository;
     private readonly IPaymentRepository _paymentRepository;
     private readonly IInvoiceDiscountRequestRepository _discountRequestRepository;
+    private readonly IInvoiceRevertRequestRepository _revertRequestRepository;
     private readonly IInvoiceNumberGenerator _numberGenerator;
     private readonly IPatientService _patientService;
     private readonly IPatientVisitService _patientVisitService;
@@ -84,6 +85,7 @@ internal class InvoiceService : IInvoiceService
         IInvoiceRepository repository,
         IPaymentRepository paymentRepository,
         IInvoiceDiscountRequestRepository discountRequestRepository,
+        IInvoiceRevertRequestRepository revertRequestRepository,
         IInvoiceNumberGenerator numberGenerator,
         IPatientService patientService,
         IPatientVisitService patientVisitService,
@@ -98,6 +100,7 @@ internal class InvoiceService : IInvoiceService
         _repository = repository;
         _paymentRepository = paymentRepository;
         _discountRequestRepository = discountRequestRepository;
+        _revertRequestRepository = revertRequestRepository;
         _numberGenerator = numberGenerator;
         _patientService = patientService;
         _patientVisitService = patientVisitService;
@@ -646,6 +649,11 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, DiscountPendingMessage);
         }
 
+        if (await _revertRequestRepository.HasPendingAsync(invoice.Id, cancellationToken))
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.RevertPending, RevertPendingMessage);
+        }
+
         var before = invoice.ToResponse();
 
         var paidItem = invoice.MarkItemPaid(itemId, actorId);
@@ -664,6 +672,10 @@ internal class InvoiceService : IInvoiceService
 
     private const string DiscountPendingMessage = "This bill has a discount waiting for approval — collect payment once every part of it is approved or rejected.";
 
+    // ADR-118: money taken while a revert waits was dropped from every report once the revert was
+    // approved, with no refund shown for it.
+    private const string RevertPendingMessage = "This bill has a revert request waiting for Super Admin approval — no payment can be taken until it's approved or rejected.";
+
     public async Task<Result<InvoiceResponse>> PayAsync(Guid invoiceId, PayInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
     {
         var invoice = await _repository.GetByIdAsync(invoiceId, cancellationToken);
@@ -680,6 +692,11 @@ internal class InvoiceService : IInvoiceService
         if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
         {
             return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, DiscountPendingMessage);
+        }
+
+        if (await _revertRequestRepository.HasPendingAsync(invoice.Id, cancellationToken))
+        {
+            return Result<InvoiceResponse>.Failure(BillingErrorCodes.RevertPending, RevertPendingMessage);
         }
 
         var unpaid = invoice.Items.Where(i => i.PaymentStatus != Contracts.PaymentStatus.Paid).ToList();

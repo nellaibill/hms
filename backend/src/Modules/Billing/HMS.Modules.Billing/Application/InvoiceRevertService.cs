@@ -223,11 +223,11 @@ internal class InvoiceRevertService : IInvoiceRevertService
 
         // One SaveChanges for both: the request and its invoice share BillingDbContext.
         invoice.Revert(revertRequest.Reason, actorId);
-        revertRequest.Approve(actorId, actorName, request.Notes);
+        revertRequest.Approve(invoice, actorId, actorName, request.Notes);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
-        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, $"Approved revert of invoice {invoice.InvoiceNumber}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, $"Approved revert of invoice {invoice.InvoiceNumber} — refund {revertRequest.PaidAmount}", null, response, actorId, cancellationToken);
         await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, $"Reverted invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
 
         return Result<InvoiceRevertRequestResponse>.Success(response);

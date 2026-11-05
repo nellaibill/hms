@@ -19,6 +19,7 @@ import {
   useRequestInvoiceDiscountMutation,
 } from '../hooks/useInvoiceDiscount';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type Billing, type BillingItem, type PaymentMethod } from '../types';
+import { useIsRevertPending } from '../hooks/useInvoiceRevert';
 import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
 
 const textareaClassName =
@@ -546,14 +547,16 @@ function CollectPaymentDialog({ billing, onPaid, onCancel }: { billing: Billing;
 
 /** "Collect Payment" for everything still owed on a saved bill — needs only "finance-billing.create",
  * like taking payment while billing, so the front desk can collect once a discount is decided.
- * Hidden while a discount waits for approval, or once the bill is paid or voided. */
+ * Hidden while a discount or a revert waits for approval (ADR-118), or once the bill is paid or
+ * voided. */
 export function CollectPaymentButton({ billing, onPaid }: { billing: Billing; onPaid?: (updated: Billing) => void }) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const hasUnpaid = billing.items.some((item) => item.paymentStatus !== 'Paid');
+  const revertPending = useIsRevertPending(billing.id);
 
-  if (!hasPermission('finance-billing.create') || billing.isVoided || !hasUnpaid || billing.discountStatus === 'Pending') return null;
+  if (!hasPermission('finance-billing.create') || billing.isVoided || !hasUnpaid || billing.discountStatus === 'Pending' || revertPending) return null;
 
   return (
     <>

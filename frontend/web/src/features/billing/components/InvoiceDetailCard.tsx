@@ -7,6 +7,7 @@ import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/feature
 import { useMasterOptionsQuery } from '@/features/masters';
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import type { Billing, BillingItem } from '../types';
+import { useIsRevertPending } from '../hooks/useInvoiceRevert';
 import { CollectPaymentButton, InvoiceDiscountBanner, RequestDiscountButton } from './InvoiceDiscount';
 import { InvoicePrintTemplate } from './InvoicePrintTemplate';
 import { InvoiceRevertBanner, RequestRevertButton } from './InvoiceRevert';
@@ -34,6 +35,8 @@ export function InvoiceDetailCard({
   const hasAnyPayment = billing.items.some((item) => item.paymentStatus === 'Paid');
   // No payment while a discount waits for Super Admin approval (ADR-109) — the server refuses it.
   const discountPending = billing.discountStatus === 'Pending';
+  // Nor while a revert waits for the Super Admin (ADR-118) — the server refuses that too.
+  const revertPending = useIsRevertPending(billing.id);
   // Primes the Masters reference cache describeBillingItem reads from below, so every line
   // item resolves to its real name instead of a raw id — this page can be opened directly,
   // without ever visiting the live billing form.
@@ -123,7 +126,7 @@ export function InvoiceDetailCard({
                       {formatCurrency(item.total)}
                     </span>
                     <PaymentStatusBadge status={item.paymentStatus} />
-                    {item.paymentStatus === 'Pending' && canEdit && !billing.isVoided && !discountPending && (
+                    {item.paymentStatus === 'Pending' && canEdit && !billing.isVoided && !discountPending && !revertPending && (
                       <Button size="sm" variant="outline" onClick={() => onRecordPayment(item)}>
                         Record Payment
                       </Button>

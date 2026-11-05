@@ -20,6 +20,9 @@ internal class InvoiceRevertRequestRepository : IInvoiceRevertRequestRepository
     public Task<InvoiceRevertRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.InvoiceRevertRequests.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
+    public Task<bool> HasPendingAsync(Guid invoiceId, CancellationToken cancellationToken)
+        => _dbContext.InvoiceRevertRequests.AnyAsync(r => r.InvoiceId == invoiceId && r.Status == InvoiceRevertRequestStatus.Pending, cancellationToken);
+
     public async Task<IReadOnlyList<InvoiceRevertRequest>> GetByInvoiceIdAsync(Guid invoiceId, CancellationToken cancellationToken)
         => await _dbContext.InvoiceRevertRequests
             .Where(r => r.InvoiceId == invoiceId)

@@ -17,6 +17,14 @@ export function useInvoiceRevertStatusQuery(invoiceId: string | undefined) {
   });
 }
 
+/** True while this bill has a revert request waiting for a decision — no payment is taken until
+ * then (ADR-118): money collected meanwhile dropped out of every report once the revert was
+ * approved, with no refund shown for it. */
+export function useIsRevertPending(invoiceId: string | undefined): boolean {
+  const { data: status } = useInvoiceRevertStatusQuery(invoiceId);
+  return status?.requests.some((request) => request.status === 'Pending') ?? false;
+}
+
 export function useRevertRequestsQuery(query: InvoiceRevertRequestListQuery) {
   return useQuery({
     queryKey: revertRequestsQueryKey(query),

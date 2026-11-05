@@ -19,6 +19,7 @@ internal static class BillingErrorCodes
     public const string RevertAlreadyPending = "BILLING.REVERT_ALREADY_PENDING";
     public const string RevertRequestNotPending = "BILLING.REVERT_REQUEST_NOT_PENDING";
     public const string RevertSuperAdminOnly = "BILLING.REVERT_SUPER_ADMIN_ONLY";
+    public const string RevertPending = "BILLING.REVERT_PENDING";
     public const string DiscountRequestNotFound = "BILLING.DISCOUNT_REQUEST_NOT_FOUND";
     public const string DiscountNotEligible = "BILLING.DISCOUNT_NOT_ELIGIBLE";
     public const string DiscountAlreadyPending = "BILLING.DISCOUNT_ALREADY_PENDING";

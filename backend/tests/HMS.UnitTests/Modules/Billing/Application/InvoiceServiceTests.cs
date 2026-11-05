@@ -23,6 +23,7 @@ public class InvoiceServiceTests
     private readonly IInvoiceRepository _repository = Substitute.For<IInvoiceRepository>();
     private readonly IPaymentRepository _paymentRepository = Substitute.For<IPaymentRepository>();
     private readonly IInvoiceDiscountRequestRepository _discountRequestRepository = Substitute.For<IInvoiceDiscountRequestRepository>();
+    private readonly IInvoiceRevertRequestRepository _revertRequestRepository = Substitute.For<IInvoiceRevertRequestRepository>();
     private readonly IInvoiceNumberGenerator _numberGenerator = Substitute.For<IInvoiceNumberGenerator>();
     private readonly IPatientService _patientService = Substitute.For<IPatientService>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
@@ -43,6 +44,7 @@ public class InvoiceServiceTests
             _repository,
             _paymentRepository,
             _discountRequestRepository,
+            _revertRequestRepository,
             _numberGenerator,
             _patientService,
             _patientVisitService,
@@ -1310,5 +1312,36 @@ public class InvoiceServiceTests
 
         result.IsSuccess.Should().BeTrue();
         await _patientVisitService.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // ADR-118: money taken while a revert waits was dropped from every report once the revert was
+    // approved, with no refund shown for it — so no payment is taken until it's decided.
+    [Fact]
+    public async Task PayAsync_WhileARevertIsWaitingForApproval_IsRefusedAndTakesNoPayment()
+    {
+        var invoice = GivenSavedInvoice();
+        _revertRequestRepository.HasPendingAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.PayAsync(invoice.Id, new PayInvoiceRequest { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 720m }] }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.RevertPending);
+        invoice.PaymentStatus.Should().Be(PaymentStatus.Pending);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordPaymentAsync_WhileARevertIsWaitingForApproval_IsRefusedAndTakesNoPayment()
+    {
+        var invoice = GivenSavedInvoice();
+        _revertRequestRepository.HasPendingAsync(invoice.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.RecordPaymentAsync(invoice.Id, invoice.Items.Single().Id, new RecordPaymentRequest { Method = PaymentMethod.Cash }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.RevertPending);
+        await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }
