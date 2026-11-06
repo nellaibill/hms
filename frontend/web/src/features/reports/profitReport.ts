@@ -60,6 +60,13 @@ export interface ProfitReportRow {
   marginPercent: number | null;
 }
 
+/** OP Report counts only bills for visits registered as OP (ADR-121) — IP, Emergency, Day
+ * Care and Observation visits are billed through the same counter but aren't outpatients. A
+ * bill whose visit type is unknown (its visit can't be found) is left out too. */
+export function onlyOpVisitBillings(billings: Billing[]): Billing[] {
+  return billings.filter((billing) => billing.encounterType === 'OP');
+}
+
 /** Voided invoices are excluded — discarded transactions, same treatment as the Income
  * report's getIncomeRows. */
 export function getProfitRows(billings: Billing[], range: ReportDateRange): ProfitReportRow[] {
@@ -151,18 +158,6 @@ export function getProfitByTest(rows: ProfitReportRow[]): BreakdownRow[] {
   return Array.from(totals, ([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
 }
 
-/** Profit by billing type (Consultation/Radiology/Laboratory/Procedure/Injection/File) —
- * Pharmacy never appears here since it has no cost concept (resolveItemCostPrice always
- * returns null for it), same reasoning as getProfitByTest. */
-export function getProfitByBillingType(rows: ProfitReportRow[]): BreakdownRow[] {
-  const totals = new Map<string, number>();
-  for (const row of rows) {
-    if (row.profit === null) continue;
-    totals.set(row.billingType, (totals.get(row.billingType) ?? 0) + row.profit);
-  }
-  return Array.from(totals, ([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
-}
-
 export interface ConsultantProfitRow {
   consultantId: string;
   /** Approved discounts on this consultant's consultation fees — `revenue` is already net of it. */
@@ -208,7 +203,7 @@ export function getProfitByConsultant(rows: ProfitReportRow[]): ConsultantProfit
   })).sort((a, b) => b.revenue - a.revenue);
 }
 
-/** Hospital Profit Report's own filter bar state (see ProfitReportFilters) — every field is
+/** OP Report's own filter bar state (see ProfitReportFilters) — every field is
  * optional/unset meaning "don't narrow by this," so `{}` is the natural "no filters" value. */
 export interface ProfitReportFilterState {
   billingType?: BillingItem['billingType'];
@@ -221,7 +216,7 @@ export interface ProfitReportFilterState {
   search?: string;
 }
 
-/** Applies the Hospital Profit Report's filter bar on top of the date-ranged rows — plain
+/** Applies the OP Report's filter bar on top of the date-ranged rows — plain
  * `.filter()`, no different in kind from the date-range filter `getProfitRows` already applies,
  * just a second pass so the date range and these filters stay independently reasoned about. */
 export function filterProfitRows(rows: ProfitReportRow[], filters: ProfitReportFilterState): ProfitReportRow[] {

@@ -18,6 +18,10 @@ public interface IBrandingService
 
     Task<Result<BrandingResponse>> UpdateAsync(UpdateBrandingRequest request, Guid? actorId, CancellationToken cancellationToken);
 
+    /// <summary>Replaces which Accounts &amp; Finance reports are shown (ADR-120). An unknown report
+    /// key fails with BRANDING.INVALID_REPORT_VISIBILITY.</summary>
+    Task<Result<BrandingResponse>> UpdateReportVisibilityAsync(ReportVisibilitySettings request, Guid? actorId, CancellationToken cancellationToken);
+
     /// <param name="slot">A <see cref="BrandingLogoSlots"/> value; anything else fails with BRANDING.INVALID_LOGO_SLOT.</param>
     Task<Result<BrandingResponse>> UploadLogoAsync(string slot, Stream content, string fileName, long length, Guid? actorId, CancellationToken cancellationToken);
 

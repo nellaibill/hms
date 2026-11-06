@@ -37,6 +37,10 @@ internal class BrandingSettings : Entity
     /// <summary>Serialized Contracts.PrintSettings; null until an admin first saves one (the
     /// mapping then returns the defaults).</summary>
     public string? PrintSettingsJson { get; private set; }
+
+    /// <summary>Serialized Contracts.ReportVisibilitySettings; null until an admin first saves
+    /// one (the mapping then returns the default: every optional report hidden).</summary>
+    public string? ReportVisibilityJson { get; private set; }
     public string FontFamily { get; private set; } = null!;
     public string FontSizeScale { get; private set; } = null!;
     public string IconSizeScale { get; private set; } = null!;
@@ -172,6 +176,14 @@ internal class BrandingSettings : Entity
         Guard.AgainstNullOrWhiteSpace(printSettingsJson, nameof(printSettingsJson));
 
         PrintSettingsJson = printSettingsJson;
+        MarkUpdated(updatedBy);
+    }
+
+    public void UpdateReportVisibility(string reportVisibilityJson, Guid? updatedBy)
+    {
+        Guard.AgainstNullOrWhiteSpace(reportVisibilityJson, nameof(reportVisibilityJson));
+
+        ReportVisibilityJson = reportVisibilityJson;
         MarkUpdated(updatedBy);
     }
 }

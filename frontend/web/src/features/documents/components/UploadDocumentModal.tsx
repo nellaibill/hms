@@ -35,6 +35,9 @@ interface UploadDocumentModalProps {
   visitOptions?: { value: string; label: string }[];
   /** The visit picked when the dialog opens — e.g. the visit whose own Upload button opened it. */
   defaultVisitId?: string | null;
+  /** Keeps the document on `defaultVisitId`: the Visit field shows that visit read-only instead
+   * of a picker, so an upload started from one visit can't be filed under another. */
+  lockVisit?: boolean;
 }
 
 const NO_VISIT = 'none';
@@ -48,8 +51,10 @@ export function UploadDocumentModal({
   lockedEntityLabel,
   visitOptions,
   defaultVisitId,
+  lockVisit = false,
 }: UploadDocumentModalProps) {
   const entityLocked = Boolean(lockedEntityLabel && defaultEntityType && defaultEntityId);
+  const lockedVisitLabel = lockVisit && defaultVisitId ? visitOptions?.find((option) => option.value === defaultVisitId)?.label : undefined;
   const [values, setValues] = useState<DocumentUploadFormValues>({
     ...EMPTY_VALUES,
     entityType: defaultEntityType ?? '',
@@ -218,23 +223,27 @@ export function UploadDocumentModal({
               <Label htmlFor="upload-visit">
                 Visit <span className="font-normal text-muted-foreground">(the visit this document belongs to)</span>
               </Label>
-              <Select
-                value={values.visitId ?? NO_VISIT}
-                disabled={busy}
-                onValueChange={(value) => setValues((prev) => ({ ...prev, visitId: value === NO_VISIT ? null : value }))}
-              >
-                <SelectTrigger id="upload-visit">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {visitOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={NO_VISIT}>Not linked to a visit</SelectItem>
-                </SelectContent>
-              </Select>
+              {lockedVisitLabel ? (
+                <Input id="upload-visit" value={lockedVisitLabel} disabled readOnly />
+              ) : (
+                <Select
+                  value={values.visitId ?? NO_VISIT}
+                  disabled={busy}
+                  onValueChange={(value) => setValues((prev) => ({ ...prev, visitId: value === NO_VISIT ? null : value }))}
+                >
+                  <SelectTrigger id="upload-visit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {visitOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={NO_VISIT}>Not linked to a visit</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 

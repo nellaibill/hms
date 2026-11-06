@@ -24,6 +24,9 @@ export interface BrandingConfig {
   logoDisplay: LogoDisplaySettings;
   /** Paper size, orientation and margin for printouts — see resolvePrintPageSetup. */
   printSettings: PrintSettings;
+  /** Which Accounts & Finance reports the hospital shows (ADR-120). Saved on its own
+   * (updateReportVisibility), never by the theme form. */
+  reportVisibility: ReportVisibility;
   fontFamily: FontFamily;
   fontSizeScale: FontSizeScale;
   iconSizeScale: IconSizeScale;
@@ -152,6 +155,27 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   default: { paperSize: 'A4', orientation: 'portrait', marginMm: 12 },
   documents: {},
 };
+
+/** The Accounts & Finance reports a hospital can show or hide (ADR-120). OP Report always
+ * shows, and the bill lists and approval queues aren't reports, so none of them is listed.
+ * Kept in sync with HMS.Modules.Branding.Contracts.AccountsReportKeys. */
+export const ACCOUNTS_REPORTS = ['incomeExpense', 'laboratory', 'radiology', 'consultant', 'pharmacy'] as const;
+export type AccountsReport = (typeof ACCOUNTS_REPORTS)[number];
+
+export const ACCOUNTS_REPORT_LABELS: Record<AccountsReport, { label: string; description: string }> = {
+  incomeExpense: { label: 'Income & Expense', description: 'Income against expenses for the period, by category.' },
+  laboratory: { label: 'Laboratory', description: 'Revenue, cost and profit for billed lab tests.' },
+  radiology: { label: 'Radiology', description: 'Revenue, cost and profit for billed scans.' },
+  consultant: { label: 'Consultant', description: 'Revenue and profit attributed to each consultant.' },
+  pharmacy: { label: 'Pharmacy', description: 'Pharmacy counter bills (shown only where Pharmacy is enabled).' },
+};
+
+export interface ReportVisibility {
+  visibleReports: AccountsReport[];
+}
+
+/** Every optional report hidden — what a hospital gets until an admin turns some on. */
+export const DEFAULT_REPORT_VISIBILITY: ReportVisibility = { visibleReports: [] };
 
 export const FONT_FAMILIES = ['Inter', 'Roboto', 'OpenSans', 'Lato', 'Poppins'] as const;
 export type FontFamily = (typeof FONT_FAMILIES)[number];

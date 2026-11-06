@@ -1,13 +1,12 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+// The tabs that always show. Income & Expense, Laboratory, Radiology, Consultant and Pharmacy
+// appear only once Settings → Reports Visibility turns them on (ADR-120), which a fresh test
+// hospital hasn't done, so they aren't checked here.
 export const ACCOUNTS_TABS = [
   { label: 'Recent Bills', path: '/finance/accounts', heading: 'Accounts and Finance' },
   { label: 'All Invoices', path: '/finance/accounts/invoices', heading: 'Accounts and Finance' },
-  { label: 'Income & Expense', path: '/finance/accounts/reports', heading: 'Income & Expense Report' },
-  { label: 'Hospital Profit', path: '/finance/accounts/reports/profit', heading: 'Hospital Profit Report' },
-  { label: 'Laboratory', path: '/finance/accounts/reports/laboratory', heading: 'Laboratory Report' },
-  { label: 'Radiology', path: '/finance/accounts/reports/radiology', heading: 'Radiology Report' },
-  { label: 'Consultant', path: '/finance/accounts/reports/consultant', heading: 'Consultant Profit Report' },
+  { label: 'OP Report', path: '/finance/accounts/reports/profit', heading: 'OP Report' },
 ] as const;
 
 /** OPD Billing Entry at /finance/accounts/new: pick a patient, then bill their visit. */

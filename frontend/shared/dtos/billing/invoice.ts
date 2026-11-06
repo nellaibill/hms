@@ -107,6 +107,9 @@ export interface InvoiceResponse {
   /** The visit's OP No — set only on the create/record-payment response once the visit's
    * consultation fee is paid, which is when an OP visit gets its number (ADR-103). */
   opNumber?: string | null;
+  /** The visit's encounter type, so the OP Report can keep only OP visits' bills (ADR-121).
+   * Set on the paged invoice list only; null on every other read. */
+  encounterType?: VisitType | null;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceListQuery. */

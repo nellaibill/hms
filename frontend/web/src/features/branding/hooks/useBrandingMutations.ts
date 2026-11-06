@@ -1,12 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiBrandingRepository } from '../apiBrandingRepository';
-import type { BrandingConfig, LogoSlot } from '../types';
+import type { AccountsReport, BrandingConfig, LogoSlot } from '../types';
 import { brandingQueryKey } from './useBrandingQuery';
 
 export function useUpdateBrandingMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (patch: Partial<BrandingConfig>) => apiBrandingRepository.updateBranding(patch),
+    onSuccess: (config) => {
+      queryClient.setQueryData(brandingQueryKey, config);
+    },
+  });
+}
+
+export function useUpdateReportVisibilityMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (visibleReports: AccountsReport[]) => apiBrandingRepository.updateReportVisibility(visibleReports),
     onSuccess: (config) => {
       queryClient.setQueryData(brandingQueryKey, config);
     },

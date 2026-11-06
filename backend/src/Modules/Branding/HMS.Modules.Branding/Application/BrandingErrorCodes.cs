@@ -13,4 +13,5 @@ internal static class BrandingErrorCodes
     public const string InvalidLogoSlot = "BRANDING.INVALID_LOGO_SLOT";
     public const string InvalidLogoDisplay = "BRANDING.INVALID_LOGO_DISPLAY";
     public const string InvalidPrintSettings = "BRANDING.INVALID_PRINT_SETTINGS";
+    public const string InvalidReportVisibility = "BRANDING.INVALID_REPORT_VISIBILITY";
 }

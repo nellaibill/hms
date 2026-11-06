@@ -37,6 +37,70 @@ _To be documented._
 
 ## Decisions
 
+### ADR-122: Patient documents are uploaded from a visit's own Upload button and stay on that visit
+**Date:** 2026-11-06
+**Status:** Accepted
+
+**Context**
+The patient's Documents tab had two ways to upload a visit document. One was a header "Upload document" button that defaulted to the newest visit, with a Visit picker to change it. The other was a small Upload button on each visit. In the 6 Nov discussion, management asked for the header button to go and for the per-visit button to be the only way. A document started from one OP visit was also too easy to file under another, because the dialog's Visit picker stayed open.
+
+**Decision**
+- The "Documents by visit" header button is removed. Each visit's Upload button is now green (the `success` Button variant).
+- `UploadDocumentModal` takes a new `lockVisit` prop. With it, the Visit field shows the chosen visit read-only, like the locked Entity field. The Patient Documents tab always passes it. Without the prop, the picker works as before.
+
+**Consequences**
+- Frontend only. A patient with no visits can't get a visit document from this tab, because no visit has a button. The "Upload new" card (photo, ID proof) is unchanged.
+- Documents already filed, and "Not linked to a visit" ones, are listed as before.
+
+### ADR-121: The OPD lists and the OP Report show OP visits only
+**Date:** 2026-11-06
+**Status:** Accepted
+
+**Context**
+IP, Emergency, Day Care and Observation visits carry consultation lines too. The OPD page's Patient List and Consultation List read every visit's consultations, so non-OP patients showed up in the OPD queue. The nightly auto-complete job (ADR-110) only ever closes OP visits, so those rows also stayed open. The OP Report (ADR-119) counted every bill raised at the counter, whatever the visit type. In the 6 Nov discussion, management asked for both screens to show encounter type OP only.
+
+**Decision**
+- **OPD page.** `PatientVisitRepository.GetOpdPatientListPagedAsync` and `GetOpdConsultationSummaryRowsAsync` keep only `VisitType.OP` visits. They back the Patient List and Consultation List tabs and their Export. Other tabs (Investigations, Procedures, Admissions, Scheduled Visits, Marked Patients) are unchanged.
+- **Invoice list carries the encounter type.** `InvoiceResponse.EncounterType` (OP/IP/Emergency/DayCare/Observation) is filled on `GET invoices` (the paged list every Finance report loads). It uses one new `IPatientVisitService.GetVisitTypesAsync` lookup per page, not one call per bill. It is null on every other invoice read, and when the visit can't be found.
+- **OP Report.** `onlyOpVisitBillings` drops every bill whose visit isn't OP, including bills whose visit type is unknown, before the rows are built. The Laboratory, Radiology and Consultant reports still count every visit type.
+
+**Consequences**
+- No migration. Totals on OP Report go down wherever non-OP visits were billed at the counter.
+- An OPD consultation opened straight from a link to a non-OP visit (`GetOpdConsultationDetailAsync`) still loads. Only the lists filter.
+
+### ADR-120: A per-hospital Reports Visibility setting decides which Accounts & Finance reports show
+**Date:** 2026-11-06
+**Status:** Accepted
+
+**Context**
+In the 6 Nov discussion, management asked for the Accounts & Finance tab bar to show only OP Report by default. They wanted the other reports switchable from a setting, not removed.
+
+**Decision**
+- **Which tabs.** Income & Expense, Laboratory, Radiology, Consultant and Pharmacy (`AccountsReportKeys`) can be switched. OP Report always shows. Recent Bills, All Invoices, Revert Requests and Discount Requests also always show, because billing and approvals run from them.
+- **Who.** One hospital-wide switch. A report that is off is hidden from everyone, Super Admins included. Pharmacy still also needs the `pharmacy` feature.
+- **Default.** Every switchable report is hidden until an admin turns it on. That includes hospitals already live, so they lose those tabs on deploy until someone switches them back on.
+- **Storage.** A `report_visibility` jsonb column on `branding.branding_settings` (`AddBrandingReportVisibility`), returned as `BrandingResponse.ReportVisibility`. Every signed-in user already loads branding, so the tab bar needs no extra call. It is saved through its own `PUT api/v1/branding/report-visibility` (needs `identity-administration.edit`), so the theme form never touches it. An unknown key is rejected with `BRANDING.INVALID_REPORT_VISIBILITY`. The list is stored once each, in catalog order.
+- **Screens.** A new Settings → Reports Visibility page (`/admin/settings/reports-visibility`, `identity-administration.view` to open it, read-only without `.edit`) has one switch per report. `AccountsNavTabs` hides the tabs that are off. `RequireAccountsReportRoute` sends a hidden report's URL to OP Report.
+
+**Consequences**
+- The reports are built in the browser from the invoice list, so the route guard is the boundary. There is no per-report endpoint to lock. Someone with `finance-billing.view` can still read the invoice data the reports are made from.
+- Deploy needs the Branding migration on every hospital (Platform → Hospitals → Migrate). Until it runs, `GET branding` fails on the missing column.
+- The Playwright Accounts tab check (`e2e/pages/BillingPage.ts`) now lists only the tabs that always show.
+
+### ADR-119: "Hospital Profit Report" is renamed "OP Report"; its two profit breakdown cards are dropped
+**Date:** 2026-11-06
+**Status:** Accepted (amends the 2026-10 Accounts & Finance reporting pass, rename item 4)
+
+**Context**
+In the 6 Nov discussion, management asked for the Accounts & Finance tab "Hospital Profit" to be called "OP Report". This matches what it is: the report has only ever covered OPD-billed lines. They also asked for the "Profit by Service" and "Profit by Billing Type" cards to be removed. Those cards sat between the summary cards and the Billed Services table and pushed the table off the first screen.
+
+**Decision**
+- The tab, page heading and PDF export title read "OP Report". Export files are named `op-report_<from>_to_<to>`. The route (`/finance/accounts/reports/profit`) does not change, so bookmarks keep working.
+- The page shows the filter bar, the five summary cards (Revenue, Discount, Cost, Profit, Margin) and the Billed Services table. The two breakdown cards are gone. `getProfitByBillingType` had no other user and is removed. `getProfitByTest` stays, because the Laboratory and Radiology reports still use it.
+
+**Consequences**
+- Frontend only, no migration. The export's content is unchanged: it was always the line items, never the breakdowns.
+
 ### ADR-118: No payment while a revert is waiting for approval; the refund is worked out again when it's approved
 **Date:** 2026-11-05
 **Status:** Accepted (amends ADR-106)

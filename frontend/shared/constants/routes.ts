@@ -87,6 +87,7 @@ export const API_ROUTES = {
   branding: {
     base: '/api/v1/branding',
     logo: '/api/v1/branding/logo',
+    reportVisibility: '/api/v1/branding/report-visibility',
   },
   /** Mirrors HMS.Modules.Backups.Endpoints.TenantBackupsController. */
   backups: {

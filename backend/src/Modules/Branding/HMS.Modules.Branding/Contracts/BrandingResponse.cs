@@ -22,6 +22,9 @@ public record BrandingResponse
     /// <summary>Paper size, orientation and margin for printouts — the defaults (A4, portrait,
     /// 12mm) until an admin first saves one.</summary>
     public PrintSettings PrintSettings { get; init; } = new();
+    /// <summary>Which Accounts &amp; Finance reports are shown (ADR-120) — none until an admin
+    /// turns some on.</summary>
+    public ReportVisibilitySettings ReportVisibility { get; init; } = new();
 
     public string FontFamily { get; init; } = string.Empty;
     public string FontSizeScale { get; init; } = string.Empty;

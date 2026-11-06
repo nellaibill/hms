@@ -122,4 +122,7 @@ export interface Billing {
   /** The visit's OP No, present only on the create/record-payment result that paid its
    * consultation fee (ADR-103) — never on an invoice read back later. */
   opNumber?: string;
+  /** The visit's encounter type (OP/IP/Emergency/DayCare/Observation) — set on invoices read
+   * from the paged list only (ADR-121), which is what every Finance report loads. */
+  encounterType?: string;
 }

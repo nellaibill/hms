@@ -1,21 +1,24 @@
-import type { BrandingConfigDto, LogoDisplaySettingsDto } from '@hms/shared';
+import type { BrandingConfigDto, LogoDisplaySettingsDto, ReportVisibilitySettingsDto } from '@hms/shared';
 import { env } from '@/config/env';
 import { brandingApi } from '@/services/apiClient';
 import { mockBrandingStore, readRememberedLogos, readRememberedTheme, rememberLogos, rememberTheme } from './mockBrandingStore';
 import { normalizePrintSettings } from './printPageSetup';
 import {
+  ACCOUNTS_REPORTS,
   DEFAULT_LOGO_DISPLAY,
   FONT_FAMILIES,
   LOGO_FITS,
   LOGO_SLOTS,
   FONT_SIZE_SCALES,
   ICON_SIZE_SCALES,
+  type AccountsReport,
   type BrandingConfig,
   type FontFamily,
   type FontSizeScale,
   type IconSizeScale,
   type LogoDisplaySettings,
   type LogoSlot,
+  type ReportVisibility,
 } from './types';
 
 function toFontFamily(value: string): FontFamily {
@@ -53,6 +56,13 @@ function toLogoDisplay(dto: LogoDisplaySettingsDto | null | undefined): LogoDisp
   return { usePrimaryAsFallback: dto?.usePrimaryAsFallback ?? DEFAULT_LOGO_DISPLAY.usePrimaryAsFallback, slots };
 }
 
+/** Keeps only reports this build knows, so a key added on the server later can't show a tab
+ * the frontend has no page for. A missing value (an older API) means none shown. */
+function toReportVisibility(dto: ReportVisibilitySettingsDto | null | undefined): ReportVisibility {
+  const stored = new Set<string>(dto?.visibleReports ?? []);
+  return { visibleReports: ACCOUNTS_REPORTS.filter((report) => stored.has(report)) };
+}
+
 function fromDto(dto: BrandingConfigDto): BrandingConfig {
   return {
     hospitalName: dto.hospitalName,
@@ -66,6 +76,7 @@ function fromDto(dto: BrandingConfigDto): BrandingConfig {
     faviconUrl: resolveLogoUrl(dto.faviconUrl),
     logoDisplay: toLogoDisplay(dto.logoDisplay),
     printSettings: normalizePrintSettings(dto.printSettings),
+    reportVisibility: toReportVisibility(dto.reportVisibility),
     fontFamily: toFontFamily(dto.fontFamily),
     fontSizeScale: toFontSizeScale(dto.fontSizeScale),
     iconSizeScale: toIconSizeScale(dto.iconSizeScale),
@@ -127,6 +138,12 @@ export const apiBrandingRepository = {
     const config = fromDto(dto);
     rememberTheme(config);
     return config;
+  },
+
+  /** Its own endpoint (ADR-120) — no theme fields go with it, and the theme form's save never
+   * sends this. */
+  async updateReportVisibility(visibleReports: AccountsReport[]): Promise<BrandingConfig> {
+    return fromDto(await brandingApi.updateReportVisibility({ visibleReports }));
   },
 
   async uploadLogo(file: File, slot: LogoSlot = 'primary'): Promise<BrandingConfig> {

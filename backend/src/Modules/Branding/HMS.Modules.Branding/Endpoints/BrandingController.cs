@@ -56,6 +56,20 @@ public class BrandingController : ControllerBase
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
+    /// <summary>Sets which Accounts &amp; Finance reports the hospital shows (ADR-120). Its own
+    /// endpoint, not part of <see cref="Update"/>, so saving the theme never touches it and
+    /// saving this never needs the theme.</summary>
+    /// <response code="200">The report visibility was updated.</response>
+    /// <response code="400">A report key is unknown.</response>
+    /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
+    [HttpPut("report-visibility")]
+    [RequirePermission("identity-administration.edit")]
+    public async Task<IActionResult> UpdateReportVisibility([FromBody] ReportVisibilitySettings request, CancellationToken cancellationToken)
+    {
+        var result = await _brandingService.UpdateReportVisibilityAsync(request, actorId: User.GetUserId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     /// <summary>Uploads/replaces one logo slot (PNG/JPG/WEBP/SVG, max 500KB, 16-2000px per side for raster formats — content is decoded/sanity-checked, not just trusted by extension). <paramref name="slot"/> is a BrandingLogoSlots value; omitted means the Primary logo, so existing callers are unchanged.</summary>
     /// <response code="200">The logo was uploaded and set.</response>
     /// <response code="400">The file is missing or failed validation.</response>

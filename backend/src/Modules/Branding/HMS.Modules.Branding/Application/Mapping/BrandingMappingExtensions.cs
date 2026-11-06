@@ -23,6 +23,9 @@ internal static class BrandingMappingExtensions
         PrintSettings = string.IsNullOrWhiteSpace(settings.PrintSettingsJson)
             ? new PrintSettings()
             : JsonSerializer.Deserialize<PrintSettings>(settings.PrintSettingsJson) ?? new PrintSettings(),
+        ReportVisibility = string.IsNullOrWhiteSpace(settings.ReportVisibilityJson)
+            ? new ReportVisibilitySettings()
+            : JsonSerializer.Deserialize<ReportVisibilitySettings>(settings.ReportVisibilityJson) ?? new ReportVisibilitySettings(),
         FontFamily = settings.FontFamily,
         FontSizeScale = settings.FontSizeScale,
         IconSizeScale = settings.IconSizeScale,
