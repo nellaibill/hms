@@ -126,6 +126,33 @@ internal class BrandingService : IBrandingService
         return Result<BrandingResponse>.Success(settings.ToResponse());
     }
 
+    public async Task<Result<BrandingResponse>> UpdateReportVisibilityAsync(ReportVisibilitySettings request, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var requested = request.VisibleReports ?? [];
+        var invalid = requested.Where(key => !AccountsReportKeys.IsValid(key)).ToList();
+        if (invalid.Count > 0)
+        {
+            return Result<BrandingResponse>.Failure(
+                BrandingErrorCodes.InvalidReportVisibility,
+                $"Not a report that can be shown or hidden: {string.Join(", ", invalid.Select(key => $"'{key}'"))}.");
+        }
+
+        // Stored in the catalog's own order, once each, so the response never depends on how
+        // the client happened to order or repeat its list.
+        var normalized = new ReportVisibilitySettings
+        {
+            VisibleReports = AccountsReportKeys.All.Where(requested.Contains).ToList(),
+        };
+
+        var settings = await GetOrCreateAsync(cancellationToken);
+        settings.UpdateReportVisibility(JsonSerializer.Serialize(normalized), actorId);
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Updated report visibility: {VisibleReports}", string.Join(", ", normalized.VisibleReports));
+
+        return Result<BrandingResponse>.Success(settings.ToResponse());
+    }
+
     public async Task<Result<BrandingResponse>> UploadLogoAsync(string slot, Stream content, string fileName, long length, Guid? actorId, CancellationToken cancellationToken)
     {
         if (!BrandingLogoSlots.IsValid(slot))

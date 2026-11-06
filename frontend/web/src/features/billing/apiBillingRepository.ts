@@ -71,6 +71,7 @@ function fromDto(dto: InvoiceResponseDto): Billing {
     isReverted: dto.isReverted ?? false,
     discountStatus: dto.discountStatus ?? undefined,
     opNumber: dto.opNumber ?? undefined,
+    encounterType: dto.encounterType ?? undefined,
   };
 }
 

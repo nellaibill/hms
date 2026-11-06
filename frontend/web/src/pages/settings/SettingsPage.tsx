@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Database,
   DatabaseBackup,
+  Eye,
   Palette,
   Settings as SettingsIcon,
   ShieldCheck,
@@ -49,6 +50,14 @@ const sections: SettingsSection[] = [
     icon: Palette,
     path: '/admin/settings/branding',
     status: 'available',
+  },
+  {
+    title: 'Reports Visibility',
+    description: 'Choose which Accounts & Finance reports this hospital shows. OP Report always shows.',
+    icon: Eye,
+    path: '/admin/settings/reports-visibility',
+    status: 'available',
+    permission: 'identity-administration.view',
   },
   {
     title: 'Backup',

@@ -668,6 +668,38 @@ public class InvoiceServiceTests
     }
 
     [Fact]
+    public async Task GetPagedAsync_TagsEachBillWithItsVisitsEncounterTypeInOneLookup()
+    {
+        Invoice Bill(string number, Guid visitId) => Invoice.Create(
+            number,
+            _patientId,
+            visitId,
+            "Aravind Nadar",
+            "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, "cardiology", "dr-revathi", null, null, 1, 720m, 0m, false, null)],
+            createdBy: null);
+        var opVisitId = Guid.NewGuid();
+        var emergencyVisitId = Guid.NewGuid();
+        var missingVisitId = Guid.NewGuid();
+        var opBill = Bill("INV-2026-000010", opVisitId);
+        var secondOpBill = Bill("INV-2026-000011", opVisitId);
+        var emergencyBill = Bill("INV-2026-000012", emergencyVisitId);
+        var orphanBill = Bill("INV-2026-000013", missingVisitId);
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice> { opBill, secondOpBill, emergencyBill, orphanBill }, 4));
+        _patientVisitService.GetVisitTypesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, VisitType> { [opVisitId] = VisitType.OP, [emergencyVisitId] = VisitType.Emergency });
+
+        var page = await _sut.GetPagedAsync(new InvoiceListQuery(), CancellationToken.None);
+
+        page.Items.Select(i => i.EncounterType).Should().Equal(VisitType.OP, VisitType.OP, VisitType.Emergency, null);
+        await _patientVisitService.Received(1).GetVisitTypesAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 3 && ids.Contains(opVisitId) && ids.Contains(emergencyVisitId) && ids.Contains(missingVisitId)),
+            Arg.Any<CancellationToken>());
+        await _patientVisitService.DidNotReceiveWithAnyArgs().GetByIdAsync(default, default, default);
+    }
+
+    [Fact]
     public async Task GetRecentAsync_ComposesPatientAndVisitContextIncludingMultipleConsultants()
     {
         var invoice = Invoice.Create(

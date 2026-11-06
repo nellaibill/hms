@@ -1,22 +1,26 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { usePendingDiscountCountQuery, usePendingRevertCountQuery } from '@/features/billing';
+import type { AccountsReport } from '@/features/branding/types';
 import { cn } from '@/lib/utils';
+import { useAccountsReportVisibility } from '../useAccountsReportVisibility';
 
-const TABS: { to: string; label: string; feature?: string }[] = [
+// `report`: shown only once Settings → Reports Visibility turns it on (ADR-120). Tabs without
+// one (the bill lists, the approval queues and OP Report) always show.
+const TABS: { to: string; label: string; feature?: string; report?: AccountsReport }[] = [
   { to: '/finance/accounts', label: 'Recent Bills' },
   { to: '/finance/accounts/invoices', label: 'All Invoices' },
   // OP bill revert requests (ADR-106) — the Super Admin's approval queue.
   { to: '/finance/accounts/revert-requests', label: 'Revert Requests' },
   // Bill discount requests (ADR-109) — the Super Admin's other approval queue.
   { to: '/finance/accounts/discount-requests', label: 'Discount Requests' },
-  { to: '/finance/accounts/reports', label: 'Income & Expense' },
-  { to: '/finance/accounts/reports/profit', label: 'Hospital Profit' },
-  { to: '/finance/accounts/reports/laboratory', label: 'Laboratory' },
-  { to: '/finance/accounts/reports/radiology', label: 'Radiology' },
-  { to: '/finance/accounts/reports/consultant', label: 'Consultant' },
+  { to: '/finance/accounts/reports', label: 'Income & Expense', report: 'incomeExpense' },
+  { to: '/finance/accounts/reports/profit', label: 'OP Report' },
+  { to: '/finance/accounts/reports/laboratory', label: 'Laboratory', report: 'laboratory' },
+  { to: '/finance/accounts/reports/radiology', label: 'Radiology', report: 'radiology' },
+  { to: '/finance/accounts/reports/consultant', label: 'Consultant', report: 'consultant' },
   // Pharmacy bills are not hospital invoices (ADR-094); this tab is where finance reads them.
-  { to: '/finance/accounts/reports/pharmacy', label: 'Pharmacy', feature: 'pharmacy' },
+  { to: '/finance/accounts/reports/pharmacy', label: 'Pharmacy', feature: 'pharmacy', report: 'pharmacy' },
 ];
 
 /** One shared tab bar across the whole Accounts & Finance section — the Ledger (Recent Bills,
@@ -30,7 +34,8 @@ const TABS: { to: string; label: string; feature?: string }[] = [
  * overflow/clip on narrow widths. */
 export function AccountsNavTabs() {
   const { hasFeature } = useAuth();
-  const tabs = TABS.filter((tab) => !tab.feature || hasFeature(tab.feature));
+  const { isVisible } = useAccountsReportVisibility();
+  const tabs = TABS.filter((tab) => (!tab.feature || hasFeature(tab.feature)) && (!tab.report || isVisible(tab.report)));
   const { data: pendingRevertCount = 0 } = usePendingRevertCountQuery();
   const { data: pendingDiscountCount = 0 } = usePendingDiscountCountQuery();
   const pendingCountByTab: Record<string, number> = {

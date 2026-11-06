@@ -1,5 +1,5 @@
 import { API_ROUTES } from '../../constants';
-import type { BrandingConfigDto, BrandingLogoSlotDto, UpdateBrandingRequest } from '../../dtos';
+import type { BrandingConfigDto, BrandingLogoSlotDto, ReportVisibilitySettingsDto, UpdateBrandingRequest } from '../../dtos';
 import type { HttpClient } from '../httpClient';
 
 /**
@@ -16,6 +16,12 @@ export class BrandingApi {
 
   async updateBranding(request: UpdateBrandingRequest): Promise<BrandingConfigDto> {
     const response = await this.client.put<BrandingConfigDto>(API_ROUTES.branding.base, request);
+    return response.data;
+  }
+
+  /** Sets which Accounts & Finance reports the hospital shows (ADR-120). */
+  async updateReportVisibility(request: ReportVisibilitySettingsDto): Promise<BrandingConfigDto> {
+    const response = await this.client.put<BrandingConfigDto>(API_ROUTES.branding.reportVisibility, request);
     return response.data;
   }
 

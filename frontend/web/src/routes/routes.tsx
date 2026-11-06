@@ -4,6 +4,7 @@ import { RouteErrorPage } from '../components/RouteErrorPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { RequireFeatureRoute } from '../features/auth/RequireFeatureRoute';
+import { RequireAccountsReportRoute } from '../features/reports/components/RequireAccountsReportRoute';
 import { PlatformProtectedRoute } from '../features/platformAuth/PlatformProtectedRoute';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { getAllLeaves } from '../config/navigation';
@@ -35,6 +36,7 @@ const RolesListPage = lazy(() => import('../pages/roles/RolesListPage'));
 const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
 const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettingsPage'));
 const BackupSettingsPage = lazy(() => import('../pages/settings/BackupSettingsPage'));
+const ReportVisibilitySettingsPage = lazy(() => import('../pages/settings/ReportVisibilitySettingsPage'));
 const MastersHubPage = lazy(() => import('../pages/masters/MastersHubPage'));
 const MasterListPage = lazy(() => import('../pages/masters/MasterListPage'));
 const MasterFormPage = lazy(() => import('../pages/masters/MasterFormPage'));
@@ -288,7 +290,12 @@ const roleRoutes = [
 const brandingRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
-    children: [{ path: 'admin/settings/branding', element: withSuspense(<BrandingSettingsPage />) }],
+    children: [
+      { path: 'admin/settings/branding', element: withSuspense(<BrandingSettingsPage />) },
+      // Reports visibility (ADR-120) — stored on the same branding row, same permission grain;
+      // saving needs identity-administration.edit, enforced by the backend.
+      { path: 'admin/settings/reports-visibility', element: withSuspense(<ReportVisibilitySettingsPage />) },
+    ],
   },
 ];
 
@@ -356,12 +363,21 @@ const financeRoutes = [
       { path: 'finance/accounts/revert-requests', element: withSuspense(<RevertRequestsPage />) },
       { path: 'finance/accounts/discount-requests', element: withSuspense(<DiscountRequestsPage />) },
       { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
-      { path: 'finance/accounts/reports', element: withSuspense(<IncomeExpenseReportPage />) },
+      // OP Report always shows; every other report only once Settings → Reports Visibility
+      // turns it on (ADR-120) — a hidden one's URL lands on OP Report.
       { path: 'finance/accounts/reports/profit', element: withSuspense(<ProfitReportPage />) },
-      { path: 'finance/accounts/reports/laboratory', element: withSuspense(<LaboratoryReportPage />) },
-      { path: 'finance/accounts/reports/radiology', element: withSuspense(<RadiologyReportPage />) },
-      { path: 'finance/accounts/reports/consultant', element: withSuspense(<ConsultantReportPage />) },
-      { path: 'finance/accounts/reports/pharmacy', element: withSuspense(<PharmacyFinanceReportPage />) },
+      ...(
+        [
+          ['incomeExpense', 'finance/accounts/reports', <IncomeExpenseReportPage />],
+          ['laboratory', 'finance/accounts/reports/laboratory', <LaboratoryReportPage />],
+          ['radiology', 'finance/accounts/reports/radiology', <RadiologyReportPage />],
+          ['consultant', 'finance/accounts/reports/consultant', <ConsultantReportPage />],
+          ['pharmacy', 'finance/accounts/reports/pharmacy', <PharmacyFinanceReportPage />],
+        ] as const
+      ).map(([report, path, page]) => ({
+        element: <RequireAccountsReportRoute report={report} />,
+        children: [{ path, element: withSuspense(page) }],
+      })),
       { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
     ],
   },

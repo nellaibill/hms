@@ -42,6 +42,15 @@ export interface PrintSettingsDto {
   documents: Partial<Record<PrintDocumentTypeDto, PrintDocumentSetupDto>>;
 }
 
+/** Mirrors HMS.Modules.Branding.Contracts.AccountsReportKeys. */
+export type AccountsReportKeyDto = 'incomeExpense' | 'laboratory' | 'radiology' | 'consultant' | 'pharmacy';
+
+/** Mirrors HMS.Modules.Branding.Contracts.ReportVisibilitySettings — also the body of
+ * `PUT branding/report-visibility` (ADR-120). */
+export interface ReportVisibilitySettingsDto {
+  visibleReports: AccountsReportKeyDto[];
+}
+
 /** Mirrors HMS.Modules.Branding.Contracts.BrandingResponse. */
 export interface BrandingConfigDto {
   hospitalName: string;
@@ -55,6 +64,8 @@ export interface BrandingConfigDto {
   faviconUrl: string | null;
   logoDisplay: LogoDisplaySettingsDto;
   printSettings: PrintSettingsDto;
+  /** Optional only for an API that predates ADR-120; treat a missing value as "none shown". */
+  reportVisibility?: ReportVisibilitySettingsDto;
   fontFamily: string;
   fontSizeScale: string;
   iconSizeScale: string;

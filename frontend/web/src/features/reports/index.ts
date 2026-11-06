@@ -13,6 +13,8 @@ export * from './components/ProfitTable';
 export * from './components/ReportDateRangeFilter';
 export * from './components/AccountsNavTabs';
 export * from './components/ReportSummaryCards';
+export * from './components/RequireAccountsReportRoute';
+export * from './useAccountsReportVisibility';
 export * from './exportUtils';
 export * from './incomeExpenseReport';
 export * from './pagination';

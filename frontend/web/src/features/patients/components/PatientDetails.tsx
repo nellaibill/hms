@@ -739,7 +739,7 @@ function VisitDocumentsSection({
             {documents.length} document{documents.length === 1 ? '' : 's'}
           </span>
         </div>
-        <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5" onClick={onUpload}>
+        <Button type="button" variant="success" size="sm" className="h-7 gap-1.5" onClick={onUpload}>
           <Upload className="h-3.5 w-3.5" />
           Upload
         </Button>
@@ -779,7 +779,9 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
   const queryClient = useQueryClient();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadVisitId, setUploadVisitId] = useState<string | null>(null);
-  const openUpload = (visitId: string | null) => {
+  // Uploads start only from a visit's own Upload button, and the dialog keeps the document on
+  // that visit — there is no all-visits upload any more (6 Nov discussion).
+  const openUpload = (visitId: string) => {
     setUploadVisitId(visitId);
     setIsUploadOpen(true);
   };
@@ -829,14 +831,7 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
       </div>
 
       <div className="rounded-lg border border-border bg-card p-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-foreground">Documents by visit</h2>
-          {/* Defaults to the most recent visit; the dialog's Visit picker can change it. */}
-          <Button type="button" size="sm" className="gap-1.5" onClick={() => openUpload(sortedVisits[0]?.visitId ?? null)}>
-            <Upload className="h-4 w-4" />
-            Upload document
-          </Button>
-        </div>
+        <h2 className="mb-2 text-sm font-semibold text-foreground">Documents by visit</h2>
         {isPending || visitsPending ? (
           <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -915,6 +910,7 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
         lockedEntityLabel={`${patient.title} ${patient.firstName} ${patient.lastName} (${patient.uhid})`}
         visitOptions={visitOptions}
         defaultVisitId={uploadVisitId}
+        lockVisit
       />
     </div>
   );
