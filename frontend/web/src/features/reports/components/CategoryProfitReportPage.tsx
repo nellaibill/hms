@@ -27,14 +27,14 @@ interface CategoryProfitReportPageProps {
 
 /**
  * Shared page for a single-`BillingType` profit breakdown (Laboratory, Radiology) — everything
- * here is the exact same data pipeline `ProfitReportPage` (Hospital Profit Report) uses, just
+ * here is the exact same data pipeline `ProfitReportPage` (OP Report) uses, just
  * pre-filtered to one billing type, so the two near-identical reports don't duplicate the whole
  * page — including the same live, session-remembered filters and default-range report on first
- * load (see useReportFilters' own doc comment). Deliberately OPD-billed only, same scope Hospital Profit
+ * load (see useReportFilters' own doc comment). Deliberately OPD-billed only, same scope OP
  * Report has: IPD-originated lab/radiology charges are folded into generic `InpatientCharge`
  * lines (ADR-066) with no catalog reference to resolve a cost from — extending this would mean
  * reworking IPD's already-shipped Final Billing charge-posting, out of scope for this pass
- * (their revenue still counts correctly in Hospital Profit Report's totals, just not broken out
+ * (their revenue still counts correctly in OP Report's totals, just not broken out
  * per test here).
  */
 export function CategoryProfitReportPage({ billingType, title, description, icon: Icon }: CategoryProfitReportPageProps) {

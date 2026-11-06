@@ -69,6 +69,20 @@ internal class PatientVisitRepository : IPatientVisitRepository
             .Select(v => v.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyDictionary<Guid, VisitType>> GetVisitTypesAsync(IReadOnlyCollection<Guid> visitIds, CancellationToken cancellationToken)
+    {
+        if (visitIds.Count == 0)
+        {
+            return new Dictionary<Guid, VisitType>();
+        }
+
+        return await _dbContext.PatientVisits
+            .AsNoTracking()
+            .Where(v => visitIds.Contains(v.Id))
+            .Select(v => new { v.Id, v.VisitType })
+            .ToDictionaryAsync(v => v.Id, v => v.VisitType, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<PatientVisit>> GetOpVisitsWithOpenConsultationsBeforeAsync(DateTime beforeUtc, int take, CancellationToken cancellationToken)
         => await _dbContext.PatientVisits
             .Include(v => v.Consultations)
@@ -127,8 +141,11 @@ internal class PatientVisitRepository : IPatientVisitRepository
         // From/To/Department/Search filters against GetOpdConsultationSummaryRowsAsync below
         // rather than sharing a helper, since a helper can't return/re-accept this anonymous
         // type across a method boundary without reintroducing the same problem.
+        // OP visits only (ADR-121): IP, Emergency, Day Care and Observation visits carry
+        // consultations too, but they aren't the OPD's patients.
         var rows =
             from visit in _dbContext.PatientVisits
+            where visit.VisitType == VisitType.OP
             from consultation in visit.Consultations
             join patient in _dbContext.Patients on visit.PatientId equals patient.Id
             select new { consultation, visit, patient };
@@ -204,9 +221,10 @@ internal class PatientVisitRepository : IPatientVisitRepository
     {
         // See GetOpdPatientListPagedAsync's own comment for why this duplicates the filter
         // logic instead of sharing a helper — an EF Core translation constraint, not a
-        // stylistic choice.
+        // stylistic choice. OP visits only, same as the Patient List (ADR-121).
         var rows =
             from visit in _dbContext.PatientVisits
+            where visit.VisitType == VisitType.OP
             from consultation in visit.Consultations
             join patient in _dbContext.Patients on visit.PatientId equals patient.Id
             select new { consultation, visit, patient };

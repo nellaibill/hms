@@ -54,6 +54,56 @@ public class BrandingServiceTests
     }
 
     [Fact]
+    public async Task GetAsync_HidesEveryOptionalReportUntilOneIsTurnedOn()
+    {
+        var response = await _sut.GetAsync(CancellationToken.None);
+
+        response.ReportVisibility.VisibleReports.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdateReportVisibilityAsync_StoresTheReportsOnceEachInCatalogOrder()
+    {
+        var result = await _sut.UpdateReportVisibilityAsync(
+            new ReportVisibilitySettings { VisibleReports = [AccountsReportKeys.Pharmacy, AccountsReportKeys.IncomeExpense, AccountsReportKeys.Pharmacy] },
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.ReportVisibility.VisibleReports.Should().Equal(AccountsReportKeys.IncomeExpense, AccountsReportKeys.Pharmacy);
+        (await _sut.GetAsync(CancellationToken.None)).ReportVisibility.VisibleReports
+            .Should().Equal(AccountsReportKeys.IncomeExpense, AccountsReportKeys.Pharmacy);
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateReportVisibilityAsync_AnEmptyListHidesEveryReportAgain()
+    {
+        await _sut.UpdateReportVisibilityAsync(new ReportVisibilitySettings { VisibleReports = [AccountsReportKeys.Laboratory] }, null, CancellationToken.None);
+
+        var result = await _sut.UpdateReportVisibilityAsync(new ReportVisibilitySettings(), null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.ReportVisibility.VisibleReports.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("opReport")] // OP Report always shows — it isn't a switchable report.
+    [InlineData("recentBills")]
+    [InlineData("Laboratory")] // keys are case-sensitive, like every other Branding catalog
+    public async Task UpdateReportVisibilityAsync_RejectsAKeyThatIsNotASwitchableReport(string key)
+    {
+        var result = await _sut.UpdateReportVisibilityAsync(
+            new ReportVisibilitySettings { VisibleReports = [AccountsReportKeys.Radiology, key] },
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BrandingErrorCodes.InvalidReportVisibility);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task UploadLogoAsync_RejectsAnUnknownSlot()
     {
         var result = await UploadSmallPngAsync("banner");

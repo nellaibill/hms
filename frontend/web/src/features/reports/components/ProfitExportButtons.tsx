@@ -36,12 +36,12 @@ function buildSections(rows: ProfitReportRow[]): ReportSection[] {
 }
 
 export function ProfitExportButtons({ range, rows }: ProfitExportButtonsProps) {
-  const filenameBase = `profit-report_${range.from}_to_${range.to}`;
+  const filenameBase = `op-report_${range.from}_to_${range.to}`;
 
   async function handleExport(format: ExportFormatOption) {
     if (format === 'csv') exportReportToCsv(`${filenameBase}.csv`, buildSections(rows));
     else if (format === 'excel') await exportReportToExcel(`${filenameBase}.xlsx`, buildSections(rows));
-    else exportReportToPdf(`${filenameBase}.pdf`, `Profit Report (${range.from} to ${range.to})`, buildSections(rows));
+    else exportReportToPdf(`${filenameBase}.pdf`, `OP Report (${range.from} to ${range.to})`, buildSections(rows));
   }
 
   return <ExportMenu onExport={handleExport} />;

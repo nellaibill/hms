@@ -5,12 +5,10 @@ import { useInvoicesForReportQuery } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
 import {
-  CategoryBreakdownCard,
   filterProfitRows,
-  getProfitByBillingType,
-  getProfitByTest,
   getProfitRows,
   getProfitTotals,
+  onlyOpVisitBillings,
   Pagination,
   paginate,
   ProfitExportButtons,
@@ -24,7 +22,8 @@ import {
 const ROWS_PER_PAGE = 10;
 
 /**
- * Finance & Billing's Profit Report — margin per billed service line, computed live from
+ * Finance & Billing's OP Report (was "Hospital Profit Report"; ADR-119) — margin per billed
+ * service line on bills for OP visits only (ADR-121), computed live from
  * each service's current CostPrice against what was actually billed (see
  * features/reports/profitReport.ts's own doc comments for why this is a live lookup rather
  * than a historical snapshot, and why Pharmacy/uncosted services show "—" instead of a
@@ -59,7 +58,7 @@ export default function ProfitReportPage() {
   usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(
-    () => getProfitRows(billings ?? [], appliedRange),
+    () => getProfitRows(onlyOpVisitBillings(billings ?? []), appliedRange),
     [
       billings,
       appliedRange,
@@ -73,8 +72,6 @@ export default function ProfitReportPage() {
   );
   const filteredRows = useMemo(() => filterProfitRows(rows, appliedFilters), [rows, appliedFilters]);
   const totals = useMemo(() => getProfitTotals(filteredRows), [filteredRows]);
-  const byTest = useMemo(() => getProfitByTest(filteredRows), [filteredRows]);
-  const byBillingType = useMemo(() => getProfitByBillingType(filteredRows), [filteredRows]);
 
   const pagedRows = paginate(filteredRows, page, ROWS_PER_PAGE);
 
@@ -82,8 +79,8 @@ export default function ProfitReportPage() {
     <div className="flex flex-1 flex-col">
       <PageBanner
         icon={TrendingUp}
-        title="Hospital Profit Report"
-        subtitle="Margin per billed service — revenue against each service's running cost for the selected period."
+        title="OP Report"
+        subtitle="Margin per billed service on OP visits — revenue against each service's running cost for the selected period."
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
       />
@@ -102,11 +99,6 @@ export default function ProfitReportPage() {
           />
 
           <ProfitSummaryCards totals={totals} />
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CategoryBreakdownCard title="Profit by Service" rows={byTest} tone="success" maxRows={8} />
-            <CategoryBreakdownCard title="Profit by Billing Type" rows={byBillingType} tone="success" maxRows={8} />
-          </div>
 
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-foreground">

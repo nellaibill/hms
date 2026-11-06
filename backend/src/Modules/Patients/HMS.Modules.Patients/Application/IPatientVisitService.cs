@@ -39,4 +39,9 @@ public interface IPatientVisitService
     /// <paramref name="months"/> months, oldest first, zero-filled — the Executive Dashboard's
     /// OP census (DASH-01).</summary>
     Task<IReadOnlyList<MonthlyTotal>> GetMonthlyCountsAsync(VisitType visitType, int months, CancellationToken cancellationToken);
+
+    /// <summary>Each visit's encounter type (OP/IP/Emergency/Day Care/Observation) in one
+    /// lookup — lets Billing tag a page of invoices without one call per bill (ADR-121). Ids
+    /// that match no visit are left out.</summary>
+    Task<IReadOnlyDictionary<Guid, VisitType>> GetVisitTypesAsync(IReadOnlyCollection<Guid> visitIds, CancellationToken cancellationToken);
 }

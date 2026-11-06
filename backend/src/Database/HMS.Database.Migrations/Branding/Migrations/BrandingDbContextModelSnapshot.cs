@@ -126,6 +126,10 @@ namespace HMS.Database.Migrations.Branding.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("print_settings");
 
+                    b.Property<string>("ReportVisibilityJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("report_visibility");
+
                     b.Property<string>("TokensDarkJson")
                         .IsRequired()
                         .HasColumnType("jsonb")

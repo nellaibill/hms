@@ -550,7 +550,13 @@ internal class InvoiceService : IInvoiceService
     public async Task<PagedResult<InvoiceResponse>> GetPagedAsync(InvoiceListQuery query, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
-        return new PagedResult<InvoiceResponse>(items.Select(i => i.ToResponse()).ToList(), query.Page, query.PageSize, totalCount);
+
+        // One lookup for the whole page (ADR-121), not one per bill like GetRecentAsync's.
+        var visitTypes = await _patientVisitService.GetVisitTypesAsync(items.Select(i => i.VisitId).Distinct().ToList(), cancellationToken);
+        var responses = items
+            .Select(i => i.ToResponse() with { EncounterType = visitTypes.TryGetValue(i.VisitId, out var visitType) ? visitType : null })
+            .ToList();
+        return new PagedResult<InvoiceResponse>(responses, query.Page, query.PageSize, totalCount);
     }
 
     public async Task<Result<IReadOnlyList<InvoiceResponse>>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)

@@ -158,6 +158,11 @@ public record InvoiceResponse
     /// visit's consultation fee is paid, which is when an OP visit gets its number (ADR-103),
     /// so reception can quote it straight away. Null everywhere else, including every read.</summary>
     public string? OpNumber { get; init; }
+
+    /// <summary>The visit's encounter type (OP/IP/Emergency/Day Care/Observation), so the OP
+    /// Report can keep only OP visits' bills (ADR-121). Set on the paged list
+    /// (<c>GET invoices</c>) only; null on every other read, and when the visit can't be found.</summary>
+    public PatientsContracts.VisitType? EncounterType { get; init; }
 }
 
 /// <summary>Standard pagination/sort/search shape (docs/ApiStandards.md §6), plus the one

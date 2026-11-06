@@ -2,6 +2,7 @@ import { branding } from '@/config/branding';
 import {
   DEFAULT_LOGO_DISPLAY,
   DEFAULT_PRINT_SETTINGS,
+  DEFAULT_REPORT_VISIBILITY,
   FONT_FAMILIES,
   FONT_SIZE_SCALES,
   ICON_SIZE_SCALES,
@@ -130,6 +131,7 @@ function defaultConfig(): BrandingConfig {
     faviconUrl: null,
     logoDisplay: DEFAULT_LOGO_DISPLAY,
     printSettings: DEFAULT_PRINT_SETTINGS,
+    reportVisibility: DEFAULT_REPORT_VISIBILITY,
     fontFamily: DEFAULT_FONT_FAMILY,
     fontSizeScale: DEFAULT_FONT_SIZE_SCALE,
     iconSizeScale: DEFAULT_ICON_SIZE_SCALE,

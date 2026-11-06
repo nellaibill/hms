@@ -35,7 +35,7 @@ interface ReportFilterBarProps {
   onReset: () => void;
   /** Hide the Billing Type dropdown on a report already fixed to one type (Laboratory,
    * Radiology, Consultant) — showing a filter with no real effect just invites confusion.
-   * Defaults to shown (Hospital Profit Report, which mixes every type). */
+   * Defaults to shown (OP Report, which mixes every type). */
   showBillingType?: boolean;
   /** Hide the Consultant dropdown on a report that's already organized by consultant
    * (Consultant Profit Report) — filtering a "one row per consultant" table down to one

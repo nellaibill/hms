@@ -55,6 +55,9 @@ internal interface IPatientVisitRepository
     /// Dashboard's monthly census (DASH-01). Timestamps only, bucketed by the caller.</summary>
     Task<IReadOnlyList<DateTime>> GetCreatedAtSinceAsync(VisitType visitType, DateTime fromUtc, CancellationToken cancellationToken);
 
+    /// <summary>Each visit's type, in one query. Ids that match no visit are left out.</summary>
+    Task<IReadOnlyDictionary<Guid, VisitType>> GetVisitTypesAsync(IReadOnlyCollection<Guid> visitIds, CancellationToken cancellationToken);
+
     /// <summary>Up to <paramref name="take"/> OP visits (Consultations included) that still have
     /// a Waiting/CheckedIn/InConsultation line whose AppointmentTime is before
     /// <paramref name="beforeUtc"/> — one batch for the nightly day-close job (ADR-110). Never
