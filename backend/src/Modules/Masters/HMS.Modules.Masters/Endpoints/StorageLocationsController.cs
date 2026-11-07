@@ -62,7 +62,6 @@ public class StorageLocationsController : ControllerBase
 
     /// <summary>Gets a single storage location by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class StorageLocationsController : ControllerBase
 
     /// <summary>Lists storage locations with paging, search, active-status, and warehouse filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] StorageLocationListQuery query, CancellationToken cancellationToken)
     {

@@ -2,13 +2,15 @@ import { ArrowUpCircle, CircleDollarSign, Percent, Tag, TrendingUp } from 'lucid
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/features/billing';
 import { cn } from '@/lib/utils';
-import type { ProfitTotals } from '../profitReport';
+import { DEFAULT_PROFIT_LABELS, type ProfitLabels, type ProfitTotals } from '../profitReport';
 
 interface ProfitSummaryCardsProps {
   totals: ProfitTotals;
+  /** OP Report passes OP_REPORT_PROFIT_LABELS (ADR-124); other reports keep Cost/Profit. */
+  labels?: ProfitLabels;
 }
 
-export function ProfitSummaryCards({ totals }: ProfitSummaryCardsProps) {
+export function ProfitSummaryCards({ totals, labels = DEFAULT_PROFIT_LABELS }: ProfitSummaryCardsProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -43,7 +45,7 @@ export function ProfitSummaryCards({ totals }: ProfitSummaryCardsProps) {
               <CircleDollarSign className="h-5 w-5" />
             </span>
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">Total Cost</span>
+              <span className="text-xs text-muted-foreground">Total {labels.cost}</span>
               <span className="text-lg font-semibold text-foreground">{formatCurrency(totals.totalCost)}</span>
             </div>
           </CardContent>
@@ -54,7 +56,7 @@ export function ProfitSummaryCards({ totals }: ProfitSummaryCardsProps) {
               <TrendingUp className="h-5 w-5" />
             </span>
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">Total Profit</span>
+              <span className="text-xs text-muted-foreground">Total {labels.profit}</span>
               <span className={cn('text-lg font-semibold', totals.totalProfit >= 0 ? 'text-success' : 'text-destructive')}>
                 {formatCurrency(totals.totalProfit)}
               </span>

@@ -60,7 +60,6 @@ public class ConsultantsController : ControllerBase
     /// <summary>Lists consultants with paging, search, sorting, active-status, and department filtering.</summary>
     /// <response code="200">A page of consultants.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] ConsultantListQuery query, CancellationToken cancellationToken)
     {
@@ -74,7 +73,6 @@ public class ConsultantsController : ControllerBase
     /// <response code="200">The consultant was found.</response>
     /// <response code="404">No consultant was found for the given id.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {

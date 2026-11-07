@@ -172,13 +172,10 @@ const withSuspense = (element: React.ReactNode) => <Suspense fallback={shellFall
 // single source of truth for the sidebar.
 const specialPages: Record<string, React.ReactNode> = {
   '/dashboard': withSuspense(<DashboardPage />),
-  '/admin/settings': withSuspense(<SettingsPage />),
   '/patients/registration': withSuspense(<PatientRegistrationHubPage />),
   '/patients/enquiry': withSuspense(<PatientsListPage />),
   '/support/inventory': withSuspense(<ProductsListPage />),
   '/admin/hr': withSuspense(<HrHubPage />),
-  '/engagement/programmes': withSuspense(<CalendarEventsPage />),
-  '/engagement/messages': withSuspense(<MessagesAndNotificationsPage />),
   '/clinical/opd': withSuspense(<OpdPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
   '/pharmacy': withSuspense(<PharmacyDashboardPage />),
@@ -197,7 +194,20 @@ const specialPages: Record<string, React.ReactNode> = {
 // previously relied on nav-level filtering alone, and '/reports' specifically exposed a full
 // patient PII export (Excel/PDF) with zero permission gate at all. See documentsRoutes/
 // patientReportsRoutes below.
-const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/diagnostics/radiology', '/documents', '/reports', '/admin/activity-log']);
+// '/admin/settings', '/engagement/programmes' and '/engagement/messages' joined in ADR-123, so
+// a role without those menus (e.g. Receptionist) can't reach them by URL either — see
+// adminAndEngagementRoutes below.
+const routeGatedLeafPaths = new Set([
+  '/finance/accounts',
+  '/diagnostics/lab/dashboard',
+  '/diagnostics/radiology',
+  '/documents',
+  '/reports',
+  '/admin/activity-log',
+  '/admin/settings',
+  '/engagement/programmes',
+  '/engagement/messages',
+]);
 
 // Document Management — no longer a sidebar item; reachable from TopHeader's Documents icon. Route-gated via
 // RequirePermissionRoute using the nav leaf's own permission ('records-compliance',
@@ -233,6 +243,23 @@ const activityLogRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [{ path: 'admin/activity-log', element: withSuspense(<ActivityLogPage />) }],
+  },
+];
+
+// Settings, Programmes & Calendar, and Messages & Notifications (ADR-123) — each gated on its
+// own nav leaf's permission, so they now match the sidebar instead of opening for anyone with
+// the URL. The header's Notifications bell is separate and stays open to every user.
+const adminAndEngagementRoutes = [
+  {
+    element: <RequirePermissionRoute permission="identity-administration.view" />,
+    children: [{ path: 'admin/settings', element: withSuspense(<SettingsPage />) }],
+  },
+  {
+    element: <RequirePermissionRoute permission="engagement.view" />,
+    children: [
+      { path: 'engagement/programmes', element: withSuspense(<CalendarEventsPage />) },
+      { path: 'engagement/messages', element: withSuspense(<MessagesAndNotificationsPage />) },
+    ],
   },
 ];
 
@@ -671,6 +698,7 @@ export const router = createBrowserRouter(
             ...opdConsultationRoutes,
             ...documentsRoutes,
             ...activityLogRoutes,
+            ...adminAndEngagementRoutes,
             ...patientReportsRoutes,
           ],
         },

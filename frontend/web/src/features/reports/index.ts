@@ -7,6 +7,7 @@ export * from './components/ExportMenu';
 export * from './components/IncomeTable';
 export * from './components/Pagination';
 export * from './components/ProfitExportButtons';
+export * from './components/ProfitReportPrint';
 export * from './components/ProfitSummaryCards';
 export * from './components/ReportFilterBar';
 export * from './components/ProfitTable';

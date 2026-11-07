@@ -62,7 +62,6 @@ public class TaxesController : ControllerBase
 
     /// <summary>Gets a single tax by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class TaxesController : ControllerBase
 
     /// <summary>Lists taxes with paging, search, and active-status filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] TaxListQuery query, CancellationToken cancellationToken)
     {

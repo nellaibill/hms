@@ -1,17 +1,20 @@
-import { Loader2, TrendingUp } from 'lucide-react';
+import { Loader2, Printer, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { PageBanner } from '@/components/PageBanner';
+import { Button } from '@/components/ui/button';
 import { useInvoicesForReportQuery } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
-import { useMasterOptionsQuery } from '@/features/masters';
+import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import {
   filterProfitRows,
   getProfitRows,
   getProfitTotals,
   onlyOpVisitBillings,
+  OP_REPORT_PROFIT_LABELS,
   Pagination,
   paginate,
   ProfitExportButtons,
+  ProfitReportPrint,
   ProfitSummaryCards,
   ProfitTable,
   ReportFilterBar,
@@ -20,6 +23,7 @@ import {
 } from '@/features/reports';
 
 const ROWS_PER_PAGE = 10;
+const REPORT_TITLE = 'OP Report';
 
 /**
  * Finance & Billing's OP Report (was "Hospital Profit Report"; ADR-119) — margin per billed
@@ -75,11 +79,19 @@ export default function ProfitReportPage() {
 
   const pagedRows = paginate(filteredRows, page, ROWS_PER_PAGE);
 
+  // Printed under the title so a printout says which slice of the report it is.
+  const filterSummary = [
+    appliedFilters.billingType && `Type: ${appliedFilters.billingType}`,
+    appliedFilters.departmentId && `Department: ${resolveRecordLabel('department', appliedFilters.departmentId)}`,
+    appliedFilters.consultantId && `Consultant: ${resolveRecordLabel('consultant', appliedFilters.consultantId)}`,
+    appliedFilters.search?.trim() && `Search: "${appliedFilters.search.trim()}"`,
+  ].filter((part): part is string => Boolean(part));
+
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
         icon={TrendingUp}
-        title="OP Report"
+        title={REPORT_TITLE}
         subtitle="Margin per billed service on OP visits — revenue against each service's running cost for the selected period."
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
@@ -95,10 +107,18 @@ export default function ProfitReportPage() {
             onRangeChange={setRange}
             onFiltersChange={setFilters}
             onReset={reset}
-            exportSlot={<ProfitExportButtons range={appliedRange} rows={filteredRows} />}
+            exportSlot={
+              <>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()} disabled={filteredRows.length === 0}>
+                  <Printer className="h-4 w-4" />
+                  Print
+                </Button>
+                <ProfitExportButtons range={appliedRange} rows={filteredRows} title={REPORT_TITLE} labels={OP_REPORT_PROFIT_LABELS} />
+              </>
+            }
           />
 
-          <ProfitSummaryCards totals={totals} />
+          <ProfitSummaryCards totals={totals} labels={OP_REPORT_PROFIT_LABELS} />
 
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-foreground">
@@ -113,13 +133,22 @@ export default function ProfitReportPage() {
               <p className="text-sm text-muted-foreground">No billed services match the current filters.</p>
             ) : (
               <>
-                <ProfitTable rows={pagedRows.items} />
+                <ProfitTable rows={pagedRows.items} labels={OP_REPORT_PROFIT_LABELS} />
                 <Pagination meta={pagedRows.meta} onPageChange={setPage} />
               </>
             )}
           </div>
         </div>
       </div>
+
+      <ProfitReportPrint
+        title={REPORT_TITLE}
+        range={appliedRange}
+        filterSummary={filterSummary}
+        rows={filteredRows}
+        totals={totals}
+        labels={OP_REPORT_PROFIT_LABELS}
+      />
     </div>
   );
 }

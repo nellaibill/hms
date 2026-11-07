@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
-import type { ProfitReportRow } from '../profitReport';
+import { DEFAULT_PROFIT_LABELS, type ProfitLabels, type ProfitReportRow } from '../profitReport';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface ProfitTableProps {
   rows: ProfitReportRow[];
+  /** Column headings for cost/profit — OP Report passes OP_REPORT_PROFIT_LABELS (ADR-124). */
+  labels?: ProfitLabels;
 }
 
 /** "—" in the Discount column means none was given; "—" for cost/profit/margin means unknown (Pharmacy, a Laboratory package, or a service
@@ -14,7 +16,7 @@ function formatMaybeCurrency(value: number | null): string {
   return value === null ? '—' : formatCurrency(value);
 }
 
-export function ProfitTable({ rows }: ProfitTableProps) {
+export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS }: ProfitTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[1250px] text-sm">
@@ -31,8 +33,8 @@ export function ProfitTable({ rows }: ProfitTableProps) {
             <th className="px-4 py-2.5 text-right">Charge</th>
             <th className="px-4 py-2.5 text-right">Discount</th>
             <th className="px-4 py-2.5 text-right">Revenue</th>
-            <th className="px-4 py-2.5 text-right">Cost</th>
-            <th className="px-4 py-2.5 text-right">Profit</th>
+            <th className="px-4 py-2.5 text-right">{labels.cost}</th>
+            <th className="px-4 py-2.5 text-right">{labels.profit}</th>
             <th className="px-4 py-2.5 text-right">Margin</th>
           </tr>
         </thead>

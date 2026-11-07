@@ -62,7 +62,6 @@ public class DepartmentsController : ControllerBase
     /// <summary>Lists departments with paging, search, sorting, and active-status filtering.</summary>
     /// <response code="200">A page of departments.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] DepartmentListQuery query, CancellationToken cancellationToken)
     {
@@ -76,7 +75,6 @@ public class DepartmentsController : ControllerBase
     /// <response code="200">The department was found.</response>
     /// <response code="404">No department was found for the given id.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {

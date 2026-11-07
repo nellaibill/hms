@@ -60,7 +60,6 @@ public class AppointmentTypesController : ControllerBase
     /// <summary>Lists appointment types with paging, search, sorting, and active-status filtering.</summary>
     /// <response code="200">A page of appointment types.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] AppointmentTypeListQuery query, CancellationToken cancellationToken)
     {
@@ -74,7 +73,6 @@ public class AppointmentTypesController : ControllerBase
     /// <response code="200">The appointment type was found.</response>
     /// <response code="404">No appointment type was found for the given id.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {

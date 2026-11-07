@@ -37,6 +37,38 @@ _To be documented._
 
 ## Decisions
 
+### ADR-124: OP Report says "Consultant Cost" and "Hospital Cost", and can be printed
+**Date:** 2026-11-07
+**Status:** Accepted (amends ADR-119)
+
+**Context**
+Management asked for OP Report's "Total Cost" to read "Total Consultant Cost" and "Total Profit" to read "Total Hospital Cost", with the Cost and Profit columns renamed to match, and for a way to print the report. `ProfitSummaryCards`, `ProfitTable` and `ProfitExportButtons` are shared with the Laboratory and Radiology reports. There, the cost is a test's cost price, not a consultant's share. ADR-119 had also put "OP Report" on their exports by mistake.
+
+**Decision**
+- **Labels.** `ProfitLabels` (`cost`, `profit`) is a prop on the summary cards, the table and the export buttons, defaulting to Cost/Profit. Only OP Report passes `OP_REPORT_PROFIT_LABELS`: "Consultant Cost" and "Hospital Cost", on screen, in CSV/Excel/PDF exports and in print. The figures themselves don't change. On a non-consultation line in OP Report, "Consultant Cost" is still that service's cost price.
+- **Exports.** `ProfitExportButtons` now takes the report's `title`, used for the PDF title and file names. Laboratory and Radiology export under their own names again. The export section is headed "Billed Services".
+- **Print.** A Print button next to Export prints `ProfitReportPrint`. It shows the hospital name, "OP Report", the date range, the filters in force and the time printed. Then come the five summary figures, every filtered row (not just the page on screen) and a totals row. It uses the `.print-target` convention and Theme & Branding → Print's "Reports" paper setting. The button is disabled when no rows match.
+
+**Consequences**
+- Frontend only. The 14 columns are tight on A4 portrait. Landscape for Reports in Theme & Branding → Print reads better.
+
+### ADR-123: Reference-data reads no longer need identity-administration, so roles like Receptionist can drop it
+**Date:** 2026-11-07
+**Status:** Accepted
+
+**Context**
+Management asked that a Receptionist login not see or use Activity Log, Programmes and Calendar, Messages and Notifications, or Settings. Those menus follow the role's permissions: `identity-administration.view` for Activity Log and Settings, and `engagement.view` for the other two. Receptionist (and Doctor / Consultant) had `identity-administration.view` only because every Masters read endpoint, including departments, consultants, consultation types, appointment types, diagnostic tests, payment methods and states, demanded it. The registration and billing dropdowns call those endpoints. That one permission also opened Roles & Permissions, Users, the Activity Log and the database Backup download. In addition, Settings, Programmes and Calendar, and Messages pages relied on the sidebar alone, with no route guard.
+
+**Decision**
+- **Masters reads are open to any signed-in hospital user.** The `identity-administration.view` gate is removed from the GET list and GET by-id actions of the 24 Masters controllers that had it. Create, edit and delete keep their `identity-administration.create/edit/delete` gates. The four diagnostics catalogs keep `diagnostics.view`.
+- **Route guards.** `/admin/settings` now needs `identity-administration.view`, and `/engagement/programmes` and `/engagement/messages` need `engagement.view`, matching their sidebar items. The header Notifications bell is unchanged.
+- **Staff names.** `StaffName`, the "updated by" name on a patient's summary card, now reads the open staff directory (`GET users/directory`) instead of the admin Users list. A role without `identity-administration.view` sees a name, not an id.
+
+**Consequences**
+- No migration. The roles themselves are hospital data. After deploy, a Super Admin removes every `identity-administration` and `engagement` permission from the Receptionist role under Settings → Roles & Permissions. Doctor / Consultant can drop `identity-administration` the same way. The affected users then sign in again.
+- Any signed-in user can now read the Masters catalogs, suppliers and customers included. Before this change, every working role already could, through `identity-administration.view`.
+- Removing `engagement` also hides the header Calendar icon for that role.
+
 ### ADR-122: Patient documents are uploaded from a visit's own Upload button and stay on that visit
 **Date:** 2026-11-06
 **Status:** Accepted
