@@ -37,6 +37,38 @@ _To be documented._
 
 ## Decisions
 
+### ADR-126: Reports leave out columns their filters already fix, OP Report drops Margin, and report dates read "06 Nov 2026"
+**Date:** 2026-11-07
+**Status:** Accepted (amends ADR-124)
+
+**Context**
+Looking at OP Report filtered to one consultant, management pointed out that the Department and Consultant columns just repeat the filter on every line, and so does the Date column when one day is picked. They asked for those columns to go, with the picked values shown in the heading instead. They also asked for Margin % to be removed from OP Report, and for every report's From/To dates, and the dates it prints, to read as day, month and year, like "06 Nov 2026". A browser's date box always shows the computer's own format (e.g. 06-11-2026) and can't be restyled.
+
+**Decision**
+- **Repeated columns.** `opReportHiddenColumns` hides Date for a single day, Type when a billing type is picked, Department when a department or a consultant is picked, and Consultant when a consultant is picked. The table and the printout leave those columns out. The line under "Billed Services" and the print header name the period and the picked values. When one consultant's lines all share one department, that department is named too. The Collection Summary follows the same rule. With one day it drops the day-wise Date column. With one consultant it leaves out the consultant summary, and its head-wise section shows one line per head.
+- **Margin.** OP Report shows no Margin card, column, export column or print column. The Laboratory, Radiology and Consultant reports keep it.
+- **Date format.** A new `DateInput` (components/ui/date-input.tsx) shows the chosen date as "06 Nov 2026" with the browser's own date input invisible on top, so clicking still opens the calendar. It replaces the date boxes in the Accounts & Finance filter bars, the OPD page's filters, Patient Reports and the pharmacy reports' period pickers and Registers. Report tables, printouts and PDF titles show dates through `formatReportDate` and `formatDateRangeLabel`, e.g. "01 Oct 2026 – 07 Nov 2026". CSV and Excel cells keep their raw values so spreadsheets sort them.
+
+**Consequences**
+- Frontend only. Date fields on forms (registration, HR, leave) are unchanged.
+- Typing a date into a `DateInput` with the keyboard still works but can't be seen while typing. The calendar is the intended way in.
+
+### ADR-125: Collection Summary — money received on OP visits by day, consultant and head
+**Date:** 2026-11-07
+**Status:** Accepted
+
+**Context**
+Management asked for a report of the money collected each day, by consultant and by laboratory, with the consultant's amount, the hospital's amount and the overall total, for one consultant or all of them. They wanted it for consultations, laboratory, radiology and the other heads, combined into one summary for a From–To period. Every existing report counts billed amounts by bill date. Payments (amount, method, time taken) were stored per bill line but no API returned them. Decided with management: count money actually received, by the day it was taken; OP visits only; split each head the way OP Report does; show all three sections.
+
+**Decision**
+- **API.** `GET api/v1/billing/invoices/collections?from&to` (`finance-billing.view`) returns every payment taken in [from, to). From and To are instants, so the browser's local midnight decides the day, and the period is at most 366 days. Each payment comes with its bill line and the visit's encounter type. Payments on voided bills (plain voids and approved reverts, whose money goes back) are left out. A consultant's own login sees only payments for their lines, as on the Procedures List. It uses one query for the payments, one for their bills, and one visit-type lookup.
+- **Split.** Each payment is divided by the line's cost, the same `resolveLineCost` OP Report uses (what OP Report calls Consultant Cost). The consultant amount is the payment × cost ÷ line total, and the hospital amount is the rest. A line with no known cost is counted in Total but not split, and a note says how much.
+- **Page.** Accounts & Finance → Collection Summary (`/finance/accounts/reports/collection`) always shows, like OP Report. It has the same filter bar (dates, billing type, department, consultant, search). The summary cards show Total Collected, Consultant Amount, Hospital Amount, and the amount by payment method. Then come three sections: day-wise collection by head (Consultation, Lab, Radiology, Procedure, Other, Total); a consultant summary across every head with an All consultants row; and a head-wise summary, with each billing type's consultants and subtotal, ending in a grand total of all heads. Print and Export (CSV/Excel/PDF) carry the same three sections.
+
+**Consequences**
+- A bill voided after its payment drops out of the day it was paid on, so a Collection Summary printed earlier can differ from one printed after a revert.
+- No migration. OP visits only: IP, Emergency, Day Care and Observation payments aren't counted.
+
 ### ADR-124: OP Report says "Consultant Cost" and "Hospital Cost", and can be printed
 **Date:** 2026-11-07
 **Status:** Accepted (amends ADR-119)

@@ -52,6 +52,7 @@ const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
 const ProfitReportPage = lazy(() => import('../pages/finance/ProfitReportPage'));
+const CollectionSummaryReportPage = lazy(() => import('../pages/finance/CollectionSummaryReportPage'));
 const LaboratoryReportPage = lazy(() => import('../pages/finance/LaboratoryReportPage'));
 const RadiologyReportPage = lazy(() => import('../pages/finance/RadiologyReportPage'));
 const ConsultantReportPage = lazy(() => import('../pages/finance/ConsultantReportPage'));
@@ -393,6 +394,8 @@ const financeRoutes = [
       // OP Report always shows; every other report only once Settings → Reports Visibility
       // turns it on (ADR-120) — a hidden one's URL lands on OP Report.
       { path: 'finance/accounts/reports/profit', element: withSuspense(<ProfitReportPage />) },
+      // Collection Summary (ADR-125) always shows, like OP Report.
+      { path: 'finance/accounts/reports/collection', element: withSuspense(<CollectionSummaryReportPage />) },
       ...(
         [
           ['incomeExpense', 'finance/accounts/reports', <IncomeExpenseReportPage />],

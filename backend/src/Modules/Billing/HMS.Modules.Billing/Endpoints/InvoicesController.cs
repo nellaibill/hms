@@ -150,6 +150,22 @@ public class InvoicesController : ControllerBase
         return Ok(new ApiResponse<IReadOnlyList<ProcedureListItem>> { Data = paged.Items, Meta = meta });
     }
 
+    /// <summary>Money received in a period (ADR-125): every payment taken between
+    /// <c>from</c> (inclusive) and <c>to</c> (exclusive), with its bill line and the visit's
+    /// encounter type — backs the Collection Summary. Payments on voided bills are left out. A
+    /// consultant's own login sees only payments for their lines, like the Procedures List.</summary>
+    /// <response code="200">The payments, oldest first.</response>
+    /// <response code="400">From/To missing, To not after From, or more than 366 days apart.</response>
+    [Authorize]
+    [RequirePermission("finance-billing.view")]
+    [HttpGet("collections")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<CollectionPaymentResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCollections([FromQuery] CollectionListQuery query, CancellationToken cancellationToken)
+    {
+        var result = await _service.GetCollectionsAsync(query, User.GetScopedConsultantId(), cancellationToken);
+        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
     /// <summary>Records a payment against one line item, marking it Paid.</summary>
     [Authorize]
     [RequirePermission("finance-billing.edit")]

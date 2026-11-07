@@ -11,7 +11,7 @@ import type {
 import { billingApi } from '@/services/apiClient';
 import type { BillingFormValues } from './billingValidation';
 import { isFormDiscountStale, toBillingItems } from './billingCalculations';
-import type { Billing, BillingItem, PaymentStatus, RecentBill } from './types';
+import type { Billing, BillingItem, CollectionPayment, PaymentStatus, RecentBill } from './types';
 
 /** Real, database-backed repository (HMS.Modules.Billing). */
 
@@ -222,6 +222,26 @@ export async function getInvoicesByPatientId(patientId: string): Promise<Billing
  * the first one, so a hospital with more than 100 invoices in a report's date range still
  * sees all of them — same "MaxPageSize silently truncates a single big-page request" fix
  * already applied elsewhere (masterStoreFactory.ts's getAll()). */
+/** Payments taken in [from, to) — ISO instants (ADR-125). Each keeps its bill line in the same
+ * BillingItem shape every other report uses, so cost lookups work unchanged. */
+export async function getCollections(from: string, to: string): Promise<CollectionPayment[]> {
+  const rows = await billingApi.getCollections(from, to);
+  return rows.map((row) => ({
+    paymentId: row.paymentId,
+    paidAt: row.paidAt,
+    amount: row.amount,
+    method: row.method,
+    referenceNumber: row.referenceNumber ?? undefined,
+    invoiceId: row.invoiceId,
+    invoiceNumber: row.invoiceNumber,
+    patientId: row.patientId,
+    patientName: row.patientName,
+    patientUhid: row.patientUhid,
+    encounterType: row.encounterType ?? undefined,
+    item: fromItemDto(row.lineItem),
+  }));
+}
+
 export async function getAllInvoicesForReport(): Promise<Billing[]> {
   const all: Billing[] = [];
   let page = 1;

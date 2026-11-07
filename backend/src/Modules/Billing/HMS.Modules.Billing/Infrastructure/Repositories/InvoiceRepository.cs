@@ -72,6 +72,33 @@ internal class InvoiceRepository : IInvoiceRepository
         return rows.Select(r => (r.CreatedAt, r.BillingType, r.Total)).ToList();
     }
 
+    public async Task<IReadOnlyList<(Payment Payment, Invoice Invoice)>> GetPaymentsTakenAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+    {
+        var payments = await _dbContext.Payments
+            .AsNoTracking()
+            .Where(p => p.CreatedAt >= fromUtc && p.CreatedAt < toUtc)
+            .OrderBy(p => p.CreatedAt)
+            .ToListAsync(cancellationToken);
+        if (payments.Count == 0)
+        {
+            return [];
+        }
+
+        // Two queries, not a join: Payment has no navigation to its Invoice, and the invoices
+        // are needed whole (with Items) so each payment can be matched to its line.
+        var invoiceIds = payments.Select(p => p.InvoiceId).Distinct().ToList();
+        var invoices = await _dbContext.Invoices
+            .AsNoTracking()
+            .Include(i => i.Items)
+            .Where(i => invoiceIds.Contains(i.Id) && !i.IsVoided)
+            .ToDictionaryAsync(i => i.Id, cancellationToken);
+
+        return payments
+            .Where(p => invoices.ContainsKey(p.InvoiceId))
+            .Select(p => (p, invoices[p.InvoiceId]))
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<Invoice>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken)
         => await _dbContext.Invoices
             .Include(i => i.Items)

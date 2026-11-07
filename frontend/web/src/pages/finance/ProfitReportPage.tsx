@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { useInvoicesForReportQuery } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
+import { formatDateRangeLabel } from '@/lib/reportDateRange';
 import {
   filterProfitRows,
   getProfitRows,
   getProfitTotals,
   onlyOpVisitBillings,
+  opReportHiddenColumns,
   OP_REPORT_PROFIT_LABELS,
   Pagination,
   paginate,
@@ -79,10 +81,16 @@ export default function ProfitReportPage() {
 
   const pagedRows = paginate(filteredRows, page, ROWS_PER_PAGE);
 
-  // Printed under the title so a printout says which slice of the report it is.
+  // A column whose value the filters already fix is left out (ADR-126); the value is named in
+  // the heading (and the printout's header line) instead.
+  const hidden = opReportHiddenColumns(appliedRange, appliedFilters);
+  // One consultant picked hides Department too — name it when all their lines share one.
+  const consultantDepartmentIds =
+    appliedFilters.consultantId && !appliedFilters.departmentId ? [...new Set(filteredRows.map((row) => row.departmentId).filter(Boolean))] : [];
+  const departmentId = appliedFilters.departmentId ?? (consultantDepartmentIds.length === 1 ? consultantDepartmentIds[0] : undefined);
   const filterSummary = [
     appliedFilters.billingType && `Type: ${appliedFilters.billingType}`,
-    appliedFilters.departmentId && `Department: ${resolveRecordLabel('department', appliedFilters.departmentId)}`,
+    departmentId && `Department: ${resolveRecordLabel('department', departmentId)}`,
     appliedFilters.consultantId && `Consultant: ${resolveRecordLabel('consultant', appliedFilters.consultantId)}`,
     appliedFilters.search?.trim() && `Search: "${appliedFilters.search.trim()}"`,
   ].filter((part): part is string => Boolean(part));
@@ -92,7 +100,7 @@ export default function ProfitReportPage() {
       <PageBanner
         icon={TrendingUp}
         title={REPORT_TITLE}
-        subtitle="Margin per billed service on OP visits — revenue against each service's running cost for the selected period."
+        subtitle="Revenue per billed service on OP visits — the consultant's and the hospital's share for the selected period."
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
       />
@@ -113,17 +121,20 @@ export default function ProfitReportPage() {
                   <Printer className="h-4 w-4" />
                   Print
                 </Button>
-                <ProfitExportButtons range={appliedRange} rows={filteredRows} title={REPORT_TITLE} labels={OP_REPORT_PROFIT_LABELS} />
+                <ProfitExportButtons range={appliedRange} rows={filteredRows} title={REPORT_TITLE} labels={OP_REPORT_PROFIT_LABELS} hideMargin />
               </>
             }
           />
 
-          <ProfitSummaryCards totals={totals} labels={OP_REPORT_PROFIT_LABELS} />
+          <ProfitSummaryCards totals={totals} labels={OP_REPORT_PROFIT_LABELS} hideMargin />
 
           <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-foreground">
-              Billed Services <span className="font-normal text-muted-foreground">({filteredRows.length} line items)</span>
-            </h2>
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-sm font-semibold text-foreground">
+                Billed Services <span className="font-normal text-muted-foreground">({filteredRows.length} line items)</span>
+              </h2>
+              <p className="text-xs text-muted-foreground">{[formatDateRangeLabel(appliedRange.from, appliedRange.to), ...filterSummary].join(' · ')}</p>
+            </div>
             {isLoadingBillings ? (
               <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -133,7 +144,7 @@ export default function ProfitReportPage() {
               <p className="text-sm text-muted-foreground">No billed services match the current filters.</p>
             ) : (
               <>
-                <ProfitTable rows={pagedRows.items} labels={OP_REPORT_PROFIT_LABELS} />
+                <ProfitTable rows={pagedRows.items} labels={OP_REPORT_PROFIT_LABELS} hidden={hidden} />
                 <Pagination meta={pagedRows.meta} onPageChange={setPage} />
               </>
             )}
@@ -148,6 +159,7 @@ export default function ProfitReportPage() {
         rows={filteredRows}
         totals={totals}
         labels={OP_REPORT_PROFIT_LABELS}
+        hidden={hidden}
       />
     </div>
   );

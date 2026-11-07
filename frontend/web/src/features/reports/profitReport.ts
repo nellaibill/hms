@@ -10,7 +10,7 @@ function inRange(date: string, range: ReportDateRange): boolean {
   return date >= range.from && date <= range.to;
 }
 
-function roundToPaise(amount: number): number {
+export function roundToPaise(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
 
@@ -60,6 +60,24 @@ export interface ProfitReportRow {
   marginPercent: number | null;
 }
 
+/** Columns a profit table, printout or summary can leave out (ADR-126). */
+export type OptionalProfitColumn = 'date' | 'type' | 'department' | 'consultant' | 'margin';
+export type HiddenProfitColumns = Partial<Record<OptionalProfitColumn, boolean>>;
+
+/** OP Report leaves out a column whose value the filters already fix — the Date for a single
+ * day, Type for one billing type, Department for one department or one consultant, Consultant
+ * for one consultant — and never shows Margin (ADR-126). The fixed values are named in the
+ * heading instead (see opReportFilterContext). */
+export function opReportHiddenColumns(range: ReportDateRange, filters: ProfitReportFilterState): HiddenProfitColumns {
+  return {
+    date: range.from === range.to,
+    type: Boolean(filters.billingType),
+    department: Boolean(filters.departmentId || filters.consultantId),
+    consultant: Boolean(filters.consultantId),
+    margin: true,
+  };
+}
+
 /** What a profit report calls its cost and profit figures, on screen, in exports and in print. */
 export interface ProfitLabels {
   cost: string;
@@ -81,6 +99,20 @@ export function onlyOpVisitBillings(billings: Billing[]): Billing[] {
   return billings.filter((billing) => billing.encounterType === 'OP');
 }
 
+/** A bill line's cost — the consultant's share for a consultation, a service's cost price
+ * otherwise — after its discount, or null when unknown (see resolveItemCostPrice). The one rule
+ * both OP Report and the Collection Summary split money by. */
+export function resolveLineCost(item: BillingItem): { costPerUnit: number | null; cost: number | null; costDiscount: number } {
+  const costPerUnit = resolveItemCostPrice(item);
+  const charge = item.quantity * item.unitPrice;
+  const fullCost = costPerUnit === null ? null : costPerUnit * item.quantity;
+  // ADR-113: a consultation discount is shared by the consultant and the hospital in
+  // proportion to their parts of the fee — the same percentage comes off both.
+  const costDiscount =
+    fullCost !== null && item.billingType === 'Consultation' && charge > 0 ? roundToPaise((fullCost * Math.min(item.discount, charge)) / charge) : 0;
+  return { costPerUnit, cost: fullCost === null ? null : fullCost - costDiscount, costDiscount };
+}
+
 /** Voided invoices are excluded — discarded transactions, same treatment as the Income
  * report's getIncomeRows. */
 export function getProfitRows(billings: Billing[], range: ReportDateRange): ProfitReportRow[] {
@@ -92,14 +124,8 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
 
     for (const item of billing.items) {
       const { serviceLabel } = describeBillingItem(item);
-      const costPerUnit = resolveItemCostPrice(item);
+      const { costPerUnit, cost, costDiscount } = resolveLineCost(item);
       const charge = item.quantity * item.unitPrice;
-      const fullCost = costPerUnit === null ? null : costPerUnit * item.quantity;
-      // ADR-113: a consultation discount is shared by the consultant and the hospital in
-      // proportion to their parts of the fee — the same percentage comes off both.
-      const costDiscount =
-        fullCost !== null && item.billingType === 'Consultation' && charge > 0 ? roundToPaise((fullCost * Math.min(item.discount, charge)) / charge) : 0;
-      const cost = fullCost === null ? null : fullCost - costDiscount;
       const profit = cost === null ? null : item.total - cost;
       const marginPercent = profit === null || item.total <= 0 ? null : Math.round((profit / item.total) * 100);
 
@@ -230,10 +256,13 @@ export interface ProfitReportFilterState {
   search?: string;
 }
 
+/** What filterProfitRows reads from a row — shared by OP Report rows and Collection Summary rows. */
+export type FilterableReportRow = Pick<ProfitReportRow, 'billingType' | 'departmentId' | 'billedConsultantId' | 'serviceLabel' | 'patientName' | 'invoiceNumber'>;
+
 /** Applies the OP Report's filter bar on top of the date-ranged rows — plain
  * `.filter()`, no different in kind from the date-range filter `getProfitRows` already applies,
  * just a second pass so the date range and these filters stay independently reasoned about. */
-export function filterProfitRows(rows: ProfitReportRow[], filters: ProfitReportFilterState): ProfitReportRow[] {
+export function filterProfitRows<T extends FilterableReportRow>(rows: T[], filters: ProfitReportFilterState): T[] {
   const search = filters.search?.trim().toLowerCase();
   return rows.filter((row) => {
     if (filters.billingType && row.billingType !== filters.billingType) return false;

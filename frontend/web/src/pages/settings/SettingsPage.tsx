@@ -53,7 +53,7 @@ const sections: SettingsSection[] = [
   },
   {
     title: 'Reports Visibility',
-    description: 'Choose which Accounts & Finance reports this hospital shows. OP Report always shows.',
+    description: 'Choose which Accounts & Finance reports this hospital shows. OP Report and Collection Summary always show.',
     icon: Eye,
     path: '/admin/settings/reports-visibility',
     status: 'available',

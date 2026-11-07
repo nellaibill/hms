@@ -58,6 +58,14 @@ public interface IInvoiceService
     /// ProcedureListItem's own doc comment).</summary>
     Task<PagedResult<ProcedureListItem>> GetProcedureLineItemsAsync(ProcedureListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Money received in a period (ADR-125): every payment taken in
+    /// [<paramref name="query"/>.From, .To), oldest first, with its bill line and the visit's
+    /// encounter type. Payments on voided bills are left out. With
+    /// <paramref name="scopedConsultantId"/> (a consultant's own login), only payments for that
+    /// consultant's lines. Fails with BILLING.INVALID_DATE_RANGE when either end is missing,
+    /// To isn't after From, or the period is longer than 366 days.</summary>
+    Task<Result<IReadOnlyList<CollectionPaymentResponse>>> GetCollectionsAsync(CollectionListQuery query, Guid? scopedConsultantId, CancellationToken cancellationToken);
+
     /// <summary>Billed revenue (non-voided invoices, net of line discounts) per month for the
     /// last <paramref name="months"/> months, plus this month's revenue by billing type — the
     /// Executive Dashboard's finance charts (DASH-01).</summary>
@@ -816,6 +824,53 @@ internal class InvoiceService : IInvoiceService
         }
 
         return new PagedResult<ProcedureListItem>(items, query.Page, query.PageSize, totalCount);
+    }
+
+    /// <summary>Longest period one Collection Summary request may cover — a year, leap day included.</summary>
+    private const int MaxCollectionRangeDays = 366;
+
+    public async Task<Result<IReadOnlyList<CollectionPaymentResponse>>> GetCollectionsAsync(CollectionListQuery query, Guid? scopedConsultantId, CancellationToken cancellationToken)
+    {
+        if (query.From is not { } from || query.To is not { } to || to <= from || (to - from).TotalDays > MaxCollectionRangeDays)
+        {
+            return Result<IReadOnlyList<CollectionPaymentResponse>>.Failure(
+                BillingErrorCodes.InvalidDateRange,
+                $"Give a From and a To, with To after From and no more than {MaxCollectionRangeDays} days apart.");
+        }
+
+        var taken = await _repository.GetPaymentsTakenAsync(from.UtcDateTime, to.UtcDateTime, cancellationToken);
+
+        var rows = new List<(Payment Payment, Invoice Invoice, InvoiceLineItem Line)>(taken.Count);
+        foreach (var (payment, invoice) in taken)
+        {
+            var line = invoice.Items.FirstOrDefault(item => item.Id == payment.InvoiceLineItemId);
+            if (line is null) continue;
+            // Same rule as the Procedures List: a consultant's own login sees only their lines.
+            if (scopedConsultantId is { } consultantId && line.BilledConsultantId != consultantId.ToString()) continue;
+            rows.Add((payment, invoice, line));
+        }
+
+        var visitTypes = await _patientVisitService.GetVisitTypesAsync(rows.Select(r => r.Invoice.VisitId).Distinct().ToList(), cancellationToken);
+
+        var responses = rows
+            .Select(r => new CollectionPaymentResponse
+            {
+                PaymentId = r.Payment.Id,
+                PaidAt = r.Payment.CreatedAt,
+                Amount = r.Payment.Amount,
+                Method = r.Payment.Method,
+                ReferenceNumber = r.Payment.ReferenceNumber,
+                InvoiceId = r.Invoice.Id,
+                InvoiceNumber = r.Invoice.InvoiceNumber,
+                PatientId = r.Invoice.PatientId,
+                PatientName = r.Invoice.PatientName,
+                PatientUhid = r.Invoice.PatientUhid,
+                EncounterType = visitTypes.TryGetValue(r.Invoice.VisitId, out var visitType) ? visitType : null,
+                LineItem = r.Line.ToResponse(),
+            })
+            .ToList();
+
+        return Result<IReadOnlyList<CollectionPaymentResponse>>.Success(responses);
     }
 
     private async Task<string?> ResolveServiceNameAsync(string? serviceId, CancellationToken cancellationToken)

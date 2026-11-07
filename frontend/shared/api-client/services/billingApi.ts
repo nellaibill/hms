@@ -3,6 +3,7 @@ import type {
   ApproveInvoiceDiscountRequest,
   ApproveInvoiceRevertRequest,
   BillingDashboardSummary,
+  CollectionPaymentResponse,
   CreateInvoiceDiscountRequest,
   CreateInvoiceRequest,
   CreateInvoiceRevertRequest,
@@ -92,6 +93,13 @@ export class BillingApi {
 
   async getInvoiceById(id: string): Promise<InvoiceResponse> {
     const response = await this.client.get<InvoiceResponse>(API_ROUTES.billing.invoices.byId(id));
+    return response.data;
+  }
+
+  /** Payments taken in [from, to) — ISO instants, so the caller's own local midnight decides
+   * where a day starts (ADR-125). Payments on voided bills are left out. */
+  async getCollections(from: string, to: string): Promise<CollectionPaymentResponse[]> {
+    const response = await this.client.get<CollectionPaymentResponse[]>(API_ROUTES.billing.invoices.collections, { query: { from, to } });
     return response.data;
   }
 

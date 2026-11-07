@@ -3,6 +3,7 @@ import { Building2, CalendarRange, Layers, RotateCcw, Search, User } from 'lucid
 import { BILLING_TYPES, type BillingItem } from '@/features/billing';
 import { getDisplayLabel, getMasterConfig, useMasterOptionsQuery } from '@/features/masters';
 import { Button } from '@/components/ui/button';
+import { DateInput } from '@/components/ui/date-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -91,8 +92,7 @@ export function ReportFilterBar({
         <div className="flex items-end gap-2">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">From</span>
-            <Input
-              type="date"
+            <DateInput
               aria-label="From"
               value={range.from}
               max={range.to}
@@ -102,8 +102,7 @@ export function ReportFilterBar({
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">To</span>
-            <Input
-              type="date"
+            <DateInput
               aria-label="To"
               value={range.to}
               min={range.from}

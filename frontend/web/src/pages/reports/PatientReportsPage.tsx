@@ -1,3 +1,4 @@
+import { DateInput } from '@/components/ui/date-input';
 import type { BloodGroup, Gender, PatientListQuery, PatientReportRow } from '@hms/shared';
 import { BLOOD_GROUPS, GENDERS } from '@hms/shared';
 import { FileSpreadsheet, Loader2, Printer, RefreshCw, Users } from 'lucide-react';
@@ -192,9 +193,8 @@ export default function PatientReportsPage() {
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="report-from">From Date</Label>
-                <Input
+                <DateInput
                   id="report-from"
-                  type="date"
                   value={filters.from}
                   max={filters.to}
                   onChange={(e) => setFilters({ ...filters, from: e.target.value })}
@@ -203,9 +203,8 @@ export default function PatientReportsPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="report-to">To Date</Label>
-                <Input
+                <DateInput
                   id="report-to"
-                  type="date"
                   value={filters.to}
                   min={filters.from}
                   onChange={(e) => setFilters({ ...filters, to: e.target.value })}

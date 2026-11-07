@@ -28,4 +28,5 @@ internal static class BillingErrorCodes
     public const string DiscountConsultantOnly = "BILLING.DISCOUNT_CONSULTANT_ONLY";
     public const string DiscountApprovalPending = "BILLING.DISCOUNT_APPROVAL_PENDING";
     public const string NothingToPay = "BILLING.NOTHING_TO_PAY";
+    public const string InvalidDateRange = "BILLING.INVALID_DATE_RANGE";
 }

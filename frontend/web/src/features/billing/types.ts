@@ -91,6 +91,26 @@ export interface RecentBill {
   discountStatus?: InvoiceDiscountRequestStatus;
 }
 
+/** One payment as money actually received (ADR-125) — the Collection Summary's raw row. */
+export interface CollectionPayment {
+  paymentId: string;
+  /** When it was taken (ISO, UTC). */
+  paidAt: string;
+  amount: number;
+  /** Cash / Card / Upi / BankTransfer. */
+  method: string;
+  referenceNumber?: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientUhid: string;
+  /** The visit's encounter type (OP/IP/Emergency/DayCare/Observation), when known. */
+  encounterType?: string;
+  /** The bill line this payment was for. */
+  item: BillingItem;
+}
+
 /** The bill for one visit — totals are always derived from `items`, never stored independently. */
 export interface Billing {
   id: string;
