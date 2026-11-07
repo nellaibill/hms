@@ -17,9 +17,12 @@ export interface DirectoryEntry {
  * with more records than that would need a searchable/paged picker instead.
  */
 
-export function usePatientDirectory() {
+/** `enabled: false` skips the lookup, e.g. when the caller's Entity field is locked to one
+ * record and no picker is shown. */
+export function usePatientDirectory({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['documents', 'directory', 'patients'],
+    enabled,
     queryFn: async (): Promise<DirectoryEntry[]> => {
       const { items } = await patientsApi.getPatients({ pageSize: 100 });
       return items.map((p) => ({ id: p.id, label: `${p.firstName} ${p.lastName} (${p.uhid})` }));
@@ -28,9 +31,11 @@ export function usePatientDirectory() {
   });
 }
 
-export function useStaffDirectory() {
+/** Needs workforce-admin.view (GET /employees); see usePatientDirectory for `enabled`. */
+export function useStaffDirectory({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['documents', 'directory', 'staff'],
+    enabled,
     queryFn: async (): Promise<DirectoryEntry[]> => {
       const { items } = await employeesApi.getEmployees({ pageSize: 100 });
       return items.map((e) => ({ id: e.id, label: `${e.firstName} ${e.lastName} (${e.employeeCode})` }));

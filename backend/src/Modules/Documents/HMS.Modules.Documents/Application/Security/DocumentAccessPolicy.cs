@@ -72,6 +72,13 @@ internal class DocumentAccessPolicy : IDocumentAccessPolicy
 
     private static bool HasOwnerTypeAccess(DocumentActor actor, DocumentOwnerType ownerType)
     {
+        // The caller's permission scope (ADR-130) applies to every role, bypass roles included:
+        // it reflects which permission let the request in, not who the caller is.
+        if (actor.OwnerTypeScope is { } scope && !scope.Contains(ownerType))
+        {
+            return false;
+        }
+
         if (IsBypass(actor))
         {
             return true;
