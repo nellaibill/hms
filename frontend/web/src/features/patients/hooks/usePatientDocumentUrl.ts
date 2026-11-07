@@ -44,11 +44,18 @@ export function usePatientDocumentUrl(patientId: string, documentType: DocumentT
     }
     let cancelled = false;
     let objectUrl: string | null = null;
-    documentsApi.getDocumentContent(latest.id).then((blob) => {
-      if (cancelled) return;
-      objectUrl = URL.createObjectURL(blob);
-      setUrl(objectUrl);
-    });
+    documentsApi
+      .getDocumentContent(latest.id)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      // Same as "nothing to show": a photo whose content can't be fetched just isn't shown,
+      // rather than surfacing as an uncaught promise rejection.
+      .catch(() => {
+        if (!cancelled) setUrl(null);
+      });
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);

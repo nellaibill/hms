@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-130: A patient's documents also open with Patient Management permissions
+**Date:** 2026-11-07
+**Status:** Accepted (amends ADR-022)
+
+**Context**
+A Receptionist on a patient's Documents tab got 403s. Uploads failed, and the photo, ID proof and visit documents wouldn't open. The Documents API asked for `records-compliance.*` on every action, and the Receptionist role has Patient Management (view, create, edit) but no Records & Compliance. Granting Records & Compliance would also open the hospital-wide Documents page and header icon, with every Patient, Billing and Appointment document the role's table allows. Management has been taking menus like that away from the front desk (ADR-123, ADR-128).
+
+**Decision**
+- **Shared.** A new `[RequireAnyPermission(...)]` attribute passes when the caller has any one of the listed permissions. Stacked `[RequirePermission]` attributes still mean all of them.
+- **Gates.** Upload accepts `records-compliance.create`, `patient-management.create` or `patient-management.edit`. Create covers the photo and ID proof attached at registration, and edit covers documents added later. List, get and content accept `records-compliance.view` or `patient-management.view`. Delete accepts `records-compliance.delete` or `patient-management.delete`. Archive, summary, search, chunks, reindex and the backfills still need Records & Compliance.
+- **Scope.** A caller without the records-compliance permission for the action is limited to Patient documents. `DocumentActor.OwnerTypeScope` carries this, and `DocumentAccessPolicy` checks it before the LoginType table, for bypass roles too. The scope never adds an owner type the table doesn't already allow.
+- **Frontend.** The patient Documents tab offers Delete with either delete permission. The upload dialog skips the patient and staff lookups when its Entity is locked to one record, since the staff list needs `workforce-admin.view`. A patient photo that can't be fetched is just not shown, with no uncaught promise error.
+
+**Consequences**
+- No migration, no role changes and no new sign-in. A Receptionist's token already carries its Patient Management permissions.
+- Any role with `patient-management.view` can now open a patient's documents, except Restricted ones, if its LoginType table allows Patient documents. Restricted documents still need a Doctor or Nurse login.
+- The patient's AI Search tab and the Documents page still need `records-compliance.view`.
+
 ### ADR-129: Receptionists get a Front Desk dashboard with today's figures
 **Date:** 2026-11-07
 **Status:** Accepted

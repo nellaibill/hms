@@ -584,7 +584,7 @@ function RecentVisitsCard({ patient, onViewAll }: { patient: Patient; onViewAll:
 /* --------------------------------------------------------------------- Recent Documents */
 
 /** `onDelete` is only passed where deleting is offered (the Documents tab, gated on
- * records-compliance.delete) — the Overview's Recent Documents card stays read-only. Delete is
+ * records-compliance.delete or patient-management.delete) — the Overview's Recent Documents card stays read-only. Delete is
  * offered for every status, so a Quarantined upload can be cleared too. */
 function DocumentRow({ document, onDelete }: { document: DocumentResponse; onDelete?: (document: DocumentResponse) => void }) {
   return (
@@ -786,7 +786,8 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
     setIsUploadOpen(true);
   };
   const { hasPermission } = useAuth();
-  const canDelete = hasPermission('records-compliance.delete');
+  // A patient's documents follow either permission module (ADR-130), like the API's own check.
+  const canDelete = hasPermission('records-compliance.delete') || hasPermission('patient-management.delete');
   const deleteMutation = useDeletePatientDocumentMutation(patient.id);
   const [pendingDelete, setPendingDelete] = useState<DocumentResponse | null>(null);
 

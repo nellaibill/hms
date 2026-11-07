@@ -78,8 +78,10 @@ export function UploadDocumentModal({
   const valid = isUploadFormValid(errors);
   const busy = status === 'uploading';
 
-  const { data: patients = [] } = usePatientDirectory();
-  const { data: staff = [] } = useStaffDirectory();
+  // A locked Entity shows its label, not a picker, so the lists aren't needed — and the staff
+  // list needs workforce-admin.view, which e.g. a Receptionist on a patient's page doesn't have.
+  const { data: patients = [] } = usePatientDirectory({ enabled: !entityLocked });
+  const { data: staff = [] } = useStaffDirectory({ enabled: !entityLocked });
   const entityPickerSupported = isEntityPickerSupported(values.entityType);
   const entityOptions = buildEntityOptions(values.entityType, patients, staff);
 
