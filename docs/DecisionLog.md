@@ -83,6 +83,7 @@ Management asked for a report of the money collected each day, by consultant and
 **Consequences**
 - A bill voided after its payment drops out of the day it was paid on, so a Collection Summary printed earlier can differ from one printed after a revert.
 - No migration. OP visits only: IP, Emergency, Day Care and Observation payments aren't counted.
+- **Amended 2026-11-07:** the day-wise section also shows each day's Consultant Amount and Hospital Amount before Total, on screen, in print and in exports, so each day's split can be read without adding up the other sections. Like the cards, the two cover only payments whose cost is known.
 
 ### ADR-124: OP Report says "Consultant Cost" and "Hospital Cost", and can be printed
 **Date:** 2026-11-07

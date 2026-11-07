@@ -51,10 +51,18 @@ function buildExportSections(data: CollectionSummaryData): ReportSection[] {
   return [
     {
       heading: 'Day-wise collection',
-      headers: ['Date', ...heads, 'Total'],
+      headers: ['Date', ...heads, 'Consultant Amount', 'Hospital Amount', 'Total'],
       rows: [
-        ...data.days.map((day) => [formatReportDate(day.date), ...heads.map((head) => day.byHead[head]), day.total]),
-        ['Total', ...heads.map((head) => data.dayTotals.byHead[head]), data.dayTotals.total],
+        ...data.days.map((day) => [
+          formatReportDate(day.date),
+          ...heads.map((head) => day.byHead[head]),
+          ...amounts({ consultantAmount: day.consultantAmount, hospitalAmount: day.hospitalAmount, collected: day.total }),
+        ]),
+        [
+          'Total',
+          ...heads.map((head) => data.dayTotals.byHead[head]),
+          ...amounts({ consultantAmount: data.dayTotals.consultantAmount, hospitalAmount: data.dayTotals.hospitalAmount, collected: data.dayTotals.total }),
+        ],
       ],
     },
     {
