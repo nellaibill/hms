@@ -1,7 +1,7 @@
 import { branding } from '@/config/branding';
 import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
-import { formatCurrency } from '@/features/billing';
+import { formatCurrency, formatShortInvoiceNumber } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
 import { formatDateRangeLabel, formatReportDate } from '@/lib/reportDateRange';
 import { DEFAULT_PROFIT_LABELS, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow, type ProfitTotals } from '../profitReport';
@@ -98,7 +98,7 @@ export function ProfitReportPrint({ title, range, filterSummary, rows, totals, l
           {rows.map((row) => (
             <tr key={row.id} className="break-inside-avoid border-b border-gray-300 align-top">
               {!hidden.date && <td className="py-1 pr-2 whitespace-nowrap">{formatReportDate(row.date)}</td>}
-              <td className="py-1 pr-2 whitespace-nowrap">{row.invoiceNumber ?? row.invoiceId}</td>
+              <td className="py-1 pr-2 whitespace-nowrap">{row.invoiceNumber ? formatShortInvoiceNumber(row.invoiceNumber) : row.invoiceId}</td>
               <td className="py-1 pr-2">{row.patientName}</td>
               {!hidden.type && <td className="py-1 pr-2">{row.billingType}</td>}
               <td className="py-1 pr-2">{row.serviceLabel}</td>

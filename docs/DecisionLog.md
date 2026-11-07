@@ -37,6 +37,21 @@ _To be documented._
 
 ## Decisions
 
+### ADR-127: Consultation Types get a Short name for reports, and reports show the short invoice number
+**Date:** 2026-11-07
+**Status:** Accepted (amends ADR-126)
+
+**Context**
+In OP Report, every consultation line's Service read like "Orthopaedics — Doctor's Consultation (In-house) - Regular". The department repeats its own column (or the heading, under ADR-126), and only the last word changes from line to line. Invoice numbers like "INV-2026-000255" were long for the same reason. Management asked for both to be simpler. The full names must stay on bills and at registration.
+
+**Decision**
+- **Short name.** Consultation Types get an optional Short Name (`short_name`, up to 40 characters; blank saves as none), edited in Masters → Consultation Types. Reports (OP Report, the Laboratory, Radiology and Consultant reports, Collection Summary) show a consultation line's Service as the type's short name without the department, through `describeReportService`. A type with no short name shows its full name. Bills, invoices and registration keep the full name through `describeBillingItem`.
+- **Invoice number.** Report tables and printouts show "INV-2026-000255" as "255" (`formatShortInvoiceNumber`), with the full number on hover. The number comes from one sequence that never restarts, so it stays unique. Numbers in any other format show unchanged. CSV, Excel and PDF exports keep the full number.
+
+**Consequences**
+- Needs the Masters migration `AddConsultationTypeShortName` (Platform → Hospitals → Migrate). The hospital then sets short names on its consultation types; until it does, reports show the full type name, still without the department.
+- The report search box no longer matches a consultation line by its department's name.
+
 ### ADR-126: Reports leave out columns their filters already fix, OP Report drops Margin, and report dates read "06 Nov 2026"
 **Date:** 2026-11-07
 **Status:** Accepted (amends ADR-124)

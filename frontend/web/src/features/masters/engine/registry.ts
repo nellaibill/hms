@@ -109,6 +109,16 @@ export function resolveRecordLabel(entityKey: string, id: string | undefined | n
 }
 
 /**
+ * Like resolveRecordLabel, but prefers the record's optional `shortName` (Consultation Types,
+ * ADR-127) — for reports, where the full name repeats on every row. Falls back to the full
+ * label when no short name is set.
+ */
+export function resolveRecordShortLabel(entityKey: string, id: string | undefined | null): string {
+  const shortName = id ? referenceCache.get(entityKey)?.get(id)?.shortName : undefined;
+  return typeof shortName === 'string' && shortName.trim() ? shortName.trim() : resolveRecordLabel(entityKey, id);
+}
+
+/**
  * Resolves a reference field's id to its CostPrice, for margin/profit calculations (see
  * features/billing/billingCalculations.ts's resolveItemCostPrice) — reads from the same
  * synchronous reference cache resolveRecordLabel uses. Returns null (not 0) both when the

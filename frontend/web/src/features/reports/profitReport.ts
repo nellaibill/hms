@@ -1,4 +1,4 @@
-import { describeBillingItem, resolveItemCostPrice, type Billing, type BillingItem, type BillingType } from '@/features/billing';
+import { describeReportService, resolveItemCostPrice, type Billing, type BillingItem, type BillingType } from '@/features/billing';
 import type { BreakdownRow } from './incomeExpenseReport';
 import type { ReportDateRange } from './types';
 
@@ -123,7 +123,7 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
     if (!inRange(date, range)) continue;
 
     for (const item of billing.items) {
-      const { serviceLabel } = describeBillingItem(item);
+      const serviceLabel = describeReportService(item);
       const { costPerUnit, cost, costDiscount } = resolveLineCost(item);
       const charge = item.quantity * item.unitPrice;
       const profit = cost === null ? null : item.total - cost;

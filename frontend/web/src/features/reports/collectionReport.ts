@@ -1,4 +1,4 @@
-import { describeBillingItem, type BillingType, type CollectionPayment } from '@/features/billing';
+import { describeReportService, type BillingType, type CollectionPayment } from '@/features/billing';
 import { toLocalDateInputValue } from '@/lib/reportDateRange';
 import { resolveLineCost, roundToPaise } from './profitReport';
 
@@ -61,7 +61,7 @@ export function getCollectionRows(payments: CollectionPayment[]): CollectionRepo
       patientId: payment.patientId,
       patientName: payment.patientName,
       billingType: item.billingType as BillingType,
-      serviceLabel: describeBillingItem(item).serviceLabel,
+      serviceLabel: describeReportService(item),
       departmentId: item.departmentId,
       billedConsultantId: item.billedConsultantId,
       consultantAmount,

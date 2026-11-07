@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatCurrency } from '@/features/billing';
+import { formatCurrency, formatShortInvoiceNumber } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
 import { formatReportDate } from '@/lib/reportDateRange';
 import { DEFAULT_PROFIT_LABELS, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow } from '../profitReport';
@@ -49,8 +49,8 @@ export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS, hidden = {} 
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{formatReportDate(row.date)}</td>
               )}
               <td className="px-4 py-3">
-                <Link to={`/finance/accounts/${row.invoiceId}`} className="font-mono text-xs text-primary hover:underline">
-                  {row.invoiceNumber ?? row.invoiceId}
+                <Link to={`/finance/accounts/${row.invoiceId}`} title={row.invoiceNumber} className="font-mono text-xs text-primary hover:underline">
+                  {row.invoiceNumber ? formatShortInvoiceNumber(row.invoiceNumber) : row.invoiceId}
                 </Link>
               </td>
               <td className="px-4 py-3">
