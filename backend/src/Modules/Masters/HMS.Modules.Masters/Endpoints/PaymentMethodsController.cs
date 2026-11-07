@@ -62,7 +62,6 @@ public class PaymentMethodsController : ControllerBase
 
     /// <summary>Gets a single payment method by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class PaymentMethodsController : ControllerBase
 
     /// <summary>Lists payment methods with paging, search, and active-status filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] PaymentMethodListQuery query, CancellationToken cancellationToken)
     {

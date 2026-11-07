@@ -60,6 +60,20 @@ export interface ProfitReportRow {
   marginPercent: number | null;
 }
 
+/** What a profit report calls its cost and profit figures, on screen, in exports and in print. */
+export interface ProfitLabels {
+  cost: string;
+  profit: string;
+}
+
+export const DEFAULT_PROFIT_LABELS: ProfitLabels = { cost: 'Cost', profit: 'Profit' };
+
+/** OP Report names the two figures by whose share they are (ADR-124): the cost on a
+ * consultation line is the consultant's share of the fee, and what's left is the hospital's.
+ * For other lines (lab, scans, procedures) the "consultant cost" is still that service's cost
+ * price. */
+export const OP_REPORT_PROFIT_LABELS: ProfitLabels = { cost: 'Consultant Cost', profit: 'Hospital Cost' };
+
 /** OP Report counts only bills for visits registered as OP (ADR-121) — IP, Emergency, Day
  * Care and Observation visits are billed through the same counter but aren't outpatients. A
  * bill whose visit type is unknown (its visit can't be found) is left out too. */

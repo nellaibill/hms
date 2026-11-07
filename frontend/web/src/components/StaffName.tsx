@@ -7,17 +7,20 @@ interface StaffNameProps {
 
 /**
  * Resolves a StaffId (bare GUID — no Staff module exists yet, see StaffSelect's own doc
- * comment) to a display name via the same cached ['users','select-list'] query StaffSelect
- * populates, so list/detail views don't show raw GUIDs. Falls back to a truncated id while
- * loading or if the id isn't a known user.
+ * comment) to a display name, so list/detail views don't show raw GUIDs. Reads the
+ * low-sensitivity staff directory (GET /users/directory, any signed-in user) rather than the
+ * admin Users list, so a role without identity-administration.view — e.g. Receptionist on a
+ * patient's "updated by" line — still sees the name. Shares the ['staff-directory', ''] cache
+ * entry with the other directory pickers. Falls back to a truncated id while loading or if
+ * the id isn't a known active user.
  */
 export function StaffName({ staffId }: StaffNameProps) {
   const { data } = useQuery({
-    queryKey: ['users', 'select-list'],
-    queryFn: () => usersApi.getUsers({ pageSize: 100, isActive: true }),
+    queryKey: ['staff-directory', ''],
+    queryFn: () => usersApi.getStaffDirectory(),
   });
 
-  const user = data?.items.find((item) => item.id === staffId);
+  const user = data?.find((item) => item.id === staffId);
   if (user) {
     return <>{user.firstName} {user.lastName}</>;
   }

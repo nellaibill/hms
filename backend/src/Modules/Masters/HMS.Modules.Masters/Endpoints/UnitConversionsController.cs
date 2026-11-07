@@ -62,7 +62,6 @@ public class UnitConversionsController : ControllerBase
 
     /// <summary>Gets a single unit conversion by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class UnitConversionsController : ControllerBase
 
     /// <summary>Lists unit conversions with paging and active-status filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] UnitConversionListQuery query, CancellationToken cancellationToken)
     {

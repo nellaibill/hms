@@ -73,7 +73,6 @@ public class CurrenciesController : ControllerBase
     /// <response code="200">The currency was found.</response>
     /// <response code="404">No currency was found for the given id.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -84,7 +83,6 @@ public class CurrenciesController : ControllerBase
     /// <summary>Lists currencies with paging, search, and active-status filtering.</summary>
     /// <response code="200">A page of currencies.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] CurrencyListQuery query, CancellationToken cancellationToken)
     {

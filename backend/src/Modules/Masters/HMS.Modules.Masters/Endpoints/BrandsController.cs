@@ -62,7 +62,6 @@ public class BrandsController : ControllerBase
 
     /// <summary>Gets a single brand by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class BrandsController : ControllerBase
 
     /// <summary>Lists brands with paging, search, and active-status filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] BrandListQuery query, CancellationToken cancellationToken)
     {

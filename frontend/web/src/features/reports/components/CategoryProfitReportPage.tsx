@@ -96,7 +96,7 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
             onFiltersChange={setFilters}
             onReset={reset}
             showBillingType={false}
-            exportSlot={<ProfitExportButtons range={appliedRange} rows={filteredRows} />}
+            exportSlot={<ProfitExportButtons range={appliedRange} rows={filteredRows} title={title} />}
           />
 
           <ProfitSummaryCards totals={totals} />

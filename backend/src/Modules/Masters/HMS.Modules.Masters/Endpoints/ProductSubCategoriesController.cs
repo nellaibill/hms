@@ -62,7 +62,6 @@ public class ProductSubCategoriesController : ControllerBase
 
     /// <summary>Gets a single product sub category by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class ProductSubCategoriesController : ControllerBase
 
     /// <summary>Lists product sub categories with paging, search, active-status, and category filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] ProductSubCategoryListQuery query, CancellationToken cancellationToken)
     {

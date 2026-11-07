@@ -29,7 +29,6 @@ public class StatesController : ControllerBase
     /// <summary>Lists every state/union territory.</summary>
     /// <response code="200">The full state list.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
@@ -40,7 +39,6 @@ public class StatesController : ControllerBase
     /// <summary>Lists every district in the given state. An unknown state id yields an empty list.</summary>
     /// <response code="200">The state's districts (possibly empty).</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{stateId:guid}/districts")]
     public async Task<IActionResult> GetDistricts(Guid stateId, CancellationToken cancellationToken)
     {

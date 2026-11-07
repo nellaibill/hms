@@ -61,7 +61,6 @@ public class DiagnosticTestsController : ControllerBase
     /// <summary>Lists diagnostic tests with paging, search, sorting, and service-type/outsourced/active-status filtering.</summary>
     /// <response code="200">A page of diagnostic tests.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] DiagnosticTestListQuery query, CancellationToken cancellationToken)
     {
@@ -75,7 +74,6 @@ public class DiagnosticTestsController : ControllerBase
     /// <response code="200">The diagnostic test was found.</response>
     /// <response code="404">No diagnostic test was found for the given id.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
