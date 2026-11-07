@@ -8,6 +8,7 @@ internal class CreateConsultationTypeRequestValidator : AbstractValidator<Create
     public CreateConsultationTypeRequestValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.ShortName).MaximumLength(40);
         RuleFor(x => x.Amount).GreaterThanOrEqualTo(0).When(x => x.Amount.HasValue).WithMessage("Amount cannot be negative.");
     }
 }
@@ -17,6 +18,7 @@ internal class UpdateConsultationTypeRequestValidator : AbstractValidator<Update
     public UpdateConsultationTypeRequestValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.ShortName).MaximumLength(40);
         RuleFor(x => x.Amount).GreaterThanOrEqualTo(0).When(x => x.Amount.HasValue).WithMessage("Amount cannot be negative.");
     }
 }

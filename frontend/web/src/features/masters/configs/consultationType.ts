@@ -12,6 +12,14 @@ export const consultationTypeConfig: MasterEntityConfig = {
   fields: [
     { key: 'name', label: 'Consultation Type Name', type: 'text', required: true },
     {
+      key: 'shortName',
+      label: 'Short Name',
+      type: 'text',
+      placeholder: 'e.g. Regular',
+      // ADR-127: reports (OP Report, Collection Summary…) show this instead of the full name.
+      helpText: 'Shown in reports instead of the full name, e.g. Regular, Priority, Emergency. Bills keep the full name. Up to 40 characters.',
+    },
+    {
       key: 'amount',
       label: 'Hospital Charge (₹)',
       type: 'decimal',

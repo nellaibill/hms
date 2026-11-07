@@ -9,6 +9,7 @@ internal static class ConsultationTypeMappingExtensions
     {
         Id = consultationType.Id,
         Name = consultationType.Name,
+        ShortName = consultationType.ShortName,
         Amount = consultationType.Amount,
         IsActive = consultationType.IsActive,
         CreatedAt = consultationType.CreatedAt,

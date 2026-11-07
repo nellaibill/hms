@@ -1,5 +1,5 @@
 import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceCostPrice, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
-import { resolveConsultantCharge, resolveRecordCostPrice, resolveRecordLabel } from '@/features/masters';
+import { resolveConsultantCharge, resolveRecordCostPrice, resolveRecordLabel, resolveRecordShortLabel } from '@/features/masters';
 import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
 import { linesSignature, type DiscountableLine } from './billingDiscount';
 import type {
@@ -15,6 +15,13 @@ import type { BillingItem, BillingType, PaymentStatus } from './types';
 
 export function formatCurrency(amount: number): string {
   return `₹${Math.round(amount).toLocaleString('en-IN')}`;
+}
+
+/** "INV-2026-000255" → "255" for report tables and printouts (ADR-127). The number comes from one
+ * sequence that never restarts, so it alone is unique. Any other format is returned unchanged. */
+export function formatShortInvoiceNumber(invoiceNumber: string): string {
+  const match = /^INV-\d{4}-0*(\d+)$/.exec(invoiceNumber);
+  return match ? match[1] : invoiceNumber;
 }
 
 /** An invoice with several line items has one status only once every item is Paid — any Pending item keeps the whole invoice Pending, matching how the Ledger and its filter should read it. */
@@ -341,6 +348,18 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     serviceLabel: item.serviceId ? resolveRecordLabel('diagnosticTest', item.serviceId) : item.billingType,
     consultantName,
   };
+}
+
+/**
+ * The Service text in reports (ADR-127). A consultation shows its type's short name (e.g.
+ * "Regular") without the department, which reports show in their own column or heading; every
+ * other line reads as describeBillingItem has it.
+ */
+export function describeReportService(item: BillingItem): string {
+  if (item.billingType === 'Consultation') {
+    return item.serviceId ? resolveRecordShortLabel('consultationType', item.serviceId) : 'Consultation';
+  }
+  return describeBillingItem(item).serviceLabel;
 }
 
 /**
