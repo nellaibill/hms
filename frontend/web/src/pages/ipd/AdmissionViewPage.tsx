@@ -31,7 +31,7 @@ import {
   useTransferBedMutation,
 } from '../../features/ipd/admissions';
 import { useAuth } from '../../features/auth/AuthContext';
-import { DischargeSummaryEntryCard } from '../../features/dischargeSummary';
+import { DischargeSummaryEntryCard, useCanViewDischargeSummary } from '../../features/dischargeSummary';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -53,6 +53,7 @@ export default function AdmissionViewPage() {
   const issueIpNumberMutation = useIssueIpNumberMutation();
   const [isIssuingIpNumber, setIsIssuingIpNumber] = useState(false);
   const { hasPermission } = useAuth();
+  const canViewDischargeSummary = useCanViewDischargeSummary();
   const { toast } = useToast();
 
   if (isPending) {
@@ -377,8 +378,9 @@ export default function AdmissionViewPage() {
             {/* Discharge Summary is only reachable once the admission itself has been closed
                 out (Admission.Status === 'Discharged') — matches the backend's own creation
                 gate (DischargeSummaryService.CreateDraftAsync rejects a non-Discharged
-                admission). */}
-            {!isAdmitted && <DischargeSummaryEntryCard admissionId={admission.id} />}
+                admission). A role that can't read summaries (e.g. Receptionist) gets no card,
+                rather than a card that loads only to show a 403. */}
+            {!isAdmitted && canViewDischargeSummary && <DischargeSummaryEntryCard admissionId={admission.id} />}
           </TabsContent>
         </Tabs>
 

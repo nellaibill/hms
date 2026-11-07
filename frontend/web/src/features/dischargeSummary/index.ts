@@ -7,6 +7,7 @@ export * from './components/DischargeSummaryForm';
 export * from './components/FinalizationCard';
 export * from './components/FinalizeConfirmDialog';
 export * from './components/StaffPicker';
+export * from './hooks/useCanViewDischargeSummary';
 export * from './hooks/useDischargeSummaryByAdmissionQuery';
 export * from './hooks/useDischargeSummaryMutations';
 export * from './hooks/useDischargeSummaryPdfExport';
