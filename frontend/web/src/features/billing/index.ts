@@ -23,6 +23,7 @@ export * from './hooks/useBillingQuery';
 export * from './hooks/useBillingsQuery';
 export * from './hooks/useCreateInvoiceMutation';
 export * from './hooks/useInvoicesForReportQuery';
+export * from './hooks/useCollectionsQuery';
 export * from './hooks/useInvoiceRevert';
 export * from './hooks/useInvoiceDiscount';
 export * from './hooks/useApprovalTasks';

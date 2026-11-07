@@ -62,7 +62,6 @@ public class UnitsOfMeasureController : ControllerBase
 
     /// <summary>Gets a single unit of measure by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class UnitsOfMeasureController : ControllerBase
 
     /// <summary>Lists units of measure with paging, search, and active-status filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] UnitOfMeasureListQuery query, CancellationToken cancellationToken)
     {

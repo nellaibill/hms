@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatCurrency, PaymentStatusBadge } from '@/features/billing';
+import { formatCurrency, formatShortInvoiceNumber, PaymentStatusBadge } from '@/features/billing';
 import type { IncomeReportRow } from '../types';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
@@ -27,8 +27,8 @@ export function IncomeTable({ rows }: IncomeTableProps) {
             <tr key={row.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(row.date).toLocaleDateString('en-IN')}</td>
               <td className="px-4 py-3">
-                <Link to={`/finance/accounts/${row.id}`} className="font-mono text-xs text-primary hover:underline">
-                  {row.invoiceNumber ?? row.id}
+                <Link to={`/finance/accounts/${row.id}`} title={row.invoiceNumber} className="font-mono text-xs text-primary hover:underline">
+                  {row.invoiceNumber ? formatShortInvoiceNumber(row.invoiceNumber) : row.id}
                 </Link>
               </td>
               <td className="px-4 py-3">

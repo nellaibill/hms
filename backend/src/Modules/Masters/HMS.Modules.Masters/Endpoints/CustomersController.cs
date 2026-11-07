@@ -62,7 +62,6 @@ public class CustomersController : ControllerBase
 
     /// <summary>Gets a single customer by id.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -72,7 +71,6 @@ public class CustomersController : ControllerBase
 
     /// <summary>Lists customers with paging, search, and active-status filtering.</summary>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] CustomerListQuery query, CancellationToken cancellationToken)
     {

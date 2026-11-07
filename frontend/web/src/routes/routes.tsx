@@ -52,6 +52,7 @@ const InvoiceDetailPage = lazy(() => import('../pages/finance/InvoiceDetailPage'
 const InvoiceCreatePage = lazy(() => import('../pages/finance/InvoiceCreatePage'));
 const IncomeExpenseReportPage = lazy(() => import('../pages/finance/IncomeExpenseReportPage'));
 const ProfitReportPage = lazy(() => import('../pages/finance/ProfitReportPage'));
+const CollectionSummaryReportPage = lazy(() => import('../pages/finance/CollectionSummaryReportPage'));
 const LaboratoryReportPage = lazy(() => import('../pages/finance/LaboratoryReportPage'));
 const RadiologyReportPage = lazy(() => import('../pages/finance/RadiologyReportPage'));
 const ConsultantReportPage = lazy(() => import('../pages/finance/ConsultantReportPage'));
@@ -172,13 +173,10 @@ const withSuspense = (element: React.ReactNode) => <Suspense fallback={shellFall
 // single source of truth for the sidebar.
 const specialPages: Record<string, React.ReactNode> = {
   '/dashboard': withSuspense(<DashboardPage />),
-  '/admin/settings': withSuspense(<SettingsPage />),
   '/patients/registration': withSuspense(<PatientRegistrationHubPage />),
   '/patients/enquiry': withSuspense(<PatientsListPage />),
   '/support/inventory': withSuspense(<ProductsListPage />),
   '/admin/hr': withSuspense(<HrHubPage />),
-  '/engagement/programmes': withSuspense(<CalendarEventsPage />),
-  '/engagement/messages': withSuspense(<MessagesAndNotificationsPage />),
   '/clinical/opd': withSuspense(<OpdPage />),
   '/clinical/ipd': withSuspense(<IpdDashboardPage />),
   '/pharmacy': withSuspense(<PharmacyDashboardPage />),
@@ -197,7 +195,20 @@ const specialPages: Record<string, React.ReactNode> = {
 // previously relied on nav-level filtering alone, and '/reports' specifically exposed a full
 // patient PII export (Excel/PDF) with zero permission gate at all. See documentsRoutes/
 // patientReportsRoutes below.
-const routeGatedLeafPaths = new Set(['/finance/accounts', '/diagnostics/lab/dashboard', '/diagnostics/radiology', '/documents', '/reports', '/admin/activity-log']);
+// '/admin/settings', '/engagement/programmes' and '/engagement/messages' joined in ADR-123, so
+// a role without those menus (e.g. Receptionist) can't reach them by URL either — see
+// adminAndEngagementRoutes below.
+const routeGatedLeafPaths = new Set([
+  '/finance/accounts',
+  '/diagnostics/lab/dashboard',
+  '/diagnostics/radiology',
+  '/documents',
+  '/reports',
+  '/admin/activity-log',
+  '/admin/settings',
+  '/engagement/programmes',
+  '/engagement/messages',
+]);
 
 // Document Management — no longer a sidebar item; reachable from TopHeader's Documents icon. Route-gated via
 // RequirePermissionRoute using the nav leaf's own permission ('records-compliance',
@@ -233,6 +244,23 @@ const activityLogRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [{ path: 'admin/activity-log', element: withSuspense(<ActivityLogPage />) }],
+  },
+];
+
+// Settings, Programmes & Calendar, and Messages & Notifications (ADR-123) — each gated on its
+// own nav leaf's permission, so they now match the sidebar instead of opening for anyone with
+// the URL. The header's Notifications bell is separate and stays open to every user.
+const adminAndEngagementRoutes = [
+  {
+    element: <RequirePermissionRoute permission="identity-administration.view" />,
+    children: [{ path: 'admin/settings', element: withSuspense(<SettingsPage />) }],
+  },
+  {
+    element: <RequirePermissionRoute permission="engagement.view" />,
+    children: [
+      { path: 'engagement/programmes', element: withSuspense(<CalendarEventsPage />) },
+      { path: 'engagement/messages', element: withSuspense(<MessagesAndNotificationsPage />) },
+    ],
   },
 ];
 
@@ -366,6 +394,8 @@ const financeRoutes = [
       // OP Report always shows; every other report only once Settings → Reports Visibility
       // turns it on (ADR-120) — a hidden one's URL lands on OP Report.
       { path: 'finance/accounts/reports/profit', element: withSuspense(<ProfitReportPage />) },
+      // Collection Summary (ADR-125) always shows, like OP Report.
+      { path: 'finance/accounts/reports/collection', element: withSuspense(<CollectionSummaryReportPage />) },
       ...(
         [
           ['incomeExpense', 'finance/accounts/reports', <IncomeExpenseReportPage />],
@@ -671,6 +701,7 @@ export const router = createBrowserRouter(
             ...opdConsultationRoutes,
             ...documentsRoutes,
             ...activityLogRoutes,
+            ...adminAndEngagementRoutes,
             ...patientReportsRoutes,
           ],
         },

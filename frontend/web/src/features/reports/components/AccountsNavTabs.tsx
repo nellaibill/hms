@@ -16,6 +16,8 @@ const TABS: { to: string; label: string; feature?: string; report?: AccountsRepo
   { to: '/finance/accounts/discount-requests', label: 'Discount Requests' },
   { to: '/finance/accounts/reports', label: 'Income & Expense', report: 'incomeExpense' },
   { to: '/finance/accounts/reports/profit', label: 'OP Report' },
+  // Money received by payment date (ADR-125) — always shows, like OP Report.
+  { to: '/finance/accounts/reports/collection', label: 'Collection Summary' },
   { to: '/finance/accounts/reports/laboratory', label: 'Laboratory', report: 'laboratory' },
   { to: '/finance/accounts/reports/radiology', label: 'Radiology', report: 'radiology' },
   { to: '/finance/accounts/reports/consultant', label: 'Consultant', report: 'consultant' },

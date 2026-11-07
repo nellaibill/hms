@@ -13,6 +13,14 @@ namespace HMS.Modules.Masters.Domain;
 internal class ConsultationType : Entity
 {
     public string Name { get; private set; } = null!;
+
+    /// <summary>
+    /// Optional short label for reports (e.g. "Regular", "Priority", "Emergency") — the full
+    /// Name stays on bills and registration. Null when the hospital hasn't set one; reports then
+    /// fall back to Name (ADR-127).
+    /// </summary>
+    public string? ShortName { get; private set; }
+
     public decimal? Amount { get; private set; }
 
     public bool IsActive { get; private set; } = true;
@@ -25,18 +33,21 @@ internal class ConsultationType : Entity
     private ConsultationType(
         Guid id,
         string name,
+        string? shortName,
         decimal? amount,
         bool isActive,
         Guid? createdBy)
         : base(id, createdBy)
     {
         Name = name;
+        ShortName = shortName;
         Amount = amount;
         IsActive = isActive;
     }
 
     public static ConsultationType Create(
         string name,
+        string? shortName,
         decimal? amount,
         bool isActive,
         Guid? createdBy)
@@ -50,6 +61,7 @@ internal class ConsultationType : Entity
         return new ConsultationType(
             Guid.CreateVersion7(),
             name.Trim(),
+            NormalizeShortName(shortName),
             amount,
             isActive,
             createdBy);
@@ -57,6 +69,7 @@ internal class ConsultationType : Entity
 
     public void Update(
         string name,
+        string? shortName,
         decimal? amount,
         bool isActive,
         Guid? updatedBy)
@@ -68,8 +81,12 @@ internal class ConsultationType : Entity
         }
 
         Name = name.Trim();
+        ShortName = NormalizeShortName(shortName);
         Amount = amount;
         IsActive = isActive;
         MarkUpdated(updatedBy);
     }
+
+    private static string? NormalizeShortName(string? shortName) =>
+        string.IsNullOrWhiteSpace(shortName) ? null : shortName.Trim();
 }

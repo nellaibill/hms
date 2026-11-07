@@ -37,6 +37,85 @@ _To be documented._
 
 ## Decisions
 
+### ADR-127: Consultation Types get a Short name for reports, and reports show the short invoice number
+**Date:** 2026-11-07
+**Status:** Accepted (amends ADR-126)
+
+**Context**
+In OP Report, every consultation line's Service read like "Orthopaedics — Doctor's Consultation (In-house) - Regular". The department repeats its own column (or the heading, under ADR-126), and only the last word changes from line to line. Invoice numbers like "INV-2026-000255" were long for the same reason. Management asked for both to be simpler. The full names must stay on bills and at registration.
+
+**Decision**
+- **Short name.** Consultation Types get an optional Short Name (`short_name`, up to 40 characters; blank saves as none), edited in Masters → Consultation Types. Reports (OP Report, the Laboratory, Radiology and Consultant reports, Collection Summary) show a consultation line's Service as the type's short name without the department, through `describeReportService`. A type with no short name shows its full name. Bills, invoices and registration keep the full name through `describeBillingItem`.
+- **Invoice number.** Report tables and printouts show "INV-2026-000255" as "255" (`formatShortInvoiceNumber`), with the full number on hover. The number comes from one sequence that never restarts, so it stays unique. Numbers in any other format show unchanged. CSV, Excel and PDF exports keep the full number.
+
+**Consequences**
+- Needs the Masters migration `AddConsultationTypeShortName` (Platform → Hospitals → Migrate). The hospital then sets short names on its consultation types; until it does, reports show the full type name, still without the department.
+- The report search box no longer matches a consultation line by its department's name.
+
+### ADR-126: Reports leave out columns their filters already fix, OP Report drops Margin, and report dates read "06 Nov 2026"
+**Date:** 2026-11-07
+**Status:** Accepted (amends ADR-124)
+
+**Context**
+Looking at OP Report filtered to one consultant, management pointed out that the Department and Consultant columns just repeat the filter on every line, and so does the Date column when one day is picked. They asked for those columns to go, with the picked values shown in the heading instead. They also asked for Margin % to be removed from OP Report, and for every report's From/To dates, and the dates it prints, to read as day, month and year, like "06 Nov 2026". A browser's date box always shows the computer's own format (e.g. 06-11-2026) and can't be restyled.
+
+**Decision**
+- **Repeated columns.** `opReportHiddenColumns` hides Date for a single day, Type when a billing type is picked, Department when a department or a consultant is picked, and Consultant when a consultant is picked. The table and the printout leave those columns out. The line under "Billed Services" and the print header name the period and the picked values. When one consultant's lines all share one department, that department is named too. The Collection Summary follows the same rule. With one day it drops the day-wise Date column. With one consultant it leaves out the consultant summary, and its head-wise section shows one line per head.
+- **Margin.** OP Report shows no Margin card, column, export column or print column. The Laboratory, Radiology and Consultant reports keep it.
+- **Date format.** A new `DateInput` (components/ui/date-input.tsx) shows the chosen date as "06 Nov 2026" with the browser's own date input invisible on top, so clicking still opens the calendar. It replaces the date boxes in the Accounts & Finance filter bars, the OPD page's filters, Patient Reports and the pharmacy reports' period pickers and Registers. Report tables, printouts and PDF titles show dates through `formatReportDate` and `formatDateRangeLabel`, e.g. "01 Oct 2026 – 07 Nov 2026". CSV and Excel cells keep their raw values so spreadsheets sort them.
+
+**Consequences**
+- Frontend only. Date fields on forms (registration, HR, leave) are unchanged.
+- Typing a date into a `DateInput` with the keyboard still works but can't be seen while typing. The calendar is the intended way in.
+
+### ADR-125: Collection Summary — money received on OP visits by day, consultant and head
+**Date:** 2026-11-07
+**Status:** Accepted
+
+**Context**
+Management asked for a report of the money collected each day, by consultant and by laboratory, with the consultant's amount, the hospital's amount and the overall total, for one consultant or all of them. They wanted it for consultations, laboratory, radiology and the other heads, combined into one summary for a From–To period. Every existing report counts billed amounts by bill date. Payments (amount, method, time taken) were stored per bill line but no API returned them. Decided with management: count money actually received, by the day it was taken; OP visits only; split each head the way OP Report does; show all three sections.
+
+**Decision**
+- **API.** `GET api/v1/billing/invoices/collections?from&to` (`finance-billing.view`) returns every payment taken in [from, to). From and To are instants, so the browser's local midnight decides the day, and the period is at most 366 days. Each payment comes with its bill line and the visit's encounter type. Payments on voided bills (plain voids and approved reverts, whose money goes back) are left out. A consultant's own login sees only payments for their lines, as on the Procedures List. It uses one query for the payments, one for their bills, and one visit-type lookup.
+- **Split.** Each payment is divided by the line's cost, the same `resolveLineCost` OP Report uses (what OP Report calls Consultant Cost). The consultant amount is the payment × cost ÷ line total, and the hospital amount is the rest. A line with no known cost is counted in Total but not split, and a note says how much.
+- **Page.** Accounts & Finance → Collection Summary (`/finance/accounts/reports/collection`) always shows, like OP Report. It has the same filter bar (dates, billing type, department, consultant, search). The summary cards show Total Collected, Consultant Amount, Hospital Amount, and the amount by payment method. Then come three sections: day-wise collection by head (Consultation, Lab, Radiology, Procedure, Other, Total); a consultant summary across every head with an All consultants row; and a head-wise summary, with each billing type's consultants and subtotal, ending in a grand total of all heads. Print and Export (CSV/Excel/PDF) carry the same three sections.
+
+**Consequences**
+- A bill voided after its payment drops out of the day it was paid on, so a Collection Summary printed earlier can differ from one printed after a revert.
+- No migration. OP visits only: IP, Emergency, Day Care and Observation payments aren't counted.
+
+### ADR-124: OP Report says "Consultant Cost" and "Hospital Cost", and can be printed
+**Date:** 2026-11-07
+**Status:** Accepted (amends ADR-119)
+
+**Context**
+Management asked for OP Report's "Total Cost" to read "Total Consultant Cost" and "Total Profit" to read "Total Hospital Cost", with the Cost and Profit columns renamed to match, and for a way to print the report. `ProfitSummaryCards`, `ProfitTable` and `ProfitExportButtons` are shared with the Laboratory and Radiology reports. There, the cost is a test's cost price, not a consultant's share. ADR-119 had also put "OP Report" on their exports by mistake.
+
+**Decision**
+- **Labels.** `ProfitLabels` (`cost`, `profit`) is a prop on the summary cards, the table and the export buttons, defaulting to Cost/Profit. Only OP Report passes `OP_REPORT_PROFIT_LABELS`: "Consultant Cost" and "Hospital Cost", on screen, in CSV/Excel/PDF exports and in print. The figures themselves don't change. On a non-consultation line in OP Report, "Consultant Cost" is still that service's cost price.
+- **Exports.** `ProfitExportButtons` now takes the report's `title`, used for the PDF title and file names. Laboratory and Radiology export under their own names again. The export section is headed "Billed Services".
+- **Print.** A Print button next to Export prints `ProfitReportPrint`. It shows the hospital name, "OP Report", the date range, the filters in force and the time printed. Then come the five summary figures, every filtered row (not just the page on screen) and a totals row. It uses the `.print-target` convention and Theme & Branding → Print's "Reports" paper setting. The button is disabled when no rows match.
+
+**Consequences**
+- Frontend only. The 14 columns are tight on A4 portrait. Landscape for Reports in Theme & Branding → Print reads better.
+
+### ADR-123: Reference-data reads no longer need identity-administration, so roles like Receptionist can drop it
+**Date:** 2026-11-07
+**Status:** Accepted
+
+**Context**
+Management asked that a Receptionist login not see or use Activity Log, Programmes and Calendar, Messages and Notifications, or Settings. Those menus follow the role's permissions: `identity-administration.view` for Activity Log and Settings, and `engagement.view` for the other two. Receptionist (and Doctor / Consultant) had `identity-administration.view` only because every Masters read endpoint, including departments, consultants, consultation types, appointment types, diagnostic tests, payment methods and states, demanded it. The registration and billing dropdowns call those endpoints. That one permission also opened Roles & Permissions, Users, the Activity Log and the database Backup download. In addition, Settings, Programmes and Calendar, and Messages pages relied on the sidebar alone, with no route guard.
+
+**Decision**
+- **Masters reads are open to any signed-in hospital user.** The `identity-administration.view` gate is removed from the GET list and GET by-id actions of the 24 Masters controllers that had it. Create, edit and delete keep their `identity-administration.create/edit/delete` gates. The four diagnostics catalogs keep `diagnostics.view`.
+- **Route guards.** `/admin/settings` now needs `identity-administration.view`, and `/engagement/programmes` and `/engagement/messages` need `engagement.view`, matching their sidebar items. The header Notifications bell is unchanged.
+- **Staff names.** `StaffName`, the "updated by" name on a patient's summary card, now reads the open staff directory (`GET users/directory`) instead of the admin Users list. A role without `identity-administration.view` sees a name, not an id.
+
+**Consequences**
+- No migration. The roles themselves are hospital data. After deploy, a Super Admin removes every `identity-administration` and `engagement` permission from the Receptionist role under Settings → Roles & Permissions. Doctor / Consultant can drop `identity-administration` the same way. The affected users then sign in again.
+- Any signed-in user can now read the Masters catalogs, suppliers and customers included. Before this change, every working role already could, through `identity-administration.view`.
+- Removing `engagement` also hides the header Calendar icon for that role.
+
 ### ADR-122: Patient documents are uploaded from a visit's own Upload button and stay on that visit
 **Date:** 2026-11-06
 **Status:** Accepted

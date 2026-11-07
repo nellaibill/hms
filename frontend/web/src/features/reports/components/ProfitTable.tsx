@@ -1,11 +1,16 @@
 import { Link } from 'react-router-dom';
-import { formatCurrency } from '@/features/billing';
+import { formatCurrency, formatShortInvoiceNumber } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
-import type { ProfitReportRow } from '../profitReport';
+import { formatReportDate } from '@/lib/reportDateRange';
+import { DEFAULT_PROFIT_LABELS, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow } from '../profitReport';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface ProfitTableProps {
   rows: ProfitReportRow[];
+  /** Column headings for cost/profit — OP Report passes OP_REPORT_PROFIT_LABELS (ADR-124). */
+  labels?: ProfitLabels;
+  /** Columns to leave out — OP Report drops the ones its filters already fix (ADR-126). */
+  hidden?: HiddenProfitColumns;
 }
 
 /** "—" in the Discount column means none was given; "—" for cost/profit/margin means unknown (Pharmacy, a Laboratory package, or a service
@@ -14,35 +19,38 @@ function formatMaybeCurrency(value: number | null): string {
   return value === null ? '—' : formatCurrency(value);
 }
 
-export function ProfitTable({ rows }: ProfitTableProps) {
+export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS, hidden = {} }: ProfitTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[1250px] text-sm">
+      {/* 1250px with every column; each hidden one frees about 100px. */}
+      <table className="w-full text-sm" style={{ minWidth: 1250 - 100 * Object.values(hidden).filter(Boolean).length }}>
         <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
-            <th className="px-4 py-2.5">Date</th>
+            {!hidden.date && <th className="px-4 py-2.5">Date</th>}
             <th className="px-4 py-2.5">Invoice</th>
             <th className="px-4 py-2.5">Patient</th>
-            <th className="px-4 py-2.5">Type</th>
+            {!hidden.type && <th className="px-4 py-2.5">Type</th>}
             <th className="px-4 py-2.5">Service</th>
-            <th className="px-4 py-2.5">Department</th>
-            <th className="px-4 py-2.5">Consultant</th>
+            {!hidden.department && <th className="px-4 py-2.5">Department</th>}
+            {!hidden.consultant && <th className="px-4 py-2.5">Consultant</th>}
             <th className="px-4 py-2.5 text-right">Qty</th>
             <th className="px-4 py-2.5 text-right">Charge</th>
             <th className="px-4 py-2.5 text-right">Discount</th>
             <th className="px-4 py-2.5 text-right">Revenue</th>
-            <th className="px-4 py-2.5 text-right">Cost</th>
-            <th className="px-4 py-2.5 text-right">Profit</th>
-            <th className="px-4 py-2.5 text-right">Margin</th>
+            <th className="px-4 py-2.5 text-right">{labels.cost}</th>
+            <th className="px-4 py-2.5 text-right">{labels.profit}</th>
+            {!hidden.margin && <th className="px-4 py-2.5 text-right">Margin</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.id} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{new Date(row.date).toLocaleDateString('en-IN')}</td>
+              {!hidden.date && (
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{formatReportDate(row.date)}</td>
+              )}
               <td className="px-4 py-3">
-                <Link to={`/finance/accounts/${row.invoiceId}`} className="font-mono text-xs text-primary hover:underline">
-                  {row.invoiceNumber ?? row.invoiceId}
+                <Link to={`/finance/accounts/${row.invoiceId}`} title={row.invoiceNumber} className="font-mono text-xs text-primary hover:underline">
+                  {row.invoiceNumber ? formatShortInvoiceNumber(row.invoiceNumber) : row.invoiceId}
                 </Link>
               </td>
               <td className="px-4 py-3">
@@ -50,10 +58,10 @@ export function ProfitTable({ rows }: ProfitTableProps) {
                   {row.patientName}
                 </PatientNameLink>
               </td>
-              <td className="px-4 py-3 text-muted-foreground">{row.billingType}</td>
+              {!hidden.type && <td className="px-4 py-3 text-muted-foreground">{row.billingType}</td>}
               <td className="px-4 py-3 text-muted-foreground">{row.serviceLabel}</td>
-              <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('department', row.departmentId)}</td>
-              <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('consultant', row.billedConsultantId)}</td>
+              {!hidden.department && <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('department', row.departmentId)}</td>}
+              {!hidden.consultant && <td className="px-4 py-3 text-muted-foreground">{resolveRecordLabel('consultant', row.billedConsultantId)}</td>}
               <td className="px-4 py-3 text-right text-muted-foreground">{row.quantity}</td>
               <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(row.charge)}</td>
               <td className={`px-4 py-3 text-right ${row.discount > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
@@ -72,9 +80,11 @@ export function ProfitTable({ rows }: ProfitTableProps) {
               <td className={`px-4 py-3 text-right font-medium ${row.profit === null ? 'text-muted-foreground' : row.profit < 0 ? 'text-destructive' : 'text-success'}`}>
                 {formatMaybeCurrency(row.profit)}
               </td>
-              <td className={`px-4 py-3 text-right ${row.marginPercent === null ? 'text-muted-foreground' : row.marginPercent < 0 ? 'text-destructive' : 'text-success'}`}>
-                {row.marginPercent === null ? '—' : `${row.marginPercent}%`}
-              </td>
+              {!hidden.margin && (
+                <td className={`px-4 py-3 text-right ${row.marginPercent === null ? 'text-muted-foreground' : row.marginPercent < 0 ? 'text-destructive' : 'text-success'}`}>
+                  {row.marginPercent === null ? '—' : `${row.marginPercent}%`}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

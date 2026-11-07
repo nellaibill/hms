@@ -1,5 +1,5 @@
 import { CalendarRange } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import type { ReportDateRange } from '../types';
 
@@ -14,9 +14,8 @@ export function ReportDateRangeFilter({ range, onChange }: ReportDateRangeFilter
       <CalendarRange className="mb-2 h-4 w-4 text-muted-foreground" />
       <div className="flex flex-col gap-1">
         <Label htmlFor="report-from">From</Label>
-        <Input
+        <DateInput
           id="report-from"
-          type="date"
           value={range.from}
           max={range.to}
           onChange={(e) => onChange({ ...range, from: e.target.value })}
@@ -25,9 +24,8 @@ export function ReportDateRangeFilter({ range, onChange }: ReportDateRangeFilter
       </div>
       <div className="flex flex-col gap-1">
         <Label htmlFor="report-to">To</Label>
-        <Input
+        <DateInput
           id="report-to"
-          type="date"
           value={range.to}
           min={range.from}
           onChange={(e) => onChange({ ...range, to: e.target.value })}

@@ -1,3 +1,4 @@
+import { DateInput } from '@/components/ui/date-input';
 import { ADMISSION_STATUSES, INVOICE_PAYMENT_STATUSES, LAB_ORDER_ITEM_STATUSES, OPD_CONSULTATION_STATUSES } from '@hms/shared';
 import { RefreshCw, Search } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ConsultantSelect';
@@ -59,9 +60,8 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
         <>
           <div className="flex flex-col gap-1">
             <Label htmlFor="opd-from">From Date</Label>
-            <Input
+            <DateInput
               id="opd-from"
-              type="date"
               value={filters.from}
               max={filters.to || undefined}
               onChange={(event) => onChange({ ...filters, from: event.target.value })}
@@ -71,9 +71,8 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
 
           <div className="flex flex-col gap-1">
             <Label htmlFor="opd-to">To Date</Label>
-            <Input
+            <DateInput
               id="opd-to"
-              type="date"
               value={filters.to}
               min={filters.from || undefined}
               onChange={(event) => onChange({ ...filters, to: event.target.value })}

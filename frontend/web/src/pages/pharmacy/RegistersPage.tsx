@@ -1,3 +1,4 @@
+import { DateInput } from '@/components/ui/date-input';
 import type { DrugSchedule } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Download, Loader2, Printer } from 'lucide-react';
@@ -18,7 +19,6 @@ const REGISTERS: { key: string; label: string; title: string; schedules: DrugSch
   { key: 'h', label: 'Schedule H', title: 'Schedule H sales', schedules: ['H'] },
 ];
 
-const field = 'h-8 rounded-md border border-input bg-background px-2 text-sm';
 
 function monthStart(): string {
   return `${todayIso().slice(0, 8)}01`;
@@ -74,11 +74,11 @@ export default function RegistersPage() {
         <>
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             From
-            <input type="date" value={fromDate} max={toDate} onChange={(event) => setFromDate(event.target.value)} className={field} />
+            <DateInput value={fromDate} max={toDate} onChange={(event) => setFromDate(event.target.value)} className="h-8 w-36 px-2 text-xs" />
           </label>
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             To
-            <input type="date" value={toDate} max={todayIso()} onChange={(event) => setToDate(event.target.value)} className={field} />
+            <DateInput value={toDate} max={todayIso()} onChange={(event) => setToDate(event.target.value)} className="h-8 w-36 px-2 text-xs" />
           </label>
           <Button size="sm" variant="outline" onClick={exportRegister} disabled={!data || data.length === 0}>
             <Download className="h-4 w-4" />

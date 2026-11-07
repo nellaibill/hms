@@ -62,7 +62,6 @@ public class DesignationsController : ControllerBase
     /// <summary>Lists designations with paging, search, sorting, and active-status filtering.</summary>
     /// <response code="200">A page of designations.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] DesignationListQuery query, CancellationToken cancellationToken)
     {
@@ -76,7 +75,6 @@ public class DesignationsController : ControllerBase
     /// <response code="200">The designation was found.</response>
     /// <response code="404">No designation was found for the given id.</response>
     [Authorize]
-    [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
