@@ -73,7 +73,7 @@ function consultantName(consultantId: string | undefined): string {
 export function CollectionSummarySections({ data, variant, singleDay = false, singleConsultant = false }: CollectionSummarySectionsProps) {
   const s = STYLES[variant];
   const right = 'text-right whitespace-nowrap';
-  const amountCells = (totals: CollectionTotals, className?: string) => (
+  const amountCells = (totals: Pick<CollectionTotals, 'consultantAmount' | 'hospitalAmount' | 'collected'>, className?: string) => (
     <>
       <td className={cn(s.td, right, className)}>{formatCurrency(totals.consultantAmount)}</td>
       <td className={cn(s.td, right, className)}>{formatCurrency(totals.hospitalAmount)}</td>
@@ -98,7 +98,8 @@ export function CollectionSummarySections({ data, variant, singleDay = false, si
     <div className={cn('flex flex-col', variant === 'screen' ? 'gap-5' : 'mt-4 gap-4')}>
       {section(
         'Day-wise collection',
-        <table className={s.table}>
+        // Nine columns on screen, so it needs more room before the frame scrolls sideways.
+        <table className={cn(s.table, variant === 'screen' && 'min-w-[900px]')}>
           <thead>
             <tr className={s.headRow}>
               {!singleDay && <th className={s.th}>Date</th>}
@@ -107,7 +108,7 @@ export function CollectionSummarySections({ data, variant, singleDay = false, si
                   {head === 'Laboratory' ? 'Lab' : head}
                 </th>
               ))}
-              <th className={cn(s.th, 'text-right')}>Total</th>
+              {amountHeaders}
             </tr>
           </thead>
           <tbody className={s.body}>
@@ -119,7 +120,7 @@ export function CollectionSummarySections({ data, variant, singleDay = false, si
                     {day.byHead[head] === 0 ? '—' : formatCurrency(day.byHead[head])}
                   </td>
                 ))}
-                <td className={cn(s.td, right, 'font-semibold')}>{formatCurrency(day.total)}</td>
+                {amountCells({ consultantAmount: day.consultantAmount, hospitalAmount: day.hospitalAmount, collected: day.total })}
               </tr>
             ))}
           </tbody>
@@ -132,7 +133,7 @@ export function CollectionSummarySections({ data, variant, singleDay = false, si
                     {formatCurrency(data.dayTotals.byHead[head])}
                   </td>
                 ))}
-                <td className={cn(s.td, right)}>{formatCurrency(data.dayTotals.total)}</td>
+                {amountCells({ consultantAmount: data.dayTotals.consultantAmount, hospitalAmount: data.dayTotals.hospitalAmount, collected: data.dayTotals.total })}
               </tr>
             </tfoot>
           )}
