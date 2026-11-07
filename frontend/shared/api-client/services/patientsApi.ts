@@ -66,6 +66,8 @@ export class PatientsApi {
         phone: query.phone,
         requiresDataVerification: query.requiresDataVerification,
         registeredToday: query.registeredToday,
+        registeredFrom: query.registeredFrom,
+        registeredTo: query.registeredTo,
         from: query.from,
         to: query.to,
         includeLastVisit: query.includeLastVisit,

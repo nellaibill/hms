@@ -37,6 +37,29 @@ _To be documented._
 
 ## Decisions
 
+### ADR-129: Receptionists get a Front Desk dashboard with today's figures
+**Date:** 2026-11-07
+**Status:** Accepted
+
+**Context**
+The Dashboard was one Executive view for everyone: a six-month OP/IP census, revenue by service, month-wise revenue, a month calendar and notifications. Management said none of it helps the front desk, which needs today's information and recent activity.
+
+**Decision**
+- **Who.** A user signed in as Receptionist sees the Front Desk Dashboard. The login type is checked against the user's role at sign-in. Everyone else keeps the Executive Dashboard. Each part also needs the permission its data does (Clinical Care for OPD, Patient Management for registrations, Finance & Billing for money and bills), so a part the role can't read is left out.
+- **What.** Everything is for today's local date and refreshes every minute.
+  - **Tiles:** OP visits (waiting / with doctor / done); new registrations; money collected, by payment method; bills waiting for payment, with the amount still due (unpaid lines only) and how many are on hold.
+  - **Doctors today:** each doctor's OP queue, busiest first, with their visiting hours.
+  - **Recent bills:** the latest 8 bills raised today, each linking to the bill.
+  - **Waiting for approval:** pending discount and revert requests, from any day, linking to their pages.
+  - **Notifications:** the existing notifications card.
+- **Data.** It reuses existing endpoints: the OPD consultation summary (OP visits only, ADR-121), the collections API (every encounter type, voided bills left out, ADR-125), the bill list newest first (paged until it reaches yesterday, at most 1,000 bills) and the pending-request counts. Registrations need one new filter, `GET patients?registeredFrom&registeredTo`. These are instants for [from, to) on the patient's own CreatedAt, unlike From/To's activity scope.
+
+**Consequences**
+- No migration.
+- "Collected" counts every payment taken today, including IP and other encounter types. Collection Summary counts OP visits only, so the two can differ.
+- Patients bulk-imported today count as registered today.
+- Appointments aren't shown; that work (PR #377) isn't merged.
+
 ### ADR-128: A role can turn sidebar menus off without losing the permission behind them
 **Date:** 2026-11-07
 **Status:** Accepted (complements ADR-123)

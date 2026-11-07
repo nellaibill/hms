@@ -183,6 +183,10 @@ export interface PatientListQuery {
    * HMS.Modules.Patients.Contracts.PatientListQuery.From's own doc comment. */
   from?: string;
   to?: string;
+  /** Patients first registered in [registeredFrom, registeredTo) — ISO instants, so the
+   * browser's local midnight decides the day (ADR-129). Registration date only, unlike from/to. */
+  registeredFrom?: string;
+  registeredTo?: string;
   gender?: Gender;
   bloodGroup?: BloodGroup;
   /** Narrows to patients with at least one visit in this department. */
