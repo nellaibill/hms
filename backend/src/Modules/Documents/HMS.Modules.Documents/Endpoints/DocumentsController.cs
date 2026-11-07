@@ -26,6 +26,17 @@ namespace HMS.Modules.Documents.Endpoints;
 [Route("api/v1/documents")]
 public class DocumentsController : ControllerBase
 {
+    // A patient's documents are part of the patient record, so Patient Management's own
+    // permissions open them too (ADR-130) — e.g. a Receptionist attaching an ID proof or
+    // opening a visit's prescription, without the hospital-wide Documents repository that
+    // records-compliance unlocks. GetActor narrows such callers to Patient documents.
+    private const string RecordsView = "records-compliance.view";
+    private const string RecordsCreate = "records-compliance.create";
+    private const string RecordsDelete = "records-compliance.delete";
+    private const string PatientView = "patient-management.view";
+
+    private static readonly IReadOnlySet<DocumentOwnerType> PatientOnly = new HashSet<DocumentOwnerType> { DocumentOwnerType.Patient };
+
     private readonly IDocumentService _documentService;
     private readonly IValidator<UploadDocumentRequest> _uploadValidator;
     private readonly ILogger<DocumentsController> _logger;
@@ -45,7 +56,7 @@ public class DocumentsController : ControllerBase
     /// <response code="400">The request or file failed validation.</response>
     /// <response code="403">The caller may not upload documents for this owner type.</response>
     /// <response code="404">No record of the given owner type/id was found.</response>
-    [RequirePermission("records-compliance.create")]
+    [RequireAnyPermission(RecordsCreate, "patient-management.create", "patient-management.edit")]
     [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     [HttpPost]
     [Consumes("multipart/form-data")]
@@ -63,7 +74,7 @@ public class DocumentsController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var actor = GetActor();
+        var actor = GetActor(RecordsCreate);
         var result = await _documentService.UploadAsync(request, stream, file.FileName, file.ContentType, file.Length, actor, cancellationToken);
 
         if (!result.IsSuccess)
@@ -78,11 +89,11 @@ public class DocumentsController : ControllerBase
 
     /// <summary>Lists documents with paging, filtering, and search (US-3).</summary>
     /// <response code="200">A page of documents visible to the caller.</response>
-    [RequirePermission("records-compliance.view")]
+    [RequireAnyPermission(RecordsView, PatientView)]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] DocumentListQuery query, CancellationToken cancellationToken)
     {
-        var paged = await _documentService.GetPagedAsync(query, GetActor(), cancellationToken);
+        var paged = await _documentService.GetPagedAsync(query, GetActor(RecordsView), cancellationToken);
 
         var meta = new PaginationMeta
         {
@@ -108,11 +119,11 @@ public class DocumentsController : ControllerBase
     /// <summary>Gets a single document's metadata by id.</summary>
     /// <response code="200">The document was found and is visible to the caller.</response>
     /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
-    [RequirePermission("records-compliance.view")]
+    [RequireAnyPermission(RecordsView, PatientView)]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _documentService.GetByIdAsync(id, GetActor(), cancellationToken);
+        var result = await _documentService.GetByIdAsync(id, GetActor(RecordsView), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -126,11 +137,11 @@ public class DocumentsController : ControllerBase
     /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
     /// <response code="409">The document exists but its content isn't available yet (still
     /// being scanned, or quarantined).</response>
-    [RequirePermission("records-compliance.view")]
+    [RequireAnyPermission(RecordsView, PatientView)]
     [HttpGet("{id:guid}/content")]
     public async Task<IActionResult> GetContent(Guid id, CancellationToken cancellationToken)
     {
-        var actor = GetActor();
+        var actor = GetActor(RecordsView);
         var result = await _documentService.GetContentAsync(id, actor, cancellationToken);
         if (!result.IsSuccess)
         {
@@ -160,11 +171,11 @@ public class DocumentsController : ControllerBase
     /// <response code="204">The document was soft-deleted.</response>
     /// <response code="403">The caller may not delete documents for this owner type.</response>
     /// <response code="404">No document was found, or it exists but the caller can't see it.</response>
-    [RequirePermission("records-compliance.delete")]
+    [RequireAnyPermission(RecordsDelete, "patient-management.delete")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _documentService.DeleteAsync(id, GetActor(), cancellationToken);
+        var result = await _documentService.DeleteAsync(id, GetActor(RecordsDelete), cancellationToken);
         return result.IsSuccess ? NoContent() : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -248,12 +259,18 @@ public class DocumentsController : ControllerBase
 
     /// <summary>Reads the authenticated caller's identity off the validated JWT (US-2) — see
     /// DocumentActor's remarks for why "LoginType," not the freeform "RoleName," is the claim
-    /// used to drive access decisions.</summary>
-    private DocumentActor GetActor()
+    /// used to drive access decisions.
+    ///
+    /// <paramref name="recordsPermission"/> is set on the actions a patient-management
+    /// permission also opens (ADR-130). A caller without that records-compliance permission
+    /// got in through patient-management, so the actor is scoped to Patient documents only.
+    /// </summary>
+    private DocumentActor GetActor(string? recordsPermission = null)
     {
         var userId = Guid.TryParse(User.FindFirst("UserId")?.Value, out var parsed) ? parsed : (Guid?)null;
         var loginType = User.FindFirst("LoginType")?.Value;
-        return new DocumentActor(userId, loginType);
+        var scope = recordsPermission is not null && !User.HasPermission(recordsPermission) ? PatientOnly : null;
+        return new DocumentActor(userId, loginType, scope);
     }
 
     private static ApiResponse<DocumentResponse> Envelope(DocumentResponse? data) => new() { Data = data };

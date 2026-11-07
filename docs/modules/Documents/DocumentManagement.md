@@ -51,6 +51,16 @@ There is no ASP.NET Core policy-based authorization infrastructure anywhere in t
 
 `DocumentAccessPolicy` (`Application/Security/`) is a pragmatic, explicitly-scoped middle ground: an in-code table mapping the stable `LoginType` JWT claim (`HMS.Modules.Identity.Application.LoginTypes` — not the freeform, admin-creatable `RoleName` claim) to the `DocumentOwnerType` values that role may read/write, plus a small allow-list of roles permitted to touch `Restricted`-classification documents. `superAdmin`/`admin` bypass every check, mirroring `frontend/web/src/config/navigation.ts`'s treatment of those two roles.
 
+**Permissions on top of that (ADR-022, ADR-130).** Every action also needs a role permission. The repository-wide actions (summary, search, chunks, reindex, backfills, archive) need `records-compliance.*`. Upload, list, get, content and delete also accept the matching Patient Management permission, because a patient's documents are part of the patient record:
+
+| Action | Any one of |
+| --- | --- |
+| `POST /documents` (upload) | `records-compliance.create`, `patient-management.create`, `patient-management.edit` |
+| `GET /documents`, `GET /documents/{id}`, `GET /documents/{id}/content` | `records-compliance.view`, `patient-management.view` |
+| `DELETE /documents/{id}` | `records-compliance.delete`, `patient-management.delete` |
+
+A caller who lacks the records-compliance permission for that action got in through Patient Management, so `DocumentsController` sets `DocumentActor.OwnerTypeScope` to Patient only. `DocumentAccessPolicy` then denies every other owner type, bypass roles included. For example, a Receptionist with only Patient Management can upload and open a patient's photo, ID proof and visit documents, but can't reach Billing or Appointment documents or the Documents page.
+
 This is a real, enforced check today — not a placeholder — but it is coarser than the dynamic, database-backed Permission/RolePermission-driven policy model `docs/ApiStandards.md` §9 describes as the standard. Standing that up is a platform-wide undertaking affecting every module's controllers, not something this module should do unilaterally; `DocumentAccessPolicy`'s interface is the seam to swap in a database-backed implementation once that work happens everywhere, not just here.
 
 ## Data Integrity: Owner Existence Validation (US-1)

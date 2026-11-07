@@ -120,6 +120,8 @@ public static class JwtConfiguration
         // alongside a bare [Authorize] on any hospital action that needs a specific
         // permission, e.g. RolesController.Create. See PermissionAuthorization.cs.
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        // [RequireAnyPermission("a", "b")] — the any-of form (ADR-130).
+        services.AddSingleton<IAuthorizationHandler, AnyPermissionAuthorizationHandler>();
 
         // Tenant Feature/Module Management: backs [RequireFeature("...")] — apply it
         // alongside a bare [Authorize] on any hospital action belonging to an optional
