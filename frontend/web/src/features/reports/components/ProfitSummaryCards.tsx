@@ -8,12 +8,14 @@ interface ProfitSummaryCardsProps {
   totals: ProfitTotals;
   /** OP Report passes OP_REPORT_PROFIT_LABELS (ADR-124); other reports keep Cost/Profit. */
   labels?: ProfitLabels;
+  /** Leaves the Margin card out — OP Report doesn't show margin (ADR-126). */
+  hideMargin?: boolean;
 }
 
-export function ProfitSummaryCards({ totals, labels = DEFAULT_PROFIT_LABELS }: ProfitSummaryCardsProps) {
+export function ProfitSummaryCards({ totals, labels = DEFAULT_PROFIT_LABELS, hideMargin = false }: ProfitSummaryCardsProps) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2', hideMargin ? 'xl:grid-cols-4' : 'lg:grid-cols-3 xl:grid-cols-5')}>
         <Card>
           <CardContent className="flex items-center gap-3 py-4">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-success/15 text-success">
@@ -63,19 +65,21 @@ export function ProfitSummaryCards({ totals, labels = DEFAULT_PROFIT_LABELS }: P
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 py-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
-              <Percent className="h-5 w-5" />
-            </span>
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">Margin</span>
-              <span className="text-lg font-semibold text-foreground">
-                {totals.overallMarginPercent === null ? '—' : `${totals.overallMarginPercent}%`}
+        {!hideMargin && (
+          <Card>
+            <CardContent className="flex items-center gap-3 py-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <Percent className="h-5 w-5" />
               </span>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Margin</span>
+                <span className="text-lg font-semibold text-foreground">
+                  {totals.overallMarginPercent === null ? '—' : `${totals.overallMarginPercent}%`}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
       {totals.revenueWithUnknownCost > 0 && (
         <p className="text-xs text-muted-foreground">

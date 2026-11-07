@@ -29,5 +29,10 @@ internal interface IInvoiceRepository
     /// this returns a plain projection rather than the InvoiceLineItem/Invoice entities.</summary>
     Task<(IReadOnlyList<ProcedureLineItemRow> Items, int TotalCount)> GetProcedureLineItemsPagedAsync(ProcedureListQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Every payment recorded in [<paramref name="fromUtc"/>, <paramref name="toUtc"/>),
+    /// oldest first, each with its invoice (Items included) — the Collection Summary (ADR-125).
+    /// Payments on voided invoices are left out. Read-only (not tracked).</summary>
+    Task<IReadOnlyList<(Payment Payment, Invoice Invoice)>> GetPaymentsTakenAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

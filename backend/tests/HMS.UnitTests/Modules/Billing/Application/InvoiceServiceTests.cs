@@ -667,6 +667,99 @@ public class InvoiceServiceTests
         await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
+    public static TheoryData<DateTimeOffset?, DateTimeOffset?> InvalidCollectionRanges()
+    {
+        var start = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(5.5));
+        return new TheoryData<DateTimeOffset?, DateTimeOffset?>
+        {
+            { null, start.AddDays(1) },
+            { start, null },
+            { start, start },
+            { start, start.AddMinutes(-1) },
+            { start, start.AddDays(367) },
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidCollectionRanges))]
+    public async Task GetCollectionsAsync_RejectsAMissingBackwardsOrOverlongRange(DateTimeOffset? from, DateTimeOffset? to)
+    {
+        var result = await _sut.GetCollectionsAsync(new CollectionListQuery { From = from, To = to }, null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.InvalidDateRange);
+        await _repository.DidNotReceiveWithAnyArgs().GetPaymentsTakenAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task GetCollectionsAsync_ReturnsEachPaymentWithItsLineAndEncounterType_OverTheUtcInstantsAsked()
+    {
+        var consultantId = Guid.NewGuid().ToString();
+        var invoice = Invoice.Create(
+            "INV-2026-000020",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [
+                new InvoiceLineItemSpec(BillingType.Consultation, "ortho", consultantId, null, null, 1, 400m, 0m, false, null),
+                new InvoiceLineItemSpec(BillingType.Laboratory, "lab", consultantId, "cbc", null, 1, 250m, 0m, false, null),
+            ],
+            createdBy: null);
+        var consultationLine = invoice.Items.Single(i => i.BillingType == BillingType.Consultation);
+        var labLine = invoice.Items.Single(i => i.BillingType == BillingType.Laboratory);
+        var cash = Payment.Create(invoice.Id, consultationLine.Id, 400m, PaymentMethod.Cash, null, null);
+        var upi = Payment.Create(invoice.Id, labLine.Id, 250m, PaymentMethod.Upi, "UTR123", null);
+        _repository.GetPaymentsTakenAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([(cash, invoice), (upi, invoice)]);
+        _patientVisitService.GetVisitTypesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, VisitType> { [invoice.VisitId] = VisitType.OP });
+        // A day in IST: 1 Nov 00:00 +05:30 → 2 Nov 00:00 +05:30, i.e. 31 Oct 18:30Z → 1 Nov 18:30Z.
+        var from = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(5.5));
+
+        var result = await _sut.GetCollectionsAsync(new CollectionListQuery { From = from, To = from.AddDays(1) }, null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _repository.Received(1).GetPaymentsTakenAsync(
+            new DateTime(2026, 10, 31, 18, 30, 0, DateTimeKind.Utc),
+            new DateTime(2026, 11, 1, 18, 30, 0, DateTimeKind.Utc),
+            Arg.Any<CancellationToken>());
+        result.Value!.Select(r => (r.Amount, r.Method, r.LineItem.BillingType, r.EncounterType)).Should().Equal(
+            (400m, PaymentMethod.Cash, BillingType.Consultation, VisitType.OP),
+            (250m, PaymentMethod.Upi, BillingType.Laboratory, VisitType.OP));
+        result.Value![1].ReferenceNumber.Should().Be("UTR123");
+        result.Value![0].InvoiceNumber.Should().Be("INV-2026-000020");
+        result.Value![0].LineItem.Id.Should().Be(consultationLine.Id);
+    }
+
+    [Fact]
+    public async Task GetCollectionsAsync_ForAConsultantsOwnLogin_KeepsOnlyTheirLines()
+    {
+        var mine = Guid.NewGuid();
+        var someoneElse = Guid.NewGuid();
+        var invoice = Invoice.Create(
+            "INV-2026-000021",
+            _patientId,
+            Guid.NewGuid(),
+            "Aravind Nadar",
+            "NH20260001",
+            [
+                new InvoiceLineItemSpec(BillingType.Consultation, "ortho", mine.ToString(), null, null, 1, 400m, 0m, false, null),
+                new InvoiceLineItemSpec(BillingType.Consultation, "ent", someoneElse.ToString(), null, null, 1, 300m, 0m, false, null),
+            ],
+            createdBy: null);
+        var payments = invoice.Items.Select(line => (Payment.Create(invoice.Id, line.Id, line.Total, PaymentMethod.Cash, null, null), invoice)).ToList();
+        _repository.GetPaymentsTakenAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(payments);
+        _patientVisitService.GetVisitTypesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, VisitType>());
+        var from = DateTimeOffset.UtcNow.AddDays(-1);
+
+        var result = await _sut.GetCollectionsAsync(new CollectionListQuery { From = from, To = from.AddDays(1) }, mine, CancellationToken.None);
+
+        result.Value!.Should().ContainSingle().Which.Amount.Should().Be(400m);
+        result.Value![0].EncounterType.Should().BeNull();
+    }
+
     [Fact]
     public async Task GetPagedAsync_TagsEachBillWithItsVisitsEncounterTypeInOneLookup()
     {

@@ -112,6 +112,24 @@ export interface InvoiceResponse {
   encounterType?: VisitType | null;
 }
 
+/** Mirrors HMS.Modules.Billing.Contracts.CollectionPaymentResponse — one payment as money
+ * actually received (ADR-125), with the bill line it paid for. */
+export interface CollectionPaymentResponse {
+  paymentId: string;
+  /** When the payment was recorded (UTC ISO). */
+  paidAt: string;
+  amount: number;
+  method: PaymentMethod;
+  referenceNumber?: string | null;
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientUhid: string;
+  encounterType?: VisitType | null;
+  lineItem: InvoiceLineItemResponse;
+}
+
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceListQuery. */
 export interface InvoiceListQuery {
   page?: number;

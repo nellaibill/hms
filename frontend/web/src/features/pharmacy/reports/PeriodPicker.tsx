@@ -1,8 +1,8 @@
+import { DateInput } from '@/components/ui/date-input';
 import { todayIso } from '@/features/pharmacy/common/format';
 import { cn } from '@/lib/utils';
 import { matchPreset, PERIOD_PRESETS, presetPeriod, type ReportPeriod } from './period';
 
-const field = 'h-8 rounded-md border border-input bg-background px-2 text-sm';
 
 interface PeriodPickerProps {
   value: ReportPeriod;
@@ -30,11 +30,11 @@ export function PeriodPicker({ value, onChange }: PeriodPickerProps) {
       </div>
       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
         From
-        <input type="date" value={value.fromDate} max={value.toDate} onChange={(event) => event.target.value && onChange({ ...value, fromDate: event.target.value })} className={field} />
+        <DateInput value={value.fromDate} max={value.toDate} onChange={(event) => event.target.value && onChange({ ...value, fromDate: event.target.value })} className="h-8 w-36 px-2 text-xs" />
       </label>
       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
         To
-        <input type="date" value={value.toDate} min={value.fromDate} max={today} onChange={(event) => event.target.value && onChange({ ...value, toDate: event.target.value })} className={field} />
+        <DateInput value={value.toDate} min={value.fromDate} max={today} onChange={(event) => event.target.value && onChange({ ...value, toDate: event.target.value })} className="h-8 w-36 px-2 text-xs" />
       </label>
     </div>
   );

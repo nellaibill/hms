@@ -1,5 +1,6 @@
 export * from './components/CategoryBreakdownCard';
 export * from './components/CategoryProfitReportPage';
+export * from './components/CollectionSummarySections';
 export * from './components/ConsultantProfitTable';
 export * from './components/ExpenseTable';
 export * from './components/ExportButtons';
@@ -16,6 +17,7 @@ export * from './components/AccountsNavTabs';
 export * from './components/ReportSummaryCards';
 export * from './components/RequireAccountsReportRoute';
 export * from './useAccountsReportVisibility';
+export * from './collectionReport';
 export * from './exportUtils';
 export * from './incomeExpenseReport';
 export * from './pagination';

@@ -299,6 +299,8 @@ export const API_ROUTES = {
       recordPayment: (invoiceId: string, itemId: string) => `/api/v1/billing/invoices/${invoiceId}/items/${itemId}/payments`,
       void: (id: string) => `/api/v1/billing/invoices/${id}/void`,
       procedures: '/api/v1/billing/invoices/procedures',
+      /** GET ?from&to (ISO instants, to exclusive) — payments taken in the period (ADR-125). */
+      collections: '/api/v1/billing/invoices/collections',
       /** GET ?months=6 — revenue per month + this month by billing type (DASH-01). */
       dashboardSummary: '/api/v1/billing/invoices/dashboard-summary',
       /** GET — whether a revert can be requested, plus every revert request on the invoice (ADR-106). */

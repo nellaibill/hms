@@ -14,7 +14,7 @@ import { ACCOUNTS_REPORT_LABELS, ACCOUNTS_REPORTS, type AccountsReport } from '@
 /**
  * Settings → Reports Visibility (ADR-120): which Accounts & Finance report tabs the hospital
  * shows. Hospital-wide — a report switched off is hidden from everyone, Super Admins
- * included. OP Report and the bill lists/approval queues always show, so they aren't listed.
+ * included. OP Report, Collection Summary and the bill lists/approval queues always show, so they aren't listed.
  * Viewing needs identity-administration.view (the route guard); saving needs .edit, which the
  * backend enforces, so the switches are read-only without it.
  */
@@ -64,8 +64,8 @@ export default function ReportVisibilitySettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Accounts & Finance reports</CardTitle>
             <CardDescription>
-              A report that is switched off is hidden for everyone, Super Admins included. OP Report, Recent Bills, All
-              Invoices, Revert Requests and Discount Requests always show.
+              A report that is switched off is hidden for everyone, Super Admins included. OP Report, Collection Summary,
+              Recent Bills, All Invoices, Revert Requests and Discount Requests always show.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-1">

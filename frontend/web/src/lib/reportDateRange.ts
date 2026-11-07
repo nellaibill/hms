@@ -22,6 +22,19 @@ export function defaultReportDateRange(): { from: string; to: string } {
   return { from: toLocalDateInputValue(yesterday), to: toLocalDateInputValue(today) };
 }
 
+/** A date-input value (YYYY-MM-DD) the way every report shows a date: "06 Nov 2026". Empty for
+ * a missing or invalid value. */
+export function formatReportDate(date: string | undefined): string {
+  return formatDateInputValue(date);
+}
+
+/** A timestamp (ISO) as its local calendar day in report format, e.g. "06 Nov 2026". */
+export function formatReportDateFromIso(iso: string | undefined): string {
+  if (!iso) return '';
+  const parsed = new Date(iso);
+  return Number.isNaN(parsed.getTime()) ? '' : formatDateInputValue(toLocalDateInputValue(parsed));
+}
+
 function formatDateInputValue(date: string | undefined): string {
   if (!date) return '';
   // Parsed as a local date, not `new Date(date)` — a bare YYYY-MM-DD is read as UTC midnight,
