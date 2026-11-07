@@ -23,7 +23,9 @@ internal static class RoleMappingExtensions
             PermissionKeys = role.RolePermissions
                 .Select(rp => rp.Permission.Key)
                 .OrderBy(k => k)
-                .ToList()
+                .ToList(),
+
+            HiddenMenus = role.HiddenMenus.ToList(),
         };
     }
 }

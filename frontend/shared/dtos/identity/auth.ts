@@ -26,6 +26,9 @@ export interface LoginUserResponse {
    * nav-gating convenience only, a login-time snapshot. The backend never trusts this for
    * authorization; it always checks live tenant state instead. */
   featureKeys: string[];
+  /** Sidebar menus turned off for this user's role, by path (ADR-128) — a login-time snapshot.
+   * Optional because a session saved before this field existed won't have it. */
+  hiddenMenus?: string[];
   mustChangePassword: boolean;
 }
 

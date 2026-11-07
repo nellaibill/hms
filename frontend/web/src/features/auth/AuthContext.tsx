@@ -68,6 +68,7 @@ function toAuthUser(response: LoginResponse): AuthUser {
     roleName: user.roleName,
     permissionKeys: user.permissionKeys,
     featureKeys: user.featureKeys,
+    hiddenMenus: user.hiddenMenus ?? [],
     mustChangePassword: user.mustChangePassword,
     consultantId: user.consultantId,
   };

@@ -39,6 +39,7 @@ function fromDto(dto: RoleResponseDto): Role {
     description: dto.description ?? '',
     status: dto.isActive ? 'Active' : 'Inactive',
     permissions,
+    hiddenMenus: dto.hiddenMenus ?? [],
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt ?? dto.createdAt,
   };
@@ -63,6 +64,7 @@ function toRequestBody(values: RoleFormValues): CreateRoleRequestDto | UpdateRol
     name: values.name,
     description: values.description || null,
     permissionKeys: toPermissionKeys(values.permissions),
+    hiddenMenus: values.hiddenMenus,
   };
 }
 

@@ -168,6 +168,7 @@ internal class AuthenticationService : IAuthenticationService
                 ProfilePhotoUrl = user.ProfilePhotoUrl,
                 PermissionKeys = permissionKeys,
                 FeatureKeys = featureKeys.ToList(),
+                HiddenMenus = role.HiddenMenus.ToList(),
                 MustChangePassword = user.MustChangePassword,
             },
         });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import { MenuVisibilityCard } from './MenuVisibilityCard';
 import { PermissionMatrix } from './PermissionMatrix';
 import { RoleInfoCard } from './RoleInfoCard';
 import { countGrantedPermissions, type PermissionAction, type RoleFormValues } from '../types';
@@ -28,6 +29,11 @@ export function RoleForm({ mode, defaultValues, isSubmitting, onSubmit, onCancel
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
 
   const permissions = watch('permissions');
+  const hiddenMenus = watch('hiddenMenus');
+
+  function handleMenuShownChange(path: string, shown: boolean) {
+    setValue('hiddenMenus', shown ? hiddenMenus.filter((menu) => menu !== path) : [...hiddenMenus, path], { shouldDirty: true });
+  }
 
   function handlePermissionChange(moduleId: string, action: PermissionAction, value: boolean) {
     setValue(
@@ -57,6 +63,7 @@ export function RoleForm({ mode, defaultValues, isSubmitting, onSubmit, onCancel
           {permissionsError}
         </p>
       )}
+      <MenuVisibilityCard permissions={permissions} hiddenMenus={hiddenMenus} onChange={handleMenuShownChange} readOnly={readOnly} />
 
       {!readOnly && (
         <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">

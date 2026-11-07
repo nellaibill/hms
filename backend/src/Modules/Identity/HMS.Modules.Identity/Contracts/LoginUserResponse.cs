@@ -25,6 +25,9 @@ public record LoginUserResponse
     /// live tenant state instead, so a feature disabled mid-session is rejected on the very
     /// next API call regardless of what this list still says.</summary>
     public IReadOnlyList<string> FeatureKeys { get; init; } = [];
+    /// <summary>Sidebar menus turned off for this user's role, by path (ADR-128) — a login-time
+    /// snapshot like PermissionKeys, so a change shows after the user signs in again.</summary>
+    public IReadOnlyList<string> HiddenMenus { get; init; } = [];
 
     /// <summary>True when this user's current password was set by someone else (an admin
     /// reset, or the initial password Platform Admin chose during hospital registration) —

@@ -26,4 +26,11 @@ public record RoleResponse
     /// </summary>
     public IReadOnlyCollection<string> PermissionKeys { get; init; }
         = [];
+
+    /// <summary>
+    /// Sidebar menus turned off for this role, by path (e.g. "/clinical/ipd") — ADR-128.
+    /// Empty shows every menu the role's permissions allow.
+    /// </summary>
+    public IReadOnlyCollection<string> HiddenMenus { get; init; }
+        = [];
 }

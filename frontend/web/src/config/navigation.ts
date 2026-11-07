@@ -302,9 +302,36 @@ export const navigationTree: NavNode[] = [
 export function filterNavigationForPermissions(
   hasPermission: (key: string) => boolean,
   hasFeature: (key: string) => boolean,
+  hiddenMenus: readonly string[] = [],
 ): NavNode[] {
   return navigationTree.filter(
-    (node) => (!node.permission || hasPermission(`${node.permission}.view`)) && (!node.feature || hasFeature(node.feature)),
+    (node) =>
+      (!node.permission || hasPermission(`${node.permission}.view`)) &&
+      (!node.feature || hasFeature(node.feature)) &&
+      !isHiddenMenu(node.path, hiddenMenus),
+  );
+}
+
+/** Menus a role can never turn off (ADR-128): Dashboard is every user's landing page, and
+ * Settings holds Roles & Permissions — hiding it from an admin role would lock them out of the
+ * screen that turns it back on. Both still follow their permissions as before. */
+const ALWAYS_SHOWN_MENUS = new Set(['/dashboard', '/admin/settings']);
+
+/** The menus a role's "Menus" list offers (ADR-128), in sidebar order. */
+export function getHideableMenus(): NavLeaf[] {
+  return navigationTree.filter((leaf) => !ALWAYS_SHOWN_MENUS.has(leaf.path));
+}
+
+function isHiddenMenu(path: string, hiddenMenus: readonly string[]): boolean {
+  return !ALWAYS_SHOWN_MENUS.has(path) && hiddenMenus.includes(path);
+}
+
+/** The hidden menu a page belongs to, if any — the menu's own path or any page under it
+ * (e.g. "/clinical/ipd/admissions/123" belongs to "/clinical/ipd"). */
+export function findHiddenMenuForPath(pathname: string, hiddenMenus: readonly string[]): NavLeaf | undefined {
+  if (hiddenMenus.length === 0) return undefined;
+  return navigationTree.find(
+    (leaf) => isHiddenMenu(leaf.path, hiddenMenus) && (pathname === leaf.path || pathname.startsWith(`${leaf.path}/`)),
   );
 }
 

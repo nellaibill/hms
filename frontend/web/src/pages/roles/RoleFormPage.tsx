@@ -24,6 +24,7 @@ function toFormValues(role: Role): RoleFormValues {
     description: role.description,
     status: role.status,
     permissions: role.permissions,
+    hiddenMenus: role.hiddenMenus,
   };
 }
 
@@ -32,6 +33,7 @@ const emptyDefaults: RoleFormValues = {
   description: '',
   status: 'Active',
   permissions: buildEmptyPermissions(),
+  hiddenMenus: [],
 };
 
 export default function RoleFormPage({ mode }: RoleFormPageProps) {
