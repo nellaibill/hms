@@ -13,6 +13,7 @@ internal sealed class CreateRoleRequestValidator
             x => x.Name,
             x => x.Description,
             x => x.DisplayOrder,
-            x => x.PermissionKeys);
+            x => x.PermissionKeys,
+            x => x.HiddenMenus);
     }
 }

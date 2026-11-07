@@ -18,7 +18,7 @@ namespace HMS.Database.Migrations.Identity.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("identity")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -725,6 +725,13 @@ namespace HMS.Database.Migrations.Identity.Migrations
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
+
+                    b.PrimitiveCollection<string[]>("HiddenMenus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("hidden_menus")
+                        .HasDefaultValueSql("'{}'::text[]");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");

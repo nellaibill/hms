@@ -28,6 +28,18 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(x => x.DisplayOrder)
             .IsRequired();
 
+        // ADR-128. Native Postgres text[], like Consultant.AvailableDays — the value comparer lets
+        // EF's change tracker see a replaced list with different contents as a change.
+        builder.Property(x => x.HiddenMenus)
+            .HasColumnName("hidden_menus")
+            .HasColumnType("text[]")
+            .IsRequired()
+            .HasDefaultValueSql("'{}'::text[]")
+            .Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<IReadOnlyList<string>>(
+                (a, b) => a!.SequenceEqual(b!),
+                a => a.Aggregate(0, (hash, menu) => HashCode.Combine(hash, menu.GetHashCode())),
+                a => a.ToList()));
+
         builder.Property(x => x.CreatedAt)
             .IsRequired();
 

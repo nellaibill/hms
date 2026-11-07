@@ -72,6 +72,19 @@ public class AuthenticationServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_ReturnsTheRolesHiddenMenus()
+    {
+        var (_, role) = SeedActiveUserWithMatchingRole();
+        role.SetHiddenMenus(["/clinical/ipd", "/diagnostics/lab"]);
+        var request = new LoginRequest { LoginType = "doctor", Username = "dr.ada", Password = "correct-password" };
+
+        var result = await _sut.LoginAsync(request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.User.HiddenMenus.Should().Equal("/clinical/ipd", "/diagnostics/lab");
+    }
+
+    [Fact]
     public async Task LoginAsync_WhenUsernameNotFound_ReturnsGenericInvalidLoginFailure()
     {
         _userRepository.GetByUsernameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
