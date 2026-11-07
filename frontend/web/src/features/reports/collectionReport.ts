@@ -104,10 +104,14 @@ export function getCollectionsByMethod(rows: CollectionReportRow[]): { method: s
   return [...byMethod].map(([method, amount]) => ({ method, amount: roundToPaise(amount) })).sort((a, b) => b.amount - a.amount);
 }
 
-/** Section 1 — one row per day with money taken, oldest first: the amount per head and in total. */
+/** Section 1 — one row per day with money taken, oldest first: the amount per head, the
+ * consultant's and hospital's parts of it, and the total. Like CollectionTotals, the two parts
+ * cover only payments whose cost is known, so they fall short of total when one isn't. */
 export interface DailyCollectionRow {
   date: string;
   byHead: Record<CollectionHead, number>;
+  consultantAmount: number;
+  hospitalAmount: number;
   total: number;
 }
 
@@ -118,14 +122,20 @@ function emptyHeads(): Record<CollectionHead, number> {
 export function getDailyCollections(rows: CollectionReportRow[]): DailyCollectionRow[] {
   const byDate = new Map<string, DailyCollectionRow>();
   for (const row of rows) {
-    const day = byDate.get(row.date) ?? { date: row.date, byHead: emptyHeads(), total: 0 };
+    const day = byDate.get(row.date) ?? { date: row.date, byHead: emptyHeads(), consultantAmount: 0, hospitalAmount: 0, total: 0 };
     day.byHead[collectionHeadOf(row.billingType)] += row.amount;
+    if (row.consultantAmount !== null && row.hospitalAmount !== null) {
+      day.consultantAmount += row.consultantAmount;
+      day.hospitalAmount += row.hospitalAmount;
+    }
     day.total += row.amount;
     byDate.set(row.date, day);
   }
   return [...byDate.values()]
     .map((day) => ({
       date: day.date,
+      consultantAmount: roundToPaise(day.consultantAmount),
+      hospitalAmount: roundToPaise(day.hospitalAmount),
       total: roundToPaise(day.total),
       byHead: Object.fromEntries(Object.entries(day.byHead).map(([head, amount]) => [head, roundToPaise(amount)])) as Record<CollectionHead, number>,
     }))
@@ -135,13 +145,17 @@ export function getDailyCollections(rows: CollectionReportRow[]): DailyCollectio
 /** The day-wise table's totals row. */
 export function sumDailyCollections(days: DailyCollectionRow[]): Omit<DailyCollectionRow, 'date'> {
   const byHead = emptyHeads();
+  let consultantAmount = 0;
+  let hospitalAmount = 0;
   let total = 0;
   for (const day of days) {
     for (const head of Object.keys(byHead) as CollectionHead[]) byHead[head] += day.byHead[head];
+    consultantAmount += day.consultantAmount;
+    hospitalAmount += day.hospitalAmount;
     total += day.total;
   }
   for (const head of Object.keys(byHead) as CollectionHead[]) byHead[head] = roundToPaise(byHead[head]);
-  return { byHead, total: roundToPaise(total) };
+  return { byHead, consultantAmount: roundToPaise(consultantAmount), hospitalAmount: roundToPaise(hospitalAmount), total: roundToPaise(total) };
 }
 
 /** Section 2 (and each head in section 3) — one row per consultant. `consultantId` is undefined
