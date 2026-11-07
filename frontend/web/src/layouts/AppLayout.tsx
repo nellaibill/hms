@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/shell/AppSidebar';
 import { TopHeader } from '@/components/shell/TopHeader';
 import { AppFooter } from '@/components/shell/AppFooter';
 import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
+import { HiddenMenuGuard } from '@/features/auth/HiddenMenuGuard';
 
 // Assembles the six structural regions from docs/LayoutFramework.md, in a
 // full-width-header-on-top / drawer-below arrangement (Material Design's
@@ -22,7 +23,9 @@ export function AppLayout() {
         <AppSidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((prev) => !prev)} />
         <div className="flex min-w-0 flex-1 flex-col">
           <main className="flex flex-1 flex-col">
-            <Outlet />
+            <HiddenMenuGuard>
+              <Outlet />
+            </HiddenMenuGuard>
           </main>
           <AppFooter />
         </div>

@@ -94,6 +94,8 @@ internal class RoleService : IRoleService
         role.ReplacePermissions(
             permissions.Select(p => p.Id));
 
+        role.SetHiddenMenus(request.HiddenMenus);
+
         await _roleRepository.AddAsync(role, cancellationToken);
         await _roleRepository.SaveChangesAsync(cancellationToken);
 
@@ -181,6 +183,8 @@ internal class RoleService : IRoleService
 
         role.ReplacePermissions(
             permissions.Select(p => p.Id));
+
+        role.SetHiddenMenus(request.HiddenMenus);
 
         await _roleRepository.SaveChangesAsync(cancellationToken);
 

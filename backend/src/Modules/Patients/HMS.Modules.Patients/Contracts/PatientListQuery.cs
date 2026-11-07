@@ -32,6 +32,13 @@ public class PatientListQuery : PagedRequest
     public DateTime? From { get; set; }
     public DateTime? To { get; set; }
 
+    /// <summary>Patients first registered in [RegisteredFrom, RegisteredTo) — the patient
+    /// record's own CreatedAt, unlike From/To's activity scope. Instants, so the caller's
+    /// local midnight decides the day (the receptionist dashboard's "New registrations today",
+    /// ADR-129). Either bound may be sent alone.</summary>
+    public DateTime? RegisteredFrom { get; set; }
+    public DateTime? RegisteredTo { get; set; }
+
     public Gender? Gender { get; set; }
     public BloodGroup? BloodGroup { get; set; }
 

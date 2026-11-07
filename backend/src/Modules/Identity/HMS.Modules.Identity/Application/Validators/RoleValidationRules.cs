@@ -14,7 +14,8 @@ internal static class RoleValidationRules
         Expression<Func<T, string>> name,
         Expression<Func<T, string?>> description,
         Expression<Func<T, int>> displayOrder,
-        Expression<Func<T, IReadOnlyCollection<string>>> permissionKeys)
+        Expression<Func<T, IReadOnlyCollection<string>>> permissionKeys,
+        Expression<Func<T, IReadOnlyCollection<string>>> hiddenMenus)
     {
         validator.RuleFor(name)
             .NotEmpty()
@@ -34,7 +35,24 @@ internal static class RoleValidationRules
         validator.RuleFor(permissionKeys)
             .Must(HaveUniquePermissions)
             .WithMessage("Duplicate permissions are not allowed.");
+
+        // ADR-128: menu paths from the app's sidebar, e.g. "/clinical/ipd".
+        validator.RuleFor(hiddenMenus)
+            .NotNull()
+            .Must(menus => menus is null || menus.Count <= MaxHiddenMenus)
+            .WithMessage($"No more than {MaxHiddenMenus} menus can be hidden.");
+
+        validator.RuleFor(hiddenMenus)
+            .Must(menus => menus is null || menus.All(IsMenuPath))
+            .WithMessage($"Each hidden menu must be a menu path starting with '/', up to {MaxMenuPathLength} characters.");
     }
+
+    private const int MaxHiddenMenus = 100;
+
+    private const int MaxMenuPathLength = 100;
+
+    private static bool IsMenuPath(string? menu) =>
+        !string.IsNullOrWhiteSpace(menu) && menu.Trim().StartsWith('/') && menu.Trim().Length <= MaxMenuPathLength;
 
     private static bool HaveUniquePermissions(
         IEnumerable<string>? permissionKeys)

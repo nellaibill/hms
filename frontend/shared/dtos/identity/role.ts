@@ -10,6 +10,8 @@ export interface RoleResponse {
   updatedAt?: string | null;
   /** Granted permission keys only, e.g. "patient-management.view" — absent keys mean not granted. */
   permissionKeys: string[];
+  /** Sidebar menus turned off for this role, by path (e.g. "/clinical/ipd") — ADR-128. */
+  hiddenMenus?: string[];
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.CreateRoleRequest. */
@@ -18,6 +20,7 @@ export interface CreateRoleRequest {
   description?: string | null;
   displayOrder?: number;
   permissionKeys: string[];
+  hiddenMenus: string[];
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.UpdateRoleRequest. */
@@ -26,6 +29,7 @@ export interface UpdateRoleRequest {
   description?: string | null;
   displayOrder?: number;
   permissionKeys: string[];
+  hiddenMenus: string[];
 }
 
 /** Mirrors HMS.Modules.Identity.Contracts.RoleListQuery. */

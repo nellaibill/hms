@@ -205,6 +205,20 @@ internal class PatientRepository : IPatientRepository
                 _dbContext.PatientVisits.Any(v => v.PatientId == p.Id && v.CreatedAt >= from && v.CreatedAt <= to));
         }
 
+        // Registration date alone (ADR-129) — half-open, so back-to-back days never count a
+        // patient twice.
+        if (query.RegisteredFrom.HasValue)
+        {
+            var registeredFrom = DateTime.SpecifyKind(query.RegisteredFrom.Value, DateTimeKind.Utc);
+            patients = patients.Where(p => p.CreatedAt >= registeredFrom);
+        }
+
+        if (query.RegisteredTo.HasValue)
+        {
+            var registeredTo = DateTime.SpecifyKind(query.RegisteredTo.Value, DateTimeKind.Utc);
+            patients = patients.Where(p => p.CreatedAt < registeredTo);
+        }
+
         return patients;
     }
 

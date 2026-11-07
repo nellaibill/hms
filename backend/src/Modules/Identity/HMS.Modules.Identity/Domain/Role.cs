@@ -21,6 +21,14 @@ internal sealed class Role : Entity
     public bool IsActive { get; private set; }
 
     /// <summary>
+    /// Sidebar menus turned off for this role (ADR-128) — each one the menu's path, e.g.
+    /// "/clinical/ipd". The menu and its pages are hidden in the app even though the role keeps
+    /// the permission behind them, which other screens need (OPD's lists need Clinical Care, Lab
+    /// and Radiology billing need Diagnostics). Empty means every menu its permissions allow.
+    /// </summary>
+    public IReadOnlyList<string> HiddenMenus { get; private set; } = [];
+
+    /// <summary>
     /// Permissions assigned to this role.
     /// </summary>
     public IReadOnlyCollection<RolePermission> RolePermissions =>
@@ -100,6 +108,17 @@ internal sealed class Role : Entity
 
         IsActive = false;
         MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Replaces the hidden menus — trimmed, blanks and repeats dropped, in a stable order.</summary>
+    public void SetHiddenMenus(IEnumerable<string>? menus)
+    {
+        HiddenMenus = (menus ?? [])
+            .Where(menu => !string.IsNullOrWhiteSpace(menu))
+            .Select(menu => menu.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 
     public void ReplacePermissions(IEnumerable<Guid> permissionIds)

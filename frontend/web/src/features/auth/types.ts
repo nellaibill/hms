@@ -35,6 +35,10 @@ export interface AuthUser {
    * UI-only hinting like permissionKeys: the backend's FeatureAuthorizationHandler checks
    * live tenant state, never this snapshot. */
   featureKeys: string[];
+  /** Sidebar menus turned off for this user's role, by path (e.g. "/clinical/ipd") — ADR-128.
+   * The sidebar leaves them out and HiddenMenuGuard blocks their pages. UI-only, like
+   * permissionKeys; optional because a session stored before ADR-128 doesn't carry it. */
+  hiddenMenus?: string[];
   /** True when this user's current password was set by someone else (admin reset, or the
    * initial password chosen during hospital registration) — mirrors
    * HMS.Modules.Identity.Contracts.LoginUserResponse.MustChangePassword. ProtectedRoute

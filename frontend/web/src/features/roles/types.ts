@@ -24,6 +24,8 @@ export interface Role {
   status: RoleStatus;
   /** Keyed by RoleModule.id. */
   permissions: Record<string, ModulePermissions>;
+  /** Sidebar menus turned off for this role, by path (ADR-128). */
+  hiddenMenus: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -33,6 +35,7 @@ export interface RoleFormValues {
   description: string;
   status: RoleStatus;
   permissions: Record<string, ModulePermissions>;
+  hiddenMenus: string[];
 }
 
 export interface RoleListQuery {

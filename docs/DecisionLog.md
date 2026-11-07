@@ -37,6 +37,46 @@ _To be documented._
 
 ## Decisions
 
+### ADR-129: Receptionists get a Front Desk dashboard with today's figures
+**Date:** 2026-11-07
+**Status:** Accepted
+
+**Context**
+The Dashboard was one Executive view for everyone: a six-month OP/IP census, revenue by service, month-wise revenue, a month calendar and notifications. Management said none of it helps the front desk, which needs today's information and recent activity.
+
+**Decision**
+- **Who.** A user signed in as Receptionist sees the Front Desk Dashboard. The login type is checked against the user's role at sign-in. Everyone else keeps the Executive Dashboard. Each part also needs the permission its data does (Clinical Care for OPD, Patient Management for registrations, Finance & Billing for money and bills), so a part the role can't read is left out.
+- **What.** Everything is for today's local date and refreshes every minute.
+  - **Tiles:** OP visits (waiting / with doctor / done); new registrations; money collected, by payment method; bills waiting for payment, with the amount still due (unpaid lines only) and how many are on hold.
+  - **Doctors today:** each doctor's OP queue, busiest first, with their visiting hours.
+  - **Recent bills:** the latest 8 bills raised today, each linking to the bill.
+  - **Waiting for approval:** pending discount and revert requests, from any day, linking to their pages.
+  - **Notifications:** the existing notifications card.
+- **Data.** It reuses existing endpoints: the OPD consultation summary (OP visits only, ADR-121), the collections API (every encounter type, voided bills left out, ADR-125), the bill list newest first (paged until it reaches yesterday, at most 1,000 bills) and the pending-request counts. Registrations need one new filter, `GET patients?registeredFrom&registeredTo`. These are instants for [from, to) on the patient's own CreatedAt, unlike From/To's activity scope.
+
+**Consequences**
+- No migration.
+- "Collected" counts every payment taken today, including IP and other encounter types. Collection Summary counts OP visits only, so the two can differ.
+- Patients bulk-imported today count as registered today.
+- Appointments aren't shown; that work (PR #377) isn't merged.
+
+### ADR-128: A role can turn sidebar menus off without losing the permission behind them
+**Date:** 2026-11-07
+**Status:** Accepted (complements ADR-123)
+
+**Context**
+Management wanted In Patient Department, Operation Theatre, Central Laboratory, Radiology and Blood Bank (and later possibly Pharmacy and Ambulance) gone from the Receptionist's sidebar. Unticking permissions can't do it: IPD and OT show through Clinical Care, which the OPD menu, OPD's lists and the patient page's admission history also need, and Lab, Radiology and Blood Bank show through Diagnostics, which Lab and Radiology billing need to load their service and package lists. The permission modules are too broad to split by menu without re-gating many endpoints.
+
+**Decision**
+- **Data.** `identity.roles.hidden_menus` (`text[]`, default empty) holds the menus turned off for the role, by sidebar path (e.g. `/clinical/ipd`). Role create/update take `hiddenMenus`, and the validator accepts up to 100 paths that start with `/`, each up to 100 characters. The role response and the login response carry the list. At login it's a snapshot like the permission keys, so a change shows after the user signs in again.
+- **Role editor.** Roles & Permissions has a new Menus card under the permission matrix, with one switch per sidebar menu. A menu the role has no view permission for is marked "Not shown". Dashboard and Settings aren't listed and can't be turned off. Settings holds this editor, so hiding it could lock an admin out.
+- **App.** The sidebar leaves hidden menus out. `HiddenMenuGuard` in the app layout blocks the menu's own page and every page under its path, with a "turned off for your role" message.
+
+**Consequences**
+- UI-only, like the sidebar's permission check. The role keeps its permissions, so the API still answers those calls. That is intended, since other screens depend on them. Use permissions to stop an action and menus to tidy what a role sees.
+- Needs the Identity migration `AddRoleHiddenMenus` (Platform → Hospitals → Migrate). After that, a Super Admin turns the menus off on the Receptionist role, and receptionists sign in again.
+- A link from another screen into a hidden module's pages (e.g. from a patient page into IPD) lands on the "turned off" message.
+
 ### ADR-127: Consultation Types get a Short name for reports, and reports show the short invoice number
 **Date:** 2026-11-07
 **Status:** Accepted (amends ADR-126)
