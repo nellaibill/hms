@@ -123,7 +123,9 @@ export default function AdmissionsListPage() {
 
         {!isPending && !isError && data && data.items.length > 0 && (
           <div className="flex flex-col gap-3">
-            <AdmissionTable admissions={data.items} onAssignBed={setAssigningAdmission} />
+            {/* Assigning a bed needs clinical-care.edit (AdmissionsController.AssignBed); without
+                it the button would only lead to a 403, so it isn't offered. */}
+            <AdmissionTable admissions={data.items} onAssignBed={hasPermission('clinical-care.edit') ? setAssigningAdmission : undefined} />
             <Pagination meta={data.meta} onPageChange={setPage} />
           </div>
         )}

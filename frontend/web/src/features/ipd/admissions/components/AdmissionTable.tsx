@@ -4,6 +4,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DownloadDischargeSummaryButton } from './DownloadDischargeSummaryButton';
 import { PatientNameLink } from '@/components/PatientNameLink';
+import { useCanViewDischargeSummary } from '@/features/dischargeSummary';
 
 const STATUS_VARIANTS: Record<Admission['status'], BadgeProps['variant']> = {
   Requested: 'warning',
@@ -20,6 +21,13 @@ interface AdmissionTableProps {
 }
 
 export function AdmissionTable({ admissions, onAssignBed }: AdmissionTableProps) {
+  // The PDF button fetches the discharge summary, so a role that can't read summaries (e.g.
+  // Receptionist) doesn't get one — clicking it only produced a 403.
+  const canViewDischargeSummary = useCanViewDischargeSummary();
+  // The Action column holds only those two actions, so a user who can do neither (e.g. a
+  // Receptionist) gets no column at all rather than an empty one.
+  const showActions = canViewDischargeSummary || Boolean(onAssignBed);
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -33,7 +41,7 @@ export function AdmissionTable({ admissions, onAssignBed }: AdmissionTableProps)
             <th className="px-4 py-2.5">Consultant</th>
             <th className="px-4 py-2.5">Admission Date</th>
             <th className="px-4 py-2.5">Status</th>
-            <th className="px-4 py-2.5">Action</th>
+            {showActions && <th className="px-4 py-2.5">Action</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -62,14 +70,16 @@ export function AdmissionTable({ admissions, onAssignBed }: AdmissionTableProps)
               <td className="px-4 py-3">
                 <Badge variant={STATUS_VARIANTS[admission.status]}>{admission.status}</Badge>
               </td>
-              <td className="px-4 py-3">
-                {admission.status === 'Discharged' && <DownloadDischargeSummaryButton admission={admission} />}
-                {admission.status === 'Requested' && onAssignBed && (
-                  <Button size="sm" onClick={() => onAssignBed(admission)}>
-                    Assign Bed
-                  </Button>
-                )}
-              </td>
+              {showActions && (
+                <td className="px-4 py-3">
+                  {admission.status === 'Discharged' && canViewDischargeSummary && <DownloadDischargeSummaryButton admission={admission} />}
+                  {admission.status === 'Requested' && onAssignBed && (
+                    <Button size="sm" onClick={() => onAssignBed(admission)}>
+                      Assign Bed
+                    </Button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
