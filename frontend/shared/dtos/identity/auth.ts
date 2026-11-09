@@ -34,8 +34,8 @@ export interface LoginUserResponse {
 
 /** Mirrors HMS.Modules.Identity.Contracts.LoginResponse. */
 export interface LoginResponse {
+  /** Has no expiry — valid until the user signs out (ADR-131). */
   token: string;
-  expiresIn: number;
   user: LoginUserResponse;
 }
 

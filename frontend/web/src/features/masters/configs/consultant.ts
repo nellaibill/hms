@@ -43,6 +43,10 @@ export const consultantConfig: MasterEntityConfig = {
       referenceActiveOnly: true,
       arrayItemKeys: { id: 'consultationTypeId', amount: 'consultantCharge' },
       referenceAmountField: 'amount',
+      // ADR-132: every consultant takes review and emergency patients, so a new consultant
+      // starts with these two ticked. Existing consultants got them from the Masters migration
+      // BackfillConsultantDefaultConsultationTypes, which matches the same names.
+      defaultCheckedOptionNames: ['Review Consultation', "Emergency / Casualty Doctor's Consultation"],
       required: true,
       showInTable: false,
       helpText:

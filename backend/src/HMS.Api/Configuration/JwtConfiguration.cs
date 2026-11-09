@@ -41,7 +41,12 @@ public static class JwtConfiguration
                     ValidAudience = audience,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+                    // Hospital tokens carry no "exp" (ADR-131: no session time limit), so a
+                    // missing expiry must not fail validation. Any token that does carry one
+                    // (Platform tokens) is still checked against it. Platform tokens without
+                    // one are rejected in OnTokenValidated below.
                     ValidateLifetime = true,
+                    RequireExpirationTime = false,
                     ClockSkew = TimeSpan.FromSeconds(30),
                 };
 
@@ -57,6 +62,14 @@ public static class JwtConfiguration
                         var platformUserId = context.Principal?.FindFirst("PlatformUserId");
                         if (platformUserId is null)
                         {
+                            return;
+                        }
+
+                        // RequireExpirationTime is off for hospital tokens (ADR-131) — Platform
+                        // tokens must still expire.
+                        if (context.SecurityToken.ValidTo == DateTime.MinValue)
+                        {
+                            context.Fail("Token is missing an expiry.");
                             return;
                         }
 

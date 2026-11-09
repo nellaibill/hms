@@ -145,7 +145,7 @@ internal class AuthenticationService : IAuthenticationService
             ? FeatureCatalog.All
             : enabledFeatures;
 
-        var (token, expiresInSeconds) = _jwtTokenGenerator.GenerateToken(
+        var token = _jwtTokenGenerator.GenerateToken(
             user.Id, user.Username, role.Id, role.Name, request.LoginType, permissionKeys, _tenantContext.TenantId!.Value, featureKeys, user.ConsultantId);
 
         _logger.LogInformation("User {UserId} logged in", user.Id);
@@ -153,7 +153,6 @@ internal class AuthenticationService : IAuthenticationService
         return Result<LoginResponse>.Success(new LoginResponse
         {
             Token = token,
-            ExpiresIn = expiresInSeconds,
             User = new LoginUserResponse
             {
                 Id = user.Id,

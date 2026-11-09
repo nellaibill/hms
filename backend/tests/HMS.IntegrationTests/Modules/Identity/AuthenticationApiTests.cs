@@ -76,7 +76,6 @@ public class AuthenticationApiTests : IClassFixture<UsersApiFactory>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>();
         body!.Data!.Token.Should().NotBeNullOrWhiteSpace();
-        body.Data.ExpiresIn.Should().BeGreaterThan(0);
         body.Data.User.Id.Should().Be(userId);
         body.Data.User.LoginType.Should().Be("doctor");
     }

@@ -10,8 +10,9 @@ namespace HMS.Modules.Platform.Infrastructure;
 
 /// <summary>
 /// Issues signed (HMAC-SHA256) JWTs for Platform Admins. Reads the same Jwt:Issuer/Audience/
-/// SigningKey/ExpiresInMinutes config HMS.Modules.Identity's JwtTokenGenerator already uses —
-/// one bearer scheme for the whole host, not a second auth pipeline — but issues a distinct
+/// SigningKey config HMS.Modules.Identity's JwtTokenGenerator already uses — one bearer
+/// scheme for the whole host, not a second auth pipeline — plus Jwt:ExpiresInMinutes, which
+/// only Platform tokens use (hospital tokens never expire, ADR-131). It issues a distinct
 /// claim shape (PlatformUserId/Email/FullName/PlatformRole/LoginType="platform", no
 /// RoleId/RoleName) so a platform token can never be mistaken for a hospital one. HMS.Api's
 /// JwtConfiguration enforces LoginType=="platform" on Platform-only endpoints, and
