@@ -8,7 +8,8 @@ namespace HMS.Modules.Identity.Application.Abstractions;
 /// </summary>
 internal interface IJwtTokenGenerator
 {
-    (string Token, int ExpiresInSeconds) GenerateToken(
+    /// <summary>Returns a signed token with no expiry (ADR-131).</summary>
+    string GenerateToken(
         Guid userId,
         string username,
         Guid roleId,

@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 using FluentAssertions;
 using HMS.Modules.Identity.Infrastructure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace HMS.UnitTests.Modules.Identity.Infrastructure;
@@ -10,6 +12,8 @@ public class JwtTokenGeneratorTests
 {
     private static JwtTokenGenerator CreateSut(int expiresInMinutes = 60)
     {
+        // Jwt:ExpiresInMinutes is set (as in appsettings.json) to prove the hospital
+        // generator ignores it — it only applies to Platform tokens (ADR-131).
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -32,7 +36,7 @@ public class JwtTokenGeneratorTests
 
         var tenantId = Guid.NewGuid();
 
-        var (token, _) = sut.GenerateToken(userId, "dr.ada", roleId, "Doctor / Consultant", "doctor", [], tenantId, []);
+        var token = sut.GenerateToken(userId, "dr.ada", roleId, "Doctor / Consultant", "doctor", [], tenantId, []);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
         jwt.Claims.Should().Contain(c => c.Type == "UserId" && c.Value == userId.ToString());
@@ -48,7 +52,7 @@ public class JwtTokenGeneratorTests
     {
         var sut = CreateSut();
 
-        var (token, _) = sut.GenerateToken(
+        var token = sut.GenerateToken(
             Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor",
             ["patient-management.view", "patient-management.create"], Guid.NewGuid(), []);
 
@@ -63,7 +67,7 @@ public class JwtTokenGeneratorTests
     {
         var sut = CreateSut();
 
-        var (token, _) = sut.GenerateToken(
+        var token = sut.GenerateToken(
             Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor",
             [], Guid.NewGuid(), ["patients", "ipd"]);
 
@@ -79,7 +83,7 @@ public class JwtTokenGeneratorTests
         var sut = CreateSut();
         var consultantId = Guid.NewGuid();
 
-        var (token, _) = sut.GenerateToken(
+        var token = sut.GenerateToken(
             Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), [], consultantId);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
@@ -91,7 +95,7 @@ public class JwtTokenGeneratorTests
     {
         var sut = CreateSut();
 
-        var (token, _) = sut.GenerateToken(
+        var token = sut.GenerateToken(
             Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), [], consultantId: null);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
@@ -103,7 +107,7 @@ public class JwtTokenGeneratorTests
     {
         var sut = CreateSut();
 
-        var (token, _) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
+        var token = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
         jwt.Issuer.Should().Be("HMS");
@@ -111,23 +115,36 @@ public class JwtTokenGeneratorTests
     }
 
     [Fact]
-    public void GenerateToken_ReturnsExpiresInSecondsMatchingConfiguredMinutes()
+    public void GenerateToken_IssuesATokenThatNeverExpires()
     {
         var sut = CreateSut(expiresInMinutes: 30);
 
-        var (_, expiresInSeconds) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
+        var token = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
 
-        expiresInSeconds.Should().Be(30 * 60);
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        jwt.Payload.Expiration.Should().BeNull();
+        jwt.Claims.Should().NotContain(c => c.Type == "exp");
     }
 
     [Fact]
-    public void GenerateToken_SetsExpiryApproximatelyExpiresInMinutesFromNow()
+    public void GenerateToken_PassesValidationThatAllowsAMissingExpiry()
     {
-        var sut = CreateSut(expiresInMinutes: 60);
+        // Same lifetime settings as HMS.Api's JwtConfiguration (ADR-131).
+        const string signingKey = "unit-test-signing-key-at-least-32-bytes-long!";
+        var sut = CreateSut();
+        var token = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
 
-        var (token, _) = sut.GenerateToken(Guid.NewGuid(), "dr.ada", Guid.NewGuid(), "Doctor / Consultant", "doctor", [], Guid.NewGuid(), []);
+        var parameters = new TokenValidationParameters
+        {
+            ValidIssuer = "HMS",
+            ValidAudience = "HMS.Clients",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+            ValidateLifetime = true,
+            RequireExpirationTime = false,
+        };
 
-        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
-        jwt.ValidTo.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(60), TimeSpan.FromMinutes(1));
+        var act = () => new JwtSecurityTokenHandler().ValidateToken(token, parameters, out _);
+
+        act.Should().NotThrow();
     }
 }
