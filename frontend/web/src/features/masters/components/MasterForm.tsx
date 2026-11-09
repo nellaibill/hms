@@ -1,7 +1,15 @@
 import type { ApiError } from '@hms/shared';
 import { Info } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Controller,
+  useForm,
+  type Control,
+  type FieldErrors,
+  type UseFormGetValues,
+  type UseFormRegister,
+  type UseFormSetValue,
+} from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -147,6 +155,51 @@ function fromFormValues(config: MasterEntityConfig, values: Record<string, unkno
     }
   }
   return result;
+}
+
+/** Case, spacing and apostrophe style don't matter when matching default option names. */
+function normalizeOptionName(name: string): string {
+  return name.replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Ticks a 'reference-checkboxes-amount' field's MasterFieldDef.defaultCheckedOptionNames once
+ * its options load (ADR-132). Rendered on the Add form only. Runs once, and only while the
+ * field is still empty, so it never undoes a box the user has already ticked or cleared. The
+ * amount starts blank, the same as ticking the box by hand.
+ */
+function DefaultCheckedOptions({
+  field,
+  getValues,
+  setValue,
+}: {
+  field: MasterFieldDef;
+  getValues: UseFormGetValues<Record<string, unknown>>;
+  setValue: UseFormSetValue<Record<string, unknown>>;
+}) {
+  const options = useMasterOptionsQuery(field.referenceEntityKey);
+  const applied = useRef(false);
+
+  useEffect(() => {
+    if (applied.current || !options.data) return;
+    applied.current = true;
+
+    const current = getValues(field.key);
+    if (Array.isArray(current) && current.length > 0) return;
+
+    const wanted = new Set((field.defaultCheckedOptionNames ?? []).map(normalizeOptionName));
+    const nameField = getMasterConfig(field.referenceEntityKey)?.nameField ?? 'name';
+    const idKey = field.arrayItemKeys?.id ?? 'id';
+    const amountKey = field.arrayItemKeys?.amount ?? 'amount';
+    const picked = options.data
+      .filter((option) => !field.referenceActiveOnly || option.isActive)
+      .filter((option) => wanted.has(normalizeOptionName(String(option[nameField] ?? ''))))
+      .map((option) => ({ [idKey]: option.id, [amountKey]: null }));
+
+    if (picked.length > 0) setValue(field.key, picked);
+  }, [options.data, field, getValues, setValue]);
+
+  return null;
 }
 
 interface FieldControlProps {
@@ -576,8 +629,17 @@ export function MasterForm({
     handleSubmit,
     watch,
     setError,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<Record<string, unknown>>({ defaultValues: toFormDefaults(config, defaultValues) });
+
+  const defaultCheckedOptions =
+    mode === 'create'
+      ? config.fields
+          .filter((field) => field.type === 'reference-checkboxes-amount' && field.defaultCheckedOptionNames?.length)
+          .map((field) => <DefaultCheckedOptions key={field.key} field={field} getValues={getValues} setValue={setValue} />)
+      : null;
 
   // Server-side validation failures (backend Update*Request DTOs are authoritative — client
   // validation here is convenience only) are mapped onto the same field-level display client
@@ -730,6 +792,7 @@ export function MasterForm({
   if (config.fieldGroups) {
     return (
       <form onSubmit={handleFormSubmit} noValidate className="flex w-full flex-col gap-5">
+        {defaultCheckedOptions}
         {config.fieldGroups.map((group, index) => (
           <Card key={group.key}>
             <CardHeader className="flex flex-row items-center gap-2 space-y-0 rounded-t-xl bg-muted/50 py-3">
@@ -778,6 +841,7 @@ export function MasterForm({
 
   return (
     <form onSubmit={handleFormSubmit} noValidate className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+      {defaultCheckedOptions}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{config.label} Information</CardTitle>

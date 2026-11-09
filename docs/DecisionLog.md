@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-132: A new consultant starts with Review and Emergency consultation types ticked
+**Date:** 2026-11-09
+**Status:** Accepted
+
+**Context**
+A consultant can be booked and billed only for the consultation types ticked on their record (Add Visit and billing reject any other type). Every consultant takes review and emergency patients, yet the Add Consultant form started with nothing ticked. Staff had to remember to tick those two types for each new doctor. Feedback asked for them to be ticked by default.
+
+**Decision**
+- **Masters engine.** A `reference-checkboxes-amount` field can list `defaultCheckedOptionNames`. On the Add form only, once the options load, the ones whose names match start ticked with a blank amount, the same as ticking them by hand. It runs once, and only while the field is still empty. Edit and View never change a saved selection.
+- **Matching.** The match is by name, ignoring case, extra spaces and curly apostrophes. Only active options can match. A name that matches nothing is skipped.
+- **Consultant.** The Consultation Types field defaults to "Review Consultation" and "Emergency / Casualty Doctor's Consultation".
+
+**Consequences**
+- Frontend only: no migration and no API change.
+- Existing consultants are not changed. Tick the two types on each one's Edit page if needed.
+- If either consultation type is renamed, it is no longer ticked by default until this list is updated.
+- The consultant charge for the two types starts blank. Until someone fills it in, the OP Report can't work out the hospital income on those lines.
+
 ### ADR-131: Hospital sign-ins no longer expire
 **Date:** 2026-11-09
 **Status:** Accepted

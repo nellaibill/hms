@@ -71,6 +71,11 @@ export interface MasterFieldDef {
    * ConsultationType's own `amount`) to show, read-only, as that row's reference price — purely
    * presentational context for the editable amount beside it, never written back anywhere. */
   referenceAmountField?: string;
+  /** 'reference-checkboxes-amount' only — options whose name matches one of these start
+   * ticked on the Add form, once the options load (ADR-132). Matching ignores case, extra
+   * spaces and curly apostrophes. A name with no matching option is skipped. Edit and View
+   * never change a saved selection. */
+  defaultCheckedOptionNames?: string[];
   /**
    * When set, only reference options whose [scopeField] matches the current form's
    * value for [scopeField] are offered — e.g. a storage location's parent must be in
