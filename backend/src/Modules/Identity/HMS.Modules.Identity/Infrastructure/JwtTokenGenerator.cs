@@ -8,18 +8,22 @@ using Microsoft.IdentityModel.Tokens;
 namespace HMS.Modules.Identity.Infrastructure;
 
 /// <summary>
-/// Issues signed (HMAC-SHA256) JWTs. Reads Jwt:Issuer/Audience/SigningKey/ExpiresInMinutes
-/// directly from IConfiguration in the constructor, matching how IdentityModule already
-/// reads ConnectionStrings:Default — no IOptions&lt;T&gt; wrapper, since nothing else in this
+/// Issues signed (HMAC-SHA256) JWTs. Reads Jwt:Issuer/Audience/SigningKey directly from
+/// IConfiguration in the constructor, matching how IdentityModule already reads
+/// ConnectionStrings:Default — no IOptions&lt;T&gt; wrapper, since nothing else in this
 /// codebase uses that pattern yet. HMS.Api's JwtConfiguration reads the same keys to
 /// configure bearer-token validation, so issuing and validating always agree.
+/// <para>
+/// Hospital tokens carry no expiry (ADR-131): a session lasts until the user signs out or
+/// closes the tab, never a fixed time after sign-in. Jwt:ExpiresInMinutes now only applies
+/// to Platform Admin tokens (PlatformJwtTokenGenerator).
+/// </para>
 /// </summary>
 internal sealed class JwtTokenGenerator : IJwtTokenGenerator
 {
     private readonly string _issuer;
     private readonly string _audience;
     private readonly SigningCredentials _signingCredentials;
-    private readonly int _expiresInMinutes;
 
     public JwtTokenGenerator(IConfiguration configuration)
     {
@@ -29,14 +33,13 @@ internal sealed class JwtTokenGenerator : IJwtTokenGenerator
             ?? throw new InvalidOperationException("Missing 'Jwt:Audience' configuration value.");
         var signingKey = configuration["Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Missing 'Jwt:SigningKey' configuration value.");
-        _expiresInMinutes = configuration.GetValue<int?>("Jwt:ExpiresInMinutes") ?? 60;
 
         _signingCredentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
             SecurityAlgorithms.HmacSha256);
     }
 
-    public (string Token, int ExpiresInSeconds) GenerateToken(
+    public string GenerateToken(
         Guid userId,
         string username,
         Guid roleId,
@@ -86,15 +89,14 @@ internal sealed class JwtTokenGenerator : IJwtTokenGenerator
         // this token expires — see FeatureAuthorizationHandler's own doc comment).
         claims.AddRange(featureKeys.Select(key => new Claim("Feature", key)));
 
-        var expiresAt = DateTime.UtcNow.AddMinutes(_expiresInMinutes);
+        // No `expires` (so no "exp" claim) — ADR-131. JwtConfiguration sets
+        // RequireExpirationTime = false so validation accepts it.
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
             claims: claims,
-            expires: expiresAt,
             signingCredentials: _signingCredentials);
 
-        var tokenValue = new JwtSecurityTokenHandler().WriteToken(token);
-        return (tokenValue, _expiresInMinutes * 60);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

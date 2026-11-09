@@ -45,7 +45,7 @@ public class AuthenticationServiceTests
         _passwordHasher.VerifyPassword("correct-password", "stored-hash").Returns(true);
         _jwtTokenGenerator
             .GenerateToken(user.Id, user.Username, role.Id, role.Name, loginType, Arg.Any<IEnumerable<string>>(), _tenantId, Arg.Any<IEnumerable<string>>(), Arg.Any<Guid?>())
-            .Returns(("a.jwt.token", 3600));
+            .Returns("a.jwt.token");
 
         return (user, role);
     }
@@ -60,7 +60,6 @@ public class AuthenticationServiceTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Token.Should().Be("a.jwt.token");
-        result.Value.ExpiresIn.Should().Be(3600);
         result.Value.User.Id.Should().Be(user.Id);
         result.Value.User.RoleName.Should().Be(role.Name);
         result.Value.User.LoginType.Should().Be("doctor");

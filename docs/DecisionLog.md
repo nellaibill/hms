@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-131: Hospital sign-ins no longer expire
+**Date:** 2026-11-09
+**Status:** Accepted
+
+**Context**
+Doctors and receptionists were signed out in the middle of their work. A hospital token expired 60 minutes after sign-in (`Jwt:ExpiresInMinutes`), however busy the user was. The next request got a 401 and the web app sent them back to the login page. Feedback asked for the time limit to go.
+
+**Decision**
+- **Hospital tokens.** `JwtTokenGenerator` no longer sets an expiry, so the token has no `exp` claim. `LoginResponse.ExpiresIn` is removed.
+- **Validation.** `JwtConfiguration` sets `RequireExpirationTime = false`. A token that carries an expiry is still checked against it.
+- **Platform tokens.** Platform Admin tokens still expire after `Jwt:ExpiresInMinutes` and can still be revoked. `OnTokenValidated` rejects a Platform token that has no expiry.
+- **Web app.** The stored session no longer has an `expiresAt`, and a restored session is no longer dropped after a fixed time. A session ends on Logout, when the tab is closed (it is kept in `sessionStorage`), or on the first 401 from the API.
+
+**Consequences**
+- A session saved before this change keeps its old token. Once that token expires, the user is signed out one last time, and their next sign-in gets a token with no expiry.
+- A hospital token stays valid until the signing key changes. There is no server-side revocation for hospital tokens. A user who is deactivated, or whose role changes, keeps the old access in any session that is already open until they log out or close the tab. Before this change that lasted at most an hour.
+- `Jwt:ExpiresInMinutes` now applies only to Platform tokens.
+
 ### ADR-130: A patient's documents also open with Patient Management permissions
 **Date:** 2026-11-07
 **Status:** Accepted (amends ADR-022)

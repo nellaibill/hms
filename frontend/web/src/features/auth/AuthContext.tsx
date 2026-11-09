@@ -9,10 +9,11 @@ import type { AuthUser, Role } from './types';
 
 const STORAGE_KEY = 'hms-session';
 
+/** No expiry (ADR-131): the session lasts until logout, closing the tab (sessionStorage), or
+ * a 401 from the API. A session saved by an older build may still carry an `expiresAt`; it's
+ * ignored, and if its token has expired the first request's 401 signs the user out. */
 interface StoredSession {
   token: string;
-  /** Epoch ms — derived from LoginResponse.expiresIn at login time. */
-  expiresAt: number;
   user: AuthUser;
 }
 
@@ -47,7 +48,7 @@ function readStoredSession(): StoredSession | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as StoredSession;
-    if (!parsed.token || parsed.expiresAt <= Date.now()) {
+    if (!parsed.token || !parsed.user) {
       sessionStorage.removeItem(STORAGE_KEY);
       return null;
     }
@@ -85,11 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (hospitalCode: string, role: Role, username: string, password: string) => {
     const response = await authApi.login(hospitalCode, { loginType: role, username, password });
-    const session: StoredSession = {
-      token: response.token,
-      expiresAt: Date.now() + response.expiresIn * 1000,
-      user: toAuthUser(response),
-    };
+    const session: StoredSession = { token: response.token, user: toAuthUser(response) };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     setAuthToken(session.token);
     setUser(session.user);

@@ -14,11 +14,27 @@ test.describe('Unauthenticated access', () => {
     });
   }
 
-  test('ignores an expired stored session', async ({ page }) => {
+  // Sessions have no time limit (ADR-131), so a stored session is only dropped once the API
+  // rejects its token — the first 401 signs the user out.
+  test('signs out a stored session the API rejects', async ({ page }) => {
     await page.addInitScript(() => {
       window.sessionStorage.setItem(
         'hms-session',
-        JSON.stringify({ token: 'expired-token', expiresAt: Date.now() - 60_000, user: { name: 'Expired User' } }),
+        JSON.stringify({
+          token: 'invalid-token',
+          user: {
+            id: '00000000-0000-0000-0000-000000000000',
+            name: 'Stale User',
+            role: 'admin',
+            username: 'stale.user',
+            email: 'stale@example.com',
+            roleName: 'Admin',
+            permissionKeys: [],
+            featureKeys: [],
+            hiddenMenus: [],
+            mustChangePassword: false,
+          },
+        }),
       );
     });
     await page.goto('/dashboard');
