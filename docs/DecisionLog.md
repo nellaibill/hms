@@ -48,12 +48,13 @@ A consultant can be booked and billed only for the consultation types ticked on 
 - **Masters engine.** A `reference-checkboxes-amount` field can list `defaultCheckedOptionNames`. On the Add form only, once the options load, the ones whose names match start ticked with a blank amount, the same as ticking them by hand. It runs once, and only while the field is still empty. Edit and View never change a saved selection.
 - **Matching.** The match is by name, ignoring case, extra spaces and curly apostrophes. Only active options can match. A name that matches nothing is skipped.
 - **Consultant.** The Consultation Types field defaults to "Review Consultation" and "Emergency / Casualty Doctor's Consultation".
+- **Existing consultants.** The Masters migration `BackfillConsultantDefaultConsultationTypes` adds both types to every consultant that isn't deleted (inactive ones included) and doesn't already have them. It matches names the same way the form does, and only active types. A hospital without one of these types is skipped for that type. Existing rows and charges are left alone. Running it again adds nothing. Down does nothing, because a row it added can't be told apart from one staff ticked later.
 
 **Consequences**
-- Frontend only: no migration and no API change.
-- Existing consultants are not changed. Tick the two types on each one's Edit page if needed.
+- No API change. The backfill runs with Masters Migrate on each hospital.
+- On local `hms_lhs` (checked in a rolled-back transaction) it adds 67 rows to 36 consultants. Many of them had no consultation types at all, so they can now be booked for review and emergency visits. Adding types only widens what a consultant can be booked for. An empty list never meant "all types".
 - If either consultation type is renamed, it is no longer ticked by default until this list is updated.
-- The consultant charge for the two types starts blank. Until someone fills it in, the OP Report can't work out the hospital income on those lines.
+- The consultant charge for the two types starts blank, both on the form and from the backfill. Until someone fills it in, the OP Report can't work out the hospital income on those lines.
 
 ### ADR-131: Hospital sign-ins no longer expire
 **Date:** 2026-11-09
