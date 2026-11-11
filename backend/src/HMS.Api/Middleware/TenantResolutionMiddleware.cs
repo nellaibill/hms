@@ -1,6 +1,8 @@
 using HMS.Modules.Identity.Contracts;
 using HMS.Modules.Platform.Application.Abstractions;
+using HMS.Modules.Sync.Contracts;
 using HMS.Shared.Kernel;
+using Microsoft.AspNetCore.Authentication;
 
 namespace HMS.Api.Middleware;
 
@@ -92,6 +94,28 @@ public sealed class TenantResolutionMiddleware
             }
 
             tenantContext.SetTenant(tenant.Id, tenant.ConnectionString, tenant.EnabledModules, tenant.EnabledFeatures);
+        }
+        else if (SyncAuthenticationDefaults.IsSyncAuthorizationHeader(context.Request.Headers.Authorization.ToString()))
+        {
+            // 3. An Edge server pushing sync data (ADR-133): no user token, an "HmsSync" API key
+            // instead. UseAuthentication() only runs the default (JWT) scheme, so the key is
+            // checked here, before the controller's tenant-aware DbContexts are constructed. A
+            // failed check sets nothing and falls through: the receiver's own [Authorize] then
+            // answers 401. The scheme only ever authorizes the sync receiver endpoints.
+            var result = await context.AuthenticateAsync(SyncAuthenticationDefaults.Scheme);
+            if (result.Succeeded
+                && Guid.TryParse(result.Principal.FindFirst(SyncAuthenticationDefaults.TenantIdClaim)?.Value, out var syncTenantId))
+            {
+                var tenant = await tenantDirectory.FindByIdAsync(syncTenantId, context.RequestAborted);
+                if (tenant is null || !tenant.IsActive)
+                {
+                    await WriteRejectionAsync(context, "This hospital is not available.");
+                    return;
+                }
+
+                context.User = result.Principal;
+                tenantContext.SetTenant(tenant.Id, tenant.ConnectionString, tenant.EnabledModules, tenant.EnabledFeatures);
+            }
         }
 
         await _next(context);

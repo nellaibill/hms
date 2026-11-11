@@ -31,4 +31,16 @@ internal class Allergy
 
     public static Allergy Create(Guid patientId, AllergyType allergyType, string? specify, AllergySeverity severity)
         => new(Guid.CreateVersion7(), patientId, allergyType, specify?.Trim(), severity);
+
+    /// <summary>Offline-first sync (ADR-133) only: recreates an allergy with its original id.</summary>
+    internal static Allergy CreateReplica(Guid id, Guid patientId, AllergyType allergyType, string? specify, AllergySeverity severity)
+        => new(id, patientId, allergyType, specify, severity);
+
+    /// <summary>Offline-first sync (ADR-133) only.</summary>
+    internal void ApplyReplicaState(AllergyType allergyType, string? specify, AllergySeverity severity)
+    {
+        AllergyType = allergyType;
+        Specify = specify;
+        Severity = severity;
+    }
 }

@@ -20,6 +20,7 @@ using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products;
 using HMS.Modules.Radiology;
+using HMS.Modules.Sync;
 using HMS.Shared.Kernel;
 
 namespace HMS.Api.Configuration;
@@ -136,6 +137,12 @@ public static class ModuleRegistration
         // Backups depends on Platform's public ITenantDirectory.GetAllActiveTenantsAsync (the
         // daily job's list of what to dump), so it registers after AddPlatformModule above.
         services.AddBackupsModule(configuration);
+
+        // Offline-first cloud sync (ADR-133). Depends on Patients' public IPatientSyncService,
+        // Platform's ITenantDirectory and ActivityLog's IActivityLogService, so it registers
+        // after all three. With the default Sync:Role = None it registers only its DbContexts
+        // and options; nothing runs.
+        services.AddSyncModule(configuration);
 
         // Future modules register here, e.g.:
         // services.AddAppointmentsModule(configuration);

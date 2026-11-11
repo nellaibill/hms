@@ -6,10 +6,13 @@ using HMS.Modules.Patients.Application.Validators;
 using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Infrastructure;
 using HMS.Modules.Patients.Infrastructure.Repositories;
+using HMS.Modules.Patients.Infrastructure.Sync;
 using HMS.Shared.Kernel;
+using HMS.Shared.Kernel.Sync;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace HMS.Modules.Patients;
 
@@ -36,11 +39,23 @@ public static class PatientsModule
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", PatientsDbContext.SchemaName);
                 npgsql.MigrationsAssembly("HMS.Database.Migrations");
             });
+
+            // Offline-first sync capture (ADR-133): an IOutboxWriter is registered only on an
+            // Edge server (Sync:Role = Edge), so everywhere else this adds nothing.
+            var outboxWriter = sp.GetService<IOutboxWriter>();
+            if (outboxWriter is not null)
+            {
+                options.AddInterceptors(new PatientOutboxInterceptor(outboxWriter, sp.GetRequiredService<ILogger<PatientOutboxInterceptor>>()));
+            }
         });
 
         services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<IPatientIdentifierGenerator, PatientIdentifierGenerator>();
         services.AddScoped<IPatientService, PatientService>();
+
+        // HMS.Modules.Sync's seam into patient data (ADR-133): applying snapshots on the cloud,
+        // version stamps, backfill and the Cloud Sync page's name lookups.
+        services.AddScoped<IPatientSyncService, PatientSyncService>();
 
         services.AddScoped<IPatientVisitRepository, PatientVisitRepository>();
         services.AddScoped<IPatientVisitService, PatientVisitService>();
