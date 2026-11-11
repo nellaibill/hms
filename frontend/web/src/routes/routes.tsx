@@ -19,6 +19,7 @@ const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage')
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'));
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'));
 const ActivityLogPage = lazy(() => import('../pages/activityLog/ActivityLogPage'));
+const CloudSyncPage = lazy(() => import('../pages/cloudSync/CloudSyncPage'));
 const UsersListPage = lazy(() => import('../pages/users/UsersListPage'));
 const UserCreatePage = lazy(() => import('../pages/users/UserCreatePage'));
 const UserViewPage = lazy(() => import('../pages/users/UserViewPage'));
@@ -205,6 +206,7 @@ const routeGatedLeafPaths = new Set([
   '/documents',
   '/reports',
   '/admin/activity-log',
+  '/admin/cloud-sync',
   '/admin/settings',
   '/engagement/programmes',
   '/engagement/messages',
@@ -244,6 +246,16 @@ const activityLogRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [{ path: 'admin/activity-log', element: withSuspense(<ActivityLogPage />) }],
+  },
+];
+
+// Cloud Sync (HMS.Modules.Sync, ADR-133) — monitoring of the local server's offline-first sync
+// to the cloud. Route-gated at 'identity-administration.view', matching SyncMonitorController's
+// server-side read check; its actions additionally need '.edit' on the server.
+const cloudSyncRoutes = [
+  {
+    element: <RequirePermissionRoute permission="identity-administration.view" />,
+    children: [{ path: 'admin/cloud-sync', element: withSuspense(<CloudSyncPage />) }],
   },
 ];
 
@@ -701,6 +713,7 @@ export const router = createBrowserRouter(
             ...opdConsultationRoutes,
             ...documentsRoutes,
             ...activityLogRoutes,
+            ...cloudSyncRoutes,
             ...adminAndEngagementRoutes,
             ...patientReportsRoutes,
           ],
