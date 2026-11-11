@@ -28,9 +28,12 @@ namespace HMS.IntegrationTests.Modules.Sync;
 /// (HMS_TEST_POSTGRES, else Testcontainers); this host also migrates every module, so the server
 /// needs the pgvector extension.
 /// </summary>
-public sealed class CloudApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class CloudApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string HospitalCode = "SYNCHTTP";
+
+    /// <summary>The Sync:Role this host runs with.</summary>
+    protected virtual string Role => "Cloud";
     public static readonly string SigningKey = Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + "-integration-signing-key";
 
     private PostgreSqlContainer? _container;
@@ -38,7 +41,7 @@ public sealed class CloudApiFactory : WebApplicationFactory<Program>, IAsyncLife
     private readonly string _suffix = Guid.NewGuid().ToString("N")[..8];
 
     public string TenantConnectionString { get; private set; } = string.Empty;
-    private string PlatformConnectionString { get; set; } = string.Empty;
+    public string PlatformConnectionString { get; private set; } = string.Empty;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -53,7 +56,7 @@ public sealed class CloudApiFactory : WebApplicationFactory<Program>, IAsyncLife
         builder.UseSetting("Bootstrap:SeedLegacyTenant", "true");
         builder.UseSetting("LegacyTenantSeed:HospitalCode", HospitalCode);
         builder.UseSetting("Jwt:SigningKey", SigningKey);
-        builder.UseSetting("Sync:Role", "Cloud");
+        builder.UseSetting("Sync:Role", Role);
     }
 
     public async Task InitializeAsync()
@@ -304,5 +307,46 @@ public class SyncReceiverHttpTests : IClassFixture<CloudApiFactory>
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(CloudApiFactory.SigningKey)), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken("HMS", "HMS.Clients", claims, expires: DateTime.UtcNow.AddMinutes(10), signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}
+
+/// <summary>The same host with the default Sync:Role = None, as every existing deployment runs
+/// after this change is merged.</summary>
+public sealed class DefaultRoleApiFactory : CloudApiFactory
+{
+    protected override string Role => "None";
+}
+
+public class SyncDefaultRoleTests : IClassFixture<DefaultRoleApiFactory>
+{
+    private readonly DefaultRoleApiFactory _factory;
+
+    public SyncDefaultRoleTests(DefaultRoleApiFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task DefaultRole_CreatesNoSyncSchema_CapturesNothing_AndExposesNoSyncTraffic()
+    {
+        var client = _factory.CreateClient();
+
+        (await ScalarAsync(_factory.TenantConnectionString, "SELECT to_regnamespace('sync')::text")).Should().BeNull("no sync schema is migrated while sync is off");
+        (await ScalarAsync(_factory.PlatformConnectionString, "SELECT to_regnamespace('sync_registry')::text")).Should().BeNull();
+        (await ScalarAsync(_factory.PlatformConnectionString, "SELECT to_regnamespace('hangfire')::text")).Should().BeNull("Hangfire only runs on an Edge server");
+
+        var ping = new HttpRequestMessage(HttpMethod.Get, "/api/v1/sync/ping");
+        ping.Headers.Authorization = new AuthenticationHeaderValue("HmsSync", "hmssync_" + new string('A', 43));
+        (await client.SendAsync(ping)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.GetAsync("/hangfire")).StatusCode.Should().NotBe(HttpStatusCode.OK);
+    }
+
+    private static async Task<string?> ScalarAsync(string connectionString, string sql)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        var value = await command.ExecuteScalarAsync();
+        return value is DBNull or null ? null : value.ToString();
     }
 }
