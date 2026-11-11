@@ -34,7 +34,7 @@ public static class SyncCommandLine
     {
         var index = FindCommandIndex(args);
         var command = args[index].ToLowerInvariant();
-        var rest = args.Skip(index + 1).Where(a => !a.StartsWith('-') && !a.Contains('=')).ToArray();
+        var rest = PositionalArguments(args, index);
 
         await using var scope = services.CreateAsyncScope();
         var sp = scope.ServiceProvider;
@@ -184,6 +184,11 @@ public static class SyncCommandLine
             throw new CommandLineException(message);
         }
     }
+
+    /// <summary>The command's own arguments: the tokens right after it, up to the first switch.
+    /// A switch's value (as in <c>--environment Production</c>) is never mistaken for one.</summary>
+    internal static string[] PositionalArguments(string[] args, int commandIndex) =>
+        args.Skip(commandIndex + 1).TakeWhile(a => !a.StartsWith('-') && !a.Contains('=')).ToArray();
 
     private static int FindCommandIndex(string[] args) =>
         Array.FindIndex(args, a => Commands.Contains(a, StringComparer.OrdinalIgnoreCase));

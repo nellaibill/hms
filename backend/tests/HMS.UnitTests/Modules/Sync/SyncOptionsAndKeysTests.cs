@@ -1,4 +1,5 @@
 using FluentAssertions;
+using HMS.Modules.Sync;
 using HMS.Modules.Sync.Application;
 using HMS.Modules.Sync.Contracts;
 using HMS.Modules.Sync.Infrastructure;
@@ -184,5 +185,24 @@ public class HangfireDashboardAccessTests
         _access.IsValidSession(null).Should().BeFalse();
         _access.IsValidSession("garbage").Should().BeFalse();
         _access.IsValidSession(TokenFrom(url)).Should().BeFalse("a link token is not a session");
+    }
+}
+
+public class SyncCommandLineTests
+{
+    [Fact]
+    public void PositionalArguments_StopAtTheFirstSwitch_SoASwitchValueIsNeverTakenAsAKeyPrefix()
+    {
+        string[] args = ["sync-key", "revoke", "LHS", "--environment", "Production", "--urls", "http://x"];
+
+        SyncCommandLine.PositionalArguments(args, 0).Should().Equal("revoke", "LHS");
+    }
+
+    [Fact]
+    public void PositionalArguments_KeepAnExplicitPrefix()
+    {
+        string[] args = ["--environment=Production", "sync-key", "revoke", "LHS", "hmssync_abcdef", "--x", "y"];
+
+        SyncCommandLine.PositionalArguments(args, 1).Should().Equal("revoke", "LHS", "hmssync_abcdef");
     }
 }

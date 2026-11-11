@@ -246,6 +246,13 @@ internal static class PatientChangeCollector
             }
         }
 
+        // A registration carries the whole record; listing its child tables as "changed"
+        // would only add noise to the monitoring screen.
+        foreach (var change in changes.Values.Where(c => c.Operation == OutboxOperationTypes.Insert))
+        {
+            change.Fields.Clear();
+        }
+
         return changes;
     }
 

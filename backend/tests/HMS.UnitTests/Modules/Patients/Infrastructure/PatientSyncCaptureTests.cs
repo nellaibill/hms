@@ -46,6 +46,7 @@ public class PatientSyncCaptureTests
         changes.Should().ContainSingle();
         changes[patient.Id].Operation.Should().Be(OutboxOperationTypes.Insert);
         changes[patient.Id].ActorId.Should().Be(Actor);
+        changes[patient.Id].Fields.Should().BeEmpty("a registration carries the whole record");
     }
 
     [Fact]
