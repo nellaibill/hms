@@ -147,6 +147,10 @@ public static class SyncModule
         // Its presence is what switches on patient capture (see PatientsModule).
         services.AddSingleton<IOutboxWriter, OutboxWriter>();
 
+        // Registered before the Hangfire server so every hospital's sync tables exist before
+        // capture or any job can need them (hosted services start in registration order).
+        services.AddHostedService<SyncSchemaBootstrapper>();
+
         services.AddScoped<SyncTenantProcessor>();
         services.AddScoped<ICloudSyncClient, CloudSyncClient>();
         services.AddHttpClient(CloudSyncClient.HttpClientName, (sp, client) =>
