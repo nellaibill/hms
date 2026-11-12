@@ -73,5 +73,12 @@ environment's own secret-injection mechanism (e.g. a platform's env-var/secret U
 proper secrets-manager integration once a hosting target is chosen) — plain env vars on the
 host are the minimum acceptable baseline, not the intended end state.
 
+**Offline-first sync (ADR-133)** — the cloud key a local (Edge) server presents is a secret and
+is supplied **only** as an environment variable, `Sync__Cloud__ApiKeys__<HOSPITALCODE>=hmssync_…`
+(for example via NSSM `AppEnvironmentExtra`), never in an appsettings file. The key is issued on
+the cloud with `dotnet HMS.Api.dll sync-key issue <code>`; the cloud stores only its SHA-256 hash.
+The other `Sync` and `Hangfire` settings in `appsettings.json` are non-secret defaults — see
+[modules/Sync/OfflineFirstSync.md](modules/Sync/OfflineFirstSync.md) §9.
+
 ## Adding New Configuration
 _To be documented._

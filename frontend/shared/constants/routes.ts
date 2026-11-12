@@ -499,6 +499,20 @@ export const API_ROUTES = {
     base: '/api/v1/activity-logs',
     byId: (id: string) => `/api/v1/activity-logs/${id}`,
   },
+  /** Mirrors HMS.Modules.Sync.Endpoints.SyncMonitorController (offline-first cloud sync, ADR-133). */
+  syncMonitor: {
+    summary: '/api/v1/sync-monitor/summary',
+    streams: '/api/v1/sync-monitor/streams',
+    patientEvents: (patientId: string) => `/api/v1/sync-monitor/streams/${patientId}/events`,
+    events: '/api/v1/sync-monitor/events',
+    retryEvent: (eventId: string) => `/api/v1/sync-monitor/events/${eventId}/retry`,
+    retryAll: '/api/v1/sync-monitor/events/retry-all',
+    resolveEvent: (eventId: string) => `/api/v1/sync-monitor/events/${eventId}/resolve`,
+    pause: '/api/v1/sync-monitor/pause',
+    resume: '/api/v1/sync-monitor/resume',
+    trigger: '/api/v1/sync-monitor/trigger',
+    dashboardSession: '/api/v1/sync-monitor/dashboard-session',
+  },
   /** Mirrors HMS.Modules.Notifications.Endpoints.*Controller. */
   notifications: {
     base: '/api/v1/notifications',

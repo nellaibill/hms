@@ -121,6 +121,26 @@ the ADR-083 folder as a fallback, so nothing breaks in between. Afterwards, the 
 empty ADR-083 folders are removed; anything left in the old shared folders belongs to no
 database row and can be reviewed and deleted by hand.
 
+### Offline-first cloud sync (ADR-133)
+Off by default (`Sync:Role = None`): `migrate` creates nothing for it and no job runs. To switch it on for a hospital:
+
+```bash
+# Cloud server (Sync__Role=Cloud): migrate, then issue the hospital's key (printed once).
+dotnet HMS.Api.dll migrate
+dotnet HMS.Api.dll sync-key issue LHS
+
+# Local server (Sync__Role=Edge, Sync__Cloud__BaseUrl=https://…, Sync__Cloud__ApiKeys__LHS=<key>):
+dotnet HMS.Api.dll migrate
+dotnet HMS.Api.dll sync-backfill LHS   # only for patients that existed before capture was on
+
+# Cloud server, at cutover: the cloud stops accepting patient edits for that hospital.
+dotnet HMS.Api.dll sync-cutover LHS on
+```
+
+- A Cloud server's `migrate` creates `sync_registry` in `hms_platform`, and an Edge server's Hangfire creates schema `hangfire` there on first start. Both need CREATE rights on `hms_platform`, or set `ConnectionStrings__Hangfire` for Hangfire.
+- Edge servers need the nginx `location /hangfire` block (already in `scripts/deploy/windows/nginx-hms-reverse-proxy.conf`).
+- Deploy the cloud before local servers. Full runbook, rollback and limits: [modules/Sync/OfflineFirstSync.md](modules/Sync/OfflineFirstSync.md).
+
 ## Rollback Strategy
 _To be documented._
 

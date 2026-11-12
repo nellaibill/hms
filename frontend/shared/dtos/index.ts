@@ -74,4 +74,5 @@ export * from './messaging/conversation';
 export * from './messaging/message';
 export * from './dischargeSummary/dischargeSummary';
 export * from './activityLog/activityLog';
+export * from './sync/sync';
 export * from './dashboard/dashboard';

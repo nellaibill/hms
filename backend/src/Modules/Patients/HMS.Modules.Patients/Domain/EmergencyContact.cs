@@ -39,4 +39,24 @@ internal class EmergencyContact
 
         return new EmergencyContact(Guid.CreateVersion7(), patientId, relationship, name.Trim(), phone.Trim());
     }
+
+    /// <summary>Offline-first sync (ADR-133) only: recreates a contact with its original id.</summary>
+    internal static EmergencyContact CreateReplica(Guid id, Guid patientId, Relationship relationship, string name, string phone)
+    {
+        Guard.AgainstNullOrWhiteSpace(name, nameof(name));
+        Guard.AgainstNullOrWhiteSpace(phone, nameof(phone));
+
+        return new EmergencyContact(id, patientId, relationship, name, phone);
+    }
+
+    /// <summary>Offline-first sync (ADR-133) only.</summary>
+    internal void ApplyReplicaState(Relationship relationship, string name, string phone)
+    {
+        Guard.AgainstNullOrWhiteSpace(name, nameof(name));
+        Guard.AgainstNullOrWhiteSpace(phone, nameof(phone));
+
+        Relationship = relationship;
+        Name = name;
+        Phone = phone;
+    }
 }

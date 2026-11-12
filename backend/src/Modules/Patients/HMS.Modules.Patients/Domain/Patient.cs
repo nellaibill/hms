@@ -260,6 +260,96 @@ internal class Patient : Entity
         return true;
     }
 
+    /// <summary>Offline-first sync (ADR-133) only: materialises a patient exactly as another
+    /// server holds it, keeping its id, UHID, audit columns and soft-delete state. Never used
+    /// for an ordinary registration.</summary>
+    internal static Patient CreateReplica(PatientReplicaState state)
+    {
+        var patient = new Patient { Id = state.Id };
+        patient.ApplyReplicaState(state);
+        return patient;
+    }
+
+    /// <summary>Offline-first sync (ADR-133) only: overwrites this patient with another
+    /// server's copy, including the address and the full allergy/emergency-contact lists
+    /// (children missing from <paramref name="state"/> are removed, new ones added with their
+    /// original ids). Bypasses the "at least one emergency contact" rule on purpose: the copy
+    /// must match its source, and the source already enforced the rule.</summary>
+    internal void ApplyReplicaState(PatientReplicaState state)
+    {
+        Guard.AgainstNullOrWhiteSpace(state.Uhid, nameof(state.Uhid));
+        Guard.AgainstNullOrWhiteSpace(state.FirstName, nameof(state.FirstName));
+        Guard.AgainstNullOrWhiteSpace(state.LastName, nameof(state.LastName));
+        Guard.AgainstNullOrWhiteSpace(state.PrimaryPhone, nameof(state.PrimaryPhone));
+
+        Uhid = state.Uhid;
+        Title = state.Title;
+        FirstName = state.FirstName;
+        LastName = state.LastName;
+        DateOfBirth = state.DateOfBirth;
+        Gender = state.Gender;
+        BloodGroup = state.BloodGroup;
+        MaritalStatus = state.MaritalStatus;
+        PrimaryPhone = state.PrimaryPhone;
+        SecondaryPhone = state.SecondaryPhone;
+        Email = state.Email;
+        Profession = state.Profession;
+        IdProofType = state.IdProofType;
+        IdProofNumber = state.IdProofNumber;
+        ModeOfArrivalSource = state.ModeOfArrivalSource;
+        ModeOfArrivalChannel = state.ModeOfArrivalChannel;
+        ModeOfArrivalSpecify = state.ModeOfArrivalSpecify;
+        RequiresDataVerification = state.RequiresDataVerification;
+
+        CreatedAt = state.CreatedAt;
+        CreatedBy = state.CreatedBy;
+        UpdatedAt = state.UpdatedAt;
+        UpdatedBy = state.UpdatedBy;
+        IsDeleted = state.IsDeleted;
+        DeletedAt = state.DeletedAt;
+        DeletedBy = state.DeletedBy;
+
+        var address = state.Address;
+        if (Address is null)
+        {
+            Address = Address.Create(Id, address.AddressLine1, address.AddressLine2, address.AddressLine3, address.StateId, address.DistrictId, address.Pincode);
+        }
+        else
+        {
+            Address.Update(address.AddressLine1, address.AddressLine2, address.AddressLine3, address.StateId, address.DistrictId, address.Pincode);
+        }
+
+        var allergyIds = state.Allergies.Select(a => a.Id).ToHashSet();
+        _allergies.RemoveAll(a => !allergyIds.Contains(a.Id));
+        foreach (var desired in state.Allergies)
+        {
+            var existing = _allergies.FirstOrDefault(a => a.Id == desired.Id);
+            if (existing is null)
+            {
+                _allergies.Add(Allergy.CreateReplica(desired.Id, Id, desired.AllergyType, desired.Specify, desired.Severity));
+            }
+            else
+            {
+                existing.ApplyReplicaState(desired.AllergyType, desired.Specify, desired.Severity);
+            }
+        }
+
+        var contactIds = state.EmergencyContacts.Select(c => c.Id).ToHashSet();
+        _emergencyContacts.RemoveAll(c => !contactIds.Contains(c.Id));
+        foreach (var desired in state.EmergencyContacts)
+        {
+            var existing = _emergencyContacts.FirstOrDefault(c => c.Id == desired.Id);
+            if (existing is null)
+            {
+                _emergencyContacts.Add(EmergencyContact.CreateReplica(desired.Id, Id, desired.Relationship, desired.Name, desired.Phone));
+            }
+            else
+            {
+                existing.ApplyReplicaState(desired.Relationship, desired.Name, desired.Phone);
+            }
+        }
+    }
+
     private static int CalculateAge(DateOnly dateOfBirth, DateOnly asOf)
     {
         var age = asOf.Year - dateOfBirth.Year;

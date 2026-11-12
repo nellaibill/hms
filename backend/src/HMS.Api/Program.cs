@@ -7,6 +7,8 @@ using HMS.Modules.Identity;
 using HMS.Modules.Platform;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Platform.Infrastructure;
+using HMS.Modules.Sync;
+using HMS.Modules.Sync.Infrastructure;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -118,6 +120,11 @@ app.UseHmsSwagger();
 // JSON API responses below.
 app.UseHmsSecurityHeaders();
 
+// The Hangfire dashboard for the offline-first sync (ADR-133). Mapped only on an Edge server
+// (Sync:Role = Edge), behind a short-lived cookie handed out by the Cloud Sync page; a no-op
+// everywhere else.
+app.UseSyncDashboard();
+
 // Serves each tenant's public uploads from wwwroot/uploads/Tenant/{tenantId}/… (see
 // TenantFileLocations and docs/DecisionLog.md ADR-087). Documents live under App_Data instead
 // and are never served from here.
@@ -177,6 +184,14 @@ if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
     // seeding the legacy tenant row needs it.
     sp.GetRequiredService<PlatformDbContext>().Database.Migrate();
 
+    // The cloud-side sync API key registry (schema sync_registry) lives next to Platform's own
+    // tables in hms_platform (ADR-133). Only a Cloud server uses it, so only a Cloud server
+    // migrates it: every other server never needs CREATE rights on hms_platform for it.
+    if (SyncModule.IsCloud(builder.Configuration))
+    {
+        sp.GetRequiredService<SyncRegistryDbContext>().Database.Migrate();
+    }
+
     // Idempotent: seeds the one default Platform Admin account, and — only when
     // seedLegacyTenant is true — the platform.tenants row associating
     // ConnectionStrings:Default with a real tenant identity (see LegacyTenantSeedOptions's
@@ -220,6 +235,15 @@ if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
 if (isMigrationOnlyRun)
 {
     // The deploy pipeline's migration step ends here — it never starts serving traffic.
+    return;
+}
+
+// Offline-first sync operator commands (ADR-133): sync-key issue|list|revoke, sync-cutover,
+// sync-backfill. Like `migrate`, they run against the configured databases and exit without
+// starting Kestrel or any background job. See SyncCommandLine for usage.
+if (SyncCommandLine.IsSyncCommand(args))
+{
+    Environment.ExitCode = await SyncCommandLine.RunAsync(app.Services, args, Console.Out);
     return;
 }
 

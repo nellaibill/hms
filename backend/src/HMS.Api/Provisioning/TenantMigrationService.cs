@@ -18,6 +18,8 @@ using HMS.Modules.Pharmacy.Infrastructure;
 using HMS.Modules.Platform.Application.Abstractions;
 using HMS.Modules.Products.Infrastructure;
 using HMS.Modules.Radiology.Infrastructure;
+using HMS.Modules.Sync;
+using HMS.Modules.Sync.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
@@ -40,6 +42,13 @@ namespace HMS.Api.Provisioning;
 /// </summary>
 public sealed class TenantMigrationService : ITenantMigrationService
 {
+    private readonly bool _syncEnabled;
+
+    public TenantMigrationService(IConfiguration configuration)
+    {
+        _syncEnabled = SyncModule.IsSyncEnabled(configuration);
+    }
+
     public async Task MigrateAsync(string tenantConnectionString, IReadOnlyCollection<string> enabledFeatureKeys, CancellationToken cancellationToken)
     {
         // Defensive union: even if a caller's resolved set somehow omitted a mandatory
@@ -177,6 +186,16 @@ public sealed class TenantMigrationService : ITenantMigrationService
         if (resolved.Contains("opd-consultation"))
         {
             await using var db = new OpdConsultationDbContext(BuildOptions<OpdConsultationDbContext>(tenantConnectionString, OpdConsultationDbContext.SchemaName));
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+
+        // Offline-first sync infrastructure (ADR-133): the outbox/inbox tables. Not a
+        // FeatureCatalog key (it is plumbing a Platform Admin never toggles); migrated for every
+        // tenant once this server's Sync:Role is Edge or Cloud, and not at all while it is None,
+        // so the default deployment is untouched.
+        if (_syncEnabled)
+        {
+            await using var db = new SyncDbContext(BuildOptions<SyncDbContext>(tenantConnectionString, SyncDbContext.SchemaName));
             await db.Database.MigrateAsync(cancellationToken);
         }
     }
