@@ -37,6 +37,33 @@ _To be documented._
 
 ## Decisions
 
+### ADR-133: Offline-first patient sync from a local server to the cloud, with an outbox and Hangfire
+**Date:** 2026-11-11
+**Status:** Accepted
+
+**Context**
+Hospitals need to keep registering and editing patients when their internet link drops, while the cloud HMS still gets every change. Writes must never wait for the network, nothing may be lost or applied twice, each patient's changes must arrive in order, and one bad record must not hold up the others. HMS has one database per hospital, so the outbox has to live in each hospital's database to share the patient's transaction. ADR-029 avoided Hangfire for the existing background work.
+
+**Decision**
+- **New module `HMS.Modules.Sync`.** `Sync:Role` (`None` default, `Edge`, `Cloud`) decides what a server does. With `None` nothing is migrated, captured or scheduled.
+- **Same-transaction outbox.** An EF `SaveChangesInterceptor` on `PatientsDbContext` (Edge only) writes one event per patient change on the same connection and transaction, through `IOutboxWriter` in Shared.Kernel. Per-patient sequence numbers come from a stream row (`INSERT … ON CONFLICT DO UPDATE … RETURNING`). `PatientService` is unchanged.
+- **Hangfire, Edge only, for sync only.** Storage is in `hms_platform` (schema `hangfire`). Recurring jobs dispatch, probe and clean up. Hangfire retries are off: the outbox row is the only retry record. Every other background job stays a plain BackgroundService (ADR-029 still holds for them).
+- **Claiming and ordering.** Patient streams are claimed with `FOR UPDATE SKIP LOCKED` plus a lease, so no transaction spans the HTTP call. Within a patient, the first failure blocks only that patient. Back-off is 1/2/5/10/30 minutes up to `MaxRetryCount`. Connectivity and key failures use no retries; a probe gates sending.
+- **Cloud receiver.** `POST /api/v1/sync/patients` accepts only an `HmsSync` API key (SHA-256 hash in `sync_registry.sync_clients`). Each event gets one transaction: EventId inbox, sequence and epoch check, version-stamp conflict check, apply through the Patients module, acknowledge.
+- **No last-write-wins.** A cloud-side edit outside sync is a conflict. An admin resolves it: send the local version, keep the cloud's, or skip.
+- **The local server owns patients after cutover.** `sync-cutover <code> on` makes the cloud refuse patient writes for that hospital.
+- **Monitoring.** `api/v1/sync-monitor` (identity-administration.view/.edit, audited) and the React page `/admin/cloud-sync`. The Hangfire dashboard is reached through a one-time link that becomes a 15-minute HttpOnly cookie.
+- **Scope.** The Patient aggregate only (patient, address, allergies, emergency contacts).
+
+Full design, deviations from the proposal, runbook and test record: [modules/Sync/OfflineFirstSync.md](modules/Sync/OfflineFirstSync.md).
+
+**Consequences**
+- No change for existing deployments until a role is set. Sync schemas are migrated only on Edge/Cloud servers. A Cloud server's `migrate`, and an Edge server's first Hangfire start, need CREATE on `hms_platform` (or `ConnectionStrings:Hangfire`).
+- New operator commands: `sync-key issue|list|revoke`, `sync-cutover`, `sync-backfill`. The cloud key lives only in the Edge server's environment (`Sync__Cloud__ApiKeys__<CODE>`).
+- The cloud holds a cut-over hospital's patients but not its local visits or bills until those modules are added.
+- Deploy the cloud before the local servers whenever the payload version changes.
+- New packages: Hangfire.Core/AspNetCore 1.8.25, Hangfire.PostgreSql 1.21.1, and a Newtonsoft.Json 13.0.3 pin to avoid a vulnerable transitive version.
+
 ### ADR-132: A new consultant starts with Review and Emergency consultation types ticked
 **Date:** 2026-11-09
 **Status:** Accepted

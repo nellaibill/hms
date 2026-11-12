@@ -31,6 +31,18 @@
          see docs/modules/Documents/DocumentManagement.md's pgvector setup section. -->
     <PackageVersion Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
 
+    <!-- Background job scheduling + dashboard for the offline-first cloud sync (HMS.Modules.Sync,
+         ADR-133). Used ONLY by the Sync module; every other background worker stays a plain
+         BackgroundService. Hangfire.PostgreSql keeps job state in hms_platform (schema
+         "hangfire"), so no new infrastructure is needed. -->
+    <PackageVersion Include="Hangfire.Core" Version="1.8.25" />
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
+    <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
+    <!-- Transitive-only pin: Hangfire.Core only asks for Newtonsoft.Json >= 11.0.1, which resolves
+         to 11.0.1 and its high-severity advisory GHSA-5crp-9r3c-p9vr (fixed in 13.0.1, NU1903).
+         Pinned to a patched release so the vulnerable version is never resolved (ADR-078 gate). -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+
     <!-- Validation -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
 

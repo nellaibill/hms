@@ -19,12 +19,14 @@ namespace HMS.ArchitectureTests.Modules.Patients;
 /// GetRowsPagedAsync return type, so it's public for the same CS0051 reason one level removed).
 /// Same reasoning for IOpdQueryService (OpdController). PatientsDbContext is public because
 /// it's resolved by type from HMS.Api's Program.cs for the startup-time migration call.
+/// IPatientSyncService is the offline-first sync seam (ADR-133): public because HMS.Modules.Sync's
+/// public services take it.
 /// </summary>
 public class PatientsModuleBoundaryTests
 {
     private static readonly Assembly PatientsAssembly = typeof(PatientsController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^(IPatientService|IPatientVisitService|IPatientImportService|ImportRowPage|IOpdQueryService|PatientsDbContext)$";
+    private const string AllowedPublicTypeNamePattern = "^(IPatientService|IPatientVisitService|IPatientImportService|ImportRowPage|IOpdQueryService|PatientsDbContext|IPatientSyncService)$";
 
     [Theory]
     [InlineData("HMS.Modules.Patients.Domain")]

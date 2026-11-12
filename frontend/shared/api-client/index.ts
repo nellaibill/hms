@@ -48,3 +48,4 @@ export * from './services/leaveRequestsApi';
 export * from './services/hrDashboardApi';
 export * from './services/dischargeSummaryApi';
 export * from './services/activityLogApi';
+export * from './services/syncMonitorApi';

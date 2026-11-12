@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The sync receiver + monitoring controllers live in this module, not HMS.Api, so their
+         <summary> comments must be generated here for Swashbuckle. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ControllerBase, authentication handlers, DataProtection and IHttpClientFactory. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.PostgreSql" />
+    <!-- Direct pin of a transitive dependency (Hangfire.Core → Newtonsoft.Json): forces the patched
+         version — see Directory.Packages.props for why. -->
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Kernel\HMS.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\HMS.Shared.Infrastructure\HMS.Shared.Infrastructure.csproj" />
+    <!-- Public seams only: IPatientSyncService (Patients), ITenantDirectory (Platform),
+         IActivityLogService (ActivityLog). Enforced by SyncModuleBoundaryTests. -->
+    <ProjectReference Include="..\..\Patients\HMS.Modules.Patients\HMS.Modules.Patients.csproj" />
+    <ProjectReference Include="..\..\Platform\HMS.Modules.Platform\HMS.Modules.Platform.csproj" />
+    <ProjectReference Include="..\..\ActivityLog\HMS.Modules.ActivityLog\HMS.Modules.ActivityLog.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -31,7 +31,9 @@ public static class SecurityHeadersConfiguration
             // environment, so a stray non-Development Swagger exposure (see
             // docs/DecisionLog.md's deployment-hardening ADR) still gets every other header
             // this middleware sets, just not the CSP.
-            if (!context.Request.Path.StartsWithSegments("/swagger"))
+            // Same for the Hangfire dashboard (offline-first sync, ADR-133): its pages need their
+            // own inline scripts and styles. It is cookie-gated and only mapped on an Edge server.
+            if (!context.Request.Path.StartsWithSegments("/swagger") && !context.Request.Path.StartsWithSegments("/hangfire"))
             {
                 headers["Content-Security-Policy"] = ContentSecurityPolicy;
             }
