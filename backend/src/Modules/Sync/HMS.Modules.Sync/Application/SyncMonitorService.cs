@@ -553,7 +553,7 @@ internal sealed class SyncMonitorService : ISyncMonitorService
         }
 
         var tenant = await _services.GetRequiredService<ITenantDirectory>().FindByIdAsync(tenantId, cancellationToken);
-        return tenant is not null && _options.FindApiKey(tenant.HospitalCode) is not null;
+        return tenant is not null && _options.FindSendingKey(tenant.HospitalCode) is not null;
     }
 
     private static Result<T> NotEdge<T>() =>

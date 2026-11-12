@@ -48,6 +48,11 @@ internal sealed class SyncTenantProcessor
             return SyncRunSummary.Skipped("sending is disabled (Sync:Enabled = false)");
         }
 
+        if (!_options.HasCloudAddress)
+        {
+            return SyncRunSummary.Skipped("no cloud address is configured (capture-only)");
+        }
+
         var apiKey = _options.FindApiKey(tenant.HospitalCode);
         if (apiKey is null)
         {

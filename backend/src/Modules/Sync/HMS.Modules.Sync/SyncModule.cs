@@ -156,7 +156,11 @@ public static class SyncModule
         services.AddHttpClient(CloudSyncClient.HttpClientName, (sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<SyncOptions>>().Value;
-            client.BaseAddress = new Uri(options.Cloud.BaseUrl.TrimEnd('/') + "/");
+            if (options.HasCloudAddress)
+            {
+                client.BaseAddress = new Uri(options.Cloud.BaseUrl.TrimEnd('/') + "/");
+            }
+
             client.Timeout = TimeSpan.FromSeconds(options.HttpTimeoutInSeconds);
         });
 

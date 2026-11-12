@@ -253,13 +253,27 @@ Sidebar → Administrative → **Cloud Sync** (next to Activity Log); route-gate
   "ConnectivityBackoffSeconds": 60,
   "RetentionDays": 30,
   "NodeId": "",                 // defaults to the machine name
-  "Cloud": { "BaseUrl": "" }    // Edge: https://… (http only for localhost)
+  "Cloud": { "BaseUrl": "" }    // Edge: https://… (http only for localhost); empty = capture-only
 },
 "Hangfire": { "WorkerCount": 2, "SchemaName": "hangfire", "DashboardPath": "/hangfire" }
 ```
 
 - **The cloud key is a secret.** Set it only as an environment variable on the Edge server: `Sync__Cloud__ApiKeys__<HOSPITALCODE>=hmssync_…` (NSSM `AppEnvironmentExtra`, or user-secrets in development). Hospital codes match case-insensitively.
 - Options are validated at start-up (`ValidateOnStart`): a misconfigured Edge refuses to start instead of silently not syncing.
+- **Capture-only Edge.** With `Sync:Role=Edge` and no `Sync:Cloud:BaseUrl` (or no key for a hospital), every patient change is still saved with its outbox event, and nothing is sent. The Cloud Sync page shows **Not configured** with the queue growing. Add the address and key later and restart: the backlog is sent in order.
+- **Edge start-up.** Before accepting requests, an Edge server creates or updates the `sync` tables of every active hospital (a hospital whose database cannot be reached is logged and skipped, never created).
+
+**Local development (Edge, capture-only).** On a machine where the app's role cannot create schemas in `hms_platform`, give Hangfire its own database:
+
+```bash
+dotnet user-secrets set "Sync:Role" "Edge" --project backend/src/HMS.Api
+dotnet user-secrets set "ConnectionStrings:Hangfire" "Host=localhost;Port=5432;Database=hms_sync_hangfire;Username=hms;Password=hms" --project backend/src/HMS.Api
+# later, when a cloud is available:
+dotnet user-secrets set "Sync:Cloud:BaseUrl" "https://<cloud>" --project backend/src/HMS.Api
+dotnet user-secrets set "Sync:Cloud:ApiKeys:<hospitalCode>" "<key>" --project backend/src/HMS.Api
+# switch sync off again:
+dotnet user-secrets remove "Sync:Role" --project backend/src/HMS.Api
+```
 - `ConnectionStrings:Hangfire` (optional) moves Hangfire's tables out of `hms_platform`.
 - `appsettings.json` lists `RetryScheduleMinutes` as an array. An environment override replaces elements by index (`Sync__RetryScheduleMinutes__0`, `__1`, …), so override all of them together.
 

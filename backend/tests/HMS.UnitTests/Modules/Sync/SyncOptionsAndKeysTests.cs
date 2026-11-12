@@ -30,9 +30,9 @@ public class SyncOptionsValidatorTests
     [InlineData("http://localhost:5000", true)]
     [InlineData("http://127.0.0.1:5000", true)]
     [InlineData("http://cloud.example.com", false)]
-    [InlineData("", false)]
+    [InlineData("", true)]
     [InlineData("not a url", false)]
-    public void Edge_RequiresAnHttpsCloudUrl_ExceptOnLocalhost(string baseUrl, bool valid)
+    public void Edge_RequiresAnHttpsCloudUrl_ExceptOnLocalhost_OrNoneForCaptureOnly(string baseUrl, bool valid)
     {
         var options = new SyncOptions { Role = SyncRole.Edge, Cloud = new SyncCloudOptions { BaseUrl = baseUrl } };
 
@@ -78,6 +78,19 @@ public class SyncOptionsValidatorTests
         configuration.GetSection("Sync").Bind(options);
 
         options.FindApiKey("lhs").Should().Be("the-key");
+    }
+
+    [Fact]
+    public void CaptureOnlyEdge_HasNoSendingKey_EvenWhenAKeyIsSet()
+    {
+        var options = new SyncOptions { Role = SyncRole.Edge };
+        options.Cloud.ApiKeys["LHS"] = "key";
+
+        options.HasCloudAddress.Should().BeFalse();
+        options.FindSendingKey("lhs").Should().BeNull("nothing can be sent without a cloud address");
+
+        options.Cloud.BaseUrl = "https://cloud.example.com";
+        options.FindSendingKey("lhs").Should().Be("key");
     }
 
     [Fact]

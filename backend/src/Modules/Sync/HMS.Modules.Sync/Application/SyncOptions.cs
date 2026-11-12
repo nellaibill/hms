@@ -67,6 +67,14 @@ internal sealed class SyncOptions
 
     public bool IsEdge => Role == SyncRole.Edge;
 
+    /// <summary>False while an Edge server runs capture-only: changes are saved and queued
+    /// locally, and sending starts once a cloud address (and a key) is configured.</summary>
+    public bool HasCloudAddress => !string.IsNullOrWhiteSpace(Cloud.BaseUrl);
+
+    /// <summary>The key to send a hospital's changes with, or null when this server cannot send
+    /// them yet (no cloud address, or no key for that hospital).</summary>
+    public string? FindSendingKey(string hospitalCode) => HasCloudAddress ? FindApiKey(hospitalCode) : null;
+
     public bool IsCloud => Role == SyncRole.Cloud;
 
     /// <summary>The key this Edge server presents for a hospital, or null if none is configured.
@@ -82,7 +90,8 @@ internal sealed class SyncOptions
 internal sealed class SyncCloudOptions
 {
     /// <summary>Base URL of the cloud HMS API, e.g. https://cloud.example.com. Must be https
-    /// (plain http is accepted only for localhost, for development).</summary>
+    /// (plain http is accepted only for localhost, for development). Empty on an Edge server
+    /// means capture-only: changes are queued locally until it is set.</summary>
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>HospitalCode → sync API key, issued on the cloud with
@@ -163,7 +172,8 @@ internal sealed class SyncOptionsValidator : IValidateOptions<SyncOptions>
             errors.Add("Sync:RetentionDays must be between 1 and 3650.");
         }
 
-        if (options.Role == SyncRole.Edge)
+        // Empty is allowed: an Edge server then captures and queues changes without sending.
+        if (options.Role == SyncRole.Edge && options.HasCloudAddress)
         {
             ValidateCloudBaseUrl(options.Cloud.BaseUrl, errors);
         }
@@ -173,9 +183,9 @@ internal sealed class SyncOptionsValidator : IValidateOptions<SyncOptions>
 
     private static void ValidateCloudBaseUrl(string baseUrl, List<string> errors)
     {
-        if (string.IsNullOrWhiteSpace(baseUrl) || !Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
         {
-            errors.Add("Sync:Cloud:BaseUrl must be an absolute URL when Sync:Role is Edge.");
+            errors.Add("Sync:Cloud:BaseUrl must be an absolute URL (or empty, to only capture changes for now)."); 
             return;
         }
 

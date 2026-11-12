@@ -59,7 +59,7 @@ export function overallStatusView(summary: SyncSummary): OverallStatusView {
     NotConfigured: {
       label: 'Not configured',
       tone: 'warning',
-      description: 'No cloud key is set up for this hospital on this server. Changes are kept here until one is.',
+      description: 'No cloud address or key is set up for this hospital on this server yet. Every patient change is saved and queued here, and goes out once they are.',
     },
     Disabled: {
       label: 'Sending off',

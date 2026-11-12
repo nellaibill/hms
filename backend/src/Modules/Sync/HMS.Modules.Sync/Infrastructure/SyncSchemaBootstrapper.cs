@@ -53,6 +53,17 @@ internal sealed class SyncSchemaBootstrapper : IHostedService
                     .Options;
 
                 await using var db = new SyncDbContext(options);
+
+                // Migrate() would create a missing database. A hospital whose database does not
+                // exist is a provisioning problem to report, not something to paper over.
+                if (!await db.Database.CanConnectAsync(cancellationToken))
+                {
+                    _logger.LogError(
+                        "Cloud sync: the database of hospital {HospitalCode} cannot be reached; its sync tables were not prepared.",
+                        tenant.HospitalCode);
+                    continue;
+                }
+
                 await db.Database.MigrateAsync(cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)

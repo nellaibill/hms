@@ -38,11 +38,11 @@ internal abstract class TenantSyncJobBase
 
     protected SyncOptions Options { get; }
 
-    /// <summary>Active hospitals this Edge server holds a cloud key for.</summary>
+    /// <summary>Active hospitals this Edge server can send for (cloud address and key set).</summary>
     protected async Task<IReadOnlyList<TenantInfo>> GetSyncedTenantsAsync(CancellationToken cancellationToken)
     {
         var tenants = await TenantDirectory.GetAllActiveTenantsAsync(cancellationToken);
-        return tenants.Where(t => Options.FindApiKey(t.HospitalCode) is not null).ToList();
+        return tenants.Where(t => Options.FindSendingKey(t.HospitalCode) is not null).ToList();
     }
 
     /// <summary>Runs <paramref name="work"/> in a fresh DI scope bound to <paramref name="tenant"/>,
@@ -155,7 +155,7 @@ internal sealed class SyncProbeJob : TenantSyncJobBase
                     var cloud = sp.GetRequiredService<ICloudSyncClient>();
                     await store.GetStateAsync(cancellationToken);
 
-                    var ping = await cloud.PingAsync(Options.FindApiKey(tenant.HospitalCode)!, cancellationToken);
+                    var ping = await cloud.PingAsync(Options.FindSendingKey(tenant.HospitalCode)!, cancellationToken);
                     if (ping.Outcome == CloudTransportOutcome.Cancelled)
                     {
                         return "cancelled";
@@ -184,7 +184,7 @@ internal sealed class SyncProbeJob : TenantSyncJobBase
             }
         }
 
-        return results.Count == 0 ? "No hospital has a cloud key configured." : string.Join("; ", results);
+        return results.Count == 0 ? "No hospital has a cloud address and key configured." : string.Join("; ", results);
     }
 }
 
