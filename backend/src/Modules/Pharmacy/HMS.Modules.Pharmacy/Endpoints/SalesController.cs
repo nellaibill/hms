@@ -44,12 +44,15 @@ public class SalesController : PharmacyControllerBase
         return CreatedFromResult(await _service.CreateAsync(request, User.GetUserId(), cancellationToken));
     }
 
-    /// <summary>Lists bills, newest first — by bill number, customer, phone or UHID.</summary>
+    /// <summary>Lists bills, newest first — by bill number, customer, phone or UHID. Open to
+    /// pharmacy and billing staff: Accounts and Finance → Pharmacy Accounts lists them (ADR-134).</summary>
     [Authorize]
-    [RequirePermission("pharmacy.view")]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] SaleListQuery query, CancellationToken cancellationToken)
-        => Paged(await _service.GetPagedAsync(query, cancellationToken));
+    {
+        if (!User.HasPermission("pharmacy.view") && !User.HasPermission("finance-billing.view")) return Forbid();
+        return Paged(await _service.GetPagedAsync(query, cancellationToken));
+    }
 
     /// <summary>A patient's pharmacy bills with their lines, and the returns against them — the
     /// patient record's Billing and Timeline read this. Open to pharmacy and billing staff.</summary>
@@ -88,12 +91,15 @@ public class SalesController : PharmacyControllerBase
         return CreatedFromResult(await _service.CreateReturnAsync(id, request, User.GetUserId(), cancellationToken));
     }
 
-    /// <summary>Lists sale returns, newest first.</summary>
+    /// <summary>Lists sale returns, newest first. Open to pharmacy and billing staff, like the
+    /// bill list: Pharmacy Accounts shows the refunds (ADR-134).</summary>
     [Authorize]
-    [RequirePermission("pharmacy.view")]
     [HttpGet("returns")]
     public async Task<IActionResult> GetReturns([FromQuery] SaleReturnListQuery query, CancellationToken cancellationToken)
-        => Paged(await _service.GetReturnsPagedAsync(query, cancellationToken));
+    {
+        if (!User.HasPermission("pharmacy.view") && !User.HasPermission("finance-billing.view")) return Forbid();
+        return Paged(await _service.GetReturnsPagedAsync(query, cancellationToken));
+    }
 
     /// <summary>Gets one sale return with its lines.</summary>
     [Authorize]

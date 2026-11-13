@@ -1,7 +1,9 @@
 import { Loader2 } from 'lucide-react';
 import { Navigate, Outlet } from 'react-router-dom';
 import type { AccountsReport } from '@/features/branding/types';
-import { ALWAYS_VISIBLE_REPORT_PATH, useAccountsReportVisibility } from '../useAccountsReportVisibility';
+import { accountsPath } from '../accountsCategories';
+import { useAccountsReportVisibility } from '../useAccountsReportVisibility';
+import { useAccountsCategory } from '../useAccountsCategory';
 
 interface RequireAccountsReportRouteProps {
   report: AccountsReport;
@@ -10,13 +12,14 @@ interface RequireAccountsReportRouteProps {
 /**
  * Route guard for an Accounts & Finance report the Reports visibility setting can hide
  * (ADR-120). Outlet-based, like RequireFeatureRoute. A hidden report's URL (an old bookmark,
- * a pasted link) goes to OP Report, which always shows, rather than to a "not available"
- * message, because the tab bar no longer offers that report either. The reports are built in
- * the browser from the invoice list, so this guard is the whole boundary: there is no
- * per-report endpoint to lock.
+ * a pasted link) goes to its category's first tab (ADR-134), which always shows, rather than to
+ * a "not available" message, because the tab bar no longer offers that report either. The
+ * reports are built in the browser from the invoice list, so this guard is the whole boundary:
+ * there is no per-report endpoint to lock.
  */
 export function RequireAccountsReportRoute({ report }: RequireAccountsReportRouteProps) {
   const { isLoading, isVisible } = useAccountsReportVisibility();
+  const category = useAccountsCategory();
 
   if (isLoading) {
     return (
@@ -28,7 +31,7 @@ export function RequireAccountsReportRoute({ report }: RequireAccountsReportRout
   }
 
   if (!isVisible(report)) {
-    return <Navigate to={ALWAYS_VISIBLE_REPORT_PATH} replace />;
+    return <Navigate to={accountsPath(category.key)} replace />;
   }
 
   return <Outlet />;

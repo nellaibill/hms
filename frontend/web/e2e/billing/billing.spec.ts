@@ -10,14 +10,17 @@ const isInvoiceCreate = (r: { request(): { method(): string }; url(): string }) 
   r.request().method() === 'POST' && /\/api\/v1\/billing\/invoices$/.test(r.url());
 
 test.describe('Accounts and Finance', () => {
-  test('lands on Recent Patient Bills with the section tabs', async ({ page }) => {
+  test('lands on the category hub, and OP Accounts opens on Recent OP Bills with its tabs', async ({ page }) => {
     await page.goto('/finance/accounts');
     await expect(page.getByRole('heading', { level: 1, name: 'Accounts and Finance' })).toBeVisible();
+    await page.getByRole('main').getByRole('link', { name: /OP Accounts/ }).click();
+    await expect(page).toHaveURL(/\/finance\/accounts\/op$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'OP Accounts' })).toBeVisible();
     for (const { label } of ACCOUNTS_TABS) {
       await expect(page.getByRole('main').getByRole('link', { name: label, exact: true })).toBeVisible();
     }
     await expect(page.getByRole('link', { name: 'New Invoice' })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Recent Patient Bills' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Recent OP Bills' })).toBeVisible();
     for (const column of ['Invoice #', 'Patient Name', 'UHID', 'Consultant(s)', 'Payment']) {
       await expect(page.getByRole('columnheader', { name: column, exact: true })).toBeVisible();
     }
@@ -25,7 +28,7 @@ test.describe('Accounts and Finance', () => {
 
   for (const { label, path, heading } of ACCOUNTS_TABS.slice(1)) {
     test(`${label} tab opens ${path}`, async ({ page }) => {
-      await page.goto('/finance/accounts');
+      await page.goto('/finance/accounts/op');
       await page.getByRole('main').getByRole('link', { name: label, exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
@@ -33,11 +36,11 @@ test.describe('Accounts and Finance', () => {
   }
 
   const reportSections = [
-    { path: '/finance/accounts/reports', section: /^Income/ },
-    { path: '/finance/accounts/reports/profit', section: /^Billed Services/ },
-    { path: '/finance/accounts/reports/laboratory', section: /^Billed Services/ },
-    { path: '/finance/accounts/reports/radiology', section: /^Billed Services/ },
-    { path: '/finance/accounts/reports/consultant', section: /^By Consultant/ },
+    { path: '/finance/accounts/op/reports', section: /^Income/ },
+    { path: '/finance/accounts/op/reports/profit', section: /^Billed Services/ },
+    { path: '/finance/accounts/lab/reports/laboratory', section: /^Billed Services/ },
+    { path: '/finance/accounts/lab/reports/radiology', section: /^Billed Services/ },
+    { path: '/finance/accounts/op/reports/consultant', section: /^By Consultant/ },
   ];
   for (const { path, section } of reportSections) {
     test(`${path} shows the default-range report without a search`, async ({ page }) => {
@@ -50,7 +53,7 @@ test.describe('Accounts and Finance', () => {
   }
 
   test('All Invoices search and payment-status filter narrow the list', async ({ page }) => {
-    await page.goto('/finance/accounts/invoices');
+    await page.goto('/finance/accounts/op/invoices');
     const rows = page.getByRole('table').getByRole('rowgroup').nth(1).getByRole('row');
     await expect(rows.first()).toBeVisible();
 
@@ -159,12 +162,12 @@ test.describe('OPD Billing Entry — end to end', () => {
     });
 
     await test.step('the invoice is in Recent Bills and All Invoices, and its detail page cannot be voided once paid', async () => {
-      await page.goto('/finance/accounts');
+      await page.goto('/finance/accounts/op');
       const recent = page.getByRole('row').filter({ hasText: invoiceNumber });
       await expect(recent).toContainText(patient.uhid);
       await expect(recent).toContainText(money('Paid', charge));
 
-      await page.goto('/finance/accounts/invoices');
+      await page.goto('/finance/accounts/op/invoices');
       await page.getByRole('main').getByRole('searchbox', { name: 'Search' }).fill(invoiceNumber);
       const row = page.getByRole('row').filter({ hasText: invoiceNumber });
       await expect(row).toHaveCount(1);
@@ -179,7 +182,7 @@ test.describe('OPD Billing Entry — end to end', () => {
     });
 
     await test.step('the Consultant report attributes the revenue to the consultant', async () => {
-      await page.goto('/finance/accounts/reports/consultant');
+      await page.goto('/finance/accounts/op/reports/consultant');
       await expect(page.getByRole('main').getByText(billableConsultant.consultant).first()).toBeVisible();
     });
 

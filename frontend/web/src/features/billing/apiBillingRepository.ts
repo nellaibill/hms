@@ -1,4 +1,5 @@
 import type {
+  AccountCategory,
   CreateInvoicePaymentRequest,
   CreateInvoiceRequest as CreateInvoiceRequestDto,
   InvoiceDiscountLineRequest,
@@ -26,6 +27,8 @@ export interface BillingListQuery {
   sort?: string;
   search?: string;
   paymentStatus?: PaymentStatus;
+  /** Only this Accounts and Finance category's bills (ADR-134). */
+  category?: AccountCategory;
 }
 
 export interface PagedBillings {
@@ -114,23 +117,18 @@ function toCreateRequest(patientId: string, visitId: string, values: BillingForm
   };
 }
 
-function toListQueryDto(query: { page?: number; pageSize?: number; sort?: string; search?: string; paymentStatus?: PaymentStatus }): InvoiceListQueryDto {
+function toListQueryDto(query: BillingListQuery): InvoiceListQueryDto {
   return {
     page: query.page,
     pageSize: query.pageSize,
     sort: query.sort,
     search: query.search,
     paymentStatus: query.paymentStatus,
+    category: query.category,
   };
 }
 
-export async function listInvoices(query: {
-  page?: number;
-  pageSize?: number;
-  sort?: string;
-  search?: string;
-  paymentStatus?: PaymentStatus;
-}): Promise<PagedBillings> {
+export async function listInvoices(query: BillingListQuery): Promise<PagedBillings> {
   const paged = await billingApi.getInvoices(toListQueryDto(query));
   return { items: paged.items.map(fromDto), meta: paged.meta };
 }
@@ -159,8 +157,8 @@ function fromRecentBillDto(dto: RecentPatientBillDto): RecentBill {
 
 /** The latest `count` bills across every patient — fetched pre-limited from the server, not
  * paged/filtered client-side. Backs the Patient Billing page's "Recent Patient Bills" table. */
-export async function getRecentBills(count = 10): Promise<RecentBill[]> {
-  const dtos = await billingApi.getRecentBills(count);
+export async function getRecentBills(count = 10, category?: AccountCategory): Promise<RecentBill[]> {
+  const dtos = await billingApi.getRecentBills(count, category);
   return dtos.map(fromRecentBillDto);
 }
 

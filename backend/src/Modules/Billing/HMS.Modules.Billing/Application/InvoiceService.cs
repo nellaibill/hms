@@ -41,8 +41,9 @@ public interface IInvoiceService
     /// <summary>The latest <paramref name="count"/> invoices (any patient), each composed with
     /// its patient/visit context — backs the Patient Billing page's "Recent Patient Bills"
     /// table. See RecentPatientBillResponse for what's included and how missing patient/visit
-    /// data is handled.</summary>
-    Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, CancellationToken cancellationToken);
+    /// data is handled. With <paramref name="category"/>, only that Accounts and Finance
+    /// category's bills (ADR-134).</summary>
+    Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, AccountCategory? category, CancellationToken cancellationToken);
 
     Task<Result<InvoiceResponse>> RecordPaymentAsync(Guid invoiceId, Guid itemId, RecordPaymentRequest request, Guid? actorId, CancellationToken cancellationToken);
 
@@ -348,12 +349,17 @@ internal class InvoiceService : IInvoiceService
 
         // A bill made for a visit must be on one of this patient's own visits (ADR-117). A bill
         // with no registered visit carries the patient's own id instead (CreateInvoiceRequest.VisitId).
-        if (request.VisitId != request.PatientId
-            && await _patientVisitService.GetByIdAsync(request.PatientId, request.VisitId, cancellationToken) is not { IsSuccess: true })
+        VisitType? visitType = null;
+        if (request.VisitId != request.PatientId)
         {
-            return Result<InvoiceResponse>.Failure(
-                BillingErrorCodes.InvalidVisit,
-                $"Visit '{request.VisitId}' isn't one of this patient's visits. Reload the patient and choose the visit again.");
+            if (await _patientVisitService.GetByIdAsync(request.PatientId, request.VisitId, cancellationToken) is not { IsSuccess: true, Value: { } visit })
+            {
+                return Result<InvoiceResponse>.Failure(
+                    BillingErrorCodes.InvalidVisit,
+                    $"Visit '{request.VisitId}' isn't one of this patient's visits. Reload the patient and choose the visit again.");
+            }
+
+            visitType = visit.VisitType;
         }
 
         var chargeCheck = await ValidateConsultationChargesAsync(request.Items, cancellationToken);
@@ -409,7 +415,8 @@ internal class InvoiceService : IInvoiceService
             request.PatientName,
             request.PatientUhid,
             itemSpecs,
-            actorId);
+            actorId,
+            AccountCategoryRules.EncounterTypeFor(visitType, itemSpecs.Select(spec => spec.BillingType)));
 
         await _repository.AddAsync(invoice, cancellationToken);
 
@@ -559,10 +566,14 @@ internal class InvoiceService : IInvoiceService
     {
         var (items, totalCount) = await _repository.GetPagedAsync(query, cancellationToken);
 
-        // One lookup for the whole page (ADR-121), not one per bill like GetRecentAsync's.
-        var visitTypes = await _patientVisitService.GetVisitTypesAsync(items.Select(i => i.VisitId).Distinct().ToList(), cancellationToken);
+        // The bill's saved encounter type (ADR-134) first. A bill saved without one falls back to
+        // its visit's type — one lookup for the whole page (ADR-121), not one per bill.
+        var unknownVisitIds = items.Where(i => i.EncounterType is null).Select(i => i.VisitId).Distinct().ToList();
+        var visitTypes = unknownVisitIds.Count == 0
+            ? new Dictionary<Guid, VisitType>()
+            : await _patientVisitService.GetVisitTypesAsync(unknownVisitIds, cancellationToken);
         var responses = items
-            .Select(i => i.ToResponse() with { EncounterType = visitTypes.TryGetValue(i.VisitId, out var visitType) ? visitType : null })
+            .Select(i => i.ToResponse() with { EncounterType = i.EncounterType ?? (visitTypes.TryGetValue(i.VisitId, out var visitType) ? visitType : null) })
             .ToList();
         return new PagedResult<InvoiceResponse>(responses, query.Page, query.PageSize, totalCount);
     }
@@ -578,11 +589,11 @@ internal class InvoiceService : IInvoiceService
         return Result<IReadOnlyList<InvoiceResponse>>.Success(invoices.Select(i => i.ToResponse()).ToList());
     }
 
-    public async Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, AccountCategory? category, CancellationToken cancellationToken)
     {
         var boundedCount = Math.Clamp(count, 1, 50);
         var (invoices, _) = await _repository.GetPagedAsync(
-            new InvoiceListQuery { Page = 1, PageSize = boundedCount, Sort = "-createdAt" },
+            new InvoiceListQuery { Page = 1, PageSize = boundedCount, Sort = "-createdAt", Category = category },
             cancellationToken);
 
         // Each invoice's patient/visit context is fetched via the other module's public
@@ -850,7 +861,11 @@ internal class InvoiceService : IInvoiceService
             rows.Add((payment, invoice, line));
         }
 
-        var visitTypes = await _patientVisitService.GetVisitTypesAsync(rows.Select(r => r.Invoice.VisitId).Distinct().ToList(), cancellationToken);
+        // Saved encounter type first (ADR-134), the visit's current type for bills saved without one.
+        var unknownVisitIds = rows.Where(r => r.Invoice.EncounterType is null).Select(r => r.Invoice.VisitId).Distinct().ToList();
+        var visitTypes = unknownVisitIds.Count == 0
+            ? new Dictionary<Guid, VisitType>()
+            : await _patientVisitService.GetVisitTypesAsync(unknownVisitIds, cancellationToken);
 
         var responses = rows
             .Select(r => new CollectionPaymentResponse
@@ -865,7 +880,7 @@ internal class InvoiceService : IInvoiceService
                 PatientId = r.Invoice.PatientId,
                 PatientName = r.Invoice.PatientName,
                 PatientUhid = r.Invoice.PatientUhid,
-                EncounterType = visitTypes.TryGetValue(r.Invoice.VisitId, out var visitType) ? visitType : null,
+                EncounterType = r.Invoice.EncounterType ?? (visitTypes.TryGetValue(r.Invoice.VisitId, out var visitType) ? visitType : null),
                 LineItem = r.Line.ToResponse(),
             })
             .ToList();

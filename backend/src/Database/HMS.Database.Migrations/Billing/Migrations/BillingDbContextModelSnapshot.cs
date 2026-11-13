@@ -52,6 +52,11 @@ namespace HMS.Database.Migrations.Billing.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("discount_status");
 
+                    b.Property<string>("EncounterType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("encounter_type");
+
                     b.Property<decimal>("GrossAmount")
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("gross_amount");
@@ -140,6 +145,9 @@ namespace HMS.Database.Migrations.Billing.Migrations
 
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_invoices_created_at");
+
+                    b.HasIndex("EncounterType")
+                        .HasDatabaseName("ix_invoices_encounter_type");
 
                     b.HasIndex("InvoiceNumber")
                         .IsUnique()

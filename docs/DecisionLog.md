@@ -37,6 +37,39 @@ _To be documented._
 
 ## Decisions
 
+### ADR-134: Accounts and Finance is split into OP, IP, Pharmacy and Lab accounts
+**Date:** 2026-11-13
+**Status:** Accepted (changes the landing page and URLs from ADR-120/125's tab bar)
+
+**Context**
+Accounts and Finance had one long tab bar mixing every bill and report. The client asked for the landing page to offer OP Accounts, IP Accounts, Pharmacy Accounts and Lab Accounts as large buttons, like Reception & Registration, with each category keeping its own tabs (Recent Bills, All Invoices and its reports). A bill didn't store whether it was OP or IP: the encounter type came from the visit in the Patients module, looked up after paging (ADR-121). That was too late to filter a paged list by it. IPD final bills have no visit of their own, so their type wasn't known at all.
+
+**Decision**
+- **Landing hub.** `/finance/accounts` shows one card per category, using a shared `HubCard` (now also used by Reception & Registration). IP Accounts needs the `ipd` module and Pharmacy Accounts needs `pharmacy`. OP Accounts and Lab Accounts always show, as their reports did before. OP's card shows the pending revert and discount approvals.
+- **Tabs per category** (`features/reports/accountsCategories.ts`, which also generates the routes):
+  - **OP:** Recent Bills, All Invoices, Revert Requests, Discount Requests, Income & Expense, OP Report, Collection Summary, Consultant.
+  - **IP:** Recent Bills, All Invoices, Collection Summary.
+  - **Pharmacy:** Pharmacy Bills, which is new (bills, balance due and returns, read-only), and Pharmacy Report.
+  - **Lab:** Recent Bills, All Invoices, Laboratory, Radiology.
+  - Reports Visibility (ADR-120) still hides report tabs. A hidden report's URL now goes to its category's first tab instead of OP Report.
+- **New URLs.** `/finance/accounts/{op|ip|pharmacy|lab}/…`. Every earlier Accounts URL redirects to its new home (Lab and Radiology to Lab, Pharmacy to Pharmacy, the rest to OP). `/finance/accounts/new` and `/finance/accounts/:id` are unchanged.
+- **The bill stores its encounter type.**
+  - New column `billing.invoices.encounter_type` (migration `AddInvoiceEncounterType`, indexed). `InvoiceService.CreateAsync` sets it from the visit, or IP for a bill with an `InpatientCharge` line and no visit (the IPD final bill).
+  - The migration fills in existing bills from `patients.patient_visits`, then sets IPD final bills to IP.
+  - Reads use the stored value first and fall back to the visit lookup only for bills without one.
+- **Category filter.** `GET invoices` and `GET invoices/recent` take `category=Op|Ip|Lab` (`AccountCategoryRules`):
+  - **IP:** IP, Day Care and Observation (the visits that get an IP No, ADR-104).
+  - **OP:** OP, Emergency and bills with no encounter type.
+  - **Lab:** any bill with a Laboratory line, so an OP bill with a lab test is listed under both OP and Lab.
+- **Collection Summary per category.** OP Accounts keeps ADR-125's OP-visits-only rule, title and remembered filters. IP Accounts counts IP, Day Care and Observation visits, including final-bill payments.
+- **Pharmacy lists open to billing staff.** `GET pharmacy/sales` and `GET pharmacy/sales/returns` now accept `finance-billing.view` as well as `pharmacy.view`, as `sales/patient/{id}` already did. A single bill (`GET pharmacy/sales/{id}`) and its page stay pharmacy-only, so in Accounts a bill row opens only for users with pharmacy access.
+
+**Consequences**
+- Billing migration: run Migrate on staging after deploying.
+- Emergency bills are listed under OP, but OP Report and the OP Collection Summary still count OP visits only (ADR-121/125).
+- Lab tests done during an IP stay are folded into the final bill's `InpatientCharge` lines (ADR-066), so they show under IP but not under Lab.
+- There is no IP advances list yet. It needs an endpoint that lists advances across admissions.
+
 ### ADR-133: Offline-first patient sync from a local server to the cloud, with an outbox and Hangfire
 **Date:** 2026-11-11
 **Status:** Accepted

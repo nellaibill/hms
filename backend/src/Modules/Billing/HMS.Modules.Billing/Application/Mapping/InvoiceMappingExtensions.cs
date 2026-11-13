@@ -42,6 +42,7 @@ internal static class InvoiceMappingExtensions
         VoidReason = invoice.VoidReason,
         IsReverted = invoice.IsReverted,
         DiscountStatus = invoice.DiscountStatus,
+        EncounterType = invoice.EncounterType,
     };
 
     public static InvoiceDiscountRequestResponse ToResponse(this InvoiceDiscountRequest request) => new()

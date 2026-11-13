@@ -108,7 +108,7 @@ export interface InvoiceResponse {
    * consultation fee is paid, which is when an OP visit gets its number (ADR-103). */
   opNumber?: string | null;
   /** The visit's encounter type, so the OP Report can keep only OP visits' bills (ADR-121).
-   * Set on the paged invoice list only; null on every other read. */
+   * Saved on the bill when it is made (ADR-134; IP for an IPD final bill); null when unknown. */
   encounterType?: VisitType | null;
 }
 
@@ -130,6 +130,11 @@ export interface CollectionPaymentResponse {
   lineItem: InvoiceLineItemResponse;
 }
 
+/** Mirrors HMS.Modules.Billing.Contracts.AccountCategory — the Accounts and Finance category a
+ * bill is listed under (ADR-134). OP and IP split bills by encounter type; Lab is every bill with
+ * a Laboratory line. */
+export type AccountCategory = 'Op' | 'Ip' | 'Lab';
+
 /** Mirrors HMS.Modules.Billing.Contracts.InvoiceListQuery. */
 export interface InvoiceListQuery {
   page?: number;
@@ -137,6 +142,7 @@ export interface InvoiceListQuery {
   sort?: string;
   search?: string;
   paymentStatus?: InvoicePaymentStatus;
+  category?: AccountCategory;
 }
 
 /** Mirrors HMS.Modules.Billing.Contracts.RecentBillConsultationResponse. */

@@ -49,6 +49,11 @@ internal class InvoiceRepository : IInvoiceRepository
             invoices = invoices.Where(i => !i.IsVoided && (!i.Items.Any() || i.Items.Any(li => li.PaymentStatus != Contracts.PaymentStatus.Paid)));
         }
 
+        if (query.Category is { } category)
+        {
+            invoices = invoices.Where(AccountCategoryRules.Predicate(category));
+        }
+
         invoices = ApplySort(invoices, query.Sort);
 
         var totalCount = await invoices.CountAsync(cancellationToken);

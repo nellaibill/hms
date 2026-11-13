@@ -1,5 +1,6 @@
 import { API_ROUTES } from '../../constants';
 import type {
+  AccountCategory,
   ApproveInvoiceDiscountRequest,
   ApproveInvoiceRevertRequest,
   BillingDashboardSummary,
@@ -68,6 +69,7 @@ export class BillingApi {
         sort: query.sort,
         search: query.search,
         paymentStatus: query.paymentStatus,
+        category: query.category,
       },
     });
 
@@ -86,8 +88,9 @@ export class BillingApi {
     return response.data;
   }
 
-  async getRecentBills(count = 10): Promise<RecentPatientBill[]> {
-    const response = await this.client.get<RecentPatientBill[]>(API_ROUTES.billing.invoices.recent, { query: { count } });
+  /** The latest `count` bills, only `category`'s when given (ADR-134). */
+  async getRecentBills(count = 10, category?: AccountCategory): Promise<RecentPatientBill[]> {
+    const response = await this.client.get<RecentPatientBill[]>(API_ROUTES.billing.invoices.recent, { query: { count, category } });
     return response.data;
   }
 
