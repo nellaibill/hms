@@ -1,5 +1,6 @@
 using HMS.Modules.Billing.Contracts;
 using HMS.Shared.Kernel;
+using VisitType = HMS.Modules.Patients.Contracts.VisitType;
 
 namespace HMS.Modules.Billing.Domain;
 
@@ -37,6 +38,12 @@ internal class Invoice : Entity
     public Guid VisitId { get; private set; }
     public string PatientName { get; private set; } = null!;
     public string PatientUhid { get; private set; } = null!;
+
+    /// <summary>The encounter type of the visit this bill was raised for (OP/IP/Emergency/Day
+    /// Care/Observation), saved when the bill is made so Accounts and Finance can list OP and IP
+    /// bills apart (ADR-134). An IPD final bill has no visit of its own, so it is saved as IP.
+    /// Null when the bill has no visit and isn't an IPD final bill (counted under OP).</summary>
+    public VisitType? EncounterType { get; private set; }
 
     public decimal GrossAmount { get; private set; }
     public decimal TotalDiscount { get; private set; }
@@ -102,7 +109,8 @@ internal class Invoice : Entity
         string patientName,
         string patientUhid,
         IReadOnlyList<InvoiceLineItemSpec> items,
-        Guid? createdBy)
+        Guid? createdBy,
+        VisitType? encounterType = null)
     {
         Guard.AgainstNullOrWhiteSpace(invoiceNumber, nameof(invoiceNumber));
         Guard.AgainstNullOrWhiteSpace(patientName, nameof(patientName));
@@ -115,7 +123,10 @@ internal class Invoice : Entity
             visitId,
             patientName.Trim(),
             patientUhid.Trim(),
-            createdBy);
+            createdBy)
+        {
+            EncounterType = encounterType,
+        };
 
         foreach (var spec in items)
         {

@@ -40,6 +40,17 @@ public enum BillingType
     InpatientCharge,
 }
 
+/// <summary>The Accounts and Finance category a bill is listed under (ADR-134). OP and IP split
+/// bills by their visit's encounter type: IP holds IP, Day Care and Observation visits (the ones
+/// that get an IP No, ADR-104) plus IPD final bills; OP holds OP and Emergency visits and bills
+/// with no visit. Lab cuts across both: every bill with at least one Laboratory line.</summary>
+public enum AccountCategory
+{
+    Op,
+    Ip,
+    Lab,
+}
+
 /// <summary>Per-line-item status — an invoice's own overall status is derived (every item
 /// Paid) rather than stored, matching the frontend's getOverallPaymentStatus.</summary>
 public enum PaymentStatus

@@ -18,6 +18,7 @@ internal class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.VisitId).HasColumnName("visit_id").IsRequired();
         builder.Property(i => i.PatientName).HasColumnName("patient_name").HasMaxLength(200).IsRequired();
         builder.Property(i => i.PatientUhid).HasColumnName("patient_uhid").HasMaxLength(30).IsRequired();
+        builder.Property(i => i.EncounterType).HasColumnName("encounter_type").HasConversion<string>().HasMaxLength(20);
 
         builder.Property(i => i.GrossAmount).HasColumnName("gross_amount").HasColumnType("numeric(12,2)").IsRequired();
         builder.Property(i => i.TotalDiscount).HasColumnName("total_discount").HasColumnType("numeric(12,2)").IsRequired();
@@ -48,6 +49,7 @@ internal class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasIndex(i => i.InvoiceNumber).IsUnique().HasDatabaseName("ux_invoices_invoice_number").HasFilter("is_deleted = false");
         builder.HasIndex(i => i.PatientId).HasDatabaseName("ix_invoices_patient_id");
         builder.HasIndex(i => i.CreatedAt).HasDatabaseName("ix_invoices_created_at");
+        builder.HasIndex(i => i.EncounterType).HasDatabaseName("ix_invoices_encounter_type");
 
         // Invoice owns its line items via the private _items backing field (see
         // Domain/Invoice.cs's Create) — EF Core reads/writes through the field rather than

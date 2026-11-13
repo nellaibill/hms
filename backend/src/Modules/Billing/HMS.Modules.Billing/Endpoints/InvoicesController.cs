@@ -60,7 +60,7 @@ public class InvoicesController : ControllerBase
             : CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, Envelope(result.Value));
     }
 
-    /// <summary>Lists invoices with paging, search, sorting, and payment-status filtering — the Unified Invoice Ledger.</summary>
+    /// <summary>Lists invoices with paging, search, sorting, and payment-status and OP/IP/Lab category filtering — the Unified Invoice Ledger.</summary>
     [Authorize]
     [RequirePermission("finance-billing.view")]
     [HttpGet]
@@ -94,9 +94,9 @@ public class InvoicesController : ControllerBase
     [RequirePermission("finance-billing.view")]
     [HttpGet("recent")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<RecentPatientBillResponse>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetRecent([FromQuery] int count, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetRecent([FromQuery] int count, [FromQuery] AccountCategory? category, CancellationToken cancellationToken)
     {
-        var result = await _service.GetRecentAsync(count <= 0 ? 10 : count, cancellationToken);
+        var result = await _service.GetRecentAsync(count <= 0 ? 10 : count, category, cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
