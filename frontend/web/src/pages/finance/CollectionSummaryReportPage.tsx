@@ -23,7 +23,7 @@ import {
   getConsultantCollections,
   getDailyCollections,
   getHeadCollections,
-  onlyOpVisitPayments,
+  paymentsForEncounterTypes,
   ReportFilterBar,
   sumCollections,
   sumDailyCollections,
@@ -31,10 +31,9 @@ import {
   type CollectionSummaryData,
   type ExportFormatOption,
   type ReportSection,
+  useAccountsCategory,
 } from '@/features/reports';
 import { formatDateRangeLabel, formatReportDate } from '@/lib/reportDateRange';
-
-const REPORT_TITLE = 'Collection Summary';
 
 function methodLabel(method: string): string {
   return PAYMENT_METHOD_LABELS[method as PaymentMethod] ?? method;
@@ -85,15 +84,22 @@ function buildExportSections(data: CollectionSummaryData): ReportSection[] {
 }
 
 /**
- * Accounts & Finance → Collection Summary (ADR-125): money actually received on OP visits in the
- * chosen period, by the day it was taken. Each payment is split into the consultant's and the
+ * Accounts & Finance → Collection Summary (ADR-125): money actually received in the chosen
+ * period on the current Accounts category's visits (ADR-134) — OP visits under OP Accounts, IP,
+ * Day Care and Observation visits (discharge final bills included) under IP Accounts, by the day it was taken. Each payment is split into the consultant's and the
  * hospital's amount by the same rule OP Report uses (resolveLineCost). Three sections: day-wise
  * by head, per consultant, and per head with its consultants, ending in a grand total. The
  * filter bar (consultant, department, billing type, search) narrows all three, and a column or
  * section the filters make repetitive is left out (ADR-126).
  */
 export default function CollectionSummaryReportPage() {
-  const { range, filters, appliedRange, appliedFilters, setRange, setFilters, reset } = useReportFilters('collection');
+  const category = useAccountsCategory();
+  const isOp = category.key === 'op';
+  // OP keeps the report's original title and remembered filters, so its printouts don't change.
+  const reportTitle = isOp ? 'Collection Summary' : `${category.shortLabel} Collection Summary`;
+  const visitsLabel = isOp ? 'OP visits' : 'IP, day care and observation visits';
+  const encounterTypes = category.collectionEncounterTypes ?? ['OP'];
+  const { range, filters, appliedRange, appliedFilters, setRange, setFilters, reset } = useReportFilters(isOp ? 'collection' : `collection-${category.key}`);
   const { data: payments, isPending, isError } = useCollectionsQuery(appliedRange);
   const { data: brandingConfig } = useBrandingQuery();
   const hospitalName = brandingConfig?.hospitalName ?? branding.hospitalName;
@@ -109,9 +115,9 @@ export default function CollectionSummaryReportPage() {
   usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(
-    () => getCollectionRows(onlyOpVisitPayments(payments ?? [])),
+    () => getCollectionRows(paymentsForEncounterTypes(payments ?? [], encounterTypes)),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the cache data is a recompute trigger, see above
-    [payments, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices],
+    [payments, encounterTypes, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices],
   );
   const filteredRows = useMemo(() => filterProfitRows(rows, appliedFilters), [rows, appliedFilters]);
 
@@ -138,11 +144,11 @@ export default function CollectionSummaryReportPage() {
   const periodLine = [formatDateRangeLabel(appliedRange.from, appliedRange.to), ...filterSummary].join(' · ');
 
   async function handleExport(format: ExportFormatOption) {
-    const filenameBase = `collection-summary_${appliedRange.from}_to_${appliedRange.to}`;
+    const filenameBase = `${isOp ? '' : `${category.key}-`}collection-summary_${appliedRange.from}_to_${appliedRange.to}`;
     const sections = buildExportSections(data);
     if (format === 'csv') exportReportToCsv(`${filenameBase}.csv`, sections);
     else if (format === 'excel') await exportReportToExcel(`${filenameBase}.xlsx`, sections);
-    else exportReportToPdf(`${filenameBase}.pdf`, `${REPORT_TITLE} (${periodLine})`, sections);
+    else exportReportToPdf(`${filenameBase}.pdf`, `${reportTitle} (${periodLine})`, sections);
   }
 
   const summaryCards: [string, string, string?][] = [
@@ -156,8 +162,8 @@ export default function CollectionSummaryReportPage() {
     <div className="flex flex-1 flex-col">
       <PageBanner
         icon={Banknote}
-        title={REPORT_TITLE}
-        subtitle="Money received on OP visits — by day, consultant and head, with the consultant's and the hospital's amount."
+        title={reportTitle}
+        subtitle={`Money received on ${visitsLabel} — by day, consultant and head, with the consultant's and the hospital's amount.`}
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
       />
@@ -205,7 +211,7 @@ export default function CollectionSummaryReportPage() {
           ) : isError ? (
             <p className="text-sm text-destructive">Couldn't load payments for this period. Try again, or pick a shorter period (up to a year).</p>
           ) : filteredRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No money was received on OP visits for the current filters.</p>
+            <p className="text-sm text-muted-foreground">No money was received on {visitsLabel} for the current filters.</p>
           ) : (
             <CollectionSummarySections data={data} variant="screen" singleDay={singleDay} singleConsultant={singleConsultant} />
           )}
@@ -218,7 +224,7 @@ export default function CollectionSummaryReportPage() {
         <PrintPageStyle document="report" />
         <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-3 text-center">
           <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
-          <span className="text-sm font-semibold">{REPORT_TITLE}</span>
+          <span className="text-sm font-semibold">{reportTitle}</span>
         </div>
         <div className="mt-3 flex items-start justify-between gap-6 text-sm">
           <span>{periodLine}</span>

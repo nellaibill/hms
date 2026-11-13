@@ -5,6 +5,8 @@ import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { RequireFeatureRoute } from '../features/auth/RequireFeatureRoute';
 import { RequireAccountsReportRoute } from '../features/reports/components/RequireAccountsReportRoute';
+import { AccountsCategoryRoute } from '../features/reports/components/AccountsCategoryRoute';
+import { ACCOUNTS_CATEGORIES, accountsPath, LEGACY_ACCOUNTS_REDIRECTS, type AccountsTabId } from '../features/reports/accountsCategories';
 import { PlatformProtectedRoute } from '../features/platformAuth/PlatformProtectedRoute';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { getAllLeaves } from '../config/navigation';
@@ -45,7 +47,9 @@ const ProductsListPage = lazy(() => import('../pages/products/ProductsListPage')
 const ProductCreatePage = lazy(() => import('../pages/products/ProductCreatePage'));
 const ProductViewPage = lazy(() => import('../pages/products/ProductViewPage'));
 const ProductEditPage = lazy(() => import('../pages/products/ProductEditPage'));
+const AccountsHubPage = lazy(() => import('../pages/finance/AccountsHubPage'));
 const InvoiceLedgerPage = lazy(() => import('../pages/finance/InvoiceLedgerPage'));
+const PharmacyBillsPage = lazy(() => import('../pages/finance/PharmacyBillsPage'));
 const AllInvoicesPage = lazy(() => import('../pages/finance/AllInvoicesPage'));
 const RevertRequestsPage = lazy(() => import('../pages/finance/RevertRequestsPage'));
 const DiscountRequestsPage = lazy(() => import('../pages/finance/DiscountRequestsPage'));
@@ -390,36 +394,51 @@ const productRoutes = [
 // Finance & Billing — backed by the real HMS.Modules.Billing module (mock-data era is over;
 // this comment used to say otherwise). Route-gated via RequirePermissionRoute (mirrors
 // hrRoutes/ipdRoutes' reasoning below), using the nav leaf's own permission ('finance-billing',
-// config/navigation.ts). Includes the landing ledger ('finance/accounts') itself, unlike
+// config/navigation.ts). Includes the landing hub ('finance/accounts') itself, unlike
 // hrRoutes/ipdRoutes — that path used to be wired through specialPages/moduleRoutes with no
 // guard at all, so it's defined here instead (see routeGatedLeafPaths above) rather than left
 // exposed the way HR's/IPD's own hub pages still are.
-const financeRoutes = [
+//
+// The landing page is a hub of Accounts categories (ADR-134) — OP, IP, Pharmacy and Lab — and
+// every tab of every category is its own route, built from accountsCategories.ts so the tab
+// bars and the routes can't drift apart. A category behind a tenant module (IP, Pharmacy) is
+// also wrapped in RequireFeatureRoute. A report Settings → Reports Visibility can hide (ADR-120)
+// is wrapped in RequireAccountsReportRoute; a hidden one's URL lands on its category's first
+// tab. The URLs from before the categories redirect to their new homes.
+const accountsTabPages: Record<AccountsTabId, React.ReactNode> = {
+  recentBills: <InvoiceLedgerPage />,
+  allInvoices: <AllInvoicesPage />,
+  revertRequests: <RevertRequestsPage />,
+  discountRequests: <DiscountRequestsPage />,
+  incomeExpense: <IncomeExpenseReportPage />,
+  opReport: <ProfitReportPage />,
+  collectionSummary: <CollectionSummaryReportPage />,
+  consultant: <ConsultantReportPage />,
+  pharmacyBills: <PharmacyBillsPage />,
+  pharmacyReport: <PharmacyFinanceReportPage />,
+  laboratory: <LaboratoryReportPage />,
+  radiology: <RadiologyReportPage />,
+};
+
+const accountsCategoryRoutes: RouteObject[] = ACCOUNTS_CATEGORIES.map((category) => {
+  const categoryRoute: RouteObject = {
+    element: <AccountsCategoryRoute category={category.key} />,
+    children: category.tabs.map((tab): RouteObject => {
+      const route: RouteObject = { path: accountsPath(category.key, tab.path).slice(1), element: withSuspense(accountsTabPages[tab.id]) };
+      return tab.report ? { element: <RequireAccountsReportRoute report={tab.report} />, children: [route] } : route;
+    }),
+  };
+  return category.feature ? { element: <RequireFeatureRoute feature={category.feature} />, children: [categoryRoute] } : categoryRoute;
+});
+
+const financeRoutes: RouteObject[] = [
   {
     element: <RequirePermissionRoute permission="finance-billing.view" />,
     children: [
-      { path: 'finance/accounts', element: withSuspense(<InvoiceLedgerPage />) },
-      { path: 'finance/accounts/invoices', element: withSuspense(<AllInvoicesPage />) },
-      { path: 'finance/accounts/revert-requests', element: withSuspense(<RevertRequestsPage />) },
-      { path: 'finance/accounts/discount-requests', element: withSuspense(<DiscountRequestsPage />) },
+      { path: 'finance/accounts', element: withSuspense(<AccountsHubPage />) },
+      ...accountsCategoryRoutes,
+      ...LEGACY_ACCOUNTS_REDIRECTS.map(([from, to]) => ({ path: from.slice(1), element: <Navigate to={to} replace /> })),
       { path: 'finance/accounts/new', element: withSuspense(<InvoiceCreatePage />) },
-      // OP Report always shows; every other report only once Settings → Reports Visibility
-      // turns it on (ADR-120) — a hidden one's URL lands on OP Report.
-      { path: 'finance/accounts/reports/profit', element: withSuspense(<ProfitReportPage />) },
-      // Collection Summary (ADR-125) always shows, like OP Report.
-      { path: 'finance/accounts/reports/collection', element: withSuspense(<CollectionSummaryReportPage />) },
-      ...(
-        [
-          ['incomeExpense', 'finance/accounts/reports', <IncomeExpenseReportPage />],
-          ['laboratory', 'finance/accounts/reports/laboratory', <LaboratoryReportPage />],
-          ['radiology', 'finance/accounts/reports/radiology', <RadiologyReportPage />],
-          ['consultant', 'finance/accounts/reports/consultant', <ConsultantReportPage />],
-          ['pharmacy', 'finance/accounts/reports/pharmacy', <PharmacyFinanceReportPage />],
-        ] as const
-      ).map(([report, path, page]) => ({
-        element: <RequireAccountsReportRoute report={report} />,
-        children: [{ path, element: withSuspense(page) }],
-      })),
       { path: 'finance/accounts/:id', element: withSuspense(<InvoiceDetailPage />) },
     ],
   },

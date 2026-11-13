@@ -1,6 +1,5 @@
-import { ArrowRight, ClipboardList, CloudUpload, UserPlus, UserSearch, Wallet } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ClipboardList, CloudUpload, UserPlus, UserSearch, Wallet } from 'lucide-react';
+import { HubCard } from '@/components/HubCard';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
 import { RequirePermission } from '@/features/auth/RequirePermission';
@@ -46,9 +45,7 @@ export default function PatientRegistrationHubPage() {
   const { hasPermission } = useAuth();
   const visibleSections = sections.filter((section) => hasPermission(section.permission));
   const showBilling = hasPermission(billingSection.permission);
-  const BillingIcon = billingSection.icon;
   const showBulkImport = hasPermission(bulkImportSection.permission);
-  const BulkImportIcon = bulkImportSection.icon;
   return (
     <RequirePermission permission="patient-management.view">
     <div className="flex flex-1 flex-col">
@@ -72,61 +69,24 @@ export default function PatientRegistrationHubPage() {
               : 'grid grid-cols-1'
           }
         >
-          {visibleSections.map((section) => {
-            const Icon = section.icon;
-            return (
-              <div key={section.title} className="flex items-center justify-center px-0 py-0 sm:px-10">
-                <Link to={section.path} className="block w-full max-w-sm sm:max-w-md">
-                  <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
-                    <CardHeader className="p-7 sm:p-8">
-                      <div className="flex items-center justify-between">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                          <Icon className="h-5 w-5" />
-                        </span>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <CardTitle className="text-base">{section.title}</CardTitle>
-                      <CardDescription>{section.description}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                </Link>
-              </div>
-            );
-          })}
+          {visibleSections.map((section) => (
+            <div key={section.title} className="flex items-center justify-center px-0 py-0 sm:px-10">
+              <HubCard to={section.path} title={section.title} description={section.description} icon={section.icon} />
+            </div>
+          ))}
         </div>
 
         {showBilling && (
-          <Link to={billingSection.path} className="block w-full max-w-sm sm:max-w-md">
-            <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
-              <CardHeader className="p-7 sm:p-8">
-                <div className="flex items-center justify-between">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <BillingIcon className="h-5 w-5" />
-                  </span>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <CardTitle className="text-base">{billingSection.title}</CardTitle>
-                <CardDescription>{billingSection.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
+          <HubCard to={billingSection.path} title={billingSection.title} description={billingSection.description} icon={billingSection.icon} />
         )}
 
         {showBulkImport && (
-          <Link to={bulkImportSection.path} className="block w-full max-w-sm sm:max-w-md">
-            <Card className="transition-all hover:border-primary/40 hover:bg-accent/40 hover:shadow-soft-lg">
-              <CardHeader className="p-7 sm:p-8">
-                <div className="flex items-center justify-between">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <BulkImportIcon className="h-5 w-5" />
-                  </span>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <CardTitle className="text-base">{bulkImportSection.title}</CardTitle>
-                <CardDescription>{bulkImportSection.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
+          <HubCard
+            to={bulkImportSection.path}
+            title={bulkImportSection.title}
+            description={bulkImportSection.description}
+            icon={bulkImportSection.icon}
+          />
         )}
       </div>
     </div>

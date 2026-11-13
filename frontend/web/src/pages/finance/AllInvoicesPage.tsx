@@ -1,22 +1,22 @@
-import { Loader2, Plus, Wallet } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
-import { AccountsNavTabs } from '@/features/reports';
+import { ACCOUNTS_HUB_PATH, AccountsNavTabs, useAccountsCategory } from '@/features/reports';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { InvoiceListToolbar, InvoiceLedgerTable, Pagination, useBillingsQuery } from '../../features/billing';
 import type { PaymentStatus } from '../../features/billing';
 
 const RESULTS_PAGE_SIZE = 20;
 
-/** The "All Invoices" tab of the Accounts & Finance section — the full searchable/paginated
- * ledger, split out of what used to be InvoiceLedgerPage's second half (see that file's own
- * comment on why the two tabs became separate pages/routes rather than client-only tab state). */
+/** The "All Invoices" tab of the OP, IP and Lab Accounts categories — the category's full
+ * searchable/paginated ledger, filtered by category on the server (ADR-134). */
 export default function AllInvoicesPage() {
   const { hasPermission } = useAuth();
+  const category = useAccountsCategory();
   const [search, setSearch] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | undefined>(undefined);
   const [page, setPage] = useState(1);
@@ -30,6 +30,7 @@ export default function AllInvoicesPage() {
     sort,
     search: debouncedSearch || undefined,
     paymentStatus,
+    category: category.invoiceCategory,
   });
 
   function handleSearchChange(value: string) {
@@ -50,17 +51,17 @@ export default function AllInvoicesPage() {
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner
-        icon={Wallet}
-        title="Accounts and Finance"
-        subtitle="Unified invoice ledger — every OP, Radiology, Laboratory, and Procedure bill in one place."
-        backTo="/finance/accounts"
+        icon={category.icon}
+        title={category.label}
+        subtitle={category.description}
+        backTo={ACCOUNTS_HUB_PATH}
         backLabel="Back to Accounts and Finance"
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <AccountsNavTabs />
-          {hasPermission('finance-billing.create') && (
+          {category.canCreateInvoice && hasPermission('finance-billing.create') && (
             <Button asChild className="gap-1.5">
               <Link to="/finance/accounts/new">
                 <Plus className="h-4 w-4" />
@@ -93,9 +94,9 @@ export default function AllInvoicesPage() {
         {!isPending && !isError && data && data.items.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-              <p className="text-sm font-medium text-foreground">No invoices found</p>
+              <p className="text-sm font-medium text-foreground">No {category.shortLabel} invoices found</p>
               <p className="text-sm text-muted-foreground">
-                {debouncedSearch || paymentStatus ? 'Try a different search or filter.' : 'Invoices created at patient registration will appear here.'}
+                {debouncedSearch || paymentStatus ? 'Try a different search or filter.' : `${category.shortLabel} bills will appear here once they're raised.`}
               </p>
             </CardContent>
           </Card>
