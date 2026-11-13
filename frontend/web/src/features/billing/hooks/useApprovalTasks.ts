@@ -77,7 +77,7 @@ export function useApprovalTasks() {
       key: 'reverts',
       label: 'Bill revert requests',
       total: reverts.data.meta.totalCount,
-      viewAllTo: '/finance/accounts/revert-requests',
+      viewAllTo: '/finance/accounts/op/revert-requests',
       tasks: reverts.data.items.map((request) => ({
         id: `revert-${request.id}`,
         title: `Revert ${request.invoiceNumber} — ${request.patientName}`,
@@ -93,7 +93,7 @@ export function useApprovalTasks() {
       key: 'discounts',
       label: 'Discount requests',
       total: discounts.data.meta.totalCount,
-      viewAllTo: '/finance/accounts/discount-requests',
+      viewAllTo: '/finance/accounts/op/discount-requests',
       tasks: discounts.data.items.map((request) => ({
         id: `discount-${request.id}`,
         title: `Discount ${formatCurrency(request.totalDiscount)} on ${request.invoiceNumber} — ${request.patientName}`,

@@ -160,13 +160,14 @@ public record InvoiceResponse
     public string? OpNumber { get; init; }
 
     /// <summary>The visit's encounter type (OP/IP/Emergency/Day Care/Observation), so the OP
-    /// Report can keep only OP visits' bills (ADR-121). Set on the paged list
-    /// (<c>GET invoices</c>) only; null on every other read, and when the visit can't be found.</summary>
+    /// Report can keep only OP visits' bills (ADR-121). Saved on the bill when it is made
+    /// (ADR-134; IP for an IPD final bill). On the paged list (<c>GET invoices</c>) a bill saved
+    /// without one falls back to its visit's current type. Null when neither is known.</summary>
     public PatientsContracts.VisitType? EncounterType { get; init; }
 }
 
-/// <summary>Standard pagination/sort/search shape (docs/ApiStandards.md §6), plus the one
-/// domain-specific filter the Ledger's toolbar offers.</summary>
+/// <summary>Standard pagination/sort/search shape (docs/ApiStandards.md §6), plus the
+/// domain-specific filters the Ledger offers.</summary>
 public record InvoiceListQuery
 {
     public int Page { get; init; } = 1;
@@ -174,6 +175,9 @@ public record InvoiceListQuery
     public string? Sort { get; init; }
     public string? Search { get; init; }
     public PaymentStatus? PaymentStatus { get; init; }
+
+    /// <summary>Only bills in this Accounts and Finance category (ADR-134); every bill when null.</summary>
+    public AccountCategory? Category { get; init; }
 }
 
 /// <summary>One department/consultant pairing on the visit behind a recent bill — mirrors

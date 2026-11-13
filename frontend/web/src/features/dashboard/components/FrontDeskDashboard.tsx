@@ -394,14 +394,14 @@ export function FrontDeskDashboard() {
                   label: 'Discount requests',
                   hint: 'Bills on hold until decided',
                   count: approvals.data?.discounts,
-                  to: '/finance/accounts/discount-requests',
+                  to: '/finance/accounts/op/discount-requests',
                 },
                 {
                   icon: RotateCcw,
                   label: 'Revert requests',
                   hint: 'Bills waiting to be reverted',
                   count: approvals.data?.reverts,
-                  to: '/finance/accounts/revert-requests',
+                  to: '/finance/accounts/op/revert-requests',
                 },
               ].map((entry) => (
                 <Link

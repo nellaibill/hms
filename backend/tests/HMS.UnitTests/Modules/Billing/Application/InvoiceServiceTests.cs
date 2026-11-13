@@ -792,6 +792,83 @@ public class InvoiceServiceTests
         await _patientVisitService.DidNotReceiveWithAnyArgs().GetByIdAsync(default, default, default);
     }
 
+    // ADR-134: the bill keeps its visit's encounter type so Accounts can list OP and IP apart.
+    [Fact]
+    public async Task CreateAsync_SavesTheVisitsEncounterTypeOnTheBill()
+    {
+        Invoice? saved = null;
+        await _repository.AddAsync(Arg.Do<Invoice>(i => saved = i), Arg.Any<CancellationToken>());
+
+        var result = await _sut.CreateAsync(ValidRequest(), actorId: null, CancellationToken.None);
+
+        result.Value!.EncounterType.Should().Be(VisitType.OP);
+        saved!.EncounterType.Should().Be(VisitType.OP);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ForAnIpdFinalBillWithNoVisit_SavesItAsIp()
+    {
+        var request = ValidRequest() with
+        {
+            VisitId = _patientId,
+            Items = [new CreateInvoiceLineItemRequest { BillingType = BillingType.InpatientCharge, ServiceId = "BedCharge: General ward", Quantity = 1, UnitPrice = 1500m }],
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.EncounterType.Should().Be(VisitType.IP);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ForACounterBillWithNoVisit_SavesNoEncounterType()
+    {
+        var result = await _sut.CreateAsync(ValidRequest() with { VisitId = _patientId }, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.EncounterType.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_UsesTheSavedEncounterTypeAndLooksUpOnlyBillsSavedWithoutOne()
+    {
+        var savedVisitId = Guid.NewGuid();
+        var legacyVisitId = Guid.NewGuid();
+        var savedBill = Invoice.Create(
+            "INV-2026-000030", _patientId, savedVisitId, "Aravind Nadar", "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.InpatientCharge, null, null, "BedCharge", null, 1, 1500m, 0m, false, null)],
+            createdBy: null,
+            VisitType.IP);
+        var legacyBill = Invoice.Create(
+            "INV-2026-000031", _patientId, legacyVisitId, "Aravind Nadar", "NH20260001",
+            [new InvoiceLineItemSpec(BillingType.Consultation, "cardiology", "dr-revathi", null, null, 1, 720m, 0m, false, null)],
+            createdBy: null);
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice> { savedBill, legacyBill }, 2));
+        _patientVisitService.GetVisitTypesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, VisitType> { [legacyVisitId] = VisitType.OP });
+
+        var page = await _sut.GetPagedAsync(new InvoiceListQuery(), CancellationToken.None);
+
+        page.Items.Select(i => i.EncounterType).Should().Equal(VisitType.IP, VisitType.OP);
+        await _patientVisitService.Received(1).GetVisitTypesAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(legacyVisitId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_WithACategory_AsksTheRepositoryForThatCategoryOnly()
+    {
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice>(), 0));
+
+        await _sut.GetRecentAsync(10, AccountCategory.Ip, CancellationToken.None);
+
+        await _repository.Received(1).GetPagedAsync(
+            Arg.Is<InvoiceListQuery>(q => q.Category == AccountCategory.Ip && q.PageSize == 10 && q.Sort == "-createdAt"),
+            Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task GetRecentAsync_ComposesPatientAndVisitContextIncludingMultipleConsultants()
     {
@@ -824,7 +901,7 @@ public class InvoiceServiceTests
                 ],
             }));
 
-        var result = await _sut.GetRecentAsync(10, CancellationToken.None);
+        var result = await _sut.GetRecentAsync(10, null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         var row = result.Value!.Single();
@@ -860,7 +937,7 @@ public class InvoiceServiceTests
         _patientVisitService.GetByIdAsync(_patientId, invoice.VisitId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientVisitResponse>.Failure("VISIT.NOT_FOUND", "not found"));
 
-        var result = await _sut.GetRecentAsync(10, CancellationToken.None);
+        var result = await _sut.GetRecentAsync(10, null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         var row = result.Value!.Single();
@@ -888,7 +965,7 @@ public class InvoiceServiceTests
         _patientVisitService.GetByIdAsync(_patientId, invoice.VisitId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientVisitResponse>.Failure("VISIT.NOT_FOUND", "not found"));
 
-        var result = await _sut.GetRecentAsync(10, CancellationToken.None);
+        var result = await _sut.GetRecentAsync(10, null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         var row = result.Value!.Single();
@@ -902,7 +979,7 @@ public class InvoiceServiceTests
         _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
             .Returns((new List<Invoice>(), 0));
 
-        await _sut.GetRecentAsync(500, CancellationToken.None);
+        await _sut.GetRecentAsync(500, null, CancellationToken.None);
 
         await _repository.Received(1).GetPagedAsync(Arg.Is<InvoiceListQuery>(q => q.PageSize == 50), Arg.Any<CancellationToken>());
     }

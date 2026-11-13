@@ -1,12 +1,12 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
-// The tabs that always show. Income & Expense, Laboratory, Radiology, Consultant and Pharmacy
-// appear only once Settings → Reports Visibility turns them on (ADR-120), which a fresh test
-// hospital hasn't done, so they aren't checked here.
+// OP Accounts' tabs that always show (ADR-134). Income & Expense and Consultant appear only once
+// Settings → Reports Visibility turns them on (ADR-120), which a fresh test hospital hasn't done,
+// so they aren't checked here.
 export const ACCOUNTS_TABS = [
-  { label: 'Recent Bills', path: '/finance/accounts', heading: 'Accounts and Finance' },
-  { label: 'All Invoices', path: '/finance/accounts/invoices', heading: 'Accounts and Finance' },
-  { label: 'OP Report', path: '/finance/accounts/reports/profit', heading: 'OP Report' },
+  { label: 'Recent Bills', path: '/finance/accounts/op', heading: 'OP Accounts' },
+  { label: 'All Invoices', path: '/finance/accounts/op/invoices', heading: 'OP Accounts' },
+  { label: 'OP Report', path: '/finance/accounts/op/reports/profit', heading: 'OP Report' },
 ] as const;
 
 /** OPD Billing Entry at /finance/accounts/new: pick a patient, then bill their visit. */
