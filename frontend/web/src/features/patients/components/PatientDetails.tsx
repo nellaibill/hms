@@ -27,8 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
-import { DistrictName } from '@/components/DistrictName';
-import { StateName } from '@/components/StateName';
+import { AddressPlace } from './AddressPlace';
 import { formatCurrency, usePatientInvoicesQuery } from '@/features/billing';
 import { UploadDocumentModal } from '@/features/documents';
 import { useOpdConsultationsByPatientQuery } from '@/features/opdConsultation';
@@ -192,8 +191,7 @@ function AddressEmergencyCard({ patient }: { patient: Patient }) {
         <div className="text-sm text-foreground">
           <p>{[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}</p>
           <p className="text-muted-foreground">
-            <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />, <StateName stateId={patient.address.stateId} /> —{' '}
-            {patient.address.pincode}
+          <AddressPlace address={patient.address} />
           </p>
         </div>
       </div>

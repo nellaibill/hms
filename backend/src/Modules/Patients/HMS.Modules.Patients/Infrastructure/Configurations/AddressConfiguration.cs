@@ -21,8 +21,8 @@ internal class AddressConfiguration : IEntityTypeConfiguration<Address>
         builder.Property(a => a.AddressLine1).HasColumnName("address_line_1").HasMaxLength(200).IsRequired();
         builder.Property(a => a.AddressLine2).HasColumnName("address_line_2").HasMaxLength(200);
         builder.Property(a => a.AddressLine3).HasColumnName("address_line_3").HasMaxLength(200);
-        builder.Property(a => a.StateId).HasColumnName("state_id").IsRequired();
-        builder.Property(a => a.DistrictId).HasColumnName("district_id").IsRequired();
+        builder.Property(a => a.StateId).HasColumnName("state_id");
+        builder.Property(a => a.DistrictId).HasColumnName("district_id");
         builder.Property(a => a.Pincode).HasColumnName("pincode").HasMaxLength(6).IsRequired();
     }
 }

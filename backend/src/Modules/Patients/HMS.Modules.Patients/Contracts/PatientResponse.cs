@@ -58,8 +58,8 @@ public record AddressResponse
     public string AddressLine1 { get; init; } = string.Empty;
     public string? AddressLine2 { get; init; }
     public string? AddressLine3 { get; init; }
-    public Guid StateId { get; init; }
-    public Guid DistrictId { get; init; }
+    public Guid? StateId { get; init; }
+    public Guid? DistrictId { get; init; }
     public string Pincode { get; init; } = string.Empty;
 }
 

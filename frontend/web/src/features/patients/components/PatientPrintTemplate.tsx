@@ -1,6 +1,5 @@
 import type { Patient } from '@hms/shared';
-import { DistrictName } from '@/components/DistrictName';
-import { StateName } from '@/components/StateName';
+import { AddressPlace } from './AddressPlace';
 import { branding } from '@/config/branding';
 import { useBrandLogo } from '@/features/branding/brandLogo';
 import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
@@ -111,8 +110,7 @@ export function PatientPrintTemplate({ patient }: { patient: Patient }) {
       <Section title="Address">
         <p className="text-sm">{[patient.address.addressLine1, patient.address.addressLine2, patient.address.addressLine3].filter(Boolean).join(', ')}</p>
         <p className="text-sm">
-          <DistrictName stateId={patient.address.stateId} districtId={patient.address.districtId} />, <StateName stateId={patient.address.stateId} /> —{' '}
-          {patient.address.pincode}
+        <AddressPlace address={patient.address} />
         </p>
       </Section>
 

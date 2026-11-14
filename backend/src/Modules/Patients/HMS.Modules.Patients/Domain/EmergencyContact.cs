@@ -6,8 +6,9 @@ namespace HMS.Modules.Patients.Domain;
 /// <summary>
 /// One emergency contact — a patient can have more than one ("Add another Emergency
 /// Contact" on the frontend), so this is a genuine 1:many child of <see cref="Patient"/>.
-/// Every patient must have at least one (enforced by CreatePatientRequestValidator and, on
-/// removal, by PatientService — a patient is never left with zero).
+/// Every patient must have at least one unless the hospital makes the emergency contact
+/// optional (ADR-135) — enforced by CreatePatientRequestValidator and, on removal, by
+/// PatientService.
 /// </summary>
 internal class EmergencyContact
 {

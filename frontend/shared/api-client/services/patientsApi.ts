@@ -13,6 +13,7 @@ import type {
   UpdatePatientRequest,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
+import type { PatientFieldRequirements } from '../../validation/patients/patientFieldRequirements';
 import type { HttpClient } from '../httpClient';
 
 export interface PagedPatients {
@@ -96,6 +97,19 @@ export class PatientsApi {
 
   async deletePatient(id: string): Promise<void> {
     await this.client.delete(API_ROUTES.patients.byId(id));
+  }
+
+  /** Which registration fields this hospital makes mandatory (ADR-135) — the defaults until a
+   * Super Admin saves them. Any signed-in user can read them; the forms need them. */
+  async getFieldSettings(): Promise<PatientFieldRequirements> {
+    const response = await this.client.get<PatientFieldRequirements>(API_ROUTES.patients.fieldSettings);
+    return response.data;
+  }
+
+  /** Saves Settings → Patient Registration Fields; needs identity-administration.edit. */
+  async updateFieldSettings(request: PatientFieldRequirements): Promise<PatientFieldRequirements> {
+    const response = await this.client.put<PatientFieldRequirements>(API_ROUTES.patients.fieldSettings, request);
+    return response.data;
   }
 
   /** Adds one allergy row to an existing patient — mirrors HMS.Modules.Patients.Endpoints.PatientsController's POST .../allergies. */
