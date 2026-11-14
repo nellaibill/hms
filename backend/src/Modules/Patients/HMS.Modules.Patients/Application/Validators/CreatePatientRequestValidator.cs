@@ -8,7 +8,7 @@ namespace HMS.Modules.Patients.Application.Validators;
 /// Server-side validation — the authoritative check. Client-side validation
 /// (frontend/shared/validation) is a UX convenience only.
 /// </summary>
-internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRequest>
+internal class CreatePatientRequestValidator : PatientFieldAwareValidator<CreatePatientRequest>
 {
     // Phone numbers in this system are always exactly 10 digits — no country code, no
     // formatting characters (per explicit product decision: store the raw 10-digit number
@@ -98,11 +98,17 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
 
     // A minor's marital status isn't a real-world determination yet — under 18 must be 'NA';
     // 18-or-older must give a real answer (Married or Unmarried), not 'NA'. Same 18 threshold
-    // Title already uses for Mr/Mrs/Ms/Dr.
-    internal static bool IsMaritalStatusConsistentWithAge(MaritalStatus maritalStatus, DateOnly dateOfBirth)
+    // Title already uses for Mr/Mrs/Ms/Dr. A hospital that makes Marital status optional
+    // (ADR-135, requiredForAdults: false) lets an adult stay 'NA'; the under-18 rule stays.
+    internal static bool IsMaritalStatusConsistentWithAge(MaritalStatus maritalStatus, DateOnly dateOfBirth, bool requiredForAdults = true)
     {
         var age = CalculateAge(dateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow));
-        return age < 18 ? maritalStatus == MaritalStatus.NA : maritalStatus is MaritalStatus.Married or MaritalStatus.Unmarried;
+        if (age < 18)
+        {
+            return maritalStatus == MaritalStatus.NA;
+        }
+
+        return !requiredForAdults || maritalStatus is MaritalStatus.Married or MaritalStatus.Unmarried;
     }
 
     internal static string MaritalStatusAgeMessage(DateOnly dateOfBirth) =>
@@ -110,11 +116,25 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
             ? "Patients under 18 must have marital status 'N/A'."
             : "Marital status must be Married or Unmarried for patients 18 or older.";
 
-    public CreatePatientRequestValidator()
+    /// <summary>The pre-ADR-135 rules (PatientFieldRequirements.BulkImport) unless the caller puts the hospital's
+    /// settings in the validation context — unit tests, and anything validating
+    /// synchronously.</summary>
+    internal CreatePatientRequestValidator()
+        : this(null)
+    {
+    }
+
+    /// <summary>The DI-resolved validator: an async run follows the hospital's mandatory-field
+    /// settings (ADR-135).</summary>
+    public CreatePatientRequestValidator(IPatientFieldSettingsService? fieldSettings)
+        : base(fieldSettings)
     {
         RuleFor(x => x.Title).IsInEnum();
         RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100).Matches(NamePattern).WithMessage(NamePatternMessage);
-        RuleFor(x => x.LastName).NotEmpty().MaximumLength(100).Matches(NamePattern).WithMessage(NamePatternMessage);
+        RuleFor(x => x.LastName).NotEmpty().When((_, context) => Required(context).LastName);
+        RuleFor(x => x.LastName)
+            .MaximumLength(100).Matches(NamePattern).WithMessage(NamePatternMessage)
+            .When(x => !string.IsNullOrWhiteSpace(x.LastName));
         RuleFor(x => x.DateOfBirth)
             .NotEmpty()
             .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth cannot be in the future.")
@@ -133,7 +153,7 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
         RuleFor(x => x.BloodGroup).IsInEnum();
         RuleFor(x => x.MaritalStatus).IsInEnum();
         RuleFor(x => x)
-            .Must(x => IsMaritalStatusConsistentWithAge(x.MaritalStatus, x.DateOfBirth))
+            .Must((x, _, context) => IsMaritalStatusConsistentWithAge(x.MaritalStatus, x.DateOfBirth, Required(context).MaritalStatus))
             .WithName("MaritalStatus")
             .WithMessage(x => MaritalStatusAgeMessage(x.DateOfBirth))
             .When(x => Enum.IsDefined(x.MaritalStatus));
@@ -149,8 +169,11 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
         RuleFor(x => x.Profession).MaximumLength(100);
 
         RuleFor(x => x.IdProofNumber)
+            .NotEmpty().WithMessage("ID proof number is required.")
+            .When((_, context) => Required(context).IdProofNumber);
+        RuleFor(x => x.IdProofNumber)
             .NotEmpty().WithMessage("ID proof number is required when an ID proof type is selected.")
-            .When(x => x.IdProofType.HasValue);
+            .When((x, context) => x.IdProofType.HasValue && !Required(context).IdProofNumber);
         RuleFor(x => x.IdProofNumber)
             .Matches(AadhaarPattern).WithMessage(AadhaarPatternMessage)
             .When(x => x.IdProofType == IdProofType.Aadhaar && !string.IsNullOrWhiteSpace(x.IdProofNumber));
@@ -170,9 +193,10 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
         // department — so Channel is required for every defined source, not just the two Ad
         // sources (the frontend's arrivalSourceSchema requires the matching UI field for all
         // four, so this always has something to send once the request gets this far).
+        // Optional when the hospital doesn't make the mode-of-arrival detail mandatory (ADR-135).
         RuleFor(x => x.ModeOfArrivalChannel)
             .NotEmpty().WithMessage("Channel is required for this arrival source.")
-            .When(x => Enum.IsDefined(x.ModeOfArrivalSource));
+            .When((x, context) => Enum.IsDefined(x.ModeOfArrivalSource) && Required(context).ModeOfArrivalDetail);
         RuleFor(x => x.ModeOfArrivalSpecify)
             .NotEmpty().WithMessage("Please specify.")
             .When(x => !string.IsNullOrWhiteSpace(x.ModeOfArrivalChannel) && x.ModeOfArrivalChannel == "Other");
@@ -182,8 +206,11 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
         RuleForEach(x => x.Allergies).SetValidator(new AllergyRequestValidator());
 
         // A patient must have at least one emergency contact — same requirement the old
-        // single-field design enforced, carried forward now that it's a repeatable list.
-        RuleFor(x => x.EmergencyContacts).NotEmpty().WithMessage("At least one emergency contact is required.");
+        // single-field design enforced, carried forward now that it's a repeatable list —
+        // unless the hospital makes the emergency contact optional (ADR-135).
+        RuleFor(x => x.EmergencyContacts)
+            .NotEmpty().WithMessage("At least one emergency contact is required.")
+            .When((_, context) => Required(context).EmergencyContact);
         RuleForEach(x => x.EmergencyContacts).SetValidator(new EmergencyContactRequestValidator());
         // An emergency contact is supposed to be someone else to call when the patient can't
         // be reached — reusing the patient's own primary phone defeats that purpose and is
@@ -195,16 +222,30 @@ internal class CreatePatientRequestValidator : AbstractValidator<CreatePatientRe
     }
 }
 
+/// <summary>Reads the hospital's mandatory-field settings (ADR-135) from the parent
+/// validator's context — FluentValidation shares RootContextData with child validators.</summary>
 internal class AddressRequestValidator : AbstractValidator<AddressRequest>
 {
     public AddressRequestValidator()
     {
-        RuleFor(x => x.AddressLine1).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.AddressLine1).NotEmpty().When((_, context) => PatientFieldRequirementsContext.Get(context).AddressLine1);
+        RuleFor(x => x.AddressLine1).MaximumLength(200);
         RuleFor(x => x.AddressLine2).MaximumLength(200);
         RuleFor(x => x.AddressLine3).MaximumLength(200);
-        RuleFor(x => x.StateId).NotEmpty();
-        RuleFor(x => x.DistrictId).NotEmpty();
-        RuleFor(x => x.Pincode).NotEmpty().Matches(CreatePatientRequestValidator.PincodePattern).WithMessage("Pincode must be 6 digits.");
+        RuleFor(x => x.StateId)
+            .Must(id => id.HasValue && id.Value != Guid.Empty).WithMessage("State is required.")
+            .When((_, context) => PatientFieldRequirementsContext.Get(context).State);
+        RuleFor(x => x.DistrictId)
+            .Must(id => id.HasValue && id.Value != Guid.Empty).WithMessage("District is required.")
+            .When((_, context) => PatientFieldRequirementsContext.Get(context).District);
+        // A district is picked from a state's list — one can't be checked without the other.
+        RuleFor(x => x.StateId)
+            .Must(id => id.HasValue && id.Value != Guid.Empty).WithMessage("Select the state the district belongs to.")
+            .When((x, context) => x.DistrictId.HasValue && x.DistrictId.Value != Guid.Empty && !PatientFieldRequirementsContext.Get(context).State);
+        RuleFor(x => x.Pincode).NotEmpty().When((_, context) => PatientFieldRequirementsContext.Get(context).Pincode);
+        RuleFor(x => x.Pincode)
+            .Matches(CreatePatientRequestValidator.PincodePattern).WithMessage("Pincode must be 6 digits.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Pincode));
     }
 }
 

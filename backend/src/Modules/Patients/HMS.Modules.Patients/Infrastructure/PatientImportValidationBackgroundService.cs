@@ -4,6 +4,7 @@ using HMS.Modules.Masters.Application;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Application.Excel;
+using HMS.Modules.Patients.Application.Validators;
 using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
 using HMS.Shared.Kernel;
@@ -111,7 +112,9 @@ internal class PatientImportValidationBackgroundService : BackgroundService
 
             if (errors.Count == 0)
             {
-                var validationResult = await validator.ValidateAsync(request, cancellationToken);
+                // The import keeps its own fixed column rules, whatever the hospital chose on
+                // Settings → Patient Registration Fields (ADR-135).
+                var validationResult = await validator.ValidateAsync(PatientFieldRequirementsContext.ForBulkImport(request), cancellationToken);
                 errors.AddRange(validationResult.Errors.Select(e => new ImportRowError { Field = e.PropertyName, Message = e.ErrorMessage }));
             }
 

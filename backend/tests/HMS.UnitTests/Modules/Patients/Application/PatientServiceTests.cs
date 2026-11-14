@@ -23,11 +23,13 @@ public class PatientServiceTests
     private readonly IStateService _stateService = Substitute.For<IStateService>();
     private readonly IDistrictService _districtService = Substitute.For<IDistrictService>();
     private readonly IActivityLogService _activityLog = Substitute.For<IActivityLogService>();
+    private readonly IPatientFieldSettingsService _fieldSettings = Substitute.For<IPatientFieldSettingsService>();
     private readonly PatientService _sut;
 
     public PatientServiceTests()
     {
-        _sut = new PatientService(_repository, _identifierGenerator, _stateService, _districtService, _activityLog, NullLogger<PatientService>.Instance);
+        _sut = new PatientService(_repository, _identifierGenerator, _stateService, _districtService, _activityLog, _fieldSettings, NullLogger<PatientService>.Instance);
+        _fieldSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(PatientFieldRequirements.Default);
 
         _identifierGenerator.NextUhidAsync(Arg.Any<CancellationToken>()).Returns("P-2026-000001");
 
@@ -472,6 +474,51 @@ public class PatientServiceTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(PatientErrorCodes.CannotRemoveLastEmergencyContact);
         patient.EmergencyContacts.Should().ContainSingle("the only emergency contact must not actually be removed from the entity");
+    }
+
+    [Fact]
+    public async Task RemoveEmergencyContactAsync_WhenTheHospitalMakesItOptional_RemovesTheOnlyOne()
+    {
+        _fieldSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new PatientFieldRequirements { EmergencyContact = false });
+        var patient = NewPersistedPatient();
+        var onlyContact = patient.EmergencyContacts.Single();
+        _repository.GetByIdAsync(patient.Id, Arg.Any<CancellationToken>()).Returns(patient);
+
+        var result = await _sut.RemoveEmergencyContactAsync(patient.Id, onlyContact.Id, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.EmergencyContacts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutStateDistrictOrLastName_SkipsTheAddressLookupAndSavesBlanks()
+    {
+        var request = NewCreateRequest() with
+        {
+            LastName = string.Empty,
+            Address = new AddressRequest { AddressLine1 = string.Empty, StateId = null, DistrictId = null, Pincode = string.Empty },
+            EmergencyContacts = [],
+        };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.LastName.Should().BeEmpty();
+        result.Value.Address.StateId.Should().BeNull();
+        result.Value.Address.DistrictId.Should().BeNull();
+        result.Value.Address.Pincode.Should().BeEmpty();
+        await _stateService.DidNotReceive().GetAllAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithAStateButNoDistrict_StillChecksTheState()
+    {
+        var request = NewCreateRequest() with { Address = NewAddressRequest() with { StateId = Guid.NewGuid(), DistrictId = null } };
+
+        var result = await _sut.CreateAsync(request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.InvalidState);
     }
 
     [Fact]

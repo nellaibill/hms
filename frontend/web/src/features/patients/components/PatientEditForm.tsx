@@ -7,20 +7,21 @@ import {
   ApiError,
   ARRIVAL_SOURCE_CATEGORIES,
   BLOOD_GROUPS,
+  buildPatientEditUiSchema,
   ID_PROOF_TYPES,
   MARITAL_STATUSES,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
-  patientEditUiSchema,
   PATIENT_GENDERS,
   PATIENT_RELATIVE_REFERRAL_SOURCES,
   RELATIONSHIPS,
   TITLES,
   type PatientEditUiFormValues,
+  type PatientFieldRequirements,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,8 @@ interface PatientEditFormProps {
   /** Mirrors the form's own dirty state up to the parent page, which owns the actual
    * unsaved-changes navigation guard (useUnsavedChangesGuard). */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Settings → Patient Registration Fields (ADR-135) — the same choices as registration. */
+  fieldRequirements: PatientFieldRequirements;
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info'] as const;
@@ -103,7 +106,11 @@ export function PatientEditForm({
   onSubmit,
   onCancel,
   onDirtyChange,
+  fieldRequirements,
 }: PatientEditFormProps) {
+  const editSchema = useMemo(() => buildPatientEditUiSchema(fieldRequirements), [fieldRequirements]);
+  // A switchable field's label says "(optional)" when this hospital doesn't require it.
+  const labelFor = (label: string, field: keyof PatientFieldRequirements) => (fieldRequirements[field] ? label : `${label} (optional)`);
   const {
     register,
     control,
@@ -115,12 +122,12 @@ export function PatientEditForm({
     clearErrors,
     formState: { errors, isDirty },
   } = useForm<PatientEditUiFormValues>({
-    resolver: zodResolver(patientEditUiSchema),
+    resolver: zodResolver(editSchema),
     defaultValues,
     // Deliberately not `mode: 'onChange'` — see PatientRegistrationForm's identical fix for
     // why: it races an overlapping validation pass against goToTab's own trigger() call.
   });
-  useLiveErrorRefresh({ schema: patientEditUiSchema, watch, errors, setError, clearErrors });
+  useLiveErrorRefresh({ schema: editSchema, watch, errors, setError, clearErrors });
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -325,7 +332,7 @@ export function PatientEditForm({
               <Input id="firstName" {...register('firstName')} />
             </Field>
             <Field
-              label="Last name"
+              label={labelFor('Last name', 'lastName')}
               htmlFor="lastName"
               error={errors.lastName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -364,7 +371,7 @@ export function PatientEditForm({
               />
             </Field>
             <Field
-              label="Blood group"
+              label={labelFor('Blood group', 'bloodGroup')}
               htmlFor="bloodGroup"
               error={errors.bloodGroup?.message}
               className="flex w-full flex-col gap-1 sm:w-32"
@@ -388,7 +395,7 @@ export function PatientEditForm({
                 )}
               />
             </Field>
-            <Field label="Marital status" htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
+            <Field label={labelFor('Marital status', 'maritalStatus')} htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
               <Controller
                 name="maritalStatus"
                 control={control}
@@ -417,7 +424,7 @@ export function PatientEditForm({
         <FormSection id="address" title="Address">
           <div className="flex flex-wrap gap-3">
             <Field
-              label="Address line 1 (door no. & building name)"
+              label={labelFor('Address line 1 (door no. & building name)', 'addressLine1')}
               htmlFor="addressLine1"
               error={errors.addressLine1?.message}
               className="flex min-w-[260px] flex-1 flex-col gap-1"
@@ -442,7 +449,7 @@ export function PatientEditForm({
             >
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field label={labelFor('State', 'state')} htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Controller
                 name="state"
                 control={control}
@@ -452,7 +459,7 @@ export function PatientEditForm({
               />
             </Field>
             <Field
-              label="District"
+              label={labelFor('District', 'district')}
               htmlFor="district"
               error={errors.district?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -463,7 +470,7 @@ export function PatientEditForm({
                 render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateId={state} />}
               />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
+            <Field label={labelFor('Pincode', 'pincode')} htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
@@ -496,7 +503,11 @@ export function PatientEditForm({
           </div>
         </FormSection>
 
-        <FormSection id="emergency-contact" title="Emergency Contact">
+        <FormSection
+          id="emergency-contact"
+          title="Emergency Contact"
+          description={fieldRequirements.emergencyContact ? undefined : 'Optional — but a contact you start needs both a name and a phone.'}
+        >
           <div className="flex flex-wrap gap-3">
             <Field
               label="Relationship"
@@ -524,7 +535,7 @@ export function PatientEditForm({
               />
             </Field>
             <Field
-              label="Name"
+              label={labelFor('Name', 'emergencyContact')}
               htmlFor="emergencyContactName"
               error={errors.emergencyContactName?.message}
               className="flex min-w-[180px] flex-1 flex-col gap-1"
@@ -532,7 +543,7 @@ export function PatientEditForm({
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
             </Field>
             <Field
-              label="Phone"
+              label={labelFor('Phone', 'emergencyContact')}
               htmlFor="emergencyContactPhone"
               error={errors.emergencyContactPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -747,7 +758,7 @@ export function PatientEditForm({
 
             {arrivalCategory === 'DoctorReferral' && (
               <Field
-                label="Department"
+                label={labelFor('Department', 'modeOfArrivalDetail')}
                 htmlFor="doctorReferralDepartment"
                 error={errors.arrivalSource?.doctorReferral?.department?.message}
                 className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -759,7 +770,7 @@ export function PatientEditForm({
             {arrivalCategory === 'PatientOrRelativeReferral' && (
               <>
                 <Field
-                  label="Source"
+                  label={labelFor('Source', 'modeOfArrivalDetail')}
                   htmlFor="patientRelativeSource"
                   error={errors.arrivalSource?.patientRelativeReferral?.source?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
@@ -799,7 +810,7 @@ export function PatientEditForm({
             {arrivalCategory === 'OnlineAdvertisement' && (
               <>
                 <Field
-                  label="Channel"
+                  label={labelFor('Channel', 'modeOfArrivalDetail')}
                   htmlFor="onlineChannel"
                   error={errors.arrivalSource?.onlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
@@ -839,7 +850,7 @@ export function PatientEditForm({
             {arrivalCategory === 'OfflineAdvertisement' && (
               <>
                 <Field
-                  label="Channel"
+                  label={labelFor('Channel', 'modeOfArrivalDetail')}
                   htmlFor="offlineChannel"
                   error={errors.arrivalSource?.offlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-56"
@@ -901,7 +912,7 @@ export function PatientEditForm({
               />
             </Field>
             <Field
-              label={`${idProofType} number`}
+              label={labelFor(`${idProofType} number`, 'idProofNumber')}
               htmlFor="idProofNumber"
               error={errors.idProofNumber?.message}
               className="flex min-w-[200px] flex-1 flex-col gap-1"

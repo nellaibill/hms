@@ -8,24 +8,25 @@ import {
   ENCOUNTER_TYPES_UI,
   idProofNumberFormatError,
   MARITAL_STATUSES,
+  buildPatientRegistrationCoreUiSchema,
+  buildPatientRegistrationUiSchema,
   OFFLINE_AD_CHANNELS,
   ONLINE_AD_CHANNELS,
   PATIENT_GENDERS,
   PATIENT_RELATIVE_REFERRAL_SOURCES,
-  patientRegistrationCoreUiSchema,
-  patientRegistrationUiSchema,
   REFERRAL_COLUMN_CATEGORIES,
   RELATIONSHIPS,
   TITLES,
   type EncounterTypeUi,
   type Patient,
+  type PatientFieldRequirements,
   type PatientRegistrationCoreUiFormValues,
   type PatientRegistrationUiFormValues,
 } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, MapPin, Plus, Stethoscope, User, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useController, useFieldArray, useForm, type Control, type FieldErrors } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,9 @@ interface PatientRegistrationFormProps {
    * unsaved-changes navigation guard (useUnsavedChangesGuard) — see that hook's own comment
    * for why the guard itself has to live where the post-save navigate() call does. */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Settings → Patient Registration Fields (ADR-135): which switchable fields this hospital
+   * makes mandatory. Read once, when the form mounts — the parent page waits for it. */
+  fieldRequirements: PatientFieldRequirements;
 }
 
 const TAB_ORDER = ['patient-info', 'contact-info', 'medical-info', 'registration-details'] as const;
@@ -111,13 +115,13 @@ function isTabId(value: string): value is TabId {
   return (TAB_ORDER as readonly string[]).includes(value);
 }
 
-// "Required" is checked here (Create-specific gating — see idProofNumberError below); the
-// actual format rules live in idProofNumberFormatError, shared with the Edit form's schema so
-// the two can't drift apart.
-function idProofNumberValidationError(documents: StagedDocuments): string | null {
+// "Required" is checked here (Create-specific gating — see idProofNumberError below), and only
+// where the hospital makes it mandatory (ADR-135); the actual format rules live in
+// idProofNumberFormatError, shared with the Edit form's schema so the two can't drift apart.
+function idProofNumberValidationError(documents: StagedDocuments, required: boolean): string | null {
   const number = documents.idProofNumber.trim();
   if (!number) {
-    return 'ID proof number is required.';
+    return required ? 'ID proof number is required.' : null;
   }
   return idProofNumberFormatError(documents.idProofType, number);
 }
@@ -192,8 +196,13 @@ export function PatientRegistrationForm({
   onSaveAndProceed,
   onSubmit,
   onDirtyChange,
+  fieldRequirements,
 }: PatientRegistrationFormProps) {
   const navigate = useNavigate();
+  const registrationSchema = useMemo(() => buildPatientRegistrationUiSchema(fieldRequirements), [fieldRequirements]);
+  const coreSchema = useMemo(() => buildPatientRegistrationCoreUiSchema(fieldRequirements), [fieldRequirements]);
+  // A switchable field's label says "(optional)" when this hospital doesn't require it.
+  const labelFor = (label: string, field: keyof PatientFieldRequirements) => (fieldRequirements[field] ? label : `${label} (optional)`);
 
   const {
     register,
@@ -207,8 +216,10 @@ export function PatientRegistrationForm({
     clearErrors,
     formState: { errors, isDirty },
   } = useForm<PatientRegistrationUiFormValues>({
-    resolver: zodResolver(patientRegistrationUiSchema),
-    defaultValues,
+    resolver: zodResolver(registrationSchema),
+    // A mandatory Blood group starts empty so it has to be picked; an optional one starts on
+    // Unknown, as it always has.
+    defaultValues: { ...defaultValues, bloodGroup: fieldRequirements.bloodGroup ? '' : 'Unknown' },
     // Deliberately not `mode: 'onChange'` — that ran a full schema validation pass on every
     // keystroke/selection, overlapping with goToTab's own explicit `trigger()` call on Next.
     // Two independent async validation passes writing to the same formState.errors can resolve
@@ -217,7 +228,7 @@ export function PatientRegistrationForm({
     // Live-clearing an error once the field is fixed is useLiveErrorRefresh's job below:
     // reValidateMode only kicks in after a real submit, which trigger() on Next never is.
   });
-  useLiveErrorRefresh({ schema: patientRegistrationUiSchema, watch, errors, setError, clearErrors });
+  useLiveErrorRefresh({ schema: registrationSchema, watch, errors, setError, clearErrors });
 
   // A returning patient, above all one imported from the old system, mustn't get a second UHID
   // by accident: patients already registered with the primary phone are listed under it as soon
@@ -259,8 +270,9 @@ export function PatientRegistrationForm({
   // UI-only demo affordance — see additionalConsultantSchema's own doc comment for why this
   // never reaches CreatePatientRequest.
   const additionalConsultants = useFieldArray({ control, name: 'registration.additionalConsultants' });
-  // The first Emergency Contact is its own always-present, always-required set of fields
-  // below (emergencyContactRelationship/Name/Phone) — this is only for the extra ones added
+  // The first Emergency Contact is its own always-present set of fields below
+  // (emergencyContactRelationship/Name/Phone), required unless the hospital makes it optional
+  // (ADR-135) — this is only for the extra ones added
   // via "Add Emergency Contact", same "primary field + optional array" split as
   // additionalConsultants above.
   const additionalEmergencyContacts = useFieldArray({ control, name: 'additionalEmergencyContacts' });
@@ -268,7 +280,7 @@ export function PatientRegistrationForm({
   // never reaches CreatePatientRequest.
   const additionalAllergies = useFieldArray({ control, name: 'additionalAllergies' });
   const [documents, setDocuments] = useState<StagedDocuments>(emptyStagedDocuments);
-  // ID proof number is mandatory but lives on `documents`, not this form's RHF-validated
+  // ID proof number is mandatory (unless the hospital says otherwise, ADR-135) but lives on `documents`, not this form's RHF-validated
   // fields (it's staged alongside the photo/ID-proof files, uploaded only after the patient
   // is created — see DocumentUploadStaging's own doc comment) — so it's gated at final submit
   // time instead (see onValidSubmit below). Kept in sync with the backend's AadhaarPattern
@@ -278,7 +290,7 @@ export function PatientRegistrationForm({
   const [idProofNumberError, setIdProofNumberError] = useState<string | null>(null);
   const handleDocumentsChange = (next: StagedDocuments) => {
     setDocuments(next);
-    if (!idProofNumberValidationError(next)) {
+    if (!idProofNumberValidationError(next, fieldRequirements.idProofNumber)) {
       setIdProofNumberError(null);
     }
   };
@@ -366,7 +378,7 @@ export function PatientRegistrationForm({
         // The ID proof number isn't an RHF field (see idProofNumberError above), but it's on
         // this tab — check it in the same pass, so a bad Aadhaar shows up together with the
         // tab's other errors instead of only after they've all been fixed.
-        const idProofError = tab === 'medical-info' ? idProofNumberValidationError(documents) : null;
+        const idProofError = tab === 'medical-info' ? idProofNumberValidationError(documents, fieldRequirements.idProofNumber) : null;
         if (tab === 'medical-info') setIdProofNumberError(idProofError);
         if (!isTabValid || idProofError) {
           setActiveTab(tab);
@@ -382,7 +394,7 @@ export function PatientRegistrationForm({
       // no-trim) pattern check. Re-parsing through the same schema here gets the actual
       // trimmed values trigger() just confirmed are valid, matching what handleSubmit's own
       // callback already receives for free via react-hook-form's resolver.
-      const parsed = patientRegistrationCoreUiSchema.safeParse(getValues());
+      const parsed = coreSchema.safeParse(getValues());
       if (!parsed.success) {
         setNavigationError('Something went wrong checking this step. Please try again — if it keeps happening, refresh the page.');
         formTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
@@ -431,7 +443,7 @@ export function PatientRegistrationForm({
 
   // Runs once the whole form is valid.
   const onValidSubmit = async (values: PatientRegistrationUiFormValues) => {
-    const idProofError = idProofNumberValidationError(documents);
+    const idProofError = idProofNumberValidationError(documents, fieldRequirements.idProofNumber);
     if (idProofError) {
       setActiveTab('medical-info');
       setIdProofNumberError(idProofError);
@@ -605,7 +617,7 @@ export function PatientRegistrationForm({
               <Input id="firstName" {...register('firstName')} />
             </Field>
             <Field
-              label="Last name"
+              label={labelFor('Last name', 'lastName')}
               htmlFor="lastName"
               error={errors.lastName?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -644,7 +656,7 @@ export function PatientRegistrationForm({
               />
             </Field>
             <Field
-              label="Blood group"
+              label={labelFor('Blood group', 'bloodGroup')}
               htmlFor="bloodGroup"
               error={errors.bloodGroup?.message}
               className="flex w-full flex-col gap-1 sm:w-32"
@@ -653,9 +665,9 @@ export function PatientRegistrationForm({
                 name="bloodGroup"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value || undefined} onValueChange={field.onChange}>
                     <SelectTrigger id="bloodGroup" aria-label="Blood group">
-                      <SelectValue />
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       {BLOOD_GROUPS.map((b) => (
@@ -668,7 +680,7 @@ export function PatientRegistrationForm({
                 )}
               />
             </Field>
-            <Field label="Marital status" htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
+            <Field label={labelFor('Marital status', 'maritalStatus')} htmlFor="maritalStatus" error={errors.maritalStatus?.message} className="flex w-full flex-col gap-1 sm:w-40">
               <Controller
                 name="maritalStatus"
                 control={control}
@@ -697,7 +709,7 @@ export function PatientRegistrationForm({
         <FormSection id="address" title="Address">
           <div className="flex flex-wrap gap-3">
             <Field
-              label="Address line 1 (door no. & building name)"
+              label={labelFor('Address line 1 (door no. & building name)', 'addressLine1')}
               htmlFor="addressLine1"
               error={errors.addressLine1?.message}
               className="flex min-w-[260px] flex-1 flex-col gap-1"
@@ -722,7 +734,7 @@ export function PatientRegistrationForm({
             >
               <Input id="addressLine3" {...register('addressLine3')} />
             </Field>
-            <Field label="State" htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
+            <Field label={labelFor('State', 'state')} htmlFor="state" error={errors.state?.message} className="flex min-w-[160px] flex-1 flex-col gap-1">
               <Controller
                 name="state"
                 control={control}
@@ -732,7 +744,7 @@ export function PatientRegistrationForm({
               />
             </Field>
             <Field
-              label="District"
+              label={labelFor('District', 'district')}
               htmlFor="district"
               error={errors.district?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -743,7 +755,7 @@ export function PatientRegistrationForm({
                 render={({ field }) => <DistrictSelect id="district" value={field.value} onValueChange={field.onChange} stateId={state} />}
               />
             </Field>
-            <Field label="Pincode" htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
+            <Field label={labelFor('Pincode', 'pincode')} htmlFor="pincode" error={errors.pincode?.message} className="flex w-full flex-col gap-1 sm:w-32">
               <Input id="pincode" inputMode="numeric" {...register('pincode')} />
             </Field>
           </div>
@@ -779,7 +791,11 @@ export function PatientRegistrationForm({
           </div>
         </FormSection>
 
-        <FormSection id="emergency-contact" title="Emergency Contact">
+        <FormSection
+          id="emergency-contact"
+          title="Emergency Contact"
+          description={fieldRequirements.emergencyContact ? undefined : 'Optional — but a contact you start needs both a name and a phone.'}
+        >
           <div className="flex flex-wrap gap-3">
             <Field
               label="Relationship"
@@ -807,7 +823,7 @@ export function PatientRegistrationForm({
               />
             </Field>
             <Field
-              label="Name"
+              label={labelFor('Name', 'emergencyContact')}
               htmlFor="emergencyContactName"
               error={errors.emergencyContactName?.message}
               className="flex min-w-[180px] flex-1 flex-col gap-1"
@@ -815,7 +831,7 @@ export function PatientRegistrationForm({
               <Input id="emergencyContactName" {...register('emergencyContactName')} />
             </Field>
             <Field
-              label="Phone"
+              label={labelFor('Phone', 'emergencyContact')}
               htmlFor="emergencyContactPhone"
               error={errors.emergencyContactPhone?.message}
               className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -1089,7 +1105,7 @@ export function PatientRegistrationForm({
 
             {arrivalCategory === 'DoctorReferral' && (
               <Field
-                label="Department"
+                label={labelFor('Department', 'modeOfArrivalDetail')}
                 htmlFor="doctorReferralDepartment"
                 error={errors.arrivalSource?.doctorReferral?.department?.message}
                 className="flex min-w-[160px] flex-1 flex-col gap-1"
@@ -1101,7 +1117,7 @@ export function PatientRegistrationForm({
             {arrivalCategory === 'PatientOrRelativeReferral' && (
               <>
                 <Field
-                  label="Source"
+                  label={labelFor('Source', 'modeOfArrivalDetail')}
                   htmlFor="patientRelativeSource"
                   error={errors.arrivalSource?.patientRelativeReferral?.source?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
@@ -1141,7 +1157,7 @@ export function PatientRegistrationForm({
             {arrivalCategory === 'OnlineAdvertisement' && (
               <>
                 <Field
-                  label="Channel"
+                  label={labelFor('Channel', 'modeOfArrivalDetail')}
                   htmlFor="onlineChannel"
                   error={errors.arrivalSource?.onlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-48"
@@ -1181,7 +1197,7 @@ export function PatientRegistrationForm({
             {arrivalCategory === 'OfflineAdvertisement' && (
               <>
                 <Field
-                  label="Channel"
+                  label={labelFor('Channel', 'modeOfArrivalDetail')}
                   htmlFor="offlineChannel"
                   error={errors.arrivalSource?.offlineAd?.channel?.message}
                   className="flex w-full flex-col gap-1 sm:w-56"
@@ -1223,9 +1239,13 @@ export function PatientRegistrationForm({
         <FormSection
           id="document-upload"
           title="Document Upload"
-          description="The patient photo and ID proof file are optional and are uploaded once the record is saved — the ID proof number is required."
+          description={
+            fieldRequirements.idProofNumber
+              ? 'The patient photo and ID proof file are optional and are uploaded once the record is saved — the ID proof number is required.'
+              : 'The patient photo, ID proof number and ID proof file are all optional; files are uploaded once the record is saved.'
+          }
         >
-          <DocumentUploadStaging value={documents} onChange={handleDocumentsChange} />
+          <DocumentUploadStaging value={documents} onChange={handleDocumentsChange} idProofNumberRequired={fieldRequirements.idProofNumber} />
         </FormSection>
         </TabsContent>
 

@@ -22,6 +22,7 @@ internal class PatientService : IPatientService
     private readonly IStateService _stateService;
     private readonly IDistrictService _districtService;
     private readonly IActivityLogService _activityLog;
+    private readonly IPatientFieldSettingsService _fieldSettings;
     private readonly ILogger<PatientService> _logger;
 
     public PatientService(
@@ -30,6 +31,7 @@ internal class PatientService : IPatientService
         IStateService stateService,
         IDistrictService districtService,
         IActivityLogService activityLog,
+        IPatientFieldSettingsService fieldSettings,
         ILogger<PatientService> logger)
     {
         _repository = repository;
@@ -37,24 +39,37 @@ internal class PatientService : IPatientService
         _stateService = stateService;
         _districtService = districtService;
         _activityLog = activityLog;
+        _fieldSettings = fieldSettings;
         _logger = logger;
     }
 
     // StateId/DistrictId are cross-module references into Masters' reference data — a
     // district must both exist and belong to the given state, matching the Excel's own
-    // "must belong to selected state" validation note.
-    private async Task<Result?> ValidateAddressReferencesAsync(Guid stateId, Guid districtId, CancellationToken cancellationToken)
+    // "must belong to selected state" validation note. Either may be blank where the hospital
+    // makes it optional (ADR-135): a blank one has nothing to check, and the validators
+    // already refuse a district without its state.
+    private async Task<Result?> ValidateAddressReferencesAsync(Guid? stateId, Guid? districtId, CancellationToken cancellationToken)
     {
-        var states = await _stateService.GetAllAsync(cancellationToken);
-        if (!states.Any(s => s.Id == stateId))
+        if (stateId is not { } givenStateId || givenStateId == Guid.Empty)
         {
-            return Result.Failure(PatientErrorCodes.InvalidState, $"State '{stateId}' was not found.");
+            return null;
         }
 
-        var districts = await _districtService.GetByStateIdAsync(stateId, cancellationToken);
-        if (!districts.Any(d => d.Id == districtId))
+        var states = await _stateService.GetAllAsync(cancellationToken);
+        if (!states.Any(s => s.Id == givenStateId))
         {
-            return Result.Failure(PatientErrorCodes.InvalidDistrict, $"District '{districtId}' was not found for the selected state.");
+            return Result.Failure(PatientErrorCodes.InvalidState, $"State '{givenStateId}' was not found.");
+        }
+
+        if (districtId is not { } givenDistrictId || givenDistrictId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var districts = await _districtService.GetByStateIdAsync(givenStateId, cancellationToken);
+        if (!districts.Any(d => d.Id == givenDistrictId))
+        {
+            return Result.Failure(PatientErrorCodes.InvalidDistrict, $"District '{givenDistrictId}' was not found for the selected state.");
         }
 
         return null;
@@ -359,12 +374,14 @@ internal class PatientService : IPatientService
             return Result<PatientResponse>.Failure(PatientErrorCodes.EmergencyContactNotFound, $"Emergency contact '{emergencyContactId}' was not found for this patient.");
         }
 
-        if (patient.EmergencyContacts.Count <= 1)
+        // Only while the hospital makes the emergency contact mandatory (ADR-135).
+        var keepAtLeastOne = (await _fieldSettings.GetAsync(cancellationToken)).EmergencyContact;
+        if (keepAtLeastOne && patient.EmergencyContacts.Count <= 1)
         {
             return Result<PatientResponse>.Failure(PatientErrorCodes.CannotRemoveLastEmergencyContact, "A patient must have at least one emergency contact.");
         }
 
-        patient.RemoveEmergencyContact(emergencyContactId, actorId);
+        patient.RemoveEmergencyContact(emergencyContactId, actorId, keepAtLeastOne);
         await _repository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Removed an emergency contact for patient {PatientId}", patient.Id);

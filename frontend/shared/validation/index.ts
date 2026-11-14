@@ -3,6 +3,7 @@ export * from './bloodPressure';
 export * from './identity/userValidation';
 export * from './identity/authValidation';
 export * from './patients/patientRegistrationUiValidation';
+export * from './patients/patientFieldRequirements';
 export * from './products/productValidation';
 export * from './hr/shiftValidation';
 export * from './hr/staffAvailabilityValidation';

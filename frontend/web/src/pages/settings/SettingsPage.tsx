@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ClipboardCheck,
   Database,
   DatabaseBackup,
   Eye,
@@ -56,6 +57,14 @@ const sections: SettingsSection[] = [
     description: 'Choose which Accounts & Finance reports this hospital shows. OP Report and Collection Summary always show.',
     icon: Eye,
     path: '/admin/settings/reports-visibility',
+    status: 'available',
+    permission: 'identity-administration.view',
+  },
+  {
+    title: 'Patient Registration Fields',
+    description: 'Choose which New Patient Registration fields are mandatory — last name, address, emergency contact, ID proof and more.',
+    icon: ClipboardCheck,
+    path: '/admin/settings/patient-registration-fields',
     status: 'available',
     permission: 'identity-administration.view',
   },

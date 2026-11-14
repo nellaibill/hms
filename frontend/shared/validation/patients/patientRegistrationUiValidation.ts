@@ -16,6 +16,7 @@ import {
   RELATIONSHIPS,
   TITLES,
 } from '../../enums';
+import { DEFAULT_PATIENT_FIELD_REQUIREMENTS, type PatientFieldRequirements } from './patientFieldRequirements';
 
 /**
  * UI-first schema matching the source documents exactly (LH Software.docx + the Patient
@@ -141,7 +142,9 @@ function keepSelectedArrivalDetails(value: unknown): unknown {
 // below instead: an unpicked one then gets its own message ("Select a channel") rather than
 // Zod's generic "Required", and doesn't abort the parse — an aborted parse skips every
 // superRefine, which hid the form's other errors (ID proof, Title) until the next Save.
-const arrivalSourceSchema = z.preprocess(
+// requireDetail is the hospital's "Mode of arrival detail" setting (ADR-135); "Please specify"
+// after an "Other" pick is required either way.
+const buildArrivalSourceSchema = (requireDetail: boolean) => z.preprocess(
   keepSelectedArrivalDetails,
   z
     .object({
@@ -172,27 +175,33 @@ const arrivalSourceSchema = z.preprocess(
     })
     .superRefine((data, ctx) => {
       if (data.category === 'DoctorReferral') {
-        if (!data.doctorReferral?.department) {
+        if (requireDetail && !data.doctorReferral?.department) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['doctorReferral', 'department'], message: 'Enter the referring department.' });
         }
       }
       if (data.category === 'PatientOrRelativeReferral') {
         if (!data.patientRelativeReferral?.source) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'source'], message: 'Select a referral source' });
+          if (requireDetail) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'source'], message: 'Select a referral source' });
+          }
         } else if (data.patientRelativeReferral.source === 'Other' && !data.patientRelativeReferral.details) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientRelativeReferral', 'details'], message: 'Please specify' });
         }
       }
       if (data.category === 'OnlineAdvertisement') {
         if (!data.onlineAd?.channel) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['onlineAd', 'channel'], message: 'Select a channel' });
+          if (requireDetail) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['onlineAd', 'channel'], message: 'Select a channel' });
+          }
         } else if (data.onlineAd.channel === 'Other' && !data.onlineAd.details) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['onlineAd', 'details'], message: 'Please specify' });
         }
       }
       if (data.category === 'OfflineAdvertisement') {
         if (!data.offlineAd?.channel) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offlineAd', 'channel'], message: 'Select a channel' });
+          if (requireDetail) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offlineAd', 'channel'], message: 'Select a channel' });
+          }
         } else if (data.offlineAd.channel === 'Other' && !data.offlineAd.details) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offlineAd', 'details'], message: 'Please specify' });
         }
@@ -263,10 +272,14 @@ export const recordVisitUiSchema = z.object({ ...visitCoreFieldsUiSchema });
 export type RegistrationDetailsUiFormValues = z.infer<typeof registrationDetailsUiSchema>;
 export type RecordVisitUiFormValues = z.infer<typeof recordVisitUiSchema>;
 
+// The fields a hospital can make optional (ADR-135) — lastName, bloodGroup, the address's line
+// 1/state/district/pincode and the first emergency contact's name/phone — are permissive here
+// and get their "required" and format checks from requiredFieldsRefinement below, so the
+// form's value types stay the same whatever the hospital chose.
 const demographicsUiSchema = {
   title: z.enum(TITLES),
   firstName: z.string().trim().min(1, 'First name is required').max(100).regex(namePattern, namePatternMessage('First name')),
-  lastName: z.string().trim().min(1, 'Last name is required').max(100).regex(namePattern, namePatternMessage('Last name')),
+  lastName: z.string().trim().max(100),
   dateOfBirth: z
     .string()
     .min(1, 'Date of birth is required')
@@ -285,18 +298,18 @@ const demographicsUiSchema = {
       return new Date(value) >= minDate;
     }, 'Patient age cannot exceed 100 years — please check the date of birth.'),
   gender: z.enum(PATIENT_GENDERS),
-  // Required — not optional — so the field can't be silently skipped end-to-end; the
-  // dropdown always defaults to and includes 'Unknown' as an explicit, deliberate choice
-  // for "not known/not recorded" rather than leaving the field genuinely unset.
-  bloodGroup: z.enum(BLOOD_GROUPS, { message: 'Blood group is required — select Unknown if it isn\'t known.' }),
+  // '' only while a hospital that makes Blood group mandatory hasn't had one picked yet (the
+  // dropdown then starts empty); otherwise it starts on 'Unknown', an explicit, deliberate
+  // choice for "not known/not recorded". The bridging sends '' as 'Unknown'.
+  bloodGroup: z.enum(BLOOD_GROUPS).or(z.literal('')),
   maritalStatus: z.enum(MARITAL_STATUSES, { message: 'Marital status is required.' }),
 
-  addressLine1: z.string().trim().min(1, 'Address is required').max(200),
+  addressLine1: z.string().trim().max(200),
   addressLine2: z.string().max(200).optional().or(z.literal('')),
   addressLine3: z.string().max(200).optional().or(z.literal('')),
-  district: z.string().trim().min(1, 'District is required').max(100),
-  state: z.string().trim().min(1, 'State is required').max(100),
-  pincode: z.string().regex(pincodePattern, 'Pincode must be 6 digits'),
+  district: z.string().trim().max(100),
+  state: z.string().trim().max(100),
+  pincode: z.string().trim(),
 
   primaryPhone: primaryPhoneSchema,
   secondaryPhone: z.string().trim().max(20).regex(phonePattern, phonePatternMessage('Secondary phone')).optional().or(z.literal('')),
@@ -304,13 +317,8 @@ const demographicsUiSchema = {
   profession: z.string().max(100).optional().or(z.literal('')),
 
   emergencyContactRelationship: z.enum(RELATIONSHIPS),
-  emergencyContactName: z.string().trim().min(1, 'Emergency contact name is required').max(150).regex(namePattern, namePatternMessage('Emergency contact name')),
-  emergencyContactPhone: z
-    .string()
-    .trim()
-    .min(1, 'Emergency contact phone is required')
-    .max(20)
-    .regex(phonePattern, phonePatternMessage('Emergency contact phone')),
+  emergencyContactName: z.string().trim().max(150),
+  emergencyContactPhone: z.string().trim().max(20),
   additionalEmergencyContacts: z.array(emergencyContactEntrySchema).max(2, 'Up to two additional emergency contacts').default([]),
 
   hasKnownAllergy: z.boolean(),
@@ -449,12 +457,16 @@ const titleGenderRefinement = (data: { title: string; gender: string }, ctx: z.R
 // a minor's marital status isn't a real-world determination yet: under 18 must be 'NA';
 // 18-or-older must give a real answer (Married or Unmarried), not 'NA'. Same 18 threshold
 // Title already uses for Mr/Mrs/Ms/Dr.
-const maritalStatusAgeRefinement = (data: { maritalStatus: string; dateOfBirth: string }, ctx: z.RefinementCtx) => {
+// A hospital that makes Marital status optional (ADR-135, requiredForAdults false) lets an
+// adult stay 'NA'; the under-18 rule is a consistency check and stays.
+const maritalStatusAgeRefinement = (requiredForAdults: boolean) => (data: { maritalStatus: string; dateOfBirth: string }, ctx: z.RefinementCtx) => {
   if (!isUsableDateOfBirth(data.dateOfBirth)) {
     return;
   }
   const isMinor = calculateAge(data.dateOfBirth, new Date()) < 18;
-  const isConsistent = isMinor ? data.maritalStatus === 'NA' : data.maritalStatus === 'Married' || data.maritalStatus === 'Unmarried';
+  const isConsistent = isMinor
+    ? data.maritalStatus === 'NA'
+    : !requiredForAdults || data.maritalStatus === 'Married' || data.maritalStatus === 'Unmarried';
   if (!isConsistent) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -509,45 +521,104 @@ const phoneDuplicationRefinement = (
   });
 };
 
+// The hospital's mandatory-field choices (ADR-135) for the switchable fields that live on the
+// demographics shape, plus their format checks — which apply whenever a value is entered,
+// mandatory or not. Messages match what the fields said before they became switchable.
+const requiredFieldsRefinement = (required: PatientFieldRequirements) => (
+  data: {
+    lastName: string;
+    bloodGroup: string;
+    addressLine1: string;
+    state: string;
+    district: string;
+    pincode: string;
+    emergencyContactName: string;
+    emergencyContactPhone: string;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+  if (!data.lastName) {
+    if (required.lastName) issue('lastName', 'Last name is required');
+  } else if (!namePattern.test(data.lastName)) {
+    issue('lastName', namePatternMessage('Last name'));
+  }
+
+  if (required.bloodGroup && !data.bloodGroup) {
+    issue('bloodGroup', "Blood group is required — select Unknown if it isn't known.");
+  }
+
+  if (required.addressLine1 && !data.addressLine1) issue('addressLine1', 'Address is required');
+  if (required.state && !data.state) issue('state', 'State is required');
+  if (required.district && !data.district) issue('district', 'District is required');
+  // A district comes from the chosen state's list.
+  if (data.district && !data.state) issue('state', 'Select the state the district belongs to.');
+  if (data.pincode ? !pincodePattern.test(data.pincode) : required.pincode) issue('pincode', 'Pincode must be 6 digits');
+
+  // An optional emergency contact can be left blank, but one that's started needs both halves.
+  const contactStarted = required.emergencyContact || Boolean(data.emergencyContactName || data.emergencyContactPhone);
+  if (contactStarted) {
+    if (!data.emergencyContactName) issue('emergencyContactName', 'Emergency contact name is required');
+    else if (!namePattern.test(data.emergencyContactName)) issue('emergencyContactName', namePatternMessage('Emergency contact name'));
+    if (!data.emergencyContactPhone) issue('emergencyContactPhone', 'Emergency contact phone is required');
+    else if (!phonePattern.test(data.emergencyContactPhone)) issue('emergencyContactPhone', phonePatternMessage('Emergency contact phone'));
+  }
+};
+
 // Patient Information + Contact Information + Medical Information only — everything the
 // backend's CreatePatientRequest actually needs, and nothing from Registration Details/
 // Billing (which aren't wired to the backend yet, see PatientRegistrationCreatePage's
 // toRequest()). Exported so "Save and proceed to Registration" can re-parse getValues()
 // through this instead of the full patientRegistrationUiSchema, which would also demand
 // Registration Details' required Department/Consultant be filled in — fields that step
-// deliberately hasn't been reached yet at that point in the wizard.
-export const patientRegistrationCoreUiSchema = z
-  .object({
-    ...demographicsUiSchema,
-    arrivalSource: arrivalSourceSchema,
-  })
-  .superRefine(allergyRefinement)
-  .superRefine(titleAgeRefinement)
-  .superRefine(titleGenderRefinement)
-  .superRefine(maritalStatusAgeRefinement)
-  .superRefine(phoneDuplicationRefinement);
+// deliberately hasn't been reached yet at that point in the wizard. `required` is the
+// hospital's Settings → Patient Registration Fields (ADR-135); the ID proof number isn't on
+// this form (see PatientRegistrationForm's staged documents), so it's checked there.
+export function buildPatientRegistrationCoreUiSchema(required: PatientFieldRequirements = DEFAULT_PATIENT_FIELD_REQUIREMENTS) {
+  return z
+    .object({
+      ...demographicsUiSchema,
+      arrivalSource: buildArrivalSourceSchema(required.modeOfArrivalDetail),
+    })
+    .superRefine(requiredFieldsRefinement(required))
+    .superRefine(allergyRefinement)
+    .superRefine(titleAgeRefinement)
+    .superRefine(titleGenderRefinement)
+    .superRefine(maritalStatusAgeRefinement(required.maritalStatus))
+    .superRefine(phoneDuplicationRefinement);
+}
 
-export const patientRegistrationUiSchema = z
-  .object({
-    ...demographicsUiSchema,
-    arrivalSource: arrivalSourceSchema,
-    registration: registrationDetailsUiSchema,
-  })
-  .superRefine(allergyRefinement)
-  .superRefine(titleAgeRefinement)
-  .superRefine(titleGenderRefinement)
-  .superRefine(maritalStatusAgeRefinement)
-  .superRefine(phoneDuplicationRefinement);
+export function buildPatientRegistrationUiSchema(required: PatientFieldRequirements = DEFAULT_PATIENT_FIELD_REQUIREMENTS) {
+  return z
+    .object({
+      ...demographicsUiSchema,
+      arrivalSource: buildArrivalSourceSchema(required.modeOfArrivalDetail),
+      registration: registrationDetailsUiSchema,
+    })
+    .superRefine(requiredFieldsRefinement(required))
+    .superRefine(allergyRefinement)
+    .superRefine(titleAgeRefinement)
+    .superRefine(titleGenderRefinement)
+    .superRefine(maritalStatusAgeRefinement(required.maritalStatus))
+    .superRefine(phoneDuplicationRefinement);
+}
+
+/** The defaults — a hospital that hasn't saved Settings → Patient Registration Fields. */
+export const patientRegistrationCoreUiSchema = buildPatientRegistrationCoreUiSchema();
+export const patientRegistrationUiSchema = buildPatientRegistrationUiSchema();
 
 // ID proof type/number live only on the Edit schema, not demographicsUiSchema — Create keeps
 // them on its separate `documents` staging object (see PatientRegistrationForm.tsx) since a
 // file has to be staged alongside them until the patient exists; Edit has no such constraint,
 // so they can be normal RHF-validated fields here. Always required (unlike Create's more
 // deferred gating) since an existing patient's record already has some value for both.
-const idProofNumberRefinement = (data: { idProofType: IdProofType; idProofNumber: string }, ctx: z.RefinementCtx) => {
+// Optional only where the hospital says so (ADR-135); a number that is entered is always
+// format-checked.
+const idProofNumberRefinement = (required: boolean) => (data: { idProofType: IdProofType; idProofNumber: string }, ctx: z.RefinementCtx) => {
   const trimmed = data.idProofNumber.trim();
   if (!trimmed) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['idProofNumber'], message: 'ID proof number is required.' });
+    if (required) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['idProofNumber'], message: 'ID proof number is required.' });
     return;
   }
   const formatError = idProofNumberFormatError(data.idProofType, trimmed);
@@ -576,18 +647,24 @@ const editDemographicsUiSchema = omit(demographicsUiSchema, [
   'additionalAllergies',
 ] as const);
 
-export const patientEditUiSchema = z
-  .object({
-    ...editDemographicsUiSchema,
-    arrivalSource: arrivalSourceSchema,
-    idProofType: z.enum(ID_PROOF_TYPES),
-    idProofNumber: z.string().max(30),
-  })
-  .superRefine(titleAgeRefinement)
-  .superRefine(titleGenderRefinement)
-  .superRefine(maritalStatusAgeRefinement)
-  .superRefine(phoneDuplicationRefinement)
-  .superRefine(idProofNumberRefinement);
+export function buildPatientEditUiSchema(required: PatientFieldRequirements = DEFAULT_PATIENT_FIELD_REQUIREMENTS) {
+  return z
+    .object({
+      ...editDemographicsUiSchema,
+      arrivalSource: buildArrivalSourceSchema(required.modeOfArrivalDetail),
+      idProofType: z.enum(ID_PROOF_TYPES),
+      idProofNumber: z.string().max(30),
+    })
+    .superRefine(requiredFieldsRefinement(required))
+    .superRefine(titleAgeRefinement)
+    .superRefine(titleGenderRefinement)
+    .superRefine(maritalStatusAgeRefinement(required.maritalStatus))
+    .superRefine(phoneDuplicationRefinement)
+    .superRefine(idProofNumberRefinement(required.idProofNumber));
+}
+
+/** The defaults — a hospital that hasn't saved Settings → Patient Registration Fields. */
+export const patientEditUiSchema = buildPatientEditUiSchema();
 
 export type PatientRegistrationUiFormValues = z.infer<typeof patientRegistrationUiSchema>;
 export type PatientRegistrationCoreUiFormValues = z.infer<typeof patientRegistrationCoreUiSchema>;
