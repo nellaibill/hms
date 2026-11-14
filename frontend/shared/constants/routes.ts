@@ -67,6 +67,8 @@ export const API_ROUTES = {
     report: '/api/v1/patients/report',
     reportSummary: '/api/v1/patients/report/summary',
     reportExport: '/api/v1/patients/report/export',
+    /** Settings → Patient Registration Fields (ADR-135). */
+    fieldSettings: '/api/v1/patients/field-settings',
   },
   /** Cross-patient visits list, for Patient Reports — mirrors PatientVisitsController's
    * absolute-route GetAll action (deliberately not nested under a patientId). */

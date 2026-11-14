@@ -1,5 +1,5 @@
 import type { Allergy, AllergyInput, CreatePatientRequest, Patient, PatientRegistrationCoreUiFormValues, PatientRegistrationUiFormValues } from '@hms/shared';
-import { UserPlus } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/toast-context';
@@ -12,6 +12,7 @@ import {
   useAddPatientAllergyMutation,
   useCreatePatientMutation,
   useCreatePatientVisitMutation,
+  usePatientFieldRequirements,
   useRemovePatientAllergyMutation,
   useUpdatePatientMutation,
   useUploadPatientIdProofMutation,
@@ -50,14 +51,22 @@ function buildAllergyRequests(values: PatientRegistrationCoreUiFormValues): Alle
 function toRequest(values: PatientRegistrationCoreUiFormValues, documents: StagedDocuments): CreatePatientRequest {
   const allergies = buildAllergyRequests(values);
 
+  // The first contact can be left blank where the hospital makes it optional (ADR-135) — the
+  // schema already insists a started one has both a name and a phone.
+  const hasFirstContact = Boolean(values.emergencyContactName || values.emergencyContactPhone);
   const emergencyContacts = [
-    toEmergencyContactRequest({
-      relationship: values.emergencyContactRelationship,
-      name: values.emergencyContactName,
-      phone: values.emergencyContactPhone,
-    }),
+    ...(hasFirstContact
+      ? [
+          toEmergencyContactRequest({
+            relationship: values.emergencyContactRelationship,
+            name: values.emergencyContactName,
+            phone: values.emergencyContactPhone,
+          }),
+        ]
+      : []),
     ...values.additionalEmergencyContacts.map((row) => toEmergencyContactRequest(row)),
   ];
+  const idProofNumber = documents.idProofNumber.trim();
 
   return {
     title: values.title,
@@ -65,7 +74,7 @@ function toRequest(values: PatientRegistrationCoreUiFormValues, documents: Stage
     lastName: values.lastName,
     dateOfBirth: values.dateOfBirth,
     gender: toBackendGender(values.gender),
-    bloodGroup: values.bloodGroup,
+    bloodGroup: values.bloodGroup || 'Unknown',
     maritalStatus: values.maritalStatus,
 
     primaryPhone: values.primaryPhone.number,
@@ -73,13 +82,15 @@ function toRequest(values: PatientRegistrationCoreUiFormValues, documents: Stage
     email: values.email || undefined,
     profession: values.profession || undefined,
 
-    idProofType: documents.idProofType || undefined,
+    // A type with no number isn't an ID proof — the two are only sent together (the number can
+    // be optional, ADR-135).
+    idProofType: idProofNumber ? documents.idProofType : undefined,
     // Trimmed here, not just at validation time — idProofNumberValidationError (which gates
     // the Save button) trims before checking the format, but the raw untrimmed value was what
     // actually got sent, so a stray leading/trailing space could pass client-side validation
     // and still fail the backend's own (untrimmed) pattern check. Same class of bug as the
     // form-wide getValues() fix above, just for this field, which lives outside the RHF form.
-    idProofNumber: documents.idProofNumber.trim() || undefined,
+    idProofNumber: idProofNumber || undefined,
 
     ...toModeOfArrivalRequest(values.arrivalSource),
 
@@ -87,8 +98,8 @@ function toRequest(values: PatientRegistrationCoreUiFormValues, documents: Stage
       addressLine1: values.addressLine1,
       addressLine2: values.addressLine2 || undefined,
       addressLine3: values.addressLine3 || undefined,
-      stateId: values.state,
-      districtId: values.district,
+      stateId: values.state || null,
+      districtId: values.district || null,
       pincode: values.pincode,
     },
     allergies,
@@ -105,6 +116,7 @@ export default function PatientRegistrationCreatePage() {
   const addAllergyMutation = useAddPatientAllergyMutation();
   const removeAllergyMutation = useRemovePatientAllergyMutation();
   const createVisitMutation = useCreatePatientVisitMutation();
+  const { requirements: fieldRequirements } = usePatientFieldRequirements();
   const { toast } = useToast();
 
   // Set once "Save and proceed to Registration" (Medical Information tab) successfully saves
@@ -279,15 +291,24 @@ export default function PatientRegistrationCreatePage() {
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
       <RequirePermission permission="patient-management.create">
-        <PatientRegistrationForm
-          isSubmitting={createMutation.isPending || updateMutation.isPending || createVisitMutation.isPending}
-          isSavingAndProceeding={createMutation.isPending || updateMutation.isPending}
-          apiError={toDisplayError(createMutation.error ?? updateMutation.error ?? createVisitMutation.error)}
-          savedPatient={savedPatient}
-          onSaveAndProceed={handleSaveAndProceed}
-          onSubmit={handleSubmit}
-          onDirtyChange={setIsDirty}
-        />
+        {/* The form reads the hospital's mandatory-field settings (ADR-135) once, as it mounts. */}
+        {fieldRequirements ? (
+          <PatientRegistrationForm
+            fieldRequirements={fieldRequirements}
+            isSubmitting={createMutation.isPending || updateMutation.isPending || createVisitMutation.isPending}
+            isSavingAndProceeding={createMutation.isPending || updateMutation.isPending}
+            apiError={toDisplayError(createMutation.error ?? updateMutation.error ?? createVisitMutation.error)}
+            savedPatient={savedPatient}
+            onSaveAndProceed={handleSaveAndProceed}
+            onSubmit={handleSubmit}
+            onDirtyChange={setIsDirty}
+          />
+        ) : (
+          <div className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading form…
+          </div>
+        )}
       </RequirePermission>
       </div>
 

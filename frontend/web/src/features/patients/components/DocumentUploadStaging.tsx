@@ -31,6 +31,8 @@ const ID_PROOF_NUMBER_LABELS: Record<IdProofType, string> = {
 interface DocumentUploadStagingProps {
   value: StagedDocuments;
   onChange: (value: StagedDocuments) => void;
+  /** Settings → Patient Registration Fields (ADR-135); the label says "(optional)" when off. */
+  idProofNumberRequired?: boolean;
 }
 
 /**
@@ -44,7 +46,7 @@ interface DocumentUploadStagingProps {
  * it to fold into, and rejecting it here (never staging it) is what stops it from ever
  * reaching the upload call this component's caller makes after the patient is created.
  */
-export function DocumentUploadStaging({ value, onChange }: DocumentUploadStagingProps) {
+export function DocumentUploadStaging({ value, onChange, idProofNumberRequired = true }: DocumentUploadStagingProps) {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [idProofFileError, setIdProofFileError] = useState<string | null>(null);
 
@@ -100,7 +102,7 @@ export function DocumentUploadStaging({ value, onChange }: DocumentUploadStaging
         </Field>
 
         <Field
-          label={ID_PROOF_NUMBER_LABELS[value.idProofType]}
+          label={idProofNumberRequired ? ID_PROOF_NUMBER_LABELS[value.idProofType] : `${ID_PROOF_NUMBER_LABELS[value.idProofType]} (optional)`}
           htmlFor="id-proof-number"
           className="flex min-w-[160px] flex-1 flex-col gap-1"
         >

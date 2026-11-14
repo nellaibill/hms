@@ -37,6 +37,34 @@ _To be documented._
 
 ## Decisions
 
+### ADR-135: Each hospital chooses which patient registration fields are mandatory
+**Date:** 2026-11-14
+**Status:** Accepted
+
+**Context**
+New Patient Registration (`/patients/registration/new`) required a fixed set of fields. Hospitals register patients who have a single name, no fixed address, no emergency contact with them, or no ID document at the counter. Reception was typing filler values to get past the form. The client asked for an admin page to choose which fields are mandatory, and picked the fields it should cover from a review of every field's rule in the form, the API and the database.
+
+**Decision**
+- **Ten switchable fields.** Last name, Blood group, Marital status, Address line 1, State, District, Pincode, the first emergency contact, the mode-of-arrival detail (referring department, referral source or advertisement channel) and the ID proof number.
+- **Defaults keep today's behaviour.** Every switchable field is mandatory except Blood group. The form has always started Blood group on "Unknown", so it was never really mandatory.
+- **Always mandatory:** title, first name, date of birth, gender, primary phone, mode-of-arrival source, encounter type, department and consultant. They identify the patient, find returning patients by phone, and bill the visit. Conditional rules stay as they were: allergy details when there is a known allergy, MLC/NMLC for IP and Emergency, and "Please specify" after "Other". Format checks (10-digit phone, 6-digit pincode, ID proof formats, letters-only names) still apply to any value that is entered.
+- **Rules per field:**
+  - **Blood group** is form-only. When mandatory the dropdown starts empty and must be picked ("Unknown" is still a choice). The API can't tell a picked "Unknown" from a defaulted one, so it doesn't enforce this.
+  - **Marital status:** when optional, an adult may stay "N/A". Under-18s must still be "N/A".
+  - **Emergency contact:** when optional, a patient may have none, and Edit Patient may remove the last one. A contact that is started still needs both a name and a phone.
+  - **District** needs **State**. A mandatory District forces a mandatory State on the settings page and in the API, and a district is never accepted without its state.
+- **Storage.** The choices are stored in the Patients module as a single row in the new table `patients.patient_field_settings`, with one jsonb column `required_fields`, the same pattern as Pharmacy Settings. They are read through `GET /api/v1/patients/field-settings`, open to any signed-in user because the forms need them, and saved with `PUT`, which needs `identity-administration.edit`.
+- **Admin page.** Settings → Patient Registration Fields (`/admin/settings/patient-registration-fields`), on the same `identity-administration.view` grain as Reports Visibility.
+- **Enforced in both places.** The New Patient Registration and Edit Patient forms build their Zod schemas from the settings (`buildPatientRegistrationUiSchema` / `buildPatientEditUiSchema`). `CreatePatientRequestValidator` and `UpdatePatientRequestValidator` load the same settings before every async validation and pass them to the rules and child validators through FluentValidation's `RootContextData`.
+- **Bulk Excel import unchanged.** It validates with `PatientFieldRequirements.BulkImport`, the rules the API applied before this change, whatever the hospital chose.
+- **Blank values in the database.** A blank last name, Address line 1 or pincode is stored as `''`; those columns stay NOT NULL. `addresses.state_id` and `district_id` become nullable. The domain guards for last name, Address line 1 and pincode moved to the validators. Offline sync accepts a blank state or district.
+- **The API now enforces the ID proof number** whenever it is mandatory. Before, only the form required it.
+
+**Consequences**
+- Patients migration (`AddPatientFieldSettings`): run Migrate on staging after deploying. Its Down step puts the empty Guid back in any null state or district.
+- Patient view and print show only the parts of the address that were recorded. The discharge summary PDF already skipped missing parts.
+- Anything that posts patients straight to the API must send an ID proof number while that field is mandatory, which is the default.
+
 ### ADR-134: Accounts and Finance is split into OP, IP, Pharmacy and Lab accounts
 **Date:** 2026-11-13
 **Status:** Accepted (changes the landing page and URLs from ADR-120/125's tab bar)

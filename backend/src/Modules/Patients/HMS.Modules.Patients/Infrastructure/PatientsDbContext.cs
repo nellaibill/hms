@@ -45,6 +45,9 @@ public class PatientsDbContext : DbContext
     internal DbSet<PatientImportBatch> PatientImportBatches => Set<PatientImportBatch>();
     internal DbSet<PatientImportRow> PatientImportRows => Set<PatientImportRow>();
 
+    // Which registration fields the hospital makes mandatory (ADR-135) — at most one row.
+    internal DbSet<PatientFieldSettings> PatientFieldSettings => Set<PatientFieldSettings>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);

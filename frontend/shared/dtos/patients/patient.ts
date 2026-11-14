@@ -10,13 +10,15 @@ import type {
   Title,
 } from '../../enums/patients';
 
-/** Mirrors HMS.Modules.Patients.Contracts.AddressRequest/AddressResponse. */
+/** Mirrors HMS.Modules.Patients.Contracts.AddressRequest/AddressResponse. Address line 1,
+ * State, District and Pincode can be blank where the hospital makes them optional (ADR-135):
+ * a blank line 1/pincode comes back as '', a missing state/district as null. */
 export interface Address {
   addressLine1: string;
   addressLine2?: string | null;
   addressLine3?: string | null;
-  stateId: string;
-  districtId: string;
+  stateId: string | null;
+  districtId: string | null;
   pincode: string;
 }
 

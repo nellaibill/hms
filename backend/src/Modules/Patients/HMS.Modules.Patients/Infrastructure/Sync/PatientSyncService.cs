@@ -1,5 +1,6 @@
 using System.Data.Common;
 using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
@@ -207,17 +208,27 @@ internal sealed class PatientSyncService : IPatientSyncService
         }
 
         // StateId/DistrictId point into Masters with no database foreign key, so they are
-        // checked here, the same way PatientService checks them on registration.
-        var states = await _stateService.GetAllAsync(cancellationToken);
-        if (!states.Any(s => s.Id == state!.Address.StateId))
+        // checked here, the same way PatientService checks them on registration. Either may be
+        // blank where the hospital makes it optional (ADR-135); a blank one has nothing to check.
+        var stateId = state!.Address.StateId;
+        if (stateId is { } givenStateId)
         {
-            return (PatientSyncApplyResult.Rejected(PatientSyncErrorCodes.InvalidState, "The patient's state does not exist on this server."), null);
+            var states = await _stateService.GetAllAsync(cancellationToken);
+            if (!states.Any(s => s.Id == givenStateId))
+            {
+                return (PatientSyncApplyResult.Rejected(PatientSyncErrorCodes.InvalidState, "The patient's state does not exist on this server."), null);
+            }
         }
 
-        var districts = await _districtService.GetByStateIdAsync(state!.Address.StateId, cancellationToken);
-        if (!districts.Any(d => d.Id == state.Address.DistrictId))
+        if (state.Address.DistrictId is { } givenDistrictId)
         {
-            return (PatientSyncApplyResult.Rejected(PatientSyncErrorCodes.InvalidDistrict, "The patient's district does not exist on this server for the given state."), null);
+            IReadOnlyList<DistrictResponse> districts = stateId is { } districtStateId
+                ? await _districtService.GetByStateIdAsync(districtStateId, cancellationToken)
+                : [];
+            if (!districts.Any(d => d.Id == givenDistrictId))
+            {
+                return (PatientSyncApplyResult.Rejected(PatientSyncErrorCodes.InvalidDistrict, "The patient's district does not exist on this server for the given state."), null);
+            }
         }
 
         return (PatientSyncApplyResult.Success(), state);

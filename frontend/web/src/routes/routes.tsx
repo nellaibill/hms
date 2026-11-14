@@ -40,6 +40,7 @@ const RoleFormPage = lazy(() => import('../pages/roles/RoleFormPage'));
 const BrandingSettingsPage = lazy(() => import('../pages/settings/BrandingSettingsPage'));
 const BackupSettingsPage = lazy(() => import('../pages/settings/BackupSettingsPage'));
 const ReportVisibilitySettingsPage = lazy(() => import('../pages/settings/ReportVisibilitySettingsPage'));
+const PatientFieldSettingsPage = lazy(() => import('../pages/settings/PatientFieldSettingsPage'));
 const MastersHubPage = lazy(() => import('../pages/masters/MastersHubPage'));
 const MasterListPage = lazy(() => import('../pages/masters/MasterListPage'));
 const MasterFormPage = lazy(() => import('../pages/masters/MasterFormPage'));
@@ -339,6 +340,9 @@ const brandingRoutes = [
       // Reports visibility (ADR-120) — stored on the same branding row, same permission grain;
       // saving needs identity-administration.edit, enforced by the backend.
       { path: 'admin/settings/reports-visibility', element: withSuspense(<ReportVisibilitySettingsPage />) },
+      // Patient Registration Fields (ADR-135) — stored by the Patients module, same permission
+      // grain; saving needs identity-administration.edit, enforced by the backend.
+      { path: 'admin/settings/patient-registration-fields', element: withSuspense(<PatientFieldSettingsPage />) },
     ],
   },
 ];

@@ -53,6 +53,11 @@ public static class PatientsModule
         services.AddScoped<IPatientIdentifierGenerator, PatientIdentifierGenerator>();
         services.AddScoped<IPatientService, PatientService>();
 
+        // Settings → Patient Registration Fields (ADR-135). Scoped so one request reads the
+        // row once, however many validators ask.
+        services.AddScoped<IPatientFieldSettingsRepository, PatientFieldSettingsRepository>();
+        services.AddScoped<IPatientFieldSettingsService, PatientFieldSettingsService>();
+
         // HMS.Modules.Sync's seam into patient data (ADR-133): applying snapshots on the cloud,
         // version stamps, backfill and the Cloud Sync page's name lookups.
         services.AddScoped<IPatientSyncService, PatientSyncService>();
@@ -87,6 +92,7 @@ public static class PatientsModule
         services.AddScoped<IValidator<AddAllergyRequest>, AddAllergyRequestValidator>();
         services.AddScoped<IValidator<AddEmergencyContactRequest>, AddEmergencyContactRequestValidator>();
         services.AddScoped<IValidator<CreatePatientVisitRequest>, CreatePatientVisitRequestValidator>();
+        services.AddScoped<IValidator<PatientFieldRequirements>, UpdatePatientFieldSettingsRequestValidator>();
 
         return services;
     }

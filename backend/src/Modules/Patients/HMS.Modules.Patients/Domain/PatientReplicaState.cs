@@ -45,8 +45,8 @@ internal sealed record AddressReplicaState(
     string AddressLine1,
     string? AddressLine2,
     string? AddressLine3,
-    Guid StateId,
-    Guid DistrictId,
+    Guid? StateId,
+    Guid? DistrictId,
     string Pincode);
 
 internal sealed record AllergyReplicaState(Guid Id, AllergyType AllergyType, string? Specify, AllergySeverity Severity);

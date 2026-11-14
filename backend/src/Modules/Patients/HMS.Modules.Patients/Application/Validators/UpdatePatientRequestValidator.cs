@@ -3,13 +3,24 @@ using HMS.Modules.Patients.Contracts;
 
 namespace HMS.Modules.Patients.Application.Validators;
 
-internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRequest>
+/// <summary>Same mandatory-field settings as registration (ADR-135) — see
+/// PatientFieldRequirementsContext for how they reach the rules.</summary>
+internal class UpdatePatientRequestValidator : PatientFieldAwareValidator<UpdatePatientRequest>
 {
-    public UpdatePatientRequestValidator()
+    internal UpdatePatientRequestValidator()
+        : this(null)
+    {
+    }
+
+    public UpdatePatientRequestValidator(IPatientFieldSettingsService? fieldSettings)
+        : base(fieldSettings)
     {
         RuleFor(x => x.Title).IsInEnum();
         RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100).Matches(CreatePatientRequestValidator.NamePattern).WithMessage(CreatePatientRequestValidator.NamePatternMessage);
-        RuleFor(x => x.LastName).NotEmpty().MaximumLength(100).Matches(CreatePatientRequestValidator.NamePattern).WithMessage(CreatePatientRequestValidator.NamePatternMessage);
+        RuleFor(x => x.LastName).NotEmpty().When((_, context) => Required(context).LastName);
+        RuleFor(x => x.LastName)
+            .MaximumLength(100).Matches(CreatePatientRequestValidator.NamePattern).WithMessage(CreatePatientRequestValidator.NamePatternMessage)
+            .When(x => !string.IsNullOrWhiteSpace(x.LastName));
         RuleFor(x => x.DateOfBirth)
             .NotEmpty()
             .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth cannot be in the future.")
@@ -28,7 +39,7 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x.BloodGroup).IsInEnum();
         RuleFor(x => x.MaritalStatus).IsInEnum();
         RuleFor(x => x)
-            .Must(x => CreatePatientRequestValidator.IsMaritalStatusConsistentWithAge(x.MaritalStatus, x.DateOfBirth))
+            .Must((x, _, context) => CreatePatientRequestValidator.IsMaritalStatusConsistentWithAge(x.MaritalStatus, x.DateOfBirth, Required(context).MaritalStatus))
             .WithName("MaritalStatus")
             .WithMessage(x => CreatePatientRequestValidator.MaritalStatusAgeMessage(x.DateOfBirth))
             .When(x => Enum.IsDefined(x.MaritalStatus));
@@ -43,7 +54,10 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x.Email).EmailAddress().MaximumLength(256).When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Profession).MaximumLength(100);
 
-        RuleFor(x => x.IdProofNumber).NotEmpty().WithMessage("ID proof number is required when an ID proof type is selected.").When(x => x.IdProofType.HasValue);
+        RuleFor(x => x.IdProofNumber).NotEmpty().WithMessage("ID proof number is required.").When((_, context) => Required(context).IdProofNumber);
+        RuleFor(x => x.IdProofNumber)
+            .NotEmpty().WithMessage("ID proof number is required when an ID proof type is selected.")
+            .When((x, context) => x.IdProofType.HasValue && !Required(context).IdProofNumber);
         RuleFor(x => x.IdProofNumber)
             .Matches(CreatePatientRequestValidator.AadhaarPattern).WithMessage("Aadhaar number must be exactly 12 digits.")
             .When(x => x.IdProofType == IdProofType.Aadhaar && !string.IsNullOrWhiteSpace(x.IdProofNumber));
@@ -51,7 +65,8 @@ internal class UpdatePatientRequestValidator : AbstractValidator<UpdatePatientRe
         RuleFor(x => x.ModeOfArrivalSource).IsInEnum();
         RuleFor(x => x.ModeOfArrivalChannel)
             .NotEmpty().WithMessage("Channel is required for this arrival source.")
-            .When(x => x.ModeOfArrivalSource is ModeOfArrivalSource.OnlineAdvertisement or ModeOfArrivalSource.OfflineAdvertisement);
+            .When((x, context) => x.ModeOfArrivalSource is ModeOfArrivalSource.OnlineAdvertisement or ModeOfArrivalSource.OfflineAdvertisement
+                && Required(context).ModeOfArrivalDetail);
         RuleFor(x => x.ModeOfArrivalSpecify)
             .NotEmpty().WithMessage("Please specify.")
             .When(x => !string.IsNullOrWhiteSpace(x.ModeOfArrivalChannel) && x.ModeOfArrivalChannel == "Other");

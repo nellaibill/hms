@@ -55,7 +55,7 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("address_line_3");
 
-                    b.Property<Guid>("DistrictId")
+                    b.Property<Guid?>("DistrictId")
                         .HasColumnType("uuid")
                         .HasColumnName("district_id");
 
@@ -65,7 +65,7 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasColumnType("character varying(6)")
                         .HasColumnName("pincode");
 
-                    b.Property<Guid>("StateId")
+                    b.Property<Guid?>("StateId")
                         .HasColumnType("uuid")
                         .HasColumnName("state_id");
 
@@ -311,6 +311,53 @@ namespace HMS.Database.Migrations.Patients.Migrations
                         .HasDatabaseName("ix_patients_name");
 
                     b.ToTable("patients", "patients");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientFieldSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("RequiredFieldsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("required_fields");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_patient_field_settings");
+
+                    b.ToTable("patient_field_settings", "patients");
                 });
 
             modelBuilder.Entity("HMS.Modules.Patients.Domain.PatientImportBatch", b =>

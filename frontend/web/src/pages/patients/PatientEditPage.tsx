@@ -6,7 +6,7 @@ import { PageBanner } from '@/components/PageBanner';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { RequirePermission } from '../../features/auth/RequirePermission';
-import { DataVerificationBanner, PatientEditForm, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
+import { DataVerificationBanner, PatientEditForm, usePatientFieldRequirements, usePatientQuery, useUpdatePatientMutation } from '../../features/patients';
 import { toDisplayError } from '../../features/patients/apiErrorDisplay';
 import { toBackendGender, fromBackendGender, fromModeOfArrivalFields, toModeOfArrivalRequest } from '../../features/patients/bridging';
 
@@ -25,13 +25,14 @@ import { toBackendGender, fromBackendGender, fromModeOfArrivalFields, toModeOfAr
  */
 function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdatePatientRequest {
   const modeOfArrival = toModeOfArrivalRequest(values.arrivalSource);
+  const idProofNumber = values.idProofNumber.trim();
   return {
     title: values.title,
     firstName: values.firstName,
     lastName: values.lastName,
     dateOfBirth: values.dateOfBirth,
     gender: toBackendGender(values.gender),
-    bloodGroup: values.bloodGroup,
+    bloodGroup: values.bloodGroup || 'Unknown',
     maritalStatus: values.maritalStatus,
 
     primaryPhone: values.primaryPhone.number,
@@ -39,8 +40,9 @@ function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdateP
     email: values.email || undefined,
     profession: values.profession || undefined,
 
-    idProofType: values.idProofType,
-    idProofNumber: values.idProofNumber.trim(),
+    // Sent only with a number — it can be optional where the hospital says so (ADR-135).
+    idProofType: idProofNumber ? values.idProofType : undefined,
+    idProofNumber: idProofNumber || undefined,
 
     modeOfArrivalSource: modeOfArrival.modeOfArrivalSource,
     modeOfArrivalChannel: modeOfArrival.modeOfArrivalChannel,
@@ -50,8 +52,8 @@ function toRequest(values: PatientEditUiFormValues, rowVersion: string): UpdateP
       addressLine1: values.addressLine1,
       addressLine2: values.addressLine2 || undefined,
       addressLine3: values.addressLine3 || undefined,
-      stateId: values.state,
-      districtId: values.district,
+      stateId: values.state || null,
+      districtId: values.district || null,
       pincode: values.pincode,
     },
 
@@ -78,8 +80,8 @@ function toDefaultValues(patient: Patient): PatientEditUiFormValues {
     addressLine1: patient.address.addressLine1,
     addressLine2: patient.address.addressLine2 ?? '',
     addressLine3: patient.address.addressLine3 ?? '',
-    district: patient.address.districtId,
-    state: patient.address.stateId,
+    district: patient.address.districtId ?? '',
+    state: patient.address.stateId ?? '',
     pincode: patient.address.pincode,
 
     primaryPhone: { number: patient.primaryPhone },
@@ -110,10 +112,11 @@ export default function PatientEditPage() {
   const navigate = useNavigate();
   const { data: patient, isPending, isError } = usePatientQuery(id);
   const mutation = useUpdatePatientMutation();
+  const { requirements: fieldRequirements } = usePatientFieldRequirements();
   const [isDirty, setIsDirty] = useState(false);
   const { showUnsavedDialog, confirmDiscard, cancelDiscard, markSaved } = useUnsavedChangesGuard(isDirty);
 
-  if (isPending) {
+  if (isPending || !fieldRequirements) {
     return (
       <div className="flex flex-1 items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -163,6 +166,7 @@ export default function PatientEditPage() {
       {patient.requiresDataVerification && <DataVerificationBanner />}
       <RequirePermission permission="patient-management.edit">
         <PatientEditForm
+          fieldRequirements={fieldRequirements}
           patientId={id as string}
           allergies={patient.allergies}
           isSubmitting={mutation.isPending}

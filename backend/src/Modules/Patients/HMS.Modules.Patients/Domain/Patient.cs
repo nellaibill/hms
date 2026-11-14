@@ -126,15 +126,16 @@ internal class Patient : Entity
     {
         Guard.AgainstNullOrWhiteSpace(uhid, nameof(uhid));
         Guard.AgainstNullOrWhiteSpace(firstName, nameof(firstName));
-        Guard.AgainstNullOrWhiteSpace(lastName, nameof(lastName));
         Guard.AgainstNullOrWhiteSpace(primaryPhone, nameof(primaryPhone));
 
+        // Last name can be left blank when the hospital makes it optional (ADR-135) — stored
+        // as an empty string, the column stays NOT NULL.
         return new Patient(
             Guid.CreateVersion7(),
             uhid.Trim(),
             title,
             firstName.Trim(),
-            lastName.Trim(),
+            (lastName ?? string.Empty).Trim(),
             dateOfBirth,
             gender,
             bloodGroup,
@@ -155,11 +156,10 @@ internal class Patient : Entity
     public void UpdateDemographics(Title title, string firstName, string lastName, DateOnly dateOfBirth, Gender gender, BloodGroup bloodGroup, MaritalStatus maritalStatus, Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(firstName, nameof(firstName));
-        Guard.AgainstNullOrWhiteSpace(lastName, nameof(lastName));
 
         Title = title;
         FirstName = firstName.Trim();
-        LastName = lastName.Trim();
+        LastName = (lastName ?? string.Empty).Trim();
         DateOfBirth = dateOfBirth;
         Gender = gender;
         BloodGroup = bloodGroup;
@@ -212,7 +212,7 @@ internal class Patient : Entity
     /// for a patient, so there's no separate "add" step the way Allergies/EmergencyContacts have.</summary>
     public void SetAddress(Address address) => Address = address;
 
-    public void UpdateAddress(string addressLine1, string? addressLine2, string? addressLine3, Guid stateId, Guid districtId, string pincode, Guid? updatedBy)
+    public void UpdateAddress(string? addressLine1, string? addressLine2, string? addressLine3, Guid? stateId, Guid? districtId, string? pincode, Guid? updatedBy)
     {
         Address.Update(addressLine1, addressLine2, addressLine3, stateId, districtId, pincode);
         MarkUpdated(updatedBy);
@@ -244,13 +244,15 @@ internal class Patient : Entity
         MarkUpdated(updatedBy);
     }
 
-    /// <returns>false if no contact with that id exists on this patient, or if it's the
-    /// patient's only remaining emergency contact (every patient must have at least one —
-    /// same rule CreatePatientRequestValidator enforces at registration time).</returns>
-    public bool RemoveEmergencyContact(Guid emergencyContactId, Guid? updatedBy)
+    /// <summary>keepAtLeastOne is true while the hospital makes the emergency contact
+    /// mandatory (ADR-135) — the same rule CreatePatientRequestValidator enforces at
+    /// registration time.</summary>
+    /// <returns>false if no contact with that id exists on this patient, or if keepAtLeastOne
+    /// is set and it's the patient's only remaining emergency contact.</returns>
+    public bool RemoveEmergencyContact(Guid emergencyContactId, Guid? updatedBy, bool keepAtLeastOne = true)
     {
         var contact = _emergencyContacts.FirstOrDefault(c => c.Id == emergencyContactId);
-        if (contact is null || _emergencyContacts.Count <= 1)
+        if (contact is null || (keepAtLeastOne && _emergencyContacts.Count <= 1))
         {
             return false;
         }
@@ -279,13 +281,12 @@ internal class Patient : Entity
     {
         Guard.AgainstNullOrWhiteSpace(state.Uhid, nameof(state.Uhid));
         Guard.AgainstNullOrWhiteSpace(state.FirstName, nameof(state.FirstName));
-        Guard.AgainstNullOrWhiteSpace(state.LastName, nameof(state.LastName));
         Guard.AgainstNullOrWhiteSpace(state.PrimaryPhone, nameof(state.PrimaryPhone));
 
         Uhid = state.Uhid;
         Title = state.Title;
         FirstName = state.FirstName;
-        LastName = state.LastName;
+        LastName = state.LastName ?? string.Empty;
         DateOfBirth = state.DateOfBirth;
         Gender = state.Gender;
         BloodGroup = state.BloodGroup;
