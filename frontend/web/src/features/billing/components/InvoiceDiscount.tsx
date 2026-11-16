@@ -19,6 +19,7 @@ import {
   useRequestInvoiceDiscountMutation,
 } from '../hooks/useInvoiceDiscount';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type Billing, type BillingItem, type PaymentMethod } from '../types';
+import { useBillingApprovalRules } from '../hooks/useBillingSettings';
 import { useIsRevertPending } from '../hooks/useInvoiceRevert';
 import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
 
@@ -52,17 +53,19 @@ function amountDue(billing: Billing) {
 }
 
 /** "Request Discount" on a saved, unpaid bill (ADR-109) — shown when the server says a discount
- * can be raised and the user can make bills. A Super Admin's applies at once; anyone else's goes
- * to the consultant for their fee and the Super Admin for the rest (ADR-111). */
+ * can be raised (never while Settings → Billing Approvals switches discounts off, ADR-136) and
+ * the user can make bills. A Super Admin's applies at once, as does anyone's while discount
+ * approval is switched off; otherwise it goes to the consultant for their fee and the Super
+ * Admin for the rest (ADR-111). */
 export function RequestDiscountButton({ billing }: { billing: Billing }) {
-  const { hasPermission, user } = useAuth();
+  const { hasPermission } = useAuth();
   const { toast } = useToast();
   const { data: status } = useInvoiceDiscountStatusQuery(billing.id);
   const mutation = useRequestInvoiceDiscountMutation();
   const [isOpen, setIsOpen] = useState(false);
-  const isSuperAdmin = user?.role === 'superAdmin';
+  const { discountsDisabled, discountAppliesAtOnce } = useBillingApprovalRules();
 
-  if (!hasPermission('finance-billing.create') || !status?.canRequest) return null;
+  if (!hasPermission('finance-billing.create') || discountsDisabled || !status?.canRequest) return null;
 
   const lines: DiscountableLine[] = toDiscountableLines(billing.items.filter(canTakeDiscount));
 
@@ -79,8 +82,8 @@ export function RequestDiscountButton({ billing }: { billing: Billing }) {
         onSuccess: () => {
           setIsOpen(false);
           toast({
-            title: isSuperAdmin ? 'Discount applied' : 'Discount sent for approval',
-            description: isSuperAdmin ? undefined : 'Collect payment once every part of it is approved or rejected.',
+            title: discountAppliesAtOnce ? 'Discount applied' : 'Discount sent for approval',
+            description: discountAppliesAtOnce ? undefined : 'Collect payment once every part of it is approved or rejected.',
             variant: 'success',
           });
         },
@@ -106,8 +109,8 @@ export function RequestDiscountButton({ billing }: { billing: Billing }) {
         <DiscountDialog
           lines={lines}
           billTotal={amountDue(billing)}
-          needsApproval={!isSuperAdmin}
-          confirmLabel={isSuperAdmin ? 'Apply discount' : 'Send for Approval'}
+          needsApproval={!discountAppliesAtOnce}
+          confirmLabel={discountAppliesAtOnce ? 'Apply discount' : 'Send for Approval'}
           isSaving={mutation.isPending}
           error={mutation.error}
           onConfirm={handleConfirm}

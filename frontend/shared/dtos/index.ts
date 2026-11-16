@@ -50,6 +50,7 @@ export * from './ipd/labOrder';
 export * from './ipd/finalBill';
 export * from './ipd/dashboard';
 export * from './billing/invoice';
+export * from './billing/billingSettings';
 export * from './laboratory/labOrder';
 export * from './opd/opd';
 export * from './pharmacy/store';

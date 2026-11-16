@@ -44,19 +44,25 @@ internal class InvoiceRevertService : IInvoiceRevertService
     private readonly IInvoiceRevertRequestRepository _repository;
     private readonly IPatientVisitService _patientVisitService;
     private readonly IActivityLogService _activityLog;
+    private readonly IBillingSettingsService _billingSettings;
     private readonly TimeProvider _clock;
+
+    /// <summary>The decision note on a revert approved at the moment it was raised (ADR-136).</summary>
+    internal const string AutoApprovedNote = "Approved automatically — bill revert approval is switched off.";
 
     public InvoiceRevertService(
         IInvoiceRepository invoiceRepository,
         IInvoiceRevertRequestRepository repository,
         IPatientVisitService patientVisitService,
         IActivityLogService activityLog,
+        IBillingSettingsService billingSettings,
         TimeProvider clock)
     {
         _invoiceRepository = invoiceRepository;
         _repository = repository;
         _patientVisitService = patientVisitService;
         _activityLog = activityLog;
+        _billingSettings = billingSettings;
         _clock = clock;
     }
 
@@ -169,10 +175,25 @@ internal class InvoiceRevertService : IInvoiceRevertService
 
         var revertRequest = InvoiceRevertRequest.Create(invoice, request.Reason, actorName, actorId);
         await _repository.AddAsync(revertRequest, cancellationToken);
+
+        // While bill revert approval is switched off (ADR-136) the bill is reverted right away,
+        // recorded as approved by whoever asked — in the same save as the request.
+        var approveNow = !(await _billingSettings.GetAsync(cancellationToken)).RevertsNeedApproval;
+        var invoiceBefore = approveNow ? invoice.ToResponse() : null;
+        if (approveNow)
+        {
+            invoice.Revert(revertRequest.Reason, actorId);
+            revertRequest.Approve(invoice, actorId, actorName, AutoApprovedNote);
+        }
+
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
         await LogAsync(ActivityLogActions.Create, "InvoiceRevertRequest", revertRequest.Id, $"Requested revert of invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", null, response, actorId, cancellationToken);
+        if (approveNow)
+        {
+            await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, $"Reverted invoice {invoice.InvoiceNumber} without approval (switched off): {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
+        }
 
         return Result<InvoiceRevertRequestResponse>.Success(response);
     }

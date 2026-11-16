@@ -33,6 +33,7 @@ public class InvoiceServiceTests
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IConsultationTypeService _consultationTypeService = Substitute.For<IConsultationTypeService>();
     private readonly IActivityLogService _activityLog = Substitute.For<IActivityLogService>();
+    private readonly IBillingSettingsService _billingSettings = Substitute.For<IBillingSettingsService>();
     private readonly ILogger<InvoiceService> _logger = Substitute.For<ILogger<InvoiceService>>();
     private readonly InvoiceService _sut;
     private readonly Guid _patientId = Guid.NewGuid();
@@ -54,7 +55,9 @@ public class InvoiceServiceTests
             _departmentService,
             _consultationTypeService,
             _activityLog,
+            _billingSettings,
             _logger);
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(BillingApprovalSettings.Default);
 
         _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
             .Returns(Result<PatientResponse>.Success(new PatientResponse()));
@@ -1259,6 +1262,51 @@ public class InvoiceServiceTests
         consultation.DiscountApprovedBy.Should().Be("superadmin");
         saved!.Status.Should().Be(InvoiceDiscountRequestStatus.Approved);
         saved.DecidedByName.Should().Be("superadmin");
+    }
+
+    // ── ADR-136: Settings → Billing Approvals ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateAsync_WhenDiscountApprovalIsOff_AppliesAReceptionistsDiscountAndTakesThePayment()
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { DiscountsNeedApproval = false });
+        InvoiceDiscountRequest? saved = null;
+        await _discountRequestRepository.AddAsync(Arg.Do<InvoiceDiscountRequest>(r => saved = r), Arg.Any<CancellationToken>());
+        var request = DiscountedRequest() with { Payments = [new CreateInvoicePaymentRequest { Method = PaymentMethod.Cash, Amount = 920m }] };
+
+        var result = await _sut.CreateAsync(request, Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.NetAmount.Should().Be(920m);
+        result.Value.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        result.Value.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        result.Value.Items[0].DiscountApprovedBy.Should().Be("reception1", "the approval is recorded against whoever added the discount");
+        saved!.Status.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        saved.DecidedByName.Should().Be("reception1");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateAsync_WhenDiscountsAreSwitchedOff_RefusesADiscountedBill(bool superAdmin)
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { DiscountsDisabled = true });
+
+        var result = await _sut.CreateAsync(DiscountedRequest(), superAdmin ? SuperAdmin : Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.DiscountsDisabled);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenDiscountsAreSwitchedOff_StillSavesABillWithoutADiscount()
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { DiscountsDisabled = true });
+
+        var result = await _sut.CreateAsync(ValidRequest(), Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  BadgeCheck,
   ClipboardCheck,
   Database,
   DatabaseBackup,
@@ -65,6 +66,14 @@ const sections: SettingsSection[] = [
     description: 'Choose which New Patient Registration fields are mandatory — last name, address, emergency contact, ID proof and more.',
     icon: ClipboardCheck,
     path: '/admin/settings/patient-registration-fields',
+    status: 'available',
+    permission: 'identity-administration.view',
+  },
+  {
+    title: 'Billing Approvals',
+    description: 'Turn discounts off, or choose whether discounts and bill reverts need Super Admin approval.',
+    icon: BadgeCheck,
+    path: '/admin/settings/billing-approvals',
     status: 'available',
     permission: 'identity-administration.view',
   },

@@ -338,6 +338,8 @@ export const API_ROUTES = {
       approve: (approvalId: string) => `/api/v1/billing/discount-approvals/${approvalId}/approve`,
       reject: (approvalId: string) => `/api/v1/billing/discount-approvals/${approvalId}/reject`,
     },
+    /** Settings → Billing Approvals (ADR-136): GET (any signed-in user), PUT (identity-administration.edit). */
+    settings: '/api/v1/billing/settings',
   },
   /** Mirrors HMS.Modules.Radiology.Endpoints.RadiologyAiController — see radiologyApi.ts. */
   radiology: {

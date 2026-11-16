@@ -38,6 +38,9 @@ interface RequestRevertDialogProps {
   invoiceLabel: string;
   netAmount: number;
   paidAmount: number;
+  /** False while Settings → Billing Approvals switches revert approval off (ADR-136): the bill
+   * is reverted as soon as this is confirmed. */
+  needsApproval?: boolean;
   isSaving: boolean;
   error: unknown;
   onConfirm: (reason: string) => void;
@@ -45,8 +48,9 @@ interface RequestRevertDialogProps {
 }
 
 /** Raises an OP bill revert request (ADR-106) — the reason is required, and the request goes to
- * the Super Admin for approval; the bill itself is unchanged until then. */
-export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, isSaving, error, onConfirm, onCancel }: RequestRevertDialogProps) {
+ * the Super Admin for approval; the bill itself is unchanged until then. With revert approval
+ * switched off (ADR-136) the bill is reverted straight away instead. */
+export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, needsApproval = true, isSaving, error, onConfirm, onCancel }: RequestRevertDialogProps) {
   const [reason, setReason] = useState('');
   const trimmedReason = reason.trim();
   const { data: usedReasons } = useRevertReasonSuggestionsQuery();
@@ -62,11 +66,13 @@ export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, isSav
         }}
       >
         <DialogHeader>
-          <DialogTitle id="request-revert-title">Request bill revert</DialogTitle>
+          <DialogTitle id="request-revert-title">{needsApproval ? 'Request bill revert' : 'Revert bill'}</DialogTitle>
           <DialogDescription>
             <strong className="text-foreground">{invoiceLabel}</strong> ({formatCurrency(netAmount)}
-            {paidAmount > 0 ? `, ${formatCurrency(paidAmount)} paid` : ', not paid'}) will be sent to the Super Admin for approval. The bill
-            stays as it is until they approve it.
+            {paidAmount > 0 ? `, ${formatCurrency(paidAmount)} paid` : ', not paid'}){' '}
+            {needsApproval
+              ? 'will be sent to the Super Admin for approval. The bill stays as it is until they approve it.'
+              : 'will be reverted straight away, recorded against you. This can’t be undone.'}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-1.5">
@@ -90,7 +96,7 @@ export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, isSav
             Cancel
           </Button>
           <Button onClick={() => onConfirm(trimmedReason)} disabled={isSaving || trimmedReason.length === 0}>
-            {isSaving ? 'Sending…' : 'Send for Approval'}
+            {needsApproval ? (isSaving ? 'Sending…' : 'Send for Approval') : isSaving ? 'Reverting…' : 'Revert Bill'}
           </Button>
         </DialogFooter>
       </DialogContent>
