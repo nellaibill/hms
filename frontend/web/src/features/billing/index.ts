@@ -20,6 +20,7 @@ export * from './billingCalculations';
 export * from './billingValidation';
 export * from './hooks/useBillableInvestigationsQuery';
 export * from './hooks/useBillingQuery';
+export * from './hooks/useBillingSettings';
 export * from './hooks/useBillingsQuery';
 export * from './hooks/useCreateInvoiceMutation';
 export * from './hooks/useInvoicesForReportQuery';

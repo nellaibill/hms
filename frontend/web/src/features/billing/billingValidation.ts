@@ -252,8 +252,9 @@ export const paymentSplitSchema = z.object({
  * once, when it's applied, against the bill's lines at that moment: `allocations` holds each
  * line's share (keyed by BillingItem id) and `signature` that set of lines
  * (billingDiscount.ts's linesSignature), so a bill edited afterwards shows the discount as out of
- * date instead of silently re-spreading it. `needsApproval` is true for anyone but a Super Admin:
- * the bill is then sent for approval and saved unpaid, so no payment is collected here.
+ * date instead of silently re-spreading it. `needsApproval` is true for anyone but a Super Admin
+ * while Settings → Billing Approvals keeps discount approval on (ADR-136): the bill is then sent
+ * for approval and saved unpaid, so no payment is collected here.
  */
 export const billingDiscountSchema = z.object({
   type: z.enum(['Amount', 'Percent']),

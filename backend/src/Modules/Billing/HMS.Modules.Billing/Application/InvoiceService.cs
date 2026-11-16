@@ -88,7 +88,11 @@ internal class InvoiceService : IInvoiceService
     private readonly IDepartmentService _departmentService;
     private readonly IConsultationTypeService _consultationTypeService;
     private readonly IActivityLogService _activityLog;
+    private readonly IBillingSettingsService _billingSettings;
     private readonly ILogger<InvoiceService> _logger;
+
+    /// <summary>Shared with InvoiceDiscountService.</summary>
+    internal const string DiscountsDisabledMessage = "Discounts are switched off for this hospital.";
 
     public InvoiceService(
         IInvoiceRepository repository,
@@ -104,6 +108,7 @@ internal class InvoiceService : IInvoiceService
         IDepartmentService departmentService,
         IConsultationTypeService consultationTypeService,
         IActivityLogService activityLog,
+        IBillingSettingsService billingSettings,
         ILogger<InvoiceService> logger)
     {
         _repository = repository;
@@ -119,6 +124,7 @@ internal class InvoiceService : IInvoiceService
         _departmentService = departmentService;
         _consultationTypeService = consultationTypeService;
         _activityLog = activityLog;
+        _billingSettings = billingSettings;
         _logger = logger;
     }
 
@@ -377,16 +383,25 @@ internal class InvoiceService : IInvoiceService
         // ADR-109: a line Discount is a discount request. Lines are always created at full price;
         // a Super Admin's discount is then applied straight away, anyone else's waits for its
         // approvers (ADR-111: the consultant for their fee, the Super Admin for the rest) — and
-        // while it waits there is no settled amount to collect, so no payment is taken.
+        // while it waits there is no settled amount to collect, so no payment is taken. Settings →
+        // Billing Approvals (ADR-136) can switch discounts off, or apply everyone's at once.
         var hasDiscount = request.Items.Any(i => i.Discount > 0);
+        var discountAppliesAtOnce = actor.IsSuperAdmin;
         if (hasDiscount)
         {
+            var settings = await _billingSettings.GetAsync(cancellationToken);
+            if (settings.DiscountsDisabled)
+            {
+                return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountsDisabled, DiscountsDisabledMessage);
+            }
+
             if (request.Items.Any(i => i.Discount > 0 && !InvoiceDiscountRules.IsDiscountable(i.BillingType)))
             {
                 return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountNotEligible, "Only OP charges (consultation, radiology, laboratory, procedure, injection, file) can be discounted.");
             }
 
-            if (!actor.IsSuperAdmin && request.Payments is { Count: > 0 })
+            discountAppliesAtOnce = actor.IsSuperAdmin || !settings.DiscountsNeedApproval;
+            if (!discountAppliesAtOnce && request.Payments is { Count: > 0 })
             {
                 return Result<InvoiceResponse>.Failure(BillingErrorCodes.DiscountApprovalPending, "A discount needs approval first — send the bill for approval without collecting payment.");
             }
@@ -429,8 +444,10 @@ internal class InvoiceService : IInvoiceService
                 .Where(x => x.Discount > 0)
                 .ToList();
             discountRequest = InvoiceDiscountRequest.Create(invoice, discountedLines, request.DiscountType, request.DiscountValue, request.DiscountReason!, actor.UserName, actorId);
-            if (actor.IsSuperAdmin)
+            if (discountAppliesAtOnce)
             {
+                // Recorded as approved by whoever added it — the Super Admin, or anyone while
+                // discount approval is switched off (ADR-136).
                 invoice.ApplyDiscount(discountRequest.LineDiscounts(), actor.UserName, actorId);
                 discountRequest.ApproveAll(actorId, actor.UserName);
                 InvoiceDiscountRules.SettleInvoice(invoice, discountRequest, actorId);

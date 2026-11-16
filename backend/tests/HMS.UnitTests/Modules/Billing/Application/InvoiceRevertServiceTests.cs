@@ -18,12 +18,14 @@ public class InvoiceRevertServiceTests
     private readonly IInvoiceRevertRequestRepository _repository = Substitute.For<IInvoiceRevertRequestRepository>();
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
     private readonly FakeClock _clock = new();
+    private readonly IBillingSettingsService _billingSettings = Substitute.For<IBillingSettingsService>();
     private readonly InvoiceRevertService _sut;
     private readonly Guid _actorId = Guid.NewGuid();
 
     public InvoiceRevertServiceTests()
     {
-        _sut = new InvoiceRevertService(_invoiceRepository, _repository, _patientVisitService, Substitute.For<IActivityLogService>(), _clock);
+        _sut = new InvoiceRevertService(_invoiceRepository, _repository, _patientVisitService, Substitute.For<IActivityLogService>(), _billingSettings, _clock);
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(BillingApprovalSettings.Default);
         _repository.GetByInvoiceIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
     }
 
@@ -73,6 +75,38 @@ public class InvoiceRevertServiceTests
         await _repository.Received(1).AddAsync(Arg.Any<InvoiceRevertRequest>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         invoice.IsVoided.Should().BeFalse("the bill only changes once a Super Admin approves");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenRevertApprovalIsOff_RevertsTheBillAtOnceRecordedAgainstTheRequester()
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { RevertsNeedApproval = false });
+        var invoice = GivenInvoice();
+
+        var result = await _sut.CreateAsync(invoice.Id, new CreateInvoiceRevertRequest { Reason = "Billed the wrong consultant" }, _actorId, "reception1", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(InvoiceRevertRequestStatus.Approved);
+        result.Value.DecidedBy.Should().Be(_actorId);
+        result.Value.DecidedByName.Should().Be("reception1");
+        result.Value.DecisionNotes.Should().Contain("switched off");
+        result.Value.PaidAmount.Should().Be(250m);
+        invoice.IsVoided.Should().BeTrue();
+        invoice.IsReverted.Should().BeTrue();
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenRevertApprovalIsOff_StillOnlyRevertsEligibleBills()
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { RevertsNeedApproval = false });
+        var invoice = GivenInvoice(VisitType.IP);
+
+        var result = await _sut.CreateAsync(invoice.Id, new CreateInvoiceRevertRequest { Reason = "Wrong patient" }, _actorId, "reception1", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.RevertNotEligible);
+        invoice.IsVoided.Should().BeFalse();
     }
 
     [Fact]

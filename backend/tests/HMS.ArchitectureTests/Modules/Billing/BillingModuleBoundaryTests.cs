@@ -15,13 +15,14 @@ namespace HMS.ArchitectureTests.Modules.Billing;
 /// public constructor for controller discovery/DI activation — takes it as a constructor
 /// dependency (a public constructor cannot have an internal parameter type, CS0051).
 /// BillingDbContext is public because it's resolved by type from HMS.Api's Program.cs for
-/// the startup-time migration call.
+/// the startup-time migration call. IBillingSettingsService (ADR-136) is public for the same
+/// CS0051 reason: BillingSettingsController takes it.
 /// </summary>
 public class BillingModuleBoundaryTests
 {
     private static readonly Assembly BillingAssembly = typeof(InvoicesController).Assembly;
 
-    private const string AllowedPublicTypeNamePattern = "^(BillingDbContext|IInvoiceService|IInvoiceRevertService|IInvoiceDiscountService)$";
+    private const string AllowedPublicTypeNamePattern = "^(BillingDbContext|IInvoiceService|IInvoiceRevertService|IInvoiceDiscountService|IBillingSettingsService)$";
 
     [Theory]
     [InlineData("HMS.Modules.Billing.Domain")]

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-context';
 import { useAuth } from '@/features/auth/AuthContext';
 import { formatCurrency } from '../billingCalculations';
+import { useBillingApprovalRules } from '../hooks/useBillingSettings';
 import {
   useApproveRevertRequestMutation,
   useInvoiceRevertStatusQuery,
@@ -20,13 +21,16 @@ function formatDateTime(value: string | null | undefined) {
 
 /** "Request Revert" on an OP bill (ADR-106) — shown only when the server says this bill can be
  * reverted (an OP bill made today, not voided, no request already pending) and the user can make
- * bills — the same "finance-billing.create" the server checks, which the Receptionist role has. */
+ * bills — the same "finance-billing.create" the server checks, which the Receptionist role has.
+ * While Settings → Billing Approvals switches revert approval off (ADR-136) it reads "Revert
+ * Bill" and the bill is reverted straight away. */
 export function RequestRevertButton({ billing }: { billing: Billing }) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
   const { data: status } = useInvoiceRevertStatusQuery(billing.id);
   const mutation = useRequestInvoiceRevertMutation();
   const [isOpen, setIsOpen] = useState(false);
+  const { revertsNeedApproval } = useBillingApprovalRules();
 
   if (!hasPermission('finance-billing.create') || !status?.canRequest) return null;
 
@@ -36,9 +40,14 @@ export function RequestRevertButton({ billing }: { billing: Billing }) {
     mutation.mutate(
       { invoiceId: billing.id, reason },
       {
-        onSuccess: () => {
+        onSuccess: (request) => {
           setIsOpen(false);
-          toast({ title: 'Revert request sent', description: 'The Super Admin will approve or reject it.', variant: 'success' });
+          // The server decides: approved at once while revert approval is switched off.
+          toast(
+            request.status === 'Approved'
+              ? { title: `Invoice ${request.invoiceNumber} reverted`, variant: 'success' }
+              : { title: 'Revert request sent', description: 'The Super Admin will approve or reject it.', variant: 'success' },
+          );
         },
       },
     );
@@ -56,13 +65,14 @@ export function RequestRevertButton({ billing }: { billing: Billing }) {
         }}
       >
         <RotateCcw className="h-4 w-4" />
-        Request Revert
+        {revertsNeedApproval ? 'Request Revert' : 'Revert Bill'}
       </Button>
       {isOpen && (
         <RequestRevertDialog
           invoiceLabel={`Invoice ${billing.invoiceNumber ?? billing.id}`}
           netAmount={billing.netAmount}
           paidAmount={paidAmount}
+          needsApproval={revertsNeedApproval}
           isSaving={mutation.isPending}
           error={mutation.error}
           onConfirm={handleConfirm}

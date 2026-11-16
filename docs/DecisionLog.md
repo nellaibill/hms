@@ -37,6 +37,44 @@ _To be documented._
 
 ## Decisions
 
+### ADR-136: Each hospital chooses whether discounts are allowed and whether discounts and bill reverts need approval
+**Date:** 2026-11-16
+**Status:** Accepted (adds settings on top of ADR-106, ADR-109 and ADR-111)
+
+**Context**
+Discounts (ADR-109/111) always waited for approval, unless a Super Admin added them, and bill reverts (ADR-106) always waited for a Super Admin. The client asked for three options a hospital's Super Admin can set, in the same style as Patient Registration Fields (ADR-135):
+1. turn discounts off, hiding "Add discount" on `/finance/accounts/new`;
+2. choose whether discounts go for approval, or are approved automatically and recorded against the person who added them;
+3. choose the same for bill reverts.
+
+**Decision**
+- **Settings → Billing Approvals** (`/admin/settings/billing-approvals`) has three switches. The defaults keep today's behaviour:
+  - **Disable discounts** (default off).
+  - **Send discounts for approval** (default on). It is greyed out while discounts are disabled.
+  - **Send bill reverts for approval** (default on).
+- **Storage.** The Billing module stores the settings in the new table `billing.billing_settings`, one row with one jsonb column `approval_settings` (migration `AddBillingSettings`). Same pattern as ADR-135.
+- **API.** `GET /api/v1/billing/settings` is open to any signed-in user, because the billing screens need it. `PUT` needs `identity-administration.edit`, like the other Settings pages.
+- **Discounts disabled:**
+  - `InvoiceService.CreateAsync` and `InvoiceDiscountService.CreateAsync` refuse any discount with `BILLING.DISCOUNTS_DISABLED`, Super Admins included.
+  - The bill-page discount status reports `CanRequest = false`.
+  - OPD Billing Entry hides "Add discount", and the bill page hides "Request Discount". A discount already on an unsaved form stays visible so it can be removed.
+  - Discounts already given are untouched.
+- **Discount approval off:**
+  - Every discount takes the path a Super Admin's always took. It applies at once, every approval part is approved by the person who added it, and the bill can be paid when it is saved.
+  - This includes the consultant's part for a consultation fee (ADR-111). "Approved automatically" means no one else is asked.
+  - With approval on, nothing changes: the consultant decides their fee, and the Super Admin decides the rest.
+- **Revert approval off:**
+  - `InvoiceRevertService.CreateAsync` reverts the bill in the same save as the request.
+  - The request is recorded as approved by the person who raised it, with the note "Approved automatically — bill revert approval is switched off."
+  - Eligibility doesn't change: an OP bill only, raised the same day, with no discount pending.
+  - The button reads "Revert Bill", and the dialog says the revert is immediate.
+- **Pending requests stay.** Changing a setting doesn't touch requests already waiting. They stay in the Discount Requests and Revert Requests queues for the Super Admin to decide.
+
+**Consequences**
+- Billing migration: run Migrate on each hospital after deploying. Until it runs, any discount or revert on that hospital fails, because the services read the settings table.
+- The bulk of the logic reuses the existing Super Admin path, so the activity log entries and approval records look the same as a Super Admin's own discount.
+- Pharmacy counter discounts (Pharmacy Settings' maximum discount) are a separate setting and aren't affected.
+
 ### ADR-135: Each hospital chooses which patient registration fields are mandatory
 **Date:** 2026-11-14
 **Status:** Accepted

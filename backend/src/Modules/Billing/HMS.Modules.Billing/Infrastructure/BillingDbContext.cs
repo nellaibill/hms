@@ -19,6 +19,9 @@ public class BillingDbContext : DbContext
     internal DbSet<InvoiceRevertRequest> InvoiceRevertRequests => Set<InvoiceRevertRequest>();
     internal DbSet<InvoiceDiscountRequest> InvoiceDiscountRequests => Set<InvoiceDiscountRequest>();
 
+    // Settings → Billing Approvals (ADR-136) — at most one row.
+    internal DbSet<BillingSettings> BillingSettings => Set<BillingSettings>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaName);
