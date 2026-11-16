@@ -14,24 +14,23 @@ type SettingKey = keyof BillingApprovalSettings;
 interface SettingRow {
   key: SettingKey;
   label: string;
-  whenOn: string;
-  whenOff: string;
+  /** What On and Off each do. Fixed text: the On/Off label beside the switch shows which applies
+   * now, so the description never reads as if it contradicts the switch's name. */
+  description: string;
 }
 
 const DISCOUNT_ROWS: SettingRow[] = [
   {
     key: 'discountsDisabled',
     label: 'Disable discounts',
-    whenOn:
-      '"Add discount" is hidden on OPD billing and on saved bills, and new discounts are refused. Discounts already given stay.',
-    whenOff: 'Billing staff can add a discount to a bill.',
+    description:
+      'When on, "Add discount" is hidden on OPD billing and on saved bills, and new discounts are refused (discounts already given stay). When off, billing staff can add discounts.',
   },
   {
     key: 'discountsNeedApproval',
     label: 'Send discounts for approval',
-    whenOn:
-      'A discount waits for approval — the consultant for their consultation fee, the Super Admin for the rest — and the bill can’t be paid until then.',
-    whenOff: 'A discount applies at once, recorded as approved by the person who added it.',
+    description:
+      'When on, a discount waits for approval (the consultant for their consultation fee, the Super Admin for the rest) and the bill can’t be paid until then. When off, a discount applies at once, recorded as approved by the person who added it.',
   },
 ];
 
@@ -39,9 +38,8 @@ const REVERT_ROWS: SettingRow[] = [
   {
     key: 'revertsNeedApproval',
     label: 'Send bill reverts for approval',
-    whenOn: 'A revert request waits for the Super Admin to approve or reject it.',
-    whenOff:
-      'The bill is reverted as soon as it’s requested, recorded as approved by the person who asked. Only today’s OP bills can be reverted either way.',
+    description:
+      'When on, a revert request waits for the Super Admin to approve or reject it. When off, the bill is reverted as soon as it’s requested, recorded as approved by the person who asked. Only today’s OP bills can be reverted either way.',
   },
 ];
 
@@ -94,10 +92,7 @@ export default function BillingApprovalSettingsPage() {
     });
   }
 
-  function renderRow(
-    { key, label, whenOn, whenOff }: SettingRow,
-    current: BillingApprovalSettings,
-  ) {
+  function renderRow({ key, label, description }: SettingRow, current: BillingApprovalSettings) {
     const id = `billing-setting-${key}`;
     const on = current[key];
     // Approval of discounts means nothing while discounts are switched off.
@@ -112,7 +107,7 @@ export default function BillingApprovalSettingsPage() {
             {label}
           </label>
           <p className="text-xs text-muted-foreground">
-            {inactive ? 'Not used while discounts are disabled.' : on ? whenOn : whenOff}
+            {inactive ? 'Not used while discounts are disabled.' : description}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
