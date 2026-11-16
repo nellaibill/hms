@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/features/auth/AuthContext';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { Field } from '@/features/patients/components/FormSection';
 import { useMasterOptionsQuery } from '@/features/masters';
@@ -20,6 +19,7 @@ import {
   toUndiscountedBillingItems,
 } from '../billingCalculations';
 import { describeDiscountApprovers, describeDiscountEntry, linesSignature } from '../billingDiscount';
+import { useBillingApprovalRules } from '../hooks/useBillingSettings';
 import { emptyPaymentSplit, type BillingFormValues } from '../billingValidation';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types';
 import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
@@ -48,7 +48,9 @@ import { DiscountDialog, type DiscountDialogResult } from './DiscountDialog';
  * discount comes straight off Net Payable; anyone else's needs approval (ADR-111: the consultant
  * for their consultation fee, the Super Admin for the rest), so Collect
  * Payment is replaced by a note and the save action becomes "Send for Approval" — the bill is
- * saved unpaid and paid from its invoice page once the discount is decided.
+ * saved unpaid and paid from its invoice page once the discount is decided. Settings → Billing
+ * Approvals (ADR-136) can hide "Add discount" altogether, or switch the approval off so
+ * everyone's discount comes straight off Net Payable like a Super Admin's.
  *
  * The save action itself (onSave/isSaving/saveError) also renders here, inside this sticky
  * card, rather than below the four billing category cards — this card's height doesn't change
@@ -73,8 +75,7 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
     formState: { errors },
   } = useFormContext<BillingFormValues>();
   const values = watch();
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role === 'superAdmin';
+  const { discountsDisabled, discountAppliesAtOnce } = useBillingApprovalRules();
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
   // Primes the Masters reference cache describeBillingItem reads from below, so Consultation
   // line items resolve to real department/consultant/type names — Consultation Billing uses
@@ -110,11 +111,11 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
         reason: result.reason,
         allocations: result.allocations,
         signature: linesSignature(toDiscountableLines(undiscountedItems)),
-        needsApproval: !isSuperAdmin,
+        needsApproval: !discountAppliesAtOnce,
       },
       { shouldDirty: true },
     );
-    if (!isSuperAdmin) clearErrors('payments');
+    if (!discountAppliesAtOnce) clearErrors('payments');
     setIsDiscountOpen(false);
   }
 
@@ -199,7 +200,9 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
           </div>
         </div>
 
-        {(items.length > 0 || discount) && (
+        {/* A discount already on the form stays visible even if discounts were just switched off,
+            so it can be removed — the API refuses it on save. */}
+        {(discount || (items.length > 0 && !discountsDisabled)) && (
           <>
             <Separator />
             <div className="flex flex-col gap-2">
@@ -463,8 +466,8 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
           lines={toDiscountableLines(undiscountedItems)}
           billTotal={undiscountedItems.reduce((sum, item) => sum + item.total, 0)}
           initial={discount ? { type: discount.type, value: discount.value, reason: discount.reason, allocations: discount.allocations } : undefined}
-          needsApproval={!isSuperAdmin}
-          confirmLabel={isSuperAdmin ? 'Apply discount' : 'Add discount'}
+          needsApproval={!discountAppliesAtOnce}
+          confirmLabel={discountAppliesAtOnce ? 'Apply discount' : 'Add discount'}
           onConfirm={handleApplyDiscount}
           onRemove={discount ? handleRemoveDiscount : undefined}
           onCancel={() => setIsDiscountOpen(false)}

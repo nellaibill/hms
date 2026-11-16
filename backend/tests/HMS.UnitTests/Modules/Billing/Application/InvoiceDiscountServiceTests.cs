@@ -13,6 +13,7 @@ public class InvoiceDiscountServiceTests
 {
     private readonly IInvoiceRepository _invoiceRepository = Substitute.For<IInvoiceRepository>();
     private readonly IInvoiceDiscountRequestRepository _repository = Substitute.For<IInvoiceDiscountRequestRepository>();
+    private readonly IBillingSettingsService _billingSettings = Substitute.For<IBillingSettingsService>();
     private readonly InvoiceDiscountService _sut;
 
     private static readonly Guid DrKarthikeyan = Guid.NewGuid();
@@ -24,7 +25,8 @@ public class InvoiceDiscountServiceTests
 
     public InvoiceDiscountServiceTests()
     {
-        _sut = new InvoiceDiscountService(_invoiceRepository, _repository, Substitute.For<IActivityLogService>());
+        _sut = new InvoiceDiscountService(_invoiceRepository, _repository, Substitute.For<IActivityLogService>(), _billingSettings);
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(BillingApprovalSettings.Default);
         _repository.GetByInvoiceIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
     }
 
@@ -153,6 +155,48 @@ public class InvoiceDiscountServiceTests
         invoice.NetAmount.Should().Be(720m);
         invoice.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
         invoice.Items.First().DiscountApprovedBy.Should().Be("superadmin");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenDiscountApprovalIsOff_AppliesAReceptionistsDiscountAtOnce()
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { DiscountsNeedApproval = false });
+        var invoice = GivenInvoice();
+
+        var result = await _sut.CreateAsync(invoice.Id, RequestFor(invoice, 50m, 30m), Receptionist, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(InvoiceDiscountRequestStatus.Approved);
+        result.Value.DecidedByName.Should().Be("reception1");
+        result.Value.Approvals.Should().OnlyContain(a => a.Status == InvoiceDiscountRequestStatus.Approved);
+        invoice.NetAmount.Should().Be(720m);
+        invoice.DiscountStatus.Should().Be(InvoiceDiscountRequestStatus.Approved);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenDiscountsAreSwitchedOff_IsRefused()
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { DiscountsDisabled = true });
+        var invoice = GivenInvoice();
+
+        var result = await _sut.CreateAsync(invoice.Id, RequestFor(invoice, 50m, 30m), SuperAdmin, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.DiscountsDisabled);
+        invoice.NetAmount.Should().Be(800m);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<InvoiceDiscountRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetForInvoiceAsync_WhenDiscountsAreSwitchedOff_SaysOneCantBeRaised()
+    {
+        _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(new BillingApprovalSettings { DiscountsDisabled = true });
+        var invoice = GivenInvoice();
+
+        var result = await _sut.GetForInvoiceAsync(invoice.Id, CancellationToken.None);
+
+        result.Value!.CanRequest.Should().BeFalse();
+        result.Value.IneligibleReason.Should().Contain("switched off");
     }
 
     [Fact]

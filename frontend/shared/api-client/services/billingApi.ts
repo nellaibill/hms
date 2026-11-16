@@ -3,6 +3,7 @@ import type {
   AccountCategory,
   ApproveInvoiceDiscountRequest,
   ApproveInvoiceRevertRequest,
+  BillingApprovalSettings,
   BillingDashboardSummary,
   CollectionPaymentResponse,
   CreateInvoiceDiscountRequest,
@@ -222,6 +223,18 @@ export class BillingApi {
 
   async getMyPendingDiscountApprovalCount(): Promise<number> {
     const response = await this.client.get<number>(API_ROUTES.billing.discountApprovals.minePendingCount);
+    return response.data;
+  }
+
+  /** Whether discounts are allowed and whether discounts/reverts need approval (ADR-136). */
+  async getBillingSettings(): Promise<BillingApprovalSettings> {
+    const response = await this.client.get<BillingApprovalSettings>(API_ROUTES.billing.settings);
+    return response.data;
+  }
+
+  /** Saves Settings → Billing Approvals; needs identity-administration.edit. */
+  async updateBillingSettings(request: BillingApprovalSettings): Promise<BillingApprovalSettings> {
+    const response = await this.client.put<BillingApprovalSettings>(API_ROUTES.billing.settings, request);
     return response.data;
   }
 

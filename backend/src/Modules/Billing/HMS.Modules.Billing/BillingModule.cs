@@ -44,6 +44,10 @@ public static class BillingModule
         services.AddScoped<IInvoiceRevertService, InvoiceRevertService>();
         services.AddScoped<IInvoiceDiscountRequestRepository, InvoiceDiscountRequestRepository>();
         services.AddScoped<IInvoiceDiscountService, InvoiceDiscountService>();
+
+        // Settings → Billing Approvals (ADR-136). Scoped so one request reads the row once.
+        services.AddScoped<IBillingSettingsRepository, BillingSettingsRepository>();
+        services.AddScoped<IBillingSettingsService, BillingSettingsService>();
         // The revert service's "made today" rule reads the clock through this, so tests can move it.
         services.TryAddSingleton(TimeProvider.System);
 

@@ -135,15 +135,18 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
     private readonly IInvoiceRepository _invoiceRepository;
     private readonly IInvoiceDiscountRequestRepository _repository;
     private readonly IActivityLogService _activityLog;
+    private readonly IBillingSettingsService _billingSettings;
 
     public InvoiceDiscountService(
         IInvoiceRepository invoiceRepository,
         IInvoiceDiscountRequestRepository repository,
-        IActivityLogService activityLog)
+        IActivityLogService activityLog,
+        IBillingSettingsService billingSettings)
     {
         _invoiceRepository = invoiceRepository;
         _repository = repository;
         _activityLog = activityLog;
+        _billingSettings = billingSettings;
     }
 
     // Best-effort audit write (never throws - see IActivityLogService); runs only after the
@@ -170,7 +173,9 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         }
 
         var requests = await _repository.GetByInvoiceIdAsync(invoiceId, cancellationToken);
-        var ineligibleReason = InvoiceDiscountRules.GetIneligibleReason(invoice);
+        var ineligibleReason = (await _billingSettings.GetAsync(cancellationToken)).DiscountsDisabled
+            ? InvoiceService.DiscountsDisabledMessage
+            : InvoiceDiscountRules.GetIneligibleReason(invoice);
 
         return Result<InvoiceDiscountStatusResponse>.Success(new InvoiceDiscountStatusResponse
         {
@@ -186,6 +191,12 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         if (invoice is null)
         {
             return Result<InvoiceDiscountRequestResponse>.Failure(BillingErrorCodes.NotFound, $"Invoice '{invoiceId}' was not found.");
+        }
+
+        var settings = await _billingSettings.GetAsync(cancellationToken);
+        if (settings.DiscountsDisabled)
+        {
+            return Result<InvoiceDiscountRequestResponse>.Failure(BillingErrorCodes.DiscountsDisabled, InvoiceService.DiscountsDisabledMessage);
         }
 
         var ineligibleReason = InvoiceDiscountRules.GetIneligibleReason(invoice);
@@ -204,7 +215,10 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
 
         var invoiceBefore = invoice.ToResponse();
         var discountRequest = InvoiceDiscountRequest.Create(invoice, lines.Value!, request.DiscountType, request.DiscountValue, request.Reason, actor.UserName, actor.UserId);
-        if (actor.IsSuperAdmin)
+        // A Super Admin's discount applies at once, and so does anyone's while discount approval is
+        // switched off (ADR-136) — recorded as approved by whoever added it.
+        var appliesAtOnce = actor.IsSuperAdmin || !settings.DiscountsNeedApproval;
+        if (appliesAtOnce)
         {
             invoice.ApplyDiscount(discountRequest.LineDiscounts(), actor.UserName, actor.UserId);
             discountRequest.ApproveAll(actor.UserId, actor.UserName);
@@ -220,7 +234,7 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
 
         var response = discountRequest.ToResponse();
         await LogAsync(ActivityLogActions.Create, "InvoiceDiscountRequest", discountRequest.Id, $"Requested a discount of {discountRequest.TotalDiscount} on invoice {invoice.InvoiceNumber}: {discountRequest.Reason}", null, response, actor.UserId, cancellationToken);
-        if (actor.IsSuperAdmin)
+        if (appliesAtOnce)
         {
             await LogAsync(ActivityLogActions.Update, "Invoice", invoice.Id, $"Applied a discount of {discountRequest.TotalDiscount} to invoice {invoice.InvoiceNumber}", invoiceBefore, invoice.ToResponse(), actor.UserId, cancellationToken);
         }
