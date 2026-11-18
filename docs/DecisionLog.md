@@ -37,6 +37,27 @@ _To be documented._
 
 ## Decisions
 
+### ADR-138: OPD Scheduled Visits and Marked Patients get From/To date filters
+**Date:** 2026-11-18
+**Status:** Accepted (changes the filter bar described in the Marked Patients ADR and the Scheduled Visits "today onward" fix of 1 Nov)
+
+**Context**
+Every other OPD tab (`/clinical/opd`) has From Date and To Date in the filter bar. Scheduled Visits and Marked Patients hid them, so the client couldn't narrow either list by date.
+
+**Decision**
+- **Filter bar.** From Date and To Date now show on every tab. Status stays hidden on these two tabs, because neither a scheduled visit nor a mark has a status.
+- **Scheduled Visits** filters on the review date.
+  - It keeps its own From/To, separate from the yesterday–today range the other tabs share. It defaults to From = today and an empty To ("No end date"), which lists every upcoming visit, the same as before.
+  - It still never lists a past day. The From Date can't be set before today, and the API still starts a past or missing From today.
+  - `ScheduledVisitQuery` gains `To`. A To before the (today-clamped) From returns an empty list.
+- **Marked Patients** filters on the day the patient was marked, as a hospital (India Standard Time) calendar day. It uses the shared From/To like the other tabs.
+  - `MarkedPatientQuery` gains `From` and `To` (`DateOnly`). The service turns them into UTC bounds: the start of From in IST, up to the start of the day after To in IST.
+- Export (CSV/Excel/PDF) uses the same ranges.
+
+**Consequences**
+- Backend and frontend change together. No migration is needed.
+- Marked Patients now opens on yesterday–today like the other tabs, not on every mark. Older marks need a wider From Date.
+
 ### ADR-136: Each hospital chooses whether discounts are allowed and whether discounts and bill reverts need approval
 **Date:** 2026-11-16
 **Status:** Accepted (adds settings on top of ADR-106, ADR-109 and ADR-111)

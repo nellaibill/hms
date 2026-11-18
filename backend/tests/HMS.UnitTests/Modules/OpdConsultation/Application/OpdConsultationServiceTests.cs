@@ -588,7 +588,7 @@ public class OpdConsultationServiceTests
     {
         var from = new DateOnly(2026, 10, 22);
         var note = ScheduledNote(Guid.NewGuid(), new DateOnly(2026, 10, 25), followUp: "Review with CBC report");
-        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
         var header = GivenHeader(note, patientName: "Anitha R");
 
         var result = await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from }, CancellationToken.None);
@@ -611,7 +611,7 @@ public class OpdConsultationServiceTests
         var from = new DateOnly(2026, 10, 22);
         var mine = ScheduledNote(Guid.NewGuid(), from);
         var theirs = ScheduledNote(Guid.NewGuid(), from);
-        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([mine, theirs]);
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([mine, theirs]);
         var consultantId = Guid.NewGuid();
         GivenHeader(mine, consultantId: consultantId);
         GivenHeader(theirs);
@@ -627,7 +627,7 @@ public class OpdConsultationServiceTests
         var from = new DateOnly(2026, 10, 22);
         var match = ScheduledNote(Guid.NewGuid(), from);
         var other = ScheduledNote(Guid.NewGuid(), from);
-        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([match, other]);
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([match, other]);
         GivenHeader(match, uhid: "P-2026-040121");
         GivenHeader(other, uhid: "P-2026-000777");
 
@@ -641,7 +641,7 @@ public class OpdConsultationServiceTests
     {
         var from = new DateOnly(2026, 10, 22);
         var note = ScheduledNote(Guid.NewGuid(), from);
-        _repository.GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        _repository.GetWithReviewDateFromAsync(from, Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
         _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, Arg.Any<CancellationToken>())
             .Returns(Result<OpdPatientListItem>.Failure(PatientErrorCodes.ConsultationNotFound, "not found"));
 
@@ -654,11 +654,11 @@ public class OpdConsultationServiceTests
     [Fact]
     public async Task GetScheduledVisitsAsync_WithAPastFrom_StartsFromTheHospitalsToday()
     {
-        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
 
         await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = new DateOnly(2026, 10, 1) }, CancellationToken.None);
 
-        await _repository.Received(1).GetWithReviewDateFromAsync(new DateOnly(2026, 10, 22), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetWithReviewDateFromAsync(new DateOnly(2026, 10, 22), Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     // 01:30 IST on 22 Oct is still 21 Oct in UTC (the VPS's zone) — the list must start on 22 Oct.
@@ -666,22 +666,46 @@ public class OpdConsultationServiceTests
     public async Task GetScheduledVisitsAsync_WithNoFrom_StartsFromTodayInIndiaNotUtc()
     {
         _clock.UtcNow = new DateTimeOffset(2026, 10, 21, 20, 0, 0, TimeSpan.Zero);
-        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
 
         await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery(), CancellationToken.None);
 
-        await _repository.Received(1).GetWithReviewDateFromAsync(new DateOnly(2026, 10, 22), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetWithReviewDateFromAsync(new DateOnly(2026, 10, 22), Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetScheduledVisitsAsync_WithAFutureFrom_KeepsIt()
     {
         var from = new DateOnly(2026, 10, 30);
-        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
 
         await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = from }, CancellationToken.None);
 
-        await _repository.Received(1).GetWithReviewDateFromAsync(from, Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetWithReviewDateFromAsync(from, Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    // The filter bar's To Date ends the list there.
+    [Fact]
+    public async Task GetScheduledVisitsAsync_WithATo_PassesItAsTheLastDate()
+    {
+        var to = new DateOnly(2026, 10, 29);
+        _repository.GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        await _sut.GetScheduledVisitsAsync(new ScheduledVisitQuery { From = new DateOnly(2026, 10, 22), To = to }, CancellationToken.None);
+
+        await _repository.Received(1).GetWithReviewDateFromAsync(new DateOnly(2026, 10, 22), to, Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    // A range that ended before today has no upcoming visits — and isn't widened to today on.
+    [Fact]
+    public async Task GetScheduledVisitsAsync_WithAToBeforeToday_ReturnsNothing()
+    {
+        var result = await _sut.GetScheduledVisitsAsync(
+            new ScheduledVisitQuery { From = new DateOnly(2026, 10, 1), To = new DateOnly(2026, 10, 21) },
+            CancellationToken.None);
+
+        result.Should().BeEmpty();
+        await _repository.DidNotReceive().GetWithReviewDateFromAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     /* ------------------------------------------------------------ Mark patient */
@@ -810,7 +834,7 @@ public class OpdConsultationServiceTests
     public async Task GetMarkedPatientsAsync_ReturnsEachMarkWithItsPatientConsultantAndReason()
     {
         var note = MarkedNote("Needs a cardiology review");
-        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        _repository.GetMarkedAsync(Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
         var header = GivenHeader(note, patientName: "Anitha R");
 
         var result = await _sut.GetMarkedPatientsAsync(new MarkedPatientQuery(), CancellationToken.None);
@@ -833,7 +857,7 @@ public class OpdConsultationServiceTests
     {
         var mine = MarkedNote();
         var theirs = MarkedNote();
-        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([mine, theirs]);
+        _repository.GetMarkedAsync(Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([mine, theirs]);
         var consultantId = Guid.NewGuid();
         GivenHeader(mine, consultantId: consultantId);
         GivenHeader(theirs);
@@ -848,7 +872,7 @@ public class OpdConsultationServiceTests
     {
         var match = MarkedNote();
         var other = MarkedNote();
-        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([match, other]);
+        _repository.GetMarkedAsync(Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([match, other]);
         GivenHeader(match, patientName: "Murugan S");
         GivenHeader(other, patientName: "Lakshmi K");
 
@@ -861,12 +885,51 @@ public class OpdConsultationServiceTests
     public async Task GetMarkedPatientsAsync_SkipsAConsultationThatCanNoLongerBeFound()
     {
         var note = MarkedNote();
-        _repository.GetMarkedAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
+        _repository.GetMarkedAsync(Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([note]);
         _opdQueryService.GetConsultationDetailAsync(note.ConsultationId, Arg.Any<CancellationToken>())
             .Returns(Result<OpdPatientListItem>.Failure(PatientErrorCodes.ConsultationNotFound, "not found"));
 
         var result = await _sut.GetMarkedPatientsAsync(new MarkedPatientQuery(), CancellationToken.None);
 
         result.Should().BeEmpty();
+    }
+
+    // From/To are India calendar days: 20 Oct IST starts at 18:30 UTC on 19 Oct, and To 22 Oct
+    // runs up to (not including) the start of 23 Oct IST — 18:30 UTC on 22 Oct.
+    [Fact]
+    public async Task GetMarkedPatientsAsync_WithFromAndTo_FiltersByTheIndiaDaysTheMarksWereMade()
+    {
+        _repository.GetMarkedAsync(Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        await _sut.GetMarkedPatientsAsync(
+            new MarkedPatientQuery { From = new DateOnly(2026, 10, 20), To = new DateOnly(2026, 10, 22) },
+            CancellationToken.None);
+
+        await _repository.Received(1).GetMarkedAsync(
+            new DateTime(2026, 10, 19, 18, 30, 0, DateTimeKind.Utc),
+            new DateTime(2026, 10, 22, 18, 30, 0, DateTimeKind.Utc),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetMarkedPatientsAsync_WithNoDates_HasNoDateBounds()
+    {
+        _repository.GetMarkedAsync(Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        await _sut.GetMarkedPatientsAsync(new MarkedPatientQuery(), CancellationToken.None);
+
+        await _repository.Received(1).GetMarkedAsync(null, null, Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetMarkedPatientsAsync_WithAToBeforeTheFrom_ReturnsNothing()
+    {
+        var result = await _sut.GetMarkedPatientsAsync(
+            new MarkedPatientQuery { From = new DateOnly(2026, 10, 22), To = new DateOnly(2026, 10, 20) },
+            CancellationToken.None);
+
+        result.Should().BeEmpty();
+        await _repository.DidNotReceive().GetMarkedAsync(Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 }

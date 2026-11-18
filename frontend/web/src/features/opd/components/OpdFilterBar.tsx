@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ExportMenu, type ExportFormatOption } from '@/features/reports';
 import { opdStatusLabel } from '../opdStatusLabel';
-import type { OpdFilterValues, OpdTab } from '../types';
+import { todayIsoDate, type OpdFilterValues, type OpdTab } from '../types';
 
 /** Per-tab option list for the shared Status dropdown — each tab's list endpoint filters on
  * a different underlying status field (OpdConsultationStatus / LabOrderItemStatus /
@@ -50,37 +50,38 @@ interface OpdFilterBarProps {
  * list page's screenshot shows pinned to the row's right edge. */
 export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, onExport, lockDepartmentAndConsultant }: OpdFilterBarProps) {
   const statusOptions = statusOptionsForTab(tab);
-  // Scheduled Visits always lists from today on and Marked Patients lists every mark; neither
-  // has a status, so the date range and the Status dropdown don't apply there.
-  const showDatesAndStatus = tab !== 'scheduled' && tab !== 'marked';
+  // Scheduled Visits and Marked Patients have no status, so the Status dropdown doesn't apply there.
+  const showStatus = tab !== 'scheduled' && tab !== 'marked';
+  // Scheduled Visits never lists a past day, so its From Date can't go before today, and its
+  // To Date may be left empty for every upcoming visit (OpdPage gives it its own range).
+  const isScheduled = tab === 'scheduled';
+  const earliestFrom = isScheduled ? todayIsoDate() : undefined;
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4 shadow-soft-md">
-      {showDatesAndStatus && (
-        <>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="opd-from">From Date</Label>
-            <DateInput
-              id="opd-from"
-              value={filters.from}
-              max={filters.to || undefined}
-              onChange={(event) => onChange({ ...filters, from: event.target.value })}
-              className="w-40"
-            />
-          </div>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="opd-from">From Date</Label>
+        <DateInput
+          id="opd-from"
+          value={filters.from}
+          min={earliestFrom}
+          max={filters.to || undefined}
+          onChange={(event) => onChange({ ...filters, from: event.target.value })}
+          className="w-40"
+        />
+      </div>
 
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="opd-to">To Date</Label>
-            <DateInput
-              id="opd-to"
-              value={filters.to}
-              min={filters.from || undefined}
-              onChange={(event) => onChange({ ...filters, to: event.target.value })}
-              className="w-40"
-            />
-          </div>
-        </>
-      )}
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="opd-to">To Date</Label>
+        <DateInput
+          id="opd-to"
+          value={filters.to}
+          min={filters.from || earliestFrom}
+          onChange={(event) => onChange({ ...filters, to: event.target.value })}
+          placeholder={isScheduled ? 'No end date' : undefined}
+          className="w-40"
+        />
+      </div>
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="opd-department">Department</Label>
@@ -107,7 +108,7 @@ export function OpdFilterBar({ tab, filters, onChange, onRefresh, isRefreshing, 
         />
       </div>
 
-      {showDatesAndStatus && (
+      {showStatus && (
         <div className="flex flex-col gap-1">
           <Label htmlFor="opd-status">Status</Label>
           <Select

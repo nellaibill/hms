@@ -71,7 +71,7 @@ export class OpdConsultationApi {
    * Scheduled Visits tab. Receptionists, Admins, Super Admins and Consultants only. */
   async listScheduledVisits(query: ScheduledVisitQuery): Promise<ScheduledVisit[]> {
     const response = await this.client.get<ScheduledVisit[]>(API_ROUTES.opdConsultations.scheduledVisits, {
-      query: { from: query.from, departmentId: query.departmentId, consultantId: query.consultantId, search: query.search },
+      query: { from: query.from, to: query.to, departmentId: query.departmentId, consultantId: query.consultantId, search: query.search },
     });
     return response.data;
   }
@@ -80,7 +80,7 @@ export class OpdConsultationApi {
    * Patients tab. Receptionists, Admins, Super Admins and Consultants only. */
   async listMarkedPatients(query: MarkedPatientQuery): Promise<MarkedPatient[]> {
     const response = await this.client.get<MarkedPatient[]>(API_ROUTES.opdConsultations.markedPatients, {
-      query: { departmentId: query.departmentId, consultantId: query.consultantId, search: query.search },
+      query: { from: query.from, to: query.to, departmentId: query.departmentId, consultantId: query.consultantId, search: query.search },
     });
     return response.data;
   }

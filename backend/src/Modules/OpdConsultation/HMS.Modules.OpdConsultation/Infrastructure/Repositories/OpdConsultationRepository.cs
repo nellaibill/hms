@@ -56,22 +56,45 @@ internal class OpdConsultationRepository : IOpdConsultationRepository
             .Take(take)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<OpdConsultationNote>> GetWithReviewDateFromAsync(DateOnly from, int take, CancellationToken cancellationToken)
-        => await _dbContext.OpdConsultationNotes
+    public async Task<IReadOnlyList<OpdConsultationNote>> GetWithReviewDateFromAsync(DateOnly from, DateOnly? to, int take, CancellationToken cancellationToken)
+    {
+        var notes = _dbContext.OpdConsultationNotes
             .AsNoTracking()
-            .Where(x => x.ReviewDate != null && x.ReviewDate >= from)
+            .Where(x => x.ReviewDate != null && x.ReviewDate >= from);
+
+        if (to is { } last)
+        {
+            notes = notes.Where(x => x.ReviewDate <= last);
+        }
+
+        return await notes
             .OrderBy(x => x.ReviewDate)
             .ThenBy(x => x.CreatedAt)
             .Take(take)
             .ToListAsync(cancellationToken);
+    }
 
-    public async Task<IReadOnlyList<OpdConsultationNote>> GetMarkedAsync(int take, CancellationToken cancellationToken)
-        => await _dbContext.OpdConsultationNotes
+    public async Task<IReadOnlyList<OpdConsultationNote>> GetMarkedAsync(DateTime? fromUtc, DateTime? toUtcExclusive, int take, CancellationToken cancellationToken)
+    {
+        var notes = _dbContext.OpdConsultationNotes
             .AsNoTracking()
-            .Where(x => x.MarkedAt != null)
+            .Where(x => x.MarkedAt != null);
+
+        if (fromUtc is { } start)
+        {
+            notes = notes.Where(x => x.MarkedAt >= start);
+        }
+
+        if (toUtcExclusive is { } end)
+        {
+            notes = notes.Where(x => x.MarkedAt < end);
+        }
+
+        return await notes
             .OrderByDescending(x => x.MarkedAt)
             .Take(take)
             .ToListAsync(cancellationToken);
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
