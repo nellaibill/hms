@@ -18,6 +18,7 @@ internal static class DiagnosticPackageMappingExtensions
         Name = package.Name,
         Description = package.Description,
         TotalPrice = package.TotalPrice,
+        CostPrice = package.CostPrice,
         IsActive = package.IsActive,
         Items = package.Items.Select(i => i.ToResponse()).ToList(),
         CreatedAt = package.CreatedAt,

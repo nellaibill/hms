@@ -59,6 +59,7 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
             request.Name,
             request.Description,
             request.TotalPrice,
+            request.CostPrice,
             request.IsActive,
             request.ServiceIds,
             actorId);
@@ -82,7 +83,7 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
             return Result<DiagnosticPackageResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Package code '{request.Code}' is already in use.");
         }
 
-        package.Update(request.Code, request.Name, request.Description, request.TotalPrice, request.IsActive, actorId);
+        package.Update(request.Code, request.Name, request.Description, request.TotalPrice, request.CostPrice, request.IsActive, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<DiagnosticPackageResponse>.Success(package.ToResponse());

@@ -215,8 +215,8 @@ export function CollectionSummarySections({ data, variant, singleDay = false, si
 
       {data.grandTotal.collectedWithUnknownCost > 0 && (
         <p className={cn('text-xs', variant === 'screen' ? 'text-muted-foreground' : 'text-gray-600')}>
-          {formatCurrency(data.grandTotal.collectedWithUnknownCost)} collected has no cost data yet (a service not yet costed, a package, or a
-          consultant with no charge set), so it is in Total but not split into consultant and hospital amounts.
+          {formatCurrency(data.grandTotal.collectedWithUnknownCost)} collected has no cost data yet (a service or package with no running cost, or
+          a consultant with no charge set), so it is in Total but not split into consultant and hospital amounts.
         </p>
       )}
     </div>

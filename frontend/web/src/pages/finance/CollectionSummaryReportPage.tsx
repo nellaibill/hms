@@ -112,12 +112,12 @@ export default function CollectionSummaryReportPage() {
   const { data: consultationTypeOptions } = useMasterOptionsQuery('consultationType');
   const { services: radiologyServices } = useDiagnosticServices('Radiology');
   const { services: laboratoryServices } = useDiagnosticServices('Laboratory');
-  usePrimeDiagnosticPackageCache();
+  const diagnosticPackages = usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(
     () => getCollectionRows(paymentsForEncounterTypes(payments ?? [], encounterTypes)),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the cache data is a recompute trigger, see above
-    [payments, encounterTypes, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices],
+    [payments, encounterTypes, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices, diagnosticPackages],
   );
   const filteredRows = useMemo(() => filterProfitRows(rows, appliedFilters), [rows, appliedFilters]);
 

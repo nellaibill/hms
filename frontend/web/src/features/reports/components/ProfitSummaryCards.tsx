@@ -83,8 +83,8 @@ export function ProfitSummaryCards({ totals, labels = DEFAULT_PROFIT_LABELS, hid
       </div>
       {totals.revenueWithUnknownCost > 0 && (
         <p className="text-xs text-muted-foreground">
-          {formatCurrency(totals.revenueWithUnknownCost)} of revenue has no cost data yet (Pharmacy, Laboratory packages, a service not yet
-          costed, or a consultant with no charge set for that consultation type) and isn't reflected in the figures above.
+          {formatCurrency(totals.revenueWithUnknownCost)} of revenue has no cost data yet (Pharmacy, a service or package with no running
+          cost, or a consultant with no charge set for that consultation type) and isn't reflected in the figures above.
         </p>
       )}
     </div>

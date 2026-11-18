@@ -999,6 +999,12 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("code");
 
+                    b.Property<decimal>("CostPrice")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(10,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("cost_price");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");

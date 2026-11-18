@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-139: Lab and Radiology running costs reach OP Report; packages get their own Running Cost
+**Date:** 2026-11-18
+**Status:** Accepted (changes how ADR-069/ADR-124 profit figures find a cost)
+
+**Context**
+After a running cost was updated, OP Report's Hospital Cost still showed "—" for Laboratory and Radiology lines. Consultation and Procedure lines were fine. Three causes:
+1. The diagnostics reference cache (`features/diagnostics/referenceCache.ts`) was filled in a `useEffect`, which runs after the render that delivers the data. A report's rows memo recomputed on that render, read the old cache, and wasn't recomputed again, so a new or updated running cost didn't show. Masters caches (Consultation, Procedure) are filled inside `queryFn`, which is why only Lab and Radiology were affected.
+2. The cache held only active services and packages. A line billed against a service deactivated since got no name or cost.
+3. A Laboratory package line (`packageId`) always had no cost, because `DiagnosticPackage` had no running cost. On `lhs`, the tariff refresh had replaced the flat "Package"-category services (e.g. COAGULATION PROFILE) with real packages and deactivated the flat rows. Running costs entered on those inactive rows never reached a bill.
+
+**Decision**
+- `useDiagnosticServices` and `usePrimeDiagnosticPackageCache` fill the cache inside `queryFn`, and fetch inactive records too. The billing dropdown still lists active services only. The new query keys end in `with-inactive`.
+- `usePrimeDiagnosticPackageCache` returns the packages. OP Report, Collection Summary and the Lab/Radiology profit reports list them in their rows memo.
+- `DiagnosticPackage` gains `CostPrice` (Running Cost, default 0), editable on the package create form and the Edit Package dialog. Masters migration `AddDiagnosticPackageCostPrice` adds `masters.diagnostic_packages.cost_price`.
+- A package line's cost is the package's Running Cost when set. Otherwise it's the total of its tests' running costs, but only when every test has one; else there's no cost.
+
+**Consequences**
+- Run Migrate (Masters) on each hospital after deploying.
+- Running costs typed on the old inactive "Package"-category services aren't carried over. Enter them on the package itself (Central Laboratory → Packages → Edit), or cost every test in the package.
+
 ### ADR-138: OPD Scheduled Visits and Marked Patients get From/To date filters
 **Date:** 2026-11-18
 **Status:** Accepted (changes the filter bar described in the Marked Patients ADR and the Scheduled Visits "today onward" fix of 1 Nov)

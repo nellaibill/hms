@@ -18,6 +18,14 @@ internal class DiagnosticPackage : Entity
     public string Name { get; private set; } = null!;
     public string? Description { get; private set; }
     public decimal TotalPrice { get; private set; }
+
+    /// <summary>What it costs the hospital to run the whole package once — the package's own
+    /// running cost, as distinct from <see cref="TotalPrice"/>, what the patient is billed.
+    /// Like the bundle price it's a deliberate figure, not derived from the tests. Defaults to 0
+    /// (not yet costed), matching DiagnosticService.CostPrice; profit reports then fall back to
+    /// the sum of the tests' own running costs.</summary>
+    public decimal CostPrice { get; private set; }
+
     public bool IsActive { get; private set; } = true;
 
     private readonly List<DiagnosticPackageItem> _items = [];
@@ -34,6 +42,7 @@ internal class DiagnosticPackage : Entity
         string name,
         string? description,
         decimal totalPrice,
+        decimal costPrice,
         bool isActive,
         Guid? createdBy)
         : base(id, createdBy)
@@ -42,6 +51,7 @@ internal class DiagnosticPackage : Entity
         Name = name;
         Description = description;
         TotalPrice = totalPrice;
+        CostPrice = costPrice;
         IsActive = isActive;
     }
 
@@ -50,16 +60,14 @@ internal class DiagnosticPackage : Entity
         string name,
         string? description,
         decimal totalPrice,
+        decimal costPrice,
         bool isActive,
         IReadOnlyList<Guid> serviceIds,
         Guid? createdBy)
     {
         Guard.AgainstNullOrWhiteSpace(code, nameof(code));
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
-        if (totalPrice < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(totalPrice), "Total price cannot be negative.");
-        }
+        GuardPrices(totalPrice, costPrice);
 
         var package = new DiagnosticPackage(
             Guid.CreateVersion7(),
@@ -67,6 +75,7 @@ internal class DiagnosticPackage : Entity
             name.Trim(),
             description?.Trim(),
             totalPrice,
+            costPrice,
             isActive,
             createdBy);
 
@@ -83,22 +92,34 @@ internal class DiagnosticPackage : Entity
         string name,
         string? description,
         decimal totalPrice,
+        decimal costPrice,
         bool isActive,
         Guid? updatedBy)
     {
         Guard.AgainstNullOrWhiteSpace(code, nameof(code));
         Guard.AgainstNullOrWhiteSpace(name, nameof(name));
-        if (totalPrice < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(totalPrice), "Total price cannot be negative.");
-        }
+        GuardPrices(totalPrice, costPrice);
 
         Code = code.Trim();
         Name = name.Trim();
         Description = description?.Trim();
         TotalPrice = totalPrice;
+        CostPrice = costPrice;
         IsActive = isActive;
         MarkUpdated(updatedBy);
+    }
+
+    private static void GuardPrices(decimal totalPrice, decimal costPrice)
+    {
+        if (totalPrice < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(totalPrice), "Total price cannot be negative.");
+        }
+
+        if (costPrice < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(costPrice), "Cost price cannot be negative.");
+        }
     }
 
     public DiagnosticPackageItem AddItem(Guid serviceId, Guid? updatedBy)

@@ -88,7 +88,7 @@ public class DiagnosticPackageServiceTests
     [Fact]
     public async Task UpdateAsync_WithValidRequest_DoesNotChangeTotalPriceBasedOnItems()
     {
-        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, true, [ServiceId], null);
+        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, 0m, true, [ServiceId], null);
         _repository.GetByIdAsync(package.Id, Arg.Any<CancellationToken>()).Returns(package);
 
         var request = new UpdateDiagnosticPackageRequest { Code = "MHC", Name = "Master Health Checkup", TotalPrice = 999m, IsActive = true };
@@ -97,6 +97,29 @@ public class DiagnosticPackageServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.TotalPrice.Should().Be(999m);
         result.Value.Items.Should().ContainSingle(i => i.ServiceId == ServiceId);
+    }
+
+    // The package's own running cost (OP Report's hospital share for a package line).
+    [Fact]
+    public async Task UpdateAsync_WithACostPrice_SavesAndReturnsIt()
+    {
+        var package = DiagnosticPackage.Create("COAGPROFILE", "Coagulation Profile", null, 600m, 0m, true, [ServiceId], null);
+        _repository.GetByIdAsync(package.Id, Arg.Any<CancellationToken>()).Returns(package);
+
+        var request = new UpdateDiagnosticPackageRequest { Code = "COAGPROFILE", Name = "Coagulation Profile", TotalPrice = 600m, CostPrice = 200m, IsActive = true };
+        var result = await _sut.UpdateAsync(package.Id, request, actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.CostPrice.Should().Be(200m);
+        package.CostPrice.Should().Be(200m);
+    }
+
+    [Fact]
+    public void Create_WithANegativeCostPrice_Throws()
+    {
+        var act = () => DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, -1m, true, [ServiceId], null);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
@@ -113,7 +136,7 @@ public class DiagnosticPackageServiceTests
     [Fact]
     public async Task DeleteAsync_WhenPackageExists_SoftDeletesAndReturnsSuccess()
     {
-        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, true, [ServiceId], null);
+        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, 0m, true, [ServiceId], null);
         _repository.GetByIdAsync(package.Id, Arg.Any<CancellationToken>()).Returns(package);
 
         var result = await _sut.DeleteAsync(package.Id, actorId: null, CancellationToken.None);
@@ -126,7 +149,7 @@ public class DiagnosticPackageServiceTests
     [Fact]
     public async Task AddItemAsync_WithValidServiceId_AddsItemAndReturnsSuccess()
     {
-        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, true, [ServiceId], null);
+        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, 0m, true, [ServiceId], null);
         _repository.GetByIdAsync(package.Id, Arg.Any<CancellationToken>()).Returns(package);
         var newServiceId = Guid.NewGuid();
         _diagnosticServiceService.GetByIdAsync(newServiceId, Arg.Any<CancellationToken>())
@@ -142,7 +165,7 @@ public class DiagnosticPackageServiceTests
     [Fact]
     public async Task AddItemAsync_WhenServiceIdDoesNotExist_ReturnsInvalidPackageItemService()
     {
-        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, true, [ServiceId], null);
+        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, 0m, true, [ServiceId], null);
         _repository.GetByIdAsync(package.Id, Arg.Any<CancellationToken>()).Returns(package);
         var unknownServiceId = Guid.NewGuid();
         _diagnosticServiceService.GetByIdAsync(unknownServiceId, Arg.Any<CancellationToken>())
@@ -157,7 +180,7 @@ public class DiagnosticPackageServiceTests
     [Fact]
     public async Task RemoveItemAsync_WithExistingItem_RemovesItAndReturnsSuccess()
     {
-        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, true, [ServiceId], null);
+        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, 0m, true, [ServiceId], null);
         var itemId = package.Items.Single().Id;
         _repository.GetByIdAsync(package.Id, Arg.Any<CancellationToken>()).Returns(package);
 
@@ -171,7 +194,7 @@ public class DiagnosticPackageServiceTests
     [Fact]
     public async Task RemoveItemAsync_WhenItemDoesNotExist_ReturnsNotFound()
     {
-        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, true, [ServiceId], null);
+        var package = DiagnosticPackage.Create("MHC", "Master Health Checkup", null, 1500m, 0m, true, [ServiceId], null);
         _repository.GetByIdAsync(package.Id, Arg.Any<CancellationToken>()).Returns(package);
 
         var result = await _sut.RemoveItemAsync(package.Id, Guid.NewGuid(), actorId: null, CancellationToken.None);
