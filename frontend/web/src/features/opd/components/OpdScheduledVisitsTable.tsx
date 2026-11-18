@@ -5,35 +5,39 @@ import { PatientNameLink } from '@/components/PatientNameLink';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOpdScheduledVisitsQuery } from '../hooks/useOpdScheduledVisitsQuery';
-import { formatScheduledDate, todayIsoDate, upcomingScheduledVisits, type OpdFilterValues } from '../types';
+import { effectiveScheduledRange, formatScheduledDate, scheduledVisitsInRange, todayIsoDate, type OpdFilterValues } from '../types';
 import { OpdListHeading } from './OpdListHeading';
 
 interface OpdScheduledVisitsTableProps {
+  /** `from`/`to` here are Scheduled Visits' own range (defaultScheduledVisitsRange), not the
+   * other tabs' shared one. */
   filters: OpdFilterValues;
 }
 
 /**
- * OPD Scheduled Visits tab — every patient's upcoming visits, from today on, soonest first: the
- * review date a doctor set on an OPD consultation, with the patient, the department and
- * consultant of that consultation, and the doctor's follow-up notes. Department/Consultant/
- * Search filter it; the From/To dates don't apply (it always starts today — the backend won't
- * go earlier, and past rows are dropped here too). A Consultant sees only their own patients —
- * the backend forces that.
+ * OPD Scheduled Visits tab — patients' upcoming visits, soonest first: the review date a doctor
+ * set on an OPD consultation, with the patient, the department and consultant of that
+ * consultation, and the doctor's follow-up notes. From/To/Department/Consultant/Search filter it.
+ * It never starts before today — the backend won't go earlier, and past rows are dropped here
+ * too — and an empty To Date means every upcoming visit. A Consultant sees only their own
+ * patients — the backend forces that.
  */
 export function OpdScheduledVisitsTable({ filters }: OpdScheduledVisitsTableProps) {
   const today = todayIsoDate();
+  const range = effectiveScheduledRange(filters.from, filters.to, today);
   const query = useOpdScheduledVisitsQuery({
-    from: today,
+    from: range.from,
+    to: range.to,
     departmentId: filters.departmentId,
     consultantId: filters.consultantId,
     search: filters.search || undefined,
   });
   const { isPending, isPlaceholderData, isError, error } = query;
-  const data = query.data && upcomingScheduledVisits(query.data, today);
+  const data = query.data && scheduledVisitsInRange(query.data, range.from, range.to);
 
   return (
     <div className="flex flex-col gap-3">
-      <OpdListHeading title="Scheduled Visits" from={today} to="">
+      <OpdListHeading title="Scheduled Visits" from={range.from} to={range.to ?? ''}>
         {data &&
           (isPlaceholderData ? (
             <Badge variant="secondary" className="gap-1.5">
@@ -62,7 +66,7 @@ export function OpdScheduledVisitsTable({ filters }: OpdScheduledVisitsTableProp
         {!isPending && !isError && data && data.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-              <p className="text-sm font-medium text-foreground">No scheduled visits from today on</p>
+              <p className="text-sm font-medium text-foreground">No scheduled visits found</p>
               <p className="text-sm text-muted-foreground">A review date set in an OPD consultation shows up here.</p>
             </CardContent>
           </Card>

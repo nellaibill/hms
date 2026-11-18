@@ -14,6 +14,9 @@ export interface DiagnosticPackage {
   /** A deliberate bundle-discount price — independent of the sum of the package's item
    * prices, never auto-computed. */
   totalPrice: number;
+  /** The package's own running cost — 0 when not yet costed. Profit reports then fall back to
+   * the sum of its tests' running costs (see referenceCache.ts's resolveDiagnosticPackageCostPrice). */
+  costPrice: number;
   isActive: boolean;
   items: DiagnosticPackageItem[];
   createdAt: string;
@@ -26,6 +29,7 @@ export interface CreateDiagnosticPackageRequest {
   name: string;
   description?: string | null;
   totalPrice: number;
+  costPrice: number;
   isActive: boolean;
   /** At least one DiagnosticService id is required. */
   serviceIds: string[];
@@ -38,6 +42,7 @@ export interface UpdateDiagnosticPackageRequest {
   name: string;
   description?: string | null;
   totalPrice: number;
+  costPrice: number;
   isActive: boolean;
 }
 

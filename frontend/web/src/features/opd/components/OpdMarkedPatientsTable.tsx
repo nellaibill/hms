@@ -15,12 +15,14 @@ interface OpdMarkedPatientsTableProps {
 /**
  * OPD Marked Patients tab — every consultation whose patient a doctor marked (the green "Mark
  * Patient" button on the consultation page), newest mark first, with the patient, the
- * department and consultant of that consultation, and the reason given. Department/Consultant/
- * Search filter it; the From/To dates and Status don't apply. A Consultant sees only their own
- * patients — the backend forces that.
+ * department and consultant of that consultation, and the reason given. From/To (the day the
+ * patient was marked)/Department/Consultant/Search filter it; Status doesn't apply — a mark has
+ * none. A Consultant sees only their own patients — the backend forces that.
  */
 export function OpdMarkedPatientsTable({ filters }: OpdMarkedPatientsTableProps) {
   const { data, isPending, isPlaceholderData, isError, error } = useOpdMarkedPatientsQuery({
+    from: filters.from || undefined,
+    to: filters.to || undefined,
     departmentId: filters.departmentId,
     consultantId: filters.consultantId,
     search: filters.search || undefined,
@@ -28,7 +30,7 @@ export function OpdMarkedPatientsTable({ filters }: OpdMarkedPatientsTableProps)
 
   return (
     <div className="flex flex-col gap-3">
-      <OpdListHeading title="Marked Patients" from="" to="">
+      <OpdListHeading title="Marked Patients" from={filters.from} to={filters.to}>
         {data &&
           (isPlaceholderData ? (
             <Badge variant="secondary" className="gap-1.5">
@@ -57,8 +59,8 @@ export function OpdMarkedPatientsTable({ filters }: OpdMarkedPatientsTableProps)
         {!isPending && !isError && data && data.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-              <p className="text-sm font-medium text-foreground">No marked patients</p>
-              <p className="text-sm text-muted-foreground">A patient marked from an OPD consultation shows up here.</p>
+              <p className="text-sm font-medium text-foreground">No marked patients found</p>
+              <p className="text-sm text-muted-foreground">Try a different date range or filter.</p>
             </CardContent>
           </Card>
         )}

@@ -1,4 +1,4 @@
-import { resolveDiagnosticPackageLabel, resolveDiagnosticServiceCostPrice, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
+import { resolveDiagnosticPackageCostPrice, resolveDiagnosticPackageLabel, resolveDiagnosticServiceCostPrice, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
 import { resolveConsultantCharge, resolveRecordCostPrice, resolveRecordLabel, resolveRecordShortLabel } from '@/features/masters';
 import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
 import { linesSignature, type DiscountableLine } from './billingDiscount';
@@ -378,8 +378,9 @@ export function describeReportService(item: BillingItem): string {
  *     (not `consultantId`) for the same reason the Consultant report groups by it — it survives
  *     payment. An explicit charge of 0 is real (a consultant who takes none of the fee), so
  *     resolveConsultantCharge returns it as-is rather than folding it into "unknown."
- *   - Laboratory package lines (packageId set): DiagnosticPackage has no CostPrice of its
- *     own (it's a bundle of DiagnosticService items, each separately costed) — null.
+ *   - Laboratory package lines (packageId set): the package's own Running Cost, or else the
+ *     total of its tests' running costs when every test has one — see
+ *     resolveDiagnosticPackageCostPrice.
  *   - Everything else: null if serviceId is unset, the referenced record hasn't resolved
  *     into the cache yet, or its CostPrice is 0 ("not yet costed").
  */
@@ -391,7 +392,7 @@ export function resolveItemCostPrice(item: BillingItem): number | null {
   }
 
   if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {
-    if (item.billingType === 'Laboratory' && item.packageId) return null;
+    if (item.billingType === 'Laboratory' && item.packageId) return resolveDiagnosticPackageCostPrice(item.packageId);
     return item.serviceId ? resolveDiagnosticServiceCostPrice(item.serviceId) : null;
   }
 

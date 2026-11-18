@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { PACKAGE_RUNNING_COST_HELP } from '../packageRunningCost';
 
 interface DiagnosticPackageFormProps {
   defaultValues?: Partial<DiagnosticPackageFormValues>;
@@ -16,7 +17,7 @@ interface DiagnosticPackageFormProps {
   apiError: ApiError | null;
 }
 
-/** Central Laboratory's Package create/edit form (Code/Name/Description/Total Price/Active
+/** Central Laboratory's Package create/edit form (Code/Name/Description/Total Price/Running Cost/Active
  * only — included tests are added afterward on LabPackageDetailPage, matching the mockup's own
  * flow where a package is created first, then tests are added on its detail page). */
 export function DiagnosticPackageForm({ defaultValues, mode, onSubmit, isSubmitting, submitLabel, apiError }: DiagnosticPackageFormProps) {
@@ -34,6 +35,7 @@ export function DiagnosticPackageForm({ defaultValues, mode, onSubmit, isSubmitt
       name: '',
       description: '',
       totalPrice: 0,
+      costPrice: 0,
       isActive: true,
       ...defaultValues,
     },
@@ -76,6 +78,13 @@ export function DiagnosticPackageForm({ defaultValues, mode, onSubmit, isSubmitt
             <Label htmlFor="dpk-totalPrice">Total Price (₹)</Label>
             <Input id="dpk-totalPrice" type="number" min={0} step="any" {...register('totalPrice')} />
             {errors.totalPrice && <p className="text-sm text-destructive">{errors.totalPrice.message}</p>}
+          </div>
+
+          <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+            <Label htmlFor="dpk-costPrice">Running Cost (₹)</Label>
+            <Input id="dpk-costPrice" type="number" min={0} step="any" {...register('costPrice')} />
+            <p className="text-xs text-muted-foreground">{PACKAGE_RUNNING_COST_HELP}</p>
+            {errors.costPrice && <p className="text-sm text-destructive">{errors.costPrice.message}</p>}
           </div>
 
           <div className="flex min-w-[200px] flex-col gap-1">

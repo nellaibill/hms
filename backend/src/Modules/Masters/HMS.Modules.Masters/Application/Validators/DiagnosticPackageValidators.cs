@@ -11,6 +11,7 @@ internal class CreateDiagnosticPackageRequestValidator : AbstractValidator<Creat
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.TotalPrice).GreaterThanOrEqualTo(0).WithMessage("Total price cannot be negative.");
+        RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0).WithMessage("Cost price cannot be negative.");
 
         // A package with zero tests isn't a bundle worth creating — mirrors
         // CreateInvoiceRequestValidator's identical Items.NotEmpty() rule.
@@ -26,6 +27,7 @@ internal class UpdateDiagnosticPackageRequestValidator : AbstractValidator<Updat
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.TotalPrice).GreaterThanOrEqualTo(0).WithMessage("Total price cannot be negative.");
+        RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0).WithMessage("Cost price cannot be negative.");
     }
 }
 

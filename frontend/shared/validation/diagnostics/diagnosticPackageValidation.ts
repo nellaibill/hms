@@ -13,6 +13,7 @@ const diagnosticPackageCommonSchema = {
   name: z.string().trim().min(1, 'Name is required').max(200),
   description: z.string().trim().max(1000).optional().or(z.literal('')),
   totalPrice: z.coerce.number().min(0, 'Must be zero or greater'),
+  costPrice: z.coerce.number().min(0, 'Must be zero or greater'),
   isActive: z.boolean(),
 };
 

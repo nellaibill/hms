@@ -20,6 +20,7 @@ internal class DiagnosticPackageConfiguration : IEntityTypeConfiguration<Diagnos
         builder.Property(p => p.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
         builder.Property(p => p.Description).HasColumnName("description").HasMaxLength(500);
         builder.Property(p => p.TotalPrice).HasColumnName("total_price").HasColumnType("numeric(10,2)").IsRequired();
+        builder.Property(p => p.CostPrice).HasColumnName("cost_price").HasColumnType("numeric(10,2)").IsRequired().HasDefaultValue(0m);
         builder.Property(p => p.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
 
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").IsRequired();

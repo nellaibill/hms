@@ -24,7 +24,7 @@ function openPicker(input: HTMLInputElement) {
  * of it, invisible. Clicking anywhere opens the browser's own calendar, and value, onChange,
  * min, max, aria-* and keyboard entry all behave exactly as before.
  */
-export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(({ className, value, disabled, onClick, ...props }, ref) => {
+export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(({ className, value, disabled, onClick, placeholder, ...props }, ref) => {
   const label = formatReportDate(value);
 
   return (
@@ -35,7 +35,7 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(({ c
         className,
       )}
     >
-      <span className={cn('flex-1 truncate', label ? 'text-foreground' : 'text-muted-foreground')}>{label || 'Select date'}</span>
+      <span className={cn('flex-1 truncate', label ? 'text-foreground' : 'text-muted-foreground')}>{label || placeholder || 'Select date'}</span>
       <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <input
         {...props}

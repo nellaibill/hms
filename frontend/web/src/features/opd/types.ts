@@ -24,11 +24,22 @@ export function formatScheduledDate(value: string): string {
   return new Date(year, month - 1, day).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-/** Scheduled Visits from `today` (a "YYYY-MM-DD" local day) on — the API already starts the list
- * today, but cached rows, or a page left open past midnight, can still hold a day that has gone.
- * "YYYY-MM-DD" strings compare in date order. */
-export function upcomingScheduledVisits<T extends { scheduledDate: string }>(rows: readonly T[], today: string): T[] {
-  return rows.filter((row) => row.scheduledDate >= today);
+/** Scheduled Visits keeps its own From/To, separate from the yesterday–today range the other OPD
+ * tabs share: it looks ahead, so it starts today with no To — every upcoming visit, as the tab
+ * listed before it had date filters. */
+export const defaultScheduledVisitsRange = (): { from: string; to: string } => ({ from: todayIsoDate(), to: '' });
+
+/** The range Scheduled Visits actually covers: never before `today` (past review dates don't show
+ * — the API starts a past From today too), and an empty To means no end. */
+export function effectiveScheduledRange(from: string, to: string, today: string): { from: string; to: string | undefined } {
+  return { from: from && from > today ? from : today, to: to || undefined };
+}
+
+/** Scheduled Visits within `from`–`to` ("YYYY-MM-DD" local days; no `to` = no end) — the API
+ * already applies the range, but cached rows, or a page left open past midnight, can still hold
+ * a day that has gone. "YYYY-MM-DD" strings compare in date order. */
+export function scheduledVisitsInRange<T extends { scheduledDate: string }>(rows: readonly T[], from: string, to?: string): T[] {
+  return rows.filter((row) => row.scheduledDate >= from && (!to || row.scheduledDate <= to));
 }
 
 /** When a patient was marked (an ISO timestamp) as local date and time. */
