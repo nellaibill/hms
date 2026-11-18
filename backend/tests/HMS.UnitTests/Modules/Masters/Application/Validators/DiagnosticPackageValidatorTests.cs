@@ -37,4 +37,26 @@ public class DiagnosticPackageValidatorTests
 
         result.ShouldNotHaveValidationErrorFor(x => x.ServiceIds);
     }
+
+    [Fact]
+    public void CreateValidator_WithANegativeCostPrice_HasValidationError()
+    {
+        var validator = new CreateDiagnosticPackageRequestValidator();
+        var request = ValidRequest() with { CostPrice = -1m };
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.CostPrice);
+    }
+
+    [Fact]
+    public void UpdateValidator_WithANegativeCostPrice_HasValidationError()
+    {
+        var validator = new UpdateDiagnosticPackageRequestValidator();
+        var request = new UpdateDiagnosticPackageRequest { Code = "MHC", Name = "Master Health Checkup", TotalPrice = 1500m, CostPrice = -1m, IsActive = true };
+
+        var result = validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.CostPrice);
+    }
 }

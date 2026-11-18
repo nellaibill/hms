@@ -45,6 +45,7 @@ export default function DiagnosticPackageCreatePage() {
         name: values.name,
         description: values.description || undefined,
         totalPrice: values.totalPrice,
+        costPrice: values.costPrice,
         isActive: values.isActive,
         serviceIds: [firstServiceId],
       },

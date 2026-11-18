@@ -53,7 +53,7 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
   const { data: consultationTypeOptions } = useMasterOptionsQuery('consultationType');
   const { services: radiologyServices } = useDiagnosticServices('Radiology');
   const { services: laboratoryServices } = useDiagnosticServices('Laboratory');
-  usePrimeDiagnosticPackageCache();
+  const diagnosticPackages = usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(() => {
     const allRows = getProfitRows(billings ?? [], appliedRange);
@@ -68,6 +68,7 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
     consultationTypeOptions,
     radiologyServices,
     laboratoryServices,
+    diagnosticPackages,
   ]);
   const filteredRows = useMemo(() => filterProfitRows(rows, appliedFilters), [rows, appliedFilters]);
   const totals = useMemo(() => getProfitTotals(filteredRows), [filteredRows]);

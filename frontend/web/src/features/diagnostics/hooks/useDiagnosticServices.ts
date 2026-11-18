@@ -1,6 +1,6 @@
 import type { DiagnosticService, DiagnosticServiceType } from '@hms/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { diagnosticServicesApi } from '../../../services/apiClient';
 import { primeDiagnosticServiceCache } from '../referenceCache';
 
@@ -16,12 +16,16 @@ export interface BillingServiceOption {
  * real `lhs` tenant already does for Laboratory (265 active rows) after the tariff cost-data
  * load. Same "MaxPageSize truncates a single big-page request" fix already applied to
  * masterStoreFactory.ts's getAll() and apiBillingRepository.ts's getAllInvoicesForReport(). */
+//
+// Fetches inactive services too: a bill line for a service deactivated since (e.g. the flat
+// legacy "Package" rows the lab tariff refresh retired) still needs its name and running cost in
+// reports. Only the billing dropdown below is limited to active services.
 async function fetchAllDiagnosticServices(serviceType: DiagnosticServiceType): Promise<DiagnosticService[]> {
   const all: DiagnosticService[] = [];
   let page = 1;
   let totalPages = 1;
   do {
-    const paged = await diagnosticServicesApi.getDiagnosticServices({ serviceType, isActive: true, page, pageSize: 100 });
+    const paged = await diagnosticServicesApi.getDiagnosticServices({ serviceType, page, pageSize: 100 });
     all.push(...paged.items);
     totalPages = paged.meta.totalPages;
     page++;
@@ -39,19 +43,26 @@ async function fetchAllDiagnosticServices(serviceType: DiagnosticServiceType): P
  */
 export function useDiagnosticServices(serviceType: DiagnosticServiceType): { services: BillingServiceOption[]; isLoading: boolean } {
   const { data, isLoading } = useQuery({
-    queryKey: ['diagnostics', 'services', 'all', serviceType],
-    queryFn: () => fetchAllDiagnosticServices(serviceType),
+    // 'with-inactive' (not the old 'all' key) so a browser holding the earlier active-only
+    // list in its query cache doesn't reuse it.
+    queryKey: ['diagnostics', 'services', 'with-inactive', serviceType],
+    queryFn: async () => {
+      const all = await fetchAllDiagnosticServices(serviceType);
+      // Primed here, before the data reaches any render, so the reference cache describeBillingItem/
+      // resolveItemCostPrice read is already current when a report's rows memo recomputes on this
+      // data — see referenceCache.ts. (An effect ran after that render, so a running cost
+      // updated in the master didn't show in OP Report.)
+      primeDiagnosticServiceCache(all);
+      return all;
+    },
   });
 
-  // Primes the diagnostics reference cache describeBillingItem reads from — see
-  // referenceCache.ts. Runs as an effect (not in queryFn) so it stays a pure side-effect of
-  // this hook's own render rather than react-query internals.
-  useEffect(() => {
-    if (data) primeDiagnosticServiceCache(data);
-  }, [data]);
-
   const services = useMemo<BillingServiceOption[]>(
-    () => (data ?? []).map((service) => ({ id: service.id, name: service.name, price: service.price })).sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      (data ?? [])
+        .filter((service) => service.isActive)
+        .map((service) => ({ id: service.id, name: service.name, price: service.price }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [data],
   );
 

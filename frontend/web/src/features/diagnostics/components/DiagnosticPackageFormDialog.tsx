@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useUpdateDiagnosticPackageMutation } from '../hooks/useDiagnosticPackageMutations';
+import { PACKAGE_RUNNING_COST_HELP } from '../packageRunningCost';
 
 interface DiagnosticPackageFormDialogProps {
   pkg: DiagnosticPackage;
@@ -33,6 +34,7 @@ export function DiagnosticPackageFormDialog({ pkg, onClose }: DiagnosticPackageF
       name: pkg.name,
       description: pkg.description ?? '',
       totalPrice: pkg.totalPrice,
+      costPrice: pkg.costPrice ?? 0,
       isActive: pkg.isActive,
     },
   });
@@ -46,6 +48,7 @@ export function DiagnosticPackageFormDialog({ pkg, onClose }: DiagnosticPackageF
           name: values.name,
           description: values.description || undefined,
           totalPrice: values.totalPrice,
+          costPrice: values.costPrice,
           isActive: values.isActive,
         },
       },
@@ -91,6 +94,13 @@ export function DiagnosticPackageFormDialog({ pkg, onClose }: DiagnosticPackageF
             <Label htmlFor="dpke-totalPrice">Total Price (₹)</Label>
             <Input id="dpke-totalPrice" type="number" min={0} step="any" {...register('totalPrice')} />
             {errors.totalPrice && <p className="text-sm text-destructive">{errors.totalPrice.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="dpke-costPrice">Running Cost (₹)</Label>
+            <Input id="dpke-costPrice" type="number" min={0} step="any" {...register('costPrice')} />
+            <p className="text-xs text-muted-foreground">{PACKAGE_RUNNING_COST_HELP}</p>
+            {errors.costPrice && <p className="text-sm text-destructive">{errors.costPrice.message}</p>}
           </div>
 
           <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">

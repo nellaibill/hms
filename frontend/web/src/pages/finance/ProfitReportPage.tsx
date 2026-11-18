@@ -61,7 +61,7 @@ export default function ProfitReportPage() {
   const { data: consultationTypeOptions } = useMasterOptionsQuery('consultationType');
   const { services: radiologyServices } = useDiagnosticServices('Radiology');
   const { services: laboratoryServices } = useDiagnosticServices('Laboratory');
-  usePrimeDiagnosticPackageCache();
+  const diagnosticPackages = usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(
     () => getProfitRows(onlyOpVisitBillings(billings ?? []), appliedRange),
@@ -74,6 +74,7 @@ export default function ProfitReportPage() {
       consultationTypeOptions,
       radiologyServices,
       laboratoryServices,
+      diagnosticPackages,
     ],
   );
   const filteredRows = useMemo(() => filterProfitRows(rows, appliedFilters), [rows, appliedFilters]);

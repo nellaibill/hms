@@ -10,6 +10,8 @@ public record CreateDiagnosticPackageRequest
     /// <summary>A deliberate bundle-discount price — independent of the sum of the package's
     /// item prices, never auto-computed. See Domain/DiagnosticPackage.cs.</summary>
     public decimal TotalPrice { get; init; }
+    /// <summary>The package's own running cost — 0 when not yet costed. See Domain/DiagnosticPackage.cs.</summary>
+    public decimal CostPrice { get; init; }
     public bool IsActive { get; init; } = true;
     /// <summary>At least one DiagnosticService id is required — a package with zero tests
     /// isn't a bundle worth creating.</summary>
@@ -22,6 +24,7 @@ public record UpdateDiagnosticPackageRequest
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public decimal TotalPrice { get; init; }
+    public decimal CostPrice { get; init; }
     public bool IsActive { get; init; } = true;
 }
 
@@ -45,6 +48,7 @@ public record DiagnosticPackageResponse
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public decimal TotalPrice { get; init; }
+    public decimal CostPrice { get; init; }
     public bool IsActive { get; init; }
     public IReadOnlyList<DiagnosticPackageItemResponse> Items { get; init; } = [];
     public DateTime CreatedAt { get; init; }
