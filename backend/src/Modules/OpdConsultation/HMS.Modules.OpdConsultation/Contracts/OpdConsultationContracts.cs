@@ -286,6 +286,10 @@ public record ScheduledVisitQuery
     /// today, so past review dates never show.</summary>
     public DateOnly? From { get; init; }
 
+    /// <summary>The last scheduled date to include — the OPD filter bar's To Date. None means no
+    /// end: every upcoming review date.</summary>
+    public DateOnly? To { get; init; }
+
     public Guid? DepartmentId { get; init; }
     public Guid? ConsultantId { get; init; }
 
@@ -335,6 +339,14 @@ public record MarkPatientRequest
 /// </summary>
 public record MarkedPatientQuery
 {
+    /// <summary>The first day a mark was made to include, as a hospital (India Standard Time)
+    /// calendar day — the OPD filter bar's From Date. None means no start.</summary>
+    public DateOnly? From { get; init; }
+
+    /// <summary>The last day a mark was made to include, as a hospital calendar day — the OPD
+    /// filter bar's To Date. None means no end.</summary>
+    public DateOnly? To { get; init; }
+
     public Guid? DepartmentId { get; init; }
     public Guid? ConsultantId { get; init; }
 

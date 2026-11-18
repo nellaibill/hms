@@ -175,8 +175,11 @@ export interface StructuredConsultationNoteFields {
 /** Mirrors HMS.Modules.OpdConsultation.Contracts.ScheduledVisitQuery — the OPD page's Scheduled
  * Visits filters. A Consultant's consultantId is forced to their own server-side. */
 export interface ScheduledVisitQuery {
-  /** First scheduled date to include ("YYYY-MM-DD") — the caller's local today. */
+  /** First scheduled date to include ("YYYY-MM-DD"). Never earlier than the hospital's today —
+   * the backend starts a past or missing date today. */
   from?: string;
+  /** Last scheduled date to include ("YYYY-MM-DD") — the filter bar's To Date; omit for no end. */
+  to?: string;
   departmentId?: string;
   consultantId?: string;
   /** Patient name, UHID or phone number. */
@@ -213,6 +216,10 @@ export interface MarkPatientRequest {
 /** Mirrors HMS.Modules.OpdConsultation.Contracts.MarkedPatientQuery — the OPD page's Marked
  * Patients filters. A Consultant's consultantId is forced to their own server-side. */
 export interface MarkedPatientQuery {
+  /** First day a mark was made to include ("YYYY-MM-DD", hospital calendar day); omit for no start. */
+  from?: string;
+  /** Last day a mark was made to include ("YYYY-MM-DD", hospital calendar day); omit for no end. */
+  to?: string;
   departmentId?: string;
   consultantId?: string;
   /** Patient name, UHID or phone number. */

@@ -36,14 +36,16 @@ public interface IOpdConsultationService
     Task<IReadOnlyList<OpdPrescriptionQueueItemResponse>> GetPrescriptionQueueAsync(DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken);
 
     /// <summary>Upcoming scheduled visits across every patient — each consultation's review
-    /// date from <see cref="ScheduledVisitQuery.From"/> on, soonest first, filtered by
-    /// department/consultant/search. Never earlier than the hospital's today: a From in the past
+    /// date from <see cref="ScheduledVisitQuery.From"/> up to <see cref="ScheduledVisitQuery.To"/>
+    /// (no end when To is empty), soonest first, filtered by department/consultant/search. Never
+    /// earlier than the hospital's today: a From in the past
     /// (or none) starts the list today, so a past review date never shows. Capped at the 500
     /// soonest review dates.</summary>
     Task<IReadOnlyList<ScheduledVisitResponse>> GetScheduledVisitsAsync(ScheduledVisitQuery query, CancellationToken cancellationToken);
 
-    /// <summary>Every consultation whose patient is marked, newest mark first, filtered by
-    /// department/consultant/search. Capped at the 500 most recent marks.</summary>
+    /// <summary>Every consultation whose patient is marked, newest mark first, filtered by the
+    /// days the marks were made (From/To, hospital calendar days) and department/consultant/search.
+    /// Capped at the 500 most recent marks.</summary>
     Task<IReadOnlyList<MarkedPatientResponse>> GetMarkedPatientsAsync(MarkedPatientQuery query, CancellationToken cancellationToken);
 
     /// <summary>Marks the consultation's patient with an optional reason, or updates the reason
@@ -136,6 +138,10 @@ internal class OpdConsultationService : IOpdConsultationService
     private DateOnly HospitalToday()
         => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(_clock.GetUtcNow().UtcDateTime, MonthlySeries.HospitalTimeZone));
 
+    /// <summary>The UTC instant a hospital-local (India Standard Time) calendar day starts at.</summary>
+    private static DateTime HospitalDayStartUtc(DateOnly day)
+        => TimeZoneInfo.ConvertTimeToUtc(day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), MonthlySeries.HospitalTimeZone);
+
     public async Task<Result<OpdConsultationDetailResponse>> GetOrCreateByConsultationIdAsync(Guid consultationId, Guid? actorId, CancellationToken cancellationToken)
     {
         var detailResult = await _opdQueryService.GetConsultationDetailAsync(consultationId, cancellationToken);
@@ -184,7 +190,14 @@ internal class OpdConsultationService : IOpdConsultationService
         // whose day has already gone. A later From (narrowing the list) is kept.
         var today = HospitalToday();
         var from = query.From is { } asked && asked > today ? asked : today;
-        var notes = await _repository.GetWithReviewDateFromAsync(from, take: 500, cancellationToken);
+
+        // A To before the (today-clamped) From — e.g. a range that has entirely gone — has nothing in it.
+        if (query.To is { } to && to < from)
+        {
+            return [];
+        }
+
+        var notes = await _repository.GetWithReviewDateFromAsync(from, query.To, take: 500, cancellationToken);
         var search = query.Search?.Trim();
 
         // The note itself carries no patient/department/consultant — those come from the
@@ -233,7 +246,18 @@ internal class OpdConsultationService : IOpdConsultationService
 
     public async Task<IReadOnlyList<MarkedPatientResponse>> GetMarkedPatientsAsync(MarkedPatientQuery query, CancellationToken cancellationToken)
     {
-        var notes = await _repository.GetMarkedAsync(take: 500, cancellationToken);
+        if (query.From is { } first && query.To is { } last && last < first)
+        {
+            return [];
+        }
+
+        // From/To are hospital calendar days; MarkedAt is UTC, so compare against the UTC instants
+        // those IST days start at (To's end is the start of the day after it).
+        var notes = await _repository.GetMarkedAsync(
+            query.From is { } from ? HospitalDayStartUtc(from) : null,
+            query.To is { } to ? HospitalDayStartUtc(to.AddDays(1)) : null,
+            take: 500,
+            cancellationToken);
         var search = query.Search?.Trim();
 
         // Same shape as GetScheduledVisitsAsync: patient/department/consultant come from the

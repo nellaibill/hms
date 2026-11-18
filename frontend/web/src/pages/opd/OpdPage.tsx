@@ -17,13 +17,15 @@ import {
   OpdPatientListTable,
   OpdProceduresListTable,
   OpdScheduledVisitsTable,
+  defaultScheduledVisitsRange,
+  effectiveScheduledRange,
   emptyOpdFilters,
   formatMarkedAt,
   formatScheduledDate,
+  scheduledVisitsInRange,
   toRangeEnd,
   toRangeStart,
   todayIsoDate,
-  upcomingScheduledVisits,
   type OpdFilterValues,
   type OpdTab,
 } from '@/features/opd';
@@ -44,6 +46,9 @@ export default function OpdPage() {
   const canSeeOpdLists = Boolean(user && OPD_LIST_ROLES.includes(user.role));
   const [tab, setTab] = useState<OpdTab>('patients');
   const [filters, setFilters] = useState<OpdFilterValues>(emptyOpdFilters);
+  // Scheduled Visits' own From/To (today on, no end by default) — it looks ahead, unlike the
+  // yesterday–today range every other tab shares through `filters`.
+  const [scheduledRange, setScheduledRange] = useState(defaultScheduledVisitsRange);
   const [page, setPage] = useState(1);
   // A consultant's own Discount Approvals tab (ADR-111) — its badge counts the ones waiting.
   const { data: pendingDiscountCount = 0 } = useMyPendingDiscountApprovalCountQuery(Boolean(scopedConsultantId));
@@ -99,6 +104,8 @@ export default function OpdPage() {
   // already solves for the other list pages (see AdmissionsListPage/LabWorklistPage).
   const debouncedSearch = useDebouncedValue(filters.search);
   const queryFilters: OpdFilterValues = { ...filters, search: debouncedSearch };
+  // What the filter bar shows — on Scheduled Visits, its own dates in place of the shared ones.
+  const barFilters: OpdFilterValues = tab === 'scheduled' ? { ...filters, ...scheduledRange } : filters;
 
   function handleTabChange(value: string) {
     setTab(value as OpdTab);
@@ -106,7 +113,13 @@ export default function OpdPage() {
   }
 
   function handleFiltersChange(next: OpdFilterValues) {
-    setFilters(next);
+    if (tab === 'scheduled') {
+      // Dates edited here belong to Scheduled Visits alone; everything else stays shared.
+      setScheduledRange({ from: next.from, to: next.to });
+      setFilters({ ...next, from: filters.from, to: filters.to });
+    } else {
+      setFilters(next);
+    }
     setPage(1);
   }
 
@@ -250,6 +263,8 @@ export default function OpdPage() {
       }
       case 'marked': {
         const result = await opdConsultationApi.listMarkedPatients({
+          from: filters.from || undefined,
+          to: filters.to || undefined,
           departmentId: filters.departmentId,
           consultantId: filters.consultantId,
           search: filters.search || undefined,
@@ -271,9 +286,10 @@ export default function OpdPage() {
         break;
       }
       case 'scheduled': {
-        const today = todayIsoDate();
+        const range = effectiveScheduledRange(scheduledRange.from, scheduledRange.to, todayIsoDate());
         const result = await opdConsultationApi.listScheduledVisits({
-          from: today,
+          from: range.from,
+          to: range.to,
           departmentId: filters.departmentId,
           consultantId: filters.consultantId,
           search: filters.search || undefined,
@@ -281,7 +297,7 @@ export default function OpdPage() {
         section = {
           heading: 'OPD Scheduled Visits',
           headers: ['Date', 'Patient Name', 'Age', 'Gender', 'UHID', 'Department', 'Consultant', 'Notes'],
-          rows: upcomingScheduledVisits(result, today).map((row) => [
+          rows: scheduledVisitsInRange(result, range.from, range.to).map((row) => [
             formatScheduledDate(row.scheduledDate),
             row.patientName,
             row.age,
@@ -296,10 +312,14 @@ export default function OpdPage() {
       }
     }
 
-    // Scheduled Visits always runs from today on and Marked Patients covers every mark — the
-    // From/To range applies to neither.
+    // Scheduled Visits has its own range, never before today, and may have no end.
+    const scheduled = effectiveScheduledRange(scheduledRange.from, scheduledRange.to, todayIsoDate());
     const rangeLabel =
-      tab === 'scheduled' ? `from ${todayIsoDate()}` : tab === 'marked' ? `as of ${todayIsoDate()}` : `${filters.from} to ${filters.to}`;
+      tab === 'scheduled'
+        ? scheduled.to
+          ? `${scheduled.from} to ${scheduled.to}`
+          : `from ${scheduled.from}`
+        : `${filters.from} to ${filters.to}`;
     const filenameBase = `opd-${tab}_${rangeLabel.replace(/ /g, '_')}`;
     if (format === 'csv') exportReportToCsv(`${filenameBase}.csv`, [section]);
     else if (format === 'excel') await exportReportToExcel(`${filenameBase}.xlsx`, [section]);
@@ -318,7 +338,7 @@ export default function OpdPage() {
         {tab !== 'discounts' && (
           <OpdFilterBar
             tab={tab}
-            filters={filters}
+            filters={barFilters}
             onChange={handleFiltersChange}
             onRefresh={handleRefresh}
             isRefreshing={isRefreshing}
@@ -401,7 +421,7 @@ export default function OpdPage() {
 
           {canSeeOpdLists && (
             <TabsContent value="scheduled">
-              <OpdScheduledVisitsTable filters={queryFilters} />
+              <OpdScheduledVisitsTable filters={{ ...queryFilters, ...scheduledRange }} />
             </TabsContent>
           )}
 

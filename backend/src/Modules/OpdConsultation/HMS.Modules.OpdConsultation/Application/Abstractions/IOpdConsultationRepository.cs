@@ -21,13 +21,15 @@ internal interface IOpdConsultationRepository
     /// in the given window, newest first — the pharmacy's prescription queue.</summary>
     Task<IReadOnlyList<Domain.OpdConsultationNote>> GetCompletedWithPrescriptionsAsync(DateTime fromUtc, DateTime toUtc, int take, CancellationToken cancellationToken);
 
-    /// <summary>Notes (Draft or Completed) whose review date is on or after <paramref name="from"/>,
-    /// soonest first — the OPD page's Scheduled Visits list. Untracked.</summary>
-    Task<IReadOnlyList<Domain.OpdConsultationNote>> GetWithReviewDateFromAsync(DateOnly from, int take, CancellationToken cancellationToken);
+    /// <summary>Notes (Draft or Completed) whose review date is on or after <paramref name="from"/>
+    /// and, when given, on or before <paramref name="to"/>, soonest first — the OPD page's
+    /// Scheduled Visits list. Untracked.</summary>
+    Task<IReadOnlyList<Domain.OpdConsultationNote>> GetWithReviewDateFromAsync(DateOnly from, DateOnly? to, int take, CancellationToken cancellationToken);
 
     /// <summary>Notes (Draft or Completed) whose patient is marked, newest mark first — the OPD
-    /// page's Marked Patients list. Untracked.</summary>
-    Task<IReadOnlyList<Domain.OpdConsultationNote>> GetMarkedAsync(int take, CancellationToken cancellationToken);
+    /// page's Marked Patients list. When given, only marks made at or after
+    /// <paramref name="fromUtc"/> and before <paramref name="toUtcExclusive"/>. Untracked.</summary>
+    Task<IReadOnlyList<Domain.OpdConsultationNote>> GetMarkedAsync(DateTime? fromUtc, DateTime? toUtcExclusive, int take, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }
