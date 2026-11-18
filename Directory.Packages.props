@@ -71,6 +71,10 @@
          a well-established, single-purpose library rather than hand-rolling HMAC-based
          one-time-code generation for a security-critical primitive. -->
     <PackageVersion Include="Otp.NET" Version="1.4.0" />
+
+    <!-- Hosting: lets the packaged Windows install run HMS.Api as a real Windows service
+         (HMS.Api's WindowsServiceConfiguration). A no-op everywhere else, Docker/Linux included. -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
     <!-- Test-only: builds an in-memory IConfiguration for JwtTokenGeneratorTests, without
          pulling in the full Microsoft.AspNetCore.App shared framework just for tests. -->
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />

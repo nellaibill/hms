@@ -52,6 +52,9 @@ backend/src/HMS.Api/wwwroot/uploads/
 # Private uploads (Documents, incl. patient photos/ID proofs) — same reasoning, stored outside
 # wwwroot (App_Data/Tenant/{tenantId}/documents, ADR-087).
 backend/src/HMS.Api/App_Data/
+# A copy of frontend/web's build, served by the API itself when present (packaged Windows
+# install, WebAppHostingConfiguration). Only ever placed here to try that out locally.
+backend/src/HMS.Api/webapp/
 
 # =========================
 # IDE

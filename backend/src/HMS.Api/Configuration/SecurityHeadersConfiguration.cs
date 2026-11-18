@@ -18,12 +18,28 @@ public static class SecurityHeadersConfiguration
     // serving endpoint, extended here to cover UseStaticFiles' raw file responses too.
     private const string ContentSecurityPolicy = "default-src 'self'; script-src 'none'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'";
 
-    public static WebApplication UseHmsSecurityHeaders(this WebApplication app)
+    /// <param name="app">The application.</param>
+    /// <param name="webApp">
+    /// The React app this API serves in the packaged Windows install (WebAppHostingConfiguration),
+    /// or null when it serves none. Its own pages get its own policy, since the one above would
+    /// stop it from running; API and upload paths keep the strict one either way.
+    /// </param>
+    public static WebApplication UseHmsSecurityHeaders(this WebApplication app, WebAppFiles? webApp = null)
     {
         app.Use(async (context, next) =>
         {
             var headers = context.Response.Headers;
             headers["X-Content-Type-Options"] = "nosniff";
+
+            if (webApp is not null && !WebAppHostingConfiguration.IsApiPath(context.Request.Path))
+            {
+                // The app's own pages may frame each other (document previews), never another site.
+                headers["X-Frame-Options"] = "SAMEORIGIN";
+                headers["Content-Security-Policy"] = webApp.ContentSecurityPolicy;
+                await next(context);
+                return;
+            }
+
             headers["X-Frame-Options"] = "DENY";
 
             // Swagger UI (Development only, SwaggerConfiguration.cs) serves its own inline

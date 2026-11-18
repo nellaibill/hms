@@ -37,6 +37,31 @@ _To be documented._
 
 ## Decisions
 
+### ADR-137: The packaged Windows install runs HMS.Api as a Windows service that also serves the React app
+**Date:** 2026-11-18
+**Status:** Accepted (Phase 1 of the packaged install; the build script, obfuscation and installer follow)
+
+**Context**
+HMS will be installed on a hospital's own Windows machine and shipped as an installer, never as source code. The existing Windows path (`scripts/deploy/windows`) needs nginx, NSSM via Chocolatey and a separately installed .NET runtime, and bakes the server's address into the web bundle at build time. That is too many moving parts for a one-click install, and it means a separate build for every hospital.
+
+**Decision**
+- **Windows service.** `WindowsServiceConfiguration` adds `Microsoft.Extensions.Hosting.WindowsServices`, so `HMS.Api.exe` runs as a real service named `HMS`: no NSSM. When the current folder has no `appsettings.json`, as with a service started in `C:\Windows\System32`, the API switches to the executable's folder first.
+- **The API serves the React app** when a build is in `webapp` under the content root (setting `WebApp:RootPath`):
+  - `/` and the files are served before authentication and rate limiting, the way nginx serves them.
+  - `/assets/*` is cached for good, and `index.html` is sent with `no-cache`.
+  - Any other GET path without a file extension gets `index.html`, except under `/api`, `/uploads`, `/health`, `/swagger` and `/hangfire`. Those paths are left out of the fallback route itself, so API responses don't change.
+- **Two Content-Security-Policies.** App pages get a policy built at startup from that `index.html`: scripts from `'self'` plus each inline script's SHA-256 hash, inline styles, and `blob:`/`data:` for previews, camera and PDFs. They also get `X-Frame-Options: SAMEORIGIN`. API and upload paths keep `script-src 'none'` and `DENY`. The security-headers middleware moved up the pipeline so it covers the app's files too.
+- **One web build for every hospital.** `VITE_API_BASE_URL=same-origin` makes the app call the API on the address it was opened from. A word, not `/`, because Git Bash rewrites a lone `/` into its own install folder.
+- **Package settings** come from `scripts/package/windows/appsettings.Production.template.json`. The installer fills it in per hospital. It sets `Bootstrap:SeedLegacyTenant = false` and the Platform Admin seed name and email. The runtime defaults Docker and the VPS rely on are unchanged.
+
+**Consequences**
+- With no `webapp` folder, which covers dev, the VPS, nginx and Docker, nothing changes. `WebAppHostingApiUnchangedTests` checks this for API responses.
+- Requests that match no route still get 401 from the authorization fallback policy, as before. That includes a missing asset.
+- Not yet done:
+  - File logging (as a service, only warnings and errors reach the Event Log).
+  - Keeping patient files outside the install folder.
+  - The build script, obfuscation, installer and HTTPS certificate steps.
+
 ### ADR-136: Each hospital chooses whether discounts are allowed and whether discounts and bill reverts need approval
 **Date:** 2026-11-16
 **Status:** Accepted (adds settings on top of ADR-106, ADR-109 and ADR-111)

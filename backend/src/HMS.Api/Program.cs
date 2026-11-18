@@ -32,7 +32,12 @@ var isMigrationOnlyRun = args.Contains("migrate", StringComparer.OrdinalIgnoreCa
 var isTenantFileMigrationRun = args.Contains("migrate-tenant-files", StringComparer.OrdinalIgnoreCase);
 var isTenantFileMigrationDryRun = isTenantFileMigrationRun && args.Contains("--dry-run", StringComparer.OrdinalIgnoreCase);
 
+// The packaged Windows install runs this as a Windows service, which Windows starts in
+// C:\Windows\System32 — see WindowsServiceConfiguration.
+WindowsServiceConfiguration.UseExecutableFolderWhenStartedElsewhere();
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHmsWindowsService();
 builder.Services.AddSingleton<TenantFileStorageMigrator>();
 
 // FluentValidation is invoked explicitly by controllers (see UsersController), so the
@@ -73,6 +78,10 @@ builder.Services.AddDataProtection();
 
 var app = builder.Build();
 
+// The React app build this API serves in the packaged Windows install, or null (dev, nginx,
+// Docker) — see WebAppHostingConfiguration.
+var webApp = WebAppHostingConfiguration.Find(app.Environment, app.Configuration);
+
 // Must be the very first middleware: everything downstream (rate limiting's ClientKey,
 // request logging, audit columns) reads HttpContext.Connection.RemoteIpAddress, and this is
 // what rewrites it from X-Forwarded-For when the request actually came through a trusted
@@ -92,6 +101,15 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
+
+// Early, so every response gets nosniff/X-Frame-Options/CSP: the JSON API, the raster/SVG
+// uploads UseStaticFiles() serves from wwwroot below (Branding logos, product images,
+// user/consultant photos), and the React app's own files right after this.
+app.UseHmsSecurityHeaders(webApp);
+
+// The React app's files, when this API serves them (packaged Windows install only). Before
+// authentication and rate limiting, the same way nginx serves them elsewhere.
+app.UseHmsWebAppFiles(webApp);
 
 // Must run before MapControllers(): CORS has to sit between routing and endpoint
 // execution so it can short-circuit browser preflight OPTIONS requests (no controller
@@ -114,11 +132,6 @@ app.UseAuthentication();
 app.UseHmsRateLimiting();
 
 app.UseHmsSwagger();
-
-// Before UseStaticFiles() so the raster/SVG uploads served from wwwroot (Branding logos,
-// product images, user/consultant photos) also get nosniff/X-Frame-Options/CSP, not just the
-// JSON API responses below.
-app.UseHmsSecurityHeaders();
 
 // The Hangfire dashboard for the offline-first sync (ADR-133). Mapped only on an Edge server
 // (Sync:Role = Edge), behind a short-lived cookie handed out by the Cloud Sync page; a no-op
@@ -151,6 +164,9 @@ app.MapControllers();
 // token on any endpoint without an explicit authorization attribute, and the container
 // healthcheck has no token to present.
 app.MapHealthChecks("/health").AllowAnonymous();
+
+// Deep links and refreshes on React app routes get index.html (packaged Windows install only).
+app.MapHmsWebAppFallback(webApp);
 
 if (app.Environment.IsDevelopment() || isMigrationOnlyRun)
 {
