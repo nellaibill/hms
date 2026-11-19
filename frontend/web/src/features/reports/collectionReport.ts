@@ -1,6 +1,6 @@
 import { describeReportService, type BillingType, type CollectionPayment } from '@/features/billing';
 import { toLocalDateInputValue } from '@/lib/reportDateRange';
-import { resolveLineCost, roundToPaise } from './profitReport';
+import { hasConsultantShare, resolveLineCost, roundToPaise } from './profitReport';
 
 /** One payment, split into the consultant's and the hospital's share (ADR-125). */
 export interface CollectionReportRow {
@@ -49,14 +49,22 @@ export function onlyOpVisitPayments(payments: CollectionPayment[]): CollectionPa
 
 /** Splits every payment by the same rule OP Report splits a line (resolveLineCost): the line's
  * cost is the consultant's, the rest the hospital's. A part-payment takes the same share of
- * each, so the consultant's and hospital's amounts always add up to what was collected. */
+ * each, so the consultant's and hospital's amounts always add up to what was collected. A
+ * Laboratory or Radiology line pays the consultant nothing (ADR-141): all of it is the
+ * hospital's. */
 export function getCollectionRows(payments: CollectionPayment[]): CollectionReportRow[] {
   return payments.map((payment) => {
     const { item } = payment;
     const { cost } = resolveLineCost(item);
     // A ₹0 line can still carry a cost (e.g. a fully discounted consultation); with nothing
     // collected there is nothing to split, so the consultant's part is 0, not a division by 0.
-    const consultantAmount = cost === null ? null : item.total > 0 ? roundToPaise((payment.amount * cost) / item.total) : 0;
+    const consultantAmount = !hasConsultantShare(item.billingType)
+      ? 0
+      : cost === null
+        ? null
+        : item.total > 0
+          ? roundToPaise((payment.amount * cost) / item.total)
+          : 0;
     return {
       id: payment.paymentId,
       date: toLocalDateInputValue(new Date(payment.paidAt)),

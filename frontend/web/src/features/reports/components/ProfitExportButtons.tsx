@@ -1,7 +1,7 @@
 import { formatDateRangeLabel } from '@/lib/reportDateRange';
 import { ExportMenu, type ExportFormatOption } from './ExportMenu';
 import { exportReportToCsv, exportReportToExcel, exportReportToPdf, type ReportSection } from '../exportUtils';
-import { DEFAULT_PROFIT_LABELS, type ProfitLabels, type ProfitReportRow } from '../profitReport';
+import { displayedCost, DEFAULT_PROFIT_LABELS, type ProfitLabels, type ProfitReportRow } from '../profitReport';
 import type { ReportDateRange } from '../types';
 
 interface ProfitExportButtonsProps {
@@ -36,7 +36,7 @@ function buildSections(rows: ProfitReportRow[], labels: ProfitLabels, hideMargin
           row.charge,
           row.discount,
           row.revenue,
-          row.cost ?? '—',
+          displayedCost(row, labels) ?? '—',
           row.profit ?? '—',
           row.marginPercent === null ? '—' : row.marginPercent,
         ];

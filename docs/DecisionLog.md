@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-141: OP Report and Collection Summary give lab and radiology lines no consultant's share
+**Date:** 2026-11-19
+**Status:** Accepted (changes ADR-124's rule for non-consultation lines, and ADR-125's split)
+
+**Context**
+OP Report shows each line's cost under "Consultant Cost" and the rest under "Hospital Cost" (ADR-124). For a Laboratory or Radiology line, that cost is the hospital's own running cost, plus the reporting doctor's share for a scan. Nothing goes to the billed consultant. The report still showed it as a consultant cost, and counted it in "Total Consultant Cost". For example, two Coagulation Profiles at ₹600 with a ₹200 running cost showed ₹200 of "consultant cost" each. The Collection Summary split payments the same way, so it handed part of a lab payment to the consultant.
+
+**Decision**
+- **OP Report** (`OP_REPORT_PROFIT_LABELS.consultantShareOnly`):
+  - A Laboratory or Radiology line shows "—" under Consultant Cost, and isn't counted in Total Consultant Cost (`ProfitTotals.totalConsultantCost`).
+  - Its Hospital Cost is unchanged: price − running cost, and − the doctor's share for a scan.
+  - This applies to the table, the summary cards, the export and the print.
+- **Collection Summary:** a Laboratory or Radiology payment is all the hospital's. The consultant's part is ₹0, and the line no longer counts as "unknown cost".
+- **Unchanged:**
+  - Consultation, procedure, injection and file lines keep their cost as the consultant's share.
+  - The Lab and Radiology profit reports keep showing the full cost.
+
+**Consequences**
+- On OP Report, Total Consultant Cost + Total Hospital Cost no longer adds up to the costed revenue when lab or radiology lines are included. The difference is the hospital's running costs, which go to neither.
+
 ### ADR-140: Lab, package and radiology prices follow the tariff sheet; Price List
 **Date:** 2026-11-19
 **Status:** Accepted (extends ADR-139)
