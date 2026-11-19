@@ -32,6 +32,11 @@ public record ActivityLogRequest
     public string Module { get; init; } = string.Empty;
     public string? EntityType { get; init; }
     public string? EntityId { get; init; }
+
+    /// <summary>What a person knows the record by (invoice number, UHID, OP No, a test's or
+    /// consultant's name) — shown instead of the raw id. Optional.</summary>
+    public string? EntityReference { get; init; }
+
     public string? Description { get; init; }
 
     /// <summary>Any serializable object (typically a response DTO). Serialized to JSON and
@@ -70,6 +75,7 @@ public record ActivityLogResponse
     public string Module { get; init; } = string.Empty;
     public string? EntityType { get; init; }
     public string? EntityId { get; init; }
+    public string? EntityReference { get; init; }
     public string? Description { get; init; }
     public bool IsSuccess { get; init; }
     public DateTime CreatedAt { get; init; }

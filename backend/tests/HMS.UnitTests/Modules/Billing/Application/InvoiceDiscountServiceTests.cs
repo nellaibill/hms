@@ -1,3 +1,4 @@
+using HMS.Modules.Masters.Application;
 using FluentAssertions;
 using HMS.Modules.ActivityLog.Application;
 using HMS.Modules.Billing.Application;
@@ -25,7 +26,7 @@ public class InvoiceDiscountServiceTests
 
     public InvoiceDiscountServiceTests()
     {
-        _sut = new InvoiceDiscountService(_invoiceRepository, _repository, Substitute.For<IActivityLogService>(), _billingSettings);
+        _sut = new InvoiceDiscountService(_invoiceRepository, _repository, Substitute.For<IActivityLogService>(), _billingSettings, Substitute.For<IConsultantService>());
         _billingSettings.GetAsync(Arg.Any<CancellationToken>()).Returns(BillingApprovalSettings.Default);
         _repository.GetByInvoiceIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
     }

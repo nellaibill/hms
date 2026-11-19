@@ -37,6 +37,7 @@ internal class RoleService : IRoleService
             Module = ActivityLogModules.Identity,
             EntityType = "Role",
             EntityId = role.Id.ToString(),
+            EntityReference = role.Name,
             Description = description,
             OldValues = oldValues,
             NewValues = newValues,

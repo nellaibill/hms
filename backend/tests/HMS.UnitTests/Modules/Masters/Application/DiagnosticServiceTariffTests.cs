@@ -1,3 +1,4 @@
+using HMS.Modules.ActivityLog.Application;
 using FluentAssertions;
 using FluentValidation.TestHelper;
 using HMS.Modules.Masters.Application;
@@ -23,7 +24,7 @@ public class DiagnosticServiceTariffTests
 
     public DiagnosticServiceTariffTests()
     {
-        _sut = new DiagnosticServiceService(_repository, _categoryService, _providerService);
+        _sut = new DiagnosticServiceService(_repository, _categoryService, _providerService, Substitute.For<IActivityLogService>());
         _categoryService.GetByIdAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns(Result<DiagnosticCategoryResponse>.Success(new DiagnosticCategoryResponse { Id = CategoryId }));
     }

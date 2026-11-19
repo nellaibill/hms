@@ -1,3 +1,4 @@
+using HMS.Modules.ActivityLog.Application;
 using FluentAssertions;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Application.Abstractions;
@@ -19,7 +20,7 @@ public class DiagnosticPackageServiceTests
 
     public DiagnosticPackageServiceTests()
     {
-        _sut = new DiagnosticPackageService(_repository, _diagnosticServiceService);
+        _sut = new DiagnosticPackageService(_repository, _diagnosticServiceService, Substitute.For<IActivityLogService>());
 
         // Happy-path default: the referenced DiagnosticService exists. Failure-path tests
         // override this per-test.

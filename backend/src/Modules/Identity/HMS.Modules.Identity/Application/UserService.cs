@@ -66,6 +66,7 @@ internal class UserService : IUserService
             Module = ActivityLogModules.Identity,
             EntityType = "User",
             EntityId = user.Id.ToString(),
+            EntityReference = user.Username,
             Description = description,
             OldValues = oldValues,
             NewValues = newValues,

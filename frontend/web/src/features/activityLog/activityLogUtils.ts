@@ -5,7 +5,7 @@ import { defaultReportDateRange } from '@/lib/reportDateRange';
  * ActivityLogModules / ActivityLogActions) — the API has no "list distinct values" endpoint,
  * so the filter dropdowns mirror those contract constants. Add a value here when a new module
  * or action starts logging. */
-export const ACTIVITY_MODULES = ['Patients', 'Identity', 'Billing'] as const;
+export const ACTIVITY_MODULES = ['Patients', 'Identity', 'Billing', 'Masters'] as const;
 export const ACTIVITY_ACTIONS = ['Create', 'Update', 'Delete', 'Payment', 'Void'] as const;
 
 const ACTION_LABELS: Record<string, string> = {
@@ -30,14 +30,26 @@ export function formatDateTime(iso: string): string {
   return `${day}, ${time}`;
 }
 
-/** "Patient" + "abc12345-…" -> "Patient · abc12345" — the API only carries a GUID, so the
- * table shows a short prefix and the drawer shows the full id. */
-export function entityLabel(entry: Pick<ActivityLogEntry, 'entityType' | 'entityId'>): string {
-  if (!entry.entityType && !entry.entityId) {
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  PatientVisit: 'Patient visit',
+  InvoiceDiscountRequest: 'Discount request',
+  InvoiceRevertRequest: 'Revert request',
+  BillingSettings: 'Billing settings',
+  DiagnosticService: 'Lab test / scan',
+  DiagnosticPackage: 'Lab package',
+  DiagnosticTest: 'Procedure / injection / file',
+  ConsultationType: 'Consultation type',
+};
+
+/** "Invoice · INV-2026-000288" — the record's type and what people know it by (ADR-143). An
+ * older entry with no reference shows its type only; the full id stays in the details drawer
+ * (a time-ordered id's first characters barely differ between records, so they aren't shown). */
+export function entityLabel(entry: Pick<ActivityLogEntry, 'entityType' | 'entityId' | 'entityReference'>): string {
+  if (!entry.entityType && !entry.entityReference) {
     return '—';
   }
-  const shortId = entry.entityId ? entry.entityId.slice(0, 8) : '';
-  return [entry.entityType, shortId].filter(Boolean).join(' · ');
+  const type = entry.entityType ? (ENTITY_TYPE_LABELS[entry.entityType] ?? entry.entityType) : '';
+  return [type, entry.entityReference].filter(Boolean).join(' · ');
 }
 
 // Bookkeeping fields that change on every save and would drown out the real edits.
