@@ -167,6 +167,11 @@ function serviceRowToBillingItem(
           rateOptionId: entry.rateOptionId || undefined,
           rateOptionName: entry.rateOptionId ? resolveDiagnosticRateOption(entry.serviceId, entry.rateOptionId)?.name : undefined,
           isBedside: entry.isBedside || undefined,
+          // ADR-144: the add-on as charged, and the consultant's part of it (above the hospital's
+          // share). The server works the split out again from Masters when the bill is saved.
+          ...(entry.isBedside
+            ? { bedsideAmount: entry.bedsideAmount, bedsideDoctorCharge: Math.max(entry.bedsideAmount - entry.bedsideHospitalShare, 0) }
+            : {}),
         }
       : {}),
     quantity: entry.quantity,
@@ -408,8 +413,9 @@ export function resolveItemCostPrice(item: BillingItem): number | null {
   }
 
   if (item.billingType === 'Radiology') {
-    // ADR-140: doctor's share + running cost of the rate billed, plus the bedside doctor's share.
-    const cost = resolveDiagnosticServiceCost(item.serviceId, item.rateOptionId, item.isBedside);
+    // ADR-140: doctor's share + running cost of the rate billed, plus the bedside doctor's share
+    // (ADR-144: the line's own, when it was billed with one).
+    const cost = resolveDiagnosticServiceCost(item.serviceId, item.rateOptionId, item.isBedside, item.bedsideDoctorCharge);
     return cost === null ? null : cost.doctorShare + cost.runningCost;
   }
 
@@ -437,5 +443,5 @@ function withRateDetails(serviceLabel: string, item: Pick<BillingItem, 'serviceI
  */
 export function resolveItemCostSplit(item: BillingItem): { doctorShare: number; runningCost: number } | null {
   if (item.billingType !== 'Radiology') return null;
-  return resolveDiagnosticServiceCost(item.serviceId, item.rateOptionId, item.isBedside);
+  return resolveDiagnosticServiceCost(item.serviceId, item.rateOptionId, item.isBedside, item.bedsideDoctorCharge);
 }

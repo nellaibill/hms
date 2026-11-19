@@ -29,6 +29,7 @@ public class InvoiceServiceTests
     private readonly IPatientVisitService _patientVisitService = Substitute.For<IPatientVisitService>();
     private readonly ILabOrderService _labOrderService = Substitute.For<ILabOrderService>();
     private readonly IDiagnosticTestService _diagnosticTestService = Substitute.For<IDiagnosticTestService>();
+    private readonly IDiagnosticServiceService _diagnosticServiceService = Substitute.For<IDiagnosticServiceService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IConsultationTypeService _consultationTypeService = Substitute.For<IConsultationTypeService>();
@@ -51,6 +52,7 @@ public class InvoiceServiceTests
             _patientVisitService,
             _labOrderService,
             _diagnosticTestService,
+            _diagnosticServiceService,
             _consultantService,
             _departmentService,
             _consultationTypeService,
@@ -1010,6 +1012,103 @@ public class InvoiceServiceTests
             Arg.Is<CreateLabOrderFromInvoiceRequest>(r => r.Lines.Count == 1 && r.Lines[0].ServiceId == serviceId),
             Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    // ADR-144: a bedside scan's add-on can be raised at the counter, never below the hospital's
+    // share in Masters (bedside price 500 less the doctor's 200 = 300); the rest is the consultant's.
+    private CreateInvoiceRequest BedsideScanRequest(Guid serviceId, decimal? bedsideAmount, decimal unitPrice)
+    {
+        var request = ValidRequest() with
+        {
+            Items =
+            [
+                new CreateInvoiceLineItemRequest
+                {
+                    BillingType = BillingType.Radiology,
+                    ConsultantId = "dr-revathi",
+                    ServiceId = serviceId.ToString(),
+                    IsBedside = true,
+                    BedsideAmount = bedsideAmount,
+                    Quantity = 1,
+                    UnitPrice = unitPrice,
+                },
+            ],
+        };
+        _patientVisitService.GetByIdAsync(_patientId, request.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Success(new PatientVisitResponse { VisitType = VisitType.OP }));
+        _labOrderService.CreateFromInvoiceAsync(Arg.Any<CreateLabOrderFromInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<LabOrderResponse>.Success(new LabOrderResponse()));
+        return request;
+    }
+
+    private void GivenBedsideScan(Guid serviceId, decimal? bedsidePrice, decimal? bedsideDoctorCharge)
+        => _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse
+            {
+                Id = serviceId,
+                Name = "ANC - Growth Scan",
+                Price = 1000m,
+                BedsidePrice = bedsidePrice,
+                BedsideDoctorCharge = bedsideDoctorCharge,
+            }));
+
+    [Theory]
+    [InlineData(500, 200)]
+    [InlineData(600, 300)]
+    [InlineData(300, 0)]
+    public async Task CreateAsync_BedsideScan_GivesTheConsultantWhatIsAboveTheHospitalsShare(decimal bedsideAmount, decimal expectedDoctorCharge)
+    {
+        var serviceId = Guid.NewGuid();
+        GivenBedsideScan(serviceId, bedsidePrice: 500m, bedsideDoctorCharge: 200m);
+
+        var result = await _sut.CreateAsync(BedsideScanRequest(serviceId, bedsideAmount, 1000m + bedsideAmount), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var line = result.Value!.Items.Single();
+        line.BedsideAmount.Should().Be(bedsideAmount);
+        line.BedsideDoctorCharge.Should().Be(expectedDoctorCharge);
+        line.UnitPrice.Should().Be(1000m + bedsideAmount);
+    }
+
+    [Fact]
+    public async Task CreateAsync_BedsideScanBelowTheHospitalsShare_IsRefused()
+    {
+        var serviceId = Guid.NewGuid();
+        GivenBedsideScan(serviceId, bedsidePrice: 500m, bedsideDoctorCharge: 200m);
+
+        var result = await _sut.CreateAsync(BedsideScanRequest(serviceId, 299m, 1299m), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.BedsideAmountTooLow);
+        result.Error.Should().Contain("ANC - Growth Scan").And.Contain("300");
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_BedsideScanWithNoAmount_BillsTheMastersBedsidePrice()
+    {
+        var serviceId = Guid.NewGuid();
+        GivenBedsideScan(serviceId, bedsidePrice: 500m, bedsideDoctorCharge: 200m);
+
+        var result = await _sut.CreateAsync(BedsideScanRequest(serviceId, bedsideAmount: null, 1500m), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var line = result.Value!.Items.Single();
+        line.BedsideAmount.Should().Be(500m);
+        line.BedsideDoctorCharge.Should().Be(200m);
+    }
+
+    [Fact]
+    public async Task CreateAsync_BedsideForAScanNotDoneAtTheBedside_IsRefused()
+    {
+        var serviceId = Guid.NewGuid();
+        GivenBedsideScan(serviceId, bedsidePrice: null, bedsideDoctorCharge: null);
+
+        var result = await _sut.CreateAsync(BedsideScanRequest(serviceId, 500m, 1500m), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(BillingErrorCodes.BedsideNotOffered);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Invoice>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

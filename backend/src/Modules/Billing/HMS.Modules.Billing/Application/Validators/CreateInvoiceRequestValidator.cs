@@ -68,6 +68,21 @@ internal class CreateInvoiceLineItemRequestValidator : AbstractValidator<CreateI
             .When(x => x.RateOptionId.HasValue || x.IsBedside)
             .WithMessage("Only a radiology line can have a rate option or be done at the bedside.");
 
+        // ADR-144: an edited bedside amount belongs to a bedside scan and is part of its price.
+        // InvoiceService checks it against the hospital's share in Masters.
+        RuleFor(x => x.BedsideAmount)
+            .Null()
+            .When(x => !x.IsBedside)
+            .WithMessage("Only a bedside scan has a bedside amount.");
+        RuleFor(x => x.BedsideAmount)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.BedsideAmount.HasValue)
+            .WithMessage("The bedside amount cannot be negative.");
+        RuleFor(x => x.UnitPrice)
+            .GreaterThanOrEqualTo(x => x.BedsideAmount!.Value)
+            .When(x => x.BedsideAmount.HasValue)
+            .WithMessage("The charge must include the bedside amount.");
+
         // Mirrors billingValidation.ts's consultationBillingSchema/serviceBillingSchema:
         // "Discount cannot exceed the charge".
         RuleFor(x => x)

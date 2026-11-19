@@ -84,6 +84,7 @@ internal class InvoiceService : IInvoiceService
     private readonly IPatientVisitService _patientVisitService;
     private readonly ILabOrderService _labOrderService;
     private readonly IDiagnosticTestService _diagnosticTestService;
+    private readonly IDiagnosticServiceService _diagnosticServiceService;
     private readonly IConsultantService _consultantService;
     private readonly IDepartmentService _departmentService;
     private readonly IConsultationTypeService _consultationTypeService;
@@ -104,6 +105,7 @@ internal class InvoiceService : IInvoiceService
         IPatientVisitService patientVisitService,
         ILabOrderService labOrderService,
         IDiagnosticTestService diagnosticTestService,
+        IDiagnosticServiceService diagnosticServiceService,
         IConsultantService consultantService,
         IDepartmentService departmentService,
         IConsultationTypeService consultationTypeService,
@@ -120,6 +122,7 @@ internal class InvoiceService : IInvoiceService
         _patientVisitService = patientVisitService;
         _labOrderService = labOrderService;
         _diagnosticTestService = diagnosticTestService;
+        _diagnosticServiceService = diagnosticServiceService;
         _consultantService = consultantService;
         _departmentService = departmentService;
         _consultationTypeService = consultationTypeService;
@@ -212,6 +215,56 @@ internal class InvoiceService : IInvoiceService
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// ADR-144: each bedside scan's add-on and the consultant's part of it, by position in
+    /// <paramref name="items"/> (both null for every other line). The add-on is the amount the
+    /// counter sent, or the service's bedside price when none was sent. It can't be below the
+    /// hospital's share in Masters, and whatever is above that share is the consultant's. A line
+    /// whose ServiceId isn't a DiagnosticService that can be found keeps the amount it was sent
+    /// with and gets no consultant's part, the same leniency as ValidateConsultationChargesAsync.
+    /// </summary>
+    private async Task<Result<(decimal? Amount, decimal? DoctorCharge)[]>> ResolveBedsideChargesAsync(
+        IReadOnlyList<CreateInvoiceLineItemRequest> items,
+        CancellationToken cancellationToken)
+    {
+        var charges = new (decimal? Amount, decimal? DoctorCharge)[items.Count];
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            if (item.BillingType != BillingType.Radiology || !item.IsBedside)
+            {
+                continue;
+            }
+
+            charges[index] = (item.BedsideAmount, null);
+            if (!Guid.TryParse(item.ServiceId, out var serviceId)
+                || await _diagnosticServiceService.GetByIdAsync(serviceId, cancellationToken) is not { IsSuccess: true, Value: { } service })
+            {
+                continue;
+            }
+
+            if (service.BedsidePrice is not decimal bedsidePrice)
+            {
+                return Result<(decimal? Amount, decimal? DoctorCharge)[]>.Failure(
+                    BillingErrorCodes.BedsideNotOffered,
+                    $"'{service.Name}' isn't done at the bedside. Untick Bedside and save again.");
+            }
+
+            var hospitalShare = BedsideShare.HospitalShare(bedsidePrice, service.BedsideDoctorCharge ?? 0m);
+            var amount = item.BedsideAmount ?? bedsidePrice;
+            if (BedsideShare.DoctorCharge(amount, hospitalShare) is not decimal doctorCharge)
+            {
+                return Result<(decimal? Amount, decimal? DoctorCharge)[]>.Failure(
+                    BillingErrorCodes.BedsideAmountTooLow,
+                    $"The bedside amount for '{service.Name}' ({ActivityLogMoney.Format(amount)}) can't be less than the hospital's share ({ActivityLogMoney.Format(hospitalShare)}).");
+            }
+
+            charges[index] = (amount, doctorCharge);
+        }
+
+        return Result<(decimal? Amount, decimal? DoctorCharge)[]>.Success(charges);
     }
 
     /// <summary>
@@ -389,6 +442,12 @@ internal class InvoiceService : IInvoiceService
             return Result<InvoiceResponse>.Failure(offeredCheck.ErrorCode!, offeredCheck.Error!);
         }
 
+        var bedsideCharges = await ResolveBedsideChargesAsync(request.Items, cancellationToken);
+        if (!bedsideCharges.IsSuccess)
+        {
+            return Result<InvoiceResponse>.Failure(bedsideCharges.ErrorCode!, bedsideCharges.Error!);
+        }
+
         // ADR-109: a line Discount is a discount request. Lines are always created at full price;
         // a Super Admin's discount is then applied straight away, anyone else's waits for its
         // approvers (ADR-111: the consultant for their fee, the Super Admin for the rest) — and
@@ -419,7 +478,7 @@ internal class InvoiceService : IInvoiceService
         var invoiceNumber = await _numberGenerator.NextInvoiceNumberAsync(cancellationToken);
 
         var itemSpecs = request.Items
-            .Select(i => new InvoiceLineItemSpec(
+            .Select((i, index) => new InvoiceLineItemSpec(
                 i.BillingType,
                 i.DepartmentId,
                 i.ConsultantId,
@@ -432,7 +491,9 @@ internal class InvoiceService : IInvoiceService
                 DiscountApprovedBy: null,
                 RateOptionId: i.RateOptionId,
                 RateOptionName: i.RateOptionName,
-                IsBedside: i.IsBedside))
+                IsBedside: i.IsBedside,
+                BedsideAmount: bedsideCharges.Value![index].Amount,
+                BedsideDoctorCharge: bedsideCharges.Value![index].DoctorCharge))
             .ToList();
 
         var invoice = Invoice.Create(

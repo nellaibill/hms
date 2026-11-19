@@ -3,13 +3,14 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field } from '@/features/patients/components/FormSection';
 import { isServiceEntryActive } from '../billingActivity';
 import { formatCurrency } from '../billingCalculations';
-import { getServiceRowPrice, type BillingService, type ServiceConsultant } from '../billingCatalog';
-import { emptyServiceRow, type BillingFormValues, type ServiceBillingCategory } from '../billingValidation';
+import { getBedsideHospitalShare, getServiceRowPrice, type BillingService, type ServiceConsultant } from '../billingCatalog';
+import { bedsideAmountTooLowMessage, emptyServiceRow, type BillingFormValues, type ServiceBillingCategory } from '../billingValidation';
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
 
@@ -143,6 +144,8 @@ function ServiceBillingRow({
     setValue,
     watch,
     getValues,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useFormContext<BillingFormValues>();
   const basePath = `${category}.${index}` as const;
@@ -150,10 +153,14 @@ function ServiceBillingRow({
   const serviceId = watch(`${basePath}.serviceId`);
   const rateOptionId = watch(`${basePath}.rateOptionId`);
   const isBedside = watch(`${basePath}.isBedside`);
+  const bedsideAmount = watch(`${basePath}.bedsideAmount`);
   const charge = watch(`${basePath}.charge`);
   const selectedService = services.find((s) => s.id === serviceId);
   const rateOptions = selectedService?.rateOptions ?? [];
   const bedsidePrice = selectedService?.bedsidePrice;
+  // ADR-144: the least the bedside add-on can be charged at — anything above it is the consultant's.
+  const bedsideHospitalShare = getBedsideHospitalShare(selectedService);
+  const bedsideConsultantShare = Math.max((Number(bedsideAmount) || 0) - (bedsideHospitalShare ?? 0), 0);
 
   // ADR-140: picking another service starts its rate and bedside choice afresh. Skipped on the
   // first render, so a row that already holds a choice keeps it.
@@ -163,14 +170,22 @@ function ServiceBillingRow({
     previousServiceId.current = serviceId;
     setValue(`${basePath}.rateOptionId`, '');
     setValue(`${basePath}.isBedside`, false);
+    setValue(`${basePath}.bedsideAmount`, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceId, setValue]);
 
+  // ADR-144: the row keeps the service's hospital share of the bedside add-on, so the form's
+  // schema can refuse an amount below it.
   useEffect(() => {
-    setValue(`${basePath}.charge`, getServiceRowPrice(services, serviceId, rateOptionId, isBedside), { shouldValidate: true });
-    // `services`/`basePath` are stable per row instance — only the selected service, rate and bedside choice recompute the price.
+    setValue(`${basePath}.bedsideHospitalShare`, bedsideHospitalShare ?? 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceId, rateOptionId, isBedside, services, setValue]);
+  }, [bedsideHospitalShare, setValue]);
+
+  useEffect(() => {
+    setValue(`${basePath}.charge`, getServiceRowPrice(services, serviceId, rateOptionId, isBedside, Number(bedsideAmount) || 0), { shouldValidate: true });
+    // `services`/`basePath` are stable per row instance — only the selected service, rate and bedside choice/amount recompute the price.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId, rateOptionId, isBedside, bedsideAmount, services, setValue]);
 
   useEffect(() => {
     // Seeds this row's Consultant once, when it's first created — a brand-new row (the
@@ -278,15 +293,70 @@ function ServiceBillingRow({
                 <label className="flex h-10 cursor-pointer items-center gap-2 text-sm">
                   <input
                     type="checkbox"
+                    aria-label="Bedside"
                     className="h-5 w-5 accent-primary"
                     checked={field.value}
-                    onChange={(event) => field.onChange(event.target.checked)}
+                    onChange={(event) => {
+                      // ADR-144: a bedside scan starts at the service's bedside price; the
+                      // counter can change it in the Bedside amount field that appears.
+                      if (event.target.checked) setValue(`${basePath}.bedsideAmount`, bedsidePrice);
+                      clearErrors(`${basePath}.bedsideAmount`);
+                      field.onChange(event.target.checked);
+                    }}
                   />
-                  +{formatCurrency(bedsidePrice)}
+                  {!field.value && `+${formatCurrency(bedsidePrice)}`}
                 </label>
               )}
             />
           </div>
+        )}
+        {bedsidePrice != null && isBedside && (
+          <Field
+            label="Bedside amount (₹)"
+            htmlFor={`${basePath}-bedside-amount`}
+            error={rowErrors?.bedsideAmount?.message}
+            className="flex w-full flex-col gap-1 sm:w-48"
+          >
+            <Controller
+              name={`${basePath}.bedsideAmount`}
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id={`${basePath}-bedside-amount`}
+                  type="number"
+                  min={bedsideHospitalShare ?? 0}
+                  inputMode="decimal"
+                  aria-describedby={`${basePath}-bedside-split`}
+                  value={field.value}
+                  // Same select-on-focus and leading-zero handling as the consultation charge
+                  // field, so clearing the amount and typing a new one doesn't leave "0600".
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    let raw = e.target.value;
+                    if (/^0+(?=\d)/.test(raw)) {
+                      raw = raw.replace(/^0+/, '');
+                      e.target.value = raw;
+                    }
+                    const amount = raw === '' ? 0 : Number(raw);
+                    field.onChange(amount);
+                    // Checked as it's typed, not only on Save: the rest of the form waits for the
+                    // user to try to move on (see BillingStep), but an amount below the
+                    // hospital's share is flagged straight away.
+                    const hospitalShare = bedsideHospitalShare ?? 0;
+                    if (amount < hospitalShare) {
+                      setError(`${basePath}.bedsideAmount`, { type: 'manual', message: bedsideAmountTooLowMessage(hospitalShare) });
+                    } else {
+                      clearErrors(`${basePath}.bedsideAmount`);
+                    }
+                  }}
+                  onBlur={field.onBlur}
+                />
+              )}
+            />
+            <p id={`${basePath}-bedside-split`} className="text-xs text-muted-foreground">
+              Hospital {formatCurrency(bedsideHospitalShare ?? 0)} · Consultant {formatCurrency(bedsideConsultantShare)}
+            </p>
+          </Field>
         )}
         <ChargeDisplay id={`${basePath}-charge`} amount={charge} />
         {showRemove && (
