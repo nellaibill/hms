@@ -1,6 +1,7 @@
 import { LayoutDashboard } from 'lucide-react';
 import { PageBanner } from '@/components/PageBanner';
 import { FrontDeskDashboard } from '@/features/dashboard/components/FrontDeskDashboard';
+import { TodayProfitCard } from '@/features/dashboard/components/TodayProfitCard';
 import { MiniCalendarCard } from '@/features/dashboard/components/MiniCalendarCard';
 import { MonthlyCensusChart } from '@/features/dashboard/components/MonthlyCensusChart';
 import { NotificationsCard } from '@/features/dashboard/components/NotificationsCard';
@@ -62,6 +63,14 @@ export default function DashboardPage() {
                   <MonthlyCensusChart showIp={canViewIpd} />
                 </div>
               </div>
+            </section>
+          )}
+
+          {/* ADR-142: today's OP profit by charge head, with a link to the Day-wise Profit report. */}
+          {canViewFinance && (
+            <section>
+              <SectionHeader title="Today's Profit" description="Today's OP bills by charge head — revenue, consultant share, running cost and hospital profit" />
+              <TodayProfitCard />
             </section>
           )}
 

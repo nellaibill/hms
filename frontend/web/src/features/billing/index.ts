@@ -24,6 +24,7 @@ export * from './hooks/useBillingSettings';
 export * from './hooks/useBillingsQuery';
 export * from './hooks/useCreateInvoiceMutation';
 export * from './hooks/useInvoicesForReportQuery';
+export * from './hooks/useInvoicesSinceQuery';
 export * from './hooks/useCollectionsQuery';
 export * from './hooks/useInvoiceRevert';
 export * from './hooks/useInvoiceDiscount';

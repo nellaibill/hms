@@ -258,3 +258,24 @@ export async function getAllInvoicesForReport(): Promise<Billing[]> {
   } while (page <= totalPages);
   return all;
 }
+
+/**
+ * Bills created at or after `fromIso` — paged newest first (the API's default order) and stopped
+ * at the first page that reaches older bills, so a dashboard card for today fetches only today's
+ * bills instead of every invoice.
+ */
+export async function getInvoicesSince(fromIso: string): Promise<Billing[]> {
+  const from = Date.parse(fromIso);
+  const recent: Billing[] = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    const paged = await billingApi.getInvoices({ page, pageSize: 100 });
+    const bills = paged.items.map(fromDto);
+    recent.push(...bills.filter((bill) => Date.parse(bill.createdAt) >= from));
+    if (bills.some((bill) => Date.parse(bill.createdAt) < from)) break;
+    totalPages = paged.meta.totalPages;
+    page++;
+  } while (page <= totalPages);
+  return recent;
+}
