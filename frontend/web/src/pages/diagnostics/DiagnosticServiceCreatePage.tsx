@@ -3,7 +3,7 @@ import { FlaskConical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { RequirePermission } from '@/features/auth/RequirePermission';
-import { DiagnosticServiceForm, useCreateDiagnosticServiceMutation } from '@/features/diagnostics';
+import { DiagnosticServiceForm, toDiagnosticServiceRequest, useCreateDiagnosticServiceMutation } from '@/features/diagnostics';
 
 export default function DiagnosticServiceCreatePage() {
   const navigate = useNavigate();
@@ -11,17 +11,7 @@ export default function DiagnosticServiceCreatePage() {
 
   function handleSubmit(values: DiagnosticServiceFormValues) {
     mutation.mutate(
-      {
-        code: values.code,
-        name: values.name,
-        categoryId: values.categoryId,
-        serviceType: values.serviceType,
-        isOutsourced: values.isOutsourced,
-        providerId: values.isOutsourced ? values.providerId || undefined : undefined,
-        price: values.price,
-        costPrice: values.costPrice,
-        isActive: values.isActive,
-      },
+      toDiagnosticServiceRequest(values),
       { onSuccess: () => navigate('/diagnostics/lab/services') },
     );
   }
@@ -31,8 +21,8 @@ export default function DiagnosticServiceCreatePage() {
       <div className="flex flex-1 flex-col">
         <PageBanner
           icon={FlaskConical}
-          title="New Service"
-          subtitle="Add a new test to the Laboratory/Radiology service catalog."
+          title="New lab test or radiology service"
+          subtitle="Set what the patient pays and what it costs us — the profit is worked out for you."
           backTo="/diagnostics/lab/services"
           backLabel="Back to services"
         />

@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Field } from '@/features/patients/components/FormSection';
 import { isServiceEntryActive } from '../billingActivity';
 import { formatCurrency } from '../billingCalculations';
-import { getServicePrice, type BillingService, type ServiceConsultant } from '../billingCatalog';
+import { getServiceRowPrice, type BillingService, type ServiceConsultant } from '../billingCatalog';
 import { emptyServiceRow, type BillingFormValues, type ServiceBillingCategory } from '../billingValidation';
 import { ChargeDisplay } from './ChargeDisplay';
 import { CollapsibleCard } from './CollapsibleCard';
+
+/** The Rate dropdown's value for the service's standard rate (a Select item can't be ''). */
+const STANDARD_RATE = '__standard__';
 
 interface ServiceBillingCardProps {
   category: ServiceBillingCategory;
@@ -145,13 +148,29 @@ function ServiceBillingRow({
   const basePath = `${category}.${index}` as const;
 
   const serviceId = watch(`${basePath}.serviceId`);
+  const rateOptionId = watch(`${basePath}.rateOptionId`);
+  const isBedside = watch(`${basePath}.isBedside`);
   const charge = watch(`${basePath}.charge`);
+  const selectedService = services.find((s) => s.id === serviceId);
+  const rateOptions = selectedService?.rateOptions ?? [];
+  const bedsidePrice = selectedService?.bedsidePrice;
+
+  // ADR-140: picking another service starts its rate and bedside choice afresh. Skipped on the
+  // first render, so a row that already holds a choice keeps it.
+  const previousServiceId = useRef(serviceId);
+  useEffect(() => {
+    if (previousServiceId.current === serviceId) return;
+    previousServiceId.current = serviceId;
+    setValue(`${basePath}.rateOptionId`, '');
+    setValue(`${basePath}.isBedside`, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId, setValue]);
 
   useEffect(() => {
-    setValue(`${basePath}.charge`, getServicePrice(services, serviceId), { shouldValidate: true });
-    // `services`/`basePath` are stable per row instance — only the selected service should recompute the price.
+    setValue(`${basePath}.charge`, getServiceRowPrice(services, serviceId, rateOptionId, isBedside), { shouldValidate: true });
+    // `services`/`basePath` are stable per row instance — only the selected service, rate and bedside choice recompute the price.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceId, services, setValue]);
+  }, [serviceId, rateOptionId, isBedside, services, setValue]);
 
   useEffect(() => {
     // Seeds this row's Consultant once, when it's first created — a brand-new row (the
@@ -226,6 +245,49 @@ function ServiceBillingRow({
             )}
           />
         </Field>
+        {rateOptions.length > 0 && (
+          <Field label="Rate" htmlFor={`${basePath}-rate`} className="flex min-w-[180px] flex-col gap-1">
+            <Controller
+              name={`${basePath}.rateOptionId`}
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value || STANDARD_RATE} onValueChange={(value) => field.onChange(value === STANDARD_RATE ? '' : value)}>
+                  <SelectTrigger id={`${basePath}-rate`} aria-label="Rate">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={STANDARD_RATE}>Standard — {formatCurrency(selectedService?.price ?? 0)}</SelectItem>
+                    {rateOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.name} — {formatCurrency(option.price)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+        )}
+        {bedsidePrice != null && (
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium leading-none text-foreground">Bedside</span>
+            <Controller
+              name={`${basePath}.isBedside`}
+              control={control}
+              render={({ field }) => (
+                <label className="flex h-10 cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-primary"
+                    checked={field.value}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
+                  +{formatCurrency(bedsidePrice)}
+                </label>
+              )}
+            />
+          </div>
+        )}
         <ChargeDisplay id={`${basePath}-charge`} amount={charge} />
         {showRemove && (
           <Button

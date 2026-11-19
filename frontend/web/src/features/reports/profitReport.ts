@@ -1,4 +1,4 @@
-import { describeReportService, resolveItemCostPrice, type Billing, type BillingItem, type BillingType } from '@/features/billing';
+import { describeReportService, resolveItemCostPrice, resolveItemCostSplit, type Billing, type BillingItem, type BillingType } from '@/features/billing';
 import type { BreakdownRow } from './incomeExpenseReport';
 import type { ReportDateRange } from './types';
 
@@ -53,6 +53,10 @@ export interface ProfitReportRow {
    * so a 40% discount takes 40% off both the share and the hospital's part (ADR-113); 0 for
    * every other line, whose cost isn't anyone's share of the fee. */
   costDiscount: number;
+  /** Radiology only (ADR-140): the doctor's share and the hospital's running cost that make up
+   * `cost` (× quantity) — null for other lines, or when the rate isn't costed. */
+  doctorShare?: number | null;
+  runningCost?: number | null;
   /** revenue − cost, or null when cost is null. */
   profit: number | null;
   /** profit / revenue as a whole-number percent, or null when profit is null. Revenue of 0
@@ -125,6 +129,7 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
     for (const item of billing.items) {
       const serviceLabel = describeReportService(item);
       const { costPerUnit, cost, costDiscount } = resolveLineCost(item);
+      const costSplit = resolveItemCostSplit(item);
       const charge = item.quantity * item.unitPrice;
       const profit = cost === null ? null : item.total - cost;
       const marginPercent = profit === null || item.total <= 0 ? null : Math.round((profit / item.total) * 100);
@@ -147,6 +152,8 @@ export function getProfitRows(billings: Billing[], range: ReportDateRange): Prof
         costPerUnit,
         cost,
         costDiscount,
+        doctorShare: costSplit ? costSplit.doctorShare * item.quantity : null,
+        runningCost: costSplit ? costSplit.runningCost * item.quantity : null,
         profit,
         marginPercent,
       });

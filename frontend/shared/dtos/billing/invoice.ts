@@ -9,6 +9,12 @@ export interface CreateInvoiceLineItemRequest {
   /** App-level reference into Masters' DiagnosticPackage — set for a package line, null for a
    * plain service line. */
   packageId?: string | null;
+  /** Radiology only (ADR-140): the rate option billed — null for the service's standard rate. */
+  rateOptionId?: string | null;
+  /** The rate option's name when billed (e.g. "LH"). */
+  rateOptionName?: string | null;
+  /** Radiology only (ADR-140): a bedside scan — unitPrice already includes the bedside add-on. */
+  isBedside?: boolean;
   quantity: number;
   unitPrice: number;
   /** The discount asked for on this line (ADR-109). The server decides whether it applies: a
@@ -73,6 +79,9 @@ export interface InvoiceLineItemResponse {
   billedConsultantId?: string | null;
   serviceId?: string | null;
   packageId?: string | null;
+  rateOptionId?: string | null;
+  rateOptionName?: string | null;
+  isBedside?: boolean;
   quantity: number;
   unitPrice: number;
   discount: number;

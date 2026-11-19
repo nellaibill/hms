@@ -11,6 +11,8 @@ interface ProfitTableProps {
   labels?: ProfitLabels;
   /** Columns to leave out — OP Report drops the ones its filters already fix (ADR-126). */
   hidden?: HiddenProfitColumns;
+  /** Show the doctor's share and running cost that make up the cost (the Radiology report, ADR-140). */
+  showCostSplit?: boolean;
 }
 
 /** "—" in the Discount column means none was given; "—" for cost/profit/margin means unknown (Pharmacy, a Laboratory package, or a service
@@ -19,11 +21,11 @@ function formatMaybeCurrency(value: number | null): string {
   return value === null ? '—' : formatCurrency(value);
 }
 
-export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS, hidden = {} }: ProfitTableProps) {
+export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS, hidden = {}, showCostSplit = false }: ProfitTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       {/* 1250px with every column; each hidden one frees about 100px. */}
-      <table className="w-full text-sm" style={{ minWidth: 1250 - 100 * Object.values(hidden).filter(Boolean).length }}>
+      <table className="w-full text-sm" style={{ minWidth: 1250 + (showCostSplit ? 200 : 0) - 100 * Object.values(hidden).filter(Boolean).length }}>
         <thead className="bg-sidebar-active text-left text-xs font-medium uppercase tracking-wide text-sidebar-active-foreground">
           <tr>
             {!hidden.date && <th className="px-4 py-2.5">Date</th>}
@@ -37,6 +39,8 @@ export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS, hidden = {} 
             <th className="px-4 py-2.5 text-right">Charge</th>
             <th className="px-4 py-2.5 text-right">Discount</th>
             <th className="px-4 py-2.5 text-right">Revenue</th>
+            {showCostSplit && <th className="px-4 py-2.5 text-right">Doctor&apos;s share</th>}
+            {showCostSplit && <th className="px-4 py-2.5 text-right">Running cost</th>}
             <th className="px-4 py-2.5 text-right">{labels.cost}</th>
             <th className="px-4 py-2.5 text-right">{labels.profit}</th>
             {!hidden.margin && <th className="px-4 py-2.5 text-right">Margin</th>}
@@ -68,6 +72,8 @@ export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS, hidden = {} 
                 {row.discount > 0 ? `−${formatCurrency(row.discount)}` : '—'}
               </td>
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(row.revenue)}</td>
+              {showCostSplit && <td className="px-4 py-3 text-right text-muted-foreground">{formatMaybeCurrency(row.doctorShare ?? null)}</td>}
+              {showCostSplit && <td className="px-4 py-3 text-right text-muted-foreground">{formatMaybeCurrency(row.runningCost ?? null)}</td>}
               <td className="px-4 py-3 text-right text-muted-foreground">
                 {formatMaybeCurrency(row.cost)}
                 {row.costDiscount > 0 && (

@@ -1,4 +1,11 @@
-import { resolveDiagnosticPackageCostPrice, resolveDiagnosticPackageLabel, resolveDiagnosticServiceCostPrice, resolveDiagnosticServiceLabel } from '@/features/diagnostics';
+import {
+  resolveDiagnosticPackageCostPrice,
+  resolveDiagnosticPackageLabel,
+  resolveDiagnosticRateOption,
+  resolveDiagnosticServiceCost,
+  resolveDiagnosticServiceCostPrice,
+  resolveDiagnosticServiceLabel,
+} from '@/features/diagnostics';
 import { resolveConsultantCharge, resolveRecordCostPrice, resolveRecordLabel, resolveRecordShortLabel } from '@/features/masters';
 import { isConsultationEntryActive, isLaboratoryEntryActive, isServiceEntryActive, isSimpleServiceEntryActive } from './billingActivity';
 import { linesSignature, type DiscountableLine } from './billingDiscount';
@@ -154,6 +161,14 @@ function serviceRowToBillingItem(
     billingType: SERVICE_BILLING_TYPES[category],
     consultantId: entry.consultantId,
     serviceId: entry.serviceId,
+    // ADR-140: a radiology line keeps the rate option billed and whether it was at the bedside.
+    ...(category === 'radiology'
+      ? {
+          rateOptionId: entry.rateOptionId || undefined,
+          rateOptionName: entry.rateOptionId ? resolveDiagnosticRateOption(entry.serviceId, entry.rateOptionId)?.name : undefined,
+          isBedside: entry.isBedside || undefined,
+        }
+      : {}),
     quantity: entry.quantity,
     unitPrice: entry.charge,
     discount: entry.discount,
@@ -339,7 +354,8 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     if (item.billingType === 'Laboratory' && item.packageId) {
       return { serviceLabel: resolveDiagnosticPackageLabel(item.packageId), consultantName };
     }
-    return { serviceLabel: item.serviceId ? resolveDiagnosticServiceLabel(item.serviceId) : item.billingType, consultantName };
+    const serviceLabel = item.serviceId ? resolveDiagnosticServiceLabel(item.serviceId) : item.billingType;
+    return { serviceLabel: item.billingType === 'Radiology' ? withRateDetails(serviceLabel, item) : serviceLabel, consultantName };
   }
 
   // Procedure/Injection/File: serviceId is a DiagnosticTest id — Injection/File never have a
@@ -391,11 +407,35 @@ export function resolveItemCostPrice(item: BillingItem): number | null {
     return resolveConsultantCharge(item.billedConsultantId, item.serviceId);
   }
 
-  if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {
-    if (item.billingType === 'Laboratory' && item.packageId) return resolveDiagnosticPackageCostPrice(item.packageId);
+  if (item.billingType === 'Radiology') {
+    // ADR-140: doctor's share + running cost of the rate billed, plus the bedside doctor's share.
+    const cost = resolveDiagnosticServiceCost(item.serviceId, item.rateOptionId, item.isBedside);
+    return cost === null ? null : cost.doctorShare + cost.runningCost;
+  }
+
+  if (item.billingType === 'Laboratory') {
+    if (item.packageId) return resolveDiagnosticPackageCostPrice(item.packageId);
     return item.serviceId ? resolveDiagnosticServiceCostPrice(item.serviceId) : null;
   }
 
   // Procedure/Injection/File: serviceId is a DiagnosticTest id.
   return item.serviceId ? resolveRecordCostPrice('diagnosticTest', item.serviceId) : null;
+}
+
+/** "ANC - Growth Scan" -> "ANC - Growth Scan (LH, bedside)" for a radiology line billed at a rate
+ * option and/or at the bedside (ADR-140). The option's name as billed wins over its current one. */
+function withRateDetails(serviceLabel: string, item: Pick<BillingItem, 'serviceId' | 'rateOptionId' | 'rateOptionName' | 'isBedside'>): string {
+  const optionName = item.rateOptionName || (item.rateOptionId ? resolveDiagnosticRateOption(item.serviceId, item.rateOptionId)?.name : undefined);
+  const details = [optionName, item.isBedside ? 'bedside' : undefined].filter(Boolean);
+  return details.length > 0 ? `${serviceLabel} (${details.join(', ')})` : serviceLabel;
+}
+
+/**
+ * A radiology line's per-unit cost split into the doctor's share and the hospital's running
+ * cost (ADR-140) — what resolveItemCostPrice adds together. Null for every other billing type,
+ * and for a radiology line whose rate isn't costed.
+ */
+export function resolveItemCostSplit(item: BillingItem): { doctorShare: number; runningCost: number } | null {
+  if (item.billingType !== 'Radiology') return null;
+  return resolveDiagnosticServiceCost(item.serviceId, item.rateOptionId, item.isBedside);
 }

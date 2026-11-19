@@ -1,0 +1,228 @@
+import { Loader2, Search, Tags } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { PageBanner } from '@/components/PageBanner';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/features/auth/AuthContext';
+import {
+  LOW_PROFIT_PERCENT,
+  useAllDiagnosticServicesQuery,
+  useDiagnosticCategoriesQuery,
+  useDiagnosticProvidersQuery,
+  usePrimeDiagnosticPackageCache,
+} from '@/features/diagnostics';
+import { useMasterOptionsQuery } from '@/features/masters';
+import { ConsultationRatesGrid } from '@/features/priceList/components/ConsultationRatesGrid';
+import { PriceListTable, type PriceTableVariant } from '@/features/priceList/components/PriceListTable';
+import {
+  buildConsultationMatrix,
+  buildLabRows,
+  buildMasterTestRows,
+  buildOutsourcedRows,
+  buildPackageRows,
+  buildRadiologyRows,
+  countLowProfit,
+  countNotCosted,
+  filterRows,
+  sectionsOf,
+  type PriceListTab,
+  type PriceRow,
+  type QuickFilter,
+} from '@/features/priceList/priceListRows';
+import { cn } from '@/lib/utils';
+
+interface TabSpec {
+  key: PriceListTab;
+  label: string;
+  rule: string;
+  variant?: PriceTableVariant;
+  grouped?: boolean;
+}
+
+const TABS: TabSpec[] = [
+  { key: 'lab', label: 'Lab tests', rule: 'Profit = Price − Running cost. No doctor’s share on lab tests.', variant: 'lab', grouped: true },
+  { key: 'outsourced', label: 'Outsourced tests', rule: 'Profit = Price − what the outside lab charges us.', variant: 'outsourced', grouped: true },
+  { key: 'packages', label: 'Lab packages', rule: 'Profit = Package price − Running cost (the package’s own figure, or its tests’ total).', variant: 'packages' },
+  { key: 'radiology', label: 'Radiology', rule: 'Profit = Price − Doctor’s share − Running cost.', variant: 'radiology', grouped: true },
+  { key: 'procedures', label: 'Procedures', rule: 'Profit = Price − Cost, as the Diagnostic Test master holds it.', variant: 'master', grouped: true },
+  { key: 'injections', label: 'Injections & files', rule: 'Profit = Price − Cost, as the Diagnostic Test master holds it.', variant: 'master', grouped: true },
+  { key: 'consultations', label: 'Consultations', rule: 'Hospital keeps = Hospital charge − Doctor’s charge. No running cost.' },
+];
+
+const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'notCosted', label: 'Not costed' },
+  { key: 'lowProfit', label: `Profit below ${LOW_PROFIT_PERCENT}%` },
+];
+
+const ALL_SECTIONS = '__all__';
+
+/**
+ * The Price List (ADR-140): every billable service in one place — what the patient pays, what
+ * goes to the doctor and to running costs, and the profit the hospital keeps — tabbed by kind
+ * and laid out like the hospital's tariff sheet. Prices are edited on each item's own screen;
+ * the Edit links go there.
+ */
+export default function PriceListPage() {
+  const { hasPermission } = useAuth();
+  const canSeeConsultations = hasPermission('identity-administration.view');
+  const canEditMasters = hasPermission('identity-administration.edit');
+
+  const labQuery = useAllDiagnosticServicesQuery('Laboratory');
+  const radiologyQuery = useAllDiagnosticServicesQuery('Radiology');
+  const packages = usePrimeDiagnosticPackageCache();
+  const categoriesQuery = useDiagnosticCategoriesQuery({ pageSize: 100, sort: 'name' });
+  const providersQuery = useDiagnosticProvidersQuery({ pageSize: 100, sort: 'name' });
+  const testsQuery = useMasterOptionsQuery('diagnosticTest');
+  const consultantsQuery = useMasterOptionsQuery(canSeeConsultations ? 'consultant' : undefined);
+  const typesQuery = useMasterOptionsQuery(canSeeConsultations ? 'consultationType' : undefined);
+
+  const [tab, setTab] = useState<PriceListTab>('lab');
+  const [search, setSearch] = useState('');
+  const [section, setSection] = useState('');
+  const [quick, setQuick] = useState<QuickFilter>('all');
+
+  const rowsByTab = useMemo<Record<Exclude<PriceListTab, 'consultations'>, PriceRow[]>>(() => {
+    const services = [...(labQuery.data ?? []), ...(radiologyQuery.data ?? [])];
+    const categoryNames = new Map((categoriesQuery.data?.items ?? []).map((category) => [category.id, category.name]));
+    const providerNames = new Map((providersQuery.data?.items ?? []).map((provider) => [provider.id, provider.name]));
+    const servicesById = new Map(services.map((service) => [service.id, service]));
+    const tests = testsQuery.data ?? [];
+    return {
+      lab: buildLabRows(services, categoryNames, packages ?? []),
+      outsourced: buildOutsourcedRows(services, categoryNames, providerNames),
+      packages: buildPackageRows(packages ?? [], servicesById),
+      radiology: buildRadiologyRows(services, categoryNames),
+      procedures: buildMasterTestRows(tests, ['Procedure'], canEditMasters),
+      injections: buildMasterTestRows(tests, ['Injection', 'File'], canEditMasters),
+    };
+  }, [labQuery.data, radiologyQuery.data, packages, categoriesQuery.data, providersQuery.data, testsQuery.data, canEditMasters]);
+
+  const consultationMatrix = useMemo(
+    () => buildConsultationMatrix(consultantsQuery.data ?? [], typesQuery.data ?? []),
+    [consultantsQuery.data, typesQuery.data],
+  );
+
+  const tabs = TABS.filter((spec) => spec.key !== 'consultations' || canSeeConsultations);
+  const activeTab = tabs.find((spec) => spec.key === tab) ?? tabs[0];
+  const isConsultations = activeTab.key === 'consultations';
+  const tabRows = isConsultations ? [] : rowsByTab[activeTab.key as Exclude<PriceListTab, 'consultations'>];
+  const visibleRows = filterRows(tabRows, { search, section, quick });
+  const sections = sectionsOf(tabRows);
+  const isLoading = labQuery.isPending || radiologyQuery.isPending || !packages || testsQuery.isPending;
+
+  function countFor(key: PriceListTab): number {
+    return key === 'consultations' ? consultationMatrix.rows.length : rowsByTab[key].length;
+  }
+
+  function selectTab(next: string) {
+    setTab(next as PriceListTab);
+    setSection('');
+    setQuick('all');
+  }
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <PageBanner
+        icon={Tags}
+        title="Price List"
+        subtitle="Every billable service: what the patient pays, the doctor's share, the running cost and the profit the hospital keeps."
+      />
+
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 p-4 sm:p-6 lg:p-8">
+        <Tabs value={activeTab.key} onValueChange={selectTab}>
+          <TabsList className="h-auto flex-wrap justify-start">
+            {tabs.map((spec) => (
+              <TabsTrigger key={spec.key} value={spec.key} className="gap-2">
+                {spec.label}
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">{countFor(spec.key)}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
+        {!isConsultations && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex h-10 min-w-[260px] items-center gap-2 rounded-md border border-input bg-background px-3">
+                <Search aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+                <span className="sr-only">Search</span>
+                <Input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={activeTab.key === 'lab' ? 'Search tests or packages' : 'Search'}
+                  className="h-8 border-0 px-0 shadow-none focus-visible:ring-0"
+                />
+              </label>
+              {sections.length > 1 && (
+                <Select value={section || ALL_SECTIONS} onValueChange={(value) => setSection(value === ALL_SECTIONS ? '' : value)}>
+                  <SelectTrigger className="h-10 w-[220px]" aria-label="Section">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_SECTIONS}>All sections</SelectItem>
+                    {sections.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div role="group" aria-label="Quick filters" className="flex flex-wrap gap-2">
+              {QUICK_FILTERS.map((filter) => {
+                const count = filter.key === 'all' ? tabRows.length : filter.key === 'notCosted' ? countNotCosted(tabRows) : countLowProfit(tabRows);
+                const pressed = quick === filter.key;
+                return (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    aria-pressed={pressed}
+                    onClick={() => setQuick(filter.key)}
+                    className={cn(
+                      'min-h-9 rounded-full border px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      pressed ? 'border-primary bg-primary/10 font-semibold text-foreground' : 'border-border bg-background text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {filter.label} · {count}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <Card className="overflow-hidden">
+          <div className="border-b border-border px-4 py-3 text-sm">
+            <span className="font-semibold">{activeTab.rule}</span>
+            {!isConsultations && <span className="text-muted-foreground"> Profit % is profit ÷ price, as in the tariff sheet.</span>}
+          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading the price list…
+            </div>
+          ) : isConsultations ? (
+            <ConsultationRatesGrid columns={consultationMatrix.columns} rows={consultationMatrix.rows} canEdit={canEditMasters} />
+          ) : (
+            <PriceListTable
+              rows={visibleRows}
+              variant={activeTab.variant as PriceTableVariant}
+              grouped={activeTab.grouped && !section}
+              emptyText={tabRows.length === 0 ? 'Nothing here yet.' : 'Nothing matches these filters.'}
+            />
+          )}
+          {!isConsultations && !isLoading && visibleRows.length > 0 && (
+            <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+              Showing {visibleRows.length} of {tabRows.length}. Prices and costs are changed on each item's own screen — use Edit.
+            </p>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}

@@ -151,6 +151,7 @@ const DiagnosticServiceEditPage = lazy(() => import('../pages/diagnostics/Diagno
 const DiagnosticPackagesListPage = lazy(() => import('../pages/diagnostics/DiagnosticPackagesListPage'));
 const DiagnosticPackageCreatePage = lazy(() => import('../pages/diagnostics/DiagnosticPackageCreatePage'));
 const LabPackageDetailPage = lazy(() => import('../pages/diagnostics/LabPackageDetailPage'));
+const PriceListPage = lazy(() => import('../pages/diagnostics/PriceListPage'));
 const LabDashboardPage = lazy(() => import('../pages/diagnostics/LabDashboardPage'));
 const LabWorklistPage = lazy(() => import('../pages/diagnostics/LabWorklistPage'));
 const LabOrderDetailPage = lazy(() => import('../pages/diagnostics/LabOrderDetailPage'));
@@ -604,6 +605,8 @@ const diagnosticsRoutes = [
           { path: 'diagnostics/lab/packages', element: withSuspense(<DiagnosticPackagesListPage />) },
           { path: 'diagnostics/lab/packages/new', element: withSuspense(<DiagnosticPackageCreatePage />) },
           { path: 'diagnostics/lab/packages/:id', element: withSuspense(<LabPackageDetailPage />) },
+          // ADR-140: every billable service's price and profit, in one place.
+          { path: 'diagnostics/price-list', element: withSuspense(<PriceListPage />) },
         ],
       },
     ],
