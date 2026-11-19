@@ -1,4 +1,4 @@
-import type { DiagnosticPackage, DiagnosticService } from '@hms/shared';
+import type { DiagnosticPackage, DiagnosticService, DiagnosticServiceRateOption } from '@hms/shared';
 
 /**
  * A tiny synchronous id->label cache for DiagnosticService/DiagnosticPackage, mirroring
@@ -63,4 +63,34 @@ export function resolveDiagnosticPackageLabel(id: string | undefined | null): st
   if (!id) return '—';
   const pkg = packageCache.get(id);
   return pkg ? `${pkg.name} (Package)` : id;
+}
+
+/** A radiology service's rate option, by id (ADR-140). Undefined until the service is cached, or
+ * when the option was removed since. */
+export function resolveDiagnosticRateOption(serviceId: string | undefined | null, rateOptionId: string | undefined | null): DiagnosticServiceRateOption | undefined {
+  if (!serviceId || !rateOptionId) return undefined;
+  return serviceCache.get(serviceId)?.rateOptions?.find((option) => option.id === rateOptionId);
+}
+
+/**
+ * A radiology line's cost, split the way the tariff sheet does (ADR-140): the doctor's share and
+ * the hospital's running cost of the rate billed — the rate option's own when one was picked
+ * (and still exists), else the service's standard rate — plus the bedside add-on's doctor's
+ * share for a bedside scan. Null when the service isn't cached yet or the rate isn't costed
+ * (both parts 0), the same "never a fabricated 0" rule as resolveDiagnosticServiceCostPrice.
+ */
+export function resolveDiagnosticServiceCost(
+  serviceId: string | undefined | null,
+  rateOptionId?: string | null,
+  isBedside?: boolean,
+): { doctorShare: number; runningCost: number } | null {
+  if (!serviceId) return null;
+  const service = serviceCache.get(serviceId);
+  if (!service) return null;
+  const option = rateOptionId ? service.rateOptions?.find((candidate) => candidate.id === rateOptionId) : undefined;
+  const doctorShare = option ? option.doctorCharge : (service.doctorCharge ?? 0);
+  const runningCost = option ? option.costPrice : service.costPrice;
+  if (!(doctorShare > 0) && !(runningCost > 0)) return null;
+  const bedsideDoctorShare = isBedside ? (service.bedsideDoctorCharge ?? 0) : 0;
+  return { doctorShare: doctorShare + bedsideDoctorShare, runningCost };
 }

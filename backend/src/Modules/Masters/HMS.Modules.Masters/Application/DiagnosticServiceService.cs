@@ -65,6 +65,7 @@ internal class DiagnosticServiceService : IDiagnosticServiceService
             request.CostPrice,
             request.IsActive,
             actorId);
+        diagnosticService.SetTariff(request.DoctorCharge, request.BedsidePrice, request.BedsideDoctorCharge, ToRateOptionValues(request.RateOptions));
 
         await _repository.AddAsync(diagnosticService, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -102,6 +103,7 @@ internal class DiagnosticServiceService : IDiagnosticServiceService
             request.CostPrice,
             request.IsActive,
             actorId);
+        diagnosticService.SetTariff(request.DoctorCharge, request.BedsidePrice, request.BedsideDoctorCharge, ToRateOptionValues(request.RateOptions));
         await _repository.SaveChangesAsync(cancellationToken);
 
         return Result<DiagnosticServiceResponse>.Success(diagnosticService.ToResponse());
@@ -138,6 +140,9 @@ internal class DiagnosticServiceService : IDiagnosticServiceService
     /// <summary>Cross-entity references stay app-level-only (no DB FK) — validated here via
     /// the sibling services' own GetByIdAsync, same pattern PatientService uses for its
     /// State/District references.</summary>
+    private static List<RateOptionValues> ToRateOptionValues(IReadOnlyList<DiagnosticServiceRateOptionDto> options)
+        => options.Select(option => new RateOptionValues(option.Id, option.Name, option.Price, option.DoctorCharge, option.CostPrice)).ToList();
+
     private async Task<Result?> ValidateReferencesAsync(Guid categoryId, bool isOutsourced, Guid? providerId, CancellationToken cancellationToken)
     {
         if (!(await _categoryService.GetByIdAsync(categoryId, cancellationToken)).IsSuccess)

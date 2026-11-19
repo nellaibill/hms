@@ -26,6 +26,17 @@ internal class DiagnosticServiceConfiguration : IEntityTypeConfiguration<Diagnos
         builder.Property(d => d.CostPrice).HasColumnName("cost_price").HasColumnType("numeric(10,2)").IsRequired().HasDefaultValue(0m);
         builder.Property(d => d.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
 
+        // ADR-140: Radiology's doctor's share, bedside add-on and rate options.
+        builder.Property(d => d.DoctorCharge).HasColumnName("doctor_charge").HasColumnType("numeric(10,2)").IsRequired().HasDefaultValue(0m);
+        builder.Property(d => d.BedsidePrice).HasColumnName("bedside_price").HasColumnType("numeric(10,2)");
+        builder.Property(d => d.BedsideDoctorCharge).HasColumnName("bedside_doctor_charge").HasColumnType("numeric(10,2)");
+        builder.HasMany(d => d.RateOptions)
+            .WithOne()
+            .HasForeignKey(o => o.DiagnosticServiceId)
+            .HasConstraintName("fk_diagnostic_service_rate_options_diagnostic_service_id")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(d => d.RateOptions).UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(d => d.CreatedBy).HasColumnName("created_by");
         builder.Property(d => d.UpdatedAt).HasColumnName("updated_at");
@@ -40,5 +51,25 @@ internal class DiagnosticServiceConfiguration : IEntityTypeConfiguration<Diagnos
 
         builder.HasIndex(d => d.Code).IsUnique().HasDatabaseName("ux_diagnostic_services_code").HasFilter("is_deleted = false");
         builder.HasIndex(d => d.CategoryId).HasDatabaseName("ix_diagnostic_services_category_id");
+    }
+}
+
+internal class DiagnosticServiceRateOptionConfiguration : IEntityTypeConfiguration<DiagnosticServiceRateOption>
+{
+    public void Configure(EntityTypeBuilder<DiagnosticServiceRateOption> builder)
+    {
+        builder.ToTable("diagnostic_service_rate_options");
+
+        builder.HasKey(o => o.Id).HasName("pk_diagnostic_service_rate_options");
+        builder.Property(o => o.Id).HasColumnName("id").ValueGeneratedNever();
+
+        builder.Property(o => o.DiagnosticServiceId).HasColumnName("diagnostic_service_id").IsRequired();
+        builder.Property(o => o.Name).HasColumnName("name").HasMaxLength(DiagnosticServiceRateOption.NameMaxLength).IsRequired();
+        builder.Property(o => o.Price).HasColumnName("price").HasColumnType("numeric(10,2)").IsRequired();
+        builder.Property(o => o.DoctorCharge).HasColumnName("doctor_charge").HasColumnType("numeric(10,2)").IsRequired();
+        builder.Property(o => o.CostPrice).HasColumnName("cost_price").HasColumnType("numeric(10,2)").IsRequired();
+        builder.Property(o => o.SortOrder).HasColumnName("sort_order").IsRequired();
+
+        builder.HasIndex(o => o.DiagnosticServiceId).HasDatabaseName("ix_diagnostic_service_rate_options_diagnostic_service_id");
     }
 }

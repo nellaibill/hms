@@ -1,5 +1,5 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { ArrowRight, Building2, Database, FlaskConical, ListTree, PackageSearch, Users, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Building2, Database, ListTree, Tags, Users, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
@@ -33,9 +33,8 @@ interface StaticReferenceCard {
 // under '/diagnostics/lab/...' and keep their existing feature/permission route guards
 // (routes.tsx's diagnosticsRoutes) — only the entry point moved.
 const diagnosticCatalogCards: StaticReferenceCard[] = [
+  { key: 'price-list', label: 'Price List', description: 'Every billable service — lab tests, packages, radiology, procedures, consultations — with its price, doctor’s share, running cost and profit. Add and edit them here.', icon: Tags, path: '/diagnostics/price-list' },
   { key: 'diagnostic-categories', label: 'Diagnostic Categories', description: 'Test categories used to organize the Laboratory/Radiology service catalog.', icon: ListTree, path: '/diagnostics/lab/categories' },
-  { key: 'diagnostic-services', label: 'Diagnostic Services', description: 'The Laboratory/Radiology test catalog — pricing, category, and outsourcing.', icon: FlaskConical, path: '/diagnostics/lab/services' },
-  { key: 'diagnostic-packages', label: 'Diagnostic Packages', description: 'Bundled test packages (e.g. Lipid Profile) at a fixed price.', icon: PackageSearch, path: '/diagnostics/lab/packages' },
   { key: 'diagnostic-external-labs', label: 'External Labs', description: 'Providers tests are outsourced to.', icon: Building2, path: '/diagnostics/lab/external-labs' },
 ];
 

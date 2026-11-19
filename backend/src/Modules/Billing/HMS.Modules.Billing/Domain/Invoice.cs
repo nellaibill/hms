@@ -18,7 +18,10 @@ internal sealed record InvoiceLineItemSpec(
     decimal UnitPrice,
     decimal Discount,
     bool DiscountApproved,
-    string? DiscountApprovedBy);
+    string? DiscountApprovedBy,
+    Guid? RateOptionId = null,
+    string? RateOptionName = null,
+    bool IsBedside = false);
 
 /// <summary>
 /// The bill for one visit — Reception &amp; Registration's Billing step and the standalone OPD
@@ -142,7 +145,10 @@ internal class Invoice : Entity
                 spec.Discount,
                 spec.DiscountApproved,
                 spec.DiscountApprovedBy,
-                createdBy));
+                createdBy,
+                spec.RateOptionId,
+                spec.RateOptionName,
+                spec.IsBedside));
         }
 
         invoice.GrossAmount = invoice._items.Sum(i => i.Quantity * i.UnitPrice);

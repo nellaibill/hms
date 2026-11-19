@@ -18,7 +18,7 @@ internal class DiagnosticServiceRepository : IDiagnosticServiceRepository
         => await _dbContext.DiagnosticServices.AddAsync(diagnosticService, cancellationToken);
 
     public Task<DiagnosticService?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        => _dbContext.DiagnosticServices.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        => _dbContext.DiagnosticServices.Include(d => d.RateOptions).FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.DiagnosticServices.AnyAsync(d => d.Id == id, cancellationToken);
@@ -28,7 +28,7 @@ internal class DiagnosticServiceRepository : IDiagnosticServiceRepository
 
     public async Task<(IReadOnlyList<DiagnosticService> Items, int TotalCount)> GetPagedAsync(DiagnosticServiceListQuery query, CancellationToken cancellationToken)
     {
-        var diagnosticServices = _dbContext.DiagnosticServices.AsQueryable();
+        var diagnosticServices = _dbContext.DiagnosticServices.Include(d => d.RateOptions).AsQueryable();
 
         if (query.CategoryId.HasValue)
         {

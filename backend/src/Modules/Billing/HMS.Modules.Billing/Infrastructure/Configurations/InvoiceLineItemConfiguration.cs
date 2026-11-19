@@ -20,6 +20,9 @@ internal class InvoiceLineItemConfiguration : IEntityTypeConfiguration<InvoiceLi
         builder.Property(li => li.BilledConsultantId).HasColumnName("billed_consultant_id").HasMaxLength(100);
         builder.Property(li => li.ServiceId).HasColumnName("service_id").HasMaxLength(100);
         builder.Property(li => li.PackageId).HasColumnName("package_id");
+        builder.Property(li => li.RateOptionId).HasColumnName("rate_option_id");
+        builder.Property(li => li.RateOptionName).HasColumnName("rate_option_name").HasMaxLength(40);
+        builder.Property(li => li.IsBedside).HasColumnName("is_bedside").IsRequired().HasDefaultValue(false);
         builder.Property(li => li.Quantity).HasColumnName("quantity").IsRequired();
         builder.Property(li => li.UnitPrice).HasColumnName("unit_price").HasColumnType("numeric(12,2)").IsRequired();
         builder.Property(li => li.Discount).HasColumnName("discount").HasColumnType("numeric(12,2)").IsRequired();

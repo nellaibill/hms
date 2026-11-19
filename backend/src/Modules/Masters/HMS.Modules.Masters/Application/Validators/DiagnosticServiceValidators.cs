@@ -1,5 +1,7 @@
+using System.Linq.Expressions;
 using FluentValidation;
 using HMS.Modules.Masters.Contracts;
+using HMS.Modules.Masters.Domain;
 
 namespace HMS.Modules.Masters.Application.Validators;
 
@@ -25,6 +27,8 @@ internal class CreateDiagnosticServiceRequestValidator : AbstractValidator<Creat
             .NotNull()
             .When(x => x.IsOutsourced)
             .WithMessage("A provider is required when the service is outsourced.");
+
+        DiagnosticServiceTariffRules.Apply(this, x => x.ServiceType, x => x.DoctorCharge, x => x.BedsidePrice, x => x.BedsideDoctorCharge, x => x.RateOptions);
     }
 }
 
@@ -48,5 +52,58 @@ internal class UpdateDiagnosticServiceRequestValidator : AbstractValidator<Updat
             .NotNull()
             .When(x => x.IsOutsourced)
             .WithMessage("A provider is required when the service is outsourced.");
+
+        DiagnosticServiceTariffRules.Apply(this, x => x.ServiceType, x => x.DoctorCharge, x => x.BedsidePrice, x => x.BedsideDoctorCharge, x => x.RateOptions);
+    }
+}
+
+/// <summary>
+/// ADR-140's rules for the Radiology-only tariff parts, shared by the create and update
+/// validators: a Laboratory test has no doctor's share, bedside add-on or rate options; the
+/// bedside add-on is both parts or neither; rate options have a unique name and no negative
+/// amounts.
+/// </summary>
+internal static class DiagnosticServiceTariffRules
+{
+    public const int MaxRateOptions = 10;
+
+    public static void Apply<T>(
+        AbstractValidator<T> validator,
+        Expression<Func<T, DiagnosticTestServiceType>> serviceType,
+        Expression<Func<T, decimal>> doctorCharge,
+        Expression<Func<T, decimal?>> bedsidePrice,
+        Expression<Func<T, decimal?>> bedsideDoctorCharge,
+        Expression<Func<T, IEnumerable<DiagnosticServiceRateOptionDto>>> rateOptions)
+    {
+        var getType = serviceType.Compile();
+        var getBedsidePrice = bedsidePrice.Compile();
+        var getBedsideDoctorCharge = bedsideDoctorCharge.Compile();
+        bool IsLab(T x) => getType(x) == DiagnosticTestServiceType.Laboratory;
+
+        validator.RuleFor(doctorCharge).GreaterThanOrEqualTo(0).WithMessage("Doctor's share cannot be negative.");
+        validator.RuleFor(doctorCharge).Equal(0).When(IsLab).WithMessage("A lab test has no doctor's share.");
+
+        validator.RuleFor(bedsidePrice).GreaterThanOrEqualTo(0).When(x => getBedsidePrice(x).HasValue).WithMessage("The bedside add-on cannot be negative.");
+        validator.RuleFor(bedsideDoctorCharge).GreaterThanOrEqualTo(0).When(x => getBedsideDoctorCharge(x).HasValue).WithMessage("The bedside add-on cannot be negative.");
+        validator.RuleFor(bedsidePrice)
+            .Must((x, price) => price.HasValue == getBedsideDoctorCharge(x).HasValue)
+            .WithMessage("Set both the bedside price and the bedside doctor's share, or neither.");
+        validator.RuleFor(bedsidePrice).Null().When(IsLab).WithMessage("A lab test has no bedside add-on.");
+
+        validator.RuleFor(rateOptions).Must(options => !options.Any()).When(IsLab).WithMessage("A lab test has no rate options.");
+        validator.RuleFor(rateOptions)
+            .Must(options => options.Count() <= MaxRateOptions)
+            .WithMessage($"A service can have at most {MaxRateOptions} rate options.");
+        validator.RuleFor(rateOptions)
+            .Must(options => options.Select(o => o.Name.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() == options.Count())
+            .WithMessage("Each rate option needs a different name.");
+        validator.RuleForEach(rateOptions).ChildRules(option =>
+        {
+            option.RuleFor(o => o.Name).NotEmpty().WithMessage("A rate option needs a name.")
+                .MaximumLength(DiagnosticServiceRateOption.NameMaxLength);
+            option.RuleFor(o => o.Price).GreaterThanOrEqualTo(0).WithMessage("A rate option's price cannot be negative.");
+            option.RuleFor(o => o.DoctorCharge).GreaterThanOrEqualTo(0).WithMessage("A rate option's doctor's share cannot be negative.");
+            option.RuleFor(o => o.CostPrice).GreaterThanOrEqualTo(0).WithMessage("A rate option's running cost cannot be negative.");
+        });
     }
 }

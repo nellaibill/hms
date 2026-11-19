@@ -145,12 +145,11 @@ const PharmacyRegistersPage = lazy(() => import('../pages/pharmacy/RegistersPage
 const CentralLaboratoryHubPage = lazy(() => import('../pages/diagnostics/CentralLaboratoryHubPage'));
 const DiagnosticCategoriesListPage = lazy(() => import('../pages/diagnostics/DiagnosticCategoriesListPage'));
 const ExternalLabsListPage = lazy(() => import('../pages/diagnostics/ExternalLabsListPage'));
-const DiagnosticServicesListPage = lazy(() => import('../pages/diagnostics/DiagnosticServicesListPage'));
 const DiagnosticServiceCreatePage = lazy(() => import('../pages/diagnostics/DiagnosticServiceCreatePage'));
 const DiagnosticServiceEditPage = lazy(() => import('../pages/diagnostics/DiagnosticServiceEditPage'));
-const DiagnosticPackagesListPage = lazy(() => import('../pages/diagnostics/DiagnosticPackagesListPage'));
 const DiagnosticPackageCreatePage = lazy(() => import('../pages/diagnostics/DiagnosticPackageCreatePage'));
 const LabPackageDetailPage = lazy(() => import('../pages/diagnostics/LabPackageDetailPage'));
+const PriceListPage = lazy(() => import('../pages/diagnostics/PriceListPage'));
 const LabDashboardPage = lazy(() => import('../pages/diagnostics/LabDashboardPage'));
 const LabWorklistPage = lazy(() => import('../pages/diagnostics/LabWorklistPage'));
 const LabOrderDetailPage = lazy(() => import('../pages/diagnostics/LabOrderDetailPage'));
@@ -598,12 +597,16 @@ const diagnosticsRoutes = [
         children: [
           { path: 'diagnostics/lab/categories', element: withSuspense(<DiagnosticCategoriesListPage />) },
           { path: 'diagnostics/lab/external-labs', element: withSuspense(<ExternalLabsListPage />) },
-          { path: 'diagnostics/lab/services', element: withSuspense(<DiagnosticServicesListPage />) },
+          // ADR-140: the Price List replaced the separate services and packages lists — the old
+          // addresses open its matching tab, so bookmarks keep working.
+          { path: 'diagnostics/lab/services', element: <Navigate to="/diagnostics/price-list?tab=lab" replace /> },
           { path: 'diagnostics/lab/services/new', element: withSuspense(<DiagnosticServiceCreatePage />) },
           { path: 'diagnostics/lab/services/:id/edit', element: withSuspense(<DiagnosticServiceEditPage />) },
-          { path: 'diagnostics/lab/packages', element: withSuspense(<DiagnosticPackagesListPage />) },
+          { path: 'diagnostics/lab/packages', element: <Navigate to="/diagnostics/price-list?tab=packages" replace /> },
           { path: 'diagnostics/lab/packages/new', element: withSuspense(<DiagnosticPackageCreatePage />) },
           { path: 'diagnostics/lab/packages/:id', element: withSuspense(<LabPackageDetailPage />) },
+          // ADR-140: every billable service's price and profit, in one place.
+          { path: 'diagnostics/price-list', element: withSuspense(<PriceListPage />) },
         ],
       },
     ],

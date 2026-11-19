@@ -18,6 +18,14 @@ export interface DiagnosticService {
   price: number;
   costPrice: number;
   isActive: boolean;
+  /** The reporting doctor's share of `price` — Radiology only, always 0 for a lab test (ADR-140). */
+  doctorCharge: number;
+  /** What a bedside scan adds to the price — null when the service isn't done at the bedside. */
+  bedsidePrice?: number | null;
+  /** What a bedside scan adds to the doctor's share — null exactly when bedsidePrice is. */
+  bedsideDoctorCharge?: number | null;
+  /** Named alternative rates (e.g. "LH", "MR") billed instead of the standard one. Radiology only. */
+  rateOptions: DiagnosticServiceRateOption[];
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -34,6 +42,14 @@ export interface CreateDiagnosticServiceRequest {
   price: number;
   costPrice: number;
   isActive: boolean;
+  /** The reporting doctor's share of `price` — Radiology only, always 0 for a lab test (ADR-140). */
+  doctorCharge?: number;
+  /** What a bedside scan adds to the price — null when the service isn't done at the bedside. */
+  bedsidePrice?: number | null;
+  /** What a bedside scan adds to the doctor's share — null exactly when bedsidePrice is. */
+  bedsideDoctorCharge?: number | null;
+  /** Named alternative rates (e.g. "LH", "MR") billed instead of the standard one. Radiology only. */
+  rateOptions?: DiagnosticServiceRateOption[];
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.UpdateDiagnosticServiceRequest. */
@@ -47,6 +63,14 @@ export interface UpdateDiagnosticServiceRequest {
   price: number;
   costPrice: number;
   isActive: boolean;
+  /** The reporting doctor's share of `price` — Radiology only, always 0 for a lab test (ADR-140). */
+  doctorCharge?: number;
+  /** What a bedside scan adds to the price — null when the service isn't done at the bedside. */
+  bedsidePrice?: number | null;
+  /** What a bedside scan adds to the doctor's share — null exactly when bedsidePrice is. */
+  bedsideDoctorCharge?: number | null;
+  /** Named alternative rates (e.g. "LH", "MR") billed instead of the standard one. Radiology only. */
+  rateOptions?: DiagnosticServiceRateOption[];
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.DiagnosticServiceListQuery. */
@@ -59,4 +83,16 @@ export interface DiagnosticServiceListQuery {
   serviceType?: DiagnosticServiceType;
   isOutsourced?: boolean;
   isActive?: boolean;
+}
+
+/** One rate option on a Radiology service (ADR-140) — mirrors HMS.Modules.Masters.Contracts.
+ * DiagnosticServiceRateOptionDto. `id` is unset for an option being added. */
+export interface DiagnosticServiceRateOption {
+  id?: string | null;
+  name: string;
+  price: number;
+  /** The reporting doctor's share of this option's price. */
+  doctorCharge: number;
+  /** The hospital's own running cost for this option. */
+  costPrice: number;
 }

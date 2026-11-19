@@ -1,37 +1,40 @@
 import { ApiError, type DiagnosticPackageFormValues } from '@hms/shared';
 import { PackageSearch } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { RequirePermission } from '@/features/auth/RequirePermission';
-import { DiagnosticPackageForm, useCreateDiagnosticPackageMutation, useDiagnosticServicesQuery } from '@/features/diagnostics';
+import { DiagnosticPackageForm, formatRupees, testsRunningCostTotal, useAllDiagnosticServicesQuery, useCreateDiagnosticPackageMutation } from '@/features/diagnostics';
+import { priceListPath } from '@/features/priceList/priceListRows';
 
 /**
- * Judgment call: the mockup's own flow (and the task spec) has the create screen collect only
- * the package's own fields (Code/Name/Description/Total Price/Active), with tests added
- * afterward on the package's detail page. But CreateDiagnosticPackageRequestValidator rejects
- * an empty ServiceIds array ("A package must contain at least one test") — a package can't
- * actually be created with zero tests. This page reconciles the two by asking for exactly one
- * "first test" up front (required, separate from DiagnosticPackageForm's own fields/schema so
- * DiagnosticPackageForm stays reusable/unmodified for Edit, which has no such concept) and
- * routing straight to the detail page afterward, where "Add Test to Package" covers every test
- * after the first — matching the spec's intent as closely as the backend contract allows.
+ * A package can't be created with zero tests (CreateDiagnosticPackageRequestValidator), so this
+ * page asks for a first test up front and routes to the package's page afterward, where the
+ * rest are added. The price-and-profit card follows the tariff sheet (ADR-140).
  */
 export default function DiagnosticPackageCreatePage() {
   const navigate = useNavigate();
   const mutation = useCreateDiagnosticPackageMutation();
-  const servicesQuery = useDiagnosticServicesQuery({ isActive: true, pageSize: 200, sort: 'name' });
+  // The whole catalog, not one page of 100 — the lab list alone is well over 100 tests.
+  const labQuery = useAllDiagnosticServicesQuery('Laboratory');
+  const radiologyQuery = useAllDiagnosticServicesQuery('Radiology');
   const [firstServiceId, setFirstServiceId] = useState('');
   const [firstServiceError, setFirstServiceError] = useState<string | null>(null);
 
-  const serviceOptions = (servicesQuery.data?.items ?? []).map((service) => ({
+  const services = useMemo(
+    () => [...(labQuery.data ?? []), ...(radiologyQuery.data ?? [])].filter((service) => service.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    [labQuery.data, radiologyQuery.data],
+  );
+  const serviceOptions = services.map((service) => ({
     value: service.id,
-    label: `${service.name} — ₹${service.price.toLocaleString('en-IN')} (${service.serviceType})`,
+    label: `${service.name} — ${formatRupees(service.price)} (${service.serviceType === 'Laboratory' ? 'Lab test' : 'Radiology'})`,
     keywords: service.code,
   }));
+  const firstService = services.find((service) => service.id === firstServiceId);
+  const isLoading = labQuery.isPending || radiologyQuery.isPending;
 
   function handleSubmit(values: DiagnosticPackageFormValues) {
     if (!firstServiceId) {
@@ -58,20 +61,28 @@ export default function DiagnosticPackageCreatePage() {
       <div className="flex flex-1 flex-col">
         <PageBanner
           icon={PackageSearch}
-          title="New Package"
-          subtitle="Add a new bundled test package."
-          backTo="/diagnostics/lab/packages"
-          backLabel="Back to packages"
+          title="New lab package"
+          subtitle="A bundle of tests at one price — set the price and the profit, as in the tariff sheet."
+          backTo={priceListPath('packages')}
+          backLabel="Back to Price List"
         />
 
-        <div className="flex flex-1 flex-col gap-5 p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-3xl">
+        <div className="flex flex-1 flex-col gap-5 p-4 sm:p-6 lg:p-8">
+          <DiagnosticPackageForm
+            mode="create"
+            submitLabel="Create package"
+            isSubmitting={mutation.isPending}
+            apiError={mutation.error instanceof ApiError ? mutation.error : null}
+            testsRunningCost={firstService ? testsRunningCostTotal([firstService]) : undefined}
+            onSubmit={handleSubmit}
+          >
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">First Test</CardTitle>
+                <CardTitle className="text-base">First test</CardTitle>
+                <CardDescription>More tests can be added after the package is created.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-1.5">
-                <Label htmlFor="dpk-first-service">Test to include (more can be added after the package is created)</Label>
+                <Label htmlFor="dpk-first-service">Test to include</Label>
                 <SearchableSelect
                   id="dpk-first-service"
                   ariaLabel="Test to include"
@@ -81,22 +92,14 @@ export default function DiagnosticPackageCreatePage() {
                     setFirstServiceError(null);
                   }}
                   options={serviceOptions}
-                  placeholder={servicesQuery.isPending ? 'Loading tests…' : 'Select a test…'}
+                  placeholder={isLoading ? 'Loading tests…' : 'Select a test…'}
                   searchPlaceholder="Search tests…"
-                  disabled={servicesQuery.isPending}
+                  disabled={isLoading}
                 />
                 {firstServiceError && <p className="text-sm text-destructive">{firstServiceError}</p>}
               </CardContent>
             </Card>
-          </div>
-
-          <DiagnosticPackageForm
-            mode="create"
-            submitLabel="Create Package"
-            isSubmitting={mutation.isPending}
-            apiError={mutation.error instanceof ApiError ? mutation.error : null}
-            onSubmit={handleSubmit}
-          />
+          </DiagnosticPackageForm>
         </div>
       </div>
     </RequirePermission>

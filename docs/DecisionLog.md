@@ -37,6 +37,57 @@ _To be documented._
 
 ## Decisions
 
+### ADR-140: Lab, package and radiology prices follow the tariff sheet; Price List
+**Date:** 2026-11-19
+**Status:** Accepted (extends ADR-139)
+
+**Context**
+The hospital prices every service in one tariff sheet, with a different profit rule for each kind:
+- **Lab test:** price − running cost. For an outsourced test, the running cost is what the outside lab charges.
+- **Lab package:** the sheet gives the package price and the profit ("CBC – 300, Profit – 120 (40%)"). The running cost follows from them.
+- **Radiology:** price − doctor's share − running cost. The sheet also prices the same scan at other rates ("ANC - Growth Scan", "… - LH", "… - MR") and adds a bedside surcharge (+₹500 price, +₹200 doctor).
+- **Consultation:** hospital charge − doctor's charge.
+
+Profit % is always profit ÷ price.
+
+The app stored one Running Cost per service. For radiology that one figure held the doctor's share and the running cost added together, so neither could be seen. The service screen (Code/Name/Category/Type/Price/Running Cost + Outsourcing) showed no profit. The package Running Cost had to be worked out by hand from the sheet's profit. There was also no single place to see every rate.
+
+Consultation, injection and file billing already work, and the user asked to leave their behaviour and stored values alone.
+
+**Decision**
+- **Radiology tariff (Masters).** `DiagnosticService` gains three things. A Laboratory test takes none of them (validator and domain).
+  - `DoctorCharge`.
+  - A bedside add-on: `BedsidePrice` + `BedsideDoctorCharge`, both or neither.
+  - Named rate options (`diagnostic_service_rate_options`: name, price, doctor's share, running cost, sort order). Options are updated in place by id, so an option a bill line points at keeps its id. One left out of a save is removed.
+  - Migration: Masters `AddRadiologyDoctorShareRateOptions`.
+- **Bill lines (Billing).** A radiology line records `RateOptionId`, a `RateOptionName` snapshot and `IsBedside`. `UnitPrice` already includes the option's price and the bedside add-on. Only a Radiology line may carry these. Migration: Billing `AddInvoiceLineRateOptionBedside`.
+- **Costs in reports.** A radiology line's cost is the billed rate's doctor's share + running cost, plus the bedside doctor's share for a bedside scan. An option removed since falls back to the standard rate. The Radiology profit report shows the doctor's share and running cost as separate columns. OP Report and the Collection Summary keep one cost per line, unchanged in total.
+- **Service screen.** Two columns, with a live "Price and profit" card that works the profit out as numbers are typed. The fields follow the kind of service:
+  - **Lab test:** "In our lab / Outsourced". When outsourced, the running cost is labelled "Lab charges us". The screen also lists the packages the test is part of.
+  - **Radiology:** doctor's share, rate options and bedside add-on.
+- **Package screens.** The price-and-profit card asks "How is the profit set?":
+  - **Enter the profit as in the sheet:** CostPrice is saved as price − profit.
+  - **Use the tests' running costs:** CostPrice is saved as 0, which ADR-139 already reads as "use the tests' total".
+
+  The package page lists each test's own price and running cost, and what the patient saves against billing them one by one. The package and the "first test" pickers load the whole catalog, not one page of 100.
+- **Billing screen.** A radiology row offers a Rate (Standard or an option) and a Bedside tick when the service has them. The price follows.
+- **Price List** (`/diagnostics/price-list`, linked from Settings → Hospital Reference Data). Tabs: Lab tests, Outsourced tests, Lab packages, Radiology, Procedures, Injections & files, and Consultations (a consultant × type grid).
+  - Each tab has its own rule line, sections, search, and "Not costed" / "Profit below 25%" filters.
+  - Procedures, injections and files are read-only views of today's values. Their billing and data are unchanged.
+  - **Consultations tab:** Edit opens a dialog to set the doctor's types and charges, and shows what the hospital keeps. It saves through the consultant's own record, so consultation billing works as before. A doctor with no available days or visiting hours is sent to their page first, because the record needs those to save.
+  - **Replaces the old lists.** The Price List replaces the Diagnostic Services and Diagnostic Packages list pages:
+    - Their cards are gone from Hospital Reference Data, and their old URLs open the matching tab.
+    - Each tab has its own Add button.
+    - "Show inactive" brings back deactivated items.
+    - Delete moved to the item's own screen, with a nudge to use Inactive instead.
+    - Every Back link and save on those screens returns to the Price List.
+
+**Consequences**
+- Run Migrate (Masters, Billing) on each hospital after deploying.
+- Existing radiology Running Costs still hold doctor + running together until they're split. Report totals don't change either way. `scripts/data-fixes/2026-11-19-lhs-radiology-tariff-split.sql` splits LHS's from the sheet, sets the bedside add-on on ultrasound/Doppler scans, and merges the LH/MR services that have a standard sibling into rate options on it.
+- Procedures still keep doctor + running in one Cost field. Splitting them would need the same change on the Diagnostic Test master.
+- The 7 "Package"-category lab tests (ANC, Anemia, etc.) are still single tests. Converting them to packages needs their test lists entered.
+
 ### ADR-139: Lab and Radiology running costs reach OP Report; packages get their own Running Cost
 **Date:** 2026-11-18
 **Status:** Accepted (changes how ADR-069/ADR-124 profit figures find a cost)

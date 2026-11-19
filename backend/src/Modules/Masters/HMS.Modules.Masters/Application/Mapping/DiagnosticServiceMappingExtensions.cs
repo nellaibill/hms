@@ -17,6 +17,20 @@ internal static class DiagnosticServiceMappingExtensions
         Price = diagnosticService.Price,
         CostPrice = diagnosticService.CostPrice,
         IsActive = diagnosticService.IsActive,
+        DoctorCharge = diagnosticService.DoctorCharge,
+        BedsidePrice = diagnosticService.BedsidePrice,
+        BedsideDoctorCharge = diagnosticService.BedsideDoctorCharge,
+        RateOptions = diagnosticService.RateOptions
+            .OrderBy(option => option.SortOrder)
+            .Select(option => new DiagnosticServiceRateOptionDto
+            {
+                Id = option.Id,
+                Name = option.Name,
+                Price = option.Price,
+                DoctorCharge = option.DoctorCharge,
+                CostPrice = option.CostPrice,
+            })
+            .ToList(),
         CreatedAt = diagnosticService.CreatedAt,
         UpdatedAt = diagnosticService.UpdatedAt,
     };

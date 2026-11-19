@@ -62,6 +62,10 @@ export const consultationBillingSchema = z
 export const serviceBillingSchema = z
   .object({
     serviceId: z.string().default(''),
+    /** Radiology only (ADR-140): the rate option picked; '' bills the standard rate. */
+    rateOptionId: z.string().default(''),
+    /** Radiology only (ADR-140): a bedside scan — `charge` already includes the add-on. */
+    isBedside: z.boolean().default(false),
     consultantId: z.string().default(''),
     charge: z.number().min(0).default(0),
     quantity: z.number().int().min(1).default(1),
@@ -352,6 +356,8 @@ export const emptyConsultation: ConsultationBillingFormValues = {
 
 export const emptyServiceRow: ServiceBillingRowFormValues = {
   serviceId: '',
+  rateOptionId: '',
+  isBedside: false,
   consultantId: '',
   charge: 0,
   quantity: 1,

@@ -42,6 +42,12 @@ export interface BillingItem {
    * billingCalculations.ts's laboratoryRowToBillingItem for how a row's itemType/itemId splits
    * into serviceId/packageId. */
   packageId?: string;
+  /** Radiology only (ADR-140): the rate option billed — unset for the service's standard rate. */
+  rateOptionId?: string;
+  /** The rate option's name when billed (e.g. "LH"). */
+  rateOptionName?: string;
+  /** Radiology only (ADR-140): a bedside scan — unitPrice already includes the bedside add-on. */
+  isBedside?: boolean;
   quantity: number;
   unitPrice: number;
   discount: number;

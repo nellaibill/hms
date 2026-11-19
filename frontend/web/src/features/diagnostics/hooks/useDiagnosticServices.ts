@@ -8,6 +8,10 @@ export interface BillingServiceOption {
   id: string;
   name: string;
   price: number;
+  /** Radiology only (ADR-140): other rates for the same scan, billed instead of `price`. */
+  rateOptions?: { id: string; name: string; price: number }[];
+  /** Radiology only: what a bedside scan adds to the price; null when not offered. */
+  bedsidePrice?: number | null;
 }
 
 /** Walks every page at the server's maximum page size (PagedRequest.MaxPageSize = 100) rather
@@ -41,8 +45,14 @@ async function fetchAllDiagnosticServices(serviceType: DiagnosticServiceType): P
  * only change is swapping this hook in — ServiceBillingCard/ServiceBillingRow need no changes
  * at all.
  */
-export function useDiagnosticServices(serviceType: DiagnosticServiceType): { services: BillingServiceOption[]; isLoading: boolean } {
-  const { data, isLoading } = useQuery({
+/**
+ * Every service of one type, active and inactive, fetched in full (not one page of 100) and
+ * primed into the reference cache — for screens that need the whole DiagnosticService record
+ * (price, running cost, doctor's share, rate options), like the Price List and the package page.
+ * Shares its query (and cache) with useDiagnosticServices below.
+ */
+export function useAllDiagnosticServicesQuery(serviceType: DiagnosticServiceType) {
+  return useQuery({
     // 'with-inactive' (not the old 'all' key) so a browser holding the earlier active-only
     // list in its query cache doesn't reuse it.
     queryKey: ['diagnostics', 'services', 'with-inactive', serviceType],
@@ -56,12 +66,27 @@ export function useDiagnosticServices(serviceType: DiagnosticServiceType): { ser
       return all;
     },
   });
+}
+
+/**
+ * Radiology/Laboratory Billing's Service dropdown, backed by the typed DiagnosticService
+ * catalog. Active services only. A radiology service also carries its rate options and
+ * bedside add-on (ADR-140), which the billing row offers once the service is picked.
+ */
+export function useDiagnosticServices(serviceType: DiagnosticServiceType): { services: BillingServiceOption[]; isLoading: boolean } {
+  const { data, isLoading } = useAllDiagnosticServicesQuery(serviceType);
 
   const services = useMemo<BillingServiceOption[]>(
     () =>
       (data ?? [])
         .filter((service) => service.isActive)
-        .map((service) => ({ id: service.id, name: service.name, price: service.price }))
+        .map((service) => ({
+          id: service.id,
+          name: service.name,
+          price: service.price,
+          rateOptions: (service.rateOptions ?? []).map((option) => ({ id: option.id ?? '', name: option.name, price: option.price })).filter((option) => option.id),
+          bedsidePrice: service.bedsidePrice ?? null,
+        }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [data],
   );

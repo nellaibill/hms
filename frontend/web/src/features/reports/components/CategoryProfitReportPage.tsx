@@ -117,7 +117,7 @@ export function CategoryProfitReportPage({ billingType, title, description, icon
               <p className="text-sm text-muted-foreground">No billed services match the current filters.</p>
             ) : (
               <>
-                <ProfitTable rows={pagedRows.items} />
+                <ProfitTable rows={pagedRows.items} showCostSplit={billingType === 'Radiology'} />
                 <Pagination meta={pagedRows.meta} onPageChange={setPage} />
               </>
             )}
