@@ -37,6 +37,34 @@ _To be documented._
 
 ## Decisions
 
+### ADR-142: Day-wise Profit report and today's profit on the dashboard
+**Date:** 2026-11-19
+**Status:** Accepted
+
+**Context**
+No report showed the money for a day broken down by consultant and then by charge head. That breakdown is what the admin and the front desk check each day. Existing reports each cover part of it:
+- **OP Report:** every line, but with no grouping or subtotals.
+- **Consultant report:** consultations only.
+- **Collection Summary:** money taken per day and head, but no consultant level and no profit.
+- **Lab and Radiology reports:** one head each.
+
+**Decision**
+- **Day-wise Profit** is a new OP Accounts tab at `/finance/accounts/op/reports/day-wise`. It groups OP visit bills by day (oldest first), then by billed consultant (by name, "No consultant" last), then by charge head (Consultation, Laboratory, Radiology, Procedure, Injection, File…).
+- **Figures at every level:** lines, amount, discount, revenue, consultant share, running cost, hospital profit and profit %.
+  - The money is split as in OP Report (ADR-124/141). A consultation, procedure, injection or file line's cost is the consultant's share. A lab or radiology line's cost is running cost.
+  - A line with no cost set adds to "not costed" and is left out of the shares and profit.
+- **Layout:**
+  - A "By charge head" summary sits above the tree.
+  - Days and consultants fold open and shut. Buttons show days only, days plus consultants, or everything.
+- **Filters and export:** it uses the shared report filters (date range, billing type, department, consultant, search). CSV, Excel and PDF exports flatten the tree with a Level column.
+- **Visibility:** shown to everyone who can open OP Accounts, like OP Report. The Reports Visibility switch is hospital-wide, and the report is meant for the admin and the front desk alike.
+- **Dashboard:** a "Today's Profit" card on the executive dashboard (finance-billing.view) shows today's OP figures by charge head, with a link to the report.
+  - It fetches only today's bills, paged newest first and stopping at the first older one.
+  - It refreshes every minute.
+
+**Consequences**
+- Lines are dated by the bill's UTC day, the same as OP Report. A bill made between midnight and 05:30 IST counts on the previous day in both reports.
+
 ### ADR-141: OP Report and Collection Summary give lab and radiology lines no consultant's share
 **Date:** 2026-11-19
 **Status:** Accepted (changes ADR-124's rule for non-consultation lines, and ADR-125's split)

@@ -63,6 +63,7 @@ const CollectionSummaryReportPage = lazy(() => import('../pages/finance/Collecti
 const LaboratoryReportPage = lazy(() => import('../pages/finance/LaboratoryReportPage'));
 const RadiologyReportPage = lazy(() => import('../pages/finance/RadiologyReportPage'));
 const ConsultantReportPage = lazy(() => import('../pages/finance/ConsultantReportPage'));
+const DayWiseProfitReportPage = lazy(() => import('../pages/finance/DayWiseProfitReportPage'));
 const PharmacyFinanceReportPage = lazy(() => import('../pages/finance/PharmacyReportPage'));
 const HrHubPage = lazy(() => import('../pages/hr/HrHubPage'));
 const ShiftsListPage = lazy(() => import('../pages/hr/ShiftsListPage'));
@@ -419,6 +420,7 @@ const accountsTabPages: Record<AccountsTabId, React.ReactNode> = {
   discountRequests: <DiscountRequestsPage />,
   incomeExpense: <IncomeExpenseReportPage />,
   opReport: <ProfitReportPage />,
+  dayWiseProfit: <DayWiseProfitReportPage />,
   collectionSummary: <CollectionSummaryReportPage />,
   consultant: <ConsultantReportPage />,
   pharmacyBills: <PharmacyBillsPage />,
