@@ -17,6 +17,7 @@ export type AccountsTabId =
   | 'discountRequests'
   | 'incomeExpense'
   | 'opReport'
+  | 'dayWiseProfit'
   | 'collectionSummary'
   | 'consultant'
   | 'pharmacyBills'
@@ -79,6 +80,7 @@ export const ACCOUNTS_CATEGORIES: readonly AccountsCategoryConfig[] = [
       { id: 'discountRequests', path: 'discount-requests', label: 'Discount Requests', pendingCount: 'discount' },
       { id: 'incomeExpense', path: 'reports', label: 'Income & Expense', report: 'incomeExpense' },
       { id: 'opReport', path: 'reports/profit', label: 'OP Report' },
+      { id: 'dayWiseProfit', path: 'reports/day-wise', label: 'Day-wise Profit' },
       // Money received by payment date (ADR-125) — always shows, like OP Report.
       { id: 'collectionSummary', path: 'reports/collection', label: 'Collection Summary' },
       { id: 'consultant', path: 'reports/consultant', label: 'Consultant', report: 'consultant' },
