@@ -146,7 +146,7 @@ export default function LabPackageDetailPage() {
 
                 {pkg.items.length > 0 && (
                   <div className="overflow-x-auto rounded-md border border-border">
-                    <table className="w-full min-w-[460px] text-sm">
+                    <table className="w-full min-w-[380px] text-sm">
                       <thead>
                         <tr className="border-b border-border bg-muted/50 text-left text-xs text-muted-foreground">
                           <th scope="col" className="px-4 py-2 font-medium">Test</th>
