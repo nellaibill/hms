@@ -1,3 +1,4 @@
+using HMS.Modules.ActivityLog.Application;
 using FluentAssertions;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Application.Abstractions;
@@ -18,7 +19,7 @@ public class ConsultantServiceTests
 
     public ConsultantServiceTests()
     {
-        _sut = new ConsultantService(_repository, _departmentRepository, _consultationTypeRepository, _fileStorage);
+        _sut = new ConsultantService(_repository, _departmentRepository, _consultationTypeRepository, _fileStorage, Substitute.For<IActivityLogService>());
     }
 
     private static CreateConsultantRequest NewCreateRequest(int? priority = null) => new()

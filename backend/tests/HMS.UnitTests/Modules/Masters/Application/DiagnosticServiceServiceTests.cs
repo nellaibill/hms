@@ -1,3 +1,4 @@
+using HMS.Modules.ActivityLog.Application;
 using FluentAssertions;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Application.Abstractions;
@@ -21,7 +22,7 @@ public class DiagnosticServiceServiceTests
 
     public DiagnosticServiceServiceTests()
     {
-        _sut = new DiagnosticServiceService(_repository, _categoryService, _providerService);
+        _sut = new DiagnosticServiceService(_repository, _categoryService, _providerService, Substitute.For<IActivityLogService>());
 
         // Happy-path defaults: the category and provider both exist. Failure-path tests
         // override these per-test — mirrors PatientVisitServiceTests' identical setup.

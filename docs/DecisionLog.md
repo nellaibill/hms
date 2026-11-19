@@ -37,6 +37,39 @@ _To be documented._
 
 ## Decisions
 
+### ADR-143: Activity log names records and records price changes
+**Date:** 2026-11-19
+**Status:** Accepted
+
+**Context**
+The Activity Log's Entity column showed the first 8 characters of a record's id. With time-ordered ids, records created close together look alike ("01a1ef6f", "01a1ef8f"), so the column told nobody anything. Discount approvals printed a consultant's raw id. The Masters module logged nothing at all, so changes to prices and charges (lab tests, scans, packages, consultant charges, consultation types, procedures) left no trace.
+
+**Decision**
+- **Entity reference.** Log entries gain EntityReference (`activity_logs.entity_reference`, migration ActivityLog `AddActivityLogEntityReference`), which search also covers:
+  - Invoices and discount/revert requests: the invoice number.
+  - Patients: the UHID.
+  - Patient visits: the OP No.
+  - Roles and users: their name.
+  - Masters records: their name.
+- **The Entity column** shows "Type · reference", for example "Invoice · INV-2026-000288". The full id stays in the details drawer.
+- **Billing descriptions:**
+  - "Created invoice …" names the patient (with UHID) and the amount, and says "paid" when it was paid at the counter.
+  - Amounts read as ₹.
+  - A consultant's discount part is named by the consultant's name instead of their id.
+- **Masters logs** create, update and delete (Module "Masters") for:
+  - DiagnosticService.
+  - DiagnosticPackage, including tests added and removed.
+  - Consultant, with each consultation charge change by type name.
+  - ConsultationType.
+  - DiagnosticTest.
+
+  Each entry says what changed ("price ₹2,200 → ₹2,400"). The full before and after records go in Old/New values.
+
+**Consequences**
+- Run Migrate (ActivityLog) on each hospital.
+- Entries written before this change have no reference, so they show their type only.
+- Still not logged: Pharmacy, IPD, Laboratory workflow, HR and the other Masters lists.
+
 ### ADR-142: Day-wise Profit report and today's profit on the dashboard
 **Date:** 2026-11-19
 **Status:** Accepted

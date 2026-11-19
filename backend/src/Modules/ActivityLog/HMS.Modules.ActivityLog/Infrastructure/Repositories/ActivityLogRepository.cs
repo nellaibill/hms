@@ -81,6 +81,7 @@ internal class ActivityLogRepository : IActivityLogRepository
             entries = entries.Where(a =>
                 (a.Description != null && EF.Functions.ILike(a.Description, pattern, "\\"))
                 || (a.EntityId != null && EF.Functions.ILike(a.EntityId, pattern, "\\"))
+                || (a.EntityReference != null && EF.Functions.ILike(a.EntityReference, pattern, "\\"))
                 || (a.EntityType != null && EF.Functions.ILike(a.EntityType, pattern, "\\")));
         }
 

@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Masters.Application.Abstractions;
 using HMS.Modules.Masters.Application.Mapping;
 using HMS.Modules.Masters.Contracts;
@@ -33,8 +35,11 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
     private readonly IDiagnosticPackageRepository _repository;
     private readonly IDiagnosticServiceService _diagnosticServiceService;
 
-    public DiagnosticPackageService(IDiagnosticPackageRepository repository, IDiagnosticServiceService diagnosticServiceService)
+    private readonly IActivityLogService _activityLog;
+
+    public DiagnosticPackageService(IDiagnosticPackageRepository repository, IDiagnosticServiceService diagnosticServiceService, IActivityLogService activityLog)
     {
+        _activityLog = activityLog;
         _repository = repository;
         _diagnosticServiceService = diagnosticServiceService;
     }
@@ -67,7 +72,12 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
         await _repository.AddAsync(package, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<DiagnosticPackageResponse>.Success(package.ToResponse());
+        var created = package.ToResponse();
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Create, "DiagnosticPackage", created.Id, created.Name,
+            $"Added lab package '{created.Name}' — price {MastersActivityLog.Money(created.TotalPrice)}, running cost {PackageCost(created.CostPrice)}",
+            null, created, actorId), cancellationToken);
+
+        return Result<DiagnosticPackageResponse>.Success(created);
     }
 
     public async Task<Result<DiagnosticPackageResponse>> UpdateAsync(Guid id, UpdateDiagnosticPackageRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -83,10 +93,20 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
             return Result<DiagnosticPackageResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Package code '{request.Code}' is already in use.");
         }
 
+        var before = package.ToResponse();
         package.Update(request.Code, request.Name, request.Description, request.TotalPrice, request.CostPrice, request.IsActive, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<DiagnosticPackageResponse>.Success(package.ToResponse());
+        var after = package.ToResponse();
+        var changes = new List<string>();
+        if (before.TotalPrice != after.TotalPrice) changes.Add($"price {MastersActivityLog.Money(before.TotalPrice)} → {MastersActivityLog.Money(after.TotalPrice)}");
+        if (before.CostPrice != after.CostPrice) changes.Add($"running cost {PackageCost(before.CostPrice)} → {PackageCost(after.CostPrice)}");
+        if (before.Name != after.Name) changes.Add($"renamed from '{before.Name}'");
+        changes.Add(MastersActivityLog.Status(before.IsActive, after.IsActive));
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Update, "DiagnosticPackage", after.Id, after.Name,
+            $"Updated lab package '{after.Name}'" + MastersActivityLog.Join(changes), before, after, actorId), cancellationToken);
+
+        return Result<DiagnosticPackageResponse>.Success(after);
     }
 
     public async Task<Result<DiagnosticPackageResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -111,8 +131,11 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
             return Result.Failure(MastersErrorCodes.NotFound, $"Diagnostic package '{id}' was not found.");
         }
 
+        var deleted = package.ToResponse();
         package.SoftDelete(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Delete, "DiagnosticPackage", deleted.Id, deleted.Name,
+            $"Deleted lab package '{deleted.Name}'", deleted, null, actorId), cancellationToken);
 
         return Result.Success();
     }
@@ -125,7 +148,8 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
             return Result<DiagnosticPackageResponse>.Failure(MastersErrorCodes.NotFound, $"Diagnostic package '{id}' was not found.");
         }
 
-        if (!(await _diagnosticServiceService.GetByIdAsync(request.ServiceId, cancellationToken)).IsSuccess)
+        var service = await _diagnosticServiceService.GetByIdAsync(request.ServiceId, cancellationToken);
+        if (!service.IsSuccess)
         {
             return Result<DiagnosticPackageResponse>.Failure(MastersErrorCodes.InvalidPackageItemService, $"Diagnostic service '{request.ServiceId}' was not found.");
         }
@@ -133,7 +157,11 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
         package.AddItem(request.ServiceId, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<DiagnosticPackageResponse>.Success(package.ToResponse());
+        var after = package.ToResponse();
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Update, "DiagnosticPackage", after.Id, after.Name,
+            $"Added test '{service.Value!.Name}' to lab package '{after.Name}'", null, after, actorId), cancellationToken);
+
+        return Result<DiagnosticPackageResponse>.Success(after);
     }
 
     public async Task<Result<DiagnosticPackageResponse>> RemoveItemAsync(Guid id, Guid itemId, Guid? actorId, CancellationToken cancellationToken)
@@ -144,6 +172,7 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
             return Result<DiagnosticPackageResponse>.Failure(MastersErrorCodes.NotFound, $"Diagnostic package '{id}' was not found.");
         }
 
+        var removedServiceId = package.Items.FirstOrDefault(item => item.Id == itemId)?.ServiceId;
         if (!package.RemoveItem(itemId, actorId))
         {
             return Result<DiagnosticPackageResponse>.Failure(MastersErrorCodes.NotFound, $"Package item '{itemId}' was not found on this package.");
@@ -151,6 +180,17 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
 
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<DiagnosticPackageResponse>.Success(package.ToResponse());
+        var after = package.ToResponse();
+        var removed = removedServiceId is { } serviceId ? await _diagnosticServiceService.GetByIdAsync(serviceId, cancellationToken) : null;
+        var testName = removed is { IsSuccess: true } ? removed.Value!.Name : "a test";
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Update, "DiagnosticPackage", after.Id, after.Name,
+            $"Removed test '{testName}' from lab package '{after.Name}'", null, after, actorId), cancellationToken);
+
+        return Result<DiagnosticPackageResponse>.Success(after);
     }
+
+    /// <summary>A package's running cost for the log: its own figure, or "tests' total" for 0
+    /// (ADR-139/140).</summary>
+    private static string PackageCost(decimal costPrice)
+        => costPrice > 0 ? MastersActivityLog.Money(costPrice) : "tests' total";
 }

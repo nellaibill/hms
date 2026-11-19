@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Masters.Application.Abstractions;
 using HMS.Modules.Masters.Application.Mapping;
 using HMS.Modules.Masters.Contracts;
@@ -44,12 +46,16 @@ internal class ConsultantService : IConsultantService
     private readonly IConsultationTypeRepository _consultationTypeRepository;
     private readonly IConsultantFileStorage _fileStorage;
 
+    private readonly IActivityLogService _activityLog;
+
     public ConsultantService(
         IConsultantRepository repository,
         IDepartmentRepository departmentRepository,
         IConsultationTypeRepository consultationTypeRepository,
-        IConsultantFileStorage fileStorage)
+        IConsultantFileStorage fileStorage,
+        IActivityLogService activityLog)
     {
+        _activityLog = activityLog;
         _repository = repository;
         _departmentRepository = departmentRepository;
         _consultationTypeRepository = consultationTypeRepository;
@@ -89,7 +95,12 @@ internal class ConsultantService : IConsultantService
         await _repository.AddAsync(consultant, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<ConsultantResponse>.Success(consultant.ToResponse());
+        var created = consultant.ToResponse();
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Create, "Consultant", created.Id, created.Name,
+            $"Added consultant '{created.Name}'" + await DescribeChargeChangesAsync([], created.ConsultationTypeCharges, cancellationToken),
+            null, created, actorId), cancellationToken);
+
+        return Result<ConsultantResponse>.Success(created);
     }
 
     public async Task<Result<ConsultantResponse>> UpdateAsync(Guid id, UpdateConsultantRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -111,6 +122,7 @@ internal class ConsultantService : IConsultantService
             return Result<ConsultantResponse>.Failure(MastersErrorCodes.InvalidReference, $"Consultation type '{invalidConsultationTypeId}' was not found.");
         }
 
+        var before = consultant.ToResponse();
         consultant.Update(
             request.Name,
             request.DepartmentId,
@@ -126,7 +138,14 @@ internal class ConsultantService : IConsultantService
             request.VisitEndTime2);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<ConsultantResponse>.Success(consultant.ToResponse());
+        var after = consultant.ToResponse();
+        var changes = await DescribeChargeChangesAsync(before.ConsultationTypeCharges, after.ConsultationTypeCharges, cancellationToken);
+        var status = MastersActivityLog.Status(before.IsActive, after.IsActive);
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Update, "Consultant", after.Id, after.Name,
+            $"Updated consultant '{after.Name}'" + changes + (status.Length > 0 ? (changes.Length > 0 ? ", " : " — ") + status : string.Empty),
+            before, after, actorId), cancellationToken);
+
+        return Result<ConsultantResponse>.Success(after);
     }
 
     public async Task<Result<ConsultantResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -151,8 +170,11 @@ internal class ConsultantService : IConsultantService
             return Result.Failure(MastersErrorCodes.NotFound, $"Consultant '{id}' was not found.");
         }
 
+        var deleted = consultant.ToResponse();
         consultant.SoftDelete(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Delete, "Consultant", deleted.Id, deleted.Name,
+            $"Deleted consultant '{deleted.Name}'", deleted, null, actorId), cancellationToken);
 
         return Result.Success();
     }
@@ -200,6 +222,33 @@ internal class ConsultantService : IConsultantService
         }
 
         return Result<ConsultantResponse>.Success(consultant.ToResponse());
+    }
+
+    /// <summary>
+    /// " — In-house Regular ₹200 → ₹250, Visiting Priority added (₹300), Review removed" — how a
+    /// consultant's consultation types and charges changed, by type name.
+    /// </summary>
+    private async Task<string> DescribeChargeChangesAsync(
+        IReadOnlyList<ConsultationTypeChargeDto> before,
+        IReadOnlyList<ConsultationTypeChargeDto> after,
+        CancellationToken cancellationToken)
+    {
+        var parts = new List<string>();
+        var beforeById = before.ToDictionary(c => c.ConsultationTypeId, c => c.ConsultantCharge);
+        var afterById = after.ToDictionary(c => c.ConsultationTypeId, c => c.ConsultantCharge);
+        foreach (var typeId in beforeById.Keys.Union(afterById.Keys))
+        {
+            var had = beforeById.TryGetValue(typeId, out var oldCharge);
+            var has = afterById.TryGetValue(typeId, out var newCharge);
+            if (had && has && oldCharge == newCharge) continue;
+
+            var type = await _consultationTypeRepository.GetByIdAsync(typeId, cancellationToken);
+            var name = type?.Name ?? "a consultation type";
+            parts.Add(!had ? $"{name} added ({MastersActivityLog.Money(newCharge)})"
+                : !has ? $"{name} removed"
+                : $"{name} {MastersActivityLog.Money(oldCharge)} → {MastersActivityLog.Money(newCharge)}");
+        }
+        return MastersActivityLog.Join(parts);
     }
 
     private async Task<Guid?> FindInvalidConsultationTypeIdAsync(IReadOnlyList<ConsultationTypeChargeDto> consultationTypeCharges, CancellationToken cancellationToken)

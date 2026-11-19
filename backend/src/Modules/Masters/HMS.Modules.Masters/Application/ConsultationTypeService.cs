@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Masters.Application.Abstractions;
 using HMS.Modules.Masters.Application.Mapping;
 using HMS.Modules.Masters.Contracts;
@@ -28,8 +30,11 @@ internal class ConsultationTypeService : IConsultationTypeService
 {
     private readonly IConsultationTypeRepository _repository;
 
-    public ConsultationTypeService(IConsultationTypeRepository repository)
+    private readonly IActivityLogService _activityLog;
+
+    public ConsultationTypeService(IConsultationTypeRepository repository, IActivityLogService activityLog)
     {
+        _activityLog = activityLog;
         _repository = repository;
     }
 
@@ -45,7 +50,11 @@ internal class ConsultationTypeService : IConsultationTypeService
         await _repository.AddAsync(consultationType, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<ConsultationTypeResponse>.Success(consultationType.ToResponse());
+        var created = consultationType.ToResponse();
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Create, "ConsultationType", created.Id, created.Name,
+            $"Added consultation type '{created.Name}' — hospital charge {MastersActivityLog.Money(created.Amount)}", null, created, actorId), cancellationToken);
+
+        return Result<ConsultationTypeResponse>.Success(created);
     }
 
     public async Task<Result<ConsultationTypeResponse>> UpdateAsync(Guid id, UpdateConsultationTypeRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -63,10 +72,20 @@ internal class ConsultationTypeService : IConsultationTypeService
             return Result<ConsultationTypeResponse>.Failure(MastersErrorCodes.DuplicateCode, $"Consultation type name '{request.Name}' is already in use.");
         }
 
+        var before = consultationType.ToResponse();
         consultationType.Update(request.Name, request.ShortName, request.Amount, request.IsActive, actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<ConsultationTypeResponse>.Success(consultationType.ToResponse());
+        var after = consultationType.ToResponse();
+        var changes = new List<string>();
+        var amount = MastersActivityLog.Changes(("hospital charge", before.Amount, after.Amount));
+        if (amount.Length > 0) changes.Add(amount[3..]);
+        if (before.Name != after.Name) changes.Add($"renamed from '{before.Name}'");
+        changes.Add(MastersActivityLog.Status(before.IsActive, after.IsActive));
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Update, "ConsultationType", after.Id, after.Name,
+            $"Updated consultation type '{after.Name}'" + MastersActivityLog.Join(changes), before, after, actorId), cancellationToken);
+
+        return Result<ConsultationTypeResponse>.Success(after);
     }
 
     public async Task<Result<ConsultationTypeResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -91,8 +110,11 @@ internal class ConsultationTypeService : IConsultationTypeService
             return Result.Failure(MastersErrorCodes.NotFound, $"Consultation type '{id}' was not found.");
         }
 
+        var deleted = consultationType.ToResponse();
         consultationType.SoftDelete(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Delete, "ConsultationType", deleted.Id, deleted.Name,
+            $"Deleted consultation type '{deleted.Name}'", deleted, null, actorId), cancellationToken);
 
         return Result.Success();
     }

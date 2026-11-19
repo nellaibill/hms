@@ -162,7 +162,7 @@ public class OpdDayCloseServiceTests
                 r.EntityType == "PatientVisit"
                 && r.EntityId == visit.Id.ToString()
                 && r.UserId == null
-                && r.Description.Contains("was Waiting")),
+                && r.Description.Contains("was waiting")),
             Arg.Any<CancellationToken>());
     }
 }
