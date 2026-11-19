@@ -60,6 +60,13 @@ internal class CreateInvoiceLineItemRequestValidator : AbstractValidator<CreateI
         RuleFor(x => x.DepartmentId).MaximumLength(100);
         RuleFor(x => x.ConsultantId).MaximumLength(100);
         RuleFor(x => x.ServiceId).MaximumLength(100);
+        RuleFor(x => x.RateOptionName).MaximumLength(40);
+
+        // ADR-140: rate options and the bedside add-on are Radiology's alone.
+        RuleFor(x => x.BillingType)
+            .Equal(BillingType.Radiology)
+            .When(x => x.RateOptionId.HasValue || x.IsBedside)
+            .WithMessage("Only a radiology line can have a rate option or be done at the bedside.");
 
         // Mirrors billingValidation.ts's consultationBillingSchema/serviceBillingSchema:
         // "Discount cannot exceed the charge".

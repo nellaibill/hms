@@ -420,7 +420,10 @@ internal class InvoiceService : IInvoiceService
                 i.UnitPrice,
                 Discount: 0m,
                 DiscountApproved: false,
-                DiscountApprovedBy: null))
+                DiscountApprovedBy: null,
+                RateOptionId: i.RateOptionId,
+                RateOptionName: i.RateOptionName,
+                IsBedside: i.IsBedside))
             .ToList();
 
         var invoice = Invoice.Create(

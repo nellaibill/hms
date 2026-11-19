@@ -1181,6 +1181,14 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<decimal?>("BedsideDoctorCharge")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("bedside_doctor_charge");
+
+                    b.Property<decimal?>("BedsidePrice")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("bedside_price");
+
                     b.Property<Guid>("CategoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("category_id");
@@ -1212,6 +1220,12 @@ namespace HMS.Database.Migrations.Masters.Migrations
                     b.Property<Guid?>("DeletedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
+
+                    b.Property<decimal>("DoctorCharge")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(10,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("doctor_charge");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -1277,6 +1291,47 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("diagnostic_services", "masters");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Masters.Domain.DiagnosticServiceRateOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("CostPrice")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("cost_price");
+
+                    b.Property<Guid>("DiagnosticServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("diagnostic_service_id");
+
+                    b.Property<decimal>("DoctorCharge")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("doctor_charge");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id")
+                        .HasName("pk_diagnostic_service_rate_options");
+
+                    b.HasIndex("DiagnosticServiceId")
+                        .HasDatabaseName("ix_diagnostic_service_rate_options_diagnostic_service_id");
+
+                    b.ToTable("diagnostic_service_rate_options", "masters");
                 });
 
             modelBuilder.Entity("HMS.Modules.Masters.Domain.DiagnosticTest", b =>
@@ -7724,6 +7779,16 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasConstraintName("fk_diagnostic_package_items_package_id");
                 });
 
+            modelBuilder.Entity("HMS.Modules.Masters.Domain.DiagnosticServiceRateOption", b =>
+                {
+                    b.HasOne("HMS.Modules.Masters.Domain.DiagnosticService", null)
+                        .WithMany("RateOptions")
+                        .HasForeignKey("DiagnosticServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_diagnostic_service_rate_options_diagnostic_service_id");
+                });
+
             modelBuilder.Entity("HMS.Modules.Masters.Domain.District", b =>
                 {
                     b.HasOne("HMS.Modules.Masters.Domain.State", null)
@@ -7813,6 +7878,11 @@ namespace HMS.Database.Migrations.Masters.Migrations
             modelBuilder.Entity("HMS.Modules.Masters.Domain.DiagnosticPackage", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("HMS.Modules.Masters.Domain.DiagnosticService", b =>
+                {
+                    b.Navigation("RateOptions");
                 });
 #pragma warning restore 612, 618
         }

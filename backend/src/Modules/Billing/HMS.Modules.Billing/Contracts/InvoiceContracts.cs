@@ -18,6 +18,17 @@ public record CreateInvoiceLineItemRequest
     /// null for a plain service line. See Domain/InvoiceLineItem.cs.</summary>
     public Guid? PackageId { get; init; }
 
+    /// <summary>Radiology only (ADR-140): the rate option billed, null for the standard rate.
+    /// App-level reference into Masters' DiagnosticServiceRateOption, not validated here.</summary>
+    public Guid? RateOptionId { get; init; }
+
+    /// <summary>The rate option's name when billed (e.g. "LH").</summary>
+    public string? RateOptionName { get; init; }
+
+    /// <summary>Radiology only (ADR-140): a bedside scan. <see cref="UnitPrice"/> already
+    /// includes the bedside add-on.</summary>
+    public bool IsBedside { get; init; }
+
     public int Quantity { get; init; } = 1;
     public decimal UnitPrice { get; init; }
 
@@ -116,6 +127,9 @@ public record InvoiceLineItemResponse
 
     public string? ServiceId { get; init; }
     public Guid? PackageId { get; init; }
+    public Guid? RateOptionId { get; init; }
+    public string? RateOptionName { get; init; }
+    public bool IsBedside { get; init; }
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal Discount { get; init; }

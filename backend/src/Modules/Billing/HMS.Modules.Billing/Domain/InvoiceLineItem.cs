@@ -38,6 +38,20 @@ internal class InvoiceLineItem : Entity
     /// validation at the Billing layer — Billing doesn't reach into Masters for this.</summary>
     public Guid? PackageId { get; private set; }
 
+    /// <summary>The Radiology rate option billed (ADR-140) — an app-level reference into
+    /// Masters' DiagnosticServiceRateOption, null for the service's standard rate. Reports read
+    /// that option's doctor's share and running cost instead of the service's own.</summary>
+    public Guid? RateOptionId { get; private set; }
+
+    /// <summary>The option's name when billed (e.g. "LH"), kept so the bill still reads right if
+    /// the option is renamed or removed later.</summary>
+    public string? RateOptionName { get; private set; }
+
+    /// <summary>True when the scan was done at the bedside (ADR-140): <see cref="UnitPrice"/>
+    /// already includes the service's bedside add-on, and reports add its bedside doctor's
+    /// share to the line's cost.</summary>
+    public bool IsBedside { get; private set; }
+
     public int Quantity { get; private set; }
     public decimal UnitPrice { get; private set; }
     public decimal Discount { get; private set; }
@@ -102,9 +116,12 @@ internal class InvoiceLineItem : Entity
         decimal discount,
         bool discountApproved,
         string? discountApprovedBy,
-        Guid? createdBy)
+        Guid? createdBy,
+        Guid? rateOptionId = null,
+        string? rateOptionName = null,
+        bool isBedside = false)
     {
-        return new InvoiceLineItem(
+        var item = new InvoiceLineItem(
             Guid.CreateVersion7(),
             invoiceId,
             billingType,
@@ -118,6 +135,10 @@ internal class InvoiceLineItem : Entity
             discountApproved,
             string.IsNullOrWhiteSpace(discountApprovedBy) ? null : discountApprovedBy.Trim(),
             createdBy);
+        item.RateOptionId = rateOptionId;
+        item.RateOptionName = string.IsNullOrWhiteSpace(rateOptionName) ? null : rateOptionName.Trim();
+        item.IsBedside = isBedside;
+        return item;
     }
 
     /// <summary>Puts a Super Admin-approved discount on this line (ADR-109) and recomputes

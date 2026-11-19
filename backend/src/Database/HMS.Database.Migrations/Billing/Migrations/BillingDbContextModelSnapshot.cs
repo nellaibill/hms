@@ -606,6 +606,12 @@ namespace HMS.Database.Migrations.Billing.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("invoice_id");
 
+                    b.Property<bool>("IsBedside")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_bedside");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -625,6 +631,15 @@ namespace HMS.Database.Migrations.Billing.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("integer")
                         .HasColumnName("quantity");
+
+                    b.Property<Guid?>("RateOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rate_option_id");
+
+                    b.Property<string>("RateOptionName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("rate_option_name");
 
                     b.Property<string>("ServiceId")
                         .HasMaxLength(100)
