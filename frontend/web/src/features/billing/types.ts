@@ -48,6 +48,13 @@ export interface BillingItem {
   rateOptionName?: string;
   /** Radiology only (ADR-140): a bedside scan — unitPrice already includes the bedside add-on. */
   isBedside?: boolean;
+  /** A bedside scan's add-on as charged (ADR-144) — the service's bedside price unless the
+   * counter changed it. */
+  bedsideAmount?: number;
+  /** The consultant's part of bedsideAmount (ADR-144): the amount less the hospital's share in
+   * Masters. Unset on bedside lines billed before ADR-144 — reports then use the service's
+   * bedside doctor's share. */
+  bedsideDoctorCharge?: number;
   quantity: number;
   unitPrice: number;
   discount: number;

@@ -15,6 +15,9 @@ export interface CreateInvoiceLineItemRequest {
   rateOptionName?: string | null;
   /** Radiology only (ADR-140): a bedside scan — unitPrice already includes the bedside add-on. */
   isBedside?: boolean;
+  /** A bedside scan's add-on as charged (ADR-144), part of unitPrice. Null bills the service's
+   * bedside price. Never below the hospital's share in Masters; the rest is the consultant's. */
+  bedsideAmount?: number | null;
   quantity: number;
   unitPrice: number;
   /** The discount asked for on this line (ADR-109). The server decides whether it applies: a
@@ -82,6 +85,10 @@ export interface InvoiceLineItemResponse {
   rateOptionId?: string | null;
   rateOptionName?: string | null;
   isBedside?: boolean;
+  /** ADR-144: the bedside add-on charged and the consultant's part of it — null unless isBedside;
+   * bedsideDoctorCharge is also null on bedside lines billed before ADR-144. */
+  bedsideAmount?: number | null;
+  bedsideDoctorCharge?: number | null;
   quantity: number;
   unitPrice: number;
   discount: number;

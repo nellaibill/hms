@@ -52,6 +52,17 @@ internal class InvoiceLineItem : Entity
     /// share to the line's cost.</summary>
     public bool IsBedside { get; private set; }
 
+    /// <summary>A bedside scan's add-on as charged (ADR-144), already inside
+    /// <see cref="UnitPrice"/>. It starts at the service's bedside price but the counter may
+    /// raise it. Null on every line that isn't a bedside scan.</summary>
+    public decimal? BedsideAmount { get; private set; }
+
+    /// <summary>The consultant's part of <see cref="BedsideAmount"/> (ADR-144): the amount less
+    /// the hospital's bedside share in Masters, worked out when the line was billed. Null on a
+    /// bedside line billed before ADR-144 — reports then use the service's bedside doctor's
+    /// share from Masters, as before.</summary>
+    public decimal? BedsideDoctorCharge { get; private set; }
+
     public int Quantity { get; private set; }
     public decimal UnitPrice { get; private set; }
     public decimal Discount { get; private set; }
@@ -119,7 +130,9 @@ internal class InvoiceLineItem : Entity
         Guid? createdBy,
         Guid? rateOptionId = null,
         string? rateOptionName = null,
-        bool isBedside = false)
+        bool isBedside = false,
+        decimal? bedsideAmount = null,
+        decimal? bedsideDoctorCharge = null)
     {
         var item = new InvoiceLineItem(
             Guid.CreateVersion7(),
@@ -138,6 +151,8 @@ internal class InvoiceLineItem : Entity
         item.RateOptionId = rateOptionId;
         item.RateOptionName = string.IsNullOrWhiteSpace(rateOptionName) ? null : rateOptionName.Trim();
         item.IsBedside = isBedside;
+        item.BedsideAmount = isBedside ? bedsideAmount : null;
+        item.BedsideDoctorCharge = isBedside ? bedsideDoctorCharge : null;
         return item;
     }
 
