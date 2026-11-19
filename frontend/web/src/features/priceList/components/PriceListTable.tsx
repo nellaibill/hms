@@ -95,9 +95,10 @@ function PriceListRow({ row, variant }: { row: PriceRow; variant: PriceTableVari
   const numberCell = 'whitespace-nowrap px-4 py-2.5 text-right tabular-nums';
 
   return (
-    <tr className="border-b border-border last:border-0 hover:bg-muted/30">
+    <tr className={cn('border-b border-border last:border-0 hover:bg-muted/30', !row.isActive && 'text-muted-foreground')}>
       <th scope="row" className="px-4 py-2.5 text-left font-medium">
         {row.name}
+        {!row.isActive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Inactive</span>}
       </th>
 
       {(variant === 'lab' || variant === 'packages') && (

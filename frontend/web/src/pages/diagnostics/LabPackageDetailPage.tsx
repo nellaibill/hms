@@ -1,6 +1,6 @@
-import { Loader2, PackageSearch, Plus, X } from 'lucide-react';
+import { Loader2, PackageSearch, Plus, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useAuth } from '@/features/auth/AuthContext';
 import {
+  ConfirmDeleteDialog,
   DiagnosticPackageFormDialog,
   formatRupees,
   PackagePriceCard,
   testsRunningCostTotal,
   useAddPackageItemMutation,
   useAllDiagnosticServicesQuery,
+  useDeleteDiagnosticPackageMutation,
   useDiagnosticPackageQuery,
   useRemovePackageItemMutation,
 } from '@/features/diagnostics';
+import { priceListPath } from '@/features/priceList/priceListRows';
 
 /**
  * A lab package's page (ADR-140): its details (edited in DiagnosticPackageFormDialog), the tests
@@ -27,6 +30,10 @@ export default function LabPackageDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('diagnostics.edit');
+  const canDelete = hasPermission('diagnostics.delete');
+  const navigate = useNavigate();
+  const deleteMutation = useDeleteDiagnosticPackageMutation();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const { data: pkg, isPending, isError } = useDiagnosticPackageQuery(id);
   // The whole catalog (not one page of 100), so every included test resolves to its name.
@@ -95,7 +102,21 @@ export default function LabPackageDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageBanner icon={PackageSearch} title={pkg.name} subtitle={`Lab package · ${pkg.code}`} backTo="/diagnostics/lab/packages" backLabel="Back to packages" />
+      <PageBanner
+        icon={PackageSearch}
+        title={pkg.name}
+        subtitle={`Lab package · ${pkg.code}`}
+        backTo={priceListPath('packages')}
+        backLabel="Back to Price List"
+        rightActions={
+          canDelete ? (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfirmingDelete(true)}>
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <div className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -229,6 +250,19 @@ export default function LabPackageDetailPage() {
       </div>
 
       {showEditDialog && <DiagnosticPackageFormDialog pkg={pkg} onClose={() => setShowEditDialog(false)} />}
+
+      {confirmingDelete && (
+        <ConfirmDeleteDialog
+          title={`Delete ${pkg.name}?`}
+          isPending={deleteMutation.isPending}
+          errorMessage={deleteMutation.error instanceof Error ? deleteMutation.error.message : null}
+          onConfirm={() => deleteMutation.mutate(pkg.id, { onSuccess: () => navigate(priceListPath('packages')) })}
+          onCancel={() => setConfirmingDelete(false)}
+        >
+          It's removed from the Price List and from billing, and old bills that used it lose its name. To stop billing it but keep it on
+          record, switch its Status to Inactive in Edit details instead.
+        </ConfirmDeleteDialog>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { RequirePermission } from '@/features/auth/RequirePermission';
 import { DiagnosticPackageForm, formatRupees, testsRunningCostTotal, useAllDiagnosticServicesQuery, useCreateDiagnosticPackageMutation } from '@/features/diagnostics';
+import { priceListPath } from '@/features/priceList/priceListRows';
 
 /**
  * A package can't be created with zero tests (CreateDiagnosticPackageRequestValidator), so this
@@ -62,8 +63,8 @@ export default function DiagnosticPackageCreatePage() {
           icon={PackageSearch}
           title="New lab package"
           subtitle="A bundle of tests at one price — set the price and the profit, as in the tariff sheet."
-          backTo="/diagnostics/lab/packages"
-          backLabel="Back to packages"
+          backTo={priceListPath('packages')}
+          backLabel="Back to Price List"
         />
 
         <div className="flex flex-1 flex-col gap-5 p-4 sm:p-6 lg:p-8">

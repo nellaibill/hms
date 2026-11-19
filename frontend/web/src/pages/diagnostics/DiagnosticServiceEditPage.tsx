@@ -1,18 +1,23 @@
 import { ApiError, type DiagnosticServiceFormValues } from '@hms/shared';
-import { Loader2, Settings2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { Loader2, Settings2, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/AuthContext';
 import { RequirePermission } from '@/features/auth/RequirePermission';
 import {
+  ConfirmDeleteDialog,
   DiagnosticServiceForm,
   toDiagnosticServiceFormValues,
   toDiagnosticServiceRequest,
   useDiagnosticServiceQuery,
   usePrimeDiagnosticPackageCache,
+  useDeleteDiagnosticServiceMutation,
   useUpdateDiagnosticServiceMutation,
   type PackageUsingService,
 } from '@/features/diagnostics';
+import { priceListPath, priceListTabFor } from '@/features/priceList/priceListRows';
 
 export default function DiagnosticServiceEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +25,9 @@ export default function DiagnosticServiceEditPage() {
   const { data: service, isPending, isError } = useDiagnosticServiceQuery(id);
   const packages = usePrimeDiagnosticPackageCache();
   const mutation = useUpdateDiagnosticServiceMutation();
+  const deleteMutation = useDeleteDiagnosticServiceMutation();
+  const { hasPermission } = useAuth();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // ADR-140: a lab test's edit screen lists the packages it's part of.
   const packagesUsingThis = useMemo<PackageUsingService[] | undefined>(() => {
@@ -49,8 +57,14 @@ export default function DiagnosticServiceEditPage() {
     );
   }
 
+  const backTo = priceListPath(priceListTabFor(service));
+
   function handleSubmit(values: DiagnosticServiceFormValues) {
-    mutation.mutate({ id: id as string, request: toDiagnosticServiceRequest(values) }, { onSuccess: () => navigate('/diagnostics/lab/services') });
+    mutation.mutate({ id: id as string, request: toDiagnosticServiceRequest(values) }, { onSuccess: () => navigate(priceListPath(priceListTabFor(values))) });
+  }
+
+  function handleDelete() {
+    deleteMutation.mutate(id as string, { onSuccess: () => navigate(backTo) });
   }
 
   const kind = service.serviceType === 'Radiology' ? 'Radiology' : service.isOutsourced ? 'Lab test · outsourced' : 'Lab test';
@@ -58,7 +72,21 @@ export default function DiagnosticServiceEditPage() {
   return (
     <RequirePermission permission="diagnostics.edit">
       <div className="flex flex-1 flex-col">
-        <PageBanner icon={Settings2} title={service.name} subtitle={`${kind} — update its price and costs.`} backTo="/diagnostics/lab/services" backLabel="Back to services" />
+        <PageBanner
+          icon={Settings2}
+          title={service.name}
+          subtitle={`${kind} — update its price and costs.`}
+          backTo={backTo}
+          backLabel="Back to Price List"
+          rightActions={
+            hasPermission('diagnostics.delete') ? (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfirmingDelete(true)}>
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            ) : undefined
+          }
+        />
 
         <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
           <DiagnosticServiceForm
@@ -71,6 +99,19 @@ export default function DiagnosticServiceEditPage() {
             onSubmit={handleSubmit}
           />
         </div>
+
+        {confirmingDelete && (
+          <ConfirmDeleteDialog
+            title={`Delete ${service.name}?`}
+            isPending={deleteMutation.isPending}
+            errorMessage={deleteMutation.error instanceof Error ? deleteMutation.error.message : null}
+            onConfirm={handleDelete}
+            onCancel={() => setConfirmingDelete(false)}
+          >
+            It's removed from the Price List and from billing, and old bills that used it lose its name. To stop billing it but keep it on
+            record, switch its Status to Inactive instead.
+          </ConfirmDeleteDialog>
+        )}
       </div>
     </RequirePermission>
   );

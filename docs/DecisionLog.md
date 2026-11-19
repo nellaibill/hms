@@ -73,7 +73,14 @@ Consultation, injection and file billing already work, and the user asked to lea
 - **Billing screen.** A radiology row offers a Rate (Standard or an option) and a Bedside tick when the service has them. The price follows.
 - **Price List** (`/diagnostics/price-list`, linked from Settings → Hospital Reference Data). Tabs: Lab tests, Outsourced tests, Lab packages, Radiology, Procedures, Injections & files, and Consultations (a consultant × type grid).
   - Each tab has its own rule line, sections, search, and "Not costed" / "Profit below 25%" filters.
-  - Procedures, injections, files and consultations are read-only views of today's values. Their billing and data are unchanged.
+  - Procedures, injections and files are read-only views of today's values. Their billing and data are unchanged.
+  - **Consultations tab:** Edit opens a dialog to set the doctor's types and charges, and shows what the hospital keeps. It saves through the consultant's own record, so consultation billing works as before. A doctor with no available days or visiting hours is sent to their page first, because the record needs those to save.
+  - **Replaces the old lists.** The Price List replaces the Diagnostic Services and Diagnostic Packages list pages:
+    - Their cards are gone from Hospital Reference Data, and their old URLs open the matching tab.
+    - Each tab has its own Add button.
+    - "Show inactive" brings back deactivated items.
+    - Delete moved to the item's own screen, with a nudge to use Inactive instead.
+    - Every Back link and save on those screens returns to the Price List.
 
 **Consequences**
 - Run Migrate (Masters, Billing) on each hospital after deploying.

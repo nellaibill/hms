@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/features/diagnostics/tariff';
 import type { ConsultantRow, ConsultationTypeColumn } from '../priceListRows';
 
@@ -7,6 +8,8 @@ interface ConsultationRatesGridProps {
   columns: ConsultationTypeColumn[];
   rows: ConsultantRow[];
   canEdit: boolean;
+  /** Opens the charges dialog for a consultant (shown when canEdit). */
+  onEdit?: (consultantId: string) => void;
 }
 
 /**
@@ -14,7 +17,8 @@ interface ConsultationRatesGridProps {
  * type — the doctor's charge, then what the hospital keeps (hospital charge − doctor's charge)
  * and its share of the hospital charge. Read-only; charges are edited on the consultant's page.
  */
-export function ConsultationRatesGrid({ columns, rows, canEdit }: ConsultationRatesGridProps) {
+export function ConsultationRatesGrid({ columns, rows, canEdit, onEdit }: ConsultationRatesGridProps) {
+  const showEdit = canEdit && Boolean(onEdit);
   if (rows.length === 0) {
     return <p className="px-4 py-10 text-center text-sm text-muted-foreground">No active consultants.</p>;
   }
@@ -36,13 +40,18 @@ export function ConsultationRatesGrid({ columns, rows, canEdit }: ConsultationRa
                   <span className="mt-0.5 block font-normal text-muted-foreground">{column.amount !== null ? formatRupees(column.amount) : 'No fixed rate'}</span>
                 </th>
               ))}
+              {showEdit && (
+                <th scope="col" className="px-3 py-2.5">
+                  <span className="sr-only">Edit</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {groups.map(({ group, rows: groupRows }) => (
               <Fragment key={group}>
                 <tr className="bg-amber-50 dark:bg-amber-950/30">
-                  <th scope="colgroup" colSpan={columns.length + 1} className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                  <th scope="colgroup" colSpan={columns.length + (showEdit ? 2 : 1)} className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200">
                     {group} · {groupRows.length}
                   </th>
                 </tr>
@@ -83,6 +92,13 @@ export function ConsultationRatesGrid({ columns, rows, canEdit }: ConsultationRa
                         )}
                       </td>
                     ))}
+                    {showEdit && (
+                      <td className="px-3 py-2">
+                        <Button type="button" variant="outline" size="sm" aria-label={`Edit charges for ${row.name}`} onClick={() => onEdit?.(row.id)}>
+                          Edit
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </Fragment>

@@ -10,9 +10,24 @@ import { computeProfit, isLowProfit, packageBreakdown, packageProfitMode, testsR
 
 export type PriceListTab = 'lab' | 'outsourced' | 'packages' | 'radiology' | 'procedures' | 'injections' | 'consultations';
 
+export const PRICE_LIST_TABS: PriceListTab[] = ['lab', 'outsourced', 'packages', 'radiology', 'procedures', 'injections', 'consultations'];
+
+/** The Price List, opened on one tab — where the lab/radiology screens' Back links and saves go. */
+export function priceListPath(tab: PriceListTab = 'lab'): string {
+  return `/diagnostics/price-list?tab=${tab}`;
+}
+
+/** The Price List tab a lab test or radiology service is listed on. */
+export function priceListTabFor(service: { serviceType: string; isOutsourced: boolean }): PriceListTab {
+  if (service.serviceType === 'Radiology') return 'radiology';
+  return service.isOutsourced ? 'outsourced' : 'lab';
+}
+
 export interface PriceRow {
   id: string;
   name: string;
+  /** False for a deactivated item — shown only with "Show inactive". */
+  isActive: boolean;
   /** The sheet's section (Haematology, Biochemistry, Ultrasound…), for grouping and filtering. */
   section: string;
   /** Where Edit goes; undefined when the row can't be edited from here. */
@@ -43,7 +58,7 @@ function bySectionThenName(a: PriceRow, b: PriceRow): number {
 }
 
 /** In-house lab tests, with the active packages each one is part of. */
-export function buildLabRows(services: DiagnosticService[], categoryNames: Map<string, string>, packages: DiagnosticPackage[]): PriceRow[] {
+export function buildLabRows(services: DiagnosticService[], categoryNames: Map<string, string>, packages: DiagnosticPackage[], includeInactive = false): PriceRow[] {
   const packagesByService = new Map<string, string[]>();
   for (const pkg of packages) {
     if (!pkg.isActive) continue;
@@ -54,10 +69,11 @@ export function buildLabRows(services: DiagnosticService[], categoryNames: Map<s
     }
   }
   return services
-    .filter((service) => service.isActive && service.serviceType === 'Laboratory' && !service.isOutsourced)
+    .filter((service) => (includeInactive || service.isActive) && service.serviceType === 'Laboratory' && !service.isOutsourced)
     .map((service) => ({
       id: service.id,
       name: service.name,
+      isActive: service.isActive,
       section: categoryNames.get(service.categoryId) ?? NO_SECTION,
       editPath: `/diagnostics/lab/services/${service.id}/edit`,
       breakdown: computeProfit(service.price, service.costPrice),
@@ -67,12 +83,18 @@ export function buildLabRows(services: DiagnosticService[], categoryNames: Map<s
 }
 
 /** Outsourced lab tests — the running cost is what the outside lab charges us. */
-export function buildOutsourcedRows(services: DiagnosticService[], categoryNames: Map<string, string>, providerNames: Map<string, string>): PriceRow[] {
+export function buildOutsourcedRows(
+  services: DiagnosticService[],
+  categoryNames: Map<string, string>,
+  providerNames: Map<string, string>,
+  includeInactive = false,
+): PriceRow[] {
   return services
-    .filter((service) => service.isActive && service.serviceType === 'Laboratory' && service.isOutsourced)
+    .filter((service) => (includeInactive || service.isActive) && service.serviceType === 'Laboratory' && service.isOutsourced)
     .map((service) => ({
       id: service.id,
       name: service.name,
+      isActive: service.isActive,
       section: categoryNames.get(service.categoryId) ?? NO_SECTION,
       editPath: `/diagnostics/lab/services/${service.id}/edit`,
       breakdown: computeProfit(service.price, service.costPrice),
@@ -82,9 +104,9 @@ export function buildOutsourcedRows(services: DiagnosticService[], categoryNames
 }
 
 /** Lab packages — the running cost is the package's own figure, or its tests' total. */
-export function buildPackageRows(packages: DiagnosticPackage[], servicesById: Map<string, DiagnosticService>): PriceRow[] {
+export function buildPackageRows(packages: DiagnosticPackage[], servicesById: Map<string, DiagnosticService>, includeInactive = false): PriceRow[] {
   return packages
-    .filter((pkg) => pkg.isActive)
+    .filter((pkg) => includeInactive || pkg.isActive)
     .map((pkg) => {
       const tests = pkg.items.map((item) => servicesById.get(item.serviceId)).filter((service): service is DiagnosticService => Boolean(service));
       const testsCost = tests.length === pkg.items.length ? testsRunningCostTotal(tests) : null;
@@ -92,6 +114,7 @@ export function buildPackageRows(packages: DiagnosticPackage[], servicesById: Ma
       return {
         id: pkg.id,
         name: pkg.name,
+        isActive: pkg.isActive,
         section: 'Lab packages',
         editPath: `/diagnostics/lab/packages/${pkg.id}`,
         breakdown: packageBreakdown(pkg.totalPrice, mode, pkg.totalPrice - pkg.costPrice, testsCost),
@@ -103,15 +126,16 @@ export function buildPackageRows(packages: DiagnosticPackage[], servicesById: Ma
 }
 
 /** Radiology — price − doctor's share − running cost, with rate options and bedside as chips. */
-export function buildRadiologyRows(services: DiagnosticService[], categoryNames: Map<string, string>): PriceRow[] {
+export function buildRadiologyRows(services: DiagnosticService[], categoryNames: Map<string, string>, includeInactive = false): PriceRow[] {
   return services
-    .filter((service) => service.isActive && service.serviceType === 'Radiology')
+    .filter((service) => (includeInactive || service.isActive) && service.serviceType === 'Radiology')
     .map((service) => {
       const tags = (service.rateOptions ?? []).map((option) => `${option.name} ₹${option.price.toLocaleString('en-IN')}`);
       if (service.bedsidePrice != null) tags.push(`Bedside +₹${service.bedsidePrice.toLocaleString('en-IN')}`);
       return {
         id: service.id,
         name: service.name,
+        isActive: service.isActive,
         section: categoryNames.get(service.categoryId) ?? NO_SECTION,
         editPath: `/diagnostics/lab/services/${service.id}/edit`,
         breakdown: computeProfit(service.price, service.costPrice, service.doctorCharge ?? 0),
@@ -125,12 +149,13 @@ export function buildRadiologyRows(services: DiagnosticService[], categoryNames:
  * Procedures, injections and files from the Diagnostic Test master. Their billing and costs are
  * unchanged (ADR-140): the cost shown is the master's own Running Cost, as reports use it.
  */
-export function buildMasterTestRows(records: MasterRecord[], serviceTypes: string[], canEdit: boolean): PriceRow[] {
+export function buildMasterTestRows(records: MasterRecord[], serviceTypes: string[], canEdit: boolean, includeInactive = false): PriceRow[] {
   return records
-    .filter((record) => record.isActive && serviceTypes.includes(String(record.serviceType)))
+    .filter((record) => (includeInactive || record.isActive) && serviceTypes.includes(String(record.serviceType)))
     .map((record) => ({
       id: record.id,
       name: String(record.name ?? ''),
+      isActive: Boolean(record.isActive),
       section: String(record.category || record.serviceType || NO_SECTION),
       editPath: canEdit ? `/admin/masters/diagnosticTest/${record.id}/edit` : undefined,
       breakdown: computeProfit(record.price, record.costPrice),

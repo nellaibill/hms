@@ -1,9 +1,13 @@
-import { Loader2, Search, Tags } from 'lucide-react';
+import { Loader2, Plus, Search, Tags } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/features/auth/AuthContext';
 import {
@@ -14,6 +18,7 @@ import {
   usePrimeDiagnosticPackageCache,
 } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
+import { ConsultantChargesDialog } from '@/features/priceList/components/ConsultantChargesDialog';
 import { ConsultationRatesGrid } from '@/features/priceList/components/ConsultationRatesGrid';
 import { PriceListTable, type PriceTableVariant } from '@/features/priceList/components/PriceListTable';
 import {
@@ -26,6 +31,7 @@ import {
   countLowProfit,
   countNotCosted,
   filterRows,
+  PRICE_LIST_TABS,
   sectionsOf,
   type PriceListTab,
   type PriceRow,
@@ -39,15 +45,58 @@ interface TabSpec {
   rule: string;
   variant?: PriceTableVariant;
   grouped?: boolean;
+  /** "Add" for this tab, and the permission it needs. */
+  add?: { label: string; path: string; permission: string };
 }
 
 const TABS: TabSpec[] = [
-  { key: 'lab', label: 'Lab tests', rule: 'Profit = Price − Running cost. No doctor’s share on lab tests.', variant: 'lab', grouped: true },
-  { key: 'outsourced', label: 'Outsourced tests', rule: 'Profit = Price − what the outside lab charges us.', variant: 'outsourced', grouped: true },
-  { key: 'packages', label: 'Lab packages', rule: 'Profit = Package price − Running cost (the package’s own figure, or its tests’ total).', variant: 'packages' },
-  { key: 'radiology', label: 'Radiology', rule: 'Profit = Price − Doctor’s share − Running cost.', variant: 'radiology', grouped: true },
-  { key: 'procedures', label: 'Procedures', rule: 'Profit = Price − Cost, as the Diagnostic Test master holds it.', variant: 'master', grouped: true },
-  { key: 'injections', label: 'Injections & files', rule: 'Profit = Price − Cost, as the Diagnostic Test master holds it.', variant: 'master', grouped: true },
+  {
+    key: 'lab',
+    label: 'Lab tests',
+    rule: 'Profit = Price − Running cost. No doctor’s share on lab tests.',
+    variant: 'lab',
+    grouped: true,
+    add: { label: 'Add lab test', path: '/diagnostics/lab/services/new?kind=lab', permission: 'diagnostics.create' },
+  },
+  {
+    key: 'outsourced',
+    label: 'Outsourced tests',
+    rule: 'Profit = Price − what the outside lab charges us.',
+    variant: 'outsourced',
+    grouped: true,
+    add: { label: 'Add outsourced test', path: '/diagnostics/lab/services/new?kind=outsourced', permission: 'diagnostics.create' },
+  },
+  {
+    key: 'packages',
+    label: 'Lab packages',
+    rule: 'Profit = Package price − Running cost (the package’s own figure, or its tests’ total).',
+    variant: 'packages',
+    add: { label: 'Add package', path: '/diagnostics/lab/packages/new', permission: 'diagnostics.create' },
+  },
+  {
+    key: 'radiology',
+    label: 'Radiology',
+    rule: 'Profit = Price − Doctor’s share − Running cost.',
+    variant: 'radiology',
+    grouped: true,
+    add: { label: 'Add radiology service', path: '/diagnostics/lab/services/new?kind=radiology', permission: 'diagnostics.create' },
+  },
+  {
+    key: 'procedures',
+    label: 'Procedures',
+    rule: 'Profit = Price − Cost, as the Diagnostic Test master holds it.',
+    variant: 'master',
+    grouped: true,
+    add: { label: 'Add procedure', path: '/admin/masters/diagnosticTest/new', permission: 'identity-administration.create' },
+  },
+  {
+    key: 'injections',
+    label: 'Injections & files',
+    rule: 'Profit = Price − Cost, as the Diagnostic Test master holds it.',
+    variant: 'master',
+    grouped: true,
+    add: { label: 'Add injection or file', path: '/admin/masters/diagnosticTest/new', permission: 'identity-administration.create' },
+  },
   { key: 'consultations', label: 'Consultations', rule: 'Hospital keeps = Hospital charge − Doctor’s charge. No running cost.' },
 ];
 
@@ -62,8 +111,10 @@ const ALL_SECTIONS = '__all__';
 /**
  * The Price List (ADR-140): every billable service in one place — what the patient pays, what
  * goes to the doctor and to running costs, and the profit the hospital keeps — tabbed by kind
- * and laid out like the hospital's tariff sheet. Prices are edited on each item's own screen;
- * the Edit links go there.
+ * and laid out like the hospital's tariff sheet. It replaces the separate Diagnostic Services
+ * and Diagnostic Packages lists: items are added from here, edited on their own screens, and a
+ * consultant's charges are edited right here. The open tab lives in the URL (?tab=), so links
+ * and Back buttons land on the right one.
  */
 export default function PriceListPage() {
   const { hasPermission } = useAuth();
@@ -79,10 +130,13 @@ export default function PriceListPage() {
   const consultantsQuery = useMasterOptionsQuery(canSeeConsultations ? 'consultant' : undefined);
   const typesQuery = useMasterOptionsQuery(canSeeConsultations ? 'consultationType' : undefined);
 
-  const [tab, setTab] = useState<PriceListTab>('lab');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab') as PriceListTab | null;
   const [search, setSearch] = useState('');
   const [section, setSection] = useState('');
   const [quick, setQuick] = useState<QuickFilter>('all');
+  const [showInactive, setShowInactive] = useState(false);
+  const [editingConsultantId, setEditingConsultantId] = useState<string | null>(null);
 
   const rowsByTab = useMemo<Record<Exclude<PriceListTab, 'consultations'>, PriceRow[]>>(() => {
     const services = [...(labQuery.data ?? []), ...(radiologyQuery.data ?? [])];
@@ -91,14 +145,14 @@ export default function PriceListPage() {
     const servicesById = new Map(services.map((service) => [service.id, service]));
     const tests = testsQuery.data ?? [];
     return {
-      lab: buildLabRows(services, categoryNames, packages ?? []),
-      outsourced: buildOutsourcedRows(services, categoryNames, providerNames),
-      packages: buildPackageRows(packages ?? [], servicesById),
-      radiology: buildRadiologyRows(services, categoryNames),
-      procedures: buildMasterTestRows(tests, ['Procedure'], canEditMasters),
-      injections: buildMasterTestRows(tests, ['Injection', 'File'], canEditMasters),
+      lab: buildLabRows(services, categoryNames, packages ?? [], showInactive),
+      outsourced: buildOutsourcedRows(services, categoryNames, providerNames, showInactive),
+      packages: buildPackageRows(packages ?? [], servicesById, showInactive),
+      radiology: buildRadiologyRows(services, categoryNames, showInactive),
+      procedures: buildMasterTestRows(tests, ['Procedure'], canEditMasters, showInactive),
+      injections: buildMasterTestRows(tests, ['Injection', 'File'], canEditMasters, showInactive),
     };
-  }, [labQuery.data, radiologyQuery.data, packages, categoriesQuery.data, providersQuery.data, testsQuery.data, canEditMasters]);
+  }, [labQuery.data, radiologyQuery.data, packages, categoriesQuery.data, providersQuery.data, testsQuery.data, canEditMasters, showInactive]);
 
   const consultationMatrix = useMemo(
     () => buildConsultationMatrix(consultantsQuery.data ?? [], typesQuery.data ?? []),
@@ -106,19 +160,22 @@ export default function PriceListPage() {
   );
 
   const tabs = TABS.filter((spec) => spec.key !== 'consultations' || canSeeConsultations);
-  const activeTab = tabs.find((spec) => spec.key === tab) ?? tabs[0];
+  const activeTab = tabs.find((spec) => spec.key === requestedTab) ?? tabs[0];
   const isConsultations = activeTab.key === 'consultations';
   const tabRows = isConsultations ? [] : rowsByTab[activeTab.key as Exclude<PriceListTab, 'consultations'>];
   const visibleRows = filterRows(tabRows, { search, section, quick });
   const sections = sectionsOf(tabRows);
   const isLoading = labQuery.isPending || radiologyQuery.isPending || !packages || testsQuery.isPending;
+  const addAction = activeTab.add && hasPermission(activeTab.add.permission) ? activeTab.add : undefined;
+  const editingConsultant = editingConsultantId ? consultantsQuery.data?.find((record) => record.id === editingConsultantId) : undefined;
 
   function countFor(key: PriceListTab): number {
     return key === 'consultations' ? consultationMatrix.rows.length : rowsByTab[key].length;
   }
 
   function selectTab(next: string) {
-    setTab(next as PriceListTab);
+    if (!PRICE_LIST_TABS.includes(next as PriceListTab)) return;
+    setSearchParams({ tab: next }, { replace: true });
     setSection('');
     setQuick('all');
   }
@@ -146,7 +203,7 @@ export default function PriceListPage() {
         {!isConsultations && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex h-10 min-w-[260px] items-center gap-2 rounded-md border border-input bg-background px-3">
+              <label className="flex h-10 min-w-[240px] items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
                 <span className="sr-only">Search</span>
                 <Input
@@ -159,7 +216,7 @@ export default function PriceListPage() {
               </label>
               {sections.length > 1 && (
                 <Select value={section || ALL_SECTIONS} onValueChange={(value) => setSection(value === ALL_SECTIONS ? '' : value)}>
-                  <SelectTrigger className="h-10 w-[220px]" aria-label="Section">
+                  <SelectTrigger className="h-10 w-[200px]" aria-label="Section">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -172,26 +229,42 @@ export default function PriceListPage() {
                   </SelectContent>
                 </Select>
               )}
+              <div className="flex items-center gap-2">
+                <Switch id="pl-show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
+                <Label htmlFor="pl-show-inactive" className="cursor-pointer text-sm font-normal">
+                  Show inactive
+                </Label>
+              </div>
             </div>
-            <div role="group" aria-label="Quick filters" className="flex flex-wrap gap-2">
-              {QUICK_FILTERS.map((filter) => {
-                const count = filter.key === 'all' ? tabRows.length : filter.key === 'notCosted' ? countNotCosted(tabRows) : countLowProfit(tabRows);
-                const pressed = quick === filter.key;
-                return (
-                  <button
-                    key={filter.key}
-                    type="button"
-                    aria-pressed={pressed}
-                    onClick={() => setQuick(filter.key)}
-                    className={cn(
-                      'min-h-9 rounded-full border px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      pressed ? 'border-primary bg-primary/10 font-semibold text-foreground' : 'border-border bg-background text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {filter.label} · {count}
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap items-center gap-2">
+              <div role="group" aria-label="Quick filters" className="flex flex-wrap gap-2">
+                {QUICK_FILTERS.map((filter) => {
+                  const count = filter.key === 'all' ? tabRows.length : filter.key === 'notCosted' ? countNotCosted(tabRows) : countLowProfit(tabRows);
+                  const pressed = quick === filter.key;
+                  return (
+                    <button
+                      key={filter.key}
+                      type="button"
+                      aria-pressed={pressed}
+                      onClick={() => setQuick(filter.key)}
+                      className={cn(
+                        'min-h-9 rounded-full border px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        pressed ? 'border-primary bg-primary/10 font-semibold text-foreground' : 'border-border bg-background text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {filter.label} · {count}
+                    </button>
+                  );
+                })}
+              </div>
+              {addAction && (
+                <Button asChild className="gap-1.5">
+                  <Link to={addAction.path}>
+                    <Plus className="h-4 w-4" />
+                    {addAction.label}
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -200,6 +273,7 @@ export default function PriceListPage() {
           <div className="border-b border-border px-4 py-3 text-sm">
             <span className="font-semibold">{activeTab.rule}</span>
             {!isConsultations && <span className="text-muted-foreground"> Profit % is profit ÷ price, as in the tariff sheet.</span>}
+            {isConsultations && canEditMasters && <span className="text-muted-foreground"> Use Edit to change a doctor&apos;s types and charges.</span>}
           </div>
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
@@ -207,7 +281,12 @@ export default function PriceListPage() {
               Loading the price list…
             </div>
           ) : isConsultations ? (
-            <ConsultationRatesGrid columns={consultationMatrix.columns} rows={consultationMatrix.rows} canEdit={canEditMasters} />
+            <ConsultationRatesGrid
+              columns={consultationMatrix.columns}
+              rows={consultationMatrix.rows}
+              canEdit={canEditMasters}
+              onEdit={setEditingConsultantId}
+            />
           ) : (
             <PriceListTable
               rows={visibleRows}
@@ -223,6 +302,10 @@ export default function PriceListPage() {
           )}
         </Card>
       </div>
+
+      {editingConsultant && (
+        <ConsultantChargesDialog consultant={editingConsultant} columns={consultationMatrix.columns} onClose={() => setEditingConsultantId(null)} />
+      )}
     </div>
   );
 }
