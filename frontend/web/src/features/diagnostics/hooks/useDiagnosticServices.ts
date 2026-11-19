@@ -12,6 +12,8 @@ export interface BillingServiceOption {
   rateOptions?: { id: string; name: string; price: number }[];
   /** Radiology only: what a bedside scan adds to the price; null when not offered. */
   bedsidePrice?: number | null;
+  /** Radiology only: the doctor's part of bedsidePrice (ADR-144) — the rest is the hospital's. */
+  bedsideDoctorCharge?: number | null;
 }
 
 /** Walks every page at the server's maximum page size (PagedRequest.MaxPageSize = 100) rather
@@ -86,6 +88,7 @@ export function useDiagnosticServices(serviceType: DiagnosticServiceType): { ser
           price: service.price,
           rateOptions: (service.rateOptions ?? []).map((option) => ({ id: option.id ?? '', name: option.name, price: option.price })).filter((option) => option.id),
           bedsidePrice: service.bedsidePrice ?? null,
+          bedsideDoctorCharge: service.bedsideDoctorCharge ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [data],

@@ -29,6 +29,12 @@ public record CreateInvoiceLineItemRequest
     /// includes the bedside add-on.</summary>
     public bool IsBedside { get; init; }
 
+    /// <summary>A bedside scan's add-on as charged (ADR-144) — part of <see cref="UnitPrice"/>.
+    /// Null bills the service's bedside price from Masters. It may be raised but never below the
+    /// hospital's share (bedside price less bedside doctor's share); the rest is the
+    /// consultant's.</summary>
+    public decimal? BedsideAmount { get; init; }
+
     public int Quantity { get; init; } = 1;
     public decimal UnitPrice { get; init; }
 
@@ -130,6 +136,12 @@ public record InvoiceLineItemResponse
     public Guid? RateOptionId { get; init; }
     public string? RateOptionName { get; init; }
     public bool IsBedside { get; init; }
+
+    /// <summary>ADR-144: the bedside add-on charged and the consultant's part of it. Null unless
+    /// <see cref="IsBedside"/>; <see cref="BedsideDoctorCharge"/> is also null on bedside lines
+    /// billed before ADR-144.</summary>
+    public decimal? BedsideAmount { get; init; }
+    public decimal? BedsideDoctorCharge { get; init; }
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal Discount { get; init; }

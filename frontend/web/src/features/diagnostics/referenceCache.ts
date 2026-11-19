@@ -83,6 +83,9 @@ export function resolveDiagnosticServiceCost(
   serviceId: string | undefined | null,
   rateOptionId?: string | null,
   isBedside?: boolean,
+  /** The bedside doctor's share the line was billed with (ADR-144) — wins over the service's
+   * current one, since the counter can raise a bedside scan's add-on. */
+  billedBedsideDoctorCharge?: number | null,
 ): { doctorShare: number; runningCost: number } | null {
   if (!serviceId) return null;
   const service = serviceCache.get(serviceId);
@@ -91,6 +94,6 @@ export function resolveDiagnosticServiceCost(
   const doctorShare = option ? option.doctorCharge : (service.doctorCharge ?? 0);
   const runningCost = option ? option.costPrice : service.costPrice;
   if (!(doctorShare > 0) && !(runningCost > 0)) return null;
-  const bedsideDoctorShare = isBedside ? (service.bedsideDoctorCharge ?? 0) : 0;
+  const bedsideDoctorShare = isBedside ? (billedBedsideDoctorCharge ?? service.bedsideDoctorCharge ?? 0) : 0;
   return { doctorShare: doctorShare + bedsideDoctorShare, runningCost };
 }

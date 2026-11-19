@@ -552,6 +552,14 @@ namespace HMS.Database.Migrations.Billing.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<decimal?>("BedsideAmount")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("bedside_amount");
+
+                    b.Property<decimal?>("BedsideDoctorCharge")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("bedside_doctor_charge");
+
                     b.Property<string>("BilledConsultantId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")

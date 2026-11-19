@@ -14,6 +14,8 @@ internal static class BillingErrorCodes
     public const string PaymentAmountMismatch = "BILLING.PAYMENT_AMOUNT_MISMATCH";
     public const string ConsultationChargeMismatch = "BILLING.CONSULTATION_CHARGE_MISMATCH";
     public const string ConsultationTypeNotOffered = "BILLING.CONSULTATION_TYPE_NOT_OFFERED";
+    public const string BedsideNotOffered = "BILLING.BEDSIDE_NOT_OFFERED";
+    public const string BedsideAmountTooLow = "BILLING.BEDSIDE_AMOUNT_TOO_LOW";
     public const string RevertRequestNotFound = "BILLING.REVERT_REQUEST_NOT_FOUND";
     public const string RevertNotEligible = "BILLING.REVERT_NOT_ELIGIBLE";
     public const string RevertAlreadyPending = "BILLING.REVERT_ALREADY_PENDING";

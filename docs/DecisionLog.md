@@ -37,6 +37,23 @@ _To be documented._
 
 ## Decisions
 
+### ADR-144: A bedside scan's add-on can be raised at the counter
+**Date:** 2026-11-19
+**Status:** Accepted
+
+**Context**
+ADR-140 gave a radiology service a bedside add-on in Masters: what it adds to the price (for example ₹500) and what it adds to the doctor's share (for example ₹200). The hospital keeps the rest (₹300). At billing the add-on was fixed. The counter sometimes needs to charge more for a bedside scan, and the extra belongs to the consultant.
+
+**Decision**
+- **Billing row.** Ticking Bedside fills a new **Bedside amount (₹)** field with the service's bedside price. The field can be edited. Under it, the row shows the hospital's and the consultant's part. The charge is the rate plus the bedside amount.
+- **Rule.** The bedside amount can't be less than the hospital's share (bedside price less the bedside doctor's share, never below 0). Anything above that share is the consultant's. With the Masters figures 500 / 200: charging 500 gives the consultant 200, charging 600 gives them 300, and charging 299 is refused. The form checks this, and so does the server.
+- **What the bill line keeps.** The invoice line stores BedsideAmount and BedsideDoctorCharge (`invoice_line_items.bedside_amount` and `bedside_doctor_charge`, migration Billing `AddInvoiceLineBedsideAmount`). The server works out BedsideDoctorCharge from Masters when the bill is saved. If no amount is sent, the line gets the Masters bedside price. The server refuses a bedside line for a service that isn't done at the bedside.
+- **Reports.** A radiology line's cost uses the line's own bedside doctor's share. A bedside line billed before this change has none stored, so reports use the service's current bedside doctor's share, as before.
+
+**Consequences**
+- Run Migrate (Billing) on each hospital.
+- Masters is unchanged. The bedside price is still the default, and the hospital's share still comes from it.
+
 ### ADR-143: Activity log names records and records price changes
 **Date:** 2026-11-19
 **Status:** Accepted

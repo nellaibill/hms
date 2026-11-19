@@ -17,6 +17,8 @@ internal static class InvoiceMappingExtensions
         RateOptionId = item.RateOptionId,
         RateOptionName = item.RateOptionName,
         IsBedside = item.IsBedside,
+        BedsideAmount = item.BedsideAmount,
+        BedsideDoctorCharge = item.BedsideDoctorCharge,
         Quantity = item.Quantity,
         UnitPrice = item.UnitPrice,
         Discount = item.Discount,

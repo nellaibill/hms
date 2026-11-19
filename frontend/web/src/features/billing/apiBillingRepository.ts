@@ -48,6 +48,8 @@ function fromItemDto(item: InvoiceResponseDto['items'][number]): BillingItem {
     rateOptionId: item.rateOptionId ?? undefined,
     rateOptionName: item.rateOptionName ?? undefined,
     isBedside: item.isBedside ?? false,
+    bedsideAmount: item.bedsideAmount ?? undefined,
+    bedsideDoctorCharge: item.bedsideDoctorCharge ?? undefined,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     discount: item.discount,
@@ -99,6 +101,8 @@ function toCreateRequest(patientId: string, visitId: string, values: BillingForm
       rateOptionId: item.rateOptionId ?? null,
       rateOptionName: item.rateOptionName ?? null,
       isBedside: item.isBedside ?? false,
+      // ADR-144: the server splits it into the hospital's and the consultant's share.
+      bedsideAmount: item.isBedside ? (item.bedsideAmount ?? null) : null,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       // Includes this line's share of a bill discount (ADR-109) — the server decides whether it

@@ -59,6 +59,12 @@ export const consultationBillingSchema = z
     }
   });
 
+/** ADR-144: the error for a bedside amount below the hospital's share. The schema and
+ * ServiceBillingCard's as-you-type check both use it, so the two always read the same. */
+export function bedsideAmountTooLowMessage(hospitalShare: number): string {
+  return `Cannot be less than the hospital's share (₹${hospitalShare.toLocaleString('en-IN')})`;
+}
+
 export const serviceBillingSchema = z
   .object({
     serviceId: z.string().default(''),
@@ -66,6 +72,12 @@ export const serviceBillingSchema = z
     rateOptionId: z.string().default(''),
     /** Radiology only (ADR-140): a bedside scan — `charge` already includes the add-on. */
     isBedside: z.boolean().default(false),
+    /** Radiology only (ADR-144): the bedside add-on charged. Starts at the service's bedside
+     * price; the counter may change it, but not below `bedsideHospitalShare`. */
+    bedsideAmount: z.number({ invalid_type_error: 'Enter the bedside amount' }).min(0, 'Cannot be negative').default(0),
+    /** The service's hospital share of the bedside add-on (Masters' bedside price less its
+     * doctor's part), kept on the row by ServiceBillingCard so the rule above can be checked. */
+    bedsideHospitalShare: z.number().min(0).default(0),
     consultantId: z.string().default(''),
     charge: z.number().min(0).default(0),
     quantity: z.number().int().min(1).default(1),
@@ -77,6 +89,13 @@ export const serviceBillingSchema = z
     if (!isServiceEntryActive(data)) return;
     if (!data.serviceId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['serviceId'], message: 'Service is required' });
     if (!data.consultantId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['consultantId'], message: 'Consultant is required' });
+    if (data.isBedside && data.bedsideAmount < data.bedsideHospitalShare) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['bedsideAmount'],
+        message: bedsideAmountTooLowMessage(data.bedsideHospitalShare),
+      });
+    }
     if (data.discount > data.charge * data.quantity) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discount'], message: 'Discount cannot exceed the charge' });
     }
@@ -358,6 +377,8 @@ export const emptyServiceRow: ServiceBillingRowFormValues = {
   serviceId: '',
   rateOptionId: '',
   isBedside: false,
+  bedsideAmount: 0,
+  bedsideHospitalShare: 0,
   consultantId: '',
   charge: 0,
   quantity: 1,
