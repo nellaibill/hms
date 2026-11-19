@@ -84,6 +84,7 @@ internal class PatientService : IPatientService
             Module = ActivityLogModules.Patients,
             EntityType = "Patient",
             EntityId = patient.Id.ToString(),
+            EntityReference = patient.Uhid,
             Description = description,
             OldValues = oldValues,
             NewValues = newValues,

@@ -23,6 +23,7 @@ internal class ActivityLogEntryConfiguration : IEntityTypeConfiguration<Activity
         builder.Property(a => a.Module).HasColumnName("module").HasMaxLength(100).IsRequired();
         builder.Property(a => a.EntityType).HasColumnName("entity_type").HasMaxLength(100);
         builder.Property(a => a.EntityId).HasColumnName("entity_id").HasMaxLength(100);
+        builder.Property(a => a.EntityReference).HasColumnName("entity_reference").HasMaxLength(100);
         builder.Property(a => a.Description).HasColumnName("description").HasMaxLength(1000);
 
         builder.Property(a => a.OldValues).HasColumnName("old_values").HasColumnType("jsonb");

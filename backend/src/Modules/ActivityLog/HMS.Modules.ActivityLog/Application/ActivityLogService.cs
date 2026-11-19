@@ -40,7 +40,8 @@ internal class ActivityLogService : IActivityLogService
                 context.IpAddress,
                 context.UserAgent,
                 context.CorrelationId,
-                request.IsSuccess);
+                request.IsSuccess,
+                request.EntityReference);
 
             await _repository.AddAsync(entry, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);

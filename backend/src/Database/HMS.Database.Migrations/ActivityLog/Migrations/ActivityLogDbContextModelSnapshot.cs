@@ -18,7 +18,7 @@ namespace HMS.Database.Migrations.ActivityLog.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("activity_log")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -53,6 +53,11 @@ namespace HMS.Database.Migrations.ActivityLog.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("entity_reference");
 
                     b.Property<string>("EntityType")
                         .HasMaxLength(100)

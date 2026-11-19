@@ -202,6 +202,7 @@ internal class PatientVisitService : IPatientVisitService
                 Module = ActivityLogModules.Patients,
                 EntityType = "PatientVisit",
                 EntityId = visit.Id.ToString(),
+                EntityReference = assigned,
                 Description = $"Issued {(opSeries ? "OP No" : "IP No")} {assigned} {reason}",
                 NewValues = new { VisitNumber = assigned },
                 UserId = actorId,

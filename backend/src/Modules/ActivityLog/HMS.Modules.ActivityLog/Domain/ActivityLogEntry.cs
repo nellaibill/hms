@@ -17,6 +17,11 @@ internal class ActivityLogEntry
     public string Module { get; private set; } = null!;
     public string? EntityType { get; private set; }
     public string? EntityId { get; private set; }
+
+    /// <summary>What a person knows the record by — an invoice number, UHID, OP No, test or
+    /// consultant name — shown in the Entity column instead of the raw id.</summary>
+    public string? EntityReference { get; private set; }
+
     public string? Description { get; private set; }
 
     /// <summary>Already-sanitized JSON (see ActivityLogSanitizer) — never raw caller data.</summary>
@@ -47,7 +52,8 @@ internal class ActivityLogEntry
         string? ipAddress,
         string? userAgent,
         string? correlationId,
-        bool isSuccess)
+        bool isSuccess,
+        string? entityReference = null)
     {
         Guard.AgainstNullOrWhiteSpace(action, nameof(action));
         Guard.AgainstNullOrWhiteSpace(module, nameof(module));
@@ -62,6 +68,7 @@ internal class ActivityLogEntry
             Module = Truncate(module.Trim(), 100)!,
             EntityType = Truncate(entityType?.Trim(), 100),
             EntityId = Truncate(entityId?.Trim(), 100),
+            EntityReference = Truncate(entityReference?.Trim(), 100),
             Description = Truncate(description?.Trim(), 1000),
             OldValues = oldValues,
             NewValues = newValues,

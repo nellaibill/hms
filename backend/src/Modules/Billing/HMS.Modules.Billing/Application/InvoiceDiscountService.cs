@@ -4,6 +4,7 @@ using HMS.Modules.Billing.Application.Abstractions;
 using HMS.Modules.Billing.Application.Mapping;
 using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Domain;
+using HMS.Modules.Masters.Application;
 using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Billing.Application;
@@ -136,28 +137,32 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
     private readonly IInvoiceDiscountRequestRepository _repository;
     private readonly IActivityLogService _activityLog;
     private readonly IBillingSettingsService _billingSettings;
+    private readonly IConsultantService _consultantService;
 
     public InvoiceDiscountService(
         IInvoiceRepository invoiceRepository,
         IInvoiceDiscountRequestRepository repository,
         IActivityLogService activityLog,
-        IBillingSettingsService billingSettings)
+        IBillingSettingsService billingSettings,
+        IConsultantService consultantService)
     {
         _invoiceRepository = invoiceRepository;
         _repository = repository;
         _activityLog = activityLog;
         _billingSettings = billingSettings;
+        _consultantService = consultantService;
     }
 
     // Best-effort audit write (never throws - see IActivityLogService); runs only after the
     // change itself has been committed.
-    private Task LogAsync(string action, string entityType, Guid entityId, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
+    private Task LogAsync(string action, string entityType, Guid entityId, string invoiceNumber, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
         => _activityLog.LogAsync(new ActivityLogRequest
         {
             Action = action,
             Module = ActivityLogModules.Billing,
             EntityType = entityType,
             EntityId = entityId.ToString(),
+            EntityReference = invoiceNumber,
             Description = description,
             OldValues = oldValues,
             NewValues = newValues,
@@ -233,10 +238,10 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = discountRequest.ToResponse();
-        await LogAsync(ActivityLogActions.Create, "InvoiceDiscountRequest", discountRequest.Id, $"Requested a discount of {discountRequest.TotalDiscount} on invoice {invoice.InvoiceNumber}: {discountRequest.Reason}", null, response, actor.UserId, cancellationToken);
+        await LogAsync(ActivityLogActions.Create, "InvoiceDiscountRequest", discountRequest.Id, invoice.InvoiceNumber, $"Requested a discount of {ActivityLogMoney.Format(discountRequest.TotalDiscount)} on invoice {invoice.InvoiceNumber}: {discountRequest.Reason}", null, response, actor.UserId, cancellationToken);
         if (appliesAtOnce)
         {
-            await LogAsync(ActivityLogActions.Update, "Invoice", invoice.Id, $"Applied a discount of {discountRequest.TotalDiscount} to invoice {invoice.InvoiceNumber}", invoiceBefore, invoice.ToResponse(), actor.UserId, cancellationToken);
+            await LogAsync(ActivityLogActions.Update, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Applied a discount of {ActivityLogMoney.Format(discountRequest.TotalDiscount)} to invoice {invoice.InvoiceNumber}", invoiceBefore, invoice.ToResponse(), actor.UserId, cancellationToken);
         }
 
         return Result<InvoiceDiscountRequestResponse>.Success(response);
@@ -304,8 +309,8 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = discountRequest.ToResponse();
-        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, $"Approved {DescribePart(approval)} discount of {partDiscount} on invoice {invoice.InvoiceNumber}", null, response, actor.UserId, cancellationToken);
-        await LogAsync(ActivityLogActions.Update, "Invoice", invoice.Id, $"Applied a discount of {partDiscount} to invoice {invoice.InvoiceNumber}", invoiceBefore, invoice.ToResponse(), actor.UserId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, invoice.InvoiceNumber, $"Approved {await DescribePartAsync(approval, cancellationToken)} discount of {ActivityLogMoney.Format(partDiscount)} on invoice {invoice.InvoiceNumber}", null, response, actor.UserId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Applied a discount of {ActivityLogMoney.Format(partDiscount)} to invoice {invoice.InvoiceNumber}", invoiceBefore, invoice.ToResponse(), actor.UserId, cancellationToken);
 
         return Result<InvoiceDiscountRequestResponse>.Success(response);
     }
@@ -330,7 +335,7 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = discountRequest.ToResponse();
-        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, $"Rejected {DescribePart(approval)} discount on invoice {discountRequest.InvoiceNumber}: {approval.DecisionNotes}", null, response, actor.UserId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceDiscountRequest", discountRequest.Id, discountRequest.InvoiceNumber, $"Rejected {await DescribePartAsync(approval, cancellationToken)} discount on invoice {discountRequest.InvoiceNumber}: {approval.DecisionNotes}", null, response, actor.UserId, cancellationToken);
 
         return Result<InvoiceDiscountRequestResponse>.Success(response);
     }
@@ -359,6 +364,22 @@ internal class InvoiceDiscountService : IInvoiceDiscountService
         return Result<(InvoiceDiscountRequest, InvoiceDiscountApproval)>.Success((discountRequest, approval));
     }
 
-    private static string DescribePart(InvoiceDiscountApproval approval)
-        => approval.ApproverType == InvoiceDiscountApproverType.Consultant ? $"consultant {approval.ConsultantId}'s" : "the Super Admin's";
+    /// <summary>"Dr. L. Madhavi's" for a consultant's part (their name from Masters, or "the
+    /// consultant's" when it can't be found), "the Super Admin's" otherwise — never a raw id.</summary>
+    private async Task<string> DescribePartAsync(InvoiceDiscountApproval approval, CancellationToken cancellationToken)
+    {
+        if (approval.ApproverType != InvoiceDiscountApproverType.Consultant)
+        {
+            return "the Super Admin's";
+        }
+        if (approval.ConsultantId is { } consultantId)
+        {
+            var consultant = await _consultantService.GetByIdAsync(consultantId, cancellationToken);
+            if (consultant is { IsSuccess: true, Value: { } found } && !string.IsNullOrWhiteSpace(found.Name))
+            {
+                return $"{found.Name}'s";
+            }
+        }
+        return "the consultant's";
+    }
 }

@@ -74,7 +74,10 @@ internal class OpdDayCloseService : IOpdDayCloseService
                     Module = ActivityLogModules.Patients,
                     EntityType = "PatientVisit",
                     EntityId = visit.Id.ToString(),
-                    Description = $"OPD consultation auto-completed at day close (was {consultation.AutoCompletedFrom})",
+                    EntityReference = visit.VisitNumber,
+                    Description = consultation.AutoCompletedFrom == OpdConsultationStatus.InConsultation
+                        ? "OPD consultation auto-completed at day close (was in consultation)"
+                        : $"OPD consultation auto-completed at day close (was {consultation.AutoCompletedFrom?.ToString().ToLowerInvariant()})",
                     OldValues = new { ConsultationId = consultation.Id, Status = consultation.AutoCompletedFrom },
                     NewValues = new { ConsultationId = consultation.Id, consultation.Status },
                 }, cancellationToken);

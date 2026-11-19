@@ -1,3 +1,4 @@
+using HMS.Modules.ActivityLog.Application;
 using FluentAssertions;
 using HMS.Modules.Masters.Application;
 using HMS.Modules.Masters.Application.Abstractions;
@@ -15,7 +16,7 @@ public class ConsultationTypeServiceTests
 
     public ConsultationTypeServiceTests()
     {
-        _sut = new ConsultationTypeService(_repository);
+        _sut = new ConsultationTypeService(_repository, Substitute.For<IActivityLogService>());
     }
 
     [Fact]

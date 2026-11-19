@@ -6,6 +6,8 @@ export interface ActivityLogEntry {
   module: string;
   entityType?: string | null;
   entityId?: string | null;
+  /** What a person knows the record by: invoice no, UHID, OP No, a test's or consultant's name. */
+  entityReference?: string | null;
   description?: string | null;
   isSuccess: boolean;
   createdAt: string;

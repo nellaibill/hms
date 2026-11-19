@@ -73,13 +73,14 @@ internal class InvoiceRevertService : IInvoiceRevertService
 
     // Best-effort audit write (never throws - see IActivityLogService); runs only after the
     // change itself has been committed.
-    private Task LogAsync(string action, string entityType, Guid entityId, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
+    private Task LogAsync(string action, string entityType, Guid entityId, string invoiceNumber, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
         => _activityLog.LogAsync(new ActivityLogRequest
         {
             Action = action,
             Module = ActivityLogModules.Billing,
             EntityType = entityType,
             EntityId = entityId.ToString(),
+            EntityReference = invoiceNumber,
             Description = description,
             OldValues = oldValues,
             NewValues = newValues,
@@ -189,10 +190,10 @@ internal class InvoiceRevertService : IInvoiceRevertService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
-        await LogAsync(ActivityLogActions.Create, "InvoiceRevertRequest", revertRequest.Id, $"Requested revert of invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Create, "InvoiceRevertRequest", revertRequest.Id, invoice.InvoiceNumber, $"Requested revert of invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", null, response, actorId, cancellationToken);
         if (approveNow)
         {
-            await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, $"Reverted invoice {invoice.InvoiceNumber} without approval (switched off): {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
+            await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Reverted invoice {invoice.InvoiceNumber} without approval (switched off): {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
         }
 
         return Result<InvoiceRevertRequestResponse>.Success(response);
@@ -248,8 +249,8 @@ internal class InvoiceRevertService : IInvoiceRevertService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
-        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, $"Approved revert of invoice {invoice.InvoiceNumber} — refund {revertRequest.PaidAmount}", null, response, actorId, cancellationToken);
-        await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, $"Reverted invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, invoice.InvoiceNumber, $"Approved revert of invoice {invoice.InvoiceNumber} — refund {ActivityLogMoney.Format(revertRequest.PaidAmount)}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Reverted invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
 
         return Result<InvoiceRevertRequestResponse>.Success(response);
     }
@@ -271,7 +272,7 @@ internal class InvoiceRevertService : IInvoiceRevertService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
-        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, $"Rejected revert of invoice {revertRequest.InvoiceNumber}: {revertRequest.DecisionNotes}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, revertRequest.InvoiceNumber, $"Rejected revert of invoice {revertRequest.InvoiceNumber}: {revertRequest.DecisionNotes}", null, response, actorId, cancellationToken);
 
         return Result<InvoiceRevertRequestResponse>.Success(response);
     }

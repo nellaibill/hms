@@ -128,6 +128,14 @@ internal class InvoiceService : IInvoiceService
         _logger = logger;
     }
 
+    /// <summary>"Created invoice INV-2026-000288 for Ramesh Anandh (P-2026-040148) — ₹1,300.00, paid"
+    /// — who it's for, what it came to and whether it was paid at the counter.</summary>
+    internal static string DescribeCreated(Invoice invoice)
+    {
+        var paid = invoice.PaymentStatus == PaymentStatus.Paid ? ", paid" : string.Empty;
+        return $"Created invoice {invoice.InvoiceNumber} for {invoice.PatientName} ({invoice.PatientUhid}) — {ActivityLogMoney.Format(invoice.NetAmount)}{paid}";
+    }
+
     // Best-effort audit write (never throws - see IActivityLogService); runs only after the
     // billing change itself has been committed.
     private Task LogAsync(string action, Invoice invoice, string description, object? oldValues, object? newValues, Guid? actorId, CancellationToken cancellationToken)
@@ -137,6 +145,7 @@ internal class InvoiceService : IInvoiceService
             Module = ActivityLogModules.Billing,
             EntityType = "Invoice",
             EntityId = invoice.Id.ToString(),
+            EntityReference = invoice.InvoiceNumber,
             Description = description,
             OldValues = oldValues,
             NewValues = newValues,
@@ -481,11 +490,11 @@ internal class InvoiceService : IInvoiceService
 
         await _repository.SaveChangesAsync(cancellationToken);
 
-        await LogAsync(ActivityLogActions.Create, invoice, $"Created invoice {invoice.InvoiceNumber}", null, invoice.ToResponse(), actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Create, invoice, DescribeCreated(invoice), null, invoice.ToResponse(), actorId, cancellationToken);
         if (discountRequest is not null)
         {
             var verb = discountRequest.Status == InvoiceDiscountRequestStatus.Approved ? "Applied" : "Requested";
-            await LogAsync(ActivityLogActions.Update, invoice, $"{verb} a discount of {discountRequest.TotalDiscount} on invoice {invoice.InvoiceNumber}: {discountRequest.Reason}", null, discountRequest.ToResponse(), actorId, cancellationToken);
+            await LogAsync(ActivityLogActions.Update, invoice, $"{verb} a discount of {ActivityLogMoney.Format(discountRequest.TotalDiscount)} on invoice {invoice.InvoiceNumber}: {discountRequest.Reason}", null, discountRequest.ToResponse(), actorId, cancellationToken);
         }
 
         var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
@@ -708,7 +717,7 @@ internal class InvoiceService : IInvoiceService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var after = invoice.ToResponse();
-        await LogAsync(ActivityLogActions.Payment, invoice, $"Recorded {request.Method} payment of {paidItem.Total} on invoice {invoice.InvoiceNumber}", before, after, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Payment, invoice, $"Recorded {request.Method} payment of {ActivityLogMoney.Format(paidItem.Total)} on invoice {invoice.InvoiceNumber}", before, after, actorId, cancellationToken);
 
         var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
 
@@ -769,7 +778,7 @@ internal class InvoiceService : IInvoiceService
 
         var after = invoice.ToResponse();
         var methods = string.Join(" + ", request.Payments.Select(p => p.Method).Distinct());
-        await LogAsync(ActivityLogActions.Payment, invoice, $"Collected {unpaid.Sum(i => i.Total)} on invoice {invoice.InvoiceNumber}{(methods.Length > 0 ? $" ({methods})" : string.Empty)}", before, after, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Payment, invoice, $"Collected {ActivityLogMoney.Format(unpaid.Sum(i => i.Total))} on invoice {invoice.InvoiceNumber}{(methods.Length > 0 ? $" ({methods})" : string.Empty)}", before, after, actorId, cancellationToken);
 
         var opNumber = await IssueOpNumberIfConsultationPaidAsync(invoice, actorId, cancellationToken);
 

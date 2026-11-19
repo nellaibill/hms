@@ -1,3 +1,5 @@
+using HMS.Modules.ActivityLog.Application;
+using HMS.Modules.ActivityLog.Contracts;
 using HMS.Modules.Masters.Application.Abstractions;
 using HMS.Modules.Masters.Application.Mapping;
 using HMS.Modules.Masters.Contracts;
@@ -28,8 +30,11 @@ internal class DiagnosticTestService : IDiagnosticTestService
 {
     private readonly IDiagnosticTestRepository _repository;
 
-    public DiagnosticTestService(IDiagnosticTestRepository repository)
+    private readonly IActivityLogService _activityLog;
+
+    public DiagnosticTestService(IDiagnosticTestRepository repository, IActivityLogService activityLog)
     {
+        _activityLog = activityLog;
         _repository = repository;
     }
 
@@ -54,7 +59,12 @@ internal class DiagnosticTestService : IDiagnosticTestService
         await _repository.AddAsync(diagnosticTest, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<DiagnosticTestResponse>.Success(diagnosticTest.ToResponse());
+        var created = diagnosticTest.ToResponse();
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Create, "DiagnosticTest", created.Id, created.Name,
+            $"Added {created.ServiceType.ToString().ToLowerInvariant()} '{created.Name}' — price {MastersActivityLog.Money(created.Price)}, cost {MastersActivityLog.Money(created.CostPrice)}",
+            null, created, actorId), cancellationToken);
+
+        return Result<DiagnosticTestResponse>.Success(created);
     }
 
     public async Task<Result<DiagnosticTestResponse>> UpdateAsync(Guid id, UpdateDiagnosticTestRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -70,6 +80,7 @@ internal class DiagnosticTestService : IDiagnosticTestService
             return Result<DiagnosticTestResponse>.Failure(MastersErrorCodes.DuplicateCode, $"A {request.ServiceType} test named '{request.Name}' already exists for this outsourcing setting.");
         }
 
+        var before = diagnosticTest.ToResponse();
         diagnosticTest.Update(
             request.Name,
             request.ServiceType,
@@ -82,7 +93,16 @@ internal class DiagnosticTestService : IDiagnosticTestService
             actorId);
         await _repository.SaveChangesAsync(cancellationToken);
 
-        return Result<DiagnosticTestResponse>.Success(diagnosticTest.ToResponse());
+        var after = diagnosticTest.ToResponse();
+        var changes = new List<string>();
+        var amounts = MastersActivityLog.Changes(("price", before.Price, after.Price), ("cost", before.CostPrice, after.CostPrice));
+        if (amounts.Length > 0) changes.Add(amounts[3..]);
+        if (before.Name != after.Name) changes.Add($"renamed from '{before.Name}'");
+        changes.Add(MastersActivityLog.Status(before.IsActive, after.IsActive));
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Update, "DiagnosticTest", after.Id, after.Name,
+            $"Updated {after.ServiceType.ToString().ToLowerInvariant()} '{after.Name}'" + MastersActivityLog.Join(changes), before, after, actorId), cancellationToken);
+
+        return Result<DiagnosticTestResponse>.Success(after);
     }
 
     public async Task<Result<DiagnosticTestResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -107,8 +127,11 @@ internal class DiagnosticTestService : IDiagnosticTestService
             return Result.Failure(MastersErrorCodes.NotFound, $"Diagnostic test '{id}' was not found.");
         }
 
+        var deleted = diagnosticTest.ToResponse();
         diagnosticTest.SoftDelete(actorId);
         await _repository.SaveChangesAsync(cancellationToken);
+        await _activityLog.LogAsync(MastersActivityLog.Request(ActivityLogActions.Delete, "DiagnosticTest", deleted.Id, deleted.Name,
+            $"Deleted {deleted.ServiceType.ToString().ToLowerInvariant()} '{deleted.Name}'", deleted, null, actorId), cancellationToken);
 
         return Result.Success();
     }
