@@ -188,7 +188,7 @@ export default function PriceListPage() {
         subtitle="Every billable service: what the patient pays, the doctor's share, the running cost and the profit the hospital keeps."
       />
 
-      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 p-4 sm:p-6 lg:p-8">
+      <div className="flex w-full flex-1 flex-col gap-5 p-4 sm:p-6 lg:p-8">
         <Tabs value={activeTab.key} onValueChange={selectTab}>
           <TabsList className="h-auto flex-wrap justify-start">
             {tabs.map((spec) => (
