@@ -86,15 +86,32 @@ export function opReportHiddenColumns(range: ReportDateRange, filters: ProfitRep
 export interface ProfitLabels {
   cost: string;
   profit: string;
+  /** OP Report (ADR-141): the cost column is the consultant's share only, so a Laboratory or
+   * Radiology line — which has none — shows "—" there and isn't counted in its total. */
+  consultantShareOnly?: boolean;
 }
 
 export const DEFAULT_PROFIT_LABELS: ProfitLabels = { cost: 'Cost', profit: 'Profit' };
 
 /** OP Report names the two figures by whose share they are (ADR-124): the cost on a
  * consultation line is the consultant's share of the fee, and what's left is the hospital's.
- * For other lines (lab, scans, procedures) the "consultant cost" is still that service's cost
- * price. */
-export const OP_REPORT_PROFIT_LABELS: ProfitLabels = { cost: 'Consultant Cost', profit: 'Hospital Cost' };
+ * Laboratory and Radiology lines have no consultant's share (ADR-141) — their Consultant Cost
+ * is "—", and their Hospital Cost is what the hospital keeps after the running cost (and a
+ * scan's doctor's share). Procedure, injection and file lines are unchanged. */
+export const OP_REPORT_PROFIT_LABELS: ProfitLabels = { cost: 'Consultant Cost', profit: 'Hospital Cost', consultantShareOnly: true };
+
+/** Laboratory and Radiology lines pay no share to the billed consultant (ADR-141): their cost is
+ * the hospital's running cost (and, for a scan, the reporting doctor's share), not the
+ * consultant's. Every other billing type keeps its cost as the consultant's share. */
+export function hasConsultantShare(billingType: string): boolean {
+  return billingType !== 'Laboratory' && billingType !== 'Radiology';
+}
+
+/** The cost a profit table shows for a row: the consultant's share in OP Report ("—" for a lab
+ * or radiology line), the full cost in every other report. */
+export function displayedCost(row: Pick<ProfitReportRow, 'billingType' | 'cost'>, labels: ProfitLabels): number | null {
+  return labels.consultantShareOnly && !hasConsultantShare(row.billingType) ? null : row.cost;
+}
 
 /** OP Report counts only bills for visits registered as OP (ADR-121) — IP, Emergency, Day
  * Care and Observation visits are billed through the same counter but aren't outpatients. A
@@ -175,8 +192,16 @@ export interface ProfitTotals {
    * figures don't yet cover, rather than that gap silently vanishing into a rounding error. */
   revenueWithUnknownCost: number;
   totalCost: number;
+  /** totalCost over lines that pay a consultant's share only (ADR-141) — OP Report's "Total
+   * Consultant Cost". */
+  totalConsultantCost: number;
   totalProfit: number;
   overallMarginPercent: number | null;
+}
+
+/** The cost total a report shows — see displayedCost. */
+export function displayedTotalCost(totals: Pick<ProfitTotals, 'totalCost' | 'totalConsultantCost'>, labels: ProfitLabels): number {
+  return labels.consultantShareOnly ? totals.totalConsultantCost : totals.totalCost;
 }
 
 export function getProfitTotals(rows: ProfitReportRow[]): ProfitTotals {
@@ -186,11 +211,12 @@ export function getProfitTotals(rows: ProfitReportRow[]): ProfitTotals {
   const knownCostRows = rows.filter((row) => row.cost !== null);
   const revenueWithKnownCost = knownCostRows.reduce((sum, row) => sum + row.revenue, 0);
   const totalCost = knownCostRows.reduce((sum, row) => sum + (row.cost ?? 0), 0);
+  const totalConsultantCost = knownCostRows.filter((row) => hasConsultantShare(row.billingType)).reduce((sum, row) => sum + (row.cost ?? 0), 0);
   const totalProfit = knownCostRows.reduce((sum, row) => sum + (row.profit ?? 0), 0);
   const revenueWithUnknownCost = totalRevenue - revenueWithKnownCost;
   const overallMarginPercent = revenueWithKnownCost > 0 ? Math.round((totalProfit / revenueWithKnownCost) * 100) : null;
 
-  return { totalCharge, totalDiscount, totalRevenue, revenueWithKnownCost, revenueWithUnknownCost, totalCost, totalProfit, overallMarginPercent };
+  return { totalCharge, totalDiscount, totalRevenue, revenueWithKnownCost, revenueWithUnknownCost, totalCost, totalConsultantCost, totalProfit, overallMarginPercent };
 }
 
 /** Profit by service — only rows with a known cost contribute (see ProfitTotals'

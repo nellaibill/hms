@@ -2,7 +2,7 @@ import { ArrowUpCircle, CircleDollarSign, Percent, Tag, TrendingUp } from 'lucid
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/features/billing';
 import { cn } from '@/lib/utils';
-import { DEFAULT_PROFIT_LABELS, type ProfitLabels, type ProfitTotals } from '../profitReport';
+import { displayedTotalCost, DEFAULT_PROFIT_LABELS, type ProfitLabels, type ProfitTotals } from '../profitReport';
 
 interface ProfitSummaryCardsProps {
   totals: ProfitTotals;
@@ -48,7 +48,7 @@ export function ProfitSummaryCards({ totals, labels = DEFAULT_PROFIT_LABELS, hid
             </span>
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">Total {labels.cost}</span>
-              <span className="text-lg font-semibold text-foreground">{formatCurrency(totals.totalCost)}</span>
+              <span className="text-lg font-semibold text-foreground">{formatCurrency(displayedTotalCost(totals, labels))}</span>
             </div>
           </CardContent>
         </Card>

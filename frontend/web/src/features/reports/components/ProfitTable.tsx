@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { formatCurrency, formatShortInvoiceNumber } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
 import { formatReportDate } from '@/lib/reportDateRange';
-import { DEFAULT_PROFIT_LABELS, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow } from '../profitReport';
+import { DEFAULT_PROFIT_LABELS, displayedCost, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow } from '../profitReport';
 import { PatientNameLink } from '@/components/PatientNameLink';
 
 interface ProfitTableProps {
@@ -75,8 +75,8 @@ export function ProfitTable({ rows, labels = DEFAULT_PROFIT_LABELS, hidden = {},
               {showCostSplit && <td className="px-4 py-3 text-right text-muted-foreground">{formatMaybeCurrency(row.doctorShare ?? null)}</td>}
               {showCostSplit && <td className="px-4 py-3 text-right text-muted-foreground">{formatMaybeCurrency(row.runningCost ?? null)}</td>}
               <td className="px-4 py-3 text-right text-muted-foreground">
-                {formatMaybeCurrency(row.cost)}
-                {row.costDiscount > 0 && (
+                {formatMaybeCurrency(displayedCost(row, labels))}
+                {row.costDiscount > 0 && displayedCost(row, labels) !== null && (
                   // ADR-113: the consultant's share takes the same percentage off as the fee.
                   <div className="whitespace-nowrap text-xs" title="The discount comes off the consultant's share and the hospital's part by the same percentage">
                     {formatCurrency((row.cost ?? 0) + row.costDiscount)} share − {formatCurrency(row.costDiscount)}

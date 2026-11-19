@@ -4,7 +4,7 @@ import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { formatCurrency, formatShortInvoiceNumber } from '@/features/billing';
 import { resolveRecordLabel } from '@/features/masters';
 import { formatDateRangeLabel, formatReportDate } from '@/lib/reportDateRange';
-import { DEFAULT_PROFIT_LABELS, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow, type ProfitTotals } from '../profitReport';
+import { displayedTotalCost, displayedCost, DEFAULT_PROFIT_LABELS, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow, type ProfitTotals } from '../profitReport';
 import type { ReportDateRange } from '../types';
 
 interface ProfitReportPrintProps {
@@ -38,7 +38,7 @@ export function ProfitReportPrint({ title, range, filterSummary, rows, totals, l
   const summary: [string, string][] = [
     ['Total Revenue', formatCurrency(totals.totalRevenue)],
     ['Total Discount', formatCurrency(totals.totalDiscount)],
-    [`Total ${labels.cost}`, formatCurrency(totals.totalCost)],
+    [`Total ${labels.cost}`, formatCurrency(displayedTotalCost(totals, labels))],
     [`Total ${labels.profit}`, formatCurrency(totals.totalProfit)],
     ['Margin', totals.overallMarginPercent === null ? '—' : `${totals.overallMarginPercent}%`],
   ];
@@ -108,7 +108,7 @@ export function ProfitReportPrint({ title, range, filterSummary, rows, totals, l
               <td className="py-1 pr-2 text-right whitespace-nowrap">{formatCurrency(row.charge)}</td>
               <td className="py-1 pr-2 text-right whitespace-nowrap">{row.discount > 0 ? `−${formatCurrency(row.discount)}` : '—'}</td>
               <td className="py-1 pr-2 text-right whitespace-nowrap">{formatCurrency(row.revenue)}</td>
-              <td className="py-1 pr-2 text-right whitespace-nowrap">{money(row.cost)}</td>
+              <td className="py-1 pr-2 text-right whitespace-nowrap">{money(displayedCost(row, labels))}</td>
               <td className="py-1 pr-2 text-right whitespace-nowrap">{money(row.profit)}</td>
               {!hidden.margin && <td className="py-1 text-right">{row.marginPercent === null ? '—' : `${row.marginPercent}%`}</td>}
             </tr>
@@ -122,7 +122,7 @@ export function ProfitReportPrint({ title, range, filterSummary, rows, totals, l
             <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatCurrency(totals.totalCharge)}</td>
             <td className="py-1.5 pr-2 text-right whitespace-nowrap">{totals.totalDiscount > 0 ? `−${formatCurrency(totals.totalDiscount)}` : '—'}</td>
             <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatCurrency(totals.totalRevenue)}</td>
-            <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatCurrency(totals.totalCost)}</td>
+            <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatCurrency(displayedTotalCost(totals, labels))}</td>
             <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatCurrency(totals.totalProfit)}</td>
             {!hidden.margin && <td className="py-1.5 text-right">{totals.overallMarginPercent === null ? '—' : `${totals.overallMarginPercent}%`}</td>}
           </tr>
