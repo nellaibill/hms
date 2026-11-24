@@ -1,4 +1,5 @@
 import { Printer, Receipt, TriangleAlert } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -125,7 +126,13 @@ export function InvoiceDetailCard({
                     <span className="text-sm font-semibold text-foreground">
                       {formatCurrency(item.total)}
                     </span>
-                    <PaymentStatusBadge status={item.paymentStatus} />
+                    {/* A voided or reverted bill's lines keep their Paid status underneath (the
+                        refund is recorded on the bill), so say what happened to the bill instead. */}
+                    {billing.isVoided ? (
+                      <Badge variant="destructive">{billing.isReverted ? 'Reverted' : 'Voided'}</Badge>
+                    ) : (
+                      <PaymentStatusBadge status={item.paymentStatus} />
+                    )}
                     {item.paymentStatus === 'Pending' && canEdit && !billing.isVoided && !discountPending && !revertPending && (
                       <Button size="sm" variant="outline" onClick={() => onRecordPayment(item)}>
                         Record Payment

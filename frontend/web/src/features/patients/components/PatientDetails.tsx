@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { idProofTypeLabel } from '../idProofTypeLabel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConsultantName } from '@/components/ConsultantName';
 import { DepartmentName } from '@/components/DepartmentName';
@@ -238,7 +239,7 @@ function RegistrationDetailsCard({ patient }: { patient: Patient }) {
         <Field label="Registration source" value={humanize(patient.modeOfArrivalSource)} />
         {patient.modeOfArrivalChannel && <Field label="Arrival channel" value={modeOfArrivalChannelLabel(patient.modeOfArrivalChannel)} />}
         {patient.modeOfArrivalSpecify && <Field label="Arrival details" value={patient.modeOfArrivalSpecify} />}
-        <Field label="ID proof type" value={patient.idProofType ?? '—'} />
+        <Field label="ID proof type" value={patient.idProofType ? idProofTypeLabel(patient.idProofType) : '—'} />
         <Field label="ID proof number" value={patient.idProofNumber ? maskIdNumber(patient.idProofNumber) : '—'} />
       </dl>
     </SectionCard>
@@ -815,7 +816,7 @@ function PatientDocumentsTab({ patient }: { patient: Patient }) {
             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ID proof</span>
             {idProofUrl ? (
               <a href={idProofUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                {patient.idProofType} on file — view
+                {patient.idProofType ? idProofTypeLabel(patient.idProofType) : 'ID proof'} on file — view
               </a>
             ) : (
               <span className="text-sm text-muted-foreground">Not uploaded.</span>

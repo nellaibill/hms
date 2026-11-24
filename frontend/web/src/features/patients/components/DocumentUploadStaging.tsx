@@ -4,6 +4,7 @@ import { CameraCaptureButton } from '@/components/ui/camera-capture-button';
 import { FileChooserButton } from '@/components/ui/file-chooser-button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { idProofTypeLabel } from '../idProofTypeLabel';
 import { validateUploadFile } from '@/lib/fileValidation';
 import { Field } from './FormSection';
 import { MAX_PATIENT_DOCUMENT_SIZE_BYTES, MAX_PATIENT_DOCUMENT_SIZE_MB } from '../documentUploadLimits';
@@ -23,7 +24,7 @@ export const emptyStagedDocuments: StagedDocuments = { photo: null, idProofType:
 const ID_PROOF_NUMBER_LABELS: Record<IdProofType, string> = {
   Aadhaar: 'Aadhaar number',
   Passport: 'Passport number',
-  DrivingLicense: 'Driving License number',
+  DrivingLicense: 'Driving Licence number',
   VoterId: 'Voter ID number',
   Other: 'ID number',
 };
@@ -94,7 +95,7 @@ export function DocumentUploadStaging({ value, onChange, idProofNumberRequired =
             <SelectContent>
               {ID_PROOF_TYPES.map((type) => (
                 <SelectItem key={type} value={type}>
-                  {type}
+                  {idProofTypeLabel(type)}
                 </SelectItem>
               ))}
             </SelectContent>

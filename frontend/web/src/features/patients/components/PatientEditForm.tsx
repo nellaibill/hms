@@ -26,6 +26,7 @@ import { Controller, useFieldArray, useForm, type FieldErrors } from 'react-hook
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { idProofTypeLabel } from '../idProofTypeLabel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DistrictSelect } from '@/components/DistrictSelect';
 import { StateSelect } from '@/components/StateSelect';
@@ -903,7 +904,7 @@ export function PatientEditForm({
                     <SelectContent>
                       {ID_PROOF_TYPES.map((type) => (
                         <SelectItem key={type} value={type}>
-                          {type}
+                          {idProofTypeLabel(type)}
                         </SelectItem>
                       ))}
                     </SelectContent>
