@@ -17,6 +17,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.weekly-rosters")]
 [Route("api/v1/weekly-rosters")]
 public class WeeklyRostersController : ControllerBase
 {

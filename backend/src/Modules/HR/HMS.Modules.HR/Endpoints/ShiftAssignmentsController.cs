@@ -17,6 +17,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.shift-assignments")]
 [Route("api/v1/shift-assignments")]
 public class ShiftAssignmentsController : ControllerBase
 {

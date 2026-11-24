@@ -4,10 +4,11 @@ import { weeklyRostersApi } from '../../../services/apiClient';
 
 export const weeklyRostersQueryKey = (query: WeeklyRosterListQuery) => ['weeklyRosters', 'list', query] as const;
 
-export function useWeeklyRostersQuery(query: WeeklyRosterListQuery) {
+export function useWeeklyRostersQuery(query: WeeklyRosterListQuery, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: weeklyRostersQueryKey(query),
     queryFn: () => weeklyRostersApi.getWeeklyRosters(query),
     placeholderData: (previous) => previous,
+    enabled: options?.enabled ?? true,
   });
 }

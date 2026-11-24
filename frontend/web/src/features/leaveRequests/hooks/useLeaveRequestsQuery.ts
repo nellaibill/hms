@@ -4,10 +4,11 @@ import { leaveRequestsApi } from '../../../services/apiClient';
 
 export const leaveRequestsQueryKey = (query: LeaveRequestListQuery) => ['leaveRequests', 'list', query] as const;
 
-export function useLeaveRequestsQuery(query: LeaveRequestListQuery) {
+export function useLeaveRequestsQuery(query: LeaveRequestListQuery, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: leaveRequestsQueryKey(query),
     queryFn: () => leaveRequestsApi.getLeaveRequests(query),
     placeholderData: (previous) => previous,
+    enabled: options?.enabled ?? true,
   });
 }

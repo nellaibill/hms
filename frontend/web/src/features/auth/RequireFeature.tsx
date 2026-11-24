@@ -22,7 +22,7 @@ export function RequireFeature({ feature, children }: RequireFeatureProps) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
         <ShieldAlert className="h-8 w-8 text-destructive" />
-        <p className="font-medium text-foreground">This module isn't available for your hospital.</p>
+        <p className="font-medium text-foreground">This feature isn't available for your hospital.</p>
         <p className="text-sm text-muted-foreground">Contact your Platform Admin if you believe this is a mistake.</p>
       </div>
     );

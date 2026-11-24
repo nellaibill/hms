@@ -16,6 +16,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.leave-types")]
 [Route("api/v1/leave-types")]
 public class LeaveTypesController : ControllerBase
 {

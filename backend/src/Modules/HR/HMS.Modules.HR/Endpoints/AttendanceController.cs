@@ -16,6 +16,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.attendance")]
 [Route("api/v1/attendance")]
 public class AttendanceController : ControllerBase
 {

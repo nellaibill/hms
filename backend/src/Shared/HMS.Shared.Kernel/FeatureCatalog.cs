@@ -123,6 +123,12 @@ public static class FeatureCatalog
         // above (nothing persisted, sends admission data to a third-party AI provider). Requires
         // "discharge-summary" itself (see Dependencies).
         "discharge-summary-ai-draft",
+
+        // The hospital's Settings area (ADR-145). Mandatory — Settings holds Roles & Permissions,
+        // so switching the whole area off would lock a hospital's admins out of the one screen
+        // that manages access. It exists as a key so the Settings pages a Platform Admin *can*
+        // switch off (Theme & Branding, Backup, …) have a parent in SubFeatures below.
+        "settings",
     ];
 
     public static readonly IReadOnlyList<string> All = [.. SchemaBacked, .. UiOnly];
@@ -144,6 +150,7 @@ public static class FeatureCatalog
         "billing",
         "opd-consultation",
         "activity-log",
+        "settings",
     ];
 
     /// <summary>Platform-admin toggleable per tenant — every catalog key that isn't mandatory,
@@ -172,4 +179,127 @@ public static class FeatureCatalog
             ["pharmacy"] = ["products"],
             ["discharge-summary-ai-draft"] = ["discharge-summary"],
         };
+
+    /// <summary>
+    /// The parts of a module a Platform Admin can switch off on their own (ADR-145) — e.g. HR's
+    /// Leave Requests, or Theme &amp; Branding's Logo configuration. Each names its parent: a
+    /// module key above, or another sub-feature (Theme &amp; Branding's tabs sit under
+    /// "settings.branding"). Listed parent before child, which <see cref="ResolveEffective"/>
+    /// relies on.
+    ///
+    /// Unlike modules, a sub-feature is ON unless a platform.tenant_features row says otherwise:
+    /// adding one here never hides anything from an existing hospital, and none of them has a
+    /// schema to provision (they live inside their parent module's). A sub-feature only takes
+    /// effect while its parent chain is on — switching HR off hides every HR part, and switching
+    /// it back on restores the parts exactly as they were.
+    /// </summary>
+    public static readonly IReadOnlyList<SubFeature> SubFeatures =
+    [
+        // HR & Staffing — Employee Management
+        new("hr.dashboard", "hr"),
+        new("hr.employees", "hr"),
+        new("hr.attendance", "hr"),
+        new("hr.leave-requests", "hr"),
+        new("hr.leave-types", "hr"),
+
+        // HR & Staffing — Duty Roster
+        new("hr.shifts", "hr"),
+        new("hr.staff-availability", "hr"),
+        new("hr.weekly-rosters", "hr"),
+        new("hr.shift-assignments", "hr"),
+        new("hr.shift-swap-requests", "hr"),
+        new("hr.monthly-calendar", "hr"),
+
+        // Settings. Roles & Permissions is deliberately not here: it can never be switched off
+        // (see the "settings" key's own comment).
+        new("settings.reference-data", "settings"),
+        new("settings.branding", "settings"),
+        new("settings.reports-visibility", "settings"),
+        new("settings.patient-fields", "settings"),
+        new("settings.billing-approvals", "settings"),
+        new("settings.backup", "settings"),
+
+        // Theme & Branding — the page's tabs, plus Logo configuration inside the Identity tab.
+        new("settings.branding.hospital-info", "settings.branding"),
+        new("settings.branding.logo", "settings.branding"),
+        new("settings.branding.core-colors", "settings.branding"),
+        new("settings.branding.top-bar", "settings.branding"),
+        new("settings.branding.left-nav", "settings.branding"),
+        new("settings.branding.section-headers", "settings.branding"),
+        new("settings.branding.buttons", "settings.branding"),
+        new("settings.branding.typography", "settings.branding"),
+        new("settings.branding.print", "settings.branding"),
+    ];
+
+    public static readonly IReadOnlyList<string> SubFeatureKeys = [.. SubFeatures.Select(sub => sub.Key)];
+
+    /// <summary>Sub-feature key → the other sub-features it needs, because its pages read their
+    /// data (e.g. Attendance picks from the Employees list, a Weekly Roster shows its Shift
+    /// Assignments). Kept apart from <see cref="Dependencies"/>, which is about schemas between
+    /// modules. Enforced by UpdateTenantFeaturesRequestValidator.</summary>
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> SubFeatureDependencies =
+        new Dictionary<string, IReadOnlyList<string>>
+        {
+            ["hr.attendance"] = ["hr.employees"],
+            ["hr.leave-requests"] = ["hr.employees", "hr.leave-types"],
+            ["hr.shift-assignments"] = ["hr.shifts"],
+            ["hr.weekly-rosters"] = ["hr.shifts", "hr.shift-assignments"],
+            ["hr.shift-swap-requests"] = ["hr.shift-assignments"],
+            ["hr.monthly-calendar"] = ["hr.weekly-rosters"],
+        };
+
+    /// <summary>Every module and sub-feature key — what a tenant with no restrictions has.</summary>
+    public static readonly IReadOnlyList<string> AllWithSubFeatures = [.. All, .. SubFeatureKeys];
+
+    /// <summary>The modules a tenant has chosen, from its platform.tenant_features rows. No rows
+    /// at all (a tenant provisioned before the table existed) means every module; otherwise a
+    /// module needs an enabled row. Mandatory modules are always included — a tenant created
+    /// before a key became Mandatory has no row for it.</summary>
+    public static IReadOnlyList<string> ResolveSelectedModules(IReadOnlyCollection<(string Key, bool IsEnabled)> rows)
+    {
+        if (rows.Count == 0)
+        {
+            return All;
+        }
+
+        var selected = rows.Where(row => row.IsEnabled && All.Contains(row.Key)).Select(row => row.Key).ToHashSet();
+        selected.UnionWith(Mandatory);
+        return [.. All.Where(selected.Contains)];
+    }
+
+    /// <summary>The sub-features a tenant has left on, from its rows — ignoring whether their
+    /// parent is on (see <see cref="ResolveEffective"/> for that). A sub-feature with no row is on.</summary>
+    public static IReadOnlyList<string> ResolveSelectedSubFeatures(IReadOnlyCollection<(string Key, bool IsEnabled)> rows)
+    {
+        var disabled = rows.Where(row => !row.IsEnabled).Select(row => row.Key).ToHashSet();
+        return [.. SubFeatureKeys.Where(key => !disabled.Contains(key))];
+    }
+
+    /// <summary>What a tenant can actually use: its modules, plus each selected sub-feature whose
+    /// parent chain is on. This is the set ITenantContext.EnabledFeatures carries and
+    /// [RequireFeature] checks.</summary>
+    public static IReadOnlyList<string> ResolveEffective(IReadOnlyCollection<string> modules, IReadOnlyCollection<string> subFeatures)
+    {
+        var effective = modules.ToHashSet();
+        var selectedSubs = subFeatures.ToHashSet();
+
+        // Parent before child (see SubFeatures), so a parent's own result is known by the time
+        // its children are checked.
+        foreach (var sub in SubFeatures)
+        {
+            if (selectedSubs.Contains(sub.Key) && effective.Contains(sub.Parent))
+            {
+                effective.Add(sub.Key);
+            }
+        }
+
+        return [.. AllWithSubFeatures.Where(effective.Contains)];
+    }
+
+    /// <summary>Shortcut for <see cref="ResolveEffective"/> straight from a tenant's rows.</summary>
+    public static IReadOnlyList<string> ResolveEffective(IReadOnlyCollection<(string Key, bool IsEnabled)> rows)
+        => ResolveEffective(ResolveSelectedModules(rows), ResolveSelectedSubFeatures(rows));
 }
+
+/// <summary>A part of a module that can be switched off on its own — see FeatureCatalog.SubFeatures.</summary>
+public sealed record SubFeature(string Key, string Parent);
