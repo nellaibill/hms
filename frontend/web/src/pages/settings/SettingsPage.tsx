@@ -25,6 +25,9 @@ interface SettingsSection {
    * which have no corresponding entry in the permission catalog (see final report's
    * gap list); those stay reachable to anyone who can open Settings at all. */
   permission?: string;
+  /** Tenant feature (ADR-145) a Platform Admin can switch this page off with — omitted for
+   * Roles & Permissions, which can never be switched off. */
+  feature?: string;
 }
 
 // No "User Accounts" card: logins are now created and managed from each Employee's and
@@ -44,6 +47,7 @@ const sections: SettingsSection[] = [
     description: 'Product classification, brands, units, tax, warehouses, business partners, and finance reference data.',
     icon: Database,
     path: '/admin/masters',
+    feature: 'settings.reference-data',
     status: 'available',
   },
   {
@@ -51,6 +55,7 @@ const sections: SettingsSection[] = [
     description: 'Colors, fonts, logo, and hospital identity — applied across the app immediately, no code changes needed.',
     icon: Palette,
     path: '/admin/settings/branding',
+    feature: 'settings.branding',
     status: 'available',
   },
   {
@@ -58,6 +63,7 @@ const sections: SettingsSection[] = [
     description: 'Choose which Accounts & Finance reports this hospital shows. OP Report and Collection Summary always show.',
     icon: Eye,
     path: '/admin/settings/reports-visibility',
+    feature: 'settings.reports-visibility',
     status: 'available',
     permission: 'identity-administration.view',
   },
@@ -66,6 +72,7 @@ const sections: SettingsSection[] = [
     description: 'Choose which New Patient Registration fields are mandatory — last name, address, emergency contact, ID proof and more.',
     icon: ClipboardCheck,
     path: '/admin/settings/patient-registration-fields',
+    feature: 'settings.patient-fields',
     status: 'available',
     permission: 'identity-administration.view',
   },
@@ -74,6 +81,7 @@ const sections: SettingsSection[] = [
     description: 'Turn discounts off, or choose whether discounts and bill reverts need Super Admin approval.',
     icon: BadgeCheck,
     path: '/admin/settings/billing-approvals',
+    feature: 'settings.billing-approvals',
     status: 'available',
     permission: 'identity-administration.view',
   },
@@ -82,14 +90,17 @@ const sections: SettingsSection[] = [
     description: 'Download this hospital’s latest daily database backup, or a zip of its documents and images.',
     icon: DatabaseBackup,
     path: '/admin/settings/backup',
+    feature: 'settings.backup',
     status: 'available',
     permission: 'identity-administration.view',
   },
 ];
 
 export default function SettingsPage() {
-  const { hasPermission } = useAuth();
-  const visibleSections = sections.filter((section) => !section.permission || hasPermission(section.permission));
+  const { hasPermission, hasFeature } = useAuth();
+  const visibleSections = sections.filter(
+    (section) => (!section.permission || hasPermission(section.permission)) && (!section.feature || hasFeature(section.feature)),
+  );
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner

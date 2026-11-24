@@ -19,6 +19,7 @@ namespace HMS.Modules.Backups.Endpoints;
 /// </summary>
 [ApiController]
 [Authorize]
+[RequireFeature("settings.backup")]
 [Route("api/v1/backups")]
 public class TenantBackupsController : ControllerBase
 {

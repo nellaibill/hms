@@ -29,7 +29,8 @@ export default function DashboardPage() {
   // IP admissions come from the IPD module — only shown to viewers who can see IPD.
   const canViewIpd = hasPermission('clinical-care.view') && hasFeature('ipd');
   const canViewFinance = hasPermission('finance-billing.view');
-  const canViewWorkforce = hasPermission('workforce-admin.view');
+  // Present HR reads the HR Dashboard's figures, which a Platform Admin can switch off (ADR-145).
+  const canViewWorkforce = hasPermission('workforce-admin.view') && hasFeature('hr.dashboard');
   return (
     <div className="flex flex-1 flex-col">
       <PageBanner

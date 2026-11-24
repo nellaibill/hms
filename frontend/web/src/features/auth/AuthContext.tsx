@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { LoginResponse } from '@hms/shared';
 import { brandingQueryKey } from '../branding/hooks/useBrandingQuery';
 import { authApi, setAuthToken, setUnauthorizedHandler } from '../../services/apiClient';
@@ -75,6 +75,12 @@ function toAuthUser(response: LoginResponse): AuthUser {
   };
 }
 
+function sameKeys(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((key) => set.has(key));
+}
+
 // Initializes the module-level HTTP token holder synchronously (outside React state) so
 // the very first render's queries carry a restored token, not just renders after an effect.
 const initialSession = readStoredSession();
@@ -124,6 +130,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => setUnauthorizedHandler(null);
   }, []);
+
+  // ADR-145: the hospital's features are re-read from the API — on window focus and every minute
+  // — rather than trusted from the login, so a feature (or one part of it, e.g. HR's Leave
+  // Requests) a Platform Admin switches off disappears from menus, cards and pages without a
+  // re-login. The backend's [RequireFeature] checks stay the real boundary either way.
+  const liveFeatures = useQuery({
+    queryKey: ['auth', 'features', user?.id],
+    queryFn: () => authApi.getFeatures(),
+    enabled: user !== null,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  useEffect(() => {
+    const live = liveFeatures.data;
+    if (!live) return;
+    setUser((current) => {
+      if (!current || sameKeys(current.featureKeys, live)) return current;
+      const updated = { ...current, featureKeys: live };
+      const stored = readStoredSession();
+      if (stored) {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...stored, user: updated }));
+      }
+      return updated;
+    });
+  }, [liveFeatures.data]);
 
   const hasPermission = (key: string) => user?.permissionKeys.includes(key) ?? false;
   const hasFeature = (key: string) => user?.featureKeys.includes(key) ?? false;

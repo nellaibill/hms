@@ -18,6 +18,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.employees")]
 [Route("api/v1/employees")]
 public class EmployeesController : ControllerBase
 {

@@ -4,10 +4,11 @@ import { shiftSwapRequestsApi } from '../../../services/apiClient';
 
 export const swapRequestsQueryKey = (query: SwapRequestListQuery) => ['shiftSwapRequests', 'list', query] as const;
 
-export function useSwapRequestsQuery(query: SwapRequestListQuery) {
+export function useSwapRequestsQuery(query: SwapRequestListQuery, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: swapRequestsQueryKey(query),
     queryFn: () => shiftSwapRequestsApi.getSwapRequests(query),
     placeholderData: (previous) => previous,
+    enabled: options?.enabled ?? true,
   });
 }

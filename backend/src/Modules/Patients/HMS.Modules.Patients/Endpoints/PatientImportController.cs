@@ -18,6 +18,7 @@ namespace HMS.Modules.Patients.Endpoints;
 /// </summary>
 [ApiController]
 [Authorize]
+[RequireFeature("patients.bulk-import")]
 [Route("api/v1/patients/import")]
 public class PatientImportController : ControllerBase
 {

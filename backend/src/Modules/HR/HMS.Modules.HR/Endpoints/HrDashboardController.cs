@@ -14,6 +14,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.dashboard")]
 [Authorize]
 [RequirePermission("workforce-admin.view")]
 [Route("api/v1/hr/dashboard")]

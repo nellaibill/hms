@@ -37,6 +37,7 @@ public class PatientFieldSettingsController : ControllerBase
     /// <response code="200">The settings were saved.</response>
     /// <response code="400">The request failed validation.</response>
     [RequirePermission("identity-administration.edit")]
+    [RequireFeature("settings.patient-fields")]
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] PatientFieldRequirements request, CancellationToken cancellationToken)
     {

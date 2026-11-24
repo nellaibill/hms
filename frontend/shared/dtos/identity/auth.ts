@@ -39,6 +39,12 @@ export interface LoginResponse {
   user: LoginUserResponse;
 }
 
+/** Mirrors HMS.Modules.Identity.Contracts.CurrentFeaturesResponse — the hospital's feature keys,
+ * read live (ADR-145) so a feature a Platform Admin switches off disappears without a re-login. */
+export interface CurrentFeaturesResponse {
+  featureKeys: string[];
+}
+
 /** Mirrors HMS.Modules.Identity.Contracts.ChangePasswordRequest. */
 export interface ChangePasswordRequest {
   currentPassword: string;

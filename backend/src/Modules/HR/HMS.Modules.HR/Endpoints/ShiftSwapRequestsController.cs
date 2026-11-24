@@ -18,6 +18,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.shift-swap-requests")]
 [Route("api/v1/shift-swap-requests")]
 public class ShiftSwapRequestsController : ControllerBase
 {

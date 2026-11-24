@@ -17,12 +17,18 @@ namespace HMS.Modules.Sync.Endpoints;
 /// </summary>
 [ApiController]
 [Authorize]
+[RequireFeature("cloud-sync")]
 [Route("api/v1/sync-monitor")]
 public class SyncMonitorController : ControllerBase
 {
     private const string ViewPermission = "identity-administration.view";
     private const string EditPermission = "identity-administration.edit";
     private const string PatientViewPermission = "patient-management.view";
+
+    // Tenant features a Platform Admin can switch off (ADR-145): the whole page is "cloud-sync"
+    // (class level); its actions and the job dashboard are parts of it.
+    private const string ControlsFeature = "cloud-sync.controls";
+    private const string JobDashboardFeature = "cloud-sync.job-dashboard";
 
     private readonly ISyncMonitorService _monitor;
 
@@ -66,12 +72,14 @@ public class SyncMonitorController : ControllerBase
     /// <summary>Retries one failed event (it must be the one blocking its patient).</summary>
     [HttpPost("events/{eventId:guid}/retry")]
     [RequirePermission(EditPermission)]
+    [RequireFeature(ControlsFeature)]
     public async Task<IActionResult> Retry(Guid eventId, CancellationToken cancellationToken) =>
         ToResponse(await _monitor.RetryEventAsync(eventId, User.GetUserId(), cancellationToken));
 
     /// <summary>Retries every failed or needs-attention event. Conflicts are excluded.</summary>
     [HttpPost("events/retry-all")]
     [RequirePermission(EditPermission)]
+    [RequireFeature(ControlsFeature)]
     public async Task<IActionResult> RetryAll(CancellationToken cancellationToken) =>
         ToResponse(await _monitor.RetryAllAsync(User.GetUserId(), cancellationToken));
 
@@ -79,29 +87,34 @@ public class SyncMonitorController : ControllerBase
     /// attention (Skip).</summary>
     [HttpPost("events/{eventId:guid}/resolve")]
     [RequirePermission(EditPermission)]
+    [RequireFeature(ControlsFeature)]
     public async Task<IActionResult> Resolve(Guid eventId, [FromBody] SyncResolveRequest request, CancellationToken cancellationToken) =>
         ToResponse(await _monitor.ResolveAsync(eventId, request, User.GetUserId(), cancellationToken));
 
     /// <summary>Pauses sending for this hospital. Changes keep being saved and queued locally.</summary>
     [HttpPost("pause")]
     [RequirePermission(EditPermission)]
+    [RequireFeature(ControlsFeature)]
     public async Task<IActionResult> Pause(CancellationToken cancellationToken) =>
         ToResponse(await _monitor.SetPausedAsync(true, User.GetUserId(), cancellationToken));
 
     [HttpPost("resume")]
     [RequirePermission(EditPermission)]
+    [RequireFeature(ControlsFeature)]
     public async Task<IActionResult> Resume(CancellationToken cancellationToken) =>
         ToResponse(await _monitor.SetPausedAsync(false, User.GetUserId(), cancellationToken));
 
     /// <summary>Checks the cloud connection and starts a sync run now.</summary>
     [HttpPost("trigger")]
     [RequirePermission(EditPermission)]
+    [RequireFeature(ControlsFeature)]
     public async Task<IActionResult> Trigger(CancellationToken cancellationToken) =>
         ToResponse(await _monitor.TriggerAsync(User.GetUserId(), cancellationToken));
 
     /// <summary>A one-time link (60 s) that opens the Hangfire dashboard for 15 minutes.</summary>
     [HttpPost("dashboard-session")]
     [RequirePermission(EditPermission)]
+    [RequireFeature(JobDashboardFeature)]
     public async Task<IActionResult> CreateDashboardSession(CancellationToken cancellationToken)
     {
         if (User.GetUserId() is not { } userId)

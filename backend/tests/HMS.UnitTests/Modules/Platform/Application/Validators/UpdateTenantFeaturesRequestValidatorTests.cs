@@ -52,4 +52,44 @@ public class UpdateTenantFeaturesRequestValidatorTests
 
         result.IsValid.Should().BeFalse();
     }
+
+    [Fact]
+    public void Validate_WithEverySubFeature_Passes()
+    {
+        var request = new UpdateTenantFeaturesRequest { EnabledFeatures = FeatureCatalog.Mandatory, EnabledSubFeatures = FeatureCatalog.SubFeatureKeys };
+
+        _sut.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_WithNoSubFeatures_Passes()
+    {
+        var request = new UpdateTenantFeaturesRequest { EnabledFeatures = FeatureCatalog.Mandatory, EnabledSubFeatures = [] };
+
+        _sut.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_WithAModuleKeyAsASubFeature_Fails()
+    {
+        var request = new UpdateTenantFeaturesRequest { EnabledFeatures = FeatureCatalog.Mandatory, EnabledSubFeatures = ["hr"] };
+
+        _sut.Validate(request).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Validate_WithASubFeatureButNotWhatItNeeds_Fails()
+    {
+        // Attendance picks staff from the Employees list.
+        var request = new UpdateTenantFeaturesRequest
+        {
+            EnabledFeatures = FeatureCatalog.Mandatory,
+            EnabledSubFeatures = FeatureCatalog.SubFeatureKeys.Where(key => key != "hr.employees" && key != "hr.leave-requests").ToList(),
+        };
+
+        var result = _sut.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("'hr.attendance' requires 'hr.employees'"));
+    }
 }

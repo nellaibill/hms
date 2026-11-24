@@ -1,3 +1,4 @@
+import type { SubFeatureResponse } from '@hms/shared';
 import {
   Ambulance,
   Award,
@@ -6,6 +7,7 @@ import {
   Briefcase,
   CalendarDays,
   ClipboardList,
+  CloudCog,
   Database,
   Droplets,
   FileCheck,
@@ -24,6 +26,7 @@ import {
   Receipt,
   ScanLine,
   Scissors,
+  Settings,
   Sparkles,
   Stethoscope,
   Users,
@@ -74,6 +77,7 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   patients: { label: 'Patients', description: 'Patient registration and records', icon: Users, category: 'core' },
   documents: { label: 'Documents', description: 'Document templates and storage', icon: FileText, category: 'core' },
   branding: { label: 'Branding', description: 'Logo, theme, hospital settings', icon: Palette, category: 'core' },
+  settings: { label: 'Settings', description: 'Hospital settings pages — Roles & Permissions always stays on', icon: Settings, category: 'core' },
 
   opd: { label: 'Out Patient Department (OPD)', description: 'Outpatient queue and scheduling', icon: Stethoscope, category: 'clinical' },
   'opd-consultation': { label: 'OPD Consultation', description: 'Consultation notes, diagnosis, plan', icon: ClipboardList, category: 'clinical' },
@@ -93,6 +97,7 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   calendar: { label: 'Calendar', description: 'Hospital calendar and events', icon: CalendarDays, category: 'operations' },
   ambulance: { label: 'Ambulance', description: 'Ambulance dispatch and transport', icon: Ambulance, category: 'operations' },
   'activity-log': { label: 'Activity Log', description: 'Audit trail of user actions', icon: History, category: 'operations' },
+  'cloud-sync': { label: 'Cloud Sync', description: 'Send patient changes from this server to the cloud', icon: CloudCog, category: 'operations' },
 
   billing: { label: 'Billing', description: 'Invoices and payments', icon: Receipt, category: 'billing' },
   finance: { label: 'Accounts and Finance', description: 'Ledger and finance reports', icon: Wallet, category: 'billing' },
@@ -107,8 +112,80 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
 
 export const FEATURE_LABELS: Record<string, string> = Object.fromEntries(Object.entries(FEATURE_META).map(([key, meta]) => [key, meta.label]));
 
+interface SubFeatureMeta {
+  label: string;
+  description: string;
+  /** Heading the part is listed under inside its module, e.g. HR's "Duty Roster" — mirrors how
+   * the hospital app's own hub page sections them. */
+  group?: string;
+}
+
+/**
+ * Display metadata for sub-features (HMS.Shared.Kernel.FeatureCatalog.SubFeatures, ADR-145) —
+ * the parts of a module a platform admin can switch off on their own. Keys, parents and
+ * dependencies come from the API; a key missing here still renders under its raw key.
+ */
+export const SUB_FEATURE_META: Record<string, SubFeatureMeta> = {
+  'hr.dashboard': { label: 'HR Dashboard', description: 'Headcount, attendance and leave at a glance', group: 'Employee Management' },
+  'hr.employees': { label: 'Employees', description: 'Employee directory — profiles, department and status', group: 'Employee Management' },
+  'hr.attendance': { label: 'Attendance', description: 'Daily check-in/check-out records', group: 'Employee Management' },
+  'hr.leave-requests': { label: 'Leave Requests', description: 'Submit, approve and reject leave', group: 'Employee Management' },
+  'hr.leave-types': { label: 'Leave Types', description: 'Leave types, paid status and yearly limits', group: 'Employee Management' },
+  'hr.shifts': { label: 'Shift Management', description: 'Shift codes, timings, breaks and grace periods', group: 'Duty Roster' },
+  'hr.staff-availability': { label: 'Staff Availability', description: 'When staff are available or away, and why', group: 'Duty Roster' },
+  'hr.weekly-rosters': { label: 'Weekly Roster', description: 'Per-department weekly rosters and publishing', group: 'Duty Roster' },
+  'hr.shift-assignments': { label: 'Shift Assignments', description: 'Assign staff to shifts on roster dates', group: 'Duty Roster' },
+  'hr.shift-swap-requests': { label: 'Shift Swap Requests', description: 'Staff requests to swap shifts', group: 'Duty Roster' },
+  'hr.monthly-calendar': { label: 'Monthly Calendar', description: 'A month of weekly rosters at a glance', group: 'Duty Roster' },
+
+  'settings.reference-data': { label: 'Hospital Reference Data', description: 'The masters hub — departments, designations, lab catalog, taxes and more' },
+  'settings.branding': { label: 'Theme & Branding', description: 'Hospital identity, logos, colors, fonts and print layout' },
+  'settings.reports-visibility': { label: 'Reports Visibility', description: 'Choose which Accounts & Finance reports show' },
+  'settings.patient-fields': { label: 'Patient Registration Fields', description: 'Choose which registration fields are mandatory' },
+  'settings.billing-approvals': { label: 'Billing Approvals', description: 'Discount and bill-revert approval rules' },
+  'settings.backup': { label: 'Backup', description: 'Download the daily database backup and files zip' },
+
+  'settings.branding.hospital-info': { label: 'Hospital information', description: 'Name, application title, address and phone' },
+  'settings.branding.logo': { label: 'Logo configuration', description: 'Upload and size the header, compact, login and print logos' },
+  'settings.branding.core-colors': { label: 'Core colors', description: 'Page, primary, secondary, border and link colors' },
+  'settings.branding.top-bar': { label: 'Top bar', description: 'Top bar background and text colors' },
+  'settings.branding.left-nav': { label: 'Left nav', description: 'Left navigation menu colors' },
+  'settings.branding.section-headers': { label: 'Section headers', description: 'Card header and page banner colors' },
+  'settings.branding.buttons': { label: 'Buttons', description: 'Primary, success, warning and danger button colors' },
+  'settings.branding.typography': { label: 'Typography', description: 'Font family, base font size and top bar icon size' },
+  'settings.branding.print': { label: 'Print', description: 'Paper size and margins for printouts' },
+
+  'patients.bulk-import': { label: 'Bulk Patient Import', description: 'Register many patients from an Excel file, plus Import History' },
+
+  'cloud-sync.controls': { label: 'Sync controls', description: 'Sync now, Pause/Resume, and retry or resolve failed changes' },
+  'cloud-sync.job-dashboard': { label: 'Job dashboard', description: 'Open the background job dashboard from Cloud Sync' },
+};
+
 export function featureLabel(key: string): string {
-  return FEATURE_META[key]?.label ?? key;
+  return FEATURE_META[key]?.label ?? SUB_FEATURE_META[key]?.label ?? key;
+}
+
+/** The direct children of a module or sub-feature, in catalog order. */
+export function childrenOf(parent: string, subFeatures: readonly SubFeatureResponse[]): string[] {
+  return subFeatures.filter((sub) => sub.parent === parent).map((sub) => sub.key);
+}
+
+/** Every sub-feature under a module or sub-feature, at any depth. */
+export function descendantsOf(parent: string, subFeatures: readonly SubFeatureResponse[]): string[] {
+  return childrenOf(parent, subFeatures).flatMap((child) => [child, ...descendantsOf(child, subFeatures)]);
+}
+
+/** Children grouped under their SUB_FEATURE_META heading, keeping catalog order; ungrouped
+ * children come first under an empty heading. */
+export function groupChildren(children: readonly string[]): { group: string; keys: string[] }[] {
+  const groups: { group: string; keys: string[] }[] = [];
+  for (const key of children) {
+    const group = SUB_FEATURE_META[key]?.group ?? '';
+    const existing = groups.find((g) => g.group === group);
+    if (existing) existing.keys.push(key);
+    else groups.push({ group, keys: [key] });
+  }
+  return groups;
 }
 
 export function featureCategoryOf(key: string): FeatureCategoryId {
@@ -198,4 +275,5 @@ export const OPTIONAL_FEATURE_KEYS = [
   'discharge-summary',
   'opd-ambient-notes',
   'discharge-summary-ai-draft',
+  'cloud-sync',
 ];

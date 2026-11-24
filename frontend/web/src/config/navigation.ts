@@ -233,6 +233,7 @@ export const navigationTree: NavNode[] = [
     iconColor: 'text-sky-500',
     description: 'Delivery of patient changes from this local server to the cloud: status, failures and retries.',
     permission: 'identity-administration',
+    feature: 'cloud-sync',
     section: 'Administrative',
   },
   {

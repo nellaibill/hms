@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/features/auth/AuthContext';
 import { hexToHslTriple, hslTripleToHex } from '@/lib/color';
 import { useBrandingQuery } from '../hooks/useBrandingQuery';
 import { resolveBrandLogoUrl } from '../brandLogo';
@@ -123,10 +124,36 @@ function TokenGroupFields({
   );
 }
 
+/** The page's tabs, each behind the tenant feature (ADR-145) a Platform Admin can switch it off
+ * with. Identity holds two of them — Hospital information and Logo configuration — and shows
+ * while either is on. */
+const BRANDING_TABS = [
+  { value: 'identity', label: 'Identity', features: ['settings.branding.hospital-info', 'settings.branding.logo'] },
+  { value: 'core', label: 'Core colors', features: ['settings.branding.core-colors'] },
+  { value: 'topbar', label: 'Top bar', features: ['settings.branding.top-bar'] },
+  { value: 'nav', label: 'Left nav', features: ['settings.branding.left-nav'] },
+  { value: 'headers', label: 'Section headers', features: ['settings.branding.section-headers'] },
+  { value: 'buttons', label: 'Buttons', features: ['settings.branding.buttons'] },
+  { value: 'typography', label: 'Typography', features: ['settings.branding.typography'] },
+  { value: 'print', label: 'Print', features: ['settings.branding.print'] },
+] as const;
+
 export function BrandingForm() {
   const query = useBrandingQuery();
   const updateMutation = useUpdateBrandingMutation();
   const resetMutation = useResetBrandingMutation();
+  const { hasFeature } = useAuth();
+
+  const visibleTabs = BRANDING_TABS.filter((tab) => tab.features.some(hasFeature));
+  const showHospitalInfo = hasFeature('settings.branding.hospital-info');
+  const showLogo = hasFeature('settings.branding.logo');
+  // "Reset to default theme" rewrites every section at once, so it's only offered while the
+  // hospital can edit all of them.
+  const canResetEverything = BRANDING_TABS.every((tab) => tab.features.every(hasFeature));
+  const [selectedTab, setSelectedTab] = useState<string>('identity');
+  // A tab switched off while the page is open (the feature list refreshes live) falls back to
+  // the first one still shown.
+  const activeTab = visibleTabs.some((tab) => tab.value === selectedTab) ? selectedTab : (visibleTabs[0]?.value ?? '');
 
   const [editingTheme, setEditingTheme] = useState<'light' | 'dark'>('light');
   const [draftTokensLight, setDraftTokensLight] = useState<Record<string, string>>({});
@@ -225,69 +252,78 @@ export function BrandingForm() {
     return <p className="text-sm text-muted-foreground">Loading current theme…</p>;
   }
 
+  if (visibleTabs.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        None of the Theme &amp; Branding options are switched on for your hospital. Contact your Platform Admin to turn them on.
+      </p>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
-        <Tabs defaultValue="identity">
+        <Tabs value={activeTab} onValueChange={setSelectedTab}>
           <TabsList>
-            <TabsTrigger value="identity" hasError={!!(errors.hospitalName || errors.appTitle)}>
-              Identity
-            </TabsTrigger>
-            <TabsTrigger value="core">Core colors</TabsTrigger>
-            <TabsTrigger value="topbar">Top bar</TabsTrigger>
-            <TabsTrigger value="nav">Left nav</TabsTrigger>
-            <TabsTrigger value="headers">Section headers</TabsTrigger>
-            <TabsTrigger value="buttons">Buttons</TabsTrigger>
-            <TabsTrigger value="typography">Typography</TabsTrigger>
-            <TabsTrigger value="print">Print</TabsTrigger>
+            {visibleTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                hasError={tab.value === 'identity' && !!(errors.hospitalName || errors.appTitle)}
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="identity">
             <div className="flex flex-col gap-6 rounded-lg border border-border p-4">
-              <section className="flex flex-col gap-4">
-                <div className="flex items-start gap-3">
-                  <Building2 className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">Hospital Information</h3>
-                    <p className="text-xs text-muted-foreground">Basic information about your hospital, used across the application and in documents.</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="hospitalName">
-                      Hospital name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input id="hospitalName" {...register('hospitalName')} />
-                    {errors.hospitalName && <p className="text-sm text-destructive">{errors.hospitalName.message}</p>}
+              {showHospitalInfo && (
+                <section className="flex flex-col gap-4">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground">Hospital Information</h3>
+                      <p className="text-xs text-muted-foreground">Basic information about your hospital, used across the application and in documents.</p>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="appTitle">
-                      Application title <span className="text-destructive">*</span>
-                    </Label>
-                    <Input id="appTitle" {...register('appTitle')} />
-                    {errors.appTitle && <p className="text-sm text-destructive">{errors.appTitle.message}</p>}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="hospitalName">
+                        Hospital name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input id="hospitalName" {...register('hospitalName')} />
+                      {errors.hospitalName && <p className="text-sm text-destructive">{errors.hospitalName.message}</p>}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="appTitle">
+                        Application title <span className="text-destructive">*</span>
+                      </Label>
+                      <Input id="appTitle" {...register('appTitle')} />
+                      {errors.appTitle && <p className="text-sm text-destructive">{errors.appTitle.message}</p>}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="address">Hospital address</Label>
+                      <Input id="address" placeholder="e.g. 123 Anna Salai, Chennai, Tamil Nadu 600002" {...register('address')} />
+                      {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="phoneNumber">Hospital phone number</Label>
+                      <Input id="phoneNumber" placeholder="e.g. 044-12345678" {...register('phoneNumber')} />
+                      {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>}
+                    </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">Address and phone are shown on printed/exported clinical documents (e.g. OPD Consultation).</p>
+                </section>
+              )}
 
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="address">Hospital address</Label>
-                    <Input id="address" placeholder="e.g. 123 Anna Salai, Chennai, Tamil Nadu 600002" {...register('address')} />
-                    {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
-                  </div>
+              {showHospitalInfo && showLogo && <hr className="border-border" />}
 
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="phoneNumber">Hospital phone number</Label>
-                    <Input id="phoneNumber" placeholder="e.g. 044-12345678" {...register('phoneNumber')} />
-                    {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber.message}</p>}
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">Address and phone are shown on printed/exported clinical documents (e.g. OPD Consultation).</p>
-              </section>
-
-              <hr className="border-border" />
-
-              {query.data && (
+              {showLogo && query.data && (
                 <LogoConfigurationSection
                   config={query.data}
                   display={draftLogoDisplay}
@@ -407,10 +443,12 @@ export function BrandingForm() {
           <Button type="submit" disabled={updateMutation.isPending}>
             {updateMutation.isPending ? 'Saving…' : 'Save changes'}
           </Button>
-          <Button type="button" variant="outline" onClick={handleReset} disabled={resetMutation.isPending}>
-            <RotateCcw className="h-4 w-4" />
-            Reset to default theme
-          </Button>
+          {canResetEverything && (
+            <Button type="button" variant="outline" onClick={handleReset} disabled={resetMutation.isPending}>
+              <RotateCcw className="h-4 w-4" />
+              Reset to default theme
+            </Button>
+          )}
         </div>
       </form>
 
