@@ -57,6 +57,11 @@ A Platform Admin could only switch whole modules on or off per hospital (platfor
   - Saving Theme & Branding keeps the stored values of switched-off tabs: hospital information, typography, logo display and print settings. Colors are kept only when every color tab is off, because the color tabs share tokens (Core colors and Buttons both edit the primary color). A single color tab being off is enforced by the app hiding it.
 - **Hospital Reference Data.** This part hides the masters hub only. The masters entity pages and APIs stay open, because other modules use them directly: consultants from the Price List and the doctor search, suppliers from Pharmacy Setup, and dropdowns everywhere.
 - **No re-login.** `GET /api/v1/auth/features` returns the hospital's features live. The app re-reads it on window focus and every minute, so a part switched off reaches signed-in users without a re-login.
+- **Bulk Patient Import** (added 2026-11-24). This is the `patients.bulk-import` part of Patients. It covers the hub card, the import and Import History pages, and the whole patient import API.
+- **Cloud Sync** (added 2026-11-24). `cloud-sync` is a new optional module for the Cloud Sync menu and page and the sync monitor API.
+  - **Sending stops too.** With Cloud Sync off, this server stops probing the cloud and sending that hospital's changes. Changes keep being saved to the outbox and go out once it is switched back on.
+  - **Parts.** Sync controls covers Sync now, Pause/Resume, Retry all failed, and per-change retry/resolve. Job dashboard covers the Hangfire link. Without them the page is read-only.
+  - **Existing hospitals keep it.** The key is in the new `FeatureCatalog.OnWithoutRow`, so a hospital with no row for it has it on. This is only for keys with no schema to provision. The cloud's receiving endpoint is not affected, because the sending server's key controls that.
 
 **Consequences**
 - No migration. Existing hospitals keep every part until a Platform Admin switches one off.

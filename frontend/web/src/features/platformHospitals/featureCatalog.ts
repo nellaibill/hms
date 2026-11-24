@@ -7,6 +7,7 @@ import {
   Briefcase,
   CalendarDays,
   ClipboardList,
+  CloudCog,
   Database,
   Droplets,
   FileCheck,
@@ -96,6 +97,7 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   calendar: { label: 'Calendar', description: 'Hospital calendar and events', icon: CalendarDays, category: 'operations' },
   ambulance: { label: 'Ambulance', description: 'Ambulance dispatch and transport', icon: Ambulance, category: 'operations' },
   'activity-log': { label: 'Activity Log', description: 'Audit trail of user actions', icon: History, category: 'operations' },
+  'cloud-sync': { label: 'Cloud Sync', description: 'Send patient changes from this server to the cloud', icon: CloudCog, category: 'operations' },
 
   billing: { label: 'Billing', description: 'Invoices and payments', icon: Receipt, category: 'billing' },
   finance: { label: 'Accounts and Finance', description: 'Ledger and finance reports', icon: Wallet, category: 'billing' },
@@ -152,6 +154,11 @@ export const SUB_FEATURE_META: Record<string, SubFeatureMeta> = {
   'settings.branding.buttons': { label: 'Buttons', description: 'Primary, success, warning and danger button colors' },
   'settings.branding.typography': { label: 'Typography', description: 'Font family, base font size and top bar icon size' },
   'settings.branding.print': { label: 'Print', description: 'Paper size and margins for printouts' },
+
+  'patients.bulk-import': { label: 'Bulk Patient Import', description: 'Register many patients from an Excel file, plus Import History' },
+
+  'cloud-sync.controls': { label: 'Sync controls', description: 'Sync now, Pause/Resume, and retry or resolve failed changes' },
+  'cloud-sync.job-dashboard': { label: 'Job dashboard', description: 'Open the background job dashboard from Cloud Sync' },
 };
 
 export function featureLabel(key: string): string {
@@ -268,4 +275,5 @@ export const OPTIONAL_FEATURE_KEYS = [
   'discharge-summary',
   'opd-ambient-notes',
   'discharge-summary-ai-draft',
+  'cloud-sync',
 ];

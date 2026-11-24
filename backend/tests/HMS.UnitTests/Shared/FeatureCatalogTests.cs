@@ -92,6 +92,38 @@ public class FeatureCatalogTests
     }
 
     [Fact]
+    public void OnWithoutRow_OnlyHoldsOptionalKeysWithNoSchema()
+    {
+        FeatureCatalog.OnWithoutRow.Should().OnlyContain(key => FeatureCatalog.Optional.Contains(key) && FeatureCatalog.UiOnly.Contains(key));
+    }
+
+    [Fact]
+    public void ResolveSelectedModules_CloudSyncWithNoRow_IsOn()
+    {
+        // A hospital whose rows predate the "cloud-sync" key keeps its Cloud Sync page.
+        var rows = FeatureCatalog.All.Where(key => key != "cloud-sync").Select(key => (key, true)).ToList();
+
+        FeatureCatalog.ResolveSelectedModules(rows).Should().Contain("cloud-sync");
+    }
+
+    [Fact]
+    public void ResolveSelectedModules_CloudSyncSwitchedOff_IsOffWithAllItsParts()
+    {
+        var rows = FeatureCatalog.All.Where(key => key != "cloud-sync").Select(key => (key, true)).ToList();
+        rows.Add(("cloud-sync", false));
+
+        FeatureCatalog.ResolveEffective(rows).Should().NotContain(key => key == "cloud-sync" || key.StartsWith("cloud-sync."));
+    }
+
+    [Fact]
+    public void ResolveSelectedModules_OptionalKeyNotInOnWithoutRow_StillNeedsARow()
+    {
+        var rows = FeatureCatalog.All.Where(key => key != "hr").Select(key => (key, true)).ToList();
+
+        FeatureCatalog.ResolveSelectedModules(rows).Should().NotContain("hr");
+    }
+
+    [Fact]
     public void ResolveSelectedModules_IgnoresSubFeatureRows()
     {
         var rows = new List<(string Key, bool IsEnabled)> { ("hr", true), ("hr.attendance", true) };

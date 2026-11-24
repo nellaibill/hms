@@ -257,11 +257,12 @@ const activityLogRoutes = [
 
 // Cloud Sync (HMS.Modules.Sync, ADR-133) — monitoring of the local server's offline-first sync
 // to the cloud. Route-gated at 'identity-administration.view', matching SyncMonitorController's
-// server-side read check; its actions additionally need '.edit' on the server.
+// server-side read check; its actions additionally need '.edit' on the server. Also behind the
+// "cloud-sync" tenant feature (ADR-145) a Platform Admin can switch off.
 const cloudSyncRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
-    children: [{ path: 'admin/cloud-sync', element: withSuspense(<CloudSyncPage />) }],
+    children: [featureRoutes('cloud-sync', [{ path: 'admin/cloud-sync', element: withSuspense(<CloudSyncPage />) }])],
   },
 ];
 
@@ -312,9 +313,12 @@ const patientRoutes = [
   // other patients/* route here; entry point lives on PatientRegistrationHubPage, not the main
   // sidebar). ':batchId' is optional in effect (two routes, one element) so a fresh upload and
   // viewing an existing batch from Import History share the same review screen.
-  { path: 'patients/import', element: withSuspense(<PatientBulkImportPage />) },
-  { path: 'patients/import/:batchId', element: withSuspense(<PatientBulkImportPage />) },
-  { path: 'patients/import-history', element: withSuspense(<PatientImportHistoryPage />) },
+  // Also behind the "patients.bulk-import" tenant feature (ADR-145) a Platform Admin can switch off.
+  featureRoutes('patients.bulk-import', [
+    { path: 'patients/import', element: withSuspense(<PatientBulkImportPage />) },
+    { path: 'patients/import/:batchId', element: withSuspense(<PatientBulkImportPage />) },
+    { path: 'patients/import-history', element: withSuspense(<PatientImportHistoryPage />) },
+  ]),
 ];
 
 // Roles Management (UI-only, mock data — no backend module yet) — reachable from the

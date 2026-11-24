@@ -42,10 +42,11 @@ const bulkImportSection = {
 
 /** Reception & Registration landing hub — the single entry point for both registration flows. */
 export default function PatientRegistrationHubPage() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasFeature } = useAuth();
   const visibleSections = sections.filter((section) => hasPermission(section.permission));
   const showBilling = hasPermission(billingSection.permission);
-  const showBulkImport = hasPermission(bulkImportSection.permission);
+  // A Platform Admin can also switch Bulk Patient Import off for the hospital (ADR-145).
+  const showBulkImport = hasPermission(bulkImportSection.permission) && hasFeature('patients.bulk-import');
   return (
     <RequirePermission permission="patient-management.view">
     <div className="flex flex-1 flex-col">
