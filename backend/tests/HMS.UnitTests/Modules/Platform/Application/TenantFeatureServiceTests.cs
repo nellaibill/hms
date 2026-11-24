@@ -139,6 +139,25 @@ public class TenantFeatureServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_SavingCloudSyncOnBeforeItHasARow_NeverTriggersMigration()
+    {
+        // A hospital created before "cloud-sync" existed already has it on (no row = on), so
+        // saving it on for the first time isn't a newly enabled feature.
+        var tenant = NewTenant();
+        SeedTenant(tenant);
+        var existing = FeatureCatalog.All.Where(key => key != "cloud-sync")
+            .Select(key => TenantFeature.Create(tenant.Id, key, isEnabled: true, createdBy: null)).ToList();
+        _featureRepository.GetByTenantIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var result = await _sut.UpdateAsync(
+            tenant.Id, new UpdateTenantFeaturesRequest { EnabledFeatures = FeatureCatalog.All }, _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.EnabledFeatures.Should().Contain("cloud-sync");
+        await _migrationService.DidNotReceive().MigrateAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task GetAsync_ListsTheSubFeatureCatalogWithEveryPartOnByDefault()
     {
         var tenant = NewTenant();

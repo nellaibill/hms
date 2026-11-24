@@ -124,6 +124,13 @@ public static class FeatureCatalog
         // "discharge-summary" itself (see Dependencies).
         "discharge-summary-ai-draft",
 
+        // Cloud Sync (HMS.Modules.Sync, ADR-133): the Cloud Sync page and this server sending the
+        // hospital's patient changes to the cloud (ADR-145). UiOnly: the outbox schema is plumbing
+        // migrated for every tenant whatever this says, and changes keep being saved to it while
+        // this is off — they simply wait there until it's switched back on. In OnWithoutRow, so
+        // hospitals that existed before this key keep Cloud Sync.
+        "cloud-sync",
+
         // The hospital's Settings area (ADR-145). Mandatory — Settings holds Roles & Permissions,
         // so switching the whole area off would lock a hospital's admins out of the one screen
         // that manages access. It exists as a key so the Settings pages a Platform Admin *can*
@@ -156,6 +163,15 @@ public static class FeatureCatalog
     /// <summary>Platform-admin toggleable per tenant — every catalog key that isn't mandatory,
     /// schema-backed or not.</summary>
     public static readonly IReadOnlyList<string> Optional = [.. All.Where(key => !Mandatory.Contains(key))];
+
+    /// <summary>Optional modules a hospital has unless a row says otherwise — for keys added after
+    /// hospitals already had their platform.tenant_features rows, where "no row" would otherwise
+    /// switch an existing page off on deploy. Only keys with nothing to provision belong here
+    /// (a SchemaBacked key needs its schema migrated before it counts as on).</summary>
+    public static readonly IReadOnlyList<string> OnWithoutRow =
+    [
+        "cloud-sync",
+    ];
 
     /// <summary>Feature key → the other Optional feature keys it functionally requires to be
     /// enabled at the same time, because its module's code calls straight into the
@@ -229,6 +245,14 @@ public static class FeatureCatalog
         new("settings.branding.buttons", "settings.branding"),
         new("settings.branding.typography", "settings.branding"),
         new("settings.branding.print", "settings.branding"),
+
+        // Patients — Bulk Patient Import (upload, review, import, and Import History).
+        new("patients.bulk-import", "patients"),
+
+        // Cloud Sync — the page's actions. Without these the page still shows the sync status,
+        // patients and failed changes, read-only.
+        new("cloud-sync.controls", "cloud-sync"),
+        new("cloud-sync.job-dashboard", "cloud-sync"),
     ];
 
     public static readonly IReadOnlyList<string> SubFeatureKeys = [.. SubFeatures.Select(sub => sub.Key)];
@@ -253,8 +277,9 @@ public static class FeatureCatalog
 
     /// <summary>The modules a tenant has chosen, from its platform.tenant_features rows. No rows
     /// at all (a tenant provisioned before the table existed) means every module; otherwise a
-    /// module needs an enabled row. Mandatory modules are always included — a tenant created
-    /// before a key became Mandatory has no row for it.</summary>
+    /// module needs an enabled row, except an <see cref="OnWithoutRow"/> key, which is on until
+    /// a row switches it off. Mandatory modules are always included — a tenant created before a
+    /// key became Mandatory has no row for it.</summary>
     public static IReadOnlyList<string> ResolveSelectedModules(IReadOnlyCollection<(string Key, bool IsEnabled)> rows)
     {
         if (rows.Count == 0)
@@ -263,6 +288,8 @@ public static class FeatureCatalog
         }
 
         var selected = rows.Where(row => row.IsEnabled && All.Contains(row.Key)).Select(row => row.Key).ToHashSet();
+        var withRow = rows.Select(row => row.Key).ToHashSet();
+        selected.UnionWith(OnWithoutRow.Where(key => !withRow.Contains(key)));
         selected.UnionWith(Mandatory);
         return [.. All.Where(selected.Contains)];
     }

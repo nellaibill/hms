@@ -38,12 +38,18 @@ internal abstract class TenantSyncJobBase
 
     protected SyncOptions Options { get; }
 
-    /// <summary>Active hospitals this Edge server can send for (cloud address and key set).</summary>
+    /// <summary>Active hospitals this Edge server can send for (cloud address and key set) and
+    /// whose Cloud Sync a Platform Admin hasn't switched off (ADR-145). A hospital switched off
+    /// keeps saving its changes to the outbox; they wait there until it is switched back on.</summary>
     protected async Task<IReadOnlyList<TenantInfo>> GetSyncedTenantsAsync(CancellationToken cancellationToken)
     {
         var tenants = await TenantDirectory.GetAllActiveTenantsAsync(cancellationToken);
-        return tenants.Where(t => Options.FindSendingKey(t.HospitalCode) is not null).ToList();
+        return tenants.Where(t => Options.FindSendingKey(t.HospitalCode) is not null && HasCloudSync(t)).ToList();
     }
+
+    protected static bool HasCloudSync(TenantInfo tenant) => tenant.EnabledFeatures.Contains(CloudSyncFeature);
+
+    private const string CloudSyncFeature = "cloud-sync";
 
     /// <summary>Runs <paramref name="work"/> in a fresh DI scope bound to <paramref name="tenant"/>,
     /// the same way OpdDayCloseSchedulerService runs per-tenant work.</summary>
@@ -119,6 +125,12 @@ internal sealed class SyncTenantJob : TenantSyncJobBase
         if (tenant is null || !tenant.IsActive)
         {
             return "Hospital not found or inactive.";
+        }
+
+        // A run queued just before a Platform Admin switched Cloud Sync off.
+        if (!HasCloudSync(tenant))
+        {
+            return "Cloud Sync is switched off for this hospital; changes stay queued.";
         }
 
         var summary = await InTenantScopeAsync(tenant, sp => sp.GetRequiredService<SyncTenantProcessor>().RunAsync(tenant, cancellationToken));

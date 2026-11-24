@@ -55,8 +55,12 @@ function errorMessage(error: unknown, fallback: string): string {
  */
 export default function CloudSyncPage() {
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasFeature } = useAuth();
   const canEdit = hasPermission(CLOUD_SYNC_EDIT_PERMISSION);
+  // The actions and the job dashboard are parts of Cloud Sync a Platform Admin can switch off
+  // (ADR-145); without them the page is read-only.
+  const canControl = canEdit && hasFeature('cloud-sync.controls');
+  const canOpenJobDashboard = canEdit && hasFeature('cloud-sync.job-dashboard');
   const canSeePatients = hasPermission('patient-management.view');
 
   const [tab, setTab] = useState('patients');
@@ -175,7 +179,7 @@ export default function CloudSyncPage() {
                   <RefreshCw className={`mr-2 h-4 w-4 ${summaryQuery.isFetching ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
-                {canEdit && (
+                {canControl && (
                   <>
                     <Button size="sm" onClick={() => report(trigger.mutateAsync(), 'Could not start a sync run')} disabled={busy || summary.isPaused}>
                       <UploadCloud className="mr-2 h-4 w-4" />
@@ -201,13 +205,13 @@ export default function CloudSyncPage() {
                       <RotateCcw className="mr-2 h-4 w-4" />
                       Retry all failed
                     </Button>
-                    {summary.dashboardAvailable && (
-                      <Button variant="outline" size="sm" onClick={openDashboard} disabled={openingDashboard}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Job dashboard
-                      </Button>
-                    )}
                   </>
+                )}
+                {canOpenJobDashboard && summary.dashboardAvailable && (
+                  <Button variant="outline" size="sm" onClick={openDashboard} disabled={openingDashboard}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Job dashboard
+                  </Button>
                 )}
               </div>
 
@@ -274,7 +278,7 @@ export default function CloudSyncPage() {
                         <>
                           <SyncPatientsTable
                             rows={streams.data.items}
-                            canEdit={canEdit}
+                            canEdit={canControl}
                             busy={busy}
                             onHistory={setHistoryPatientId}
                             onRetry={(eventId) => report(retryEvent.mutateAsync(eventId), 'Could not retry')}
@@ -298,7 +302,7 @@ export default function CloudSyncPage() {
                         <>
                           <SyncFailedEventsTable
                             rows={failedEvents.data.items}
-                            canEdit={canEdit}
+                            canEdit={canControl}
                             busy={busy}
                             onHistory={setHistoryPatientId}
                             onRetry={(eventId) => report(retryEvent.mutateAsync(eventId), 'Could not retry')}

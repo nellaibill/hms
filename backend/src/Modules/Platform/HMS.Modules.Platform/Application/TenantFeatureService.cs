@@ -72,8 +72,13 @@ internal sealed class TenantFeatureService : ITenantFeatureService
         // A key is "newly enabled" if it's becoming enabled and wasn't already (covers both
         // an existing disabled row being flipped on, and a key with no row yet — e.g. a
         // tenant provisioned before this table existed).
+        // An OnWithoutRow key with no row is already on (FeatureCatalog.ResolveSelectedModules),
+        // so saving it as on for the first time isn't "newly enabled".
+        bool IsOnNow(string key) => existingByKey.TryGetValue(key, out var f)
+            ? f.IsEnabled
+            : existing.Count > 0 && FeatureCatalog.OnWithoutRow.Contains(key);
         var newlyEnabled = desiredByKey
-            .Where(kv => kv.Value && !(existingByKey.TryGetValue(kv.Key, out var f) && f.IsEnabled))
+            .Where(kv => kv.Value && !IsOnNow(kv.Key))
             .Select(kv => kv.Key)
             .ToList();
 
