@@ -35,16 +35,11 @@ export function collectionHeadOf(billingType: BillingType): CollectionHead {
 }
 
 /** Keeps the payments whose bill's encounter type is one of `encounterTypes` — each Accounts
- * category's Collection Summary (ADR-134): OP visits only under OP Accounts, like OP Report
- * (ADR-121/125), and IP, Day Care and Observation under IP Accounts. A payment whose encounter
- * type is unknown is left out. */
+ * category's Collection Summary (ADR-134): OP and Emergency visits under OP Accounts, like OP
+ * Report (ADR-146), and IP, Day Care and Observation under IP Accounts. A payment whose
+ * encounter type is unknown is left out. */
 export function paymentsForEncounterTypes(payments: CollectionPayment[], encounterTypes: readonly string[]): CollectionPayment[] {
   return payments.filter((payment) => payment.encounterType !== undefined && encounterTypes.includes(payment.encounterType));
-}
-
-/** Collection Summary under OP Accounts: OP visits only (ADR-121/125). */
-export function onlyOpVisitPayments(payments: CollectionPayment[]): CollectionPayment[] {
-  return paymentsForEncounterTypes(payments, ['OP']);
 }
 
 /** Splits every payment by the same rule OP Report splits a line (resolveLineCost): the line's

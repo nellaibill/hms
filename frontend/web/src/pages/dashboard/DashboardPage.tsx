@@ -70,7 +70,7 @@ export default function DashboardPage() {
           {/* ADR-142: today's OP profit by charge head, with a link to the Day-wise Profit report. */}
           {canViewFinance && (
             <section>
-              <SectionHeader title="Today's Profit" description="Today's OP bills by charge head — revenue, consultant share, running cost and hospital profit" />
+              <SectionHeader title="Today's Profit" description="Today's OP and Emergency bills by charge head — revenue, consultant share, running cost and hospital profit" />
               <TodayProfitCard />
             </section>
           )}

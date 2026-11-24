@@ -10,7 +10,7 @@ import {
   filterProfitRows,
   getProfitRows,
   getProfitTotals,
-  onlyOpVisitBillings,
+  onlyOpAccountBillings,
   opReportHiddenColumns,
   OP_REPORT_PROFIT_LABELS,
   Pagination,
@@ -29,7 +29,7 @@ const REPORT_TITLE = 'OP Report';
 
 /**
  * Finance & Billing's OP Report (was "Hospital Profit Report"; ADR-119) — margin per billed
- * service line on bills for OP visits only (ADR-121), computed live from
+ * service line on bills for OP and Emergency visits only (ADR-121, ADR-146), computed live from
  * each service's current CostPrice against what was actually billed (see
  * features/reports/profitReport.ts's own doc comments for why this is a live lookup rather
  * than a historical snapshot, and why Pharmacy/uncosted services show "—" instead of a
@@ -64,7 +64,7 @@ export default function ProfitReportPage() {
   const diagnosticPackages = usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(
-    () => getProfitRows(onlyOpVisitBillings(billings ?? []), appliedRange),
+    () => getProfitRows(onlyOpAccountBillings(billings ?? []), appliedRange),
     [
       billings,
       appliedRange,
@@ -101,7 +101,7 @@ export default function ProfitReportPage() {
       <PageBanner
         icon={TrendingUp}
         title={REPORT_TITLE}
-        subtitle="Revenue per billed service on OP visits — the consultant's and the hospital's share for the selected period."
+        subtitle="Revenue per billed service on OP and Emergency visits — the consultant's and the hospital's share for the selected period."
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
       />

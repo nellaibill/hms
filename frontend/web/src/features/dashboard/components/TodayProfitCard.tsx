@@ -5,12 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, useInvoicesSinceQuery } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
-import { accountsPath, getProfitRows, onlyOpVisitBillings } from '@/features/reports';
+import { accountsPath, getProfitRows, onlyOpAccountBillings } from '@/features/reports';
 import { groupDayWiseProfit, profitPercent } from '@/features/reports/dayWiseProfit';
 import { getTodayRange } from '../frontDeskToday';
 
 /**
- * Today's OP profit by charge head (ADR-142) — revenue, consultant share, running cost and the
+ * Today's OP and Emergency profit by charge head (ADR-142, ADR-146) — revenue, consultant share, running cost and the
  * hospital's profit for Consultation, Laboratory, Radiology and the rest, worked out the same way
  * as the Day-wise Profit report it links to. Fetches only today's bills.
  */
@@ -29,7 +29,7 @@ export function TodayProfitCard() {
   const diagnosticPackages = usePrimeDiagnosticPackageCache();
 
   const report = useMemo(
-    () => groupDayWiseProfit(getProfitRows(onlyOpVisitBillings(bills ?? []), { from: today.date, to: today.date }), (id) => resolveRecordLabel('consultant', id)),
+    () => groupDayWiseProfit(getProfitRows(onlyOpAccountBillings(bills ?? []), { from: today.date, to: today.date }), (id) => resolveRecordLabel('consultant', id)),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the priming hooks' data is what makes the cost resolvers' answers change
     [bills, today, diagnosticTestOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices, diagnosticPackages],
   );
@@ -51,7 +51,7 @@ export function TodayProfitCard() {
             Loading today&apos;s bills…
           </p>
         ) : report.byHead.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No OP bills yet today.</p>
+          <p className="text-sm text-muted-foreground">No OP or Emergency bills yet today.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">

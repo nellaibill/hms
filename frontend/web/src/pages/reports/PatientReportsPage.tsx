@@ -22,7 +22,7 @@ import { Pagination } from '@/features/patients';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import { departmentsApi, patientsApi } from '@/services/apiClient';
 import { PatientNameLink } from '@/components/PatientNameLink';
-import { defaultReportDateRange } from '@/lib/reportDateRange';
+import { defaultReportDateRange, toRangeEnd, toRangeStart } from '@/lib/reportDateRange';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
@@ -42,8 +42,10 @@ function defaultFilters(): Filters {
 
 function toQuery(filters: Filters, page: number, pageSize: number, sort: string): PatientListQuery {
   return {
-    from: filters.from,
-    to: filters.to,
+    // The local day's first and last instants: the API compares timestamps with From <= t <= To,
+    // so a bare "To" date meant midnight at its start and dropped that whole day (ADR-146).
+    from: toRangeStart(filters.from),
+    to: toRangeEnd(filters.to),
     search: filters.search || undefined,
     gender: filters.gender || undefined,
     bloodGroup: filters.bloodGroup || undefined,

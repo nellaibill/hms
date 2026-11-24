@@ -118,9 +118,10 @@ internal class InvoiceRevertService : IInvoiceRevertService
         if (invoice.VisitId != invoice.PatientId)
         {
             var visit = await _patientVisitService.GetByIdAsync(invoice.PatientId, invoice.VisitId, cancellationToken);
-            if (visit is { IsSuccess: true, Value: { } found } && found.VisitType != VisitType.OP)
+            // OP Accounts covers OP and Emergency bills (ADR-146), so both can be reverted.
+            if (visit is { IsSuccess: true, Value: { } found } && found.VisitType is not (VisitType.OP or VisitType.Emergency))
             {
-                return $"Only OP bills can be reverted — this bill belongs to a {found.VisitType} visit.";
+                return $"Only OP and Emergency bills can be reverted — this bill belongs to a {found.VisitType} visit.";
             }
         }
 

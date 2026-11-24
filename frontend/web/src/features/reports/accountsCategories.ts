@@ -50,7 +50,7 @@ export interface AccountsCategoryConfig {
   invoiceCategory?: AccountCategory;
   /** Whether its bill lists offer New Invoice. IP bills come from the discharge final bill. */
   canCreateInvoice: boolean;
-  /** Encounter types its Collection Summary counts (ADR-125 keeps OP's to OP visits only). */
+  /** Encounter types its Collection Summary counts (OP's: OP and Emergency visits, ADR-146). */
   collectionEncounterTypes?: readonly string[];
   tabs: AccountsTab[];
 }
@@ -61,6 +61,12 @@ export const ACCOUNTS_HUB_PATH = '/finance/accounts';
  * HMS.Modules.Billing.Domain.AccountCategoryRules. */
 export const IP_ENCOUNTER_TYPES = ['IP', 'DayCare', 'Observation'] as const;
 
+/** The encounter types OP Accounts' reports count — OP Report, Collection Summary, Day-wise
+ * Profit and the dashboard's Today's Profit (ADR-146: casualty patients are seen and billed at
+ * the OP counter, so their money belongs with OP's). Mirrors AccountCategoryRules' Op rule,
+ * except that a bill whose visit type is unknown is left out of the reports. */
+export const OP_ENCOUNTER_TYPES = ['OP', 'Emergency'] as const;
+
 export const ACCOUNTS_CATEGORIES: readonly AccountsCategoryConfig[] = [
   {
     key: 'op',
@@ -70,7 +76,7 @@ export const ACCOUNTS_CATEGORIES: readonly AccountsCategoryConfig[] = [
     icon: Stethoscope,
     invoiceCategory: 'Op',
     canCreateInvoice: true,
-    collectionEncounterTypes: ['OP'],
+    collectionEncounterTypes: OP_ENCOUNTER_TYPES,
     tabs: [
       { id: 'recentBills', path: '', label: 'Recent Bills' },
       { id: 'allInvoices', path: 'invoices', label: 'All Invoices' },

@@ -101,6 +101,7 @@ export default function MastersHubPage() {
   const { hasFeature, hasPermission } = useAuth();
   // "hr.employees" (ADR-145) is only ever on while "hr" itself is.
   const canSeeEmployees = hasFeature('hr.employees') && hasPermission('workforce-admin.view');
+  const canSeeDiagnosticCatalog = hasFeature('central-laboratory') && hasPermission('diagnostics.view');
   // Same query key as the HR hub's own Employees count, so the two share one cached request.
   const employeesCount = useQuery({
     queryKey: employeesQueryKey(EMPLOYEE_COUNT_QUERY),
@@ -132,7 +133,9 @@ export default function MastersHubPage() {
 
           {MASTER_SECTIONS.map((section) => {
             const sectionConfigs = configs.filter((config) => config.section === section);
-            const extraCards = section === 'Hospital Reference Data' ? diagnosticCatalogCards : [];
+            // Same feature and permission as their routes (routes.tsx's diagnosticsRoutes), so a
+            // hospital without Central Laboratory isn't shown cards that only open "not available".
+            const extraCards = section === 'Hospital Reference Data' && canSeeDiagnosticCatalog ? diagnosticCatalogCards : [];
             const showEmployees = section === 'HR' && canSeeEmployees;
             return (
               <TabsContent key={section} value={section} className="pt-4">
