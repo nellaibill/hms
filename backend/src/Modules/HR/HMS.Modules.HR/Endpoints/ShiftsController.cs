@@ -17,6 +17,7 @@ namespace HMS.Modules.HR.Endpoints;
 /// </summary>
 [ApiController]
 [RequireFeature("hr")]
+[RequireFeature("hr.shifts")]
 [Route("api/v1/shifts")]
 public class ShiftsController : ControllerBase
 {

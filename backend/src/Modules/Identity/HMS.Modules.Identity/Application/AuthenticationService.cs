@@ -140,9 +140,10 @@ internal class AuthenticationService : IAuthenticationService
         // unset means every feature (same "unrestricted by default" convention EnabledModules
         // above already uses) — covers tenants provisioned before platform.tenant_features
         // existed.
+        // Includes the sub-features the tenant can use (ADR-145), e.g. "hr.leave-requests".
         var enabledFeatures = _tenantContext.EnabledFeatures;
         var featureKeys = enabledFeatures is null || enabledFeatures.Count == 0
-            ? FeatureCatalog.All
+            ? FeatureCatalog.AllWithSubFeatures
             : enabledFeatures;
 
         var token = _jwtTokenGenerator.GenerateToken(

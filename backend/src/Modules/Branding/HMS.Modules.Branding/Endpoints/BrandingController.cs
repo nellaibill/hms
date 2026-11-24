@@ -29,10 +29,12 @@ namespace HMS.Modules.Branding.Endpoints;
 public class BrandingController : ControllerBase
 {
     private readonly IBrandingService _brandingService;
+    private readonly ITenantContext _tenantContext;
 
-    public BrandingController(IBrandingService brandingService)
+    public BrandingController(IBrandingService brandingService, ITenantContext tenantContext)
     {
         _brandingService = brandingService;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>Gets the current tenant's theme/branding configuration.</summary>
@@ -50,10 +52,89 @@ public class BrandingController : ControllerBase
     /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
     [HttpPut]
     [RequirePermission("identity-administration.edit")]
+    [RequireFeature("settings.branding")]
     public async Task<IActionResult> Update([FromBody] UpdateBrandingRequest request, CancellationToken cancellationToken)
     {
-        var result = await _brandingService.UpdateAsync(request, actorId: User.GetUserId(), cancellationToken);
+        var allowed = await KeepSwitchedOffSectionsAsync(request, cancellationToken);
+        var result = await _brandingService.UpdateAsync(allowed, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+    }
+
+    /// <summary>
+    /// A Theme &amp; Branding tab a Platform Admin switched off for this hospital (ADR-145) is
+    /// hidden in the app, and here its saved values are kept as they are whatever the request
+    /// says: hospital information, typography, logo display and print settings each map onto
+    /// their own request fields. Colors are kept only when every color tab is off — the color
+    /// tabs share tokens (Core colors and Buttons both edit the primary color), so a single
+    /// color tab being off is enforced by the app hiding it.
+    /// </summary>
+    private async Task<UpdateBrandingRequest> KeepSwitchedOffSectionsAsync(UpdateBrandingRequest request, CancellationToken cancellationToken)
+    {
+        bool IsOff(string key) => _tenantContext.EnabledFeatures?.Contains(key) == false;
+
+        string[] colorTabs =
+        [
+            "settings.branding.core-colors",
+            "settings.branding.top-bar",
+            "settings.branding.left-nav",
+            "settings.branding.section-headers",
+            "settings.branding.buttons",
+        ];
+        var hospitalInfoOff = IsOff("settings.branding.hospital-info");
+        var typographyOff = IsOff("settings.branding.typography");
+        var colorsOff = colorTabs.All(IsOff);
+        var logoOff = IsOff("settings.branding.logo");
+        var printOff = IsOff("settings.branding.print");
+
+        if (!hospitalInfoOff && !typographyOff && !colorsOff && !logoOff && !printOff)
+        {
+            return request;
+        }
+
+        var current = await _brandingService.GetAsync(cancellationToken);
+        var allowed = request;
+        if (hospitalInfoOff)
+        {
+            allowed = allowed with
+            {
+                HospitalName = current.HospitalName,
+                AppTitle = current.AppTitle,
+                Address = current.Address,
+                PhoneNumber = current.PhoneNumber,
+            };
+        }
+
+        if (typographyOff)
+        {
+            allowed = allowed with
+            {
+                FontFamily = current.FontFamily,
+                FontSizeScale = current.FontSizeScale,
+                IconSizeScale = current.IconSizeScale,
+            };
+        }
+
+        if (colorsOff)
+        {
+            allowed = allowed with
+            {
+                TokensLight = new Dictionary<string, string>(current.TokensLight),
+                TokensDark = new Dictionary<string, string>(current.TokensDark),
+            };
+        }
+
+        // Null leaves the stored settings unchanged (see UpdateBrandingRequest).
+        if (logoOff)
+        {
+            allowed = allowed with { LogoDisplay = null };
+        }
+
+        if (printOff)
+        {
+            allowed = allowed with { PrintSettings = null };
+        }
+
+        return allowed;
     }
 
     /// <summary>Sets which Accounts &amp; Finance reports the hospital shows (ADR-120). Its own
@@ -64,6 +145,7 @@ public class BrandingController : ControllerBase
     /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
     [HttpPut("report-visibility")]
     [RequirePermission("identity-administration.edit")]
+    [RequireFeature("settings.reports-visibility")]
     public async Task<IActionResult> UpdateReportVisibility([FromBody] ReportVisibilitySettings request, CancellationToken cancellationToken)
     {
         var result = await _brandingService.UpdateReportVisibilityAsync(request, actorId: User.GetUserId(), cancellationToken);
@@ -77,6 +159,7 @@ public class BrandingController : ControllerBase
     [HttpPost("logo")]
     [Consumes("multipart/form-data")]
     [RequirePermission("identity-administration.edit")]
+    [RequireFeature("settings.branding.logo")]
     [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     public async Task<IActionResult> UploadLogo(IFormFile file, [FromQuery] string? slot, CancellationToken cancellationToken)
     {
@@ -96,6 +179,7 @@ public class BrandingController : ControllerBase
     /// <response code="403">The caller lacks <c>identity-administration.edit</c>.</response>
     [HttpDelete("logo")]
     [RequirePermission("identity-administration.edit")]
+    [RequireFeature("settings.branding.logo")]
     [EnableRateLimiting(RateLimitingPolicyNames.Write)]
     public async Task<IActionResult> RemoveLogo([FromQuery] string? slot, CancellationToken cancellationToken)
     {

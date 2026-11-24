@@ -37,6 +37,32 @@ _To be documented._
 
 ## Decisions
 
+### ADR-145: Platform Admins can switch off parts of a module (sub-features)
+**Date:** 2026-11-24
+**Status:** Accepted
+
+**Context**
+A Platform Admin could only switch whole modules on or off per hospital (platform.tenant_features, FeatureCatalog). A hospital that wants HR's Employees but not Leave Requests or the Duty Roster, or that shouldn't change its own logo or back up from Settings, had no way to say so.
+
+**Decision**
+- **Catalog.** `FeatureCatalog.SubFeatures` lists the parts of a module that can be switched off on their own, each with a parent: a module, or another part. First set: HR's HR Dashboard, Employees, Attendance, Leave Requests, Leave Types, Shift Management, Staff Availability, Weekly Roster, Shift Assignments, Shift Swap Requests and Monthly Calendar. Settings' Hospital Reference Data, Theme & Branding, Reports Visibility, Patient Registration Fields, Billing Approvals and Backup. Theme & Branding's Hospital information, Logo configuration, Core colors, Top bar, Left nav, Section headers, Buttons, Typography and Print.
+- **New mandatory "settings" key.** It is the parent of the Settings parts. It can't be switched off, because Settings holds Roles & Permissions and turning it off would lock out a hospital's admins. Roles & Permissions has no switch for the same reason.
+- **Storage.** Parts use the same platform.tenant_features rows as modules. A part with no row is on, so adding a part never hides anything from an existing hospital. A part only takes effect while its parent chain is on. Switching a module off hides all its parts, and switching it back on restores them as they were.
+- **Dependencies.** `FeatureCatalog.SubFeatureDependencies` records which parts need which other parts, because their pages read that data. Attendance needs Employees. Leave Requests needs Employees and Leave Types. Shift Assignments needs Shift Management. Weekly Roster needs Shift Management and Shift Assignments. Shift Swap Requests needs Shift Assignments. Monthly Calendar needs Weekly Roster. The platform editor applies these as you tick, and the validator refuses a set that breaks them.
+- **API.** The platform features endpoint returns `subFeatures`, `enabledSubFeatures` and `subFeatureDependencies`. The update request takes `enabledSubFeatures`. If it is left out (an older client), the parts are left as they are.
+- **Enforcement.** ITenantContext.EnabledFeatures (and so `[RequireFeature]`) carries the parts a hospital can actually use.
+  - Each HR controller requires its own part.
+  - The save endpoints for Reports Visibility, Patient Registration Fields and Billing Approvals require their parts. Reading those settings stays open, because billing and registration need them.
+  - The backup endpoints require Backup. Logo upload and remove require Logo configuration.
+  - Saving Theme & Branding keeps the stored values of switched-off tabs: hospital information, typography, logo display and print settings. Colors are kept only when every color tab is off, because the color tabs share tokens (Core colors and Buttons both edit the primary color). A single color tab being off is enforced by the app hiding it.
+- **Hospital Reference Data.** This part hides the masters hub only. The masters entity pages and APIs stay open, because other modules use them directly: consultants from the Price List and the doctor search, suppliers from Pharmacy Setup, and dropdowns everywhere.
+- **No re-login.** `GET /api/v1/auth/features` returns the hospital's features live. The app re-reads it on window focus and every minute, so a part switched off reaches signed-in users without a re-login.
+
+**Consequences**
+- No migration. Existing hospitals keep every part until a Platform Admin switches one off.
+- Hospital creation still chooses modules only. A new hospital gets every part of its modules.
+- More modules (IPD, Pharmacy, OPD tabs, Accounts) can get parts the same way: a SubFeatures entry, `[RequireFeature]` on its controllers, and a feature check on its cards and routes.
+
 ### ADR-144: A bedside scan's add-on can be raised at the counter
 **Date:** 2026-11-19
 **Status:** Accepted

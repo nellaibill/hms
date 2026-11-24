@@ -80,14 +80,17 @@ export default function CentralLaboratoryHubPage() {
           <p className="text-sm text-muted-foreground">Laboratory Workflow isn't enabled for this hospital.</p>
         )}
 
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Database className="h-4 w-4" />
-          Test categories, services, packages, and external labs now live under{' '}
-          <Link to="/admin/masters" className="font-medium text-primary hover:underline">
-            Settings → Hospital Reference Data
-          </Link>
-          .
-        </p>
+        {/* Hospital Reference Data can be switched off for a hospital (ADR-145). */}
+        {hasFeature('settings.reference-data') && (
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Database className="h-4 w-4" />
+            Test categories, services, packages, and external labs now live under{' '}
+            <Link to="/admin/masters" className="font-medium text-primary hover:underline">
+              Settings → Hospital Reference Data
+            </Link>
+            .
+          </p>
+        )}
       </div>
     </div>
   );

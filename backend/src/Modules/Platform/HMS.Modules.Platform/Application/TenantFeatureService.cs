@@ -45,12 +45,9 @@ internal sealed class TenantFeatureService : ITenantFeatureService
 
         // A tenant with no rows yet (provisioned before this table existed, or never
         // toggled) is backward-compatibly treated as having every feature enabled — the
-        // same "default to everything" posture Tenant.EnabledModules already uses.
-        var enabledFeatures = existing.Count == 0
-            ? FeatureCatalog.All
-            : existing.Where(f => f.IsEnabled).Select(f => f.FeatureKey).ToList();
-
-        return Result<TenantFeaturesResponse>.Success(ToResponse(tenant.Id, enabledFeatures));
+        // same "default to everything" posture Tenant.EnabledModules already uses — and a
+        // sub-feature with no row is on (ADR-145). See FeatureCatalog.ResolveSelected*.
+        return Result<TenantFeaturesResponse>.Success(ToResponse(tenant.Id, existing));
     }
 
     public async Task<Result<TenantFeaturesResponse>> UpdateAsync(Guid tenantId, UpdateTenantFeaturesRequest request, Guid? actorId, CancellationToken cancellationToken)
@@ -102,6 +99,16 @@ internal sealed class TenantFeatureService : ITenantFeatureService
             }
         }
 
+        // Sub-features (ADR-145) have no schema, so they never need the migration above. Null
+        // means the caller didn't send any (e.g. an older client): leave them exactly as they are.
+        if (request.EnabledSubFeatures is not null)
+        {
+            foreach (var key in FeatureCatalog.SubFeatureKeys)
+            {
+                desiredByKey[key] = request.EnabledSubFeatures.Contains(key);
+            }
+        }
+
         var toCreate = new List<TenantFeature>();
         foreach (var (key, desiredEnabled) in desiredByKey)
         {
@@ -122,21 +129,28 @@ internal sealed class TenantFeatureService : ITenantFeatureService
 
         await _featureRepository.SaveChangesAsync(cancellationToken);
 
-        var enabledFeatures = existingByKey.Values.Concat(toCreate).Where(f => f.IsEnabled).Select(f => f.FeatureKey).ToList();
+        var response = ToResponse(tenant.Id, [.. existingByKey.Values, .. toCreate]);
 
         _logger.LogInformation(
-            "Updated features for tenant '{HospitalCode}': {FeatureCount} feature(s) enabled",
-            tenant.HospitalCode, enabledFeatures.Count);
+            "Updated features for tenant '{HospitalCode}': {FeatureCount} module(s) and {SubFeatureCount} sub-feature(s) enabled",
+            tenant.HospitalCode, response.EnabledFeatures.Count, response.EnabledSubFeatures.Count);
 
-        return Result<TenantFeaturesResponse>.Success(ToResponse(tenant.Id, enabledFeatures));
+        return Result<TenantFeaturesResponse>.Success(response);
     }
 
-    private static TenantFeaturesResponse ToResponse(Guid tenantId, IReadOnlyList<string> enabledFeatures) => new()
+    private static TenantFeaturesResponse ToResponse(Guid tenantId, IReadOnlyCollection<TenantFeature> rows)
     {
-        Id = tenantId,
-        EnabledFeatures = enabledFeatures,
-        AllFeatures = FeatureCatalog.All,
-        MandatoryFeatures = FeatureCatalog.Mandatory,
-        Dependencies = FeatureCatalog.Dependencies,
-    };
+        var rowStates = rows.Select(f => (f.FeatureKey, f.IsEnabled)).ToList();
+        return new TenantFeaturesResponse
+        {
+            Id = tenantId,
+            EnabledFeatures = FeatureCatalog.ResolveSelectedModules(rowStates),
+            AllFeatures = FeatureCatalog.All,
+            MandatoryFeatures = FeatureCatalog.Mandatory,
+            Dependencies = FeatureCatalog.Dependencies,
+            SubFeatures = [.. FeatureCatalog.SubFeatures.Select(sub => new SubFeatureResponse { Key = sub.Key, Parent = sub.Parent })],
+            EnabledSubFeatures = FeatureCatalog.ResolveSelectedSubFeatures(rowStates),
+            SubFeatureDependencies = FeatureCatalog.SubFeatureDependencies,
+        };
+    }
 }

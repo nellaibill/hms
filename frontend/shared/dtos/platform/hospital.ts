@@ -108,9 +108,24 @@ export interface TenantFeaturesResponse {
   mandatoryFeatures: string[];
   /** Mirrors FeatureCatalog.Dependencies: feature key -> the keys it requires to be enabled too. */
   dependencies: Record<string, string[]>;
+  /** Mirrors FeatureCatalog.SubFeatures (ADR-145): the parts of a module that can be switched
+   * off on their own, parent before child. A parent is a module key or another sub-feature. */
+  subFeatures: SubFeatureResponse[];
+  /** The sub-features this hospital has left on, whether or not their parent is on. */
+  enabledSubFeatures: string[];
+  /** Mirrors FeatureCatalog.SubFeatureDependencies: sub-feature -> the sub-features it needs. */
+  subFeatureDependencies: Record<string, string[]>;
+}
+
+/** Mirrors HMS.Modules.Platform.Contracts.SubFeatureResponse. */
+export interface SubFeatureResponse {
+  key: string;
+  parent: string;
 }
 
 /** Mirrors HMS.Modules.Platform.Contracts.UpdateTenantFeaturesRequest. */
 export interface UpdateTenantFeaturesRequest {
   enabledFeatures: string[];
+  /** Every sub-feature to leave on; the rest are switched off. Omit to leave them as they are. */
+  enabledSubFeatures?: string[];
 }

@@ -137,4 +137,65 @@ public class TenantFeatureServiceTests
         result.Value!.EnabledFeatures.Should().BeEquivalentTo(FeatureCatalog.Mandatory);
         await _migrationService.DidNotReceive().MigrateAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task GetAsync_ListsTheSubFeatureCatalogWithEveryPartOnByDefault()
+    {
+        var tenant = NewTenant();
+        SeedTenant(tenant);
+        var existing = FeatureCatalog.All.Select(key => TenantFeature.Create(tenant.Id, key, isEnabled: true, createdBy: null)).ToList();
+        _featureRepository.GetByTenantIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var result = await _sut.GetAsync(tenant.Id, CancellationToken.None);
+
+        result.Value!.SubFeatures.Select(sub => sub.Key).Should().Equal(FeatureCatalog.SubFeatureKeys);
+        result.Value.SubFeatures.Should().Contain(sub => sub.Key == "hr.leave-requests" && sub.Parent == "hr");
+        result.Value.EnabledSubFeatures.Should().BeEquivalentTo(FeatureCatalog.SubFeatureKeys);
+        result.Value.SubFeatureDependencies["hr.attendance"].Should().Contain("hr.employees");
+        result.Value.EnabledFeatures.Should().NotContain(key => key.Contains('.'), "modules and sub-features are listed apart");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithSubFeatures_SavesEveryOneOfThemOnOrOff()
+    {
+        var tenant = NewTenant();
+        SeedTenant(tenant);
+        var existing = FeatureCatalog.All.Select(key => TenantFeature.Create(tenant.Id, key, isEnabled: true, createdBy: null)).ToList();
+        _featureRepository.GetByTenantIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        var keep = FeatureCatalog.SubFeatureKeys.Where(key => key != "hr.leave-requests").ToList();
+
+        var result = await _sut.UpdateAsync(
+            tenant.Id,
+            new UpdateTenantFeaturesRequest { EnabledFeatures = FeatureCatalog.All, EnabledSubFeatures = keep },
+            _platformAdminId,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.EnabledSubFeatures.Should().BeEquivalentTo(keep);
+        await _featureRepository.Received(1).AddRangeAsync(
+            Arg.Is<IEnumerable<TenantFeature>>(rows =>
+                rows.Count() == FeatureCatalog.SubFeatureKeys.Count &&
+                rows.Single(row => row.FeatureKey == "hr.leave-requests").IsEnabled == false),
+            Arg.Any<CancellationToken>());
+        await _migrationService.DidNotReceive().MigrateAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithoutSubFeatures_LeavesThemAsTheyAre()
+    {
+        var tenant = NewTenant();
+        SeedTenant(tenant);
+        var existing = FeatureCatalog.All.Select(key => TenantFeature.Create(tenant.Id, key, isEnabled: true, createdBy: null)).ToList();
+        existing.Add(TenantFeature.Create(tenant.Id, "hr.attendance", isEnabled: false, createdBy: null));
+        _featureRepository.GetByTenantIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        // An older client: no EnabledSubFeatures at all.
+        var result = await _sut.UpdateAsync(
+            tenant.Id, new UpdateTenantFeaturesRequest { EnabledFeatures = FeatureCatalog.All }, _platformAdminId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        existing.Single(row => row.FeatureKey == "hr.attendance").IsEnabled.Should().BeFalse();
+        result.Value!.EnabledSubFeatures.Should().NotContain("hr.attendance").And.Contain("hr.employees");
+        await _featureRepository.DidNotReceive().AddRangeAsync(Arg.Any<IEnumerable<TenantFeature>>(), Arg.Any<CancellationToken>());
+    }
 }

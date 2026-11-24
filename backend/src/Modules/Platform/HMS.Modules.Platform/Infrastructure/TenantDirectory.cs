@@ -57,13 +57,12 @@ internal sealed class TenantDirectory : ITenantDirectory
     {
         var builder = new NpgsqlConnectionStringBuilder(_baseConnectionString) { Database = tenant.DatabaseName };
 
-        // Same backward-compat default TenantFeatureService.GetAsync uses: a tenant with no
-        // platform.tenant_features rows yet (provisioned before this table existed) is
-        // treated as having every feature enabled.
+        // Modules and sub-features the tenant can actually use (ADR-145) — see
+        // FeatureCatalog.ResolveEffective. A tenant with no platform.tenant_features rows yet
+        // (provisioned before this table existed) still gets every feature, and a sub-feature
+        // with no row is on.
         var features = await _featureRepository.GetByTenantIdAsync(tenant.Id, cancellationToken);
-        var enabledFeatures = features.Count == 0
-            ? FeatureCatalog.All
-            : features.Where(f => f.IsEnabled).Select(f => f.FeatureKey).ToList();
+        var enabledFeatures = FeatureCatalog.ResolveEffective(features.Select(f => (f.FeatureKey, f.IsEnabled)).ToList());
 
         return new TenantInfo(tenant.Id, tenant.HospitalCode, tenant.DatabaseName, builder.ConnectionString, tenant.Status == TenantStatus.Active, tenant.EnabledModules, enabledFeatures);
     }

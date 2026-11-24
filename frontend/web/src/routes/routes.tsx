@@ -333,20 +333,30 @@ const roleRoutes = [
 // Users & Settings" category). The backend's PUT/logo-upload actions independently require
 // 'identity-administration.edit' (BrandingController.cs, ADR-074) — this route guard is the
 // same view-grain hint mastersRoutes uses, not the real enforcement boundary.
+// Each Settings page is also behind its own tenant feature (ADR-145), so a Platform Admin can
+// switch it off for a hospital; the backend refuses its save endpoint too.
 const brandingRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [
-      { path: 'admin/settings/branding', element: withSuspense(<BrandingSettingsPage />) },
+      featureRoutes('settings.branding', [
+        { path: 'admin/settings/branding', element: withSuspense(<BrandingSettingsPage />) },
+      ]),
       // Reports visibility (ADR-120) — stored on the same branding row, same permission grain;
       // saving needs identity-administration.edit, enforced by the backend.
-      { path: 'admin/settings/reports-visibility', element: withSuspense(<ReportVisibilitySettingsPage />) },
+      featureRoutes('settings.reports-visibility', [
+        { path: 'admin/settings/reports-visibility', element: withSuspense(<ReportVisibilitySettingsPage />) },
+      ]),
       // Patient Registration Fields (ADR-135) — stored by the Patients module, same permission
       // grain; saving needs identity-administration.edit, enforced by the backend.
-      { path: 'admin/settings/patient-registration-fields', element: withSuspense(<PatientFieldSettingsPage />) },
+      featureRoutes('settings.patient-fields', [
+        { path: 'admin/settings/patient-registration-fields', element: withSuspense(<PatientFieldSettingsPage />) },
+      ]),
       // Billing Approvals (ADR-136) — stored by the Billing module, same permission grain; saving
       // needs identity-administration.edit, enforced by the backend.
-      { path: 'admin/settings/billing-approvals', element: withSuspense(<BillingApprovalSettingsPage />) },
+      featureRoutes('settings.billing-approvals', [
+        { path: 'admin/settings/billing-approvals', element: withSuspense(<BillingApprovalSettingsPage />) },
+      ]),
     ],
   },
 ];
@@ -358,7 +368,7 @@ const brandingRoutes = [
 const backupRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
-    children: [{ path: 'admin/settings/backup', element: withSuspense(<BackupSettingsPage />) }],
+    children: [featureRoutes('settings.backup', [{ path: 'admin/settings/backup', element: withSuspense(<BackupSettingsPage />) }])],
   },
 ];
 
@@ -369,11 +379,15 @@ const backupRoutes = [
 // filter only hides the sidebar link — it doesn't stop a direct URL visit from reaching
 // reference-data CRUD. Uses Settings' own leaf permission ('identity-administration',
 // config/navigation.ts — "Roles & permissions, master data, and system configuration").
+// The hub itself is also behind the "settings.reference-data" tenant feature (ADR-145). The
+// entity pages are not: other modules open them directly (a consultant from the Price List or
+// the doctor search, suppliers from Pharmacy Setup), and the masters APIs feed dropdowns all
+// over the app, so switching the hub off hides the browse-everything screen, not those flows.
 const mastersRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [
-      { path: 'admin/masters', element: withSuspense(<MastersHubPage />) },
+      featureRoutes('settings.reference-data', [{ path: 'admin/masters', element: withSuspense(<MastersHubPage />) }]),
       { path: 'admin/masters/:entityKey', element: withSuspense(<MasterListPage />) },
       { path: 'admin/masters/:entityKey/new', element: withSuspense(<MasterFormPage mode="create" />) },
       { path: 'admin/masters/:entityKey/:id', element: withSuspense(<MasterFormPage mode="view" />) },
@@ -459,6 +473,12 @@ const financeRoutes: RouteObject[] = [
 // own 'workforce-admin' permission (config/navigation.ts). Nested inside RequireFeatureRoute
 // (Tenant Feature/Module Management) so a tenant without the "hr" module can't reach these
 // routes either, even with the right RBAC permission — combines both checks, outer-to-inner.
+/** Routes behind one tenant feature (ADR-145) — e.g. one HR area a Platform Admin can switch off
+ * on its own. Like RequireFeatureRoute everywhere else, a hint: the API enforces it too. */
+function featureRoutes(feature: string, children: RouteObject[]): RouteObject {
+  return { element: <RequireFeatureRoute feature={feature} />, children };
+}
+
 const hrRoutes = [
   {
     element: <RequireFeatureRoute feature="hr" />,
@@ -466,35 +486,51 @@ const hrRoutes = [
       {
         element: <RequirePermissionRoute permission="workforce-admin.view" />,
         children: [
-          { path: 'admin/hr/shifts', element: withSuspense(<ShiftsListPage />) },
-          { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
-          { path: 'admin/hr/shifts/:id', element: withSuspense(<ShiftViewPage />) },
-          { path: 'admin/hr/shifts/:id/edit', element: withSuspense(<ShiftEditPage />) },
-          { path: 'admin/hr/staff-availability', element: withSuspense(<StaffAvailabilityListPage />) },
-          { path: 'admin/hr/staff-availability/new', element: withSuspense(<StaffAvailabilityCreatePage />) },
-          { path: 'admin/hr/staff-availability/:id', element: withSuspense(<StaffAvailabilityViewPage />) },
-          { path: 'admin/hr/staff-availability/:id/edit', element: withSuspense(<StaffAvailabilityEditPage />) },
-          { path: 'admin/hr/weekly-rosters', element: withSuspense(<WeeklyRostersListPage />) },
-          { path: 'admin/hr/weekly-rosters/new', element: withSuspense(<WeeklyRosterCreatePage />) },
-          { path: 'admin/hr/weekly-rosters/:id', element: withSuspense(<WeeklyRosterViewPage />) },
-          { path: 'admin/hr/weekly-rosters/:id/edit', element: withSuspense(<WeeklyRosterEditPage />) },
-          { path: 'admin/hr/shift-assignments', element: withSuspense(<ShiftAssignmentsListPage />) },
-          { path: 'admin/hr/shift-assignments/new', element: withSuspense(<ShiftAssignmentCreatePage />) },
-          { path: 'admin/hr/shift-assignments/:id', element: withSuspense(<ShiftAssignmentViewPage />) },
-          { path: 'admin/hr/shift-assignments/:id/edit', element: withSuspense(<ShiftAssignmentEditPage />) },
-          { path: 'admin/hr/shift-swap-requests', element: withSuspense(<ShiftSwapRequestsListPage />) },
-          { path: 'admin/hr/shift-swap-requests/new', element: withSuspense(<ShiftSwapRequestCreatePage />) },
-          { path: 'admin/hr/shift-swap-requests/:id', element: withSuspense(<ShiftSwapRequestViewPage />) },
-          { path: 'admin/hr/shift-swap-requests/:id/edit', element: withSuspense(<ShiftSwapRequestEditPage />) },
-          { path: 'admin/hr/monthly-calendar', element: withSuspense(<MonthlyRosterCalendarPage />) },
-          { path: 'admin/hr/dashboard', element: withSuspense(<HrDashboardPage />) },
-          { path: 'admin/hr/employees', element: withSuspense(<EmployeesListPage />) },
-          { path: 'admin/hr/employees/new', element: withSuspense(<EmployeeCreatePage />) },
-          { path: 'admin/hr/employees/:id', element: withSuspense(<EmployeeViewPage />) },
-          { path: 'admin/hr/employees/:id/edit', element: withSuspense(<EmployeeEditPage />) },
-          { path: 'admin/hr/attendance', element: withSuspense(<AttendanceListPage />) },
-          { path: 'admin/hr/leave-types', element: withSuspense(<LeaveTypesListPage />) },
-          { path: 'admin/hr/leave-requests', element: withSuspense(<LeaveRequestsListPage />) },
+          featureRoutes('hr.shifts', [
+            { path: 'admin/hr/shifts', element: withSuspense(<ShiftsListPage />) },
+            { path: 'admin/hr/shifts/new', element: withSuspense(<ShiftCreatePage />) },
+            { path: 'admin/hr/shifts/:id', element: withSuspense(<ShiftViewPage />) },
+            { path: 'admin/hr/shifts/:id/edit', element: withSuspense(<ShiftEditPage />) },
+          ]),
+          featureRoutes('hr.staff-availability', [
+            { path: 'admin/hr/staff-availability', element: withSuspense(<StaffAvailabilityListPage />) },
+            { path: 'admin/hr/staff-availability/new', element: withSuspense(<StaffAvailabilityCreatePage />) },
+            { path: 'admin/hr/staff-availability/:id', element: withSuspense(<StaffAvailabilityViewPage />) },
+            { path: 'admin/hr/staff-availability/:id/edit', element: withSuspense(<StaffAvailabilityEditPage />) },
+          ]),
+          featureRoutes('hr.weekly-rosters', [
+            { path: 'admin/hr/weekly-rosters', element: withSuspense(<WeeklyRostersListPage />) },
+            { path: 'admin/hr/weekly-rosters/new', element: withSuspense(<WeeklyRosterCreatePage />) },
+            { path: 'admin/hr/weekly-rosters/:id', element: withSuspense(<WeeklyRosterViewPage />) },
+            { path: 'admin/hr/weekly-rosters/:id/edit', element: withSuspense(<WeeklyRosterEditPage />) },
+          ]),
+          featureRoutes('hr.shift-assignments', [
+            { path: 'admin/hr/shift-assignments', element: withSuspense(<ShiftAssignmentsListPage />) },
+            { path: 'admin/hr/shift-assignments/new', element: withSuspense(<ShiftAssignmentCreatePage />) },
+            { path: 'admin/hr/shift-assignments/:id', element: withSuspense(<ShiftAssignmentViewPage />) },
+            { path: 'admin/hr/shift-assignments/:id/edit', element: withSuspense(<ShiftAssignmentEditPage />) },
+          ]),
+          featureRoutes('hr.shift-swap-requests', [
+            { path: 'admin/hr/shift-swap-requests', element: withSuspense(<ShiftSwapRequestsListPage />) },
+            { path: 'admin/hr/shift-swap-requests/new', element: withSuspense(<ShiftSwapRequestCreatePage />) },
+            { path: 'admin/hr/shift-swap-requests/:id', element: withSuspense(<ShiftSwapRequestViewPage />) },
+            { path: 'admin/hr/shift-swap-requests/:id/edit', element: withSuspense(<ShiftSwapRequestEditPage />) },
+          ]),
+          featureRoutes('hr.monthly-calendar', [
+            { path: 'admin/hr/monthly-calendar', element: withSuspense(<MonthlyRosterCalendarPage />) },
+          ]),
+          featureRoutes('hr.dashboard', [{ path: 'admin/hr/dashboard', element: withSuspense(<HrDashboardPage />) }]),
+          featureRoutes('hr.employees', [
+            { path: 'admin/hr/employees', element: withSuspense(<EmployeesListPage />) },
+            { path: 'admin/hr/employees/new', element: withSuspense(<EmployeeCreatePage />) },
+            { path: 'admin/hr/employees/:id', element: withSuspense(<EmployeeViewPage />) },
+            { path: 'admin/hr/employees/:id/edit', element: withSuspense(<EmployeeEditPage />) },
+          ]),
+          featureRoutes('hr.attendance', [{ path: 'admin/hr/attendance', element: withSuspense(<AttendanceListPage />) }]),
+          featureRoutes('hr.leave-types', [{ path: 'admin/hr/leave-types', element: withSuspense(<LeaveTypesListPage />) }]),
+          featureRoutes('hr.leave-requests', [
+            { path: 'admin/hr/leave-requests', element: withSuspense(<LeaveRequestsListPage />) },
+          ]),
         ],
       },
     ],

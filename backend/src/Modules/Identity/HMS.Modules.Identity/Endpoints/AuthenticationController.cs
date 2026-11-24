@@ -24,17 +24,20 @@ public class AuthenticationController : ControllerBase
     private readonly IAuthenticationService _authenticationService;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<ChangePasswordRequest> _changePasswordValidator;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<AuthenticationController> _logger;
 
     public AuthenticationController(
         IAuthenticationService authenticationService,
         IValidator<LoginRequest> loginValidator,
         IValidator<ChangePasswordRequest> changePasswordValidator,
+        ITenantContext tenantContext,
         ILogger<AuthenticationController> logger)
     {
         _authenticationService = authenticationService;
         _loginValidator = loginValidator;
         _changePasswordValidator = changePasswordValidator;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -77,6 +80,23 @@ public class AuthenticationController : ControllerBase
     {
         var claims = User.Claims.ToClaimsDictionary();
         return Ok(new ApiResponse<Dictionary<string, string>> { Data = claims });
+    }
+
+    /// <summary>The features the caller's hospital can use right now (ADR-145), read live from
+    /// the tenant's platform.tenant_features rows on this very request (TenantResolutionMiddleware)
+    /// rather than from the token, so a feature a Platform Admin just switched off disappears from
+    /// the app without a re-login. Same "no restrictions means everything" default as login.</summary>
+    /// <response code="200">The hospital's current feature keys.</response>
+    /// <response code="401">No token, or the token was missing/invalid/expired.</response>
+    [Authorize]
+    [HttpGet("features")]
+    public IActionResult Features()
+    {
+        var enabledFeatures = _tenantContext.EnabledFeatures;
+        var featureKeys = enabledFeatures is null || enabledFeatures.Count == 0
+            ? FeatureCatalog.AllWithSubFeatures
+            : enabledFeatures;
+        return Ok(new ApiResponse<CurrentFeaturesResponse> { Data = new CurrentFeaturesResponse { FeatureKeys = featureKeys } });
     }
 
     /// <summary>Self-service password change for the caller's own account — proves the

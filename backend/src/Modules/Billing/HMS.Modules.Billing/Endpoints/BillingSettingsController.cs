@@ -37,6 +37,7 @@ public class BillingSettingsController : ControllerBase
     /// <response code="200">The settings were saved.</response>
     /// <response code="400">No settings were sent.</response>
     [RequirePermission("identity-administration.edit")]
+    [RequireFeature("settings.billing-approvals")]
     [HttpPut]
     [ProducesResponseType(typeof(ApiResponse<BillingApprovalSettings>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]

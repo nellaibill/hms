@@ -99,7 +99,8 @@ export default function MastersHubPage() {
   const countByKey = new Map(configs.map((config, index) => [config.key, countQueries[index].data?.meta.totalCount]));
 
   const { hasFeature, hasPermission } = useAuth();
-  const canSeeEmployees = hasFeature('hr') && hasPermission('workforce-admin.view');
+  // "hr.employees" (ADR-145) is only ever on while "hr" itself is.
+  const canSeeEmployees = hasFeature('hr.employees') && hasPermission('workforce-admin.view');
   // Same query key as the HR hub's own Employees count, so the two share one cached request.
   const employeesCount = useQuery({
     queryKey: employeesQueryKey(EMPLOYEE_COUNT_QUERY),
