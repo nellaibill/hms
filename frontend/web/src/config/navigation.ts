@@ -20,7 +20,6 @@ import {
   Settings,
   CalendarDays,
   MessageSquare,
-  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/features/auth/types';
@@ -277,17 +276,6 @@ export const navigationTree: NavNode[] = [
     description: 'Notification center covering clinical, operational, administrative, and financial alerts.',
     permission: 'engagement',
     feature: 'messages-and-notifications',
-    section: 'Administrative',
-  },
-  {
-    type: 'leaf',
-    label: 'Reports',
-    path: '/reports',
-    icon: BarChart3,
-    iconColor: 'text-neutral-500',
-    description: 'Operational, clinical, financial, and statutory/regulatory reports.',
-    permission: 'reports-analytics',
-    feature: 'reports',
     section: 'Administrative',
   },
   {

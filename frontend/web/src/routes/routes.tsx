@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import { RouteErrorPage } from '../components/RouteErrorPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
+import { RequirePermission } from '../features/auth/RequirePermission';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { RequireFeatureRoute } from '../features/auth/RequireFeatureRoute';
 import { BlockedForRoles } from '../features/auth/BlockedForRoles';
@@ -213,7 +214,6 @@ const routeGatedLeafPaths = new Set([
   '/diagnostics/lab/dashboard',
   '/diagnostics/radiology',
   '/documents',
-  '/reports',
   '/admin/activity-log',
   '/admin/cloud-sync',
   '/admin/settings',
@@ -232,22 +232,8 @@ const documentsRoutes = [
   },
 ];
 
-// Patient Reports, reachable from the '/reports' nav leaf — a filterable table over full
-// patient PII with an Excel/PDF export, previously reachable by direct URL with no permission
-// gate at all (nav-level filtering only). Gated at 'patient-management.view', matching
-// PatientsController's actual server-side check on the report/summary/export endpoints
-// (ADR-071) — deliberately NOT the nav leaf's own labelled permission ('reports-analytics',
-// config/navigation.ts), since that module was never actually wired to these endpoints; using
-// it here would gate the route on a permission the backend doesn't check, letting a
-// reports-analytics-only role reach a page every API call on it then 403s, while a
-// patient-management-only role (the one that actually works) couldn't reach it via nav-driven
-// gating. Worth reconciling the nav label itself in a future pass.
-const patientReportsRoutes = [
-  {
-    element: <RequirePermissionRoute permission="patient-management.view" />,
-    children: [{ path: 'reports', element: withSuspense(<PatientReportsPage />) }],
-  },
-];
+// Patient Reports moved into Accounts and Finance (ADR-151): see accountsTabPages below. Its old
+// '/reports' address redirects there (LEGACY_ACCOUNTS_REDIRECTS).
 
 // Activity Log (HMS.Modules.ActivityLog) — read-only audit trail. Route-gated at
 // 'identity-administration.view', matching ActivityLogsController's actual server-side check.
@@ -461,6 +447,12 @@ const accountsTabPages: Record<AccountsTabId, React.ReactNode> = {
   pharmacyReport: <PharmacyFinanceReportPage />,
   laboratory: <LaboratoryReportPage />,
   radiology: <RadiologyReportPage />,
+  // Its API needs patient-management.view (PatientsController), which a finance-only role may lack.
+  patientReports: (
+    <RequirePermission permission="patient-management.view">
+      <PatientReportsPage />
+    </RequirePermission>
+  ),
 };
 
 const accountsCategoryRoutes: RouteObject[] = ACCOUNTS_CATEGORIES.map((category) => {
@@ -801,7 +793,6 @@ export const router = createBrowserRouter(
             ...activityLogRoutes,
             ...cloudSyncRoutes,
             ...adminAndEngagementRoutes,
-            ...patientReportsRoutes,
           ],
         },
       ],

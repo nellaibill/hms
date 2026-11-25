@@ -62,6 +62,20 @@ public class BrandingServiceTests
     }
 
     [Fact]
+    public async Task UpdateReportVisibilityAsync_AcceptsTheBillListAndApprovalQueueTabs()
+    {
+        // ADR-151: Recent Bills, All Invoices and the two approval queues are switched here too.
+        var result = await _sut.UpdateReportVisibilityAsync(
+            new ReportVisibilitySettings { VisibleReports = [AccountsReportKeys.DiscountRequests, AccountsReportKeys.RecentBills, AccountsReportKeys.AllInvoices, AccountsReportKeys.CancellationRequests] },
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.ReportVisibility.VisibleReports.Should().Equal(
+            AccountsReportKeys.RecentBills, AccountsReportKeys.AllInvoices, AccountsReportKeys.CancellationRequests, AccountsReportKeys.DiscountRequests);
+    }
+
+    [Fact]
     public async Task UpdateReportVisibilityAsync_StoresTheReportsOnceEachInCatalogOrder()
     {
         var result = await _sut.UpdateReportVisibilityAsync(
@@ -89,7 +103,7 @@ public class BrandingServiceTests
 
     [Theory]
     [InlineData("opReport")] // OP Report always shows — it isn't a switchable report.
-    [InlineData("recentBills")]
+    [InlineData("collectionSummary")] // Collection Summary always shows too.
     [InlineData("Laboratory")] // keys are case-sensitive, like every other Branding catalog
     public async Task UpdateReportVisibilityAsync_RejectsAKeyThatIsNotASwitchableReport(string key)
     {
