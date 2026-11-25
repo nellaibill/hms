@@ -117,6 +117,16 @@ public static class JwtConfiguration
                 .Build();
             options.AddPolicy("Hospital", hospitalPolicy);
 
+            // ADR-150: screens only the hospital's Super Admin may open (Activity Log). A
+            // hospital token signed in as Super Admin — the login type the login page allows
+            // only for the Super Admin role (Identity's LoginTypes) — whatever permissions a
+            // role has been given.
+            options.AddPolicy(HospitalPolicies.SuperAdmin, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireClaim("UserId")
+                .RequireAssertion(context => string.Equals(
+                    context.User.FindFirst("LoginType")?.Value, "superAdmin", StringComparison.OrdinalIgnoreCase)));
+
             // Secure by default (HMS Security Hardening Phase A): every controller action
             // requires a valid Hospital token unless it explicitly opts out via
             // [AllowAnonymous] or a different policy (e.g. [Authorize(Policy = "Platform")]).

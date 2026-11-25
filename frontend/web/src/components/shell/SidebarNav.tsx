@@ -10,7 +10,7 @@ interface SidebarNavProps {
 
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   const { hasPermission, hasFeature, user } = useAuth();
-  const nodes = filterNavigationForPermissions(hasPermission, hasFeature, user?.hiddenMenus);
+  const nodes = filterNavigationForPermissions(hasPermission, hasFeature, user?.hiddenMenus, user?.role);
 
   // Every row gets a 3px transparent left border by default so the active
   // row's accent bar doesn't shift layout when it appears — per

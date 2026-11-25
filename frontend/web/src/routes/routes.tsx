@@ -4,6 +4,8 @@ import { RouteErrorPage } from '../components/RouteErrorPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { RequireFeatureRoute } from '../features/auth/RequireFeatureRoute';
+import { BlockedForRoles } from '../features/auth/BlockedForRoles';
+import { RequireSuperAdminRoute } from '../features/auth/RequireSuperAdminRoute';
 import { RequireAccountsReportRoute } from '../features/reports/components/RequireAccountsReportRoute';
 import { AccountsCategoryRoute } from '../features/reports/components/AccountsCategoryRoute';
 import { ACCOUNTS_CATEGORIES, accountsPath, LEGACY_ACCOUNTS_REDIRECTS, type AccountsTabId } from '../features/reports/accountsCategories';
@@ -180,7 +182,8 @@ const withSuspense = (element: React.ReactNode) => <Suspense fallback={shellFall
 // single source of truth for the sidebar.
 const specialPages: Record<string, React.ReactNode> = {
   '/dashboard': withSuspense(<DashboardPage />),
-  '/patients/registration': withSuspense(<PatientRegistrationHubPage />),
+  // Not a doctor's sign-in: patients are registered at the front desk (ADR-150).
+  '/patients/registration': <BlockedForRoles roles={['doctor']}>{withSuspense(<PatientRegistrationHubPage />)}</BlockedForRoles>,
   '/patients/enquiry': withSuspense(<PatientsListPage />),
   '/support/inventory': withSuspense(<ProductsListPage />),
   '/admin/hr': withSuspense(<HrHubPage />),
@@ -250,8 +253,14 @@ const patientReportsRoutes = [
 // 'identity-administration.view', matching ActivityLogsController's actual server-side check.
 const activityLogRoutes = [
   {
-    element: <RequirePermissionRoute permission="identity-administration.view" />,
-    children: [{ path: 'admin/activity-log', element: withSuspense(<ActivityLogPage />) }],
+    // ADR-150: a Super Admin's sign-in only, whatever a role's permissions.
+    element: <RequireSuperAdminRoute />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="identity-administration.view" />,
+        children: [{ path: 'admin/activity-log', element: withSuspense(<ActivityLogPage />) }],
+      },
+    ],
   },
 ];
 
@@ -271,8 +280,14 @@ const cloudSyncRoutes = [
 // the URL. The header's Notifications bell is separate and stays open to every user.
 const adminAndEngagementRoutes = [
   {
-    element: <RequirePermissionRoute permission="identity-administration.view" />,
-    children: [{ path: 'admin/settings', element: withSuspense(<SettingsPage />) }],
+    // ADR-150: Settings is a Super Admin's sign-in only, whatever a role's permissions.
+    element: <RequireSuperAdminRoute />,
+    children: [
+      {
+        element: <RequirePermissionRoute permission="identity-administration.view" />,
+        children: [{ path: 'admin/settings', element: withSuspense(<SettingsPage />) }],
+      },
+    ],
   },
   {
     element: <RequirePermissionRoute permission="engagement.view" />,
@@ -305,7 +320,7 @@ const userRoutes = [
 // landing hub ('patients/registration') and 'patients/enquiry' are already wired via
 // specialPages above; these cover the create/view/edit sub-routes, mirroring userRoutes' shape.
 const patientRoutes = [
-  { path: 'patients/registration/new', element: withSuspense(<PatientRegistrationCreatePage />) },
+  { path: 'patients/registration/new', element: <BlockedForRoles roles={['doctor']}>{withSuspense(<PatientRegistrationCreatePage />)}</BlockedForRoles> },
   { path: 'patients/registration/:id', element: withSuspense(<PatientViewPage />) },
   { path: 'patients/registration/:id/edit', element: withSuspense(<PatientEditPage />) },
   { path: 'patients/registration/:id/visits/new', element: withSuspense(<PatientRecordVisitPage />) },
@@ -391,7 +406,8 @@ const mastersRoutes = [
   {
     element: <RequirePermissionRoute permission="identity-administration.view" />,
     children: [
-      featureRoutes('settings.reference-data', [{ path: 'admin/masters', element: withSuspense(<MastersHubPage />) }]),
+      // The hub is a Settings page: a Super Admin's sign-in only (ADR-150).
+      { element: <RequireSuperAdminRoute />, children: [featureRoutes('settings.reference-data', [{ path: 'admin/masters', element: withSuspense(<MastersHubPage />) }])] },
       { path: 'admin/masters/:entityKey', element: withSuspense(<MasterListPage />) },
       { path: 'admin/masters/:entityKey/new', element: withSuspense(<MasterFormPage mode="create" />) },
       { path: 'admin/masters/:entityKey/:id', element: withSuspense(<MasterFormPage mode="view" />) },
@@ -767,11 +783,9 @@ export const router = createBrowserRouter(
           children: [
             { index: true, element: <Navigate to="/dashboard" replace /> },
             ...moduleRoutes,
-            ...userRoutes,
+            // Settings pages (ADR-150): a Super Admin's sign-in only.
+            { element: <RequireSuperAdminRoute />, children: [...userRoutes, ...roleRoutes, ...brandingRoutes, ...backupRoutes] },
             ...patientRoutes,
-            ...roleRoutes,
-            ...brandingRoutes,
-            ...backupRoutes,
             ...mastersRoutes,
             ...productRoutes,
             ...financeRoutes,
