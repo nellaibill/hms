@@ -6,6 +6,7 @@ import { resolveRecordLabel } from '@/features/masters';
 import { formatDateRangeLabel, formatReportDate } from '@/lib/reportDateRange';
 import { displayedTotalCost, displayedCost, DEFAULT_PROFIT_LABELS, type HiddenProfitColumns, type ProfitLabels, type ProfitReportRow, type ProfitTotals } from '../profitReport';
 import type { ReportDateRange } from '../types';
+import { serverNow } from '@/lib/hospitalTime';
 
 interface ProfitReportPrintProps {
   title: string;
@@ -60,7 +61,7 @@ export function ProfitReportPrint({ title, range, filterSummary, rows, totals, l
           {formatDateRangeLabel(range.from, range.to)}
           {filterSummary.length > 0 ? ` · ${filterSummary.join(' · ')}` : ''}
         </span>
-        <span className="whitespace-nowrap text-gray-600">Printed {new Date().toLocaleString('en-IN')}</span>
+        <span className="whitespace-nowrap text-gray-600">Printed {serverNow().toLocaleString('en-IN')}</span>
       </div>
 
       <div className={`mt-3 grid border border-black text-sm ${hidden.margin ? 'grid-cols-4' : 'grid-cols-5'}`}>

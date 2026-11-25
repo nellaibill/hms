@@ -5,19 +5,19 @@ import { Badge } from '@/components/ui/badge';
 import { useOpdConsultationsByPatientQuery } from '@/features/opdConsultation';
 import { useAuth } from '../../auth/AuthContext';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { hospitalToday } from '@/lib/hospitalTime';
 
-/** Today as "YYYY-MM-DD" in the browser's own (hospital) time zone — the same shape as a
+/** Today as "YYYY-MM-DD" in India by the server's clock (ADR-147) — the same shape as a
  * consultation's reviewDate, so the two compare as plain strings. */
 function todayIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return hospitalToday();
 }
 
 /** A "YYYY-MM-DD" date read as a local calendar day — new Date("YYYY-MM-DD") alone is UTC midnight,
  * which shows as the previous day west of UTC. */
 function formatIsoDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-IN');
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-IN', { timeZone: 'UTC' });
 }
 
 /** "21/10/2026 (OP-2026-000006)" — the visit the review was scheduled on, with its OP/IP No, or

@@ -1,3 +1,4 @@
+import { hospitalToday } from '@/lib/hospitalTime';
 // Dates throughout HR (WeeklyRoster.weekStartDate, ShiftAssignment.rosterDate) are plain
 // calendar dates ("YYYY-MM-DD", .NET DateOnly) with no time component — all arithmetic here
 // uses UTC-anchored Date objects purely as a calendar calculator, never converting to/from
@@ -29,10 +30,9 @@ export function formatDisplayDate(iso: string): string {
   return parseIsoDate(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'UTC' });
 }
 
-/** This week's Monday, as of the caller's local wall-clock date. */
+/** This week's Monday, as of today in India by the server's clock (ADR-147). */
 export function getCurrentWeekStartDate(): string {
-  const now = new Date();
-  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayIso = hospitalToday();
   const dayOfWeek = parseIsoDate(todayIso).getUTCDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   return addDays(todayIso, mondayOffset);

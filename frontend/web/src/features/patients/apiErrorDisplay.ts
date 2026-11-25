@@ -1,4 +1,5 @@
 import { ApiError, NetworkError } from '@hms/shared';
+import { serverNow } from '@/lib/hospitalTime';
 
 /**
  * Normalizes a mutation error into the ApiError shape the patient forms already know how to
@@ -14,7 +15,7 @@ export function toDisplayError(error: unknown): ApiError | null {
       errorCode: 'NETWORK.UNREACHABLE',
       message: 'Could not reach the server — this patient was NOT saved. Check your connection and try again.',
       correlationId: '',
-      timestamp: new Date().toISOString(),
+      timestamp: serverNow().toISOString(),
     });
   }
   return null;

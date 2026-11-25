@@ -12,6 +12,7 @@ import { usePatientQuery, usePatientVisitsQuery } from '@/features/patients';
 import { AdmissionForm, useAdmissionsQuery, useCreateAdmissionMutation, type AdmissionFormInitialValues } from '../../features/ipd/admissions';
 import { RequirePermission } from '../../features/auth/RequirePermission';
 import { PatientNameLink } from '@/components/PatientNameLink';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 const NO_VISIT = 'none';
 
@@ -174,7 +175,7 @@ export default function AdmissionCreatePage() {
         // datetime-local's value ("YYYY-MM-DDTHH:mm") has no timezone offset — Date parses
         // it as local time, and toISOString() converts that to the UTC instant the backend
         // expects. Left blank, the backend defaults to "now" server-side.
-        admissionDateTime: values.admissionDateTime ? new Date(values.admissionDateTime).toISOString() : undefined,
+        admissionDateTime: values.admissionDateTime ? fromHospitalDateTimeInput(values.admissionDateTime) : undefined,
         admissionType: values.admissionType,
         reasonForAdmission: values.reasonForAdmission,
         visitId,

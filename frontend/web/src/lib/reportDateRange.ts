@@ -1,25 +1,22 @@
-/** A Date as a `<input type="date">` value (YYYY-MM-DD) in the user's *local* calendar day.
- * Not `toISOString().slice(0, 10)` — that's the UTC day, which in IST (UTC+5:30) is still
- * yesterday until 05:30 every morning, so "today" defaults silently came out a day early. */
+import { addDaysToDate, hospitalDateOf, hospitalDayEnd, hospitalDayStart, hospitalToday } from './hospitalTime';
+
+/** An instant as a `<input type="date">` value (YYYY-MM-DD): its calendar day in India
+ * (ADR-147), whatever the PC's own time zone. Not `toISOString().slice(0, 10)` — that's the UTC
+ * day, which is still yesterday until 05:30 every morning. Empty for an invalid date. */
 export function toLocalDateInputValue(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return hospitalDateOf(date);
 }
 
-/** Today's local date as a date-input value. */
+/** Today's date in India, by the server's clock, as a date-input value. */
 export function todayDateInputValue(): string {
-  return toLocalDateInputValue(new Date());
+  return hospitalToday();
 }
 
 /** The default From/To for every report and date-filtered list: From = yesterday, To = today
- * (local dates) — one shared default instead of each page picking its own window. */
+ * (hospital dates) — one shared default instead of each page picking its own window. */
 export function defaultReportDateRange(): { from: string; to: string } {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  return { from: toLocalDateInputValue(yesterday), to: toLocalDateInputValue(today) };
+  const today = hospitalToday();
+  return { from: addDaysToDate(today, -1), to: today };
 }
 
 /** A date-input value (YYYY-MM-DD) the way every report shows a date: "06 Nov 2026". Empty for
@@ -36,12 +33,10 @@ export function formatReportDateFromIso(iso: string | undefined): string {
 }
 
 function formatDateInputValue(date: string | undefined): string {
-  if (!date) return '';
-  // Parsed as a local date, not `new Date(date)` — a bare YYYY-MM-DD is read as UTC midnight,
-  // which is the previous calendar day anywhere west of UTC.
-  const parsed = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return '';
-  return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  // Midnight in India, shown in India's zone: the same calendar day on any PC (ADR-147).
+  const parsed = hospitalDayStart(date);
+  if (!parsed) return '';
+  return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
 /** A From/To filter pair as a heading label, e.g. "01 Oct 2026 – 02 Oct 2026", or just
@@ -69,14 +64,7 @@ export function formatDateRangeLabel(from: string | undefined, to: string | unde
 // tree — confirmed live ("useAuth must be used within an AuthProvider" was React's own
 // misleading secondary error from recovering a concurrent render, not the real cause). Guard
 // explicitly rather than relying on the ternary's truthiness check alone.
-export const toRangeStart = (date: string | undefined): string | undefined => {
-  if (!date) return undefined;
-  const parsed = new Date(`${date}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
+// Both bounds are the day's start and end in India (ADR-147), not in the PC's own zone.
+export const toRangeStart = (date: string | undefined): string | undefined => hospitalDayStart(date)?.toISOString();
 
-export const toRangeEnd = (date: string | undefined): string | undefined => {
-  if (!date) return undefined;
-  const parsed = new Date(`${date}T23:59:59.999`);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
-};
+export const toRangeEnd = (date: string | undefined): string | undefined => hospitalDayEnd(date)?.toISOString();

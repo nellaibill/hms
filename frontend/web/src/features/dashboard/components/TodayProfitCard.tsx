@@ -16,10 +16,8 @@ import { getTodayRange } from '../frontDeskToday';
  */
 export function TodayProfitCard() {
   const today = useMemo(() => getTodayRange(), []);
-  // Report lines are dated by their UTC day (as on OP Report), so fetch from whichever of the
-  // local and UTC midnight comes first.
-  const fetchFrom = useMemo(() => new Date(Math.min(Date.parse(today.from), Date.parse(`${today.date}T00:00:00Z`))).toISOString(), [today]);
-  const { data: bills, isPending } = useInvoicesSinceQuery(fetchFrom);
+  // Report lines are dated by their day in India, as on OP Report (ADR-147): fetch from midnight IST.
+  const { data: bills, isPending } = useInvoicesSinceQuery(today.from);
 
   const { data: diagnosticTestOptions } = useMasterOptionsQuery('diagnosticTest');
   const { data: consultantOptions } = useMasterOptionsQuery('consultant');

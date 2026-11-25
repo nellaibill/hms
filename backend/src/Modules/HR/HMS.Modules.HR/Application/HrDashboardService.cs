@@ -2,6 +2,7 @@ using HMS.Modules.Documents.Application;
 using HMS.Modules.Documents.Contracts;
 using HMS.Modules.HR.Application.Abstractions;
 using HMS.Modules.HR.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.HR.Application;
 
@@ -45,7 +46,7 @@ internal class HrDashboardService : IHrDashboardService
         var totalEmployees = await _employeeRepository.CountAsync(cancellationToken);
         var activeEmployees = await _employeeRepository.CountActiveAsync(cancellationToken);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = HospitalTimeZone.Today;
         var statusCounts = await _attendanceRepository.GetStatusCountsForDateAsync(today, cancellationToken);
 
         // PresentToday folds Late/HalfDay into the headline count — see HrDashboardResponse's

@@ -1,12 +1,12 @@
-/** Local-date key (yyyy-mm-dd) of an ISO timestamp, comparable with an <input type="date"> value. */
+import { hospitalDateOf } from '@/lib/hospitalTime';
+
+/** Date key (yyyy-mm-dd) of an ISO timestamp — its day in India (ADR-147) — comparable with an
+ * <input type="date"> value. */
 function localDateKey(iso: string): string {
-  const date = new Date(iso);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
+  return hospitalDateOf(iso);
 }
 
-/** Inclusive, by the viewer's local calendar day. An empty bound is open-ended. */
+/** Inclusive, by the hospital's (IST) calendar day. An empty bound is open-ended. */
 export function inDateRange(iso: string, from: string, to: string): boolean {
   if (!from && !to) return true;
   const key = localDateKey(iso);

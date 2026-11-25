@@ -4,6 +4,7 @@ import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { humanize } from '@/features/patients/humanize';
 import type { LabOrder } from '../types';
+import { serverNow } from '@/lib/hospitalTime';
 
 interface LabReportPrintTemplateProps {
   order: LabOrder;
@@ -92,7 +93,7 @@ export function LabReportPrintTemplate({ order }: LabReportPrintTemplateProps) {
 
       <div className="mt-10 flex items-end justify-between border-t border-gray-300 pt-3 text-xs text-gray-600">
         <span>Every result verified prior to report generation.</span>
-        <span>Printed {new Date().toLocaleString('en-IN')}</span>
+        <span>Printed {serverNow().toLocaleString('en-IN')}</span>
       </div>
       <p className="mt-6 text-center text-sm italic text-gray-700">This report is generated electronically and is valid without a signature.</p>
     </div>

@@ -2,6 +2,7 @@ import type { AttendanceResponse } from '@hms/shared';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/AuthContext';
 import { AttendanceStatusBadge } from './AttendanceStatusBadge';
+import { hospitalToday } from '@/lib/hospitalTime';
 
 interface AttendanceTableProps {
   records: AttendanceResponse[];
@@ -14,7 +15,7 @@ function formatTime(value: string | null | undefined): string {
   return new Date(value).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => hospitalToday();
 
 export function AttendanceTable({ records, onEditRequested, onCheckOutRequested }: AttendanceTableProps) {
   const { hasPermission } = useAuth();

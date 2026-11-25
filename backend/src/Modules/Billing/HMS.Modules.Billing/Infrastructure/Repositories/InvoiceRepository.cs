@@ -1,6 +1,7 @@
 using HMS.Modules.Billing.Application.Abstractions;
 using HMS.Modules.Billing.Contracts;
 using HMS.Modules.Billing.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace HMS.Modules.Billing.Infrastructure.Repositories;
@@ -141,13 +142,13 @@ internal class InvoiceRepository : IInvoiceRepository
         // PatientVisitRepository.GetPagedAsync/PatientRepository.BuildFilteredQuery.
         if (query.From.HasValue)
         {
-            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            var from = HospitalTimeZone.ToUtc(query.From.Value);
             rows = rows.Where(r => r.invoice.CreatedAt >= from);
         }
 
         if (query.To.HasValue)
         {
-            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            var to = HospitalTimeZone.ToUtc(query.To.Value);
             rows = rows.Where(r => r.invoice.CreatedAt <= to);
         }
 

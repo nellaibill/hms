@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.Patients.Contracts;
+using HMS.Shared.Kernel;
 using System.Linq;
 
 namespace HMS.Modules.Patients.Application.Validators;
@@ -50,7 +51,7 @@ internal class CreatePatientRequestValidator : PatientFieldAwareValidator<Create
     // A property (not a static readonly field) so the bound moves with the date instead of
     // freezing at process start.
     internal const int MaxAgeYears = 100;
-    internal static DateOnly MinDateOfBirth => DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-MaxAgeYears);
+    internal static DateOnly MinDateOfBirth => HospitalTimeZone.Today.AddYears(-MaxAgeYears);
 
     internal static int CalculateAge(DateOnly dateOfBirth, DateOnly asOf)
     {
@@ -69,7 +70,7 @@ internal class CreatePatientRequestValidator : PatientFieldAwareValidator<Create
     // < 18, so a newborn can't be registered as Master/Miss instead of Baby.
     internal static bool IsTitleConsistentWithAge(Title title, DateOnly dateOfBirth)
     {
-        var age = CalculateAge(dateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow));
+        var age = CalculateAge(dateOfBirth, HospitalTimeZone.Today);
         return title switch
         {
             Title.Baby => age <= 1,
@@ -102,7 +103,7 @@ internal class CreatePatientRequestValidator : PatientFieldAwareValidator<Create
     // (ADR-135, requiredForAdults: false) lets an adult stay 'NA'; the under-18 rule stays.
     internal static bool IsMaritalStatusConsistentWithAge(MaritalStatus maritalStatus, DateOnly dateOfBirth, bool requiredForAdults = true)
     {
-        var age = CalculateAge(dateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow));
+        var age = CalculateAge(dateOfBirth, HospitalTimeZone.Today);
         if (age < 18)
         {
             return maritalStatus == MaritalStatus.NA;
@@ -112,7 +113,7 @@ internal class CreatePatientRequestValidator : PatientFieldAwareValidator<Create
     }
 
     internal static string MaritalStatusAgeMessage(DateOnly dateOfBirth) =>
-        CalculateAge(dateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow)) < 18
+        CalculateAge(dateOfBirth, HospitalTimeZone.Today) < 18
             ? "Patients under 18 must have marital status 'N/A'."
             : "Marital status must be Married or Unmarried for patients 18 or older.";
 
@@ -137,7 +138,7 @@ internal class CreatePatientRequestValidator : PatientFieldAwareValidator<Create
             .When(x => !string.IsNullOrWhiteSpace(x.LastName));
         RuleFor(x => x.DateOfBirth)
             .NotEmpty()
-            .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth cannot be in the future.")
+            .LessThanOrEqualTo(_ => HospitalTimeZone.Today).WithMessage("Date of birth cannot be in the future.")
             .GreaterThanOrEqualTo(_ => MinDateOfBirth).WithMessage("Patient age cannot exceed 100 years — please check the date of birth.");
         RuleFor(x => x)
             .Must(x => IsTitleConsistentWithAge(x.Title, x.DateOfBirth))

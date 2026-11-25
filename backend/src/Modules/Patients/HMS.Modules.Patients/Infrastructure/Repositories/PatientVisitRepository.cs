@@ -1,6 +1,7 @@
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace HMS.Modules.Patients.Infrastructure.Repositories;
@@ -103,13 +104,13 @@ internal class PatientVisitRepository : IPatientVisitRepository
         // supported"), so it must be normalized before use, not passed through as-is.
         if (query.From.HasValue)
         {
-            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            var from = HospitalTimeZone.ToUtc(query.From.Value);
             visits = visits.Where(v => v.CreatedAt >= from);
         }
 
         if (query.To.HasValue)
         {
-            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            var to = HospitalTimeZone.ToUtc(query.To.Value);
             visits = visits.Where(v => v.CreatedAt <= to);
         }
 
@@ -157,13 +158,13 @@ internal class PatientVisitRepository : IPatientVisitRepository
         // supported"), so it must be normalized before use — same fix as GetPagedAsync above.
         if (query.From.HasValue)
         {
-            var fromUtc = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            var fromUtc = HospitalTimeZone.ToUtc(query.From.Value);
             rows = rows.Where(r => r.consultation.AppointmentTime >= fromUtc);
         }
 
         if (query.To.HasValue)
         {
-            var toUtc = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            var toUtc = HospitalTimeZone.ToUtc(query.To.Value);
             rows = rows.Where(r => r.consultation.AppointmentTime <= toUtc);
         }
 
@@ -233,13 +234,13 @@ internal class PatientVisitRepository : IPatientVisitRepository
 
         if (query.From.HasValue)
         {
-            var fromUtc = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
+            var fromUtc = HospitalTimeZone.ToUtc(query.From.Value);
             rows = rows.Where(r => r.consultation.AppointmentTime >= fromUtc);
         }
 
         if (query.To.HasValue)
         {
-            var toUtc = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            var toUtc = HospitalTimeZone.ToUtc(query.To.Value);
             rows = rows.Where(r => r.consultation.AppointmentTime <= toUtc);
         }
 

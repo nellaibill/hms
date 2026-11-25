@@ -33,6 +33,7 @@ import {
 import { useAuth } from '../../features/auth/AuthContext';
 import { DischargeSummaryEntryCard, useCanViewDischargeSummary } from '../../features/dischargeSummary';
 import { PatientNameLink } from '@/components/PatientNameLink';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -91,7 +92,7 @@ export default function AdmissionViewPage() {
     dischargeMutation.mutate({
       id: id as string,
       request: {
-        dischargeDateTime: new Date(values.dischargeDateTime).toISOString(),
+        dischargeDateTime: fromHospitalDateTimeInput(values.dischargeDateTime),
         dischargeType: values.dischargeType,
         finalDiagnosis: values.finalDiagnosis || undefined,
         dischargeNotes: values.dischargeNotes || undefined,

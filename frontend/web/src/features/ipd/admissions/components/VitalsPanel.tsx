@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePostVitalsReadingMutation, useVitalsReadingsQuery } from '../hooks/useVitalsReadings';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface VitalsPanelProps {
   admissionId: string;
@@ -43,7 +44,7 @@ export function VitalsPanel({ admissionId }: VitalsPanelProps) {
   function onSubmit(values: VitalsReadingFormValues) {
     mutation.mutate(
       {
-        recordedAt: new Date(values.recordedAt).toISOString(),
+        recordedAt: fromHospitalDateTimeInput(values.recordedAt),
         temperatureF: values.temperatureF,
         pulseRate: values.pulseRate,
         respiratoryRate: values.respiratoryRate,

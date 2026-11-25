@@ -1,11 +1,12 @@
 import type { WeeklyRoster } from '@hms/shared';
 import { CalendarDays, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination } from '@/components/Pagination';
 import { PageBanner } from '@/components/PageBanner';
+import { hospitalDateParts } from '@/lib/hospitalTime';
 import {
   DeleteWeeklyRosterDialog,
   WeeklyRosterTable,
@@ -19,12 +20,13 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-const now = new Date();
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
+// Today in India by the server's clock (ADR-147).
+const yearOptions = () => Array.from({ length: 5 }, (_, i) => hospitalDateParts().year - 2 + i);
 
 export default function MonthlyRosterCalendarPage() {
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(() => hospitalDateParts().year);
+  const [month, setMonth] = useState(() => hospitalDateParts().month);
+  const YEAR_OPTIONS = useMemo(yearOptions, []);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState('weekStartDate');
   const [rosterPendingDelete, setRosterPendingDelete] = useState<WeeklyRoster | null>(null);

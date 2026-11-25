@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDiscontinueMedicationOrderMutation, useMedicationOrdersQuery, usePostMedicationOrderMutation } from '../hooks/useMedicationOrders';
+import { fromHospitalDateTimeInput, serverNow } from '@/lib/hospitalTime';
 
 interface MedicationOrdersPanelProps {
   admissionId: string;
@@ -46,10 +47,10 @@ export function MedicationOrdersPanel({ admissionId }: MedicationOrdersPanelProp
         dose: values.dose,
         route: values.route,
         frequency: values.frequency,
-        startDate: new Date(values.startDate).toISOString(),
-        endDate: values.endDate ? new Date(values.endDate).toISOString() : null,
+        startDate: fromHospitalDateTimeInput(values.startDate),
+        endDate: values.endDate ? fromHospitalDateTimeInput(values.endDate) : null,
         instructions: values.instructions || null,
-        orderedAt: new Date(values.orderedAt).toISOString(),
+        orderedAt: fromHospitalDateTimeInput(values.orderedAt),
       },
       { onSuccess: () => reset(defaultValues) },
     );
@@ -107,7 +108,7 @@ export function MedicationOrdersPanel({ admissionId }: MedicationOrdersPanelProp
                 </tr>
               )}
               {orders?.map((order) => {
-                const isEnded = Boolean(order.endDate) && new Date(order.endDate as string) < new Date();
+                const isEnded = Boolean(order.endDate) && new Date(order.endDate as string) < serverNow();
                 const isDiscontinuing = discontinueMutation.isPending && discontinueMutation.variables?.orderId === order.id;
 
                 return (

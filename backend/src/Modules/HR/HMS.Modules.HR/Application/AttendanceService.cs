@@ -101,7 +101,7 @@ internal class AttendanceService : IAttendanceService
             return Result<AttendanceResponse>.Failure(HRErrorCodes.InvalidEmployee, $"Employee '{request.EmployeeId}' was not found.");
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = HospitalTimeZone.Today;
         var time = request.CheckInTime ?? DateTime.UtcNow;
 
         var attendance = await _repository.GetByEmployeeAndDateAsync(request.EmployeeId, today, cancellationToken);
@@ -137,7 +137,7 @@ internal class AttendanceService : IAttendanceService
             return Result<AttendanceResponse>.Failure(HRErrorCodes.InvalidEmployee, $"Employee '{request.EmployeeId}' was not found.");
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = HospitalTimeZone.Today;
         var attendance = await _repository.GetByEmployeeAndDateAsync(request.EmployeeId, today, cancellationToken);
         if (attendance is null || attendance.CheckInTime is null)
         {

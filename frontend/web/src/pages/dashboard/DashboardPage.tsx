@@ -12,13 +12,16 @@ import {
 } from '@/features/dashboard/components/RevenueCharts';
 import { SectionHeader } from '@/features/dashboard/components/SectionHeader';
 import { useAuth } from '@/features/auth/AuthContext';
+import { serverNow } from '@/lib/hospitalTime';
 
-const today = new Date().toLocaleDateString('en-IN', {
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
+// Today in India by the server's clock (ADR-147), worked out when the page draws.
+const todayLabel = () =>
+  serverNow().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
 export default function DashboardPage() {
   const { hasPermission, hasFeature, user } = useAuth();
@@ -43,7 +46,7 @@ export default function DashboardPage() {
         }
         rightActions={
           <span className="hidden rounded-full bg-page-banner-foreground/15 px-3 py-1 text-xs font-medium sm:inline-block">
-            {today}
+            {todayLabel()}
           </span>
         }
       />

@@ -1,6 +1,7 @@
 using HMS.Modules.IPD.Application.Abstractions;
 using HMS.Modules.IPD.Contracts;
 using HMS.Modules.IPD.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace HMS.Modules.IPD.Infrastructure.Repositories;
@@ -86,7 +87,7 @@ internal class AdmissionRepository : IAdmissionRepository
 
     public Task<int> CountAdmittedTodayAsync(CancellationToken cancellationToken)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = HospitalTimeZone.TodayStartUtc;
         var tomorrow = today.AddDays(1);
         return _dbContext.Admissions.CountAsync(
             a => a.AdmissionDateTime >= today && a.AdmissionDateTime < tomorrow,
@@ -95,7 +96,7 @@ internal class AdmissionRepository : IAdmissionRepository
 
     public Task<int> CountDischargedTodayAsync(CancellationToken cancellationToken)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = HospitalTimeZone.TodayStartUtc;
         var tomorrow = today.AddDays(1);
         return _dbContext.Admissions.CountAsync(
             a => a.DischargeDateTime != null && a.DischargeDateTime >= today && a.DischargeDateTime < tomorrow,

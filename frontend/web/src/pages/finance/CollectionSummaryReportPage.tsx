@@ -35,6 +35,7 @@ import {
   useAccountsCategory,
 } from '@/features/reports';
 import { formatDateRangeLabel, formatReportDate } from '@/lib/reportDateRange';
+import { serverNow } from '@/lib/hospitalTime';
 
 function methodLabel(method: string): string {
   return PAYMENT_METHOD_LABELS[method as PaymentMethod] ?? method;
@@ -229,7 +230,7 @@ export default function CollectionSummaryReportPage() {
         </div>
         <div className="mt-3 flex items-start justify-between gap-6 text-sm">
           <span>{periodLine}</span>
-          <span className="whitespace-nowrap text-gray-600">Printed {new Date().toLocaleString('en-IN')}</span>
+          <span className="whitespace-nowrap text-gray-600">Printed {serverNow().toLocaleString('en-IN')}</span>
         </div>
         <div className="mt-3 grid grid-cols-4 border border-black text-sm">
           {summaryCards.map(([label, value]) => (

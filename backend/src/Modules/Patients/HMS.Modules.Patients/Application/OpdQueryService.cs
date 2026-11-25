@@ -174,7 +174,7 @@ internal class OpdQueryService : IOpdQueryService
             Uhid = row.Uhid,
             PatientName = $"{row.FirstName} {row.LastName}",
             PhoneNumber = row.PrimaryPhone,
-            Age = CalculateAge(row.DateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow)),
+            Age = CalculateAge(row.DateOfBirth, HospitalTimeZone.Today),
             Gender = row.Gender,
             AppointmentTime = row.AppointmentTime,
             AppointmentTypeId = row.AppointmentTypeId,

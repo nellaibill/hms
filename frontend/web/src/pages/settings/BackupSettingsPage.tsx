@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatFileSize, todayIsoDate } from '@/features/documents/utils/format';
 import { backupsApi } from '@/services/apiClient';
+import { hospitalToday } from '@/lib/hospitalTime';
 
 function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
@@ -17,7 +18,7 @@ function saveBlob(blob: Blob, fileName: string) {
 }
 
 async function downloadMyBackup() {
-  saveBlob(await backupsApi.downloadMine(), `backup-${new Date().toISOString().slice(0, 10)}.dump`);
+  saveBlob(await backupsApi.downloadMine(), `backup-${hospitalToday()}.dump`);
 }
 
 async function downloadMyFiles() {

@@ -1,9 +1,12 @@
 import { getOverallPaymentStatus, type Billing } from '@/features/billing';
 import { MOCK_EXPENSES } from './mockExpenses';
 import type { ExpenseReportRow, IncomeReportRow, ReportDateRange } from './types';
+import { hospitalDateOf } from '@/lib/hospitalTime';
 
+/** A bill's day is its calendar day in India (ADR-147): one made at 12:30 AM IST belongs to that
+ * day, not to the UTC day before, which is what `iso.slice(0, 10)` gave until 5:30 AM. */
 function dateOnly(iso: string): string {
-  return iso.slice(0, 10);
+  return hospitalDateOf(iso);
 }
 
 function inRange(date: string, range: ReportDateRange): boolean {

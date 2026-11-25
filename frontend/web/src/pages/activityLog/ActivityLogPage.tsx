@@ -22,6 +22,7 @@ import { RequirePermission } from '../../features/auth/RequirePermission';
 import { exportReportToCsv, exportReportToExcel, exportReportToPdf } from '../../features/reports/exportUtils';
 import { useUsersQuery } from '../../features/users';
 import { activityLogApi } from '../../services/apiClient';
+import { hospitalToday } from '@/lib/hospitalTime';
 
 const PAGE_SIZE = 10;
 // The API caps a page at 100 rows; exports walk pages up to this many rows so an unfiltered
@@ -103,7 +104,7 @@ export default function ActivityLogPage() {
         r.isSuccess ? 'Success' : 'Failed',
       ]);
       const sections = [{ heading: 'Activity Log', headers, rows: body }];
-      const stamp = new Date().toISOString().slice(0, 10);
+      const stamp = hospitalToday();
 
       if (format === 'csv') {
         exportReportToCsv(`activity-log-${stamp}.csv`, sections);
