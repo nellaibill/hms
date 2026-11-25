@@ -57,11 +57,12 @@ A regression run before handing the app to the client (local `lhs`: Patients, OP
   - The patient Billing tab reads pharmacy bills only with the `pharmacy` feature.
   - OPD's Investigations List needs `laboratory`, and its Admissions List needs `ipd`.
   - The three diagnostics cards need `central-laboratory` and `diagnostics.view`, the same as their routes.
+- **Pay before consult is enforced by the API too** (added 2026-11-25). `start-consultation` on an OP visit still waiting for its OP No (fee unpaid, ADR-103) fails with 409 `PATIENTS.CONSULTATION_FEE_NOT_PAID`. Check-in stays open, because appointments are checked in on arrival before the counter. Emergency visits are never held for payment: they are numbered when recorded, and casualty care shouldn't wait.
 
 **Consequences**
 - No migration. OP Report and Collection Summary totals go up wherever Emergency visits were billed, and earlier printouts will differ.
 - Emergency visits keep the number they already got on payment, from the IP series (ADR-103/104), so the OPD list shows an IP No for a casualty patient.
-- Pay-before-consult (ADR-107) is still enforced only on screen.
+- An OP visit whose OP No couldn't be issued after payment (logged as a warning by InvoiceService) can't be started until the number is issued.
 
 ### ADR-145: Platform Admins can switch off parts of a module (sub-features)
 **Date:** 2026-11-24

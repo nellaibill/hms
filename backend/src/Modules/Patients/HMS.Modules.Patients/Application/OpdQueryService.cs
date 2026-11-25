@@ -106,6 +106,18 @@ internal class OpdQueryService : IOpdQueryService
             return Result<VisitConsultationResponse>.Failure(PatientErrorCodes.ConsultationNotFound, $"Consultation '{consultationId}' was not found.");
         }
 
+        // Pay before consult (ADR-107), enforced here as well as on the OPD page (ADR-146): an OP
+        // visit's OP No is issued only once its consultation fee is paid (ADR-103), so a visit
+        // still waiting for its number hasn't paid. Check-in stays open (an appointment is checked
+        // in on arrival, before the counter), and Emergency visits are numbered when recorded, so
+        // casualty care is never held up here. Visits from before ADR-104 are never "pending".
+        if (transitionAction == "start-consultation" && visit.VisitType == VisitType.OP && visit.VisitNumberPending)
+        {
+            return Result<VisitConsultationResponse>.Failure(
+                PatientErrorCodes.ConsultationFeeNotPaid,
+                "This visit's consultation fee hasn't been paid yet. Collect it at billing, then start the consultation.");
+        }
+
         try
         {
             switch (transitionAction)
