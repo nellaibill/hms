@@ -73,7 +73,7 @@ export function InvoiceLedgerTable({ billings, sort, onSortChange }: InvoiceLedg
               <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(billing.netAmount)}</td>
               <td className="px-4 py-3">
                 {billing.isVoided ? (
-                  <Badge variant="secondary">{billing.isReverted ? 'Reverted' : 'Voided'}</Badge>
+                  <Badge variant="secondary">{billing.isReverted ? 'Cancelled' : 'Voided'}</Badge>
                 ) : billing.discountStatus === 'Pending' ? (
                   // ADR-109/111: on hold — can't be paid until every approver decides on the discount.
                   <Badge variant="warning" title="A discount on this bill is waiting for approval — payment can be collected once it’s decided">

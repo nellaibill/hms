@@ -102,8 +102,10 @@ export const BillingStep = forwardRef<BillingStepHandle, BillingStepProps>(funct
   // it's a UI convenience, not billing data) that lives only as long as this BillingStep
   // instance does; InvoiceCreatePage remounts a fresh one per patient (key={patient.id}) and
   // "Bill Another Patient" resets to no patient at all, so this always starts blank for a new
-  // billing transaction.
-  const [lastConsultantId, setLastConsultantId] = useState('');
+  // billing transaction. It starts as the visit's own consultant (the doctor the patient came
+  // to see, prefilled in Consultation Billing), so the first lab test or scan billed on the
+  // visit isn't left asking "Consultant is required" for the obvious answer.
+  const [lastConsultantId, setLastConsultantId] = useState(() => defaultValues?.consultation?.find((row) => row.fromVisit && row.consultantId)?.consultantId ?? '');
 
   useImperativeHandle(
     ref,

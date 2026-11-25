@@ -66,18 +66,18 @@ export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, needs
         }}
       >
         <DialogHeader>
-          <DialogTitle id="request-revert-title">{needsApproval ? 'Request bill revert' : 'Revert bill'}</DialogTitle>
+          <DialogTitle id="request-revert-title">{needsApproval ? 'Request bill cancellation' : 'Cancel bill'}</DialogTitle>
           <DialogDescription>
             <strong className="text-foreground">{invoiceLabel}</strong> ({formatCurrency(netAmount)}
             {paidAmount > 0 ? `, ${formatCurrency(paidAmount)} paid` : ', not paid'}){' '}
             {needsApproval
               ? 'will be sent to the Super Admin for approval. The bill stays as it is until they approve it.'
-              : 'will be reverted straight away, recorded against you. This can’t be undone.'}
+              : 'will be cancelled straight away, recorded against you. This can’t be undone.'}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="revert-reason">
-            Reason for revert <span className="font-normal text-muted-foreground">(required)</span>
+            Reason for cancellation <span className="font-normal text-muted-foreground">(required)</span>
           </Label>
           <SuggestionTextarea
             id="revert-reason"
@@ -96,7 +96,7 @@ export function RequestRevertDialog({ invoiceLabel, netAmount, paidAmount, needs
             Cancel
           </Button>
           <Button onClick={() => onConfirm(trimmedReason)} disabled={isSaving || trimmedReason.length === 0}>
-            {needsApproval ? (isSaving ? 'Sending…' : 'Send for Approval') : isSaving ? 'Reverting…' : 'Revert Bill'}
+            {needsApproval ? (isSaving ? 'Sending…' : 'Send for Approval') : isSaving ? 'Cancelling…' : 'Cancel Bill'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -124,7 +124,7 @@ export function RevertDecisionDialog({ decision, request, isSaving, error, onCon
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent aria-labelledby="revert-decision-title">
         <DialogHeader>
-          <DialogTitle id="revert-decision-title">{isApprove ? 'Approve bill revert?' : 'Reject revert request?'}</DialogTitle>
+          <DialogTitle id="revert-decision-title">{isApprove ? 'Approve bill cancellation?' : 'Reject cancellation request?'}</DialogTitle>
           <DialogDescription>
             {isApprove ? (
               <>
@@ -168,7 +168,7 @@ export function RevertDecisionDialog({ decision, request, isSaving, error, onCon
             onClick={() => onConfirm(trimmedNotes)}
             disabled={isSaving || (!isApprove && trimmedNotes.length === 0)}
           >
-            {isSaving ? 'Saving…' : isApprove ? 'Approve & Revert' : 'Reject Request'}
+            {isSaving ? 'Saving…' : isApprove ? 'Approve & Cancel Bill' : 'Reject Request'}
           </Button>
         </DialogFooter>
       </DialogContent>

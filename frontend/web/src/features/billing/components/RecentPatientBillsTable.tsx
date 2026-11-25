@@ -89,7 +89,7 @@ export function RecentPatientBillsTable({ bills }: RecentPatientBillsTableProps)
                 <td className="px-4 py-3">
                   <div className="flex flex-col items-end gap-1">
                     {bill.isVoided ? (
-                      <Badge variant="secondary">{bill.isReverted ? 'Reverted' : 'Voided'}</Badge>
+                      <Badge variant="secondary">{bill.isReverted ? 'Cancelled' : 'Voided'}</Badge>
                     ) : bill.discountStatus === 'Pending' ? (
                       // ADR-109/111: on hold — can't be paid until every approver decides on the discount.
                       <Badge variant="warning" title="A discount on this bill is waiting for approval — payment can be collected once it’s decided">

@@ -37,6 +37,34 @@ _To be documented._
 
 ## Decisions
 
+### ADR-146: Emergency visits count with OP; report dates and switched-off modules fixed for handover
+**Date:** 2026-11-24
+**Status:** Accepted (amends ADR-121 and ADR-125)
+
+**Context**
+A regression run before handing the app to the client (local `lhs`: Patients, OPD, Billing, Finance and Reports on; IPD, Pharmacy, Lab and Radiology off) found four problems a client would see:
+- Casualty patients are registered as Emergency visits and billed at the OP counter. ADR-121/125 kept the OPD lists, OP Report and Collection Summary to OP visits only, and Day-wise Profit and Today's Profit followed. That day, ₹1,450 of the ₹6,100 collected appeared in no report, so the cash drawer couldn't be tallied. With IPD off, no screen listed those patients for a doctor to consult. Their bills also couldn't be reverted.
+- Patient Reports sent its From/To as bare dates. The API compares timestamps with `From <= t <= To`, so "To = today" meant today's midnight, and the default range (yesterday to today) never showed today's registrations.
+- Screens read APIs of switched-off modules and showed the error: the patient Billing tab ("Couldn't load pharmacy bills"), OPD's Investigations List and Admissions List (403), and the Price List, Diagnostic Categories and External Labs cards on Hospital Reference Data ("This feature isn't available").
+
+**Decision**
+- **Emergency counts with OP** (chosen by the user over hiding Emergency at reception).
+  - OPD's Patient List, Consultation List and their export list OP and Emergency visits (`PatientVisitRepository`). The nightly OPD day close (ADR-110) closes both.
+  - OP Report, Collection Summary under OP Accounts, Day-wise Profit and the dashboard's Today's Profit count bills for OP and Emergency visits (`OP_ENCOUNTER_TYPES`, `onlyOpAccountBillings`). IP, Day Care and Observation stay out, as management asked.
+  - Emergency bills can be reverted like OP bills (`InvoiceRevertService`).
+- **Patient Reports send instants.** The table, summary cards, Excel export and the chart data send the local day's first and last instants (`toRangeStart` / `toRangeEnd`, as OPD does), so To includes the whole day and the day is the hospital's, not UTC's.
+- **Switched-off modules are hidden, not shown failing.**
+  - The patient Billing tab reads pharmacy bills only with the `pharmacy` feature.
+  - OPD's Investigations List needs `laboratory`, and its Admissions List needs `ipd`.
+  - The three diagnostics cards need `central-laboratory` and `diagnostics.view`, the same as their routes.
+- **"Revert" is called "Cancel" on screen** (added 2026-11-25, the user's request: "Reverted" confused front-desk staff and patients). Every label, button, badge, receipt stamp, Tasks entry, setting, error message and new activity-log entry says Cancellation / Cancel Bill / Cancelled. Code, API routes (`revert-requests`), error codes (`BILLING.REVERT_*`) and the database (`invoice_revert_requests`, `is_reverted`) keep their names, so nothing needs migrating. Activity-log entries written before this keep their old wording. A plain void still says Voided.
+- **Pay before consult is enforced by the API too** (added 2026-11-25). `start-consultation` on an OP visit still waiting for its OP No (fee unpaid, ADR-103) fails with 409 `PATIENTS.CONSULTATION_FEE_NOT_PAID`. Check-in stays open, because appointments are checked in on arrival before the counter. Emergency visits are never held for payment: they are numbered when recorded, and casualty care shouldn't wait.
+
+**Consequences**
+- No migration. OP Report and Collection Summary totals go up wherever Emergency visits were billed, and earlier printouts will differ.
+- Emergency visits keep the number they already got on payment, from the IP series (ADR-103/104), so the OPD list shows an IP No for a casualty patient.
+- An OP visit whose OP No couldn't be issued after payment (logged as a warning by InvoiceService) can't be started until the number is issued.
+
 ### ADR-145: Platform Admins can switch off parts of a module (sub-features)
 **Date:** 2026-11-24
 **Status:** Accepted

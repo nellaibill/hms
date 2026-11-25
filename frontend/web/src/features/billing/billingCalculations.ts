@@ -327,12 +327,17 @@ export interface BillingItemDescription {
  * the next render.
  */
 export function describeBillingItem(item: BillingItem): BillingItemDescription {
+  // consultantId is cleared once a line is paid; billedConsultantId keeps the doctor (ADR-146),
+  // so paid bills and receipts still name who was seen.
+  const consultantId = item.consultantId ?? item.billedConsultantId;
+  const consultantName = consultantId ? resolveRecordLabel('consultant', consultantId) : '—';
+
   if (item.billingType === 'Consultation') {
     const departmentLabel = item.departmentId ? resolveRecordLabel('department', item.departmentId) : undefined;
     const typeLabel = item.serviceId ? resolveRecordLabel('consultationType', item.serviceId) : undefined;
     return {
       serviceLabel: [departmentLabel, typeLabel].filter(Boolean).join(' — ') || 'Consultation',
-      consultantName: item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : '—',
+      consultantName,
     };
   }
 
@@ -348,8 +353,6 @@ export function describeBillingItem(item: BillingItem): BillingItemDescription {
     // same "serviceId is already the description" shape as Pharmacy above, no consultant.
     return { serviceLabel: item.serviceId ?? 'Inpatient Charge', consultantName: '—' };
   }
-
-  const consultantName = item.consultantId ? resolveRecordLabel('consultant', item.consultantId) : '—';
 
   if (item.billingType === 'Radiology' || item.billingType === 'Laboratory') {
     // Both now read the new typed DiagnosticService catalog (Radiology's data source swapped

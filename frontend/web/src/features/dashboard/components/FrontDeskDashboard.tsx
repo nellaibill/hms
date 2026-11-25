@@ -115,7 +115,7 @@ const BILL_STATE_BADGES: Record<
   Pending: { label: 'Pending', variant: 'warning' },
   OnHold: { label: 'On hold', variant: 'warning' },
   Voided: { label: 'Voided', variant: 'secondary' },
-  Reverted: { label: 'Reverted', variant: 'secondary' },
+  Reverted: { label: 'Cancelled', variant: 'secondary' },
 };
 
 function timeOf(iso: string): string {
@@ -398,8 +398,8 @@ export function FrontDeskDashboard() {
                 },
                 {
                   icon: RotateCcw,
-                  label: 'Revert requests',
-                  hint: 'Bills waiting to be reverted',
+                  label: 'Cancellation requests',
+                  hint: 'Bills waiting to be cancelled',
                   count: approvals.data?.reverts,
                   to: '/finance/accounts/op/revert-requests',
                 },

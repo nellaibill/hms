@@ -188,17 +188,16 @@ function ServiceBillingRow({
   }, [serviceId, rateOptionId, isBedside, bedsideAmount, services, setValue]);
 
   useEffect(() => {
-    // Seeds this row's Consultant once, when it's first created — a brand-new row (the
-    // category's first row, or one just added via "Add another") starts blank, so there's
-    // nothing of the receptionist's own choice to protect yet. Deliberately does not re-run
-    // when defaultConsultantId changes later: once a row has a consultant (typed by hand or
-    // seeded here), a different remembered value picked afterward in another row must never
-    // silently overwrite it.
-    if (defaultConsultantId && !getValues(`${basePath}.consultantId`)) {
-      setValue(`${basePath}.consultantId`, defaultConsultantId);
+    // Fills this row's Consultant with the remembered one (the visit's doctor, or the last
+    // consultant picked in another row) the moment a service is chosen — never while the row
+    // is still blank, because a blank row with a consultant counts as in use and would then
+    // demand a service on a bill that doesn't need one. Only ever fills an empty field, so a
+    // consultant the receptionist chose is never overwritten.
+    if (serviceId && defaultConsultantId && !getValues(`${basePath}.consultantId`)) {
+      setValue(`${basePath}.consultantId`, defaultConsultantId, { shouldValidate: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [serviceId]);
 
   const serviceOptions = services.map((s) => ({ value: s.id, label: `${s.name} — ${formatCurrency(s.price)}`, keywords: s.name }));
   const rowErrors = errors[category]?.[index];

@@ -789,7 +789,7 @@ internal class InvoiceService : IInvoiceService
 
     // ADR-118: money taken while a revert waits was dropped from every report once the revert was
     // approved, with no refund shown for it.
-    private const string RevertPendingMessage = "This bill has a revert request waiting for Super Admin approval — no payment can be taken until it's approved or rejected.";
+    private const string RevertPendingMessage = "This bill has a cancellation request waiting for Super Admin approval — no payment can be taken until it's approved or rejected.";
 
     public async Task<Result<InvoiceResponse>> PayAsync(Guid invoiceId, PayInvoiceRequest request, Guid? actorId, CancellationToken cancellationToken)
     {

@@ -142,7 +142,7 @@ export const SUB_FEATURE_META: Record<string, SubFeatureMeta> = {
   'settings.branding': { label: 'Theme & Branding', description: 'Hospital identity, logos, colors, fonts and print layout' },
   'settings.reports-visibility': { label: 'Reports Visibility', description: 'Choose which Accounts & Finance reports show' },
   'settings.patient-fields': { label: 'Patient Registration Fields', description: 'Choose which registration fields are mandatory' },
-  'settings.billing-approvals': { label: 'Billing Approvals', description: 'Discount and bill-revert approval rules' },
+  'settings.billing-approvals': { label: 'Billing Approvals', description: 'Discount and bill-cancellation approval rules' },
   'settings.backup': { label: 'Backup', description: 'Download the daily database backup and files zip' },
 
   'settings.branding.hospital-info': { label: 'Hospital information', description: 'Name, application title, address and phone' },

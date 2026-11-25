@@ -122,6 +122,7 @@ public class OpdController : ControllerBase
         {
             PatientErrorCodes.ConsultationNotFound => StatusCodes.Status404NotFound,
             PatientErrorCodes.InvalidStatusTransition => StatusCodes.Status409Conflict,
+            PatientErrorCodes.ConsultationFeeNotPaid => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

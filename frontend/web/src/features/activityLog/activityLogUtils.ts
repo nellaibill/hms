@@ -33,7 +33,7 @@ export function formatDateTime(iso: string): string {
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   PatientVisit: 'Patient visit',
   InvoiceDiscountRequest: 'Discount request',
-  InvoiceRevertRequest: 'Revert request',
+  InvoiceRevertRequest: 'Cancellation request',
   BillingSettings: 'Billing settings',
   DiagnosticService: 'Lab test / scan',
   DiagnosticPackage: 'Lab package',

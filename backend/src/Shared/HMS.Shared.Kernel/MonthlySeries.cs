@@ -15,7 +15,7 @@ public static class MonthlySeries
 {
     public const int MaxMonths = 24;
 
-    public static readonly TimeZoneInfo HospitalTimeZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+    public static readonly TimeZoneInfo HospitalTimeZone = global::HMS.Shared.Kernel.HospitalTimeZone.India;
 
     public static int ClampMonths(int months) => Math.Clamp(months, 1, MaxMonths);
 

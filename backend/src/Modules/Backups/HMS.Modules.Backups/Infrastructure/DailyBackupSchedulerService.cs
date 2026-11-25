@@ -1,5 +1,6 @@
 using HMS.Modules.Backups.Application.Abstractions;
 using HMS.Modules.Platform.Application.Abstractions;
+using HMS.Shared.Kernel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -20,7 +21,7 @@ internal sealed class DailyBackupSchedulerService : BackgroundService
     private const string MastersKey = "masters";
     private const int RunHourIst = 1;
 
-    private static readonly TimeZoneInfo IndiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+    private static readonly TimeZoneInfo IndiaTimeZone = HospitalTimeZone.India;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
