@@ -55,6 +55,12 @@ internal class InvoiceRepository : IInvoiceRepository
             invoices = invoices.Where(AccountCategoryRules.Predicate(category));
         }
 
+        if (!string.IsNullOrWhiteSpace(query.ConsultantId))
+        {
+            var consultantId = query.ConsultantId;
+            invoices = invoices.Where(i => i.Items.Any(li => li.BilledConsultantId == consultantId));
+        }
+
         invoices = ApplySort(invoices, query.Sort);
 
         var totalCount = await invoices.CountAsync(cancellationToken);
@@ -67,12 +73,14 @@ internal class InvoiceRepository : IInvoiceRepository
         return (items, totalCount);
     }
 
-    public async Task<IReadOnlyList<(DateTime CreatedAt, BillingType BillingType, decimal Total)>> GetLineTotalsSinceAsync(DateTime fromUtc, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<(DateTime CreatedAt, BillingType BillingType, decimal Total)>> GetLineTotalsSinceAsync(DateTime fromUtc, string? consultantId, CancellationToken cancellationToken)
     {
         var rows = await _dbContext.Invoices
             .AsNoTracking()
             .Where(i => !i.IsVoided && i.CreatedAt >= fromUtc)
-            .SelectMany(i => i.Items.Select(li => new { i.CreatedAt, li.BillingType, li.Total }))
+            .SelectMany(i => i.Items
+                .Where(li => consultantId == null || li.BilledConsultantId == consultantId)
+                .Select(li => new { i.CreatedAt, li.BillingType, li.Total }))
             .ToListAsync(cancellationToken);
 
         return rows.Select(r => (r.CreatedAt, r.BillingType, r.Total)).ToList();

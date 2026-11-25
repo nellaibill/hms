@@ -1,4 +1,4 @@
-import type { AddAllergyRequest, CreatePatientRequest, CreatePatientVisitRequest, UpdatePatientRequest } from '@hms/shared';
+import type { EmergencyContact, EmergencyContactInput, AddAllergyRequest, CreatePatientRequest, CreatePatientVisitRequest, UpdatePatientRequest } from '@hms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentsApi, patientsApi } from '../../../services/apiClient';
 import { patientDocumentsQueryKey } from './usePatientDocumentUrl';
@@ -18,10 +18,44 @@ export function useCreatePatientMutation() {
   });
 }
 
+/** The patient's emergency contacts as loaded, and as edited — Edit Patient saves the
+ * difference, since UpdatePatientRequest doesn't carry contacts. */
+export interface EmergencyContactChanges {
+  original: EmergencyContact[];
+  edited: EmergencyContactInput[];
+}
+
+const contactKey = (contact: EmergencyContactInput) =>
+  `${contact.relationship}|${contact.name.trim().toLowerCase()}|${contact.phone.trim()}`;
+
+/**
+ * Saves the patient, then their emergency contacts. A changed contact used to be dropped: the
+ * update request has no contacts, and nothing else saved them, so an imported patient's
+ * placeholder 9999999999 stayed while the record was marked verified (25 Nov staging test).
+ * New or changed contacts are added before the old ones are removed, so a hospital that makes
+ * the contact mandatory never sees the patient left without one.
+ */
 export function useUpdatePatientMutation() {
   const invalidatePatients = useInvalidatePatients();
   return useMutation({
-    mutationFn: ({ id, request }: { id: string; request: UpdatePatientRequest }) => patientsApi.updatePatient(id, request),
+    mutationFn: async ({ id, request, contacts }: { id: string; request: UpdatePatientRequest; contacts?: EmergencyContactChanges }) => {
+      let patient = await patientsApi.updatePatient(id, request);
+      if (contacts) {
+        const originalKeys = new Set(contacts.original.map(contactKey));
+        const editedKeys = new Set(contacts.edited.map(contactKey));
+        for (const contact of contacts.edited) {
+          if (!originalKeys.has(contactKey(contact))) {
+            patient = await patientsApi.addEmergencyContact(id, { relationship: contact.relationship, name: contact.name.trim(), phone: contact.phone.trim() });
+          }
+        }
+        for (const contact of contacts.original) {
+          if (!editedKeys.has(contactKey(contact))) {
+            patient = await patientsApi.removeEmergencyContact(id, contact.id);
+          }
+        }
+      }
+      return patient;
+    },
     onSuccess: invalidatePatients,
   });
 }

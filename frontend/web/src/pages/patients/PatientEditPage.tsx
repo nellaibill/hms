@@ -139,10 +139,17 @@ export default function PatientEditPage() {
   // `patient` from the isError/!patient guard above — which doesn't extend into a nested
   // function's closure — still applies.
   const rowVersion = patient.rowVersion;
+  const originalContacts = patient.emergencyContacts;
 
   function handleSubmit(values: PatientEditUiFormValues) {
+    // The primary contact plus any added ones, as edited — saved after the patient (see
+    // useUpdatePatientMutation). A blank primary contact (optional at this hospital) is left out.
+    const editedContacts = [
+      { relationship: values.emergencyContactRelationship, name: values.emergencyContactName, phone: values.emergencyContactPhone },
+      ...(values.additionalEmergencyContacts ?? []),
+    ].filter((contact) => contact.name.trim() && contact.phone.trim());
     mutation.mutate(
-      { id: id as string, request: toRequest(values, rowVersion) },
+      { id: id as string, request: toRequest(values, rowVersion), contacts: { original: originalContacts, edited: editedContacts } },
       {
         onSuccess: () => {
           markSaved();

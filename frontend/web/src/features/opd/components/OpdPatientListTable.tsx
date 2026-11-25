@@ -1,5 +1,5 @@
 import type { OpdConsultationStatus, OpdPatientListItem } from '@hms/shared';
-import { Eye, Loader2, Stethoscope } from 'lucide-react';
+import { Eye, Loader2, LogOut, Stethoscope } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/AuthContext';
 import { billingEntryPathForConsult, invoicePathForConsult } from '../consultBillingLinks';
+import { useCancelConsultationMutation } from '../hooks/useCancelConsultationMutation';
 import { useStartConsultationMutation } from '../hooks/useStartConsultationMutation';
 import { useOpdPatientListQuery } from '../hooks/useOpdPatientListQuery';
 import { useVisitPaymentStatusesQuery } from '../hooks/useVisitPaymentStatusesQuery';
@@ -67,6 +68,7 @@ interface OpdPatientListTableProps {
 export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientListTableProps) {
   const navigate = useNavigate();
   const startConsultation = useStartConsultationMutation();
+  const cancelConsultation = useCancelConsultationMutation();
 
   const { data, isPending, isPlaceholderData, isError, error } = useOpdPatientListQuery({
     page,
@@ -133,6 +135,12 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
       {isError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error instanceof Error ? error.message : 'Failed to load OPD patients.'}
+        </p>
+      )}
+
+      {cancelConsultation.isError && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {cancelConsultation.error instanceof Error ? cancelConsultation.error.message : 'Could not take the patient off the list.'}
         </p>
       )}
 
@@ -207,6 +215,20 @@ export function OpdPatientListTable({ filters, page, onPageChange }: OpdPatientL
                                 <Stethoscope className="h-3.5 w-3.5" />
                                 Consult
                               </Button>
+                              {/* A visit whose bill was cancelled stays Waiting until someone says the
+                                  patient has gone: this takes them off the doctor's queue (ADR-148). */}
+                              {canConsult && getPaymentStatus(row.patientId, row.visitId) === 'Cancelled' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="ml-2 gap-1.5"
+                                  disabled={cancelConsultation.isPending}
+                                  onClick={() => cancelConsultation.mutate(row.consultationId)}
+                                >
+                                  <LogOut className="h-3.5 w-3.5" />
+                                  Patient left
+                                </Button>
+                              )}
                             </span>
                           ) : hasConsultationNote(row) ? (
                             <Button

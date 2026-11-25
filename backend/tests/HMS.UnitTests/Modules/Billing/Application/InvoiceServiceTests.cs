@@ -874,6 +874,49 @@ public class InvoiceServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    // ADR-148: a consultant's own login lists only bills with their lines, and each bill's
+    // discount and net amount are those of their lines alone.
+    [Fact]
+    public async Task GetRecentAsync_ForAConsultant_AsksForTheirBillsOnly_AndShowsTheirLinesAmountsOnly()
+    {
+        var invoice = Invoice.Create(
+            "INV-2026-000004",
+            _patientId,
+            Guid.NewGuid(),
+            "Esakkimuthu Mariappan",
+            "P-2026-040004",
+            [
+                new InvoiceLineItemSpec(BillingType.Consultation, "ortho", "dr-karthikeyan", null, null, 1, 250m, 0m, false, null),
+                new InvoiceLineItemSpec(BillingType.Radiology, null, "dr-karthikeyan", null, null, 1, 300m, 0m, false, null),
+                new InvoiceLineItemSpec(BillingType.Consultation, "genmed", "dr-lakshmanan", null, null, 1, 700m, 0m, false, null),
+            ],
+            createdBy: null);
+        _repository.GetPagedAsync(Arg.Any<InvoiceListQuery>(), Arg.Any<CancellationToken>())
+            .Returns((new List<Invoice> { invoice }, 1));
+        _patientService.GetByIdAsync(_patientId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientResponse>.Failure("PATIENTS.NOT_FOUND", "gone"));
+        _patientVisitService.GetByIdAsync(_patientId, invoice.VisitId, Arg.Any<CancellationToken>())
+            .Returns(Result<PatientVisitResponse>.Failure("PATIENTS.VISIT_NOT_FOUND", "gone"));
+
+        var result = await _sut.GetRecentAsync(10, null, "dr-karthikeyan", CancellationToken.None);
+
+        await _repository.Received(1).GetPagedAsync(
+            Arg.Is<InvoiceListQuery>(q => q.ConsultantId == "dr-karthikeyan"),
+            Arg.Any<CancellationToken>());
+        result.Value!.Single().NetAmount.Should().Be(550m);
+    }
+
+    [Fact]
+    public async Task GetDashboardSummaryAsync_ForAConsultant_CountsOnlyTheirLines()
+    {
+        _repository.GetLineTotalsSinceAsync(Arg.Any<DateTime>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<(DateTime, BillingType, decimal)>());
+
+        await _sut.GetDashboardSummaryAsync(6, "dr-meena", CancellationToken.None);
+
+        await _repository.Received(1).GetLineTotalsSinceAsync(Arg.Any<DateTime>(), "dr-meena", Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task GetRecentAsync_ComposesPatientAndVisitContextIncludingMultipleConsultants()
     {
@@ -1259,7 +1302,7 @@ public class InvoiceServiceTests
         var now = DateTime.UtcNow;
         var thisMonth = MonthlySeries.StartUtc(1, now).AddMinutes(1);
         var threeMonthsAgo = now.AddMonths(-3);
-        _repository.GetLineTotalsSinceAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+        _repository.GetLineTotalsSinceAsync(Arg.Any<DateTime>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new List<(DateTime, BillingType, decimal)>
             {
                 (thisMonth, BillingType.Consultation, 250m),

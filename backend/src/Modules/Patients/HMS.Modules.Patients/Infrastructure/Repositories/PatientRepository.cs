@@ -22,6 +22,9 @@ internal class PatientRepository : IPatientRepository
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Patients.AnyAsync(p => p.Id == id, cancellationToken);
 
+    public Task<bool> RequiresDataVerificationAsync(Guid id, CancellationToken cancellationToken)
+        => _dbContext.Patients.AnyAsync(p => p.Id == id && p.RequiresDataVerification, cancellationToken);
+
     public Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => _dbContext.Patients
             .Include(p => p.Address)

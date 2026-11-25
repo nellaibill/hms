@@ -223,7 +223,7 @@ export function FrontDeskDashboard() {
               value={billsToday.unpaidCount}
               detail={
                 billsToday.unpaidCount === 0 && billsToday.onHoldCount === 0
-                  ? `All ${billsToday.count} of today's bills settled`
+                  ? `All ${billsToday.activeCount} of today's bills settled`
                   : [
                       `${formatCurrency(billsToday.unpaidAmount)} to collect`,
                       billsToday.onHoldCount > 0 && `${billsToday.onHoldCount} on hold`,

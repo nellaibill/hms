@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 using HMS.Modules.Billing.Application;
+using HMS.Modules.Billing.Application.Mapping;
 using HMS.Modules.Billing.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
@@ -67,10 +68,21 @@ public class InvoicesController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<InvoiceResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPaged([FromQuery] InvoiceListQuery query, CancellationToken cancellationToken)
     {
+        // A consultant's own login sees only bills with their lines, cut down to those lines
+        // (ADR-148), whatever ConsultantId it asked for. OP Report, Day-wise Profit, Today's
+        // Profit and the bill lists all read this, so none of them shows another doctor's money.
+        if (ScopedConsultantId() is { } scoped)
+        {
+            query = query with { ConsultantId = scoped };
+        }
+
         var paged = await _service.GetPagedAsync(query, cancellationToken);
         var meta = new PaginationMeta { Page = paged.Page, PageSize = paged.PageSize, TotalCount = paged.TotalCount, TotalPages = paged.TotalPages };
+        var items = string.IsNullOrWhiteSpace(query.ConsultantId)
+            ? paged.Items
+            : paged.Items.Select(i => i.ForConsultant(query.ConsultantId)).ToList();
 
-        return Ok(new ApiResponse<IReadOnlyList<InvoiceResponse>> { Data = paged.Items, Meta = meta });
+        return Ok(new ApiResponse<IReadOnlyList<InvoiceResponse>> { Data = items, Meta = meta });
     }
 
     /// <summary>Gets a single invoice by id, with its line items.</summary>
@@ -82,7 +94,18 @@ public class InvoicesController : ControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _service.GetByIdAsync(id, cancellationToken);
-        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+        if (!result.IsSuccess) return MapFailure(result.ErrorCode!, result.Error!);
+
+        // A consultant's own login sees only their lines, and no bill without one (ADR-148).
+        if (ScopedConsultantId() is { } scoped)
+        {
+            var own = result.Value!.ForConsultant(scoped);
+            return own.Items.Count == 0
+                ? MapFailure(BillingErrorCodes.NotFound, $"Invoice '{id}' was not found.")
+                : Ok(Envelope(own));
+        }
+
+        return Ok(Envelope(result.Value));
     }
 
     /// <summary>The latest bills across every patient, composed with patient/visit context
@@ -96,7 +119,7 @@ public class InvoicesController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<RecentPatientBillResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecent([FromQuery] int count, [FromQuery] AccountCategory? category, CancellationToken cancellationToken)
     {
-        var result = await _service.GetRecentAsync(count <= 0 ? 10 : count, category, cancellationToken);
+        var result = await _service.GetRecentAsync(count <= 0 ? 10 : count, category, ScopedConsultantId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
 
@@ -108,7 +131,7 @@ public class InvoicesController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<BillingDashboardSummaryResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDashboardSummary([FromQuery] int months = 6, CancellationToken cancellationToken = default)
     {
-        var summary = await _service.GetDashboardSummaryAsync(months, cancellationToken);
+        var summary = await _service.GetDashboardSummaryAsync(months, ScopedConsultantId(), cancellationToken);
         return Ok(new ApiResponse<BillingDashboardSummaryResponse> { Data = summary });
     }
 
@@ -121,7 +144,16 @@ public class InvoicesController : ControllerBase
     public async Task<IActionResult> GetByPatientId(Guid patientId, CancellationToken cancellationToken)
     {
         var result = await _service.GetByPatientIdAsync(patientId, cancellationToken);
-        return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
+        if (!result.IsSuccess) return MapFailure(result.ErrorCode!, result.Error!);
+
+        // A consultant's own login sees only the bills with their lines, cut down to those (ADR-148).
+        if (ScopedConsultantId() is { } scoped)
+        {
+            IReadOnlyList<InvoiceResponse> own = result.Value!.Select(i => i.ForConsultant(scoped)).Where(i => i.Items.Count > 0).ToList();
+            return Ok(Envelope(own));
+        }
+
+        return Ok(Envelope(result.Value));
     }
 
     /// <summary>Lists BillingType.Procedure invoice line items, paged/filtered — backs the
@@ -227,6 +259,11 @@ public class InvoicesController : ControllerBase
         var result = await _service.VoidAsync(id, request, actorId: User.GetUserId(), cancellationToken);
         return result.IsSuccess ? Ok(Envelope(result.Value)) : MapFailure(result.ErrorCode!, result.Error!);
     }
+
+    /// <summary>The consultant a caller is held to (a Doctor / Consultant login linked to a
+    /// consultant record), as the string a line's BilledConsultantId holds; null for everyone
+    /// else. See ClaimsPrincipalExtensions.GetScopedConsultantId.</summary>
+    private string? ScopedConsultantId() => User.GetScopedConsultantId()?.ToString();
 
     private static ApiResponse<T> Envelope<T>(T? data) => new() { Data = data };
 

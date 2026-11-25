@@ -86,6 +86,8 @@ export function amountDue(bill: InvoiceResponse): number {
 export interface BillsToday {
   /** Bills raised today, voided ones included. */
   count: number;
+  /** Bills raised today that still stand - not voided or cancelled. */
+  activeCount: number;
   /** Waiting for payment — not voided and not on hold. */
   unpaidCount: number;
   unpaidAmount: number;
@@ -111,5 +113,5 @@ export function summarizeBillsToday(bills: InvoiceResponse[], recentCount = 8): 
   const recent = [...bills]
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .slice(0, recentCount);
-  return { count: bills.length, unpaidCount, unpaidAmount, onHoldCount, recent };
+  return { count: bills.length, activeCount: bills.filter((bill) => !bill.isVoided).length, unpaidCount, unpaidAmount, onHoldCount, recent };
 }

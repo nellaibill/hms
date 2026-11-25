@@ -12,10 +12,14 @@ internal class CreateConsultantRequestValidator : AbstractValidator<CreateConsul
         RuleFor(x => x.Priority).GreaterThanOrEqualTo(1).When(x => x.Priority.HasValue)
             .WithMessage("Priority must be 1 or greater.");
 
-        RuleFor(x => x.AvailableDays).NotEmpty().WithMessage("Select at least one available day.");
+        // A schedule is all or nothing (ADR-148): days and both visiting times together, or none
+        // at all for an on-call or visiting doctor with no fixed days. Requiring one used to stop
+        // a login being created for the 26 consultants that have none (25 Nov staging test).
+        RuleFor(x => x.AvailableDays).NotEmpty().When(x => x.VisitStartTime.HasValue || x.VisitEndTime.HasValue)
+            .WithMessage("Select at least one available day, or clear the visiting hours for a doctor with no fixed schedule.");
         RuleForEach(x => x.AvailableDays).Must(BeAValidDayName).WithMessage("'{PropertyValue}' is not a valid day of the week.");
-        RuleFor(x => x.VisitStartTime).NotNull().WithMessage("Visit start time is required.");
-        RuleFor(x => x.VisitEndTime).NotNull().WithMessage("Visit end time is required.");
+        RuleFor(x => x.VisitStartTime).NotNull().When(x => x.AvailableDays.Count > 0 || x.VisitEndTime.HasValue).WithMessage("Visit start time is required.");
+        RuleFor(x => x.VisitEndTime).NotNull().When(x => x.AvailableDays.Count > 0 || x.VisitStartTime.HasValue).WithMessage("Visit end time is required.");
         RuleFor(x => x.VisitEndTime)
             .GreaterThan(x => x.VisitStartTime)
             .When(x => x.VisitStartTime.HasValue && x.VisitEndTime.HasValue)
@@ -47,10 +51,14 @@ internal class UpdateConsultantRequestValidator : AbstractValidator<UpdateConsul
         RuleFor(x => x.Priority).GreaterThanOrEqualTo(1).When(x => x.Priority.HasValue)
             .WithMessage("Priority must be 1 or greater.");
 
-        RuleFor(x => x.AvailableDays).NotEmpty().WithMessage("Select at least one available day.");
+        // A schedule is all or nothing (ADR-148): days and both visiting times together, or none
+        // at all for an on-call or visiting doctor with no fixed days. Requiring one used to stop
+        // a login being created for the 26 consultants that have none (25 Nov staging test).
+        RuleFor(x => x.AvailableDays).NotEmpty().When(x => x.VisitStartTime.HasValue || x.VisitEndTime.HasValue)
+            .WithMessage("Select at least one available day, or clear the visiting hours for a doctor with no fixed schedule.");
         RuleForEach(x => x.AvailableDays).Must(CreateConsultantRequestValidator.BeAValidDayName).WithMessage("'{PropertyValue}' is not a valid day of the week.");
-        RuleFor(x => x.VisitStartTime).NotNull().WithMessage("Visit start time is required.");
-        RuleFor(x => x.VisitEndTime).NotNull().WithMessage("Visit end time is required.");
+        RuleFor(x => x.VisitStartTime).NotNull().When(x => x.AvailableDays.Count > 0 || x.VisitEndTime.HasValue).WithMessage("Visit start time is required.");
+        RuleFor(x => x.VisitEndTime).NotNull().When(x => x.AvailableDays.Count > 0 || x.VisitStartTime.HasValue).WithMessage("Visit end time is required.");
         RuleFor(x => x.VisitEndTime)
             .GreaterThan(x => x.VisitStartTime)
             .When(x => x.VisitStartTime.HasValue && x.VisitEndTime.HasValue)
