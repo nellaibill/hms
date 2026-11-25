@@ -57,6 +57,17 @@ internal class PatientVisitService : IPatientVisitService
             return Result<PatientVisitResponse>.Failure(PatientErrorCodes.NotFound, $"Patient '{patientId}' was not found.");
         }
 
+        // An imported patient's placeholder details (phone, address, emergency contact) must be
+        // checked before their first visit. The front desk screen already asks for it
+        // (VerifyPatientDialog); the API now holds the same line, so no caller can skip it
+        // (ADR-148; the 25 Nov staging test added visits to unverified patients straight through).
+        if (await _patientRepository.RequiresDataVerificationAsync(patientId, cancellationToken))
+        {
+            return Result<PatientVisitResponse>.Failure(
+                PatientErrorCodes.DataVerificationRequired,
+                "This patient was imported with placeholder details. Edit and save the patient's details first, then add the visit.");
+        }
+
         if (request.AppointmentTypeId.HasValue)
         {
             var appointmentType = await _appointmentTypeService.GetByIdAsync(request.AppointmentTypeId.Value, cancellationToken);

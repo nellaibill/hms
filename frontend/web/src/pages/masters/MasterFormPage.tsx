@@ -26,7 +26,15 @@ interface MasterFormPageProps {
   mode: 'create' | 'edit' | 'view';
 }
 
+/** One fresh form per record: moving from one record's page straight to another's (same route,
+ * new id) used to keep the previous record's unsaved state — a consultant's login card still held
+ * the last consultant's email (25 Nov staging test). Keying by record remounts it. */
 export default function MasterFormPage({ mode }: MasterFormPageProps) {
+  const { entityKey, id } = useParams<{ entityKey: string; id: string }>();
+  return <MasterFormPageContent key={`${entityKey}/${id ?? 'new'}/${mode}`} mode={mode} />;
+}
+
+function MasterFormPageContent({ mode }: MasterFormPageProps) {
   const { entityKey, id } = useParams<{ entityKey: string; id: string }>();
   const config = getMasterConfig(entityKey);
   const navigate = useNavigate();

@@ -18,6 +18,10 @@ internal interface IPatientRepository
     /// exists — used by PatientDocumentOwnerExistenceChecker.</summary>
     Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Whether an imported patient's placeholder details still need checking
+    /// (Patient.RequiresDataVerification). False for a patient that doesn't exist.</summary>
+    Task<bool> RequiresDataVerificationAsync(Guid id, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<Patient> Items, int TotalCount)> GetPagedAsync(PatientListQuery query, CancellationToken cancellationToken);
 
     /// <summary>Total/new/visit counts for Patient Reports' summary cards — see the

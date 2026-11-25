@@ -299,6 +299,20 @@ public class PatientVisitServiceTests
         await _activityLog.DidNotReceive().LogAsync(Arg.Any<ActivityLogRequest>(), Arg.Any<CancellationToken>());
     }
 
+    // ADR-148: the screen already blocks a visit for an imported patient whose placeholder
+    // details haven't been checked; the API holds the same line.
+    [Fact]
+    public async Task CreateAsync_ForAnImportedPatientNotYetVerified_FailsAndSavesNothing()
+    {
+        _patientRepository.RequiresDataVerificationAsync(PatientId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.CreateAsync(PatientId, NewRequest(), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.DataVerificationRequired);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<PatientVisit>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task CreateAsync_WhenTheRequestIsRejected_DoesNotDrawAVisitNumber()
     {

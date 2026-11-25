@@ -50,6 +50,17 @@ internal static class InvoiceMappingExtensions
         EncounterType = invoice.EncounterType,
     };
 
+    /// <summary>The part of a bill a consultant's own login may see (ADR-148): only the lines
+    /// billed to them (BilledConsultantId), with the bill's gross, discount and net worked out
+    /// from those lines alone, so no other doctor's charges or the bill's full total show.</summary>
+    public static InvoiceResponse ForConsultant(this InvoiceResponse invoice, string consultantId)
+    {
+        var items = invoice.Items.Where(i => i.BilledConsultantId == consultantId).ToList();
+        var gross = items.Sum(i => i.Quantity * i.UnitPrice);
+        var net = items.Sum(i => i.Total);
+        return invoice with { Items = items, GrossAmount = gross, NetAmount = net, TotalDiscount = gross - net };
+    }
+
     public static InvoiceDiscountRequestResponse ToResponse(this InvoiceDiscountRequest request) => new()
     {
         Id = request.Id,

@@ -154,7 +154,7 @@ export default function CollectionSummaryReportPage() {
   }
 
   const summaryCards: [string, string, string?][] = [
-    ['Total Collected', formatCurrency(data.grandTotal.collected), `${data.grandTotal.payments} payment${data.grandTotal.payments === 1 ? '' : 's'}`],
+    ['Total Collected', formatCurrency(data.grandTotal.collected), `from ${data.grandTotal.bills} bill${data.grandTotal.bills === 1 ? '' : 's'}`],
     ['Consultant Amount', formatCurrency(data.grandTotal.consultantAmount)],
     ['Hospital Amount', formatCurrency(data.grandTotal.hospitalAmount)],
     ['By payment method', byMethod.length === 0 ? '—' : byMethod.map((m) => `${methodLabel(m.method)} ${formatCurrency(m.amount)}`).join(' · ')],

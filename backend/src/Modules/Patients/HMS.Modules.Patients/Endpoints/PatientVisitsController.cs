@@ -133,6 +133,7 @@ public class PatientVisitsController : ControllerBase
             PatientErrorCodes.InvalidConsultant => StatusCodes.Status404NotFound,
             PatientErrorCodes.InvalidAppointmentType => StatusCodes.Status404NotFound,
             PatientErrorCodes.InvalidConsultationType => StatusCodes.Status404NotFound,
+            PatientErrorCodes.DataVerificationRequired => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 

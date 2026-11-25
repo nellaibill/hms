@@ -11,6 +11,7 @@ import type {
   PatientVisit,
   PatientVisitListQuery,
   UpdatePatientRequest,
+  AddEmergencyContactRequest,
 } from '../../dtos';
 import type { PaginationMeta } from '../../types';
 import type { PatientFieldRequirements } from '../../validation/patients/patientFieldRequirements';
@@ -121,6 +122,20 @@ export class PatientsApi {
   /** Removes one allergy row — mirrors the DELETE .../allergies/{allergyId} endpoint. */
   async removeAllergy(id: string, allergyId: string): Promise<Patient> {
     const response = await this.client.delete<Patient>(API_ROUTES.patients.allergyById(id, allergyId));
+    return response.data;
+  }
+
+  /** Adds one emergency contact — mirrors PatientsController's POST .../emergency-contacts. Edit
+   * Patient uses it (with removeEmergencyContact) to save a changed contact, which
+   * UpdatePatientRequest doesn't carry. */
+  async addEmergencyContact(id: string, request: AddEmergencyContactRequest): Promise<Patient> {
+    const response = await this.client.post<Patient>(API_ROUTES.patients.emergencyContacts(id), request);
+    return response.data;
+  }
+
+  /** Removes one emergency contact — mirrors the DELETE .../emergency-contacts/{contactId} endpoint. */
+  async removeEmergencyContact(id: string, contactId: string): Promise<Patient> {
+    const response = await this.client.delete<Patient>(API_ROUTES.patients.emergencyContactById(id, contactId));
     return response.data;
   }
 

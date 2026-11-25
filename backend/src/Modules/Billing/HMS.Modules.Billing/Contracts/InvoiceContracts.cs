@@ -204,6 +204,11 @@ public record InvoiceListQuery
 
     /// <summary>Only bills in this Accounts and Finance category (ADR-134); every bill when null.</summary>
     public AccountCategory? Category { get; init; }
+
+    /// <summary>Only bills with a line billed to this consultant (a line's BilledConsultantId),
+    /// each cut down to those lines. A consultant's own login is always held to their own id,
+    /// whatever it asks for (ADR-148).</summary>
+    public string? ConsultantId { get; init; }
 }
 
 /// <summary>One department/consultant pairing on the visit behind a recent bill — mirrors

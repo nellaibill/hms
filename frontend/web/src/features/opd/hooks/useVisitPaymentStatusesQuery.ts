@@ -7,7 +7,7 @@ export type OpdVisitPaymentStatus = (typeof OPD_PAYMENT_STATUSES)[number];
 /** What the badge can show: a real status, 'OnHold' for a Pending visit whose unpaid bill has a
  * discount waiting for approval (no payment can be taken until it's decided, ADR-109), or a
  * placeholder while the invoice lookup is in flight ('Loading') or has failed ('Unavailable'). */
-export type OpdVisitPaymentStatusDisplay = OpdVisitPaymentStatus | 'OnHold' | 'Loading' | 'Unavailable';
+export type OpdVisitPaymentStatusDisplay = OpdVisitPaymentStatus | 'OnHold' | 'Cancelled' | 'Loading' | 'Unavailable';
 
 /**
  * Payment status has no direct link to a specific OPD consultation — Billing only tracks
@@ -52,8 +52,14 @@ export function useVisitPaymentStatusesQuery(patientIds: string[]) {
     // failed request, permanently) read as unbilled.
     if (!result || result.isPending) return 'Loading';
     if (result.isError) return 'Unavailable';
-    // Same rule OPD Billing Entry's visit picker shows (ADR-117).
-    return visitBillingStatus(result.data ?? [], visitId);
+    // Same rule OPD Billing Entry's visit picker shows (ADR-117), except that a visit whose only
+    // bills were cancelled says so ('Cancelled') rather than "Not Billed": the 25 Nov staging
+    // test left a patient who had gone home reading as an ordinary unbilled visit (ADR-148).
+    const status = visitBillingStatus(result.data ?? [], visitId);
+    if (status === 'NotBilled' && (result.data ?? []).some((invoice) => invoice.visitId === visitId && invoice.isVoided && invoice.isReverted)) {
+      return 'Cancelled';
+    }
+    return status;
   }
 
   /** The visit's unpaid invoices, oldest first — where a 'Pending' or 'OnHold' visit's payment

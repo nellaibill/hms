@@ -3,6 +3,7 @@ using HMS.Modules.Backups.Contracts;
 using HMS.Shared.Infrastructure;
 using HMS.Shared.Kernel;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HMS.Modules.Backups.Endpoints;
@@ -12,8 +13,10 @@ namespace HMS.Modules.Backups.Endpoints;
 /// "Which tenant" comes entirely from the caller's own Hospital JWT via ITenantContext, the
 /// same tenant-resolution seam every other per-tenant module already relies on — there is no
 /// request parameter naming a tenant, so there is nothing here for a caller to manipulate to
-/// reach another hospital's data. Reuses the existing identity-administration.view permission
-/// (already gates the whole Settings area) rather than adding a new one. Also serves the
+/// reach another hospital's data. Needs the identity-administration.view permission (it gates
+/// the whole Settings area) AND a Super Admin's sign-in (ADR-148): a backup holds every
+/// patient's record, so a role that was given Settings access for another reason (a Doctor role
+/// given it for the consultant picker, as on one hospital) still can't download it. Also serves the
 /// hospital's uploaded documents &amp; images as a zip (see ITenantFilesArchive) — the files a
 /// database dump only holds the paths of.
 /// </summary>
@@ -40,6 +43,8 @@ public class TenantBackupsController : ControllerBase
     [HttpGet("mine")]
     public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
     {
+        if (!IsSuperAdmin()) return SuperAdminOnly();
+
         var latest = await _storage.GetLatestAsync(CurrentTenantKey(), cancellationToken);
         return Ok(new ApiResponse<BackupSummaryResponse>
         {
@@ -61,6 +66,8 @@ public class TenantBackupsController : ControllerBase
     [HttpGet("mine/download")]
     public async Task<IActionResult> DownloadMine(CancellationToken cancellationToken)
     {
+        if (!IsSuperAdmin()) return SuperAdminOnly();
+
         var latest = await _storage.GetLatestAsync(CurrentTenantKey(), cancellationToken);
         if (latest is null)
         {
@@ -83,6 +90,8 @@ public class TenantBackupsController : ControllerBase
     [HttpGet("mine/files")]
     public async Task<IActionResult> GetMyFiles(CancellationToken cancellationToken)
     {
+        if (!IsSuperAdmin()) return SuperAdminOnly();
+
         var summary = await _filesArchive.GetSummaryAsync(CurrentTenantId(), cancellationToken);
         return Ok(new ApiResponse<TenantFilesSummaryResponse>
         {
@@ -110,6 +119,8 @@ public class TenantBackupsController : ControllerBase
     [HttpGet("mine/files/download")]
     public async Task<IActionResult> DownloadMyFiles(CancellationToken cancellationToken)
     {
+        if (!IsSuperAdmin()) return SuperAdminOnly();
+
         // Built into a temp file first rather than straight into the response: the response
         // then gets a real Content-Length, and a failure part-way through is still a clean
         // error instead of a 200 with a truncated zip. DeleteOnClose removes the temp file as
@@ -154,4 +165,17 @@ public class TenantBackupsController : ControllerBase
 
     private Guid CurrentTenantId()
         => _tenantContext.TenantId ?? throw new InvalidOperationException("TenantBackupsController reached without a resolved tenant.");
+
+    /// <summary>A Super Admin's sign-in: the login type the login page allows only for the Super
+    /// Admin role (HMS.Modules.Identity's LoginTypes), the claim Billing and OPD read too.</summary>
+    private bool IsSuperAdmin()
+        => string.Equals(User.FindFirst("LoginType")?.Value, "superAdmin", StringComparison.OrdinalIgnoreCase);
+
+    private ObjectResult SuperAdminOnly() => StatusCode(StatusCodes.Status403Forbidden, new ApiErrorResponse
+    {
+        ErrorCode = "BACKUPS.SUPER_ADMIN_ONLY",
+        Message = "Only a Super Admin can see or download this hospital's backups and files.",
+        CorrelationId = HttpContext.GetCorrelationId(),
+        Timestamp = DateTime.UtcNow,
+    });
 }

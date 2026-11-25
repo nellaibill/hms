@@ -134,6 +134,13 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
   // including splitting into a second row, since "auto equals the total" no longer makes sense
   // once the counter is manually dividing it up — so it never fights typing.
   const paymentsManuallyEditedRef = useRef(false);
+  // Cash handed over at the counter, only to work out the change to give back — never saved
+  // (the bill records what it cost). Shown for a single cash payment (25 Nov staging test: no
+  // change was shown when ₹500 was taken for a ₹400 bill).
+  const [cashReceived, setCashReceived] = useState('');
+  const isSingleCash = paymentFields.length === 1 && values.payments[0]?.method === 'Cash';
+  const cashReceivedValue = Number(cashReceived);
+  const changeDue = isSingleCash && cashReceived !== '' && !Number.isNaN(cashReceivedValue) ? cashReceivedValue - summary.netTotal : null;
   useEffect(() => {
     if (!paymentsManuallyEditedRef.current && paymentFields.length === 1) {
       setValue('payments.0.amount', summary.netTotal, { shouldValidate: true });
@@ -392,6 +399,28 @@ export function BillingSummaryCard({ onSave, isSaving, saveError, saveErrorDetai
                   )}
                 </div>
               ))}
+
+              {isSingleCash && (
+                <div className="flex flex-col gap-1 rounded-md border border-dashed border-border p-2">
+                  <Field label="Cash received (optional)" htmlFor="billing-cash-received" className="flex flex-col gap-1">
+                    <Input
+                      id="billing-cash-received"
+                      type="number"
+                      min={0}
+                      inputMode="decimal"
+                      placeholder={String(summary.netTotal)}
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                    />
+                  </Field>
+                  {changeDue !== null && changeDue > 0 && (
+                    <p className="text-sm font-semibold text-success">Return change: {formatCurrency(changeDue)}</p>
+                  )}
+                  {changeDue !== null && changeDue < 0 && (
+                    <p className="text-sm text-destructive">Short by {formatCurrency(-changeDue)}</p>
+                  )}
+                </div>
+              )}
 
               <Button
                 type="button"
