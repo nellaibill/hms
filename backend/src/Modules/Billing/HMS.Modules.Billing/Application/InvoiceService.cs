@@ -45,6 +45,11 @@ public interface IInvoiceService
     /// category's bills (ADR-134).</summary>
     Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, AccountCategory? category, CancellationToken cancellationToken);
 
+    /// <summary>As above, held to one consultant's lines when <paramref name="consultantId"/> is
+    /// set (a consultant's own login, ADR-148): only bills with a line billed to them, with the
+    /// discount and net amount of those lines alone.</summary>
+    Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, AccountCategory? category, string? consultantId, CancellationToken cancellationToken);
+
     Task<Result<InvoiceResponse>> RecordPaymentAsync(Guid invoiceId, Guid itemId, RecordPaymentRequest request, Guid? actorId, CancellationToken cancellationToken);
 
     /// <summary>Collects everything still owed on a bill in one go — the counter's Collect
@@ -71,6 +76,10 @@ public interface IInvoiceService
     /// last <paramref name="months"/> months, plus this month's revenue by billing type — the
     /// Executive Dashboard's finance charts (DASH-01).</summary>
     Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, CancellationToken cancellationToken);
+
+    /// <summary>As above, counting only lines billed to <paramref name="consultantId"/> when it
+    /// is set (a consultant's own login, ADR-148).</summary>
+    Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, string? consultantId, CancellationToken cancellationToken);
 }
 
 internal class InvoiceService : IInvoiceService
@@ -380,10 +389,13 @@ internal class InvoiceService : IInvoiceService
         }
     }
 
-    public async Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, CancellationToken cancellationToken)
+    public Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, CancellationToken cancellationToken)
+        => GetDashboardSummaryAsync(months, consultantId: null, cancellationToken);
+
+    public async Task<BillingDashboardSummaryResponse> GetDashboardSummaryAsync(int months, string? consultantId, CancellationToken cancellationToken)
     {
         var utcNow = DateTime.UtcNow;
-        var lines = await _repository.GetLineTotalsSinceAsync(MonthlySeries.StartUtc(months, utcNow), cancellationToken);
+        var lines = await _repository.GetLineTotalsSinceAsync(MonthlySeries.StartUtc(months, utcNow), consultantId, cancellationToken);
         var currentMonthStart = MonthlySeries.StartUtc(1, utcNow);
 
         return new BillingDashboardSummaryResponse
@@ -679,11 +691,14 @@ internal class InvoiceService : IInvoiceService
         return Result<IReadOnlyList<InvoiceResponse>>.Success(invoices.Select(i => i.ToResponse()).ToList());
     }
 
-    public async Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, AccountCategory? category, CancellationToken cancellationToken)
+    public Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, AccountCategory? category, CancellationToken cancellationToken)
+        => GetRecentAsync(count, category, consultantId: null, cancellationToken);
+
+    public async Task<Result<IReadOnlyList<RecentPatientBillResponse>>> GetRecentAsync(int count, AccountCategory? category, string? consultantId, CancellationToken cancellationToken)
     {
         var boundedCount = Math.Clamp(count, 1, 50);
         var (invoices, _) = await _repository.GetPagedAsync(
-            new InvoiceListQuery { Page = 1, PageSize = boundedCount, Sort = "-createdAt", Category = category },
+            new InvoiceListQuery { Page = 1, PageSize = boundedCount, Sort = "-createdAt", Category = category, ConsultantId = consultantId },
             cancellationToken);
 
         // Each invoice's patient/visit context is fetched via the other module's public
@@ -708,6 +723,9 @@ internal class InvoiceService : IInvoiceService
             var visitResult = await _patientVisitService.GetByIdAsync(invoice.PatientId, invoice.VisitId, cancellationToken);
             var visit = visitResult.IsSuccess ? visitResult.Value : null;
 
+            // A consultant's own login sees only their lines' discount and net amount (ADR-148).
+            var amounts = consultantId is null ? invoice.ToResponse() : invoice.ToResponse().ForConsultant(consultantId);
+
             rows.Add(new RecentPatientBillResponse
             {
                 InvoiceId = invoice.Id,
@@ -723,8 +741,8 @@ internal class InvoiceService : IInvoiceService
                     .Select(c => new RecentBillConsultationResponse { DepartmentId = c.DepartmentId, ConsultantId = c.ConsultantId })
                     .ToList() ?? [],
                 AppointmentDateTime = visit?.CreatedAt ?? invoice.CreatedAt,
-                TotalDiscount = invoice.TotalDiscount,
-                NetAmount = invoice.NetAmount,
+                TotalDiscount = amounts.TotalDiscount,
+                NetAmount = amounts.NetAmount,
                 PaymentStatus = invoice.PaymentStatus,
                 IsVoided = invoice.IsVoided,
                 IsReverted = invoice.IsReverted,

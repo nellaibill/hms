@@ -87,11 +87,14 @@ export interface CollectionTotals {
   consultantAmount: number;
   hospitalAmount: number;
   collectedWithUnknownCost: number;
+  /** Payment records: one per bill line paid, so a three-line bill paid at once is three. */
   payments: number;
+  /** Distinct bills the money came from - what the counter thinks of as payments. */
+  bills: number;
 }
 
 export function sumCollections(rows: CollectionReportRow[]): CollectionTotals {
-  const totals: CollectionTotals = { collected: 0, consultantAmount: 0, hospitalAmount: 0, collectedWithUnknownCost: 0, payments: rows.length };
+  const totals: CollectionTotals = { collected: 0, consultantAmount: 0, hospitalAmount: 0, collectedWithUnknownCost: 0, payments: rows.length, bills: new Set(rows.map((row) => row.invoiceId)).size };
   for (const row of rows) {
     totals.collected += row.amount;
     if (row.consultantAmount === null || row.hospitalAmount === null) totals.collectedWithUnknownCost += row.amount;

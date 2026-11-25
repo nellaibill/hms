@@ -66,13 +66,17 @@ export function hasLoginErrors(errors: LoginAccessErrors): boolean {
   return Object.values(errors).some(Boolean);
 }
 
-/** "Priya R" → "priya.r", "Dr. Meena Sundaram" → "meena.s" — only ever a suggestion the user can change. */
+/** "Priya Raman" → "priya.r", "Dr. Meena Sundaram" → "meena.s", "Dr. M. Ramalakshmi, D.G.O." →
+ * "ramalakshmi" — only ever a suggestion the user can change. Qualifications (after a comma or
+ * in brackets) and initials are left out: a consultant's name is written "Dr. P. Anitha, M.S
+ * (General Surgery)", which used to suggest "p.h" and "m.d" (25 Nov staging test). */
 export function suggestUsername(fullName: string): string {
-  const tokens = fullName
+  const name = fullName.split(',')[0].replace(/\([^)]*\)/g, ' ');
+  const tokens = name
     .toLowerCase()
     .split(/\s+/)
     .map((token) => token.replace(/[^a-z0-9]/g, ''))
-    .filter((token) => token && token !== 'dr');
+    .filter((token) => token.length > 1 && token !== 'dr');
   if (tokens.length === 0) {
     return '';
   }

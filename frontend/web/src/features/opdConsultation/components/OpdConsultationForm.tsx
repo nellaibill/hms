@@ -26,7 +26,7 @@ import {
   Stethoscope,
   Trash2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useFieldArray, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -248,10 +248,24 @@ function diagnosisLineLabel(line: { diagnosisId: string; diagnosisName?: string 
   return resolveRecordLabel('diagnosis', line.diagnosisId);
 }
 
+/** Adds what a section's entry row holds (typed but not yet added with its Add button) and says
+ * whether the note can be saved: true when the row was empty or has been added, false when it
+ * holds something that can't be added (its own error is then shown). */
+type PendingEntryFlush = () => boolean;
+type RegisterPendingEntry = (key: string, flush: PendingEntryFlush | null) => void;
+
 const INVESTIGATION_DEPARTMENTS = ['Laboratory', 'Radiology'] as const;
 const INVESTIGATION_PRIORITIES = ['Routine', 'Urgent', 'Stat'] as const;
 
-function InvestigationsSection({ control, register }: { control: Control<OpdConsultationFormValues>; register: UseFormRegister<OpdConsultationFormValues> }) {
+function InvestigationsSection({
+  control,
+  register,
+  registerPendingEntry,
+}: {
+  control: Control<OpdConsultationFormValues>;
+  register: UseFormRegister<OpdConsultationFormValues>;
+  registerPendingEntry: RegisterPendingEntry;
+}) {
   const { fields, append, remove } = useFieldArray({ control, name: 'investigations' });
   const [draftDepartment, setDraftDepartment] = useState<(typeof INVESTIGATION_DEPARTMENTS)[number]>('Laboratory');
   const [draftPriority, setDraftPriority] = useState<(typeof INVESTIGATION_PRIORITIES)[number]>('Routine');
@@ -283,6 +297,16 @@ function InvestigationsSection({ control, register }: { control: Control<OpdCons
     }
     reset();
   }
+
+  // A test picked or typed but not added is still part of the note: Save Draft / Complete add it
+  // first instead of dropping it. Re-registered every render so it always sees the latest entry.
+  useEffect(() => {
+    registerPendingEntry('investigations', () => {
+      handleAdd();
+      return true;
+    });
+    return () => registerPendingEntry('investigations', null);
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -400,7 +424,15 @@ const EMPTY_PRESCRIPTION = { drugName: '', dose: '', route: '', frequency: '', d
 
 /** OPD-02: structured prescription — drug, dose, route, frequency, duration, instructions. Only
  * the drug name is required, so a doctor can write it as briefly as on paper. */
-function PrescriptionsSection({ control, errors }: { control: Control<OpdConsultationFormValues>; errors: FieldErrors<OpdConsultationFormValues> }) {
+function PrescriptionsSection({
+  control,
+  errors,
+  registerPendingEntry,
+}: {
+  control: Control<OpdConsultationFormValues>;
+  errors: FieldErrors<OpdConsultationFormValues>;
+  registerPendingEntry: RegisterPendingEntry;
+}) {
   const { fields, append, remove } = useFieldArray({ control, name: 'prescriptions' });
   const [draft, setDraft] = useState(EMPTY_PRESCRIPTION);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -409,15 +441,15 @@ function PrescriptionsSection({ control, errors }: { control: Control<OpdConsult
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleAdd() {
+  function handleAdd(): boolean {
     if (!draft.drugName.trim()) {
       setDraftError('Enter the drug name.');
-      return;
+      return false;
     }
     const duration = draft.durationDays.trim() ? Number(draft.durationDays) : undefined;
     if (duration !== undefined && (!Number.isInteger(duration) || duration < 1 || duration > 365)) {
       setDraftError('Duration must be a whole number of days between 1 and 365.');
-      return;
+      return false;
     }
     setDraftError(null);
     append({
@@ -429,7 +461,19 @@ function PrescriptionsSection({ control, errors }: { control: Control<OpdConsult
       instructions: draft.instructions.trim(),
     });
     setDraft(EMPTY_PRESCRIPTION);
+    return true;
   }
+
+  // A medicine typed but not added with "Add Medicine" used to be dropped silently when the
+  // doctor clicked Complete (found in the 25 Nov staging test). Save Draft / Complete now add it
+  // first, or stop with its error if it can't be added (e.g. a dose with no drug name).
+  useEffect(() => {
+    registerPendingEntry('prescriptions', () => {
+      const typed = Object.values(draft).some((value) => value.trim() !== '');
+      return typed ? handleAdd() : true;
+    });
+    return () => registerPendingEntry('prescriptions', null);
+  });
 
   const rowErrors = Array.isArray(errors.prescriptions) ? errors.prescriptions : [];
 
@@ -461,7 +505,7 @@ function PrescriptionsSection({ control, errors }: { control: Control<OpdConsult
           <Label htmlFor="opd-rx-instructions">Instructions</Label>
           <Input id="opd-rx-instructions" placeholder="e.g. After food" value={draft.instructions} onChange={(e) => update('instructions', e.target.value)} />
         </div>
-        <Button type="button" onClick={handleAdd} className="gap-1.5">
+        <Button type="button" onClick={() => handleAdd()} className="gap-1.5">
           <Plus className="h-4 w-4" />
           Add Medicine
         </Button>
@@ -649,8 +693,22 @@ export function OpdConsultationForm({
 
   const generalError = apiError && !apiError.validationErrors ? apiError.message : null;
 
+  // Entry rows (a medicine or test typed but not yet added) are added before any save, so what
+  // the doctor typed is never lost — see PrescriptionsSection.
+  const pendingEntries = useRef(new Map<string, PendingEntryFlush>());
+  const registerPendingEntry = useCallback<RegisterPendingEntry>((key, flush) => {
+    if (flush) pendingEntries.current.set(key, flush);
+    else pendingEntries.current.delete(key);
+  }, []);
+  function addPendingEntries(): boolean {
+    let ok = true;
+    for (const flush of pendingEntries.current.values()) ok = flush() && ok;
+    return ok;
+  }
+
   function handleCompleteClick() {
     clearErrors();
+    if (!addPendingEntries()) return;
     const values = getValues();
     const result = completeOpdConsultationSchema.safeParse(values);
     if (!result.success) {
@@ -663,7 +721,17 @@ export function OpdConsultationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit((values) => onSaveDraft(toSaveRequest(values)))} noValidate className="flex flex-col gap-6">
+    <form
+      onSubmit={(event) => {
+        if (!addPendingEntries()) {
+          event.preventDefault();
+          return;
+        }
+        return handleSubmit((values) => onSaveDraft(toSaveRequest(values)))(event);
+      }}
+      noValidate
+      className="flex flex-col gap-6"
+    >
       {generalError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {generalError}
@@ -719,11 +787,11 @@ export function OpdConsultationForm({
 
         <div className="flex flex-col gap-6">
           <SectionCard icon={FlaskConical} title="Investigations">
-            <InvestigationsSection control={control} register={register} />
+            <InvestigationsSection control={control} register={register} registerPendingEntry={registerPendingEntry} />
           </SectionCard>
 
           <SectionCard icon={Pill} title="Prescription">
-            <PrescriptionsSection control={control} errors={errors} />
+            <PrescriptionsSection control={control} errors={errors} registerPendingEntry={registerPendingEntry} />
           </SectionCard>
 
           <SectionCard icon={ListChecks} title="Plan of Management">

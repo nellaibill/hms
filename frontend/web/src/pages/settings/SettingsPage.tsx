@@ -25,6 +25,8 @@ interface SettingsSection {
    * which have no corresponding entry in the permission catalog (see final report's
    * gap list); those stay reachable to anyone who can open Settings at all. */
   permission?: string;
+  /** Shown only to a Super Admin's sign-in, whatever the role's permissions (ADR-148). */
+  superAdminOnly?: boolean;
   /** Tenant feature (ADR-145) a Platform Admin can switch this page off with — omitted for
    * Roles & Permissions, which can never be switched off. */
   feature?: string;
@@ -93,13 +95,18 @@ const sections: SettingsSection[] = [
     feature: 'settings.backup',
     status: 'available',
     permission: 'identity-administration.view',
+    // Every patient's record is in a backup: a Super Admin's sign-in only (ADR-148).
+    superAdminOnly: true,
   },
 ];
 
 export default function SettingsPage() {
-  const { hasPermission, hasFeature } = useAuth();
+  const { hasPermission, hasFeature, user } = useAuth();
   const visibleSections = sections.filter(
-    (section) => (!section.permission || hasPermission(section.permission)) && (!section.feature || hasFeature(section.feature)),
+    (section) =>
+      (!section.permission || hasPermission(section.permission)) &&
+      (!section.feature || hasFeature(section.feature)) &&
+      (!section.superAdminOnly || user?.role === 'superAdmin'),
   );
   return (
     <div className="flex flex-1 flex-col">

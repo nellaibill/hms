@@ -37,6 +37,49 @@ _To be documented._
 
 ## Decisions
 
+### ADR-148: Fixes from the 25 Nov staging user test — doctors see only their own money
+**Date:** 2026-11-25
+**Status:** Accepted
+
+**Context**
+A real-user test on staging covered 14 bills across 7 doctors (receptionist, Super Admin and doctor logins). Every report matched to the rupee, but the test found:
+- **A doctor saw the whole hospital's money.** OP Report, Day-wise Profit, the Dashboard's Today's Profit and Recent Bills showed every doctor's share and the hospital's profit. The invoice list endpoints weren't scoped; only Collection Summary was.
+- **A doctor could reach the hospital backup.** The backup endpoints needed only `identity-administration.view`, and lhs's Doctor role had it, granted in Sept so the consultant picker worked.
+- **Prescriptions were lost.** A medicine typed in the entry row was silently dropped on Complete unless "Add Medicine" was clicked, and investigations behaved the same.
+- **Edit Patient didn't save emergency contacts.** The edit form showed the contact, but `UpdatePatientRequest` doesn't carry contacts, so an imported patient's placeholder 9999999999 stayed while the record was marked verified.
+- **"Verify before visit" was enforced only on screen.** The front desk screen blocked a visit for an unverified imported patient; the API didn't.
+- **Smaller issues:**
+  - A cancelled bill's patient stayed "Waiting · Not Billed" in the doctor's queue.
+  - Login usernames were suggested from initials ("m.d", "p.h").
+  - A consultant couldn't be saved, or given a login, without a schedule (26 have none).
+  - Notifications were polled (403) with the module switched off.
+  - No change was shown for cash taken above the bill.
+  - "21 payments" on Collection Summary counted bill lines.
+  - "All 14 of today's bills settled" counted a cancelled bill.
+  - Moving straight between two consultants' edit pages kept the previous login draft.
+
+**Decision**
+- **Doctors see only their own lines.** A consultant's own login (`GetScopedConsultantId`) gets only bills with a line billed to them, cut down to those lines with gross/discount/net from those lines (`InvoiceResponse.ForConsultant`). This applies on the invoice list, detail, by-patient, recent-bills and dashboard-summary endpoints. `InvoiceListQuery.ConsultantId` filters bills by line. OP Report, Day-wise Profit and Today's Profit read these, so they follow without frontend changes.
+- **Backups need a Super Admin sign-in.** All four backup endpoints require the `superAdmin` login type as well as the permission (403 `BACKUPS.SUPER_ADMIN_ONLY`). The Backup card shows only to a Super Admin. Removing `identity-administration` from the Doctor role remains a role setting for the hospital.
+- **Typed entries are saved.** Save Draft and Complete first add whatever is in the medicine or test entry row, or stop with that row's error.
+- **Edit Patient saves emergency contacts.** After the update it adds new or changed contacts, then removes the old ones (add first, so a hospital requiring one is never left without).
+- **The API checks verification.** `POST patients/{id}/visits` refuses an unverified imported patient: 409 `PATIENTS.DATA_VERIFICATION_REQUIRED`.
+- **A schedule is all or nothing.** Days with both visiting times, or none at all, in both the API validators and the form.
+- **Queue:** a visit whose only bills were cancelled shows "Bill cancelled", and a doctor can mark the patient "Patient left" (the existing `cancel` transition).
+- **Small fixes:**
+  - Usernames are suggested from the name, ignoring qualifications and initials.
+  - Notifications aren't polled when the module is off.
+  - An optional "Cash received" box shows the change to return.
+  - Collection Summary reads "from N bills".
+  - The settled count leaves out cancelled bills.
+  - The master form remounts per record.
+
+**Consequences**
+- No migration.
+- A doctor's OP Report now shows only their lines. A bill mixing two doctors shows each doctor only their part.
+- Hospital-wide figures are for Super Admin and finance roles.
+- On lhs, the Doctor role should still have Identity Administration unticked. Until then a doctor can still open Settings (read-only) and the Activity Log, though not the backup.
+
 ### ADR-147: Every date and time is India Standard Time by the server's clock
 **Date:** 2026-11-25
 **Status:** Accepted (amends ADR-146's "local day")

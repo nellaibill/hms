@@ -21,6 +21,17 @@ export const consultantConfig: MasterEntityConfig = {
     }),
   photo: { urlField: 'photoUrl', helpText: 'JPG, PNG (Max 2MB)' },
   consultantLogin: true,
+  // A schedule is all or nothing (ADR-148): days with both visiting times, or none at all for a
+  // doctor with no fixed days, so such a doctor can still be saved (and given a login).
+  validateForm: (values) => {
+    const days = Array.isArray(values.availableDays) ? values.availableDays.length : 0;
+    const start = Boolean(values.visitStartTime);
+    const end = Boolean(values.visitEndTime);
+    if (days === 0 && !start && !end) return undefined;
+    if (days === 0) return 'Select the available days for these visiting hours, or clear the hours for a doctor with no fixed schedule.';
+    if (!start || !end) return 'Enter both the visiting start and end time for the selected days.';
+    return undefined;
+  },
   fields: [
     // skipUniquenessCheck: two consultants can legitimately share a display name (e.g. two
     // "Dr. Sharma"s) — see ConsultantSelect's own comment on using Specialization instead of
@@ -56,20 +67,18 @@ export const consultantConfig: MasterEntityConfig = {
       key: 'availableDays',
       label: 'Available Days',
       type: 'day-checkboxes',
-      required: true,
       showInTable: false,
-      helpText: 'Select the days when the doctor is available at the hospital.',
+      helpText: 'Select the days when the doctor is available at the hospital. Leave the days and visiting hours blank for an on-call or visiting doctor with no fixed schedule.',
     },
     {
       key: 'visitStartTime',
       label: 'Start Time',
       type: 'time',
-      required: true,
       showInTable: false,
       rangeLabel: 'Visiting Hours',
       helpText: "Doctor's availability/visit timing at the hospital.",
     },
-    { key: 'visitEndTime', label: 'End Time', type: 'time', required: true, showInTable: false },
+    { key: 'visitEndTime', label: 'End Time', type: 'time', showInTable: false },
     {
       key: 'visitStartTime2',
       label: 'Second Session Start Time',

@@ -63,6 +63,8 @@ export const API_ROUTES = {
     byId: (id: string) => `/api/v1/patients/${id}`,
     allergies: (id: string) => `/api/v1/patients/${id}/allergies`,
     allergyById: (id: string, allergyId: string) => `/api/v1/patients/${id}/allergies/${allergyId}`,
+    emergencyContacts: (id: string) => `/api/v1/patients/${id}/emergency-contacts`,
+    emergencyContactById: (id: string, contactId: string) => `/api/v1/patients/${id}/emergency-contacts/${contactId}`,
     visits: (id: string) => `/api/v1/patients/${id}/visits`,
     visitById: (id: string, visitId: string) => `/api/v1/patients/${id}/visits/${visitId}`,
     report: '/api/v1/patients/report',

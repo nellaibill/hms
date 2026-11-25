@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FluentAssertions;
 using HMS.Modules.Backups.Application.Abstractions;
 using HMS.Modules.Backups.Contracts;
@@ -23,8 +24,32 @@ public class TenantBackupsControllerTests
         tenantContext.TenantId.Returns(CallerTenantId);
         _sut = new TenantBackupsController(Substitute.For<IBackupStorage>(), _filesArchive, tenantContext)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = SignedInAs("superAdmin") } },
         };
+    }
+
+    private static ClaimsPrincipal SignedInAs(string loginType)
+        => new(new ClaimsIdentity([new Claim("LoginType", loginType)], "test"));
+
+    // ADR-148: a backup holds every patient's record, so even a role that was given Settings
+    // access (identity-administration.view) can't see or download it without a Super Admin sign-in.
+    [Theory]
+    [InlineData("doctor")]
+    [InlineData("receptionist")]
+    public async Task EveryBackupAction_RefusesAnyoneButASuperAdmin(string loginType)
+    {
+        _sut.ControllerContext.HttpContext.User = SignedInAs(loginType);
+
+        var results = new[]
+        {
+            await _sut.GetMine(CancellationToken.None),
+            await _sut.DownloadMine(CancellationToken.None),
+            await _sut.GetMyFiles(CancellationToken.None),
+            await _sut.DownloadMyFiles(CancellationToken.None),
+        };
+
+        results.Should().AllSatisfy(result => result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden));
+        await _filesArchive.DidNotReceiveWithAnyArgs().WriteZipAsync(default, default!, default);
     }
 
     [Fact]
