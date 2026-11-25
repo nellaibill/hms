@@ -10,8 +10,9 @@ namespace HMS.Modules.ActivityLog.Endpoints;
 
 /// <summary>
 /// Read-only audit trail. Gated by "identity-administration.view" — the same admin-only
-/// permission category that guards user and role management — and by the tenant's
-/// "activity-log" feature. There is deliberately no POST/PUT/PATCH/DELETE action: audit
+/// permission category that guards user and role management — by a Super Admin sign-in
+/// (ADR-150: every user's actions are the hospital's top admin's to review, not a doctor's or
+/// a receptionist's, whatever their role holds), and by the tenant's "activity-log" feature. There is deliberately no POST/PUT/PATCH/DELETE action: audit
 /// rows are only ever written in-process through IActivityLogService.
 /// </summary>
 [ApiController]
@@ -31,7 +32,7 @@ public class ActivityLogsController : ControllerBase
     /// and entity id.</summary>
     /// <response code="200">A page of entries (without old/new values).</response>
     /// <response code="400">The date range is invalid.</response>
-    [Authorize]
+    [Authorize(Policy = HospitalPolicies.SuperAdmin)]
     [RequirePermission("identity-administration.view")]
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] ActivityLogListQuery query, CancellationToken cancellationToken)
@@ -57,7 +58,7 @@ public class ActivityLogsController : ControllerBase
     /// correlation id.</summary>
     /// <response code="200">The entry.</response>
     /// <response code="404">No such entry.</response>
-    [Authorize]
+    [Authorize(Policy = HospitalPolicies.SuperAdmin)]
     [RequirePermission("identity-administration.view")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)

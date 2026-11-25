@@ -37,6 +37,29 @@ _To be documented._
 
 ## Decisions
 
+### ADR-150: Settings and the Activity Log are the Super Admin's alone; doctors don't get Reception and Registration
+**Date:** 2026-11-25
+**Status:** Accepted (amends ADR-123 and ADR-128 for these menus)
+
+**Context**
+- **Sidebar visibility followed permissions.** Settings and the Activity Log showed to anyone whose role held `identity-administration.view`. On lhs the Doctor role was given it in September so the consultant picker worked, so doctors saw both menus. The user's rule: only the Super Admin, the hospital's top privilege, sees Settings and the Activity Log, never a consultant or receptionist.
+- **Reception and Registration isn't a doctor's job.** It showed to anyone with `patient-management.view`, which doctors need in order to open a patient's page. The user asked for it to be gone from a consultant's login.
+
+**Decision**
+- **Super Admin only, by sign-in.** Settings and the Activity Log check the sign-in itself (`role === 'superAdmin'`, the login type only the Super Admin role can use), not a permission:
+  - their sidebar leaves are marked `superAdminOnly`;
+  - `RequireSuperAdminRoute` guards the Activity Log page, the Settings hub and every Settings page (Users, Roles, Theme & Branding, Reports Visibility, Patient Registration Fields, Billing Approvals, Backup, and the Hospital Reference Data hub).
+
+  The reference-data entity pages keep their permission gate, because other screens open them (Doctor Search, Price List, Pharmacy Setup).
+- **The Activity Log API is Super Admin only too.** It needs the new `HospitalSuperAdmin` policy (`HospitalPolicies.SuperAdmin`): a hospital token signed in as Super Admin, plus the existing permission.
+- **Reception and Registration is closed to doctors.** Its sidebar leaf is `hiddenForRoles: ['doctor']`, and `BlockedForRoles` shuts its hub and New Patient Registration to a doctor's sign-in. A patient's own page stays open, and its back link goes to Patient Enquiry for a doctor.
+- Super-Admin-only menus aren't offered in a role's Menus list (ADR-128), since no other role ever sees them.
+
+**Consequences**
+- No migration.
+- **Roles no longer decide these screens.** A role given `identity-administration.*` no longer reaches Settings or the Activity Log; only the Super Admin sign-in does. Settings write endpoints still need their `.edit` permissions as before, and the reads other screens rely on (branding, field settings, billing settings, users directory) are unchanged.
+- **Doctors register no patients.** Front desk logins are unaffected.
+
 ### ADR-148: Fixes from the 25 Nov staging user test — doctors see only their own money
 **Date:** 2026-11-25
 **Status:** Accepted
