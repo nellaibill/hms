@@ -5,8 +5,14 @@ import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { useMasterOptionsQuery } from '@/features/masters';
+import { usePatientQuery } from '@/features/patients/hooks/usePatientQuery';
+import { usePatientVisitsQuery } from '@/features/patients/hooks/usePatientVisitsQuery';
+import { todayDateInputValue, toLocalDateInputValue } from '@/lib/reportDateRange';
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
+import { useCollectionsQuery } from '../hooks/useCollectionsQuery';
 import type { Billing } from '../types';
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = { Cash: 'Cash', Card: 'Card', Upi: 'UPI', BankTransfer: 'Bank Transfer' };
 
 interface InvoicePrintTemplateProps {
   billing: Billing;
@@ -35,9 +41,24 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
   useMasterOptionsQuery('diagnosticTest');
   useMasterOptionsQuery('department');
   useMasterOptionsQuery('consultationType');
+  useMasterOptionsQuery('consultant');
   useDiagnosticServices('Radiology');
   useDiagnosticServices('Laboratory');
   usePrimeDiagnosticPackageCache();
+
+  // What a patient's receipt needs beyond the bill itself: who they are (age, gender, phone),
+  // the visit's OP/IP No, and how the money was paid. The bill doesn't carry these, so they come
+  // from the patient record, the visit list and the payments taken since the bill was made.
+  const { data: patient } = usePatientQuery(billing.patientId);
+  const { data: visits } = usePatientVisitsQuery(billing.patientId);
+  const visitNumber = billing.opNumber ?? visits?.find((visit) => visit.visitId === billing.visitId)?.visitNumber ?? undefined;
+  const { data: collections } = useCollectionsQuery({ from: toLocalDateInputValue(new Date(billing.createdAt)), to: todayDateInputValue() });
+  const payments = (collections ?? []).filter((payment) => payment.invoiceId === billing.id);
+  const paidBy = Object.entries(
+    payments.reduce<Record<string, number>>((byMethod, payment) => ({ ...byMethod, [payment.method]: (byMethod[payment.method] ?? 0) + payment.amount }), {}),
+  ).map(([method, amount]) => `${PAYMENT_METHOD_LABELS[method] ?? method} ${formatCurrency(amount)}`);
+  const references = [...new Set(payments.map((payment) => payment.referenceNumber).filter(Boolean))];
+  const hospitalContact = [brandingConfig?.address, brandingConfig?.phoneNumber ? `Ph: ${brandingConfig.phoneNumber}` : ''].filter(Boolean).join(' · ');
 
   const statusLabel = billing.isVoided
     ? billing.isReverted
@@ -59,7 +80,7 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
       <div className="flex flex-col items-center gap-1 border-b-2 border-black pb-4 text-center">
         <img src={printLogo.url} alt={hospitalName} className="max-w-full" style={{ width: printLogo.display.width, height: printLogo.display.height, objectFit: printLogo.display.fit }} />
         <span className="text-2xl font-bold tracking-tight">{hospitalName}</span>
-        <span className="text-xs text-gray-600">{appTitle}</span>
+        <span className="text-xs text-gray-600">{hospitalContact || appTitle}</span>
       </div>
 
       <div className="mt-6 flex items-start justify-between gap-6">
@@ -69,6 +90,13 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
           </span>
           <span className="text-base font-semibold">{billing.patientName}</span>
           <span className="text-sm text-gray-700">UHID: {billing.patientUhid}</span>
+          {patient && (
+            <span className="text-sm text-gray-700">
+              {patient.age} yrs · {patient.gender}
+              {patient.primaryPhone ? ` · Ph: ${patient.primaryPhone}` : ''}
+            </span>
+          )}
+          {visitNumber && <span className="text-sm text-gray-700">Visit No: {visitNumber}</span>}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 text-right">
           <span className="text-lg font-bold uppercase tracking-widest">Invoice</span>
@@ -102,12 +130,13 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
         </thead>
         <tbody>
           {billing.items.map((item, index) => {
-            const { serviceLabel } = describeBillingItem(item);
+            const { serviceLabel, consultantName } = describeBillingItem(item);
             return (
               <tr key={item.id} className="border-b border-gray-300">
                 <td className="py-2 pr-2 align-top text-gray-600">{index + 1}</td>
                 <td className="py-2 pr-2 align-top">
                   {item.billingType} — {serviceLabel}
+                  {consultantName !== '—' && <div className="text-xs text-gray-600">{consultantName}</div>}
                 </td>
                 {hasDiscount && <td className="py-2 pr-2 text-right align-top">{formatCurrency(item.quantity * item.unitPrice)}</td>}
                 {hasDiscount && (
@@ -138,6 +167,15 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
             <span>Net Payable</span>
             <span>{formatCurrency(billing.netAmount)}</span>
           </div>
+          {paidBy.length > 0 && (
+            <div className="flex items-start justify-between gap-3 text-gray-700">
+              <span className="text-gray-600">Paid by</span>
+              <span className="text-right">
+                {paidBy.join(' + ')}
+                {references.length > 0 && <span className="block text-xs text-gray-600">Ref: {references.join(', ')}</span>}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
