@@ -366,7 +366,7 @@ function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
   // A voided (or reverted) bill was cancelled: it stays listed for the record, but every
   // figure on it must read as "not charged" — the totals above already leave it out.
   const voided = billing.isVoided;
-  const voidLabel = billing.isReverted ? 'Reverted' : 'Voided';
+  const voidLabel = billing.isReverted ? 'Cancelled' : 'Voided';
   const voidedAmountClass = voided ? 'text-muted-foreground line-through' : undefined;
   return (
     <div className={cn('overflow-hidden rounded-lg border', voided ? 'border-dashed border-destructive/40' : 'border-border')}>

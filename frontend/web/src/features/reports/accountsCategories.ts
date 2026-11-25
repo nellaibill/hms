@@ -80,8 +80,8 @@ export const ACCOUNTS_CATEGORIES: readonly AccountsCategoryConfig[] = [
     tabs: [
       { id: 'recentBills', path: '', label: 'Recent Bills' },
       { id: 'allInvoices', path: 'invoices', label: 'All Invoices' },
-      // OP bill revert requests (ADR-106) — the Super Admin's approval queue.
-      { id: 'revertRequests', path: 'revert-requests', label: 'Revert Requests', pendingCount: 'revert' },
+      // OP bill cancellation requests (ADR-106) — the Super Admin's approval queue.
+      { id: 'revertRequests', path: 'revert-requests', label: 'Cancellation Requests', pendingCount: 'revert' },
       // Bill discount requests (ADR-109) — only OP charges can be discounted.
       { id: 'discountRequests', path: 'discount-requests', label: 'Discount Requests', pendingCount: 'discount' },
       { id: 'incomeExpense', path: 'reports', label: 'Income & Expense', report: 'incomeExpense' },

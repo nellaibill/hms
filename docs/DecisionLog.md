@@ -57,6 +57,7 @@ A regression run before handing the app to the client (local `lhs`: Patients, OP
   - The patient Billing tab reads pharmacy bills only with the `pharmacy` feature.
   - OPD's Investigations List needs `laboratory`, and its Admissions List needs `ipd`.
   - The three diagnostics cards need `central-laboratory` and `diagnostics.view`, the same as their routes.
+- **"Revert" is called "Cancel" on screen** (added 2026-11-25, the user's request: "Reverted" confused front-desk staff and patients). Every label, button, badge, receipt stamp, Tasks entry, setting, error message and new activity-log entry says Cancellation / Cancel Bill / Cancelled. Code, API routes (`revert-requests`), error codes (`BILLING.REVERT_*`) and the database (`invoice_revert_requests`, `is_reverted`) keep their names, so nothing needs migrating. Activity-log entries written before this keep their old wording. A plain void still says Voided.
 - **Pay before consult is enforced by the API too** (added 2026-11-25). `start-consultation` on an OP visit still waiting for its OP No (fee unpaid, ADR-103) fails with 409 `PATIENTS.CONSULTATION_FEE_NOT_PAID`. Check-in stays open, because appointments are checked in on arrival before the counter. Emergency visits are never held for payment: they are numbered when recorded, and casualty care shouldn't wait.
 
 **Consequences**

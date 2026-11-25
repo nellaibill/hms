@@ -91,7 +91,7 @@ export function InvoiceDetailCard({
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium">
-                  {billing.isReverted ? 'Reverted' : 'Voided'}
+                  {billing.isReverted ? 'Cancelled' : 'Voided'}
                   {billing.voidedAt
                     ? ` on ${new Date(billing.voidedAt).toLocaleString('en-IN')}`
                     : ''}
@@ -129,7 +129,7 @@ export function InvoiceDetailCard({
                     {/* A voided or reverted bill's lines keep their Paid status underneath (the
                         refund is recorded on the bill), so say what happened to the bill instead. */}
                     {billing.isVoided ? (
-                      <Badge variant="destructive">{billing.isReverted ? 'Reverted' : 'Voided'}</Badge>
+                      <Badge variant="destructive">{billing.isReverted ? 'Cancelled' : 'Voided'}</Badge>
                     ) : (
                       <PaymentStatusBadge status={item.paymentStatus} />
                     )}

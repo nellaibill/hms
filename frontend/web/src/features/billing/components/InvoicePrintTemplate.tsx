@@ -62,7 +62,7 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
 
   const statusLabel = billing.isVoided
     ? billing.isReverted
-      ? 'REVERTED'
+      ? 'CANCELLED'
       : 'VOIDED'
     : billing.items.length > 0 && billing.items.every((item) => item.paymentStatus === 'Paid')
       ? 'PAID'

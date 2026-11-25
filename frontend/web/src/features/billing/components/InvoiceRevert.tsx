@@ -19,7 +19,7 @@ function formatDateTime(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString('en-IN') : '';
 }
 
-/** "Request Revert" on an OP bill (ADR-106) — shown only when the server says this bill can be
+/** "Request Cancellation" on an OP bill (ADR-106) — shown only when the server says this bill can be
  * reverted (an OP bill made today, not voided, no request already pending) and the user can make
  * bills — the same "finance-billing.create" the server checks, which the Receptionist role has.
  * While Settings → Billing Approvals switches revert approval off (ADR-136) it reads "Revert
@@ -45,8 +45,8 @@ export function RequestRevertButton({ billing }: { billing: Billing }) {
           // The server decides: approved at once while revert approval is switched off.
           toast(
             request.status === 'Approved'
-              ? { title: `Invoice ${request.invoiceNumber} reverted`, variant: 'success' }
-              : { title: 'Revert request sent', description: 'The Super Admin will approve or reject it.', variant: 'success' },
+              ? { title: `Invoice ${request.invoiceNumber} cancelled`, variant: 'success' }
+              : { title: 'Cancellation request sent', description: 'The Super Admin will approve or reject it.', variant: 'success' },
           );
         },
       },
@@ -65,7 +65,7 @@ export function RequestRevertButton({ billing }: { billing: Billing }) {
         }}
       >
         <RotateCcw className="h-4 w-4" />
-        {revertsNeedApproval ? 'Request Revert' : 'Revert Bill'}
+        {revertsNeedApproval ? 'Request Cancellation' : 'Cancel Bill'}
       </Button>
       {isOpen && (
         <RequestRevertDialog
@@ -84,7 +84,7 @@ export function RequestRevertButton({ billing }: { billing: Billing }) {
 }
 
 /** Approve/Reject buttons for a Pending revert request — rendered only for a Super Admin. Shared
- * by the invoice page's banner and the Revert Requests list. */
+ * by the invoice page's banner and the Cancellation Requests list. */
 export function RevertDecisionButtons({ request }: { request: InvoiceRevertRequestResponse }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -101,7 +101,7 @@ export function RevertDecisionButtons({ request }: { request: InvoiceRevertReque
       const approved = decision === 'approve';
       setDecision(null);
       toast({
-        title: approved ? `Invoice ${request.invoiceNumber} reverted` : 'Revert request rejected',
+        title: approved ? `Invoice ${request.invoiceNumber} cancelled` : 'Cancellation request rejected',
         description: approved && request.paidAmount > 0 ? `Refund ${formatCurrency(request.paidAmount)} to ${request.patientName}.` : undefined,
         variant: 'success',
       });
@@ -154,13 +154,13 @@ export function InvoiceRevertBanner({ billing }: { billing: Billing }) {
         <div className="flex min-w-[14rem] flex-1 items-start gap-2">
           <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
           <div className="flex flex-col">
-            <span className="font-medium text-foreground">Revert waiting for Super Admin approval</span>
+            <span className="font-medium text-foreground">Cancellation waiting for Super Admin approval</span>
             <span className="text-muted-foreground">
               Requested{latest.requestedByName ? ` by ${latest.requestedByName}` : ''} on {formatDateTime(latest.requestedAt)}
             </span>
             <span className="text-foreground">Reason: {latest.reason}</span>
             {billing.items.some((item) => item.paymentStatus !== 'Paid') && (
-              <span className="text-muted-foreground">No payment can be taken on this bill until the revert is approved or rejected.</span>
+              <span className="text-muted-foreground">No payment can be taken on this bill until the cancellation is approved or rejected.</span>
             )}
           </div>
         </div>
@@ -174,7 +174,7 @@ export function InvoiceRevertBanner({ billing }: { billing: Billing }) {
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
         <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="text-muted-foreground">
-          Revert requested{latest.requestedByName ? ` by ${latest.requestedByName}` : ''} and approved
+          Cancellation requested{latest.requestedByName ? ` by ${latest.requestedByName}` : ''} and approved
           {latest.decidedByName ? ` by ${latest.decidedByName}` : ''} on {formatDateTime(latest.decidedAt)}
           {latest.paidAmount > 0 ? ` · ${formatCurrency(latest.paidAmount)} to refund` : ''}
           {latest.decisionNotes ? ` · ${latest.decisionNotes}` : ''}
@@ -188,7 +188,7 @@ export function InvoiceRevertBanner({ billing }: { billing: Billing }) {
       <CircleX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="flex flex-col">
         <span className="font-medium text-foreground">
-          Last revert request rejected{latest.decidedByName ? ` by ${latest.decidedByName}` : ''} on {formatDateTime(latest.decidedAt)}
+          Last cancellation request rejected{latest.decidedByName ? ` by ${latest.decidedByName}` : ''} on {formatDateTime(latest.decidedAt)}
         </span>
         {latest.decisionNotes && <span className="text-muted-foreground">{latest.decisionNotes}</span>}
       </div>

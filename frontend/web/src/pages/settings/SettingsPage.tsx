@@ -78,7 +78,7 @@ const sections: SettingsSection[] = [
   },
   {
     title: 'Billing Approvals',
-    description: 'Turn discounts off, or choose whether discounts and bill reverts need Super Admin approval.',
+    description: 'Turn discounts off, or choose whether discounts and bill cancellations need Super Admin approval.',
     icon: BadgeCheck,
     path: '/admin/settings/billing-approvals',
     feature: 'settings.billing-approvals',
