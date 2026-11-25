@@ -125,9 +125,11 @@ type Entry = { kind: 'invoice'; at: string; key: string; invoice: VisibleInvoice
  * but left out of the totals — the IP final bill carries it as its Pharmacy line.
  */
 export function PatientBillingPanel({ patientId }: { patientId: string }) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasFeature } = useAuth();
   const canCreateBill = hasPermission('finance-billing.create');
-  const canSeePharmacyBills = hasPermission('pharmacy.view') || hasPermission('finance-billing.view');
+  // Only where the hospital has Pharmacy: without it the Pharmacy API answers 403 and the
+  // panel showed "Couldn't load pharmacy bills" on every patient (ADR-146).
+  const canSeePharmacyBills = hasFeature('pharmacy') && (hasPermission('pharmacy.view') || hasPermission('finance-billing.view'));
   const canOpenPharmacyBill = hasPermission('pharmacy.view');
   const { data: billings, isPending, isError } = usePatientInvoicesQuery(patientId);
   const pharmacyQuery = usePatientPharmacyBillsQuery(patientId, canSeePharmacyBills);
@@ -364,7 +366,7 @@ function InvoiceTable({ invoice }: { invoice: VisibleInvoice }) {
   // A voided (or reverted) bill was cancelled: it stays listed for the record, but every
   // figure on it must read as "not charged" — the totals above already leave it out.
   const voided = billing.isVoided;
-  const voidLabel = billing.isReverted ? 'Reverted' : 'Voided';
+  const voidLabel = billing.isReverted ? 'Cancelled' : 'Voided';
   const voidedAmountClass = voided ? 'text-muted-foreground line-through' : undefined;
   return (
     <div className={cn('overflow-hidden rounded-lg border', voided ? 'border-dashed border-destructive/40' : 'border-border')}>

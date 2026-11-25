@@ -42,8 +42,12 @@ const OPD_LIST_ROLES: Role[] = ['superAdmin', 'admin', 'receptionist', 'doctor']
 
 export default function OpdPage() {
   const queryClient = useQueryClient();
-  const { user, scopedConsultantId } = useAuth();
+  const { user, scopedConsultantId, hasFeature } = useAuth();
   const canSeeOpdLists = Boolean(user && OPD_LIST_ROLES.includes(user.role));
+  // Investigations List reads Laboratory's orders and Admissions List reads IPD's admissions, so
+  // each shows only where the hospital has that module — otherwise the tab only said 403 (ADR-146).
+  const showInvestigations = hasFeature('laboratory');
+  const showAdmissions = hasFeature('ipd');
   const [tab, setTab] = useState<OpdTab>('patients');
   const [filters, setFilters] = useState<OpdFilterValues>(emptyOpdFilters);
   // Scheduled Visits' own From/To (today on, no end by default) — it looks ahead, unlike the
@@ -357,18 +361,22 @@ export default function OpdPage() {
               <Stethoscope className="h-4 w-4" />
               Consultation List
             </TabsTrigger>
-            <TabsTrigger value="investigations" className="gap-1.5">
-              <FlaskConical className="h-4 w-4" />
-              Investigations List
-            </TabsTrigger>
+            {showInvestigations && (
+              <TabsTrigger value="investigations" className="gap-1.5">
+                <FlaskConical className="h-4 w-4" />
+                Investigations List
+              </TabsTrigger>
+            )}
             <TabsTrigger value="procedures" className="gap-1.5">
               <Activity className="h-4 w-4" />
               Procedures List
             </TabsTrigger>
-            <TabsTrigger value="admissions" className="gap-1.5">
-              <BedDouble className="h-4 w-4" />
-              Admissions List
-            </TabsTrigger>
+            {showAdmissions && (
+              <TabsTrigger value="admissions" className="gap-1.5">
+                <BedDouble className="h-4 w-4" />
+                Admissions List
+              </TabsTrigger>
+            )}
             {canSeeOpdLists && (
               <TabsTrigger value="scheduled" className="gap-1.5">
                 <CalendarClock className="h-4 w-4" />
@@ -407,17 +415,21 @@ export default function OpdPage() {
             />
           </TabsContent>
 
-          <TabsContent value="investigations">
-            <OpdInvestigationsListTable filters={queryFilters} page={page} onPageChange={setPage} />
-          </TabsContent>
+          {showInvestigations && (
+            <TabsContent value="investigations">
+              <OpdInvestigationsListTable filters={queryFilters} page={page} onPageChange={setPage} />
+            </TabsContent>
+          )}
 
           <TabsContent value="procedures">
             <OpdProceduresListTable filters={queryFilters} page={page} onPageChange={setPage} />
           </TabsContent>
 
-          <TabsContent value="admissions">
-            <OpdAdmissionsListTable filters={queryFilters} page={page} onPageChange={setPage} />
-          </TabsContent>
+          {showAdmissions && (
+            <TabsContent value="admissions">
+              <OpdAdmissionsListTable filters={queryFilters} page={page} onPageChange={setPage} />
+            </TabsContent>
+          )}
 
           {canSeeOpdLists && (
             <TabsContent value="scheduled">

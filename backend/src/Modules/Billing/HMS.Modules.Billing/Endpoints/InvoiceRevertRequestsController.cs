@@ -63,7 +63,7 @@ public class InvoiceRevertRequestsController : ControllerBase
     /// <response code="201">The revert request was raised and is waiting for approval.</response>
     /// <response code="400">No reason given, or the bill isn't an OP bill that can be reverted.</response>
     /// <response code="404">No invoice was found for the given id.</response>
-    /// <response code="409">A revert request for this bill is already pending.</response>
+    /// <response code="409">A cancellation request for this bill is already pending.</response>
     [Authorize]
     [RequirePermission("finance-billing.create")]
     [HttpPost("invoices/{invoiceId:guid}/revert-requests")]
@@ -173,7 +173,7 @@ public class InvoiceRevertRequestsController : ControllerBase
     private IActionResult SuperAdminOnly() => StatusCode(StatusCodes.Status403Forbidden, new ApiErrorResponse
     {
         ErrorCode = BillingErrorCodes.RevertSuperAdminOnly,
-        Message = "Only a Super Admin can approve or reject a bill revert request.",
+        Message = "Only a Super Admin can approve or reject a bill cancellation request.",
         CorrelationId = HttpContext.GetCorrelationId(),
         Timestamp = DateTime.UtcNow,
     });

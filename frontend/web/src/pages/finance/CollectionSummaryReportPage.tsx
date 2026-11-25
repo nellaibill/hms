@@ -23,6 +23,7 @@ import {
   getConsultantCollections,
   getDailyCollections,
   getHeadCollections,
+  OP_ENCOUNTER_TYPES,
   paymentsForEncounterTypes,
   ReportFilterBar,
   sumCollections,
@@ -85,7 +86,7 @@ function buildExportSections(data: CollectionSummaryData): ReportSection[] {
 
 /**
  * Accounts & Finance → Collection Summary (ADR-125): money actually received in the chosen
- * period on the current Accounts category's visits (ADR-134) — OP visits under OP Accounts, IP,
+ * period on the current Accounts category's visits (ADR-134) — OP and Emergency visits under OP Accounts (ADR-146), IP,
  * Day Care and Observation visits (discharge final bills included) under IP Accounts, by the day it was taken. Each payment is split into the consultant's and the
  * hospital's amount by the same rule OP Report uses (resolveLineCost). Three sections: day-wise
  * by head, per consultant, and per head with its consultants, ending in a grand total. The
@@ -97,8 +98,8 @@ export default function CollectionSummaryReportPage() {
   const isOp = category.key === 'op';
   // OP keeps the report's original title and remembered filters, so its printouts don't change.
   const reportTitle = isOp ? 'Collection Summary' : `${category.shortLabel} Collection Summary`;
-  const visitsLabel = isOp ? 'OP visits' : 'IP, day care and observation visits';
-  const encounterTypes = category.collectionEncounterTypes ?? ['OP'];
+  const visitsLabel = isOp ? 'OP and Emergency visits' : 'IP, day care and observation visits';
+  const encounterTypes = category.collectionEncounterTypes ?? OP_ENCOUNTER_TYPES;
   const { range, filters, appliedRange, appliedFilters, setRange, setFilters, reset } = useReportFilters(isOp ? 'collection' : `collection-${category.key}`);
   const { data: payments, isPending, isError } = useCollectionsQuery(appliedRange);
   const { data: brandingConfig } = useBrandingQuery();

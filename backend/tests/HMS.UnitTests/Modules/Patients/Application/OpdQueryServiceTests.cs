@@ -125,6 +125,59 @@ public class OpdQueryServiceTests
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
+    private PatientVisitConsultation GivenVisitConsultation(VisitType visitType, string? visitNumber)
+    {
+        var visit = PatientVisit.Create(PatientId, visitType, appointmentTypeId: null, createdBy: null, visitNumber: visitNumber);
+        visit.AddConsultation(PatientVisitConsultation.Create(visit.Id, DepartmentId, ConsultantId, consultationTypeId: null), updatedBy: null);
+        var consultation = visit.Consultations.Single();
+        _repository.GetByConsultationIdAsync(consultation.Id, Arg.Any<CancellationToken>()).Returns(visit);
+        return consultation;
+    }
+
+    [Fact]
+    public async Task TransitionAsync_StartConsultation_OnAnOpVisitWhoseFeeIsUnpaid_IsRefused()
+    {
+        // ADR-146: an OP visit has no OP No until its consultation fee is paid (ADR-103).
+        var consultation = GivenVisitConsultation(VisitType.OP, visitNumber: null);
+
+        var result = await _sut.TransitionAsync(consultation.Id, "start-consultation", actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PatientErrorCodes.ConsultationFeeNotPaid);
+        await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TransitionAsync_StartConsultation_OnAPaidOpVisit_Starts()
+    {
+        var consultation = GivenVisitConsultation(VisitType.OP, visitNumber: "OP-2026-000042");
+
+        var result = await _sut.TransitionAsync(consultation.Id, "start-consultation", actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(OpdConsultationStatus.InConsultation);
+    }
+
+    [Fact]
+    public async Task TransitionAsync_CheckIn_OnAnOpVisitWhoseFeeIsUnpaid_IsStillAllowed()
+    {
+        var consultation = GivenVisitConsultation(VisitType.OP, visitNumber: null);
+
+        var result = await _sut.TransitionAsync(consultation.Id, "check-in", actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TransitionAsync_StartConsultation_OnAnEmergencyVisit_IsNeverHeldForPayment()
+    {
+        var consultation = GivenVisitConsultation(VisitType.Emergency, visitNumber: null);
+
+        var result = await _sut.TransitionAsync(consultation.Id, "start-consultation", actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
     [Fact]
     public async Task TransitionAsync_IllegalTransition_ReturnsFailureAndDoesNotSave()
     {

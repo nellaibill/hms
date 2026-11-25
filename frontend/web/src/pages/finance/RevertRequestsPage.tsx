@@ -22,7 +22,7 @@ const FILTERS: { value: InvoiceRevertRequestStatus | undefined; label: string }[
 
 function StatusBadge({ status }: { status: InvoiceRevertRequestStatus }) {
   if (status === 'Pending') return <Badge variant="warning">Pending</Badge>;
-  if (status === 'Approved') return <Badge variant="secondary">Reverted</Badge>;
+  if (status === 'Approved') return <Badge variant="secondary">Cancelled</Badge>;
   return <Badge variant="outline">Rejected</Badge>;
 }
 
@@ -40,7 +40,7 @@ function Decision({ request }: { request: InvoiceRevertRequestResponse }) {
   );
 }
 
-/** The Accounts & Finance "Revert Requests" tab — OP bill revert requests (ADR-106). Pending
+/** The Accounts & Finance "Cancellation Requests" tab — OP bill cancellation requests (ADR-106). Pending
  * requests are the Super Admin's approval queue (oldest first); anyone with billing access can
  * read the list, but only a Super Admin sees Approve/Reject. */
 export default function RevertRequestsPage() {
@@ -56,7 +56,7 @@ export default function RevertRequestsPage() {
       <PageBanner
         icon={Wallet}
         title="Accounts and Finance"
-        subtitle="OP bill revert requests — raised by billing staff, approved or rejected by the Super Admin."
+        subtitle="OP bill cancellation requests — raised by billing staff, approved or rejected by the Super Admin."
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
       />
@@ -96,15 +96,15 @@ export default function RevertRequestsPage() {
 
         {isError && (
           <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error instanceof Error ? error.message : 'Failed to load revert requests.'}
+            {error instanceof Error ? error.message : 'Failed to load cancellation requests.'}
           </p>
         )}
 
         {!isPending && !isError && data && data.items.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-              <p className="text-sm font-medium text-foreground">No {status ? status.toLowerCase() : ''} revert requests</p>
-              <p className="text-sm text-muted-foreground">Billing staff raise one from an OP bill's page with "Request Revert".</p>
+              <p className="text-sm font-medium text-foreground">No {status ? status.toLowerCase() : ''} cancellation requests</p>
+              <p className="text-sm text-muted-foreground">Billing staff raise one from an OP bill's page with "Request Cancellation".</p>
             </CardContent>
           </Card>
         )}

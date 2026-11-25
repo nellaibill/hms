@@ -122,10 +122,23 @@ public class InvoiceRevertServiceTests
         await _patientVisitService.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task CreateAsync_OnAnEmergencyVisitsBill_IsEligible_LikeAnOpBill()
+    {
+        // ADR-146: OP Accounts covers OP and Emergency bills, so a casualty bill can be reverted.
+        var invoice = GivenInvoice(VisitType.Emergency);
+
+        var result = await _sut.CreateAsync(invoice.Id, new CreateInvoiceRevertRequest { Reason = "Wrong bill" }, _actorId, null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _repository.Received().AddAsync(Arg.Any<InvoiceRevertRequest>(), Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [InlineData(VisitType.IP)]
-    [InlineData(VisitType.Emergency)]
-    public async Task CreateAsync_OnANonOpVisitsBill_IsNotEligible(VisitType visitType)
+    [InlineData(VisitType.DayCare)]
+    [InlineData(VisitType.Observation)]
+    public async Task CreateAsync_OnAnInpatientSideVisitsBill_IsNotEligible(VisitType visitType)
     {
         var invoice = GivenInvoice(visitType);
 

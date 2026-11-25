@@ -4,7 +4,7 @@ import { PageBanner } from '@/components/PageBanner';
 import { formatCurrency, useInvoicesForReportQuery } from '@/features/billing';
 import { useDiagnosticServices, usePrimeDiagnosticPackageCache } from '@/features/diagnostics';
 import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
-import { AccountsNavTabs, filterProfitRows, getProfitRows, onlyOpVisitBillings, ReportFilterBar, useReportFilters } from '@/features/reports';
+import { AccountsNavTabs, filterProfitRows, getProfitRows, onlyOpAccountBillings, ReportFilterBar, useReportFilters } from '@/features/reports';
 import { DayWiseProfitExportButtons } from '@/features/reports/components/DayWiseProfitExportButtons';
 import { DayWiseProfitTable, FigureCells } from '@/features/reports/components/DayWiseProfitTable';
 import { groupDayWiseProfit, profitPercent } from '@/features/reports/dayWiseProfit';
@@ -12,7 +12,7 @@ import { groupDayWiseProfit, profitPercent } from '@/features/reports/dayWisePro
 const REPORT_TITLE = 'Day-wise Profit';
 
 /**
- * Day-wise Profit (ADR-142) — for the admin and the front desk alike: every OP bill line in the
+ * Day-wise Profit (ADR-142) — for the admin and the front desk alike: every OP and Emergency bill line (ADR-146) in the
  * range, grouped by day, then by the billed consultant, then by charge head (Consultation,
  * Laboratory, Radiology, Procedure, Injection, File…). Each level shows what was billed, the
  * consultant's share, the running cost and the profit the hospital keeps — the same rules as
@@ -34,7 +34,7 @@ export default function DayWiseProfitReportPage() {
   const diagnosticPackages = usePrimeDiagnosticPackageCache();
 
   const rows = useMemo(
-    () => getProfitRows(onlyOpVisitBillings(billings ?? []), appliedRange),
+    () => getProfitRows(onlyOpAccountBillings(billings ?? []), appliedRange),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the priming hooks' data is what makes the resolvers' answers change
     [billings, appliedRange, diagnosticTestOptions, departmentOptions, consultantOptions, consultationTypeOptions, radiologyServices, laboratoryServices, diagnosticPackages],
   );
@@ -51,7 +51,7 @@ export default function DayWiseProfitReportPage() {
       <PageBanner
         icon={CalendarRange}
         title={REPORT_TITLE}
-        subtitle="Every OP bill by day, then consultant, then charge head — what was billed, the consultant's share, the running cost and the hospital's profit."
+        subtitle="Every OP and Emergency bill by day, then consultant, then charge head — what was billed, the consultant's share, the running cost and the hospital's profit."
         backTo="/finance/accounts"
         backLabel="Back to Accounts and Finance"
       />
@@ -92,7 +92,7 @@ export default function DayWiseProfitReportPage() {
             Loading bills…
           </div>
         ) : report.days.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No OP bills match the current filters.</p>
+          <p className="text-sm text-muted-foreground">No OP or Emergency bills match the current filters.</p>
         ) : (
           <>
             <section aria-labelledby="dwp-heads" className="flex flex-col gap-2">

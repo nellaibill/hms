@@ -1,4 +1,5 @@
 import { describeReportService, resolveItemCostPrice, resolveItemCostSplit, type Billing, type BillingItem, type BillingType } from '@/features/billing';
+import { OP_ENCOUNTER_TYPES } from './accountsCategories';
 import type { BreakdownRow } from './incomeExpenseReport';
 import type { ReportDateRange } from './types';
 
@@ -113,11 +114,12 @@ export function displayedCost(row: Pick<ProfitReportRow, 'billingType' | 'cost'>
   return labels.consultantShareOnly && !hasConsultantShare(row.billingType) ? null : row.cost;
 }
 
-/** OP Report counts only bills for visits registered as OP (ADR-121) — IP, Emergency, Day
- * Care and Observation visits are billed through the same counter but aren't outpatients. A
- * bill whose visit type is unknown (its visit can't be found) is left out too. */
-export function onlyOpVisitBillings(billings: Billing[]): Billing[] {
-  return billings.filter((billing) => billing.encounterType === 'OP');
+/** OP Report, Day-wise Profit and Today's Profit count only bills for OP and Emergency visits
+ * (ADR-121, ADR-146) — IP, Day Care and Observation visits are billed through the same counter
+ * but aren't outpatients. A bill whose visit type is unknown (its visit can't be found) is left
+ * out too. */
+export function onlyOpAccountBillings(billings: Billing[]): Billing[] {
+  return billings.filter((billing) => billing.encounterType !== undefined && (OP_ENCOUNTER_TYPES as readonly string[]).includes(billing.encounterType));
 }
 
 /** A bill line's cost — the consultant's share for a consultation, a service's cost price

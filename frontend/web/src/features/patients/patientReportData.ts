@@ -1,4 +1,5 @@
 import type { Patient, PatientVisit } from '@hms/shared';
+import { toRangeEnd, toRangeStart } from '@/lib/reportDateRange';
 import { patientsApi } from '@/services/apiClient';
 
 // Firing every remaining page in one Promise.all was tried first and confirmed live, against
@@ -45,11 +46,12 @@ async function fetchAllPages<T>(fetchPage: (page: number) => Promise<PageResult<
   return { items: all, truncated: totalPages > maxPages };
 }
 
-/** `to` (a plain YYYY-MM-DD date) needs pushing to end-of-day before sending — the backend
- * compares the full CreatedAt timestamp with `<= To`, so sending just the bare date would mean
- * "up to midnight" and silently exclude every row later that same day. */
-function toEndOfDay(to: string | undefined): string | undefined {
-  return to ? `${to}T23:59:59.999` : undefined;
+/** The plain YYYY-MM-DD range as the local day's first and last instants — the backend compares
+ * the full CreatedAt timestamp with `From <= t <= To`, so a bare "To" date would mean "up to
+ * midnight" and silently exclude every row later that same day, and a bare date is a UTC day,
+ * not the hospital's (ADR-146). */
+function toInstantRange(from: string, to: string): { from?: string; to?: string } {
+  return { from: toRangeStart(from), to: toRangeEnd(to) };
 }
 
 /** Capped at 2,000 patients (20 pages at the server's MaxPageSize of 100) — see
@@ -67,7 +69,7 @@ export interface PatientReportData {
 }
 
 export async function getAllPatientsForReport(from: string, to: string): Promise<PatientReportData> {
-  const result = await fetchAllPages((page) => patientsApi.getPatients({ page, pageSize: 100, from, to: toEndOfDay(to) }), MAX_PATIENT_PAGES);
+  const result = await fetchAllPages((page) => patientsApi.getPatients({ page, pageSize: 100, ...toInstantRange(from, to) }), MAX_PATIENT_PAGES);
   return { patients: result.items, truncated: result.truncated };
 }
 
@@ -78,6 +80,6 @@ export async function getAllPatientsForReport(from: string, to: string): Promise
 const MAX_VISIT_PAGES = 50;
 
 export async function getAllPatientVisitsForReport(from: string, to: string): Promise<PatientVisit[]> {
-  const result = await fetchAllPages((page) => patientsApi.getAllVisits({ page, pageSize: 100, from, to: toEndOfDay(to) }), MAX_VISIT_PAGES);
+  const result = await fetchAllPages((page) => patientsApi.getAllVisits({ page, pageSize: 100, ...toInstantRange(from, to) }), MAX_VISIT_PAGES);
   return result.items;
 }

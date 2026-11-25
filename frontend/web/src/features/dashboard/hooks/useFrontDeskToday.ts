@@ -13,7 +13,7 @@ const live = {
   placeholderData: keepPreviousData,
 };
 
-/** Today's OP visits per consultant: waiting, with the doctor, done (ADR-121: OP visits only). */
+/** Today's OP and Emergency visits per consultant: waiting, with the doctor, done (ADR-121, ADR-146). */
 export function useOpdTodayQuery(range: TodayRange, enabled: boolean) {
   return useQuery({
     queryKey: ['front-desk', 'opd-summary', range.date],

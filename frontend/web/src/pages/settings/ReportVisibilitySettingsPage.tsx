@@ -65,7 +65,7 @@ export default function ReportVisibilitySettingsPage() {
             <CardTitle className="text-base">Accounts & Finance reports</CardTitle>
             <CardDescription>
               A report that is switched off is hidden for everyone, Super Admins included. OP Report, Collection Summary,
-              Recent Bills, All Invoices, Revert Requests and Discount Requests always show.
+              Recent Bills, All Invoices, Cancellation Requests and Discount Requests always show.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-1">

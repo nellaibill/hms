@@ -86,7 +86,8 @@ internal class PatientVisitRepository : IPatientVisitRepository
     public async Task<IReadOnlyList<PatientVisit>> GetOpVisitsWithOpenConsultationsBeforeAsync(DateTime beforeUtc, int take, CancellationToken cancellationToken)
         => await _dbContext.PatientVisits
             .Include(v => v.Consultations)
-            .Where(v => v.VisitType == VisitType.OP && v.Consultations.Any(c =>
+            // OP and Emergency visits (ADR-146): both are in the OPD queue, so both are closed.
+            .Where(v => (v.VisitType == VisitType.OP || v.VisitType == VisitType.Emergency) && v.Consultations.Any(c =>
                 (c.Status == OpdConsultationStatus.Waiting || c.Status == OpdConsultationStatus.CheckedIn || c.Status == OpdConsultationStatus.InConsultation)
                 && c.AppointmentTime < beforeUtc))
             .OrderBy(v => v.CreatedAt)
@@ -141,11 +142,12 @@ internal class PatientVisitRepository : IPatientVisitRepository
         // From/To/Department/Search filters against GetOpdConsultationSummaryRowsAsync below
         // rather than sharing a helper, since a helper can't return/re-accept this anonymous
         // type across a method boundary without reintroducing the same problem.
-        // OP visits only (ADR-121): IP, Emergency, Day Care and Observation visits carry
-        // consultations too, but they aren't the OPD's patients.
+        // OP and Emergency visits only (ADR-121, ADR-146): IP, Day Care and Observation visits
+        // carry consultations too, but they aren't the OPD's patients. Casualty patients are
+        // seen by the OPD doctors, so Emergency visits are.
         var rows =
             from visit in _dbContext.PatientVisits
-            where visit.VisitType == VisitType.OP
+            where visit.VisitType == VisitType.OP || visit.VisitType == VisitType.Emergency
             from consultation in visit.Consultations
             join patient in _dbContext.Patients on visit.PatientId equals patient.Id
             select new { consultation, visit, patient };
@@ -221,10 +223,10 @@ internal class PatientVisitRepository : IPatientVisitRepository
     {
         // See GetOpdPatientListPagedAsync's own comment for why this duplicates the filter
         // logic instead of sharing a helper — an EF Core translation constraint, not a
-        // stylistic choice. OP visits only, same as the Patient List (ADR-121).
+        // stylistic choice. OP and Emergency visits only, same as the Patient List (ADR-146).
         var rows =
             from visit in _dbContext.PatientVisits
-            where visit.VisitType == VisitType.OP
+            where visit.VisitType == VisitType.OP || visit.VisitType == VisitType.Emergency
             from consultation in visit.Consultations
             join patient in _dbContext.Patients on visit.PatientId equals patient.Id
             select new { consultation, visit, patient };

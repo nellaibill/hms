@@ -48,7 +48,7 @@ internal class InvoiceRevertService : IInvoiceRevertService
     private readonly TimeProvider _clock;
 
     /// <summary>The decision note on a revert approved at the moment it was raised (ADR-136).</summary>
-    internal const string AutoApprovedNote = "Approved automatically — bill revert approval is switched off.";
+    internal const string AutoApprovedNote = "Approved automatically — bill cancellation approval is switched off.";
 
     public InvoiceRevertService(
         IInvoiceRepository invoiceRepository,
@@ -102,32 +102,33 @@ internal class InvoiceRevertService : IInvoiceRevertService
     {
         if (invoice.IsVoided)
         {
-            return invoice.IsReverted ? "This bill has already been reverted." : "This bill has been voided.";
+            return invoice.IsReverted ? "This bill has already been cancelled." : "This bill has been voided.";
         }
 
         if (invoice.DiscountStatus == InvoiceDiscountRequestStatus.Pending)
         {
-            return "This bill's discount is still waiting for approval — a revert can be requested once it's approved or rejected.";
+            return "This bill's discount is still waiting for approval — a cancellation can be requested once it's approved or rejected.";
         }
 
         if (invoice.Items.Any(i => i.BillingType is BillingType.Pharmacy or BillingType.InpatientCharge))
         {
-            return "Only OP bills can be reverted — this bill has pharmacy or inpatient charges.";
+            return "Only OP bills can be cancelled — this bill has pharmacy or inpatient charges.";
         }
 
         if (invoice.VisitId != invoice.PatientId)
         {
             var visit = await _patientVisitService.GetByIdAsync(invoice.PatientId, invoice.VisitId, cancellationToken);
-            if (visit is { IsSuccess: true, Value: { } found } && found.VisitType != VisitType.OP)
+            // OP Accounts covers OP and Emergency bills (ADR-146), so both can be reverted.
+            if (visit is { IsSuccess: true, Value: { } found } && found.VisitType is not (VisitType.OP or VisitType.Emergency))
             {
-                return $"Only OP bills can be reverted — this bill belongs to a {found.VisitType} visit.";
+                return $"Only OP and Emergency bills can be cancelled — this bill belongs to a {found.VisitType} visit.";
             }
         }
 
         var billDate = HospitalDate(invoice.CreatedAt);
         if (billDate != HospitalDate(_clock.GetUtcNow().UtcDateTime))
         {
-            return $"A revert can only be requested on the day the bill was made — this bill is from {billDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.";
+            return $"A cancellation can only be requested on the day the bill was made — this bill is from {billDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.";
         }
 
         return null;
@@ -143,7 +144,7 @@ internal class InvoiceRevertService : IInvoiceRevertService
 
         var requests = await _repository.GetByInvoiceIdAsync(invoiceId, cancellationToken);
         var ineligibleReason = requests.Any(r => r.Status == InvoiceRevertRequestStatus.Pending)
-            ? "A revert request for this bill is already waiting for Super Admin approval."
+            ? "A cancellation request for this bill is already waiting for Super Admin approval."
             : await GetIneligibleReasonAsync(invoice, cancellationToken);
 
         return Result<InvoiceRevertStatusResponse>.Success(new InvoiceRevertStatusResponse
@@ -165,7 +166,7 @@ internal class InvoiceRevertService : IInvoiceRevertService
         var existing = await _repository.GetByInvoiceIdAsync(invoiceId, cancellationToken);
         if (existing.Any(r => r.Status == InvoiceRevertRequestStatus.Pending))
         {
-            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertAlreadyPending, "A revert request for this bill is already waiting for Super Admin approval.");
+            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertAlreadyPending, "A cancellation request for this bill is already waiting for Super Admin approval.");
         }
 
         var ineligibleReason = await GetIneligibleReasonAsync(invoice, cancellationToken);
@@ -177,7 +178,7 @@ internal class InvoiceRevertService : IInvoiceRevertService
         var revertRequest = InvoiceRevertRequest.Create(invoice, request.Reason, actorName, actorId);
         await _repository.AddAsync(revertRequest, cancellationToken);
 
-        // While bill revert approval is switched off (ADR-136) the bill is reverted right away,
+        // While bill cancellation approval is switched off (ADR-136) the bill is reverted right away,
         // recorded as approved by whoever asked — in the same save as the request.
         var approveNow = !(await _billingSettings.GetAsync(cancellationToken)).RevertsNeedApproval;
         var invoiceBefore = approveNow ? invoice.ToResponse() : null;
@@ -190,10 +191,10 @@ internal class InvoiceRevertService : IInvoiceRevertService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
-        await LogAsync(ActivityLogActions.Create, "InvoiceRevertRequest", revertRequest.Id, invoice.InvoiceNumber, $"Requested revert of invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Create, "InvoiceRevertRequest", revertRequest.Id, invoice.InvoiceNumber, $"Requested cancellation of invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", null, response, actorId, cancellationToken);
         if (approveNow)
         {
-            await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Reverted invoice {invoice.InvoiceNumber} without approval (switched off): {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
+            await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Cancelled invoice {invoice.InvoiceNumber} without approval (switched off): {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
         }
 
         return Result<InvoiceRevertRequestResponse>.Success(response);
@@ -216,12 +217,12 @@ internal class InvoiceRevertService : IInvoiceRevertService
         var revertRequest = await _repository.GetByIdAsync(id, cancellationToken);
         if (revertRequest is null)
         {
-            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotFound, $"Revert request '{id}' was not found.");
+            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotFound, $"Cancellation request '{id}' was not found.");
         }
 
         if (revertRequest.Status != InvoiceRevertRequestStatus.Pending)
         {
-            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotPending, $"This revert request has already been {revertRequest.Status.ToString().ToLowerInvariant()}.");
+            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotPending, $"This cancellation request has already been {revertRequest.Status.ToString().ToLowerInvariant()}.");
         }
 
         var invoice = await _invoiceRepository.GetByIdAsync(revertRequest.InvoiceId, cancellationToken);
@@ -249,8 +250,8 @@ internal class InvoiceRevertService : IInvoiceRevertService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
-        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, invoice.InvoiceNumber, $"Approved revert of invoice {invoice.InvoiceNumber} — refund {ActivityLogMoney.Format(revertRequest.PaidAmount)}", null, response, actorId, cancellationToken);
-        await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Reverted invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, invoice.InvoiceNumber, $"Approved cancellation of invoice {invoice.InvoiceNumber} — refund {ActivityLogMoney.Format(revertRequest.PaidAmount)}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Void, "Invoice", invoice.Id, invoice.InvoiceNumber, $"Cancelled invoice {invoice.InvoiceNumber}: {revertRequest.Reason}", invoiceBefore, invoice.ToResponse(), actorId, cancellationToken);
 
         return Result<InvoiceRevertRequestResponse>.Success(response);
     }
@@ -260,19 +261,19 @@ internal class InvoiceRevertService : IInvoiceRevertService
         var revertRequest = await _repository.GetByIdAsync(id, cancellationToken);
         if (revertRequest is null)
         {
-            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotFound, $"Revert request '{id}' was not found.");
+            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotFound, $"Cancellation request '{id}' was not found.");
         }
 
         if (revertRequest.Status != InvoiceRevertRequestStatus.Pending)
         {
-            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotPending, $"This revert request has already been {revertRequest.Status.ToString().ToLowerInvariant()}.");
+            return Result<InvoiceRevertRequestResponse>.Failure(BillingErrorCodes.RevertRequestNotPending, $"This cancellation request has already been {revertRequest.Status.ToString().ToLowerInvariant()}.");
         }
 
         revertRequest.Reject(actorId, actorName, request.Notes);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var response = ToRevertResponse(revertRequest);
-        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, revertRequest.InvoiceNumber, $"Rejected revert of invoice {revertRequest.InvoiceNumber}: {revertRequest.DecisionNotes}", null, response, actorId, cancellationToken);
+        await LogAsync(ActivityLogActions.Update, "InvoiceRevertRequest", revertRequest.Id, revertRequest.InvoiceNumber, $"Rejected cancellation of invoice {revertRequest.InvoiceNumber}: {revertRequest.DecisionNotes}", null, response, actorId, cancellationToken);
 
         return Result<InvoiceRevertRequestResponse>.Success(response);
     }

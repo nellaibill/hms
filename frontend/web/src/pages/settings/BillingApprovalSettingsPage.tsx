@@ -37,9 +37,9 @@ const DISCOUNT_ROWS: SettingRow[] = [
 const REVERT_ROWS: SettingRow[] = [
   {
     key: 'revertsNeedApproval',
-    label: 'Send bill reverts for approval',
+    label: 'Send bill cancellations for approval',
     description:
-      'When on, a revert request waits for the Super Admin to approve or reject it. When off, the bill is reverted as soon as it’s requested, recorded as approved by the person who asked. Only today’s OP bills can be reverted either way.',
+      'When on, a cancellation request waits for the Super Admin to approve or reject it. When off, the bill is cancelled as soon as it’s requested, recorded as approved by the person who asked. Only today’s OP bills can be cancelled either way.',
   },
 ];
 
@@ -79,7 +79,7 @@ export default function BillingApprovalSettingsPage() {
       onSuccess: () =>
         toast({
           title: 'Billing approvals saved',
-          description: 'They apply to the next discount or revert.',
+          description: 'They apply to the next discount or cancellation.',
           variant: 'success',
         }),
       onError: (error) =>
@@ -146,7 +146,7 @@ export default function BillingApprovalSettingsPage() {
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             A Super Admin’s own discount always applies at once. Requests already waiting for
-            approval stay in the Discount Requests and Revert Requests queues after a change.
+            approval stay in the Discount Requests and Cancellation Requests queues after a change.
           </span>
         </p>
 
@@ -178,8 +178,8 @@ export default function BillingApprovalSettingsPage() {
 
             <Card className="max-w-3xl">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Bill reverts</CardTitle>
-                <CardDescription>"Request Revert" on a bill’s page.</CardDescription>
+                <CardTitle className="text-base">Bill cancellations</CardTitle>
+                <CardDescription>"Request Cancellation" on a bill’s page.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-1">
                 {REVERT_ROWS.map((row) => renderRow(row, draft))}

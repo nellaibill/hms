@@ -11,9 +11,10 @@ namespace HMS.Modules.Patients.Application;
 /// ITenantContext — run once a night by OpdDayCloseSchedulerService.</summary>
 internal interface IOpdDayCloseService
 {
-    /// <summary>Auto-completes every OP consultation line still Waiting/CheckedIn/InConsultation
-    /// whose appointment fell on an earlier hospital-local day than <paramref name="nowUtc"/>'s.
-    /// Today's and future lines, other statuses and non-OP visits are never touched, so running
+    /// <summary>Auto-completes every OP or Emergency consultation line (ADR-146) still
+    /// Waiting/CheckedIn/InConsultation whose appointment fell on an earlier hospital-local day
+    /// than <paramref name="nowUtc"/>'s. Today's and future lines, other statuses and IP, Day
+    /// Care and Observation visits are never touched, so running
     /// it twice changes nothing the second time. Returns how many lines it closed.</summary>
     Task<int> AutoCompleteStaleConsultationsAsync(DateTime nowUtc, CancellationToken cancellationToken);
 }

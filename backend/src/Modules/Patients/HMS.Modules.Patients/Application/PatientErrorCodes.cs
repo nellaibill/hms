@@ -22,6 +22,7 @@ internal static class PatientErrorCodes
     public const string ConsultationTypeNotOffered = "PATIENTS.CONSULTATION_TYPE_NOT_OFFERED";
     public const string ConsultationNotFound = "PATIENTS.CONSULTATION_NOT_FOUND";
     public const string InvalidStatusTransition = "PATIENTS.INVALID_STATUS_TRANSITION";
+    public const string ConsultationFeeNotPaid = "PATIENTS.CONSULTATION_FEE_NOT_PAID";
 
     public const string ImportBatchNotFound = "PATIENTS.IMPORT_BATCH_NOT_FOUND";
     public const string ImportBatchNotReady = "PATIENTS.IMPORT_BATCH_NOT_READY";

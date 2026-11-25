@@ -199,14 +199,14 @@ function LaboratoryBillingRow({
   }, [itemType, itemId, services, packages, setValue]);
 
   useEffect(() => {
-    // Seeds this row's Consultant once, when it's first created — see ServiceBillingCard's
-    // identical effect (Radiology/Procedure) for the full reasoning; Laboratory has its own row
-    // component but shares the same remembered-consultant behavior.
-    if (defaultConsultantId && !getValues(`${basePath}.consultantId`)) {
-      setValue(`${basePath}.consultantId`, defaultConsultantId);
+    // Fills this row's Consultant once a test or package is chosen — see ServiceBillingCard's
+    // identical effect (Radiology/Procedure) for why it waits for a selection; Laboratory has its
+    // own row component but shares the same remembered-consultant behavior.
+    if (itemId && defaultConsultantId && !getValues(`${basePath}.consultantId`)) {
+      setValue(`${basePath}.consultantId`, defaultConsultantId, { shouldValidate: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [itemId]);
 
   const rowErrors = errors.laboratory?.[index];
   const amount = Math.max(quantity * charge - discount, 0);

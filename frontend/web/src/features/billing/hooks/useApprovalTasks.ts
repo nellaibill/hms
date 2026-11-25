@@ -75,12 +75,12 @@ export function useApprovalTasks() {
   if (isSuperAdmin && reverts.data) {
     groups.push({
       key: 'reverts',
-      label: 'Bill revert requests',
+      label: 'Bill cancellation requests',
       total: reverts.data.meta.totalCount,
       viewAllTo: '/finance/accounts/op/revert-requests',
       tasks: reverts.data.items.map((request) => ({
         id: `revert-${request.id}`,
-        title: `Revert ${request.invoiceNumber} — ${request.patientName}`,
+        title: `Cancel ${request.invoiceNumber} — ${request.patientName}`,
         detail: requestedBy(request.requestedByName, request.reason),
         requestedAt: request.requestedAt,
         to: `/finance/accounts/${request.invoiceId}`,
