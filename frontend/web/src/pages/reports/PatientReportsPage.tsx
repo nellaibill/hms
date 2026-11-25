@@ -169,6 +169,8 @@ export default function PatientReportsPage() {
         icon={Users}
         title="Patient Reports"
         subtitle="Patient registration and patient activity reports"
+        backTo="/finance/accounts"
+        backLabel="Back to Accounts and Finance"
         className="print:hidden"
       />
 

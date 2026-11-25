@@ -37,6 +37,24 @@ _To be documented._
 
 ## Decisions
 
+### ADR-151: Bill lists, approval queues and Patient Reports are switched in Reports Visibility
+**Date:** 2026-11-25
+**Status:** Accepted (amends ADR-120 and ADR-134)
+
+**Context**
+- **Not every tab is wanted.** The user wants Accounts and Finance to show only the tabs a hospital uses. Recent Bills, All Invoices, Cancellation Requests and Discount Requests always showed, because ADR-120 counted bill lists and approval queues as "not reports".
+- **The Reports menu wasn't useful as a menu.** It held only Patient Reports. The user wanted it out of the sidebar and into Accounts and Finance, behind the same setting.
+
+**Decision**
+- **Four tabs get switches.** Settings → Reports Visibility now lists Recent Bills, All Invoices, Cancellation Requests and Discount Requests (keys `recentBills`, `allInvoices`, `cancellationRequests`, `discountRequests`). Each tab shows, and its URL opens, only while its switch is on, in every category that has it: OP, IP and Lab for the bill lists, OP for the queues.
+- **Patient Reports moves into Accounts and Finance.** The sidebar Reports menu is gone. Patient Reports is a "Patient Reports" card in Accounts and Finance (category `patients`, behind the `reports` module), switched by `patientReports`. The page still needs `patient-management.view`, and the old `/reports` address redirects to it.
+- **Hidden tabs redirect sensibly.** A hidden tab's URL goes to its category's first tab that shows, not to the landing tab, which can now be hidden too. A category with nothing switched on shows a short message, and its card is left off the Accounts and Finance page.
+- **Server keys.** `AccountsReportKeys` accepts the five new keys. No migration: visibility is stored as a list of keys.
+
+**Consequences**
+- After deploy these tabs are hidden on every hospital until a Super Admin switches them on, OP Report and Collection Summary aside.
+- If Billing Approvals asks for discount or cancellation approval, the matching request tab must be switched on for the Super Admin's queue to show. The settings page says so.
+
 ### ADR-150: Settings and the Activity Log are the Super Admin's alone; doctors don't get Reception and Registration
 **Date:** 2026-11-25
 **Status:** Accepted (amends ADR-123 and ADR-128 for these menus)

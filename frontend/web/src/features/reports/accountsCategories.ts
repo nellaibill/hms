@@ -1,5 +1,5 @@
 import type { AccountCategory } from '@hms/shared';
-import { BedDouble, FlaskConical, Pill, Stethoscope, type LucideIcon } from 'lucide-react';
+import { BedDouble, FlaskConical, Pill, Stethoscope, Users, type LucideIcon } from 'lucide-react';
 import type { AccountsReport } from '@/features/branding/types';
 
 /**
@@ -7,7 +7,7 @@ import type { AccountsReport } from '@/features/branding/types';
  * card per category, and each category has its own tab bar. This file is the single source for
  * the cards, the tab bars and the routes (routes.tsx builds one route per tab from it).
  */
-export type AccountsCategoryKey = 'op' | 'ip' | 'pharmacy' | 'lab';
+export type AccountsCategoryKey = 'op' | 'ip' | 'pharmacy' | 'lab' | 'patients';
 
 /** Every page a tab can open — routes.tsx maps each one to its page component. */
 export type AccountsTabId =
@@ -23,14 +23,17 @@ export type AccountsTabId =
   | 'pharmacyBills'
   | 'pharmacyReport'
   | 'laboratory'
-  | 'radiology';
+  | 'radiology'
+  | 'patientReports';
 
 export interface AccountsTab {
   id: AccountsTabId;
-  /** Path under the category's own base path; '' is the category's landing tab. */
+  /** Path under the category's own base path; '' is the category's landing tab. When the landing
+   * tab is hidden (ADR-151), the category opens on its first tab that shows. */
   path: string;
   label: string;
-  /** Shown only once Settings → Reports Visibility turns it on (ADR-120). */
+  /** Shown only once Settings → Reports Visibility turns it on (ADR-120; bill lists and
+   * approval queues since ADR-151). */
   report?: AccountsReport;
   /** Shows the pending approvals count on the tab. */
   pendingCount?: 'revert' | 'discount';
@@ -78,12 +81,12 @@ export const ACCOUNTS_CATEGORIES: readonly AccountsCategoryConfig[] = [
     canCreateInvoice: true,
     collectionEncounterTypes: OP_ENCOUNTER_TYPES,
     tabs: [
-      { id: 'recentBills', path: '', label: 'Recent Bills' },
-      { id: 'allInvoices', path: 'invoices', label: 'All Invoices' },
+      { id: 'recentBills', path: '', label: 'Recent Bills', report: 'recentBills' },
+      { id: 'allInvoices', path: 'invoices', label: 'All Invoices', report: 'allInvoices' },
       // OP bill cancellation requests (ADR-106) — the Super Admin's approval queue.
-      { id: 'revertRequests', path: 'revert-requests', label: 'Cancellation Requests', pendingCount: 'revert' },
+      { id: 'revertRequests', path: 'revert-requests', label: 'Cancellation Requests', pendingCount: 'revert', report: 'cancellationRequests' },
       // Bill discount requests (ADR-109) — only OP charges can be discounted.
-      { id: 'discountRequests', path: 'discount-requests', label: 'Discount Requests', pendingCount: 'discount' },
+      { id: 'discountRequests', path: 'discount-requests', label: 'Discount Requests', pendingCount: 'discount', report: 'discountRequests' },
       { id: 'incomeExpense', path: 'reports', label: 'Income & Expense', report: 'incomeExpense' },
       { id: 'opReport', path: 'reports/profit', label: 'OP Report' },
       { id: 'dayWiseProfit', path: 'reports/day-wise', label: 'Day-wise Profit' },
@@ -103,8 +106,8 @@ export const ACCOUNTS_CATEGORIES: readonly AccountsCategoryConfig[] = [
     canCreateInvoice: false,
     collectionEncounterTypes: IP_ENCOUNTER_TYPES,
     tabs: [
-      { id: 'recentBills', path: '', label: 'Recent Bills' },
-      { id: 'allInvoices', path: 'invoices', label: 'All Invoices' },
+      { id: 'recentBills', path: '', label: 'Recent Bills', report: 'recentBills' },
+      { id: 'allInvoices', path: 'invoices', label: 'All Invoices', report: 'allInvoices' },
       { id: 'collectionSummary', path: 'reports/collection', label: 'Collection Summary' },
     ],
   },
@@ -131,13 +134,31 @@ export const ACCOUNTS_CATEGORIES: readonly AccountsCategoryConfig[] = [
     invoiceCategory: 'Lab',
     canCreateInvoice: true,
     tabs: [
-      { id: 'recentBills', path: '', label: 'Recent Bills' },
-      { id: 'allInvoices', path: 'invoices', label: 'All Invoices' },
+      { id: 'recentBills', path: '', label: 'Recent Bills', report: 'recentBills' },
+      { id: 'allInvoices', path: 'invoices', label: 'All Invoices', report: 'allInvoices' },
       { id: 'laboratory', path: 'reports/laboratory', label: 'Laboratory', report: 'laboratory' },
       { id: 'radiology', path: 'reports/radiology', label: 'Radiology', report: 'radiology' },
     ],
   },
+  {
+    // Patient Reports moved here from its own sidebar menu (ADR-151). Shown only once Settings →
+    // Reports Visibility turns it on; with it off the card isn't offered at all.
+    key: 'patients',
+    label: 'Patient Reports',
+    shortLabel: 'Patients',
+    description: 'Patient registrations and visits for a period, with Excel export and print.',
+    icon: Users,
+    feature: 'reports',
+    canCreateInvoice: false,
+    tabs: [{ id: 'patientReports', path: '', label: 'Patient Reports', report: 'patientReports' }],
+  },
 ];
+
+/** A category's tabs the hospital shows: every tab without a visibility switch, and those whose
+ * switch is on (ADR-120/151). */
+export function visibleAccountsTabs(category: AccountsCategoryConfig, isVisible: (report: AccountsReport) => boolean): AccountsTab[] {
+  return category.tabs.filter((tab) => !tab.report || isVisible(tab.report));
+}
 
 export function getAccountsCategory(key: AccountsCategoryKey): AccountsCategoryConfig {
   return ACCOUNTS_CATEGORIES.find((category) => category.key === key)!;
@@ -161,4 +182,6 @@ export const LEGACY_ACCOUNTS_REDIRECTS: readonly (readonly [from: string, to: st
   ['/finance/accounts/reports/laboratory', accountsPath('lab', 'reports/laboratory')],
   ['/finance/accounts/reports/radiology', accountsPath('lab', 'reports/radiology')],
   ['/finance/accounts/reports/pharmacy', accountsPath('pharmacy', 'reports')],
+  // Patient Reports' own menu went away (ADR-151): its old address opens it in Accounts and Finance.
+  ['/reports', accountsPath('patients')],
 ];
