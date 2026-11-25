@@ -1,6 +1,7 @@
 using HMS.Modules.Laboratory.Application.Abstractions;
 using HMS.Modules.Laboratory.Contracts;
 using HMS.Modules.Laboratory.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace HMS.Modules.Laboratory.Infrastructure.Repositories;
@@ -46,12 +47,14 @@ internal class LabOrderRepository : ILabOrderRepository
 
         if (query.DateFrom.HasValue)
         {
-            orders = orders.Where(o => o.CreatedAt >= query.DateFrom.Value);
+            var from = HospitalTimeZone.ToUtc(query.DateFrom.Value);
+            orders = orders.Where(o => o.CreatedAt >= from);
         }
 
         if (query.DateTo.HasValue)
         {
-            orders = orders.Where(o => o.CreatedAt <= query.DateTo.Value);
+            var to = HospitalTimeZone.ToUtc(query.DateTo.Value);
+            orders = orders.Where(o => o.CreatedAt <= to);
         }
 
         if (query.Status.HasValue)
@@ -102,7 +105,7 @@ internal class LabOrderRepository : ILabOrderRepository
 
     public async Task<LabDashboardSummaryResponse> GetDashboardCountsAsync(CancellationToken cancellationToken)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = HospitalTimeZone.TodayStartUtc;
         var tomorrow = today.AddDays(1);
 
         var items = _dbContext.LabOrderItems.AsQueryable();

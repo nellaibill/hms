@@ -17,6 +17,7 @@ import {
   TITLES,
 } from '../../enums';
 import { DEFAULT_PATIENT_FIELD_REQUIREMENTS, type PatientFieldRequirements } from './patientFieldRequirements';
+import { hospitalDateParts, hospitalToday, serverNow, yearsBeforeDate } from '../../utils/hospitalTime';
 
 /**
  * UI-first schema matching the source documents exactly (LH Software.docx + the Patient
@@ -289,14 +290,13 @@ const demographicsUiSchema = {
     // `new Date(value)` and would otherwise silently accept/misinterpret a malformed year
     // rather than rejecting it outright.
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date with a 4-digit year.')
-    .refine((value) => new Date(value) <= new Date(), 'Date of birth cannot be in the future')
+    // Against today in India by the server's clock (ADR-147). `new Date(value) <= new Date()`
+    // read the date as UTC midnight, 5:30 AM in India, so a baby born after midnight was
+    // "in the future" until then.
+    .refine((value) => value <= hospitalToday(), 'Date of birth cannot be in the future')
     // Kept in sync with backend's CreatePatientRequestValidator.MaxAgeYears (100 years) —
     // catches data-entry slips like "1023" for "2023" and legacy placeholder DOBs.
-    .refine((value) => {
-      const minDate = new Date();
-      minDate.setFullYear(minDate.getFullYear() - 100);
-      return new Date(value) >= minDate;
-    }, 'Patient age cannot exceed 100 years — please check the date of birth.'),
+    .refine((value) => value >= yearsBeforeDate(hospitalToday(), 100), 'Patient age cannot exceed 100 years — please check the date of birth.'),
   gender: z.enum(PATIENT_GENDERS),
   // '' only while a hospital that makes Blood group mandatory hasn't had one picked yet (the
   // dropdown then starts empty); otherwise it starts on 'Unknown', an explicit, deliberate
@@ -371,14 +371,16 @@ const allergyRefinement = (
 // computed from it (negative, or from a 6-digit year) only stacked a misleading Title/Marital
 // status error on top of it.
 function isUsableDateOfBirth(dateOfBirth: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) && new Date(dateOfBirth) <= new Date();
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) && dateOfBirth <= hospitalToday();
 }
 
+// Age on today's date in India, by the server's clock (ADR-147) — the same day the backend's
+// CreatePatientRequestValidator counts from. The date of birth is a calendar date, read as written.
 function calculateAge(dateOfBirth: string, asOf: Date): number {
-  const dob = new Date(dateOfBirth);
-  let age = asOf.getFullYear() - dob.getFullYear();
-  const beforeBirthdayThisYear =
-    asOf.getMonth() < dob.getMonth() || (asOf.getMonth() === dob.getMonth() && asOf.getDate() < dob.getDate());
+  const [year, month, day] = dateOfBirth.split('-').map(Number);
+  const today = hospitalDateParts(asOf);
+  let age = today.year - year;
+  const beforeBirthdayThisYear = today.month < month || (today.month === month && today.day < day);
   if (beforeBirthdayThisYear) {
     age--;
   }
@@ -392,7 +394,7 @@ const titleAgeRefinement = (data: { title: string; dateOfBirth: string }, ctx: z
   if (!isUsableDateOfBirth(data.dateOfBirth)) {
     return;
   }
-  const age = calculateAge(data.dateOfBirth, new Date());
+  const age = calculateAge(data.dateOfBirth, serverNow());
   // Brackets match the Title dropdown's own displayed guidance exactly (see titleLabel.ts:
   // "Baby — up to 1 year", "Master/Miss — 1–18 years") — Master/Miss requires age >= 1 too,
   // not just < 18, so a newborn can't be silently registered as Master/Miss instead of Baby.
@@ -463,7 +465,7 @@ const maritalStatusAgeRefinement = (requiredForAdults: boolean) => (data: { mari
   if (!isUsableDateOfBirth(data.dateOfBirth)) {
     return;
   }
-  const isMinor = calculateAge(data.dateOfBirth, new Date()) < 18;
+  const isMinor = calculateAge(data.dateOfBirth, serverNow()) < 18;
   const isConsistent = isMinor
     ? data.maritalStatus === 'NA'
     : !requiredForAdults || data.maritalStatus === 'Married' || data.maritalStatus === 'Unmarried';

@@ -6,7 +6,7 @@ export const DASHBOARD_MONTHS = 6;
 
 /** "Apr", or "Apr 26" when the series spans two calendar years. */
 export function monthLabel(entry: MonthlyTotal, spansYears: boolean) {
-  const label = new Date(entry.year, entry.month - 1, 1).toLocaleDateString('en-IN', { month: 'short' });
+  const label = new Date(Date.UTC(entry.year, entry.month - 1, 1)).toLocaleDateString('en-IN', { month: 'short', timeZone: 'UTC' });
   return spansYears ? `${label} ${String(entry.year).slice(-2)}` : label;
 }
 

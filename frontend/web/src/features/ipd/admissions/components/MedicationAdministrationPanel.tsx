@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMedicationOrdersQuery } from '../hooks/useMedicationOrders';
 import { useMedicationAdministrationsQuery, usePostMedicationAdministrationMutation } from '../hooks/useMedicationAdministrations';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface MedicationAdministrationPanelProps {
   admissionId: string;
@@ -46,9 +47,9 @@ export function MedicationAdministrationPanel({ admissionId }: MedicationAdminis
   function onSubmit(values: MedicationAdministrationFormValues) {
     createMutation.mutate(
       {
-        scheduledTime: new Date(values.scheduledTime).toISOString(),
+        scheduledTime: fromHospitalDateTimeInput(values.scheduledTime),
         wasGiven: values.wasGiven === 'given',
-        administeredAt: values.wasGiven === 'given' && values.administeredAt ? new Date(values.administeredAt).toISOString() : null,
+        administeredAt: values.wasGiven === 'given' && values.administeredAt ? fromHospitalDateTimeInput(values.administeredAt) : null,
         reason: values.reason || null,
         remarks: values.remarks || null,
       },

@@ -7,13 +7,14 @@ import { ThemeToggle } from '@/components/shell/ThemeToggle';
 import { formatFileSize } from '@/features/documents/utils/format';
 import { usePlatformAuth } from '@/features/platformAuth/PlatformAuthContext';
 import { platformBackupsApi } from '@/services/apiClient';
+import { hospitalToday } from '@/lib/hospitalTime';
 
 async function downloadBackup(key: string) {
   const blob = await platformBackupsApi.download(key);
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${key}-${new Date().toISOString().slice(0, 10)}.dump`;
+  link.download = `${key}-${hospitalToday()}.dump`;
   link.click();
   URL.revokeObjectURL(url);
 }

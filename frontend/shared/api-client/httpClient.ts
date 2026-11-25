@@ -17,6 +17,10 @@ export interface HttpClientConfig {
    * instead of leaving every subsequent request on the page failing silently. Skipped for a
    * request that opted out via RequestOptions.skipUnauthorizedHandling. */
   onUnauthorized?: () => void;
+  /** Called with every response the server sends, before it is read: the web app takes the
+   * server's clock from its Date header (ADR-147), so "now" and "today" never come from the
+   * desk PC's own clock. */
+  onResponse?: (response: Response) => void;
 }
 
 export interface RequestOptions {
@@ -120,6 +124,7 @@ export class HttpClient {
       }
       throw new NetworkError();
     }
+    this.config.onResponse?.(response);
 
     const payload = await response.json().catch(() => undefined);
 
@@ -162,6 +167,7 @@ export class HttpClient {
       }
       throw new NetworkError();
     }
+    this.config.onResponse?.(response);
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -224,6 +230,7 @@ export class HttpClient {
       }
       throw new NetworkError();
     }
+    this.config.onResponse?.(response);
 
     if (response.status === 204) {
       return { data: undefined as T };

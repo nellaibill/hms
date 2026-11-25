@@ -19,6 +19,7 @@ import { KeyHint, PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { StoreSelect, useStoresQuery } from '@/features/pharmacy/stores';
 import { cn } from '@/lib/utils';
 import { admissionsApi, pharmacyApi } from '@/services/apiClient';
+import { serverNow } from '@/lib/hospitalTime';
 
 const TENDERS: { method: SalePaymentMethod; label: string }[] = [
   { method: 'Cash', label: 'Cash' },
@@ -428,7 +429,7 @@ export default function CounterPage() {
       subtitle={
         <span className="flex items-center gap-1.5">
           <Store className="h-3.5 w-3.5" />
-          {store?.name ?? 'Pharmacy'} · {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+          {store?.name ?? 'Pharmacy'} · {serverNow().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
       }
       flush

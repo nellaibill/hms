@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCheckInMutation, useCheckOutMutation } from '../hooks/useAttendanceMutations';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface CheckInOutModalProps {
   mode: 'check-in' | 'check-out';
@@ -37,7 +38,7 @@ export function CheckInOutModal({ mode, employeeId, onClose }: CheckInOutModalPr
   });
 
   function onSubmit(values: CheckInOutFormValues) {
-    const isoTime = values.time ? new Date(values.time).toISOString() : undefined;
+    const isoTime = values.time ? fromHospitalDateTimeInput(values.time) : undefined;
     if (mode === 'check-in') {
       checkInMutation.mutate(
         { employeeId: values.employeeId, checkInTime: isoTime },

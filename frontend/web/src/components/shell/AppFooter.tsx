@@ -1,5 +1,6 @@
 import { branding } from '@/config/branding';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
+import { hospitalDateParts } from '@/lib/hospitalTime';
 
 export function AppFooter() {
   const { data: brandingConfig } = useBrandingQuery();
@@ -8,7 +9,7 @@ export function AppFooter() {
   return (
     <footer className="flex h-10 items-center justify-between border-t border-border bg-background px-6 text-xs text-muted-foreground">
       <span>
-        © {new Date().getFullYear()} {hospitalName}. All rights reserved.
+        © {hospitalDateParts().year} {hospitalName}. All rights reserved.
       </span>
       <span>HMS v0.1.0 </span>
     </footer>

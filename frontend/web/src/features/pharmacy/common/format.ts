@@ -1,3 +1,4 @@
+import { hospitalToday } from '@/lib/hospitalTime';
 /** Number and date formatting shared by every pharmacy screen, so a rate, a quantity and an
  * expiry read the same way on the counter, a purchase and a report. */
 
@@ -66,7 +67,7 @@ export function parseExpiry(text: string): string | null {
 
 /** Today in the hospital's own time zone, as an ISO date. */
 export function todayIso(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  return hospitalToday();
 }
 
 export function dateLabel(isoDate: string | null | undefined): string {

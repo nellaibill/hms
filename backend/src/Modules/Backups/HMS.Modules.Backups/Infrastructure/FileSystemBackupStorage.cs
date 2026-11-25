@@ -1,5 +1,6 @@
 using HMS.Modules.Backups.Application.Abstractions;
 using HMS.Modules.Backups.Configuration;
+using HMS.Shared.Kernel;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -59,7 +60,7 @@ internal sealed class FileSystemBackupStorage : IBackupStorage
             return Task.CompletedTask;
         }
 
-        var cutoff = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-_options.RetentionDays);
+        var cutoff = HospitalTimeZone.Today.AddDays(-_options.RetentionDays);
         foreach (var directory in Directory.GetDirectories(_options.BackupRootDirectory))
         {
             var name = Path.GetFileName(directory);

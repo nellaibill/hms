@@ -52,6 +52,7 @@ import {
   WeeklyRostersApi,
 } from '@hms/shared';
 import { env } from '../config/env';
+import { syncServerClock } from '../lib/hospitalTime';
 
 // Module-level token holder — the HttpClient instance below is created once at import
 // time, before AuthProvider mounts, so it reads the current token through this indirection
@@ -72,10 +73,15 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
   unauthorizedHandler = handler;
 }
 
+// Every API response carries the server's clock (its Date header); the app's "now" and "today"
+// come from it, never from the desk PC's own clock (ADR-147).
+const takeServerClock = (response: Response) => syncServerClock(response.headers.get('Date'));
+
 export const httpClient = new HttpClient({
   baseUrl: env.apiBaseUrl,
   getAuthToken: () => authToken,
   onUnauthorized: () => unauthorizedHandler?.(),
+  onResponse: takeServerClock,
 });
 
 // Independent token holder + HttpClient instance for the Platform Portal — a Platform Admin
@@ -98,6 +104,7 @@ export const platformHttpClient = new HttpClient({
   baseUrl: env.apiBaseUrl,
   getAuthToken: () => platformAuthToken,
   onUnauthorized: () => platformUnauthorizedHandler?.(),
+  onResponse: takeServerClock,
 });
 
 export const platformAuthApi = new PlatformAuthApi(platformHttpClient);

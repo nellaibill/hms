@@ -1,5 +1,6 @@
 using FluentValidation;
 using HMS.Modules.Patients.Contracts;
+using HMS.Shared.Kernel;
 
 namespace HMS.Modules.Patients.Application.Validators;
 
@@ -23,7 +24,7 @@ internal class UpdatePatientRequestValidator : PatientFieldAwareValidator<Update
             .When(x => !string.IsNullOrWhiteSpace(x.LastName));
         RuleFor(x => x.DateOfBirth)
             .NotEmpty()
-            .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth cannot be in the future.")
+            .LessThanOrEqualTo(_ => HospitalTimeZone.Today).WithMessage("Date of birth cannot be in the future.")
             .GreaterThanOrEqualTo(_ => CreatePatientRequestValidator.MinDateOfBirth).WithMessage("Patient age cannot exceed 100 years — please check the date of birth.");
         RuleFor(x => x)
             .Must(x => CreatePatientRequestValidator.IsTitleConsistentWithAge(x.Title, x.DateOfBirth))

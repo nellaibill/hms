@@ -23,6 +23,7 @@ import { resolveRecordLabel, useMasterOptionsQuery } from '@/features/masters';
 import { departmentsApi, patientsApi } from '@/services/apiClient';
 import { PatientNameLink } from '@/components/PatientNameLink';
 import { defaultReportDateRange, toRangeEnd, toRangeStart } from '@/lib/reportDateRange';
+import { serverNow } from '@/lib/hospitalTime';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
@@ -446,7 +447,7 @@ export default function PatientReportsPage() {
             {appliedFilters.from} to {appliedFilters.to}
             {appliedFilterSummary.length > 0 ? ` · ${appliedFilterSummary.join(' · ')}` : ''}
           </span>
-          <span className="whitespace-nowrap text-gray-600">Printed {new Date().toLocaleString('en-IN')}</span>
+          <span className="whitespace-nowrap text-gray-600">Printed {serverNow().toLocaleString('en-IN')}</span>
         </div>
 
         <table className="mt-4 w-full border-collapse text-xs">
