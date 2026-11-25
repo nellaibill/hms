@@ -43,7 +43,17 @@ export interface PrintSettingsDto {
 }
 
 /** Mirrors HMS.Modules.Branding.Contracts.AccountsReportKeys. */
-export type AccountsReportKeyDto = 'incomeExpense' | 'laboratory' | 'radiology' | 'consultant' | 'pharmacy';
+export type AccountsReportKeyDto =
+  | 'recentBills'
+  | 'allInvoices'
+  | 'cancellationRequests'
+  | 'discountRequests'
+  | 'incomeExpense'
+  | 'laboratory'
+  | 'radiology'
+  | 'consultant'
+  | 'pharmacy'
+  | 'patientReports';
 
 /** Mirrors HMS.Modules.Branding.Contracts.ReportVisibilitySettings — also the body of
  * `PUT branding/report-visibility` (ADR-120). */

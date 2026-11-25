@@ -156,18 +156,44 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   documents: {},
 };
 
-/** The Accounts & Finance reports a hospital can show or hide (ADR-120). OP Report always
- * shows, and the bill lists and approval queues aren't reports, so none of them is listed.
- * Kept in sync with HMS.Modules.Branding.Contracts.AccountsReportKeys. */
-export const ACCOUNTS_REPORTS = ['incomeExpense', 'laboratory', 'radiology', 'consultant', 'pharmacy'] as const;
+/** The Accounts & Finance tabs a hospital can show or hide (ADR-120): the reports, and since
+ * ADR-151 the bill lists and approval queues too, so a hospital shows only the tabs it uses. OP
+ * Report and Collection Summary always show. Kept in sync with
+ * HMS.Modules.Branding.Contracts.AccountsReportKeys. */
+export const ACCOUNTS_REPORTS = [
+  'recentBills',
+  'allInvoices',
+  'cancellationRequests',
+  'discountRequests',
+  'incomeExpense',
+  'laboratory',
+  'radiology',
+  'consultant',
+  'pharmacy',
+  'patientReports',
+] as const;
 export type AccountsReport = (typeof ACCOUNTS_REPORTS)[number];
 
 export const ACCOUNTS_REPORT_LABELS: Record<AccountsReport, { label: string; description: string }> = {
+  recentBills: { label: 'Recent Bills', description: 'The latest bills, in OP, IP and Lab Accounts. Each category opens on this tab when it is shown.' },
+  allInvoices: { label: 'All Invoices', description: 'Every bill, with search and filters, in OP, IP and Lab Accounts.' },
+  cancellationRequests: {
+    label: 'Cancellation Requests',
+    description: "Bill cancellations waiting for a Super Admin's approval. Turn on when Billing Approvals asks for cancellation approval.",
+  },
+  discountRequests: {
+    label: 'Discount Requests',
+    description: "Discounts waiting for a Super Admin's approval. Turn on when Billing Approvals asks for discount approval.",
+  },
   incomeExpense: { label: 'Income & Expense', description: 'Income against expenses for the period, by category.' },
   laboratory: { label: 'Laboratory', description: 'Revenue, cost and profit for billed lab tests.' },
   radiology: { label: 'Radiology', description: 'Revenue, cost and profit for billed scans.' },
   consultant: { label: 'Consultant', description: 'Revenue and profit attributed to each consultant.' },
   pharmacy: { label: 'Pharmacy', description: 'Pharmacy counter bills (shown only where Pharmacy is enabled).' },
+  patientReports: {
+    label: 'Patient Reports',
+    description: 'Patient registrations and visits for a period, with Excel export and print — its own card in Accounts and Finance.',
+  },
 };
 
 export interface ReportVisibility {

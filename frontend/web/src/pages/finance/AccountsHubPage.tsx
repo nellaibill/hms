@@ -3,7 +3,7 @@ import { HubCard } from '@/components/HubCard';
 import { PageBanner } from '@/components/PageBanner';
 import { useAuth } from '@/features/auth/AuthContext';
 import { usePendingDiscountCountQuery, usePendingRevertCountQuery } from '@/features/billing';
-import { accountsPath, ACCOUNTS_CATEGORIES } from '@/features/reports';
+import { accountsPath, ACCOUNTS_CATEGORIES, useAccountsReportVisibility, visibleAccountsTabs } from '@/features/reports';
 
 /**
  * Accounts and Finance's landing page (ADR-134): one card per category — OP, IP, Pharmacy and
@@ -13,7 +13,11 @@ import { accountsPath, ACCOUNTS_CATEGORIES } from '@/features/reports';
  */
 export default function AccountsHubPage() {
   const { hasFeature } = useAuth();
-  const categories = ACCOUNTS_CATEGORIES.filter((category) => !category.feature || hasFeature(category.feature));
+  const { isVisible } = useAccountsReportVisibility();
+  // A category with every tab switched off in Reports Visibility (ADR-151) has nothing to open.
+  const categories = ACCOUNTS_CATEGORIES.filter(
+    (category) => (!category.feature || hasFeature(category.feature)) && visibleAccountsTabs(category, isVisible).length > 0,
+  );
   const { data: pendingRevertCount = 0 } = usePendingRevertCountQuery();
   const { data: pendingDiscountCount = 0 } = usePendingDiscountCountQuery();
   const pendingApprovals = pendingRevertCount + pendingDiscountCount;

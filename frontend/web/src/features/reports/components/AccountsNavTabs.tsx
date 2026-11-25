@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { usePendingDiscountCountQuery, usePendingRevertCountQuery } from '@/features/billing';
 import { cn } from '@/lib/utils';
-import { accountsPath } from '../accountsCategories';
+import { accountsPath, visibleAccountsTabs } from '../accountsCategories';
 import { useAccountsReportVisibility } from '../useAccountsReportVisibility';
 import { useAccountsCategory } from '../useAccountsCategory';
 
@@ -13,7 +13,7 @@ import { useAccountsCategory } from '../useAccountsCategory';
 export function AccountsNavTabs() {
   const category = useAccountsCategory();
   const { isVisible } = useAccountsReportVisibility();
-  const tabs = category.tabs.filter((tab) => !tab.report || isVisible(tab.report));
+  const tabs = visibleAccountsTabs(category, isVisible);
   const showsRevert = tabs.some((tab) => tab.pendingCount === 'revert');
   const showsDiscount = tabs.some((tab) => tab.pendingCount === 'discount');
   const { data: pendingRevertCount = 0 } = usePendingRevertCountQuery(showsRevert);
