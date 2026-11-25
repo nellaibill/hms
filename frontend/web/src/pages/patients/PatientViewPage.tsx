@@ -1,10 +1,14 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../features/auth/AuthContext';
 import { PatientDetails, PatientPrintTemplate, PatientSummaryCard, usePatientQuery } from '../../features/patients';
 
 export default function PatientViewPage() {
   const { id } = useParams<{ id: string }>();
   const { data: patient, isPending, isError } = usePatientQuery(id);
+  // A doctor's sign-in has no Reception and Registration (ADR-150): back goes to Patient Enquiry.
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'doctor';
   // The active tab lives in ?tab= so a link can land on a specific tab (e.g. the Billing tab)
   // and Back from an invoice/lab order opened from Billing or Timeline returns to that tab.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,11 +47,11 @@ export default function PatientViewPage() {
     <div className="flex flex-1 flex-col">
       <div className="px-3 pt-2 lg:px-4 print:hidden">
         <Link
-          to="/patients/registration"
+          to={isDoctor ? '/patients/enquiry' : '/patients/registration'}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to registration
+          {isDoctor ? 'Back to patient enquiry' : 'Back to registration'}
         </Link>
       </div>
 

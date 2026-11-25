@@ -23,6 +23,7 @@ import {
   BarChart3,
   type LucideIcon,
 } from 'lucide-react';
+import type { Role } from '@/features/auth/types';
 // Flat, two-section Primary Navigation model — Dashboard stands alone at the
 // top, everything else lives directly under a "Clinical" or "Administrative"
 // section with no further nesting. This file is the single source of truth
@@ -49,6 +50,12 @@ export interface NavLeaf {
    * filterNavigationForPermissions below. Omitted (e.g. Dashboard) means
    * visible to every authenticated user regardless of permissions. */
   permission?: string;
+  /** Shown only to a Super Admin's sign-in (ADR-150), whatever permissions other roles hold —
+   * Settings and the Activity Log. */
+  superAdminOnly?: boolean;
+  /** Hidden for these sign-ins (login types), whatever their permissions (ADR-150) — e.g.
+   * Reception and Registration for a doctor, who doesn't register patients. */
+  hiddenForRoles?: readonly Role[];
   /** FeatureCatalog key (e.g. "hr") this leaf's schema-level module requires — Tenant
    * Feature/Module Management, distinct from `permission` (RBAC). Only set on leaves backed
    * by an optional module's real pages; omitted means visible regardless of tenant features
@@ -90,6 +97,8 @@ export const navigationTree: NavNode[] = [
     iconColor: 'text-indigo-500',
     description: 'Register a new patient or find an existing one to update their registration.',
     permission: 'patient-management',
+    // A doctor doesn't register patients; they still open a patient's own page (ADR-150).
+    hiddenForRoles: ['doctor'],
     feature: 'patients',
     section: 'Clinical',
   },
@@ -222,6 +231,7 @@ export const navigationTree: NavNode[] = [
     iconColor: 'text-slate-500',
     description: 'System-wide, read-only audit trail of every module\'s write transactions.',
     permission: 'identity-administration',
+    superAdminOnly: true,
     feature: 'activity-log',
     section: 'Administrative',
   },
@@ -299,6 +309,7 @@ export const navigationTree: NavNode[] = [
     iconColor: 'text-gray-500',
     description: 'Roles & permissions, master data, and system configuration.',
     permission: 'identity-administration',
+    superAdminOnly: true,
     feature: 'identity',
     section: 'Administrative',
   },
@@ -315,10 +326,13 @@ export function filterNavigationForPermissions(
   hasPermission: (key: string) => boolean,
   hasFeature: (key: string) => boolean,
   hiddenMenus: readonly string[] = [],
+  role?: Role,
 ): NavNode[] {
   return navigationTree.filter(
     (node) =>
       (!node.permission || hasPermission(`${node.permission}.view`)) &&
+      (!node.superAdminOnly || role === 'superAdmin') &&
+      !(role && node.hiddenForRoles?.includes(role)) &&
       (!node.feature || hasFeature(node.feature)) &&
       !isHiddenMenu(node.path, hiddenMenus),
   );
@@ -331,7 +345,8 @@ const ALWAYS_SHOWN_MENUS = new Set(['/dashboard', '/admin/settings']);
 
 /** The menus a role's "Menus" list offers (ADR-128), in sidebar order. */
 export function getHideableMenus(): NavLeaf[] {
-  return navigationTree.filter((leaf) => !ALWAYS_SHOWN_MENUS.has(leaf.path));
+  // A Super-Admin-only menu (ADR-150) never shows for another role, so there's nothing to hide.
+  return navigationTree.filter((leaf) => !ALWAYS_SHOWN_MENUS.has(leaf.path) && !leaf.superAdminOnly);
 }
 
 function isHiddenMenu(path: string, hiddenMenus: readonly string[]): boolean {
