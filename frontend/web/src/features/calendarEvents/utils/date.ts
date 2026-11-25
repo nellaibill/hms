@@ -1,3 +1,4 @@
+import { hospitalToday } from '@/lib/hospitalTime';
 // Mirrors features/weeklyRosters/utils/week.ts's convention: all arithmetic uses UTC-anchored
 // Date objects purely as a calendar calculator, so a user east of UTC never sees a date shift
 // by a day. Event dates are plain calendar dates ("YYYY-MM-DD"), no time component.
@@ -12,8 +13,8 @@ export function formatIsoDate(date: Date): string {
 }
 
 export function todayIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // Today in India by the server's clock (ADR-147).
+  return hospitalToday();
 }
 
 export function addDays(iso: string, days: number): string {

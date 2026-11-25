@@ -1,4 +1,5 @@
 import type { DischargeSummary, DischargeSummaryFormValues, UpdateDischargeSummaryRequest } from '@hms/shared';
+import { fromHospitalDateTimeInput, toHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 function toStringValue(value: string | null | undefined): string {
   return value ?? '';
@@ -8,13 +9,9 @@ function toOptionalNumber(value: number | null | undefined): number | undefined 
   return value === null || value === undefined ? undefined : value;
 }
 
-/** "YYYY-MM-DDTHH:mm" for an <input type="datetime-local"> value, local time (mirrors how
- * DischargeForm/AdmissionForm already handle datetime-local elsewhere in this codebase). */
+/** "YYYY-MM-DDTHH:mm" for an <input type="datetime-local"> value, in India's time (ADR-147). */
 function toDateTimeLocalValue(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (num: number) => String(num).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return toHospitalDateTimeInput(iso);
 }
 
 /** Seeds the edit form from a freshly-loaded DischargeSummary — null/undefined API values
@@ -116,7 +113,7 @@ export function toUpdateRequest(values: DischargeSummaryFormValues): UpdateDisch
     courseInHospital: orNull(values.courseInHospital),
 
     procedureName: orNull(values.procedureName),
-    procedureDateTime: values.procedureDateTime ? new Date(values.procedureDateTime).toISOString() : null,
+    procedureDateTime: values.procedureDateTime ? fromHospitalDateTimeInput(values.procedureDateTime) : null,
     primarySurgeon: orNull(values.primarySurgeon),
     assistantSurgeons: orNull(values.assistantSurgeons),
     anaesthetist: orNull(values.anaesthetist),

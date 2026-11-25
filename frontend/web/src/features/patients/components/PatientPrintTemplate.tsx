@@ -12,6 +12,7 @@ import { maritalStatusLabel } from '../maritalStatusLabel';
 import { maskIdNumber } from '../maskIdNumber';
 import { usePatientDocumentUrl } from '../hooks/usePatientDocumentUrl';
 import { usePatientVisitsQuery } from '../hooks/usePatientVisitsQuery';
+import { serverNow } from '@/lib/hospitalTime';
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
@@ -176,7 +177,7 @@ export function PatientPrintTemplate({ patient }: { patient: Patient }) {
 
       <div className="mt-10 flex items-end justify-between border-t border-gray-300 pt-3 text-xs text-gray-600">
         <span>Printed by {user?.name ?? 'Front Desk'}</span>
-        <span>Printed {new Date().toLocaleString('en-IN')}</span>
+        <span>Printed {serverNow().toLocaleString('en-IN')}</span>
       </div>
     </div>
   );

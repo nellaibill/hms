@@ -1,6 +1,7 @@
 using HMS.Modules.Documents.Application.Abstractions;
 using HMS.Modules.Documents.Contracts;
 using HMS.Modules.Documents.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace HMS.Modules.Documents.Infrastructure.Repositories;
@@ -37,7 +38,7 @@ internal class DocumentRepository : IDocumentRepository
 
     public async Task<DocumentSummaryResponse> GetSummaryAsync(CancellationToken cancellationToken)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = HospitalTimeZone.TodayStartUtc;
 
         return new DocumentSummaryResponse
         {
@@ -84,14 +85,14 @@ internal class DocumentRepository : IDocumentRepository
 
         if (query.DateFrom is not null)
         {
-            var from = query.DateFrom.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var from = HospitalTimeZone.DayStartUtc(query.DateFrom.Value);
             documents = documents.Where(d => d.CreatedAt >= from);
         }
 
         if (query.DateTo is not null)
         {
-            var to = query.DateTo.Value.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-            documents = documents.Where(d => d.CreatedAt <= to);
+            var toExclusive = HospitalTimeZone.DayStartUtc(query.DateTo.Value.AddDays(1));
+            documents = documents.Where(d => d.CreatedAt < toExclusive);
         }
 
         documents = query.Status switch

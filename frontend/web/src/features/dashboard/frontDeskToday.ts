@@ -4,7 +4,7 @@ import type {
   OpdConsultationSummaryItem,
   PaymentMethod,
 } from '@hms/shared';
-import { toLocalDateInputValue } from '@/lib/reportDateRange';
+import { addDaysToDate, hospitalDateOf, hospitalDayStart, serverNow } from '@/lib/hospitalTime';
 
 /**
  * The receptionist's "Today" dashboard figures (ADR-129), worked out in the browser from the
@@ -12,20 +12,17 @@ import { toLocalDateInputValue } from '@/lib/reportDateRange';
  * counts as unpaid or on hold live in one place.
  */
 
-/** Today's local calendar day, and the instants that bound it: local midnight to the next. */
+/** Today's calendar day in India, and the instants that bound it: midnight IST to the next. */
 export interface TodayRange {
-  /** YYYY-MM-DD in the browser's (the hospital's) time zone. */
+  /** YYYY-MM-DD in India Standard Time, by the server's clock (ADR-147). */
   date: string;
   from: string;
   to: string;
 }
 
-export function getTodayRange(now: Date = new Date()): TodayRange {
-  const date = toLocalDateInputValue(now);
-  const start = new Date(`${date}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { date, from: start.toISOString(), to: end.toISOString() };
+export function getTodayRange(now: Date = serverNow()): TodayRange {
+  const date = hospitalDateOf(now);
+  return { date, from: hospitalDayStart(date)!.toISOString(), to: hospitalDayStart(addDaysToDate(date, 1))!.toISOString() };
 }
 
 export interface OpdTodayTotals {

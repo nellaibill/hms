@@ -6,3 +6,4 @@ export * from './validation';
 export * from './api-client';
 export * from './auth-client';
 export * from './enums';
+export * from './utils/hospitalTime';

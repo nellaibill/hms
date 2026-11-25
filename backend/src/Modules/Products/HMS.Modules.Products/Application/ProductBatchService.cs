@@ -92,7 +92,7 @@ internal class ProductBatchService : IProductBatchService
             }
 
             // No manufacture date on most supplier invoices; the expiry date is what matters.
-            batch = ProductBatch.Create(productId, request.BatchNo, request.ManufactureDate ?? DateOnly.FromDateTime(DateTime.UtcNow), request.ExpiryDate, isActive: true, actorId);
+            batch = ProductBatch.Create(productId, request.BatchNo, request.ManufactureDate ?? HospitalTimeZone.Today, request.ExpiryDate, isActive: true, actorId);
             await _repository.AddAsync(batch, cancellationToken);
         }
         else

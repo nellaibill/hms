@@ -1,5 +1,6 @@
 import { CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { hospitalDateParts, serverNow } from '@/lib/hospitalTime';
 import { cn } from '@/lib/utils';
 import { isoDateRangesOverlap, parseIsoDate, useCalendarEventsQuery } from '@/features/calendarEvents';
 
@@ -10,13 +11,14 @@ function toIsoDate(year: number, month: number, day: number): string {
 }
 
 export function MiniCalendarCard() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const monthLabel = today.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  // Today in India by the server's clock (ADR-147); the month grid is plain calendar arithmetic.
+  const today = hospitalDateParts();
+  const year = today.year;
+  const month = today.month - 1;
+  const monthLabel = serverNow().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
   const eventsQuery = useCalendarEventsQuery();
   const allEvents = eventsQuery.data ?? [];
@@ -60,7 +62,7 @@ export function MiniCalendarCard() {
           </div>
           <div className="mt-1 grid grid-cols-7 gap-1">
             {cells.map((day, i) => {
-              const isToday = day === today.getDate();
+              const isToday = day === today.day;
               const hasEvent = day !== null && eventDates.has(day);
               return (
                 <div

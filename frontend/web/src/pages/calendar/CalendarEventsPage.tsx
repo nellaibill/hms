@@ -33,8 +33,10 @@ import {
   type EventType,
 } from '@/features/calendarEvents';
 import { addMonths } from '@/features/calendarEvents/utils/date';
+import { hospitalDateParts } from '@/lib/hospitalTime';
 
-const now = new Date();
+// Today in India by the server's clock (ADR-147), read when the page opens.
+const hospitalNow = () => hospitalDateParts();
 
 type FormDrawerState =
   | { open: false }
@@ -52,8 +54,8 @@ function extractErrorMessage(err: unknown): string {
 }
 
 export default function CalendarEventsPage() {
-  const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
+  const [viewYear, setViewYear] = useState(() => hospitalNow().year);
+  const [viewMonth, setViewMonth] = useState(() => hospitalNow().month);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<CalendarEventFilters>(createEmptyFilters());
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -107,8 +109,9 @@ export default function CalendarEventsPage() {
   }
 
   function goToToday() {
-    setViewYear(now.getFullYear());
-    setViewMonth(now.getMonth() + 1);
+    const today = hospitalNow();
+    setViewYear(today.year);
+    setViewMonth(today.month);
   }
 
   function openCreateDrawer(defaultDate: string | null = null) {

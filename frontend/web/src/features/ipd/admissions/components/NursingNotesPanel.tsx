@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNursingNotesQuery, usePostNursingNoteMutation } from '../hooks/useNursingNotes';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface NursingNotesPanelProps {
   admissionId: string;
@@ -39,7 +40,7 @@ export function NursingNotesPanel({ admissionId }: NursingNotesPanelProps) {
   function onSubmit(values: NursingNoteFormValues) {
     mutation.mutate(
       {
-        noteDateTime: new Date(values.noteDateTime).toISOString(),
+        noteDateTime: fromHospitalDateTimeInput(values.noteDateTime),
         shift: values.shift,
         observation: values.observation || null,
         intervention: values.intervention || null,

@@ -6,6 +6,7 @@ import { STOCK_LINKS } from '@/features/pharmacy/shell/links';
 import { PharmacyPage } from '@/features/pharmacy/shell/PharmacyPage';
 import { StockLedgerTable, StockLedgerToolbar, useStockLedgerQuery, type StockLedgerFilters } from '@/features/pharmacy/stock-ledger';
 import { defaultReportDateRange } from '@/lib/reportDateRange';
+import { hospitalDayStart } from '@/lib/hospitalTime';
 
 const defaultFilters = (): StockLedgerFilters => {
   const { from, to } = defaultReportDateRange();
@@ -24,7 +25,7 @@ export default function StockLedgerPage() {
     // Date inputs yield "YYYY-MM-DD" — the backend's FromDate/ToDate are DateTime, so
     // widen to full-day bounds the same way a UTC-instant conversion would for a
     // datetime-local field elsewhere in this app (see AdmissionCreatePage).
-    fromDate: filters.fromDate ? new Date(`${filters.fromDate}T00:00:00`).toISOString() : undefined,
+    fromDate: filters.fromDate ? hospitalDayStart(filters.fromDate)?.toISOString() : undefined,
     toDate: filters.toDate ? new Date(`${filters.toDate}T23:59:59.999`).toISOString() : undefined,
   });
 

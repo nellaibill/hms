@@ -2,6 +2,7 @@ using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Application.Abstractions;
 using HMS.Modules.Patients.Contracts;
 using HMS.Modules.Patients.Domain;
+using HMS.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace HMS.Modules.Patients.Infrastructure.Repositories;
@@ -62,8 +63,8 @@ internal class PatientRepository : IPatientRepository
         var totalVisits = 0;
         if (query.From.HasValue && query.To.HasValue)
         {
-            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
-            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            var from = HospitalTimeZone.ToUtc(query.From.Value);
+            var to = HospitalTimeZone.ToUtc(query.To.Value);
             newPatients = await patients.CountAsync(p => p.CreatedAt >= from && p.CreatedAt <= to, cancellationToken);
 
             // Visits by patients matching every other filter, within range — reuses the same
@@ -156,16 +157,18 @@ internal class PatientRepository : IPatientRepository
             // Driven by patient_visits, not the patient record's own timestamps — OPD Billing
             // wants "who has a visit to bill today", which for a returning patient (registered
             // long ago) is about today's visit, not their original registration date.
-            var today = DateTime.UtcNow.Date;
+            var todayStart = HospitalTimeZone.TodayStartUtc;
+            var tomorrowStart = todayStart.AddDays(1);
             patients = patients.Where(p => _dbContext.PatientVisits.Any(v => v.PatientId == p.Id
-                && (v.CreatedAt.Date == today || (v.UpdatedAt.HasValue && v.UpdatedAt.Value.Date == today))));
+                && ((v.CreatedAt >= todayStart && v.CreatedAt < tomorrowStart)
+                    || (v.UpdatedAt.HasValue && v.UpdatedAt.Value >= todayStart && v.UpdatedAt.Value < tomorrowStart))));
         }
 
         if (query.Age.HasValue && query.Age.Value >= 0)
         {
             // Age isn't a stored column (Patient.Age is always derived from DateOfBirth), so
             // "age equals N" is expressed as the DateOfBirth range that produces age N today.
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = HospitalTimeZone.Today;
             var maxDateOfBirth = today.AddYears(-query.Age.Value);
             var minDateOfBirthExclusive = today.AddYears(-(query.Age.Value + 1));
             patients = patients.Where(p => p.DateOfBirth <= maxDateOfBirth && p.DateOfBirth > minDateOfBirthExclusive);
@@ -198,8 +201,8 @@ internal class PatientRepository : IPatientRepository
         // doc comment for why.
         if (query.From.HasValue && query.To.HasValue)
         {
-            var from = DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc);
-            var to = DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc);
+            var from = HospitalTimeZone.ToUtc(query.From.Value);
+            var to = HospitalTimeZone.ToUtc(query.To.Value);
             patients = patients.Where(p =>
                 (p.CreatedAt >= from && p.CreatedAt <= to) ||
                 _dbContext.PatientVisits.Any(v => v.PatientId == p.Id && v.CreatedAt >= from && v.CreatedAt <= to));
@@ -209,13 +212,13 @@ internal class PatientRepository : IPatientRepository
         // patient twice.
         if (query.RegisteredFrom.HasValue)
         {
-            var registeredFrom = DateTime.SpecifyKind(query.RegisteredFrom.Value, DateTimeKind.Utc);
+            var registeredFrom = HospitalTimeZone.ToUtc(query.RegisteredFrom.Value);
             patients = patients.Where(p => p.CreatedAt >= registeredFrom);
         }
 
         if (query.RegisteredTo.HasValue)
         {
-            var registeredTo = DateTime.SpecifyKind(query.RegisteredTo.Value, DateTimeKind.Utc);
+            var registeredTo = HospitalTimeZone.ToUtc(query.RegisteredTo.Value);
             patients = patients.Where(p => p.CreatedAt < registeredTo);
         }
 

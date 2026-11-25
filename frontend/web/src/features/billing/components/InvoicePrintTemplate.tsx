@@ -11,6 +11,7 @@ import { todayDateInputValue, toLocalDateInputValue } from '@/lib/reportDateRang
 import { describeBillingItem, formatCurrency } from '../billingCalculations';
 import { useCollectionsQuery } from '../hooks/useCollectionsQuery';
 import type { Billing } from '../types';
+import { serverNow } from '@/lib/hospitalTime';
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = { Cash: 'Cash', Card: 'Card', Upi: 'UPI', BankTransfer: 'Bank Transfer' };
 
@@ -184,7 +185,7 @@ export function InvoicePrintTemplate({ billing }: InvoicePrintTemplateProps) {
           Billed by {user?.name ?? 'Front Desk'}
           {user?.roleName ? ` · ${user.roleName}` : ''}
         </span>
-        <span>Printed {new Date().toLocaleString('en-IN')}</span>
+        <span>Printed {serverNow().toLocaleString('en-IN')}</span>
       </div>
       <p className="mt-6 text-center text-sm italic text-gray-700">
         Thank you for choosing {hospitalName}. Wishing you a speedy recovery.

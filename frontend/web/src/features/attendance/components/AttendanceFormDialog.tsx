@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateAttendanceMutation, useUpdateAttendanceMutation } from '../hooks/useAttendanceMutations';
+import { fromHospitalDateTimeInput, hospitalToday, toHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface AttendanceFormDialogProps {
   mode: 'create' | 'edit';
@@ -41,17 +42,17 @@ export function AttendanceFormDialog({ mode, attendance, onClose }: AttendanceFo
     resolver: zodResolver(mode === 'create' ? createAttendanceSchema : updateAttendanceSchema),
     defaultValues: {
       employeeId: attendance?.employeeId ?? '',
-      attendanceDate: attendance?.attendanceDate ?? new Date().toISOString().slice(0, 10),
-      checkInTime: attendance?.checkInTime ? attendance.checkInTime.slice(0, 16) : '',
-      checkOutTime: attendance?.checkOutTime ? attendance.checkOutTime.slice(0, 16) : '',
+      attendanceDate: attendance?.attendanceDate ?? hospitalToday(),
+      checkInTime: attendance?.checkInTime ? toHospitalDateTimeInput(attendance.checkInTime) : '',
+      checkOutTime: attendance?.checkOutTime ? toHospitalDateTimeInput(attendance.checkOutTime) : '',
       status: attendance?.status ?? 'Present',
       remarks: attendance?.remarks ?? '',
     },
   });
 
   function onSubmit(values: AttendanceFormValues) {
-    const checkInTime = values.checkInTime ? new Date(values.checkInTime).toISOString() : null;
-    const checkOutTime = values.checkOutTime ? new Date(values.checkOutTime).toISOString() : null;
+    const checkInTime = values.checkInTime ? fromHospitalDateTimeInput(values.checkInTime) : null;
+    const checkOutTime = values.checkOutTime ? fromHospitalDateTimeInput(values.checkOutTime) : null;
     const remarks = values.remarks || null;
 
     if (mode === 'create') {

@@ -37,6 +37,48 @@ _To be documented._
 
 ## Decisions
 
+### ADR-147: Every date and time is India Standard Time by the server's clock
+**Date:** 2026-11-25
+**Status:** Accepted (amends ADR-146's "local day")
+
+**Context**
+The user's rule: every date and time the app works out or shows must be Indian Standard Time and must come from the server's clock, never from the desk PC's clock or time-zone setting. A check found:
+- **Records were already right.** Bills, payments, visits and every other record are stamped by the server (`Entity.CreatedAt = DateTime.UtcNow`); no screen sends the PC's time as a record's time.
+- **The server's "today" was the UTC day** in about 15 places (`DateTime.UtcNow.Date`, `DateOnly.FromDateTime(DateTime.UtcNow)`). UTC is still yesterday until 5:30 AM in India. Effects included:
+  - "Date of birth cannot be in the future" for a baby born after midnight, in the registration form and in the API.
+  - OPD Billing's "visits today" list showing the wrong day's patients between 12:00 and 5:30 AM.
+  - Date filters without an offset read as UTC midnight.
+- **The screens used the PC.** OP Report, Day-wise Profit, Today's Profit and Income & Expense dated a bill by its UTC day. For example, INV-2026-000252, made at 12:10 AM on 2 Nov, sat under 1 Nov, while Collection Summary put its payment on 2 Nov. Other things took the PC's clock and zone:
+  - "today", report ranges, ages and the DOB picker's limit
+  - date-time fields
+  - "Printed at" stamps
+  - every time shown
+
+  A PC with the wrong zone (Windows often defaults to Pacific Time) or a wrong clock would get all of these wrong.
+
+**Decision**
+- **Server:** `HMS.Shared.Kernel.HospitalTimeZone` gains `Today`, `DateAt`, `DayStartUtc`, `TodayStartUtc` and `ToUtc`, and every "today" goes through them:
+  - patient age and DOB validators
+  - the visits-today filter
+  - documents, IPD, lab and HR dashboards
+  - backups
+  - product batches
+
+  A list filter's From/To sent without an offset is read as Indian time (`ToUtc`), not UTC. Document date filters use the IST day.
+- **Server clock on screens:** the API exposes its `Date` header (CORS), and the shared `HttpClient` hands every response to `onResponse`. The web app keeps the server-minus-PC offset (`syncServerClock`). `serverNow()` and `hospitalToday()` replace `new Date()` for "now" and "today".
+- **One hospital calendar** (`@hms/shared` `utils/hospitalTime.ts`, re-exported as `@/lib/hospitalTime`). It provides:
+  - `hospitalDateOf`, `hospitalDayStart`/`End`, `addDaysToDate` and `hospitalDateParts`
+  - `toHospitalDateTimeInput`/`fromHospitalDateTimeInput` for `datetime-local` fields
+
+  India has no daylight saving, so a fixed +05:30 is exact. Report day ranges, collection ranges, Today's figures, report line dates, ages, the DOB limit, calendars and date-time fields all use it. `reportDateRange.ts` keeps its function names.
+- **Every time shown is IST:** `installHospitalTimeDisplay()` (run first in `main.tsx`) gives `toLocaleString`, `toLocaleDateString` and `toLocaleTimeString` `timeZone: 'Asia/Kolkata'` unless a call names its own zone. It is one switch for the app's ~180 calls and those inside PDF and chart libraries, and the output format is unchanged.
+
+**Consequences**
+- No migration. Reports can move a bill made between 12:00 and 5:30 AM to the next day: OP Report and Day-wise Profit now agree with Collection Summary.
+- Until the first API response arrives (the login page), "now" is the PC's clock. The offset is refreshed by every response afterwards.
+- Plain calendar dates (date of birth, review date, holidays) are formatted as written (`timeZone: 'UTC'` on a UTC-midnight date), never shifted by any zone.
+- The mobile app consumes the same helpers but doesn't feed them the server clock yet, so it still uses the phone's clock.
+
 ### ADR-146: Emergency visits count with OP; report dates and switched-off modules fixed for handover
 **Date:** 2026-11-24
 **Status:** Accepted (amends ADR-121 and ADR-125)

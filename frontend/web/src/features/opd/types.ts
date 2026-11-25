@@ -21,7 +21,7 @@ export const todayIsoDate = todayDateInputValue;
  * is UTC midnight, which shows as the previous day west of UTC. */
 export function formatScheduledDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 /** Scheduled Visits keeps its own From/To, separate from the yesterday–today range the other OPD

@@ -278,7 +278,7 @@ internal class DocumentService : IDocumentService
 
     public Task<int> GetExpiringDocumentCountAsync(DocumentOwnerType ownerType, int withinDays, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = HospitalTimeZone.Today;
         return _repository.GetExpiringCountAsync(ownerType, today, today.AddDays(withinDays), cancellationToken);
     }
 

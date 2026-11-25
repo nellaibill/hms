@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePostProgressNoteMutation, useProgressNotesQuery } from '../hooks/useProgressNotes';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface ProgressNotesPanelProps {
   admissionId: string;
@@ -38,7 +39,7 @@ export function ProgressNotesPanel({ admissionId }: ProgressNotesPanelProps) {
   function onSubmit(values: ProgressNoteFormValues) {
     mutation.mutate(
       {
-        noteDateTime: new Date(values.noteDateTime).toISOString(),
+        noteDateTime: fromHospitalDateTimeInput(values.noteDateTime),
         clinicalCondition: values.clinicalCondition || null,
         progress: values.progress || null,
         diagnosis: values.diagnosis || null,

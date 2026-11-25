@@ -19,6 +19,7 @@ import {
   useDoctorOrdersQuery,
   usePostDoctorOrderMutation,
 } from '../hooks/useDoctorOrders';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface DoctorOrdersPanelProps {
   admissionId: string;
@@ -128,7 +129,7 @@ export function DoctorOrdersPanel({ admissionId }: DoctorOrdersPanelProps) {
         description: values.description,
         instructions: values.instructions || null,
         catalogItemId: values.catalogItemId || null,
-        orderedAt: new Date(values.orderedAt).toISOString(),
+        orderedAt: fromHospitalDateTimeInput(values.orderedAt),
       },
       { onSuccess: () => reset(defaultValues) },
     );

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNursingAssessmentsQuery, usePostNursingAssessmentMutation } from '../hooks/useNursingAssessments';
+import { fromHospitalDateTimeInput } from '@/lib/hospitalTime';
 
 interface NursingAssessmentPanelProps {
   admissionId: string;
@@ -41,7 +42,7 @@ export function NursingAssessmentPanel({ admissionId }: NursingAssessmentPanelPr
   function onSubmit(values: NursingAssessmentFormValues) {
     mutation.mutate(
       {
-        assessedAt: new Date(values.assessedAt).toISOString(),
+        assessedAt: fromHospitalDateTimeInput(values.assessedAt),
         generalCondition: values.generalCondition || null,
         consciousnessLevel: values.consciousnessLevel || null,
         mobility: values.mobility || null,

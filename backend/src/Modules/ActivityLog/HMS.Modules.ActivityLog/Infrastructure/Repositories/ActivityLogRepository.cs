@@ -100,13 +100,9 @@ internal class ActivityLogRepository : IActivityLogRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken)
         => _dbContext.SaveChangesAsync(cancellationToken);
 
-    // Npgsql rejects Kind=Unspecified for timestamptz; query-string dates arrive that way.
-    private static DateTime AsUtc(DateTime value) => value.Kind switch
-    {
-        DateTimeKind.Utc => value,
-        DateTimeKind.Local => value.ToUniversalTime(),
-        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
-    };
+    // Npgsql rejects Kind=Unspecified for timestamptz; a query-string date without an offset
+    // arrives that way and is the hospital's own (IST) time, ADR-147.
+    private static DateTime AsUtc(DateTime value) => HospitalTimeZone.ToUtc(value);
 
     private static string EscapeLike(string value)
         => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");

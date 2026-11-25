@@ -5,6 +5,7 @@ import { PrintPageStyle } from '@/features/branding/components/PrintPageStyle';
 import { useBrandingQuery } from '@/features/branding/hooks/useBrandingQuery';
 import { resolveRecordLabel } from '@/features/masters';
 import { formatDiagnosisLabel, formatPrescriptionDetails } from '../consultationLabels';
+import { serverNow } from '@/lib/hospitalTime';
 
 interface OpdConsultationPrintTemplateProps {
   header: OpdConsultationHeader;
@@ -204,7 +205,7 @@ export function OpdConsultationPrintTemplate({ header, note }: OpdConsultationPr
 
       <div className="mt-10 flex items-end justify-between border-t border-gray-300 pt-3 text-xs text-gray-600">
         <span>This is a system-generated clinical record.</span>
-        <span>Printed {new Date().toLocaleString('en-IN')}</span>
+        <span>Printed {serverNow().toLocaleString('en-IN')}</span>
       </div>
     </div>
   );

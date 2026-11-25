@@ -53,7 +53,7 @@ internal class Patient : Entity
     public IReadOnlyCollection<EmergencyContact> EmergencyContacts => _emergencyContacts.AsReadOnly();
 
     /// <summary>Age is always derived from <see cref="DateOfBirth"/>, never stored.</summary>
-    public int Age => CalculateAge(DateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow));
+    public int Age => CalculateAge(DateOfBirth, HospitalTimeZone.Today);
 
     // Required by EF Core materialization.
     private Patient()

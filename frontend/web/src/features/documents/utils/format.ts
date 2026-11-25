@@ -1,3 +1,4 @@
+import { hospitalDateOf, hospitalToday } from '@/lib/hospitalTime';
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ['KB', 'MB', 'GB'];
@@ -25,10 +26,10 @@ export function formatDate(iso: string): string {
 }
 
 export function isoDateOnly(iso: string): string {
-  return iso.slice(0, 10);
+  // Its day in India, not the UTC day (ADR-147).
+  return hospitalDateOf(iso);
 }
 
 export function todayIsoDate(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return hospitalToday();
 }
