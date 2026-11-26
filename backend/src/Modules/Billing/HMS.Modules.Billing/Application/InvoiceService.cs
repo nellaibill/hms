@@ -7,6 +7,7 @@ using HMS.Modules.Billing.Domain;
 using HMS.Modules.Laboratory.Application;
 using HMS.Modules.Laboratory.Contracts;
 using HMS.Modules.Masters.Application;
+using HMS.Modules.Masters.Contracts;
 using HMS.Modules.Patients.Application;
 using HMS.Modules.Patients.Contracts;
 using HMS.Shared.Kernel;
@@ -94,6 +95,7 @@ internal class InvoiceService : IInvoiceService
     private readonly ILabOrderService _labOrderService;
     private readonly IDiagnosticTestService _diagnosticTestService;
     private readonly IDiagnosticServiceService _diagnosticServiceService;
+    private readonly IDiagnosticPackageService _diagnosticPackageService;
     private readonly IConsultantService _consultantService;
     private readonly IDepartmentService _departmentService;
     private readonly IConsultationTypeService _consultationTypeService;
@@ -115,6 +117,7 @@ internal class InvoiceService : IInvoiceService
         ILabOrderService labOrderService,
         IDiagnosticTestService diagnosticTestService,
         IDiagnosticServiceService diagnosticServiceService,
+        IDiagnosticPackageService diagnosticPackageService,
         IConsultantService consultantService,
         IDepartmentService departmentService,
         IConsultationTypeService consultationTypeService,
@@ -132,6 +135,7 @@ internal class InvoiceService : IInvoiceService
         _labOrderService = labOrderService;
         _diagnosticTestService = diagnosticTestService;
         _diagnosticServiceService = diagnosticServiceService;
+        _diagnosticPackageService = diagnosticPackageService;
         _consultantService = consultantService;
         _departmentService = departmentService;
         _consultationTypeService = consultationTypeService;
@@ -274,6 +278,97 @@ internal class InvoiceService : IInvoiceService
         }
 
         return Result<(decimal? Amount, decimal? DoctorCharge)[]>.Success(charges);
+    }
+
+    /// <summary>
+    /// ADR-153: each line's cost per unit (and a scan's doctor's share), by position in
+    /// <paramref name="items"/>, from Masters as it is now, by <see cref="LineCostRules"/>. Stored
+    /// on the line, so editing Masters later doesn't change the reports of bills already made. A
+    /// line Masters has no cost for gets none (reports keep reading Masters for it). Best-effort:
+    /// a Masters lookup that fails leaves the line without a stored cost and never fails the bill.
+    /// </summary>
+    private async Task<LineCost?[]> ResolveLineCostsAsync(
+        IReadOnlyList<CreateInvoiceLineItemRequest> items,
+        (decimal? Amount, decimal? DoctorCharge)[] bedsideCharges,
+        CancellationToken cancellationToken)
+    {
+        var costs = new LineCost?[items.Count];
+        var consultants = new Dictionary<Guid, ConsultantResponse?>();
+        var services = new Dictionary<Guid, DiagnosticServiceResponse?>();
+
+        async Task<ConsultantResponse?> ConsultantAsync(Guid id)
+        {
+            if (!consultants.TryGetValue(id, out var consultant))
+            {
+                consultant = await _consultantService.GetByIdAsync(id, cancellationToken) is { IsSuccess: true, Value: { } found } ? found : null;
+                consultants[id] = consultant;
+            }
+
+            return consultant;
+        }
+
+        async Task<DiagnosticServiceResponse?> ServiceAsync(Guid id)
+        {
+            if (!services.TryGetValue(id, out var service))
+            {
+                service = await _diagnosticServiceService.GetByIdAsync(id, cancellationToken) is { IsSuccess: true, Value: { } found } ? found : null;
+                services[id] = service;
+            }
+
+            return service;
+        }
+
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            try
+            {
+                Guid.TryParse(item.ServiceId, out var serviceId);
+                costs[index] = item.BillingType switch
+                {
+                    BillingType.Consultation when Guid.TryParse(item.ConsultantId, out var consultantId) && serviceId != Guid.Empty
+                        => LineCostRules.Consultation(await ConsultantAsync(consultantId), serviceId),
+                    BillingType.Radiology when serviceId != Guid.Empty
+                        => LineCostRules.Radiology(await ServiceAsync(serviceId), item.RateOptionId, item.IsBedside, bedsideCharges[index].DoctorCharge),
+                    BillingType.Laboratory when item.PackageId is Guid packageId
+                        => await LabPackageCostAsync(packageId, ServiceAsync, cancellationToken),
+                    BillingType.Laboratory when serviceId != Guid.Empty
+                        => LineCostRules.LabTest(await ServiceAsync(serviceId)),
+                    BillingType.Procedure or BillingType.Injection or BillingType.File when serviceId != Guid.Empty
+                        => LineCostRules.CostPrice(await _diagnosticTestService.GetByIdAsync(serviceId, cancellationToken) is { IsSuccess: true, Value: { } test } ? test.CostPrice : null),
+                    _ => null,
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Billing: could not work out the cost of a {BillingType} line ('{ServiceId}') — saved without one; reports read Masters for it.", item.BillingType, item.ServiceId);
+                costs[index] = null;
+            }
+        }
+
+        return costs;
+    }
+
+    private async Task<LineCost?> LabPackageCostAsync(Guid packageId, Func<Guid, Task<DiagnosticServiceResponse?>> serviceAsync, CancellationToken cancellationToken)
+    {
+        if (await _diagnosticPackageService.GetByIdAsync(packageId, cancellationToken) is not { IsSuccess: true, Value: { } package })
+        {
+            return null;
+        }
+
+        var tests = new Dictionary<Guid, DiagnosticServiceResponse>();
+        if (package.CostPrice <= 0)
+        {
+            foreach (var serviceId in package.Items.Select(i => i.ServiceId).Distinct())
+            {
+                if (await serviceAsync(serviceId) is { } test)
+                {
+                    tests[serviceId] = test;
+                }
+            }
+        }
+
+        return LineCostRules.LabPackage(package, tests);
     }
 
     /// <summary>
@@ -487,6 +582,8 @@ internal class InvoiceService : IInvoiceService
             }
         }
 
+        var lineCosts = await ResolveLineCostsAsync(request.Items, bedsideCharges.Value!, cancellationToken);
+
         var invoiceNumber = await _numberGenerator.NextInvoiceNumberAsync(cancellationToken);
 
         var itemSpecs = request.Items
@@ -505,7 +602,9 @@ internal class InvoiceService : IInvoiceService
                 RateOptionName: i.RateOptionName,
                 IsBedside: i.IsBedside,
                 BedsideAmount: bedsideCharges.Value![index].Amount,
-                BedsideDoctorCharge: bedsideCharges.Value![index].DoctorCharge))
+                BedsideDoctorCharge: bedsideCharges.Value![index].DoctorCharge,
+                UnitCost: lineCosts[index]?.UnitCost,
+                UnitDoctorShare: lineCosts[index]?.UnitDoctorShare))
             .ToList();
 
         var invoice = Invoice.Create(

@@ -55,6 +55,14 @@ export interface BillingItem {
    * Masters. Unset on bedside lines billed before ADR-144 — reports then use the service's
    * bedside doctor's share. */
   bedsideDoctorCharge?: number;
+  /** One unit's cost as Masters had it when the line was billed (ADR-153) — the consultant's
+   * share for a consultation, the doctor's share + running cost for a scan, the running cost for
+   * a lab test or package, the cost price otherwise. Reports use it instead of today's Masters, so
+   * a later Masters edit doesn't change days already billed. Unset when Masters had no cost then
+   * (or on an older line the fill couldn't cost): reports read Masters, as before. */
+  unitCost?: number;
+  /** Radiology only (ADR-153): the doctor's share inside unitCost; the rest is running cost. */
+  unitDoctorShare?: number;
   quantity: number;
   unitPrice: number;
   discount: number;

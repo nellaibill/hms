@@ -658,6 +658,14 @@ namespace HMS.Database.Migrations.Billing.Migrations
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("total");
 
+                    b.Property<decimal?>("UnitCost")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("unit_cost");
+
+                    b.Property<decimal?>("UnitDoctorShare")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("unit_doctor_share");
+
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("unit_price");
