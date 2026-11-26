@@ -1,4 +1,4 @@
-import { ApiError, createDiagnosticServiceSchema, DIAGNOSTIC_SERVICE_TYPES, type DiagnosticServiceFormValues } from '@hms/shared';
+import { ApiError, createDiagnosticServiceSchema, DIAGNOSTIC_SAMPLE_TYPES, DIAGNOSTIC_SERVICE_TYPES, type DiagnosticServiceFormValues } from '@hms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, X } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -35,6 +35,8 @@ interface DiagnosticServiceFormProps {
   packagesUsingThis?: PackageUsingService[];
 }
 
+const NO_SAMPLE = '__none__';
+
 const DEFAULT_VALUES: DiagnosticServiceFormValues = {
   code: '',
   name: '',
@@ -50,6 +52,8 @@ const DEFAULT_VALUES: DiagnosticServiceFormValues = {
   bedsidePrice: 0,
   bedsideDoctorCharge: 0,
   rateOptions: [],
+  sampleType: '',
+  sortOrder: undefined,
 };
 
 /**
@@ -175,6 +179,39 @@ export function DiagnosticServiceForm({ defaultValues, mode, onSubmit, isSubmitt
                     </div>
                   )}
                 />
+              </div>
+
+              {!isRadiology && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="ds-sampleType">Sample</Label>
+                  <Controller
+                    name="sampleType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value || NO_SAMPLE} onValueChange={(value) => field.onChange(value === NO_SAMPLE ? '' : value)}>
+                        <SelectTrigger id="ds-sampleType" aria-label="Sample">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_SAMPLE}>Not set</SelectItem>
+                          {DIAGNOSTIC_SAMPLE_TYPES.map((sample) => (
+                            <SelectItem key={sample} value={sample}>
+                              {sample}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">The Price List heading it sits under, as in the tariff sheet ("In-house tests – Blood").</p>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="ds-sortOrder">List order</Label>
+                <Input id="ds-sortOrder" type="number" min={1} step={1} placeholder="e.g. 10" {...register('sortOrder')} />
+                <p className="text-xs text-muted-foreground">Where it sits in the Price List — lower comes first. Blank lists it at the end of its section.</p>
+                {errors.sortOrder && <p className="text-sm text-destructive">{errors.sortOrder.message}</p>}
               </div>
             </CardContent>
           </Card>

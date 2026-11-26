@@ -1044,6 +1044,10 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("name");
 
+                    b.Property<int?>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("total_price");
@@ -1259,11 +1263,20 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("provider_id");
 
+                    b.Property<string>("SampleType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("sample_type");
+
                     b.Property<string>("ServiceType")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("service_type");
+
+                    b.Property<int?>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1405,6 +1418,10 @@ namespace HMS.Database.Migrations.Masters.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("service_type");
+
+                    b.Property<int?>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

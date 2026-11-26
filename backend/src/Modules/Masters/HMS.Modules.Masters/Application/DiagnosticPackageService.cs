@@ -68,6 +68,7 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
             request.IsActive,
             request.ServiceIds,
             actorId);
+        package.SetSortOrder(request.SortOrder);
 
         await _repository.AddAsync(package, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -95,6 +96,7 @@ internal class DiagnosticPackageService : IDiagnosticPackageService
 
         var before = package.ToResponse();
         package.Update(request.Code, request.Name, request.Description, request.TotalPrice, request.CostPrice, request.IsActive, actorId);
+        package.SetSortOrder(request.SortOrder);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var after = package.ToResponse();

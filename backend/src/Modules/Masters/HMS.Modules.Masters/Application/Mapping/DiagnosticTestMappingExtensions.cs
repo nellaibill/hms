@@ -16,6 +16,7 @@ internal static class DiagnosticTestMappingExtensions
         IsOutsourced = diagnosticTest.IsOutsourced,
         ReferenceLab = diagnosticTest.ReferenceLab,
         IsActive = diagnosticTest.IsActive,
+        SortOrder = diagnosticTest.SortOrder,
         CreatedAt = diagnosticTest.CreatedAt,
         UpdatedAt = diagnosticTest.UpdatedAt,
     };

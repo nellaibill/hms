@@ -34,6 +34,13 @@ public record CreateDiagnosticServiceRequest
     /// Radiology only. An option with an <c>Id</c> updates that option; one without is added; an
     /// existing option left out is removed.</summary>
     public IReadOnlyList<DiagnosticServiceRateOptionDto> RateOptions { get; init; } = [];
+    /// <summary>What a lab test is run on — one of <see cref="DiagnosticSampleTypes.All"/>, or
+    /// null. Laboratory only (ADR-154).</summary>
+    public string? SampleType { get; init; }
+
+    /// <summary>Where the service sits in the Price List — lower comes first; null when not
+    /// placed yet (ADR-154).</summary>
+    public int? SortOrder { get; init; }
 }
 
 public record UpdateDiagnosticServiceRequest
@@ -63,6 +70,13 @@ public record UpdateDiagnosticServiceRequest
     /// Radiology only. An option with an <c>Id</c> updates that option; one without is added; an
     /// existing option left out is removed.</summary>
     public IReadOnlyList<DiagnosticServiceRateOptionDto> RateOptions { get; init; } = [];
+    /// <summary>What a lab test is run on — one of <see cref="DiagnosticSampleTypes.All"/>, or
+    /// null. Laboratory only (ADR-154).</summary>
+    public string? SampleType { get; init; }
+
+    /// <summary>Where the service sits in the Price List — lower comes first; null when not
+    /// placed yet (ADR-154).</summary>
+    public int? SortOrder { get; init; }
 }
 
 public record DiagnosticServiceResponse
@@ -81,6 +95,8 @@ public record DiagnosticServiceResponse
     public decimal? BedsidePrice { get; init; }
     public decimal? BedsideDoctorCharge { get; init; }
     public IReadOnlyList<DiagnosticServiceRateOptionDto> RateOptions { get; init; } = [];
+    public string? SampleType { get; init; }
+    public int? SortOrder { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }
@@ -102,4 +118,11 @@ public record DiagnosticServiceRateOptionDto
     public decimal Price { get; init; }
     public decimal DoctorCharge { get; init; }
     public decimal CostPrice { get; init; }
+}
+
+/// <summary>The sample types a lab test can be listed under (ADR-154), in the tariff sheet's
+/// order — the Price List heads its lab tabs "Blood", "Urine"… with them.</summary>
+public static class DiagnosticSampleTypes
+{
+    public static readonly IReadOnlyList<string> All = ["Blood", "Urine", "Stool", "Semen", "Body Fluids", "Histopathology"];
 }

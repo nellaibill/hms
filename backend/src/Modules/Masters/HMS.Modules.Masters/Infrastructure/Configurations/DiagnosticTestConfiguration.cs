@@ -21,6 +21,7 @@ internal class DiagnosticTestConfiguration : IEntityTypeConfiguration<Diagnostic
         builder.Property(d => d.IsOutsourced).HasColumnName("is_outsourced").IsRequired().HasDefaultValue(false);
         builder.Property(d => d.ReferenceLab).HasColumnName("reference_lab").HasMaxLength(100);
         builder.Property(d => d.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
+        builder.Property(d => d.SortOrder).HasColumnName("sort_order");
 
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(d => d.CreatedBy).HasColumnName("created_by");

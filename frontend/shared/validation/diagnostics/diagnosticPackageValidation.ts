@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { listOrderSchema } from './diagnosticServiceValidation';
 
 /**
  * Mirrors HMS.Modules.Masters.Application.Validators.DiagnosticPackageValidators — Code
@@ -15,6 +16,7 @@ const diagnosticPackageCommonSchema = {
   totalPrice: z.coerce.number().min(0, 'Must be zero or greater'),
   costPrice: z.coerce.number().min(0, 'Must be zero or greater'),
   isActive: z.boolean(),
+  sortOrder: listOrderSchema,
 };
 
 export const createDiagnosticPackageSchema = z.object({

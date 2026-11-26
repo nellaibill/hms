@@ -31,6 +31,10 @@ internal class DiagnosticTest : Entity
     public string? ReferenceLab { get; private set; }
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>Where the item sits in the Price List (ADR-154) — lower comes first; null for
+    /// an item not placed yet, listed after the placed ones by name.</summary>
+    public int? SortOrder { get; private set; }
+
     // Required by EF Core materialization.
     private DiagnosticTest()
     {
@@ -123,5 +127,16 @@ internal class DiagnosticTest : Entity
         ReferenceLab = referenceLab?.Trim();
         IsActive = isActive;
         MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Sets the item's place in the Price List (ADR-154).</summary>
+    public void SetSortOrder(int? sortOrder)
+    {
+        if (sortOrder is < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sortOrder), "The list order starts at 1.");
+        }
+
+        SortOrder = sortOrder;
     }
 }

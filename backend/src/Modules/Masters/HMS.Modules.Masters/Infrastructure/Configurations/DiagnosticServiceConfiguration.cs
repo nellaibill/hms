@@ -37,6 +37,10 @@ internal class DiagnosticServiceConfiguration : IEntityTypeConfiguration<Diagnos
             .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(d => d.RateOptions).UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        // ADR-154: where the service is listed — its sample type (lab only) and Price List place.
+        builder.Property(d => d.SampleType).HasColumnName("sample_type").HasMaxLength(30);
+        builder.Property(d => d.SortOrder).HasColumnName("sort_order");
+
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(d => d.CreatedBy).HasColumnName("created_by");
         builder.Property(d => d.UpdatedAt).HasColumnName("updated_at");

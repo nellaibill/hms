@@ -59,19 +59,19 @@ const TABS: TabSpec[] = [
     add: { label: 'Add lab test', path: '/diagnostics/lab/services/new?kind=lab', permission: 'diagnostics.create' },
   },
   {
+    key: 'packages',
+    label: 'Lab packages',
+    rule: 'Profit = Package price − Running cost (the package’s own figure, or its tests’ total).',
+    variant: 'packages',
+    add: { label: 'Add package', path: '/diagnostics/lab/packages/new', permission: 'diagnostics.create' },
+  },
+  {
     key: 'outsourced',
     label: 'Outsourced tests',
     rule: 'Profit = Price − what the outside lab charges us.',
     variant: 'outsourced',
     grouped: true,
     add: { label: 'Add outsourced test', path: '/diagnostics/lab/services/new?kind=outsourced', permission: 'diagnostics.create' },
-  },
-  {
-    key: 'packages',
-    label: 'Lab packages',
-    rule: 'Profit = Package price − Running cost (the package’s own figure, or its tests’ total).',
-    variant: 'packages',
-    add: { label: 'Add package', path: '/diagnostics/lab/packages/new', permission: 'diagnostics.create' },
   },
   {
     key: 'radiology',
@@ -272,7 +272,7 @@ export default function PriceListPage() {
         <Card className="overflow-hidden">
           <div className="border-b border-border px-4 py-3 text-sm">
             <span className="font-semibold">{activeTab.rule}</span>
-            {!isConsultations && <span className="text-muted-foreground"> Profit % is profit ÷ price, as in the tariff sheet.</span>}
+            {!isConsultations && <span className="text-muted-foreground"> Profit % is profit ÷ price, as in the tariff sheet. Listed in the sheet’s order — set an item’s List order on its own screen.</span>}
             {isConsultations && canEditMasters && <span className="text-muted-foreground"> Use Edit to change a doctor&apos;s types and charges.</span>}
           </div>
           {isLoading ? (
@@ -291,7 +291,7 @@ export default function PriceListPage() {
             <PriceListTable
               rows={visibleRows}
               variant={activeTab.variant as PriceTableVariant}
-              grouped={activeTab.grouped && !section}
+              grouped={activeTab.grouped}
               emptyText={tabRows.length === 0 ? 'Nothing here yet.' : 'Nothing matches these filters.'}
             />
           )}

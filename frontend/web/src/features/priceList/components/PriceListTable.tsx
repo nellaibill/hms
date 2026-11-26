@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { formatRupees, isLowProfit } from '@/features/diagnostics/tariff';
 import { cn } from '@/lib/utils';
-import { groupBySection, type PriceRow } from '../priceListRows';
+import { groupBySection, type PriceRow, type PriceRowSection } from '../priceListRows';
 
 export type PriceTableVariant = 'lab' | 'outsourced' | 'packages' | 'radiology' | 'master';
 
@@ -22,7 +22,7 @@ export function PriceListTable({ rows, variant, grouped = false, emptyText }: Pr
   }
 
   const columns = columnsFor(variant);
-  const groups = grouped ? groupBySection(rows) : [{ section: '', rows }];
+  const groups: PriceRowSection[] = grouped ? groupBySection(rows) : [{ section: '', rows }];
 
   return (
     <div className="overflow-x-auto">
@@ -40,9 +40,16 @@ export function PriceListTable({ rows, variant, grouped = false, emptyText }: Pr
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => [
+          {groups.map((group, index) => [
+            group.groupHeading ? (
+              <tr key={`group-${index}`} className="bg-blue-50 dark:bg-blue-950/40">
+                <th scope="colgroup" colSpan={columns.length + 1} className="px-4 py-2.5 text-left text-sm font-bold uppercase tracking-wide text-blue-900 dark:text-blue-200">
+                  {group.groupHeading}
+                </th>
+              </tr>
+            ) : null,
             grouped ? (
-              <tr key={`section-${group.section}`} className="bg-amber-50 dark:bg-amber-950/30">
+              <tr key={`section-${index}`} className="bg-amber-50 dark:bg-amber-950/30">
                 <th scope="colgroup" colSpan={columns.length + 1} className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200">
                   {group.section} · {group.rows.length}
                 </th>

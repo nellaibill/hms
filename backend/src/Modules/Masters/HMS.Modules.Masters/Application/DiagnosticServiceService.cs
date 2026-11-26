@@ -72,6 +72,7 @@ internal class DiagnosticServiceService : IDiagnosticServiceService
             request.IsActive,
             actorId);
         diagnosticService.SetTariff(request.DoctorCharge, request.BedsidePrice, request.BedsideDoctorCharge, ToRateOptionValues(request.RateOptions));
+        diagnosticService.SetListing(request.SampleType, request.SortOrder);
 
         await _repository.AddAsync(diagnosticService, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -118,6 +119,7 @@ internal class DiagnosticServiceService : IDiagnosticServiceService
             request.IsActive,
             actorId);
         diagnosticService.SetTariff(request.DoctorCharge, request.BedsidePrice, request.BedsideDoctorCharge, ToRateOptionValues(request.RateOptions));
+        diagnosticService.SetListing(request.SampleType, request.SortOrder);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var after = diagnosticService.ToResponse();
