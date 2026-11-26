@@ -25,6 +25,8 @@ internal class InvoiceLineItemConfiguration : IEntityTypeConfiguration<InvoiceLi
         builder.Property(li => li.IsBedside).HasColumnName("is_bedside").IsRequired().HasDefaultValue(false);
         builder.Property(li => li.BedsideAmount).HasColumnName("bedside_amount").HasColumnType("numeric(12,2)");
         builder.Property(li => li.BedsideDoctorCharge).HasColumnName("bedside_doctor_charge").HasColumnType("numeric(12,2)");
+        builder.Property(li => li.UnitCost).HasColumnName("unit_cost").HasColumnType("numeric(12,2)");
+        builder.Property(li => li.UnitDoctorShare).HasColumnName("unit_doctor_share").HasColumnType("numeric(12,2)");
         builder.Property(li => li.Quantity).HasColumnName("quantity").IsRequired();
         builder.Property(li => li.UnitPrice).HasColumnName("unit_price").HasColumnType("numeric(12,2)").IsRequired();
         builder.Property(li => li.Discount).HasColumnName("discount").HasColumnType("numeric(12,2)").IsRequired();

@@ -37,6 +37,30 @@ _To be documented._
 
 ## Decisions
 
+### ADR-153: Each bill line keeps its doctor's share and running cost from billing time
+**Date:** 2026-11-26
+**Status:** Accepted
+
+**Context**
+A bill line stored its price, discount, total and bedside doctor's charge, but not the doctor's share or the running cost. OP Report, Collection Summary, Day-wise Profit, Today's Profit and the Consultant report worked these out in the browser from the current Masters every time they opened. So editing Masters rewrote past days. On staging, Dr. S. Meena's Emergency share was changed from ₹400 to ₹0 on 25 Nov, and 25 Nov's consultant total moved from ₹2,970 to ₹2,570 (hospital ₹4,870 to ₹5,270), although nothing was re-billed.
+
+**Decision**
+- **Stored on the line.** `billing.invoice_line_items` gains `unit_cost` and `unit_doctor_share` (nullable). `unit_cost` is one unit's cost as Masters had it when the line was billed:
+  - the consultant's share for a consultation (0 is a real share);
+  - the doctor's share plus running cost for a scan, with `unit_doctor_share` holding the doctor's part, bedside share included;
+  - the running cost for a lab test or package;
+  - the cost price for a procedure, injection or file.
+- **Worked out by the server.** `InvoiceService.CreateAsync` reads Masters with `LineCostRules`, the same rules as `billingCalculations.ts`'s `resolveItemCostPrice` / `resolveItemCostSplit`. A lookup that fails never fails the bill; the line is saved without a cost.
+- **Not yet costed stays live.** When Masters has no cost for a line at billing time (share left blank, test cost 0, no Masters record), nothing is stored and reports keep reading Masters for it, so a rate set later still reaches it. A stored cost never changes.
+- **Discounts unchanged.** The stored cost is before discount; reports still take a consultation discount off the share by the same percentage (ADR-113).
+- **Old bills filled once.** The migration `AddInvoiceLineUnitCost` fills existing lines from Masters as it is now, by the same rules in SQL. It does nothing on a hospital with no bills, and it is skipped with a notice (columns still added) if the masters tables ever look different.
+- **Reports.** `resolveItemCostPrice` / `resolveItemCostSplit` use the stored cost when there is one, else Masters as before. Every report goes through them, so no screen changed.
+
+**Consequences**
+- A Masters rate change now affects only bills made after it. Correcting an old bill's cost needs a re-bill (cancel and bill again); there is no "re-apply current rates" action.
+- Needs Billing Migrate on every hospital. After it, staging's 25 Nov bills are fixed at today's Masters, so Dr. Meena's Emergency lines stay at ₹0 (consultant ₹2,570, hospital ₹5,270); bills from then on keep the rate they were billed at.
+- Bill responses carry `unitCost` / `unitDoctorShare`, which a doctor's own login can see on their own lines.
+
 ### ADR-152: An owner-doctor's OPD queue opens on their own patients
 **Date:** 2026-11-26
 **Status:** Accepted

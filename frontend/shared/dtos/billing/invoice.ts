@@ -89,6 +89,11 @@ export interface InvoiceLineItemResponse {
    * bedsideDoctorCharge is also null on bedside lines billed before ADR-144. */
   bedsideAmount?: number | null;
   bedsideDoctorCharge?: number | null;
+  /** ADR-153: one unit's cost as Masters had it when billed (the consultant's share for a
+   * consultation), and for a scan the doctor's share inside it. Null when Masters had no cost
+   * then, or on an older line the fill couldn't cost — reports read Masters for those. */
+  unitCost?: number | null;
+  unitDoctorShare?: number | null;
   quantity: number;
   unitPrice: number;
   discount: number;
