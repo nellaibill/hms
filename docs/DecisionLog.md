@@ -37,6 +37,22 @@ _To be documented._
 
 ## Decisions
 
+### ADR-152: An owner-doctor's OPD queue opens on their own patients
+**Date:** 2026-11-26
+**Status:** Accepted
+
+**Context**
+A hospital's owner is often also one of its doctors. Their login gets the Super Admin role and stays linked to their consultant record, which is already possible from the consultant's Login access card. Consultant scoping (`GetScopedConsultantId`) applies only to Doctor / Consultant roles, so a Super Admin sees every doctor's queue. That is right for running the hospital, but means picking their own name in the filters each time they want to consult.
+
+**Decision**
+- **Opens on their own patients.** For a login linked to a consultant record but not held to it (`!scopedConsultantId && user.consultantId`), the OPD page sets its Department and Consultant filters to that consultant once, when the record loads.
+- **Nothing is locked.** A "My patients / All doctors" switch above the filters flips between their own queue and everyone's.
+- **Doctor logins are unchanged.** A Doctor / Consultant login is still locked to its own queue, as before.
+
+**Consequences**
+- Frontend only; no API or migration.
+- Reports and Accounts stay hospital-wide for the owner as Super Admin; only the OPD queue defaults to their patients.
+
 ### ADR-151: Bill lists, approval queues and Patient Reports are switched in Reports Visibility
 **Date:** 2026-11-25
 **Status:** Accepted (amends ADR-120 and ADR-134)
