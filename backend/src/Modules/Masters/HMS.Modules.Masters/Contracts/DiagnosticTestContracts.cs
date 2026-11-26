@@ -35,6 +35,9 @@ public record CreateDiagnosticTestRequest
     /// <summary>Reference lab the sample is routed to (e.g. "Q-LAB") — only meaningful when <see cref="IsOutsourced"/> is true.</summary>
     public string? ReferenceLab { get; init; }
     public bool IsActive { get; init; } = true;
+    /// <summary>Where it sits in the Price List — lower comes first; null when not placed yet
+    /// (ADR-154).</summary>
+    public int? SortOrder { get; init; }
 }
 
 public record UpdateDiagnosticTestRequest
@@ -47,6 +50,9 @@ public record UpdateDiagnosticTestRequest
     public bool IsOutsourced { get; init; }
     public string? ReferenceLab { get; init; }
     public bool IsActive { get; init; } = true;
+    /// <summary>Where it sits in the Price List — lower comes first; null when not placed yet
+    /// (ADR-154).</summary>
+    public int? SortOrder { get; init; }
 }
 
 public record DiagnosticTestResponse
@@ -60,6 +66,7 @@ public record DiagnosticTestResponse
     public bool IsOutsourced { get; init; }
     public string? ReferenceLab { get; init; }
     public bool IsActive { get; init; }
+    public int? SortOrder { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

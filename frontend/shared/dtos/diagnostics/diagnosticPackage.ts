@@ -19,6 +19,8 @@ export interface DiagnosticPackage {
   costPrice: number;
   isActive: boolean;
   items: DiagnosticPackageItem[];
+  /** Where it sits in the Price List — lower first; null when not placed yet (ADR-154). */
+  sortOrder?: number | null;
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -33,6 +35,8 @@ export interface CreateDiagnosticPackageRequest {
   isActive: boolean;
   /** At least one DiagnosticService id is required. */
   serviceIds: string[];
+  /** Where it sits in the Price List — lower first; null when not placed yet (ADR-154). */
+  sortOrder?: number | null;
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.UpdateDiagnosticPackageRequest — items are NOT
@@ -44,6 +48,8 @@ export interface UpdateDiagnosticPackageRequest {
   totalPrice: number;
   costPrice: number;
   isActive: boolean;
+  /** Where it sits in the Price List — lower first; null when not placed yet (ADR-154). */
+  sortOrder?: number | null;
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.AddDiagnosticPackageItemRequest. */

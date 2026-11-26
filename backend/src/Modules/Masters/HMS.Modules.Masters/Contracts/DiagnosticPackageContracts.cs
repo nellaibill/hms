@@ -16,6 +16,9 @@ public record CreateDiagnosticPackageRequest
     /// <summary>At least one DiagnosticService id is required — a package with zero tests
     /// isn't a bundle worth creating.</summary>
     public IReadOnlyList<Guid> ServiceIds { get; init; } = [];
+    /// <summary>Where it sits in the Price List — lower comes first; null when not placed yet
+    /// (ADR-154).</summary>
+    public int? SortOrder { get; init; }
 }
 
 public record UpdateDiagnosticPackageRequest
@@ -26,6 +29,9 @@ public record UpdateDiagnosticPackageRequest
     public decimal TotalPrice { get; init; }
     public decimal CostPrice { get; init; }
     public bool IsActive { get; init; } = true;
+    /// <summary>Where it sits in the Price List — lower comes first; null when not placed yet
+    /// (ADR-154).</summary>
+    public int? SortOrder { get; init; }
 }
 
 /// <summary>Adds one test to an existing package ("Add another Test" on the package detail
@@ -51,6 +57,7 @@ public record DiagnosticPackageResponse
     public decimal CostPrice { get; init; }
     public bool IsActive { get; init; }
     public IReadOnlyList<DiagnosticPackageItemResponse> Items { get; init; } = [];
+    public int? SortOrder { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

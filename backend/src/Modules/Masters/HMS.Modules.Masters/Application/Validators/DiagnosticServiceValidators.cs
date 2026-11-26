@@ -29,6 +29,7 @@ internal class CreateDiagnosticServiceRequestValidator : AbstractValidator<Creat
             .WithMessage("A provider is required when the service is outsourced.");
 
         DiagnosticServiceTariffRules.Apply(this, x => x.ServiceType, x => x.DoctorCharge, x => x.BedsidePrice, x => x.BedsideDoctorCharge, x => x.RateOptions);
+        ListOrderRules.ApplyListing(this, x => x.ServiceType, x => x.SampleType, x => x.SortOrder);
     }
 }
 
@@ -54,6 +55,34 @@ internal class UpdateDiagnosticServiceRequestValidator : AbstractValidator<Updat
             .WithMessage("A provider is required when the service is outsourced.");
 
         DiagnosticServiceTariffRules.Apply(this, x => x.ServiceType, x => x.DoctorCharge, x => x.BedsidePrice, x => x.BedsideDoctorCharge, x => x.RateOptions);
+        ListOrderRules.ApplyListing(this, x => x.ServiceType, x => x.SampleType, x => x.SortOrder);
+    }
+}
+
+/// <summary>ADR-154's rules for where an item is listed: a Price List place from 1 up, and a
+/// sample type from <see cref="DiagnosticSampleTypes.All"/> on a lab test only.</summary>
+internal static class ListOrderRules
+{
+    public const int Max = 99999;
+    public const string Message = "The list order must be a whole number from 1 to 99999.";
+
+    public static void ApplyListing<T>(
+        AbstractValidator<T> validator,
+        Expression<Func<T, DiagnosticTestServiceType>> serviceType,
+        Expression<Func<T, string?>> sampleType,
+        Expression<Func<T, int?>> sortOrder)
+    {
+        var getType = serviceType.Compile();
+        var getSortOrder = sortOrder.Compile();
+
+        validator.RuleFor(sortOrder).InclusiveBetween(1, Max).When(x => getSortOrder(x).HasValue).WithMessage(Message);
+        validator.RuleFor(sampleType)
+            .Must(sample => string.IsNullOrWhiteSpace(sample) || DiagnosticSampleTypes.All.Contains(sample.Trim()))
+            .WithMessage($"Sample must be one of: {string.Join(", ", DiagnosticSampleTypes.All)}.");
+        validator.RuleFor(sampleType)
+            .Must(string.IsNullOrWhiteSpace)
+            .When(x => getType(x) != DiagnosticTestServiceType.Laboratory)
+            .WithMessage("Only a lab test has a sample.");
     }
 }
 

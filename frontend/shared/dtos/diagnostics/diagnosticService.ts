@@ -5,6 +5,12 @@
 export const DIAGNOSTIC_SERVICE_TYPES = ['Laboratory', 'Radiology'] as const;
 export type DiagnosticServiceType = (typeof DIAGNOSTIC_SERVICE_TYPES)[number];
 
+/** The samples a lab test can be listed under, in the tariff sheet's order (ADR-154) — mirrors
+ * HMS.Modules.Masters.Contracts.DiagnosticSampleTypes. The Price List heads its lab tabs with
+ * them ("In-house tests – Blood"). */
+export const DIAGNOSTIC_SAMPLE_TYPES = ['Blood', 'Urine', 'Stool', 'Semen', 'Body Fluids', 'Histopathology'] as const;
+export type DiagnosticSampleType = (typeof DIAGNOSTIC_SAMPLE_TYPES)[number];
+
 /** Mirrors HMS.Modules.Masters.Contracts.DiagnosticServiceResponse. See diagnosticCategory.ts
  * for why this lives outside dtos/masters. */
 export interface DiagnosticService {
@@ -26,6 +32,10 @@ export interface DiagnosticService {
   bedsideDoctorCharge?: number | null;
   /** Named alternative rates (e.g. "LH", "MR") billed instead of the standard one. Radiology only. */
   rateOptions: DiagnosticServiceRateOption[];
+  /** What a lab test is run on (Blood, Urine…) — null for radiology or a test not placed (ADR-154). */
+  sampleType?: string | null;
+  /** Where it sits in the Price List — lower first; null when not placed yet (ADR-154). */
+  sortOrder?: number | null;
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -50,6 +60,10 @@ export interface CreateDiagnosticServiceRequest {
   bedsideDoctorCharge?: number | null;
   /** Named alternative rates (e.g. "LH", "MR") billed instead of the standard one. Radiology only. */
   rateOptions?: DiagnosticServiceRateOption[];
+  /** What a lab test is run on (Blood, Urine…) — null for radiology or a test not placed (ADR-154). */
+  sampleType?: string | null;
+  /** Where it sits in the Price List — lower first; null when not placed yet (ADR-154). */
+  sortOrder?: number | null;
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.UpdateDiagnosticServiceRequest. */
@@ -71,6 +85,10 @@ export interface UpdateDiagnosticServiceRequest {
   bedsideDoctorCharge?: number | null;
   /** Named alternative rates (e.g. "LH", "MR") billed instead of the standard one. Radiology only. */
   rateOptions?: DiagnosticServiceRateOption[];
+  /** What a lab test is run on (Blood, Urine…) — null for radiology or a test not placed (ADR-154). */
+  sampleType?: string | null;
+  /** Where it sits in the Price List — lower first; null when not placed yet (ADR-154). */
+  sortOrder?: number | null;
 }
 
 /** Mirrors HMS.Modules.Masters.Contracts.DiagnosticServiceListQuery. */

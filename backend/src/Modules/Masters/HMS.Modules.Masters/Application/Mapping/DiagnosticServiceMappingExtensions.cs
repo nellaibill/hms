@@ -31,6 +31,8 @@ internal static class DiagnosticServiceMappingExtensions
                 CostPrice = option.CostPrice,
             })
             .ToList(),
+        SampleType = diagnosticService.SampleType,
+        SortOrder = diagnosticService.SortOrder,
         CreatedAt = diagnosticService.CreatedAt,
         UpdatedAt = diagnosticService.UpdatedAt,
     };

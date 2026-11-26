@@ -117,6 +117,13 @@ export function DiagnosticPackageForm({ defaultValues, mode, onSubmit, isSubmitt
                   )}
                 />
               </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="dpk-sortOrder">List order</Label>
+                <Input id="dpk-sortOrder" type="number" min={1} step={1} placeholder="e.g. 1" {...register('sortOrder')} />
+                <p className="text-xs text-muted-foreground">Its number in the tariff sheet's package list. Blank lists it after the numbered ones.</p>
+                {errors.sortOrder && <p className="text-sm text-destructive">{errors.sortOrder.message}</p>}
+              </div>
             </CardContent>
           </Card>
 

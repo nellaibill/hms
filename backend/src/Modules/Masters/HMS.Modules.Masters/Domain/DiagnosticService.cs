@@ -52,6 +52,15 @@ internal class DiagnosticService : Entity
     private readonly List<DiagnosticServiceRateOption> _rateOptions = [];
     public IReadOnlyCollection<DiagnosticServiceRateOption> RateOptions => _rateOptions;
 
+    /// <summary>What the test is run on — one of <see cref="DiagnosticSampleTypes.All"/> (Blood,
+    /// Urine, Stool…) — for a Laboratory test; always null for Radiology (ADR-154). The Price
+    /// List groups lab tests by it, the way the tariff sheet heads "In-house tests – Blood".</summary>
+    public string? SampleType { get; private set; }
+
+    /// <summary>Where the item sits in the Price List (ADR-154) — lower comes first; null for
+    /// an item not placed yet, listed after the placed ones by name.</summary>
+    public int? SortOrder { get; private set; }
+
     // Required by EF Core materialization.
     private DiagnosticService()
     {
@@ -152,6 +161,24 @@ internal class DiagnosticService : Entity
         CostPrice = costPrice;
         IsActive = isActive;
         MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Sets where the service is listed (ADR-154): its sample type (Laboratory only) and
+    /// its place in the Price List.</summary>
+    public void SetListing(string? sampleType, int? sortOrder)
+    {
+        var sample = string.IsNullOrWhiteSpace(sampleType) ? null : sampleType.Trim();
+        if (sample is not null && ServiceType != DiagnosticTestServiceType.Laboratory)
+        {
+            throw new ArgumentException("Only a lab test has a sample type.", nameof(sampleType));
+        }
+        if (sortOrder is < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sortOrder), "The list order starts at 1.");
+        }
+
+        SampleType = sample;
+        SortOrder = sortOrder;
     }
 
     /// <summary>
