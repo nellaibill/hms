@@ -37,6 +37,26 @@ _To be documented._
 
 ## Decisions
 
+### ADR-154: The Price List follows the tariff sheet's order, with its Blood / Urine / Stool headings
+**Date:** 2026-11-26
+**Status:** Accepted
+
+**Context**
+The Price List sorted every tab by section name, then item name. The doctors check it against the tariff sheet (`LAB TESTS AND TARIFFS.xlsm`), which lists items in its own order under headings such as "IN-HOUSE TESTS - BLOOD" and "OUTSOURCED TESTS - URINE", each with its own sections (Haematology, Biochemistry…). Alphabetical order made that check slow. The sections alone also didn't separate samples: one "BIOCHEMISTRY" block mixed outsourced blood, urine, stool and body-fluid tests.
+
+**Decision**
+- **A list order on every Price List item.** `masters.diagnostic_services`, `diagnostic_packages` and `diagnostic_tests` gain `sort_order` (nullable int, 1 to 99999). Lower comes first. It is set on each item's own screen ("List order"); blank means not placed yet.
+- **A sample on lab tests.** `diagnostic_services.sample_type` (nullable): Blood, Urine, Stool, Semen, Body Fluids or Histopathology (`DiagnosticSampleTypes`). Lab tests only; radiology takes none.
+- **How the Price List orders a tab.** Items by list order; an item with none goes at the end of its own section, by name. Each heading (sample group, then section) sits where its first item is, so the sheet's sequence of headings comes out without a separate heading order (outsourced Urine lists Biochemistry before Microbiology, Stool the other way round). Lab tabs show a heading per sample, worded like the sheet ("In-house tests – Blood"). A section with no sample after a sample group gets an "Other tests" heading. The section filter lists sections in the tab's order.
+- **Tab order** follows the sheet: Lab tests, Lab packages, Outsourced tests, Radiology, Procedures, Injections & files, Consultations.
+- **LHS data.** `scripts/data-fixes/2026-11-26-lhs-price-list-sheet-order.sql` sets each item's list order to its sheet row x 10 (room to slot a new test between two rows) and each lab test's sample from the sheet's headings. Packages are numbered from the sheet's package list. Names are matched ignoring case, spaces and punctuation.
+
+**Consequences**
+- Needs Masters Migrate, then the data script, on every LHS database. Until then nothing is placed and every tab looks as before (alphabetical).
+- A new test is listed at the end of its section until someone gives it a list order and, for a lab test, a sample.
+- Billing pickers and reports are unchanged; only the Price List uses the order.
+- The sheet's package-list entries that HMS keeps as lab tests in the "Package" section (ANC, Labour, Eclampsia, Fever, Anemia, Synovial Fluid, Thyroid Profile 3) stay on the Lab tests tab, after the in-house tests.
+
 ### ADR-153: Each bill line keeps its doctor's share and running cost from billing time
 **Date:** 2026-11-26
 **Status:** Accepted

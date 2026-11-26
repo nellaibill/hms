@@ -36,6 +36,16 @@ export const diagnosticTestConfig: MasterEntityConfig = {
     },
     { key: 'isOutsourced', label: 'Outsourced to Reference Lab', type: 'boolean', defaultValue: false },
     { key: 'referenceLab', label: 'Reference Lab', type: 'text', placeholder: 'e.g. Q-LAB, ANDERSON', helpText: 'Only relevant when outsourced.' },
+    {
+      key: 'sortOrder',
+      label: 'List order',
+      type: 'number',
+      min: 1,
+      max: 99999,
+      step: 1,
+      placeholder: 'e.g. 10',
+      helpText: 'Where it sits in the Price List, as in the tariff sheet — lower comes first. Leave blank to list it at the end of its section.',
+    },
   ],
   extraColumns: [
     {

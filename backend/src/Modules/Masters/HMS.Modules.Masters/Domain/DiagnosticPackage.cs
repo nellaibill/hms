@@ -28,6 +28,10 @@ internal class DiagnosticPackage : Entity
 
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>Where the package sits in the Price List (ADR-154) — lower comes first; null
+    /// for one not placed yet, listed after the placed ones by name.</summary>
+    public int? SortOrder { get; private set; }
+
     private readonly List<DiagnosticPackageItem> _items = [];
     public IReadOnlyCollection<DiagnosticPackageItem> Items => _items.AsReadOnly();
 
@@ -107,6 +111,17 @@ internal class DiagnosticPackage : Entity
         CostPrice = costPrice;
         IsActive = isActive;
         MarkUpdated(updatedBy);
+    }
+
+    /// <summary>Sets the package's place in the Price List (ADR-154).</summary>
+    public void SetSortOrder(int? sortOrder)
+    {
+        if (sortOrder is < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sortOrder), "The list order starts at 1.");
+        }
+
+        SortOrder = sortOrder;
     }
 
     private static void GuardPrices(decimal totalPrice, decimal costPrice)

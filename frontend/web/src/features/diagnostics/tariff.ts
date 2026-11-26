@@ -94,6 +94,8 @@ export function toDiagnosticServiceRequest(values: DiagnosticServiceFormValues):
           costPrice: option.costPrice,
         }))
       : [],
+    sampleType: isRadiology ? null : values.sampleType || null,
+    sortOrder: values.sortOrder ?? null,
   };
 }
 
@@ -120,6 +122,8 @@ export function toDiagnosticServiceFormValues(service: DiagnosticService): Diagn
       doctorCharge: option.doctorCharge,
       costPrice: option.costPrice,
     })),
+    sampleType: (service.sampleType ?? '') as DiagnosticServiceFormValues['sampleType'],
+    sortOrder: service.sortOrder ?? undefined,
   };
 }
 

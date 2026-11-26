@@ -22,6 +22,7 @@ internal class DiagnosticPackageConfiguration : IEntityTypeConfiguration<Diagnos
         builder.Property(p => p.TotalPrice).HasColumnName("total_price").HasColumnType("numeric(10,2)").IsRequired();
         builder.Property(p => p.CostPrice).HasColumnName("cost_price").HasColumnType("numeric(10,2)").IsRequired().HasDefaultValue(0m);
         builder.Property(p => p.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
+        builder.Property(p => p.SortOrder).HasColumnName("sort_order");
 
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(p => p.CreatedBy).HasColumnName("created_by");

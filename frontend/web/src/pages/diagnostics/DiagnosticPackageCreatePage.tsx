@@ -51,6 +51,7 @@ export default function DiagnosticPackageCreatePage() {
         costPrice: values.costPrice,
         isActive: values.isActive,
         serviceIds: [firstServiceId],
+        sortOrder: values.sortOrder ?? null,
       },
       { onSuccess: (created) => navigate(`/diagnostics/lab/packages/${created.id}`) },
     );

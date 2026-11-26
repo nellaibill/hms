@@ -55,6 +55,7 @@ internal class DiagnosticTestService : IDiagnosticTestService
             request.ReferenceLab,
             request.IsActive,
             actorId);
+        diagnosticTest.SetSortOrder(request.SortOrder);
 
         await _repository.AddAsync(diagnosticTest, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -91,6 +92,7 @@ internal class DiagnosticTestService : IDiagnosticTestService
             request.ReferenceLab,
             request.IsActive,
             actorId);
+        diagnosticTest.SetSortOrder(request.SortOrder);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var after = diagnosticTest.ToResponse();

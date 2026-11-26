@@ -21,6 +21,7 @@ internal static class DiagnosticPackageMappingExtensions
         CostPrice = package.CostPrice,
         IsActive = package.IsActive,
         Items = package.Items.Select(i => i.ToResponse()).ToList(),
+        SortOrder = package.SortOrder,
         CreatedAt = package.CreatedAt,
         UpdatedAt = package.UpdatedAt,
     };

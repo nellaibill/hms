@@ -66,6 +66,7 @@ export function PackagePriceCard({ pkg, testsTotalPrice, testsRunningCost, canEd
           totalPrice: priceNumber,
           costPrice: costToSave,
           isActive: pkg.isActive,
+          sortOrder: pkg.sortOrder ?? null,
         },
       },
       { onSuccess: () => setSaved(true) },

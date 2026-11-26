@@ -35,6 +35,7 @@ export function DiagnosticPackageFormDialog({ pkg, onClose }: DiagnosticPackageF
       totalPrice: pkg.totalPrice,
       costPrice: pkg.costPrice ?? 0,
       isActive: pkg.isActive,
+      sortOrder: pkg.sortOrder ?? undefined,
     },
   });
 
@@ -50,6 +51,7 @@ export function DiagnosticPackageFormDialog({ pkg, onClose }: DiagnosticPackageF
           totalPrice: pkg.totalPrice,
           costPrice: pkg.costPrice ?? 0,
           isActive: values.isActive,
+          sortOrder: values.sortOrder ?? null,
         },
       },
       { onSuccess: onClose },
@@ -88,6 +90,13 @@ export function DiagnosticPackageFormDialog({ pkg, onClose }: DiagnosticPackageF
             <Label htmlFor="dpke-description">Description</Label>
             <Input id="dpke-description" {...register('description')} />
             {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="dpke-sortOrder">List order</Label>
+            <Input id="dpke-sortOrder" type="number" min={1} step={1} placeholder="e.g. 1" className="max-w-[160px]" {...register('sortOrder')} />
+            <p className="text-xs text-muted-foreground">Where the package sits in the Price List, as in the tariff sheet. Leave blank to list it after the numbered ones.</p>
+            {errors.sortOrder && <p className="text-sm text-destructive">{errors.sortOrder.message}</p>}
           </div>
 
           <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">

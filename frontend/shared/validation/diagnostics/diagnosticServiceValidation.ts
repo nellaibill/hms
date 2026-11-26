@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { DIAGNOSTIC_SERVICE_TYPES } from '../../dtos/diagnostics/diagnosticService';
+import { DIAGNOSTIC_SAMPLE_TYPES, DIAGNOSTIC_SERVICE_TYPES } from '../../dtos/diagnostics/diagnosticService';
+
+/** A Price List place (ADR-154): blank for "not placed yet", else a whole number from 1 to
+ * 99999 — mirrors the backend's ListOrderRules. */
+export const listOrderSchema = z.preprocess(
+  (value) => (value === '' || value === null || (typeof value === 'number' && Number.isNaN(value)) ? undefined : value),
+  z.coerce.number().int('Whole numbers only').min(1, 'From 1 up').max(99999, 'Up to 99999').optional(),
+);
 
 /**
  * Mirrors HMS.Modules.Masters.Application.Validators.DiagnosticServiceValidators — Code
@@ -34,6 +41,9 @@ const diagnosticServiceCommonSchema = {
   bedsidePrice: z.coerce.number().min(0, 'Must be zero or greater').default(0),
   bedsideDoctorCharge: z.coerce.number().min(0, 'Must be zero or greater').default(0),
   rateOptions: z.array(diagnosticServiceRateOptionSchema).max(10, 'At most 10 rate options').default([]),
+  // ADR-154 — where it's listed. The sample is a lab test's only; '' for none.
+  sampleType: z.enum(DIAGNOSTIC_SAMPLE_TYPES).or(z.literal('')).default(''),
+  sortOrder: listOrderSchema,
 };
 
 function providerRequiredWhenOutsourced(
