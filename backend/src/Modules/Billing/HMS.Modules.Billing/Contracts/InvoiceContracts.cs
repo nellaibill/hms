@@ -142,6 +142,12 @@ public record InvoiceLineItemResponse
     /// billed before ADR-144.</summary>
     public decimal? BedsideAmount { get; init; }
     public decimal? BedsideDoctorCharge { get; init; }
+
+    /// <summary>ADR-153: one unit's cost as Masters had it when billed (the consultant's share
+    /// for a consultation), and for a scan the doctor's share inside it. Null when Masters had
+    /// no cost then, or on an older line the fill couldn't cost: reports read Masters instead.</summary>
+    public decimal? UnitCost { get; init; }
+    public decimal? UnitDoctorShare { get; init; }
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal Discount { get; init; }

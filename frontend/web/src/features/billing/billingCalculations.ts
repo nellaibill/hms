@@ -388,8 +388,11 @@ export function describeReportService(item: BillingItem): string {
 
 /**
  * Resolves a BillingItem's per-unit CostPrice for profit reporting (features/reports/
- * profitReport.ts) — same billingType branching as describeBillingItem above, reading the
- * same reference caches, but returning the numeric CostPrice instead of a display label.
+ * profitReport.ts). A line that kept its cost from billing time (ADR-153, `unitCost`) uses that,
+ * so editing Masters later doesn't change the reports of days already billed. Otherwise — a line
+ * Masters had no cost for when billed — the same billingType branching as describeBillingItem
+ * above, reading the same reference caches, but returning the numeric CostPrice instead of a
+ * display label. The server works the stored cost out by the same rules (LineCostRules.cs).
  * Returns null (never a fabricated 0) whenever cost genuinely can't be attributed to this
  * line, so a report can distinguish "no cost data" from "confirmed zero cost" rather than
  * silently understating cost or overstating margin:
@@ -410,6 +413,7 @@ export function describeReportService(item: BillingItem): string {
  */
 export function resolveItemCostPrice(item: BillingItem): number | null {
   if (item.billingType === 'Pharmacy' || item.billingType === 'InpatientCharge') return null;
+  if (typeof item.unitCost === 'number') return item.unitCost;
 
   if (item.billingType === 'Consultation') {
     return resolveConsultantCharge(item.billedConsultantId, item.serviceId);
@@ -441,10 +445,15 @@ function withRateDetails(serviceLabel: string, item: Pick<BillingItem, 'serviceI
 
 /**
  * A radiology line's per-unit cost split into the doctor's share and the hospital's running
- * cost (ADR-140) — what resolveItemCostPrice adds together. Null for every other billing type,
- * and for a radiology line whose rate isn't costed.
+ * cost (ADR-140) — what resolveItemCostPrice adds together. As billed when the line kept its cost
+ * (ADR-153), else from today's Masters. Null for every other billing type, and for a radiology
+ * line whose rate isn't costed.
  */
 export function resolveItemCostSplit(item: BillingItem): { doctorShare: number; runningCost: number } | null {
   if (item.billingType !== 'Radiology') return null;
+  if (typeof item.unitCost === 'number') {
+    const doctorShare = item.unitDoctorShare ?? 0;
+    return { doctorShare, runningCost: item.unitCost - doctorShare };
+  }
   return resolveDiagnosticServiceCost(item.serviceId, item.rateOptionId, item.isBedside, item.bedsideDoctorCharge);
 }

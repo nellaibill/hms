@@ -63,6 +63,20 @@ internal class InvoiceLineItem : Entity
     /// share from Masters, as before.</summary>
     public decimal? BedsideDoctorCharge { get; private set; }
 
+    /// <summary>What one unit of this line cost, as Masters had it when it was billed (ADR-153):
+    /// the consultant's share for a consultation; the doctor's share plus the running cost for a
+    /// scan; the running cost for a lab test or package; the cost price for a procedure,
+    /// injection or file. Kept on the line so a later Masters change can't rewrite the reports
+    /// of days already billed. Null when Masters had no cost for it at billing time (and on
+    /// lines billed before ADR-153 that the migration's fill couldn't cost): reports then read
+    /// the current Masters, as before. Discounts are not taken off here; reports do that.</summary>
+    public decimal? UnitCost { get; private set; }
+
+    /// <summary>Radiology only (ADR-153): the doctor's share inside <see cref="UnitCost"/>, the
+    /// bedside doctor's share included; the rest of <see cref="UnitCost"/> is the hospital's
+    /// running cost. Null on every other line, and whenever <see cref="UnitCost"/> is null.</summary>
+    public decimal? UnitDoctorShare { get; private set; }
+
     public int Quantity { get; private set; }
     public decimal UnitPrice { get; private set; }
     public decimal Discount { get; private set; }
@@ -132,7 +146,9 @@ internal class InvoiceLineItem : Entity
         string? rateOptionName = null,
         bool isBedside = false,
         decimal? bedsideAmount = null,
-        decimal? bedsideDoctorCharge = null)
+        decimal? bedsideDoctorCharge = null,
+        decimal? unitCost = null,
+        decimal? unitDoctorShare = null)
     {
         var item = new InvoiceLineItem(
             Guid.CreateVersion7(),
@@ -153,6 +169,8 @@ internal class InvoiceLineItem : Entity
         item.IsBedside = isBedside;
         item.BedsideAmount = isBedside ? bedsideAmount : null;
         item.BedsideDoctorCharge = isBedside ? bedsideDoctorCharge : null;
+        item.UnitCost = unitCost;
+        item.UnitDoctorShare = unitCost is null || billingType != BillingType.Radiology ? null : unitDoctorShare;
         return item;
     }
 

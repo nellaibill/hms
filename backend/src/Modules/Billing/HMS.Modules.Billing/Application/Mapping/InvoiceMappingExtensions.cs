@@ -19,6 +19,8 @@ internal static class InvoiceMappingExtensions
         IsBedside = item.IsBedside,
         BedsideAmount = item.BedsideAmount,
         BedsideDoctorCharge = item.BedsideDoctorCharge,
+        UnitCost = item.UnitCost,
+        UnitDoctorShare = item.UnitDoctorShare,
         Quantity = item.Quantity,
         UnitPrice = item.UnitPrice,
         Discount = item.Discount,

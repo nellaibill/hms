@@ -50,6 +50,8 @@ function fromItemDto(item: InvoiceResponseDto['items'][number]): BillingItem {
     isBedside: item.isBedside ?? false,
     bedsideAmount: item.bedsideAmount ?? undefined,
     bedsideDoctorCharge: item.bedsideDoctorCharge ?? undefined,
+    unitCost: item.unitCost ?? undefined,
+    unitDoctorShare: item.unitDoctorShare ?? undefined,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     discount: item.discount,

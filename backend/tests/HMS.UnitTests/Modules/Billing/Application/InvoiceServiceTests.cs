@@ -30,6 +30,7 @@ public class InvoiceServiceTests
     private readonly ILabOrderService _labOrderService = Substitute.For<ILabOrderService>();
     private readonly IDiagnosticTestService _diagnosticTestService = Substitute.For<IDiagnosticTestService>();
     private readonly IDiagnosticServiceService _diagnosticServiceService = Substitute.For<IDiagnosticServiceService>();
+    private readonly IDiagnosticPackageService _diagnosticPackageService = Substitute.For<IDiagnosticPackageService>();
     private readonly IConsultantService _consultantService = Substitute.For<IConsultantService>();
     private readonly IDepartmentService _departmentService = Substitute.For<IDepartmentService>();
     private readonly IConsultationTypeService _consultationTypeService = Substitute.For<IConsultationTypeService>();
@@ -53,6 +54,7 @@ public class InvoiceServiceTests
             _labOrderService,
             _diagnosticTestService,
             _diagnosticServiceService,
+            _diagnosticPackageService,
             _consultantService,
             _departmentService,
             _consultationTypeService,
@@ -1735,5 +1737,134 @@ public class InvoiceServiceTests
         result.ErrorCode.Should().Be(BillingErrorCodes.RevertPending);
         await _paymentRepository.DidNotReceive().AddAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    // ADR-153: each line keeps its cost from billing time, so a later Masters edit can't rewrite
+    // the reports of days already billed.
+
+    private CreateInvoiceRequest SingleLineRequest(CreateInvoiceLineItemRequest line)
+    {
+        _labOrderService.CreateFromInvoiceAsync(Arg.Any<CreateLabOrderFromInvoiceRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<LabOrderResponse>.Success(new LabOrderResponse()));
+        return ValidRequest() with { Items = [line] };
+    }
+
+    private Guid GivenConsultantCharging(Guid consultationTypeId, decimal? share)
+    {
+        var consultantId = Guid.NewGuid();
+        _consultantService.GetByIdAsync(consultantId, Arg.Any<CancellationToken>())
+            .Returns(Result<ConsultantResponse>.Success(new ConsultantResponse
+            {
+                Id = consultantId,
+                Name = "Dr. S. Meena",
+                ConsultationTypeCharges = [new ConsultationTypeChargeDto(consultationTypeId, share)],
+            }));
+        return consultantId;
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(0)]
+    public async Task CreateAsync_ConsultationLine_KeepsTheConsultantsShareFromMasters(decimal share)
+    {
+        var typeId = Guid.NewGuid();
+        GivenConsultationType(typeId, 500m);
+        var consultantId = GivenConsultantCharging(typeId, share);
+
+        var result = await _sut.CreateAsync(
+            SingleLineRequest(new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, ConsultantId = consultantId.ToString(), ServiceId = typeId.ToString(), Quantity = 1, UnitPrice = 500m }),
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var line = result.Value!.Items.Single();
+        line.UnitCost.Should().Be(share);
+        line.UnitDoctorShare.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CreateAsync_ConsultationWhoseShareIsNotSetInMasters_SavesNoCost()
+    {
+        var typeId = Guid.NewGuid();
+        GivenConsultationType(typeId, 500m);
+        var consultantId = GivenConsultantCharging(typeId, share: null);
+
+        var result = await _sut.CreateAsync(
+            SingleLineRequest(new CreateInvoiceLineItemRequest { BillingType = BillingType.Consultation, ConsultantId = consultantId.ToString(), ServiceId = typeId.ToString(), Quantity = 1, UnitPrice = 500m }),
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Single().UnitCost.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CreateAsync_BedsideScan_KeepsTheDoctorsShareAndTheRunningCost()
+    {
+        var serviceId = Guid.NewGuid();
+        _diagnosticServiceService.GetByIdAsync(serviceId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse
+            {
+                Id = serviceId,
+                Name = "ANC - Growth Scan",
+                Price = 1000m,
+                DoctorCharge = 300m,
+                CostPrice = 150m,
+                BedsidePrice = 500m,
+                BedsideDoctorCharge = 200m,
+            }));
+
+        // ₹600 at the bedside: the hospital's share is ₹300, so the consultant's part is ₹300.
+        var result = await _sut.CreateAsync(BedsideScanRequest(serviceId, 600m, 1600m), actorId: null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var line = result.Value!.Items.Single();
+        line.UnitDoctorShare.Should().Be(600m);
+        line.UnitCost.Should().Be(750m);
+    }
+
+    [Fact]
+    public async Task CreateAsync_LabPackageWithoutItsOwnRunningCost_KeepsItsTestsTotal()
+    {
+        var packageId = Guid.NewGuid();
+        var cbcId = Guid.NewGuid();
+        var esrId = Guid.NewGuid();
+        _diagnosticPackageService.GetByIdAsync(packageId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticPackageResponse>.Success(new DiagnosticPackageResponse
+            {
+                Id = packageId,
+                Name = "Fever Profile",
+                CostPrice = 0m,
+                Items = [new DiagnosticPackageItemResponse { ServiceId = cbcId }, new DiagnosticPackageItemResponse { ServiceId = esrId }],
+            }));
+        _diagnosticServiceService.GetByIdAsync(cbcId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = cbcId, Name = "CBC", CostPrice = 90m }));
+        _diagnosticServiceService.GetByIdAsync(esrId, Arg.Any<CancellationToken>())
+            .Returns(Result<DiagnosticServiceResponse>.Success(new DiagnosticServiceResponse { Id = esrId, Name = "ESR", CostPrice = 30m }));
+
+        var result = await _sut.CreateAsync(
+            SingleLineRequest(new CreateInvoiceLineItemRequest { BillingType = BillingType.Laboratory, PackageId = packageId, Quantity = 1, UnitPrice = 600m }),
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Single().UnitCost.Should().Be(120m);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenAMastersLookupFails_StillSavesTheBillWithoutACost()
+    {
+        var testId = Guid.NewGuid();
+        _diagnosticTestService.GetByIdAsync(testId, Arg.Any<CancellationToken>())
+            .Returns<Task<Result<DiagnosticTestResponse>>>(_ => throw new InvalidOperationException("Masters is down"));
+
+        var result = await _sut.CreateAsync(
+            SingleLineRequest(new CreateInvoiceLineItemRequest { BillingType = BillingType.Procedure, ServiceId = testId.ToString(), Quantity = 1, UnitPrice = 350m }),
+            actorId: null,
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Single().UnitCost.Should().BeNull();
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }
