@@ -1,9 +1,10 @@
 import type { AdmissionStatus, InvoicePaymentStatus, LabOrderItemStatus, OpdConsultationStatus } from '@hms/shared';
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, BadgePercent, BedDouble, CalendarClock, Flag, FlaskConical, Stethoscope, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageBanner } from '@/components/PageBanner';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/AuthContext';
 import { MyDiscountApprovals, useMyPendingDiscountApprovalCountQuery } from '@/features/billing';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -84,10 +85,15 @@ export default function OpdPage() {
   // can't actually change what comes back. Needs one lookup to learn their own department,
   // since ConsultantSelect (like the rest of the app) requires a department to show consultant
   // options against.
+  // A login linked to a consultant record but not held to it — a Super Admin who is also one of
+  // the hospital's doctors, typically its owner (ADR-152). Their queue opens on their own
+  // patients, like a doctor's, but nothing is locked: "All doctors" shows everyone.
+  const ownerConsultantId = !scopedConsultantId && user?.consultantId ? user.consultantId : null;
+  const ownConsultantId = scopedConsultantId ?? ownerConsultantId;
   const { data: ownConsultant } = useQuery({
-    queryKey: ['consultants', scopedConsultantId],
-    queryFn: () => consultantsApi.getConsultantById(scopedConsultantId as string),
-    enabled: Boolean(scopedConsultantId),
+    queryKey: ['consultants', ownConsultantId],
+    queryFn: () => consultantsApi.getConsultantById(ownConsultantId as string),
+    enabled: Boolean(ownConsultantId),
   });
 
   useEffect(() => {
@@ -101,6 +107,25 @@ export default function OpdPage() {
         : { ...prev, departmentId: ownConsultant.departmentId ?? undefined, consultantId: scopedConsultantId },
     );
   }, [scopedConsultantId, ownConsultant]);
+
+  // The owner-doctor's queue opens on their own patients once, when their consultant record
+  // arrives; after that the filters are theirs to change.
+  const ownerDefaultApplied = useRef(false);
+  useEffect(() => {
+    if (!ownerConsultantId || !ownConsultant || ownerDefaultApplied.current) return;
+    ownerDefaultApplied.current = true;
+    setFilters((prev) => ({ ...prev, departmentId: ownConsultant.departmentId ?? undefined, consultantId: ownerConsultantId }));
+  }, [ownerConsultantId, ownConsultant]);
+  const showingOwnPatients = Boolean(ownerConsultantId) && filters.consultantId === ownerConsultantId;
+
+  function showOwnPatients(own: boolean) {
+    setFilters((prev) =>
+      own && ownConsultant
+        ? { ...prev, departmentId: ownConsultant.departmentId ?? undefined, consultantId: ownerConsultantId ?? undefined }
+        : { ...prev, departmentId: undefined, consultantId: undefined },
+    );
+    setPage(1);
+  }
 
   // The filter bar's Search field updates `filters.search` immediately (so the input feels
   // responsive), but every tab's query below reads the debounced value instead — otherwise
@@ -339,6 +364,18 @@ export default function OpdPage() {
       />
 
       <div className="flex flex-1 flex-col gap-4 p-6 lg:p-8">
+        {ownerConsultantId && ownConsultant && tab !== 'discounts' && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Show:</span>
+            <Button size="sm" variant={showingOwnPatients ? 'default' : 'outline'} onClick={() => showOwnPatients(true)}>
+              My patients
+            </Button>
+            <Button size="sm" variant={showingOwnPatients ? 'outline' : 'default'} onClick={() => showOwnPatients(false)}>
+              All doctors
+            </Button>
+            {showingOwnPatients && <span className="text-muted-foreground">— {ownConsultant.name}</span>}
+          </div>
+        )}
         {tab !== 'discounts' && (
           <OpdFilterBar
             tab={tab}
