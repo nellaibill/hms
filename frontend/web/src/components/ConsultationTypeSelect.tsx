@@ -4,6 +4,18 @@ import { formatCurrency } from '@/features/billing';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { consultantsApi, consultationTypesApi } from '../services/apiClient';
 
+/** Where a consultation type sits in the picker, by its name: Regular, Priority, Emergency /
+ * Casualty, Review, anything else, then Others / On-call last. Display order only — the master
+ * list and the APIs are unchanged. */
+function consultationTypeRank(name: string): number {
+  if (/on-?call|others/i.test(name)) return 5;
+  if (/regular/i.test(name)) return 0;
+  if (/priority/i.test(name)) return 1;
+  if (/emergency|casualty/i.test(name)) return 2;
+  if (/review/i.test(name)) return 3;
+  return 4;
+}
+
 interface ConsultationTypeSelectProps {
   id: string;
   value: string;
@@ -21,8 +33,9 @@ interface ConsultationTypeSelectProps {
 /** Consultation type picker backed by the real GET /api/v1/masters/consultation-types list,
  * scoped to the selected consultant — each option shows the type's name and its standard fee
  * (e.g. "Doctor's Consultation (In-house) - Regular — ₹200"), or "Amount to be filled" for
- * categories with no fixed rate (Amount left unset in the master record). Types keep the
- * master list's own order.
+ * categories with no fixed rate (Amount left unset in the master record). Types are listed
+ * Regular, Priority, Emergency, Review, then anything else, with On-call last — the order the
+ * front desk picks them in (consultationTypeRank), for in-house and visiting types alike.
  *
  * Owns the dependent-field behavior too, so no page has to repeat it: nothing is pickable until
  * a consultant is chosen, and a selected type is cleared as soon as it's no longer one the
@@ -45,6 +58,8 @@ export function ConsultationTypeSelect({ id, value, onValueChange, departmentId,
   const options = allowedIds
     ? (consultationTypes?.items ?? [])
         .filter((consultationType) => allowedIds.includes(consultationType.id))
+        // Stable sort: types of the same rank keep the master list's order.
+        .sort((a, b) => consultationTypeRank(a.name) - consultationTypeRank(b.name))
         .map((consultationType) => ({
           value: consultationType.id,
           label: `${consultationType.name} — ${consultationType.amount != null ? formatCurrency(consultationType.amount) : 'Amount to be filled'}`,
